@@ -32,7 +32,10 @@ fun ManifestKpiGrid(manifest: Manifest, modifier: Modifier = Modifier) {
             horizontalArrangement = Arrangement.spacedBy(PayloadSpacing.md),
             verticalAlignment = Alignment.Top,
         ) {
-            PayloadStatusChip(status = manifest.state)
+            PayloadProtocolStateCard(
+                state = manifest.state,
+                modifier = Modifier.weight(1f),
+            )
             PayloadKpiTile(
                 label = stringResource(R.string.mobile_payload_ui_payload_volume),
                 value = "%.1f / %.1f VU".format(total, manifest.maxVolumeVu),

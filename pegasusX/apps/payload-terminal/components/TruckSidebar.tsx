@@ -50,58 +50,50 @@ export default function TruckSidebar({
           />
         ) : (
           <>
-            <Text style={{ fontSize: 13, fontWeight: '500', color: T.colors.tertiaryLabel, marginBottom: 16, letterSpacing: 0.3 }}>
-              {isIOS ? 'Board by manifest state' : 'BOARD BY MANIFEST STATE'}
+            <Text style={{ fontSize: 13, fontWeight: '500', color: T.colors.tertiaryLabel, marginBottom: 32, letterSpacing: 0.3 }}>
+              {tx('payload.vehicle.select_target')}
             </Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 16, justifyContent: 'center', paddingHorizontal: 16 }}>
-              {BOARD_MANIFEST_STATES.map((state) => {
-                const column = groupBoardColumns(trucks)[state];
-                return (
-                  <View key={state} style={{ minWidth: 180, maxWidth: 260 }}>
-                    <Text style={{ fontSize: 11, fontWeight: '700', color: T.colors.tertiaryLabel, letterSpacing: 0.6, marginBottom: 8 }}>
-                      {state} · {column.length === 0 ? 'empty' : String(column.length)}
+              {trucks.map(truck => (
+                <Pressable
+                  key={truck.id}
+                  onPress={() => setActiveTruck(truck.id)}
+                  style={({ pressed }) => ({
+                    borderWidth: isIOS ? 0.33 : 1,
+                    borderColor: T.colors.separator,
+                    backgroundColor: T.colors.cardBackground,
+                    paddingHorizontal: 40,
+                    paddingVertical: 32,
+                    alignItems: 'center' as const,
+                    borderRadius: T.radius.card,
+                    minWidth: 200,
+                    ...T.shadow.card,
+                    opacity: pressed ? 0.82 : 1,
+                    transform: [{ scale: pressed ? 0.96 : 1 }],
+                  })}
+                >
+                  <Text style={{ fontSize: 22, fontWeight: '700', color: T.colors.label, letterSpacing: isIOS ? -0.4 : 1 }}>
+                    {truck.label}
+                  </Text>
+                  {truck.license_plate ? (
+                    <Text style={{ fontSize: 11, fontFamily: T.typography.mono.fontFamily, color: T.colors.tertiaryLabel, marginTop: 6, letterSpacing: 0.5 }}>
+                      {truck.license_plate}
                     </Text>
-                    {column.length === 0 ? (
-                      <Text style={{ fontSize: 11, color: T.colors.tertiaryLabel }}>
-                        {isIOS ? `No ${state.toLowerCase()} manifests` : `NO ${state} MANIFESTS`}
-                      </Text>
-                    ) : column.map((truck) => (
-                      <Pressable
-                        key={truck.id}
-                        onPress={() => setActiveTruck(truck.id)}
-                        style={({ pressed }) => ({
-                          borderWidth: isIOS ? 0.33 : 1,
-                          borderColor: T.colors.separator,
-                          backgroundColor: T.colors.cardBackground,
-                          paddingHorizontal: 16,
-                          paddingVertical: 14,
-                          marginBottom: 8,
-                          borderRadius: T.radius.card,
-                          opacity: pressed ? 0.82 : 1,
-                        })}
-                      >
-                        <Text style={{ fontSize: 16, fontWeight: '700', color: T.colors.label }}>{truck.label}</Text>
-                        {truck.license_plate ? (
-                          <Text style={{ fontSize: 11, fontFamily: T.typography.mono.fontFamily, color: T.colors.tertiaryLabel, marginTop: 4 }}>
-                            {truck.license_plate}
-                          </Text>
-                        ) : null}
-                        {truck.max_volume_vu ? (
-                          <Text style={{ fontSize: 10, color: T.colors.tertiaryLabel, marginTop: 4 }}>
-                            {truck.used_volume_vu ?? 0}/{truck.max_volume_vu} VU
-                          </Text>
-                        ) : null}
-                      </Pressable>
-                    ))}
-                  </View>
-                );
-              })}
+                  ) : null}
+                  <Text style={{ fontSize: 10, color: T.colors.tertiaryLabel, marginTop: 4, letterSpacing: 0.3 }}>
+                    {truck.vehicle_class}
+                  </Text>
+                  {truck.max_volume_vu ? (
+                    <Text style={{ fontSize: 10, fontFamily: T.typography.mono.fontFamily, color: T.colors.secondaryLabel, marginTop: 6 }}>
+                      {truck.used_volume_vu ?? 0}/{truck.max_volume_vu} VU
+                    </Text>
+                  ) : null}
+                </Pressable>
+              ))}
             </View>
-            {unassignedTrucks(trucks).length > 0 ? (
-              <Text style={{ fontSize: 12, color: T.colors.tertiaryLabel, marginTop: 24 }}>
-                {isIOS ? 'Some vehicles have no open manifest' : 'SOME VEHICLES HAVE NO OPEN MANIFEST'}
-              </Text>
-            ) : null}
+            <Text style={{ fontSize: 12, color: T.colors.tertiaryLabel, marginTop: 40, letterSpacing: 0.3 }}>
+              {isIOS ? 'Select target vehicle' : 'SELECT TARGET VEHICLE'}
+            </Text>
           </>
         )}
       </View>

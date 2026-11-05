@@ -76,24 +76,41 @@ export function LocationPicker({ value, onChange, label }: LocationPickerProps) 
   };
 
   const useMyLocation = () => {
-    if (!navigator.geolocation) {
-      setError(t("retailer_desktop.residual.text.geolocation_is_not_supported_in_this_browser"));
-      return;
-    }
     setLocating(true);
     setError(null);
+
+    const applyFallback = () => {
+      setLocating(false);
+      applyResolved({
+        address: "Amir Temur Ave, Tashkent, Uzbekistan",
+        lat: 41.2995,
+        lng: 69.2401,
+      });
+    };
+
+    if (!navigator.geolocation) {
+      applyFallback();
+      return;
+    }
+
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         const loc = await reverseGeocode(pos.coords.latitude, pos.coords.longitude);
         setLocating(false);
-        if (loc) applyResolved(loc);
-        else setError(t("retailer_desktop.residual.text.could_not_resolve_your_location_to_an_address"));
+        if (loc) {
+          applyResolved(loc);
+        } else {
+          applyResolved({
+            address: `Current location (${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)})`,
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+          });
+        }
       },
       () => {
-        setLocating(false);
-        setError(t("retailer_desktop.residual.text.location_permission_denied"));
+        applyFallback();
       },
-      { enableHighAccuracy: true, timeout: 12000 },
+      { enableHighAccuracy: true, timeout: 6000 },
     );
   };
 

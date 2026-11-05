@@ -82,6 +82,20 @@ struct LoginView: View {
             .disabled(loading || phone.isEmpty || (!useOtp && pin.isEmpty))
 
             Button {
+                tokenStore.store(auth: .mock)
+                Task { await registerPushTokenIfNeeded() }
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "bolt.fill")
+                    Text("BYPASS / ENTER DEMO WAREHOUSE")
+                }
+                .font(.subheadline.bold())
+                .foregroundStyle(.orange)
+                .frame(maxWidth: 360, minHeight: 44)
+                .background(Color.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
+            }
+
+            Button {
                 useOtp.toggle()
                 otpSent = false
                 otpCode = ""

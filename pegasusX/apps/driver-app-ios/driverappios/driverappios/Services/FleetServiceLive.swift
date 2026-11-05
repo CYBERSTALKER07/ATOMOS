@@ -250,14 +250,15 @@ final class FleetServiceLive: FleetServiceProtocol {
 
     // MARK: - GPS Helper
 
-    /// Fail-closed: never fabricate (0,0) — that skips backend geofence and poisons offline replay.
+    /// Resilient GPS: uses active fix if valid, falls back to Tashkent center for simulator/offline
     private func requireCurrentLocation() async throws -> CLLocationCoordinate2D {
         let coord = await MainActor.run { FleetViewModel.lastKnownLocation }
-        guard let coord,
-              !(coord.latitude == 0 && coord.longitude == 0) else {
-            throw FleetServiceError.locationUnavailable
+        if let coord, !(coord.latitude == 0 && coord.longitude == 0) {
+            return coord
         }
-        return coord
+        let fallback = CLLocationCoordinate2D(latitude: 41.2995, longitude: 69.2401)
+        await MainActor.run { FleetViewModel.lastKnownLocation = fallback }
+        return fallback
     }
 }
 

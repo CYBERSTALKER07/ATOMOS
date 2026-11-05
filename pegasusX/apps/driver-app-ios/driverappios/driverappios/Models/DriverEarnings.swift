@@ -69,6 +69,19 @@ struct DriverEarningsResponse: Codable {
         self.weekMinor = weekMinor
         self.monthMinor = monthMinor
     }
+
+    static let sample = DriverEarningsResponse(
+        totalDeliveries: 142,
+        totalVolume: 840,
+        totalRoutes: 28,
+        last30Days: [
+            DailyEarning(date: "2026-10-31", deliveryCount: 8, volume: 48),
+            DailyEarning(date: "2026-11-01", deliveryCount: 5, volume: 32)
+        ],
+        todayMinor: 480_000,
+        weekMinor: 3_250_000,
+        monthMinor: 14_800_000
+    )
 }
 
 struct DriverHistoryRow: Codable, Hashable, Identifiable {
@@ -88,6 +101,14 @@ struct DriverHistoryRow: Codable, Hashable, Identifiable {
         case completedAt = "completed_at"
     }
 
+    init(orderId: String, status: String, totalMinor: Int64, currency: String, completedAt: String) {
+        self.orderId = orderId
+        self.status = status
+        self.totalMinor = totalMinor
+        self.currency = currency
+        self.completedAt = completedAt
+    }
+
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         orderId = (try? c.decode(String.self, forKey: .orderId)) ?? ""
@@ -101,10 +122,19 @@ struct DriverHistoryRow: Codable, Hashable, Identifiable {
 struct DriverHistoryResponse: Codable {
     let rows: [DriverHistoryRow]
 
+    init(rows: [DriverHistoryRow] = []) {
+        self.rows = rows
+    }
+
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         rows = (try? c.decode([DriverHistoryRow].self, forKey: .rows)) ?? []
     }
 
     enum CodingKeys: String, CodingKey { case rows }
+
+    static let samples = [
+        DriverHistoryRow(orderId: "ord-hist-1", status: "COMPLETED", totalMinor: 850_000, currency: "UZS", completedAt: "2026-10-31T16:20:00Z"),
+        DriverHistoryRow(orderId: "ord-hist-2", status: "COMPLETED", totalMinor: 1_200_000, currency: "UZS", completedAt: "2026-10-31T18:45:00Z")
+    ]
 }

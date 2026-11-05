@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -234,16 +235,28 @@ fun RetailerNavigation(
                 )
             },
             bottomBar = {
-                Column {
-                    // Floating active orders bar above bottom nav
-                    FloatingActiveOrdersBar(
-                        visible = showFloatingBar && navState.activeOrderCount > 0,
-                        orderCount = navState.activeOrderCount,
-                        statusText = navState.floatingStatusText,
-                        totalDisplay = navState.floatingTotalDisplay,
-                        countdownIso = navState.floatingCountdownIso,
-                        onClick = { showActiveDeliveries = true },
-                    )
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    // Floating active orders bar above bottom nav (centered on tablets)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = if (isCompact) 0.dp else 16.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Box(modifier = Modifier.widthIn(max = 600.dp).fillMaxWidth()) {
+                            FloatingActiveOrdersBar(
+                                visible = showFloatingBar && navState.activeOrderCount > 0,
+                                orderCount = navState.activeOrderCount,
+                                statusText = navState.floatingStatusText,
+                                totalDisplay = navState.floatingTotalDisplay,
+                                countdownIso = navState.floatingCountdownIso,
+                                onClick = { showActiveDeliveries = true },
+                            )
+                        }
+                    }
                     if (isCompact) {
                         PegasusBottomBar(
                             currentTab = currentTab,

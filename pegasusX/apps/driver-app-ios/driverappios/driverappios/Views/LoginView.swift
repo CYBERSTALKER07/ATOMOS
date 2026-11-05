@@ -189,6 +189,23 @@ struct LoginView: View {
                     }
                     .disabled(viewModel.loading)
 
+                    Button {
+                        viewModel.loginDemoDriver()
+                        Haptics.success()
+                        onAuthenticated()
+                    } label: {
+                        HStack(spacing: LabTheme.s8) {
+                            Image(systemName: "bolt.fill")
+                            Text("BYPASS / ENTER DEMO FLEET")
+                        }
+                        .font(.system(size: 13, weight: .bold, design: .monospaced))
+                        .foregroundStyle(.orange)
+                        .padding(.vertical, LabTheme.s8)
+                        .frame(maxWidth: .infinity)
+                        .background(Color.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: LabTheme.buttonRadius, style: .continuous))
+                    }
+                    .buttonStyle(.pressable)
+
                     Spacer()
                 }
                 .padding(.horizontal, LabTheme.s32)

@@ -27,6 +27,9 @@ struct HomeView: View {
     @State private var showRescueSheet = false
     @State private var showSyncQueue = false
     @State private var offlinePending = 0
+    @State private var showQRScanner = false
+    @State private var showOfflineVerifier = false
+    @State private var selectedRecentMission: Mission?
 
     var body: some View {
         HStack(alignment: .top, spacing: 0) {
@@ -65,7 +68,7 @@ struct HomeView: View {
                     .padding(.top, 8)
                 }
                 .padding(.horizontal, LabTheme.s4)
-                .padding(.top, 60)
+                .padding(.top, sizeClass == .regular ? 20 : 54)
 
                 PulseStrip(events: pulseEvents, loading: pulseLoading, error: pulseError)
                     .padding(.horizontal, LabTheme.s4)
@@ -136,7 +139,12 @@ struct HomeView: View {
                 fieldHistoryPeek
 
                 // MARK: - Today Summary Card
-                TodaySummaryCard(vm: vm)
+                TodaySummaryCard(
+                    vm: vm,
+                    onSelectPending: { onHandoffNavigate?(.manifestList) },
+                    onSelectDone: { onHandoffNavigate?(.manifestList) },
+                    onSelectRevenue: { onHandoffNavigate?(.home) }
+                )
                     .staggeredAppear(index: TokenStore.shared.isFactoryScopedDriver ? 4 : 3)
 
                 // MARK: - Open Map CTA
@@ -144,15 +152,20 @@ struct HomeView: View {
                     .staggeredAppear(index: TokenStore.shared.isFactoryScopedDriver ? 5 : 4)
 
                 // MARK: - Quick Actions
-                QuickActionsSection(showRescueSheet: $showRescueSheet)
+                QuickActionsSection(
+                    showRescueSheet: $showRescueSheet,
+                    onScanQR: { showQRScanner = true },
+                    onOfflineVerify: { showOfflineVerifier = true }
+                )
                     .staggeredAppear(index: TokenStore.shared.isFactoryScopedDriver ? 6 : 5)
 
                 // MARK: - Recent Activity
-                RecentActivitySection(vm: vm)
+                RecentActivitySection(vm: vm, onSelectMission: { selectedRecentMission = $0 })
                     .staggeredAppear(index: TokenStore.shared.isFactoryScopedDriver ? 7 : 6)
             }
             .padding(.horizontal, LabTheme.s16)
             .padding(.bottom, 20)
+            .labReadableWidth()
         }
         .scrollIndicators(.hidden)
         }
@@ -185,6 +198,31 @@ struct HomeView: View {
         .sheet(isPresented: $showSyncQueue) {
             SyncQueueView()
                 .presentationDetents([.large])
+        }
+        .sheet(isPresented: $showQRScanner) {
+            QRScannerView(
+                onValidated: { _, _ in showQRScanner = false },
+                onCancel: { showQRScanner = false }
+            )
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $showOfflineVerifier) {
+            OfflineVerifierView(modelContext: modelContext)
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+        }
+        .sheet(item: $selectedRecentMission) { mission in
+            MissionDetailSheet(
+                mission: mission,
+                driverLocation: vm.displayLocation ?? vm.location,
+                isInRange: true,
+                distance: 0,
+                onScan: {},
+                onCorrection: {}
+            )
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
         }
         .task {
             await vm.loadMissions()

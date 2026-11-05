@@ -8,7 +8,6 @@ import {
   getAuth,
   connectAuthEmulator,
   signInWithPhoneNumber,
-  type ConfirmationResult,
 } from "firebase/auth";
 
 const firebaseConfig = {
@@ -73,7 +72,8 @@ export async function firebaseSignOut(): Promise<void> {
   }
 }
 
-let phoneConfirmation: ConfirmationResult | null = null;
+type PhoneConfirmation = Awaited<ReturnType<typeof signInWithPhoneNumber>>;
+let phoneConfirmation: PhoneConfirmation | null = null;
 
 class EmulatorRecaptchaVerifier {
   type = "recaptcha" as const;

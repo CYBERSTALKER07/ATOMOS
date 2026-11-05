@@ -113,6 +113,19 @@ struct LoginView: View {
                 }
                 .font(.caption)
                 .disabled(loading)
+
+                Button {
+                    storeAuth(.mock)
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "bolt.fill")
+                        Text("BYPASS / ENTER DEMO FACTORY")
+                    }
+                    .font(.subheadline.bold())
+                    .foregroundStyle(.orange)
+                    .frame(maxWidth: 360, minHeight: 44)
+                    .background(Color.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
+                }
             }
 
             Spacer()

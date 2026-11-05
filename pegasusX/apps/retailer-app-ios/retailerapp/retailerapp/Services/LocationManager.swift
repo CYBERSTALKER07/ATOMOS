@@ -32,8 +32,14 @@ final class LocationManager: NSObject, CLLocationManagerDelegate {
 
         if authorizationStatus == .notDetermined {
             manager.requestWhenInUseAuthorization()
-            // On simulator, permission dialog might not resolve immediately or location might be empty;
-            // don't leave isLocating hanging.
+            // In simulator or if permission prompt takes time, provide prompt fallback
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
+                guard let self = self else { return }
+                if self.isLocating && self.lastLocation == nil {
+                    self.lastLocation = Self.defaultLocation
+                    self.isLocating = false
+                }
+            }
         } else if authorizationStatus == .denied || authorizationStatus == .restricted {
             isLocating = false
             if lastLocation == nil {
@@ -41,6 +47,16 @@ final class LocationManager: NSObject, CLLocationManagerDelegate {
             }
         } else {
             manager.requestLocation()
+            // Failsafe timer so locate button never spins endlessly
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) { [weak self] in
+                guard let self = self else { return }
+                if self.isLocating {
+                    if self.lastLocation == nil {
+                        self.lastLocation = Self.defaultLocation
+                    }
+                    self.isLocating = false
+                }
+            }
         }
     }
 

@@ -40,6 +40,20 @@ struct AuthResponse: Decodable {
         warehouseId = try container.decodeIfPresent(String.self, forKey: .warehouseId) ?? ""
         isConfigured = try container.decodeIfPresent(Bool.self, forKey: .isConfigured) ?? false
     }
+
+    init(
+        token: String = "mock-warehouse-jwt-dev",
+        refreshToken: String = "mock-warehouse-refresh",
+        warehouseId: String = "wh-tashkent-central",
+        isConfigured: Bool = true
+    ) {
+        self.token = token
+        self.refreshToken = refreshToken
+        self.warehouseId = warehouseId
+        self.isConfigured = isConfigured
+    }
+
+    static let mock = AuthResponse()
 }
 
 // MARK: - Dashboard
@@ -158,6 +172,30 @@ struct DashboardData: Decodable {
     }
 
     static let empty = DashboardData()
+
+    static let sample = DashboardData(
+        activeOrders: 14,
+        completedToday: 32,
+        pendingDispatch: 6,
+        driversOnRoute: 8,
+        driversIdle: 3,
+        totalDrivers: 11,
+        totalVehicles: 12,
+        todayRevenue: 64_000_000,
+        completedTodayAvailable: true,
+        todayRevenueAvailable: true,
+        lowStockCount: 2,
+        totalStaff: 18,
+        fleetStatus: [
+            FleetStatusEntry(status: "ON_ROUTE", count: 8),
+            FleetStatusEntry(status: "IDLE", count: 3)
+        ],
+        ordersByStatus: ["PENDING": 4, "IN_TRANSIT": 8, "DELIVERED": 32],
+        truckDuty: ["ACTIVE": 8, "MAINTENANCE": 1],
+        holdReasons: [],
+        demandSource: "SSMR",
+        historyAvailable: true
+    )
 }
 
 // MARK: - Order

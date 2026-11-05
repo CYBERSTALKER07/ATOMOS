@@ -21,20 +21,24 @@ export function KpiStatCard({
 }: KpiStatCardProps) {
   return (
     <div
-      className={`desk-card p-5 flex flex-col justify-between gap-3 ${align === "center" ? "items-center text-center" : ""} ${className}`.trim()}
+      className={`desk-card p-5 flex flex-col justify-between gap-3 border border-[var(--desk-border)] rounded-2xl ${align === "center" ? "items-center text-center" : ""} ${className}`.trim()}
     >
       <div className="flex items-center justify-between gap-2 w-full">
-        <p className="md-kpi-label" style={{ color: "var(--desk-text-secondary)" }}>
+        <p className="text-[11px] font-mono font-bold uppercase tracking-wider text-[var(--desk-text-secondary)]">
           {label}
         </p>
-        {icon ? <span className="shrink-0">{icon}</span> : null}
+        {icon ? (
+          <span className="shrink-0 w-9 h-9 rounded-xl flex items-center justify-center bg-[var(--desk-surface-subtle)] text-[var(--desk-text-primary)]">
+            {icon}
+          </span>
+        ) : null}
       </div>
       <div className={align === "center" ? "w-full" : undefined}>
-        <div className="md-kpi-value" style={{ color: "var(--desk-text-primary)" }}>
+        <div className="font-mono text-2xl font-bold tracking-tight text-[var(--desk-text-primary)]">
           {value}
         </div>
         {sub ? (
-          <p className="md-kpi-sub mt-1" style={{ color: "var(--desk-text-tertiary)" }}>
+          <p className="text-xs font-mono text-[var(--desk-text-tertiary)] mt-1">
             {sub}
           </p>
         ) : null}

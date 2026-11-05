@@ -131,7 +131,7 @@ fun DashboardScreen(
                 .padding(innerPadding),
         ) {
             LazyVerticalGrid(
-        columns = GridCells.Adaptive(minSize = 340.dp),
+                columns = GridCells.Adaptive(minSize = 320.dp),
         
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(24.dp),

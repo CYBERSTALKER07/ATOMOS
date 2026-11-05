@@ -33,6 +33,24 @@ struct LoginResponse: Decodable {
         token = try container.decodeIfPresent(String.self, forKey: .token)
         refreshToken = try container.decodeIfPresent(String.self, forKey: .refreshToken)
     }
+
+    init(
+        supplierId: String = "sup-tashkent-01",
+        isRegistered: Bool = true,
+        isConfigured: Bool = true,
+        nextStep: String = "DASHBOARD",
+        token: String? = "mock-supplier-jwt-dev",
+        refreshToken: String? = "mock-supplier-refresh-dev"
+    ) {
+        self.supplierId = supplierId
+        self.isRegistered = isRegistered
+        self.isConfigured = isConfigured
+        self.nextStep = nextStep
+        self.token = token
+        self.refreshToken = refreshToken
+    }
+
+    static let mock = LoginResponse()
 }
 
 struct DeviceTokenRequest: Encodable, Equatable {
@@ -106,6 +124,32 @@ struct SupplierDashboard: Decodable {
         deliveriesAttemptedToday = (try? c.decode(Int.self, forKey: .deliveriesAttemptedToday)) ?? 0
         manifestsByState = (try? c.decode([String: Int].self, forKey: .manifestsByState)) ?? [:]
     }
+
+    init(
+        supplierId: String = "sup-tashkent-01",
+        isConfigured: Bool = true,
+        inventorySKUs: Int = 142,
+        pendingOrders: Int = 18,
+        updatedAt: String = "2026-11-01T10:00:00Z",
+        ordersByStatus: [String: Int] = ["PENDING": 4, "IN_TRANSIT": 8, "DELIVERED": 24],
+        todayRevenueMinor: Int64 = 48_500_000,
+        deliveriesCompletedToday: Int = 24,
+        deliveriesAttemptedToday: Int = 26,
+        manifestsByState: [String: Int] = ["IN_PROGRESS": 3, "COMPLETED": 7]
+    ) {
+        self.supplierId = supplierId
+        self.isConfigured = isConfigured
+        self.inventorySKUs = inventorySKUs
+        self.pendingOrders = pendingOrders
+        self.updatedAt = updatedAt
+        self.ordersByStatus = ordersByStatus
+        self.todayRevenueMinor = todayRevenueMinor
+        self.deliveriesCompletedToday = deliveriesCompletedToday
+        self.deliveriesAttemptedToday = deliveriesAttemptedToday
+        self.manifestsByState = manifestsByState
+    }
+
+    static let sample = SupplierDashboard()
 }
 
 // MARK: - Profile
@@ -143,6 +187,38 @@ struct SupplierOrdersResponse: Decodable {
     let total: Int?
     let limit: Int?
     let offset: Int?
+
+    init(orders: [SupplierOrder] = [], total: Int? = nil, limit: Int? = nil, offset: Int? = nil) {
+        self.orders = orders
+        self.total = total ?? orders.count
+        self.limit = limit
+        self.offset = offset
+    }
+
+    static let samples = SupplierOrdersResponse(orders: [
+        SupplierOrder(
+            orderId: "ord-sup-101",
+            retailerId: "ret-chilonzor-4",
+            warehouseId: "wh-tashkent-central",
+            status: "IN_TRANSIT",
+            decision: "AUTO_ACCEPTED",
+            note: "Dispatched from Central Hub",
+            totalMinor: 1_450_000,
+            currency: "UZS",
+            updatedAt: "2026-11-01T08:30:00Z"
+        ),
+        SupplierOrder(
+            orderId: "ord-sup-102",
+            retailerId: "ret-yunusobod-12",
+            warehouseId: "wh-tashkent-central",
+            status: "PENDING",
+            decision: nil,
+            note: "Standard delivery",
+            totalMinor: 2_890_000,
+            currency: "UZS",
+            updatedAt: "2026-11-01T08:45:00Z"
+        )
+    ])
 }
 
 struct SupplierOrder: Decodable, Identifiable, Hashable {
@@ -156,6 +232,28 @@ struct SupplierOrder: Decodable, Identifiable, Hashable {
     let totalMinor: Int64
     let currency: String
     let updatedAt: String
+
+    init(
+        orderId: String,
+        retailerId: String,
+        warehouseId: String? = nil,
+        status: String,
+        decision: String? = nil,
+        note: String? = nil,
+        totalMinor: Int64,
+        currency: String = "UZS",
+        updatedAt: String
+    ) {
+        self.orderId = orderId
+        self.retailerId = retailerId
+        self.warehouseId = warehouseId
+        self.status = status
+        self.decision = decision
+        self.note = note
+        self.totalMinor = totalMinor
+        self.currency = currency
+        self.updatedAt = updatedAt
+    }
 
     enum CodingKeys: String, CodingKey {
         case orderId = "order_id"

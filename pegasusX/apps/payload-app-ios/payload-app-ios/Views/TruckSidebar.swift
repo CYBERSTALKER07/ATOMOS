@@ -1,13 +1,14 @@
 import SwiftUI
 
 struct TruckSidebar: View {
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Bindable var viewModel: HomeViewModel
     @Binding var isExpanded: Bool
 
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                if isExpanded {
+                if isExpanded || horizontalSizeClass == .compact {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("MANIFEST BOARD")
                             .font(.system(size: 13, weight: .bold, design: .monospaced))
@@ -18,17 +19,19 @@ struct TruckSidebar: View {
                     }
                 }
                 Spacer(minLength: 0)
-                Button {
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                        isExpanded.toggle()
+                if horizontalSizeClass == .regular {
+                    Button {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                            isExpanded.toggle()
+                        }
+                    } label: {
+                        Image(systemName: "sidebar.left")
+                            .foregroundStyle(TermTheme.secondary)
                     }
-                } label: {
-                    Image(systemName: "sidebar.left")
-                        .foregroundStyle(TermTheme.secondary)
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
             }
-            .padding(.horizontal, isExpanded ? 16 : 12)
+            .padding(.horizontal, (isExpanded || horizontalSizeClass == .compact) ? 16 : 12)
             .padding(.top, 8)
 
             Group {
@@ -45,13 +48,13 @@ struct TruckSidebar: View {
                         tone: .warning
                     )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if isExpanded {
+                } else if isExpanded || horizontalSizeClass == .compact {
                     expandedTruckList
                 } else {
                     collapsedTruckRail
                 }
             }
-            if let err = viewModel.error, isExpanded {
+            if let err = viewModel.error, (isExpanded || horizontalSizeClass == .compact) {
                 Text(err)
                     .font(.footnote)
                     .foregroundStyle(.red)
@@ -100,8 +103,10 @@ struct TruckSidebar: View {
                                 .foregroundStyle(TermTheme.tertiary)
                         } else {
                             ForEach(column.trucks) { truck in
-                                TruckRow(truck: truck)
-                                    .tag(truck.id)
+                                NavigationLink(value: truck.id) {
+                                    TruckRow(truck: truck)
+                                }
+                                .tag(truck.id)
                             }
                         }
                     }
@@ -109,8 +114,10 @@ struct TruckSidebar: View {
                 if !ManifestBoard.unassigned(viewModel.trucks).isEmpty {
                     Section("NO OPEN MANIFEST") {
                         ForEach(ManifestBoard.unassigned(viewModel.trucks)) { truck in
-                            TruckRow(truck: truck)
-                                .tag(truck.id)
+                            NavigationLink(value: truck.id) {
+                                TruckRow(truck: truck)
+                            }
+                            .tag(truck.id)
                         }
                     }
                 }

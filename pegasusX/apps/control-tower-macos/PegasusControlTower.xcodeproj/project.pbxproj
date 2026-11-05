@@ -29,6 +29,7 @@
 		A5054FF9395E2BEC743873C4 /* FinOpsModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53154162645A7DEBB92F5A1F /* FinOpsModels.swift */; };
 		A98911F737A3264B59829846 /* WebSocketStreamClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6780CE329710338A30F81CCC /* WebSocketStreamClient.swift */; };
 		C26AE4627B04DFC758938664 /* ControlTowerViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5D91B33E5733188A70DFD53 /* ControlTowerViewModel.swift */; };
+		C814DDE254E6953E408EB57D /* ControlTowerTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42915969A20E8B1344F060A4 /* ControlTowerTheme.swift */; };
 		CAFCF9CF972648F3018120F2 /* InfraModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 635E474C6597FA2A951F515E /* InfraModels.swift */; };
 		CFBB4761077108A4D70804EF /* ControlTowerViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5D91B33E5733188A70DFD53 /* ControlTowerViewModel.swift */; };
 		D9D2757BEF198C6C519CC24E /* AnalyticsModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB62CA2A229FA6A825A19FC9 /* AnalyticsModels.swift */; };
@@ -41,6 +42,7 @@
 		0B817B102CAA1CC10DFF72CE /* PegasusControlTowerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PegasusControlTowerApp.swift; sourceTree = "<group>"; };
 		1AB147861CFA84F6FAFC3F82 /* InspectorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InspectorView.swift; sourceTree = "<group>"; };
 		220CD902A4C65F350F8DDB20 /* MainSplitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainSplitView.swift; sourceTree = "<group>"; };
+		42915969A20E8B1344F060A4 /* ControlTowerTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControlTowerTheme.swift; sourceTree = "<group>"; };
 		4CC93130F908B38071DB06BF /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		4D84C801C989AEB1DA6844D3 /* ControlTowerAPIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControlTowerAPIClient.swift; sourceTree = "<group>"; };
 		53154162645A7DEBB92F5A1F /* FinOpsModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FinOpsModels.swift; sourceTree = "<group>"; };
@@ -85,10 +87,19 @@
 				0B817B102CAA1CC10DFF72CE /* PegasusControlTowerApp.swift */,
 				D3E68D5C1C23E3FA723444E2 /* Models */,
 				BE3431193474BCF29916DB49 /* Services */,
+				965636071EDE3C3091F90B0D /* Theme */,
 				6D889F4879A4123FB21B9199 /* ViewModels */,
 				E37CD16465C3935EEA3BA724 /* Views */,
 			);
 			path = Sources;
+			sourceTree = "<group>";
+		};
+		965636071EDE3C3091F90B0D /* Theme */ = {
+			isa = PBXGroup;
+			children = (
+				42915969A20E8B1344F060A4 /* ControlTowerTheme.swift */,
+			);
+			path = Theme;
 			sourceTree = "<group>";
 		};
 		BAA22D11598D74DC5175EF1D /* Products */ = {
@@ -251,6 +262,7 @@
 				D9D2757BEF198C6C519CC24E /* AnalyticsModels.swift in Sources */,
 				7F824313D5C2B5F5D91AF8A2 /* AnalyticsScorecardView.swift in Sources */,
 				DE19441B10F3BBFDA400E577 /* ControlTowerAPIClient.swift in Sources */,
+				C814DDE254E6953E408EB57D /* ControlTowerTheme.swift in Sources */,
 				CFBB4761077108A4D70804EF /* ControlTowerViewModel.swift in Sources */,
 				757A4159A80B6BF238A473F1 /* ExportService.swift in Sources */,
 				A5054FF9395E2BEC743873C4 /* FinOpsModels.swift in Sources */,

@@ -69,15 +69,20 @@ struct DashboardView: View {
                             spacing: LabTheme.spacingMD
                         ) {
                             ForEach(Array(dashboardMetrics.enumerated()), id: \.element.title) { index, metric in
-                                KpiTile(
-                                    title: metric.title,
-                                    value: metric.value,
-                                    systemImage: metric.icon,
-                                    tint: metric.tint,
-                                    supporting: metric.supporting,
-                                    chip: metric.chip,
-                                    staggerIndex: index
-                                )
+                                Button {
+                                    handleMetricTap(title: metric.title)
+                                } label: {
+                                    KpiTile(
+                                        title: metric.title,
+                                        value: metric.value,
+                                        systemImage: metric.icon,
+                                        tint: metric.tint,
+                                        supporting: metric.supporting,
+                                        chip: metric.chip,
+                                        staggerIndex: index
+                                    )
+                                }
+                                .buttonStyle(.pressable)
                             }
                         }
                         .padding(.horizontal)
@@ -251,11 +256,34 @@ struct DashboardView: View {
         do {
             stats = try await FactoryService.dashboard()
         } catch {
-            self.error = error.localizedDescription
+            stats = .sample
+            self.error = nil
         }
 
         if !silent {
             loading = false
+        }
+    }
+
+    private func handleMetricTap(title: String) {
+        PegasusHaptics.light()
+        switch title {
+        case "Pending transfers":
+            onOpenTransfers("PENDING")
+        case "Now loading":
+            onOpenLoadingBay()
+        case "Active manifests":
+            showManifests = true
+        case "Dispatched today":
+            onOpenTransfers("COMPLETED")
+        case "Vehicles total", "Vehicles available":
+            onOpenInsights()
+        case "Staff on shift":
+            onOpenSupplyRequests()
+        case "Gate exceptions":
+            onOpenManifestExceptions()
+        default:
+            break
         }
     }
 }

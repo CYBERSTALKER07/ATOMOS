@@ -210,6 +210,65 @@ struct Order: Codable, Identifiable, Hashable {
         guard let fee = deliveryFeeMinor, fee > 0 else { return nil }
         return "+\(fee.formattedAmount) delivery fee"
     }
+
+    static let samples: [Order] = [
+        Order(
+            id: "ord-tash-101",
+            retailerId: "ret-chilonzor-4",
+            retailerName: "Chilonzor Supermarket #4",
+            state: .IN_TRANSIT,
+            totalAmount: 1_450_000,
+            deliveryFeeMinor: 25_000,
+            deliveryDistanceKm: 4.2,
+            deliveryAddress: "Bunyodkor Ave 15, Chilonzor, Tashkent",
+            latitude: 41.2858,
+            longitude: 69.2035,
+            qrToken: "qr-ord-tash-101-token",
+            paymentGateway: "CASH",
+            createdAt: "2026-11-01T08:00:00Z",
+            updatedAt: "2026-11-01T08:30:00Z",
+            items: [
+                OrderLineItem(productId: "prod-cola-15", productName: "Coca-Cola Classic 1.5L (Pack of 6)", quantity: 10, unitPrice: 72000),
+                OrderLineItem(productId: "prod-water-5", productName: "Nestle Pure Life 5L", quantity: 20, unitPrice: 18000),
+                OrderLineItem(productId: "prod-oil-1", productName: "O'Ble 1L Sunflower Oil", quantity: 15, unitPrice: 24000)
+            ],
+            estimatedArrivalAt: "10:45 AM",
+            etaDurationSec: 900,
+            etaDistanceM: 4200,
+            routeId: "route-tashkent-south-1",
+            sequenceIndex: 1,
+            isPartial: false,
+            splitGroupId: nil
+        ),
+        Order(
+            id: "ord-tash-102",
+            retailerId: "ret-yunusobod-12",
+            retailerName: "Yunusobod Eco Market",
+            state: .DISPATCHED,
+            totalAmount: 2_890_000,
+            deliveryFeeMinor: 30_000,
+            deliveryDistanceKm: 7.8,
+            deliveryAddress: "Amir Temur Street 108, Yunusobod, Tashkent",
+            latitude: 41.3456,
+            longitude: 69.2891,
+            qrToken: "qr-ord-tash-102-token",
+            paymentGateway: "PAYME",
+            createdAt: "2026-11-01T08:15:00Z",
+            updatedAt: "2026-11-01T08:45:00Z",
+            items: [
+                OrderLineItem(productId: "prod-sugar-50", productName: "Khorazm Sugar 50kg Sack", quantity: 2, unitPrice: 650000),
+                OrderLineItem(productId: "prod-flour-50", productName: "Qozogiston Un 1-nav 50kg", quantity: 2, unitPrice: 420000),
+                OrderLineItem(productId: "prod-rice-25", productName: "Alanga Rice 25kg", quantity: 3, unitPrice: 250000)
+            ],
+            estimatedArrivalAt: "11:30 AM",
+            etaDurationSec: 1800,
+            etaDistanceM: 7800,
+            routeId: "route-tashkent-south-1",
+            sequenceIndex: 2,
+            isPartial: false,
+            splitGroupId: nil
+        )
+    ]
 }
 
 // MARK: - Delivery Submit

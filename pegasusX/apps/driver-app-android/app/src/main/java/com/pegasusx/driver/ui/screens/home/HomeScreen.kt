@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -196,14 +197,20 @@ fun HomeScreen(
         return
     }
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(lab.bg)
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = PegasusSpacing.s16)
-            .padding(bottom = 100.dp)
+            .background(lab.bg),
+        contentAlignment = Alignment.TopCenter,
     ) {
+        Column(
+            modifier = Modifier
+                .widthIn(max = 680.dp)
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = PegasusSpacing.s16)
+                .padding(bottom = 100.dp)
+        ) {
         PackBanner(pack, modifier = Modifier.padding(top = PegasusSpacing.s16))
         // MARK: - Greeting + Notification Bell
         StaggeredAppear(index = 0) {
@@ -429,6 +436,7 @@ fun HomeScreen(
             RecentActivitySection(
                 completedOrders = state.orders.filter { it.state == OrderState.COMPLETED }
             )
+        }
         }
     }
 }

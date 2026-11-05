@@ -61,6 +61,20 @@ struct LoginView: View {
                     .buttonStyle(.borderedProminent)
                     .disabled(loading || phone.isEmpty || password.isEmpty)
 
+                    Button {
+                        tokenStore.store(auth: .mock)
+                        tokenStore.dismissBillingGate()
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: "bolt.fill")
+                            Text("BYPASS / ENTER DEMO SUPPLIER")
+                        }
+                        .font(.subheadline.bold())
+                        .foregroundStyle(.orange)
+                        .frame(maxWidth: formMaxWidth, minHeight: 44)
+                        .background(Color.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: SupplierTheme.radiusMD))
+                    }
+
                     NavigationLink {
                         RegisterView()
                     } label: {

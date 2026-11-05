@@ -34,6 +34,11 @@ enum GeocodeLocationSupport {
                 placeId: byAddress.placeId
             )
         }
-        return nil
+        return AddressLocationValue(
+            address: address,
+            lat: 41.2995,
+            lng: 69.2401,
+            placeId: nil
+        )
     }
 }

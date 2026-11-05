@@ -93,6 +93,7 @@ struct RidesListView: View {
                 }
             }
             .padding(.bottom, 20)
+            .labReadableWidth()
         }
         .scrollIndicators(.hidden)
         .background(LabTheme.bg)

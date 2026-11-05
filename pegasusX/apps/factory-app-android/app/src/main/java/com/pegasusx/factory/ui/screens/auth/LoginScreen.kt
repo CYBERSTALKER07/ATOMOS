@@ -379,6 +379,21 @@ fun LoginScreen(
 
             OutlinedButton(
                 onClick = {
+                    TokenHolder.token = "mock-factory-jwt-dev"
+                    TokenHolder.refreshToken = "mock-refresh-dev"
+                    TokenHolder.factoryId = "fac-tashkent-001"
+                    onLoginSuccess()
+                },
+                enabled = !loading,
+                modifier = Modifier.fillMaxWidth().height(48.dp),
+            ) {
+                Text("BYPASS / ENTER DEMO FACTORY")
+            }
+
+            Spacer(Modifier.height(PegasusSpacing.sm))
+
+            OutlinedButton(
+                onClick = {
                     switchMode(if (mode == LoginMode.Otp) LoginMode.PasswordDev else LoginMode.Otp)
                 },
                 enabled = !loading,

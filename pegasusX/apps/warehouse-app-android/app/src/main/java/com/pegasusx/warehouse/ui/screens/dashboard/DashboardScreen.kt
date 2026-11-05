@@ -144,14 +144,20 @@ fun DashboardScreen(
                 onAction = { load() },
                 modifier = Modifier.padding(innerPadding),
             )
-            else -> Column(
+            else -> Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(innerPadding)
-                    .padding(horizontal = PegasusSpacing.lg),
-                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
+                    .padding(innerPadding),
+                contentAlignment = androidx.compose.ui.Alignment.TopCenter,
             ) {
-                FleetLiveMapSection(
+                Column(
+                    modifier = Modifier
+                        .widthIn(max = 960.dp)
+                        .fillMaxSize()
+                        .padding(horizontal = PegasusSpacing.lg),
+                    verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
+                ) {
+                    FleetLiveMapSection(
                     ops = opsRepository,
                     realtimeSignals = realtimeSignals,
                     onOpenFullMap = { onNavigate(WarehouseRoutes.FLEET_LIVE_MAP) },
@@ -210,6 +216,7 @@ fun DashboardScreen(
                         SourceChip("unavailable")
                         Text("History unavailable", style = MaterialTheme.typography.bodySmall)
                     }
+                }
                 }
             }
         }

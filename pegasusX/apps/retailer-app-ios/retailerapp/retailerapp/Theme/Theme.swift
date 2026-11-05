@@ -12,6 +12,9 @@ enum AppTheme {
     static let cardBorder = Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? UIColor.white.withAlphaComponent(0.08) : UIColor.black.withAlphaComponent(0.04) })
     static let accent = Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? UIColor.white : UIColor(red: 17/255.0, green: 17/255.0, blue: 19/255.0, alpha: 1.0) })
     static let accentSoft = Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 39/255.0, green: 39/255.0, blue: 42/255.0, alpha: 1.0) : UIColor(red: 226/255.0, green: 226/255.0, blue: 230/255.0, alpha: 1.0) })
+    static let accentWarm = Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 210/255.0, green: 179/255.0, blue: 155/255.0, alpha: 1.0) : UIColor(red: 188/255.0, green: 127/255.0, blue: 112/255.0, alpha: 1.0) })
+    static let accentWarmSoft = Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 54/255.0, green: 39/255.0, blue: 35/255.0, alpha: 1.0) : UIColor(red: 245/255.0, green: 236/255.0, blue: 233/255.0, alpha: 1.0) })
+    static let accentBronze = Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 228/255.0, green: 191/255.0, blue: 162/255.0, alpha: 1.0) : UIColor(red: 98/255.0, green: 77/255.0, blue: 69/255.0, alpha: 1.0) })
     static let iconTile = accentSoft
     static let accentDark = accent
     static let destructive = Color(uiColor: .systemRed)

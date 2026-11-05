@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MyLocation
@@ -398,15 +399,22 @@ fun MapScreen(
 
         // Selected order info card
         selectedOrder?.let { order ->
-            OrderInfoCard(
-                order = order,
-                activeOrder = activeOrder,
-                onOpenScanner = onOpenScanner,
-                onOpenCorrection = onOpenCorrection,
-                onRequestRescue = { showRescueSheet = true },
+            Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-            )
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                contentAlignment = Alignment.BottomCenter
+            ) {
+                OrderInfoCard(
+                    order = order,
+                    activeOrder = activeOrder,
+                    onOpenScanner = onOpenScanner,
+                    onOpenCorrection = onOpenCorrection,
+                    onRequestRescue = { showRescueSheet = true },
+                    modifier = Modifier.widthIn(max = 520.dp).fillMaxWidth()
+                )
+            }
         }
 
         // Camera Lock FAB

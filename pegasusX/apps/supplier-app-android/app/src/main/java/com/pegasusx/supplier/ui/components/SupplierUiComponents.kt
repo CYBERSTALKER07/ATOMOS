@@ -1,6 +1,8 @@
 package com.pegasusx.supplier.ui.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -8,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.ElevatedCard
@@ -15,6 +18,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -22,8 +26,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import java.text.NumberFormat
 import java.util.Locale
@@ -45,51 +52,72 @@ fun SupplierKpiTile(
     onClick: (() -> Unit)? = null,
 ) {
     val cardModifier = modifier.fillMaxWidth()
-    val content: @Composable () -> Unit = {
-        Column(
-            modifier = Modifier.padding(PegasusSpacing.lg),
-            verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
+    val shape = RoundedCornerShape(16.dp)
+    val border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+
+    if (onClick != null) {
+        OutlinedCard(onClick = onClick, modifier = cardModifier, shape = shape, border = border) {
+            SupplierKpiContent(icon = icon, value = value, label = label, supporting = supporting)
+        }
+    } else {
+        OutlinedCard(modifier = cardModifier, shape = shape, border = border) {
+            SupplierKpiContent(icon = icon, value = value, label = label, supporting = supporting)
+        }
+    }
+}
+
+@Composable
+private fun SupplierKpiContent(
+    icon: ImageVector,
+    value: String,
+    label: String,
+    supporting: String?,
+) {
+    Column(
+        modifier = Modifier.padding(PegasusSpacing.lg),
+        verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
+    ) {
+        Surface(
+            shape = RoundedCornerShape(12.dp),
+            color = MaterialTheme.colorScheme.secondaryContainer,
+            modifier = Modifier.size(44.dp),
         ) {
-            Surface(
-                shape = MaterialTheme.shapes.small,
-                color = MaterialTheme.colorScheme.secondaryContainer,
-            ) {
+            Box(contentAlignment = Alignment.Center) {
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                    modifier = Modifier
-                        .padding(PegasusSpacing.sm)
-                        .size(24.dp),
+                    modifier = Modifier.size(24.dp),
                 )
-            }
-            Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
-                Text(
-                    text = value,
-                    style = MaterialTheme.typography.headlineMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                if (!supporting.isNullOrBlank()) {
-                    Text(
-                        text = supporting,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
             }
         }
-    }
-
-    if (onClick != null) {
-        ElevatedCard(onClick = onClick, modifier = cardModifier) { content() }
-    } else {
-        ElevatedCard(modifier = cardModifier) { content() }
+        Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
+            Text(
+                text = value,
+                style = MaterialTheme.typography.headlineMedium.copy(
+                    fontFamily = FontFamily.Monospace,
+                    fontWeight = FontWeight.Black,
+                ),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = label.uppercase(),
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontFamily = FontFamily.Monospace,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.1.sp,
+                ),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (!supporting.isNullOrBlank()) {
+                Text(
+                    text = supporting,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
     }
 }
 
@@ -99,15 +127,29 @@ fun SupplierMetricTile(
     value: String,
     modifier: Modifier = Modifier,
 ) {
-    ElevatedCard(modifier = modifier) {
+    OutlinedCard(
+        modifier = modifier,
+        shape = RoundedCornerShape(14.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+    ) {
         Column(Modifier.padding(PegasusSpacing.md)) {
             Text(
-                text = label,
-                style = MaterialTheme.typography.labelSmall,
+                text = label.uppercase(),
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontFamily = FontFamily.Monospace,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp,
+                ),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(Modifier.height(PegasusSpacing.xs))
-            Text(value, style = MaterialTheme.typography.titleLarge)
+            Text(
+                text = value,
+                style = MaterialTheme.typography.titleLarge.copy(
+                    fontFamily = FontFamily.Monospace,
+                    fontWeight = FontWeight.Black,
+                ),
+            )
         }
     }
 }
@@ -168,54 +210,77 @@ fun SupplierOpsListCard(
     onReassign: (() -> Unit)? = null,
 ) {
     val cardModifier = modifier.fillMaxWidth()
-    val content: @Composable () -> Unit = {
-        Row(
-            modifier = Modifier.padding(PegasusSpacing.lg),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
-        ) {
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs),
-            ) {
-                Text(
-                    text = headline,
-                    style = MaterialTheme.typography.titleSmall,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    text = supporting,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            if (!status.isNullOrBlank()) {
-                SupplierStatusChip(status = status)
-            }
-        }
-        if (onReassign != null) {
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = PegasusSpacing.md, vertical = PegasusSpacing.sm),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                TextButton(onClick = onReassign) {
-                    Text("Reassign")
-                }
-            }
-        }
-    }
+    val shape = RoundedCornerShape(16.dp)
+    val border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
 
     if (onClick != null) {
-        ElevatedCard(onClick = onClick, modifier = cardModifier) { content() }
+        OutlinedCard(onClick = onClick, modifier = cardModifier, shape = shape, border = border) {
+            SupplierOpsListContent(
+                headline = headline,
+                supporting = supporting,
+                status = status,
+                onReassign = onReassign,
+            )
+        }
     } else {
-        ElevatedCard(modifier = cardModifier) { content() }
+        OutlinedCard(modifier = cardModifier, shape = shape, border = border) {
+            SupplierOpsListContent(
+                headline = headline,
+                supporting = supporting,
+                status = status,
+                onReassign = onReassign,
+            )
+        }
+    }
+}
+
+@Composable
+private fun SupplierOpsListContent(
+    headline: String,
+    supporting: String,
+    status: String?,
+    onReassign: (() -> Unit)?,
+) {
+    Row(
+        modifier = Modifier.padding(PegasusSpacing.lg),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
+    ) {
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs),
+        ) {
+            Text(
+                text = headline,
+                style = MaterialTheme.typography.titleSmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = supporting,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        if (!status.isNullOrBlank()) {
+            SupplierStatusChip(status = status)
+        }
+    }
+    if (onReassign != null) {
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = PegasusSpacing.md, vertical = PegasusSpacing.sm),
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            TextButton(onClick = onReassign) {
+                Text("Reassign")
+            }
+        }
     }
 }
 
@@ -225,8 +290,13 @@ fun SupplierSectionTitle(
     modifier: Modifier = Modifier,
 ) {
     Text(
-        text = title,
-        style = MaterialTheme.typography.titleMedium,
+        text = title.uppercase(),
+        style = MaterialTheme.typography.labelMedium.copy(
+            fontFamily = FontFamily.Monospace,
+            fontWeight = FontWeight.Black,
+            letterSpacing = 1.2.sp,
+        ),
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = modifier,
     )
 }
@@ -237,17 +307,17 @@ fun SupplierLeadingIcon(
     modifier: Modifier = Modifier,
 ) {
     Surface(
-        modifier = modifier,
-        shape = MaterialTheme.shapes.small,
+        modifier = modifier.size(44.dp),
+        shape = RoundedCornerShape(12.dp),
         color = MaterialTheme.colorScheme.secondaryContainer,
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSecondaryContainer,
-            modifier = Modifier
-                .padding(PegasusSpacing.sm)
-                .size(24.dp),
-        )
+        Box(contentAlignment = Alignment.Center) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                modifier = Modifier.size(24.dp),
+            )
+        }
     }
 }

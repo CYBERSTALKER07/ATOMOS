@@ -449,6 +449,7 @@ struct ContentView: View {
                         FloatingActiveOrdersBar(activeOrders: activeOrders) {
                             showActiveOrderDetail = true
                         }
+                        .retailerReadableWidth()
                         .padding(.horizontal, AppTheme.spacingMD)
                     }
                     .padding(.bottom, 32)
@@ -578,6 +579,7 @@ struct ContentView: View {
                 FloatingActiveOrdersBar(activeOrders: activeOrders) {
                     showActiveOrderDetail = true
                 }
+                .retailerReadableWidth()
                 .padding(.horizontal, AppTheme.spacingMD)
                 .padding(.bottom, 52)
                 .transition(.move(edge: .bottom).combined(with: .opacity))

@@ -67,3 +67,7 @@ struct PressableButtonStyle: ButtonStyle {
             .animation(Anim.quick, value: configuration.isPressed)
     }
 }
+
+extension ButtonStyle where Self == PressableButtonStyle {
+    static var pressable: PressableButtonStyle { PressableButtonStyle() }
+}

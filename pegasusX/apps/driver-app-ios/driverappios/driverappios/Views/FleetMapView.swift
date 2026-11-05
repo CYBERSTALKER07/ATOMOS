@@ -43,6 +43,7 @@ enum ZoomFocus: Int {
 
 struct FleetMapView: View {
     @Environment(\.colorScheme) private var cs
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.modelContext) private var modelContext
     @Bindable var vm: FleetViewModel
     var goBack: () -> Void = {}
@@ -254,7 +255,10 @@ struct FleetMapView: View {
             VStack {
                 Spacer()
                 bottomSheet
+                    .frame(maxWidth: horizontalSizeClass == .regular ? 500 : .infinity)
             }
+            .padding(.horizontal, horizontalSizeClass == .regular ? LabTheme.s24 : 0)
+            .padding(.bottom, horizontalSizeClass == .regular ? LabTheme.s20 : 0)
             .animation(Anim.sheetReveal, value: phase)
         }
         .ignoresSafeArea(edges: .bottom)

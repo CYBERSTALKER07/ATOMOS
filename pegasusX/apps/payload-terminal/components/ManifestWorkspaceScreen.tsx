@@ -238,22 +238,28 @@ export default function ManifestWorkspaceScreen({
         {/* LEO: Volume Progress Bar + Manifest State */}
         {manifestId && (
           <View style={{ paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 0.5, borderBottomColor: T.colors.sidebarSeparator }}>
-            <ManifestKpiGrid
-              compact
-              manifestId={manifestId}
-              maxVolumeVu={manifestMaxVolume}
-              regionCode={manifestRegionCode}
-              state={manifestState}
-              stopCount={manifestStopCount}
-              theme={T}
-              totalVolumeVu={manifestVolume}
-            />
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+              <Text style={{ fontFamily: T.typography.mono.fontFamily, fontSize: 10, color: T.colors.sidebarSecondary, letterSpacing: 0.3 }}>
+                {manifestState || 'DRAFT'}
+              </Text>
+              <Text style={{ fontFamily: T.typography.mono.fontFamily, fontSize: 10, color: T.colors.sidebarSecondary }}>
+                {manifestVolume.toFixed(1)}/{manifestMaxVolume.toFixed(1)} VU
+              </Text>
+            </View>
+            <View style={{ height: 6, backgroundColor: T.colors.fillTertiary, borderRadius: 3, overflow: 'hidden' }}>
+              <View style={{
+                height: 6,
+                borderRadius: 3,
+                width: manifestMaxVolume > 0 ? `${Math.min((manifestVolume / manifestMaxVolume) * 100, 100)}%` : '0%',
+                backgroundColor: manifestVolume / manifestMaxVolume > 0.95 ? '#EF4444' : manifestVolume / manifestMaxVolume > 0.8 ? '#F59E0B' : T.colors.accent,
+              } as any} />
+            </View>
             {manifestState === 'DRAFT' && (
               <Pressable
                 onPress={handleStartLoading}
                 disabled={isStartingLoad}
                 style={{
-                  marginTop: 10,
+                  marginTop: 8,
                   paddingVertical: 10,
                   alignItems: 'center',
                   backgroundColor: isStartingLoad ? T.colors.fillSecondary : T.colors.accent,
@@ -339,7 +345,7 @@ export default function ManifestWorkspaceScreen({
 
       {/* -- Right pane: Manifest detail ------------------------------------ */}
       <ManifestDetailPane
-        selectedOrder={selectedOrder}
+        selectedOrder={selectedOrder ?? null}
         selectedOrderId={selectedOrderId}
         isIOS={isIOS}
         theme={T}
@@ -360,6 +366,10 @@ export default function ManifestWorkspaceScreen({
         handleManifestSeal={handleManifestSeal}
         isSealingManifest={isSealingManifest}
         isLoading={isLoading}
+        manifestVolume={manifestVolume}
+        manifestMaxVolume={manifestMaxVolume}
+        manifestStopCount={manifestStopCount}
+        manifestRegionCode={manifestRegionCode}
         inboundDriverLat={inboundDriverLat}
         inboundDriverLng={inboundDriverLng}
         inboundLive={inboundLive}

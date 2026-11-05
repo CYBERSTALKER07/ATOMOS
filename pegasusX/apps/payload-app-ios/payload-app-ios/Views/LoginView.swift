@@ -161,6 +161,19 @@ struct LoginView: View {
                             .foregroundStyle(TermTheme.secondary)
                     }
                     .disabled(viewModel.loading)
+
+                    Button {
+                        viewModel.loginDemoWorker()
+                    } label: {
+                        HStack(spacing: TermTheme.s8) {
+                            Image(systemName: "bolt.fill")
+                            Text("BYPASS / ENTER DEMO TERMINAL")
+                        }
+                        .font(.system(size: 13, weight: .bold, design: .monospaced))
+                        .foregroundStyle(.orange)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .background(Color.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: TermTheme.radiusMD, style: .continuous))
+                    }
                 }
                 .padding(TermTheme.s32)
                 .frame(maxWidth: 480)

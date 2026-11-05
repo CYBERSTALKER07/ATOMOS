@@ -219,6 +219,23 @@ fun LoginScreen(
         pin = ""
     }
 
+    fun bypassLogin() {
+        val mockResponse = AuthResponse(
+            token = "mock-driver-jwt-dev",
+            role = "DRIVER",
+            userId = "drv-tashkent-001",
+            name = "Aziz Driver (Demo Fleet)",
+            vehicleType = "VAN",
+            licensePlate = "01 777 AAA",
+            warehouseName = "Tashkent Central Depot",
+            warehouseLat = 41.2995,
+            warehouseLng = 69.2401,
+            driverMode = "FLEET",
+        )
+        applyLoginResponse(mockResponse)
+        onLoginSuccess()
+    }
+
     Scaffold { padding ->
         Box(
             modifier = Modifier
@@ -413,6 +430,14 @@ fun LoginScreen(
                     Text(
                         if (mode == LoginMode.Otp) "Use PIN (dev)" else "Use phone OTP"
                     )
+                }
+
+                OutlinedButton(
+                    onClick = { bypassLogin() },
+                    enabled = !loading,
+                    modifier = Modifier.fillMaxWidth().height(48.dp)
+                ) {
+                    Text("BYPASS / ENTER DEMO FLEET")
                 }
 
                 Text(

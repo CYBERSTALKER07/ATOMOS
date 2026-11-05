@@ -8,12 +8,19 @@ struct KpiTile: View {
     var supporting: String? = nil
     var chip: (text: String, tint: Color)? = nil
     var staggerIndex: Int? = nil
+    var showChevron: Bool = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: LabTheme.spacingSM) {
-            HStack {
-                Image(systemName: systemImage)
-                    .foregroundStyle(tint)
+            HStack(alignment: .center) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: LabTheme.radiusSM, style: .continuous)
+                        .fill(tint.opacity(0.12))
+                        .frame(width: 32, height: 32)
+                    Image(systemName: systemImage)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(tint)
+                }
                 Spacer()
                 if let chip {
                     Text(chip.text)
@@ -22,6 +29,10 @@ struct KpiTile: View {
                         .padding(.vertical, LabTheme.spacingXS)
                         .foregroundStyle(chip.tint)
                         .background(chip.tint.opacity(0.14), in: Capsule())
+                } else if showChevron {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(LabTheme.tertiaryLabel)
                 }
             }
             Text(value)
@@ -30,6 +41,7 @@ struct KpiTile: View {
                 .lineLimit(1)
             Text(title)
                 .font(.subheadline.bold())
+                .foregroundStyle(LabTheme.label)
             if let supporting, !supporting.isEmpty {
                 Text(supporting)
                     .font(.footnote)
@@ -38,6 +50,7 @@ struct KpiTile: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .labCard()
+        .contentShape(Rectangle())
         .modifier(OptionalStaggerModifier(index: staggerIndex))
     }
 }

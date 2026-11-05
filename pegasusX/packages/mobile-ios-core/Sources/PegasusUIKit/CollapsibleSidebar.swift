@@ -26,44 +26,52 @@ struct CollapsibleSidebar<Item: Hashable, Detail: View>: View {
     }
 
     var body: some View {
-        HStack(spacing: 0) {
-            sidebar
-            detail()
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(PegasusMonochromeTheme.background)
+        GeometryReader { proxy in
+            let isCompactStage = proxy.size.width < 700
+            let effectiveExpanded = isExpanded && !isCompactStage
+            let sidebarWidth: CGFloat = effectiveExpanded ? min(280, proxy.size.width * 0.35) : 88
+
+            HStack(spacing: 0) {
+                sidebar(effectiveExpanded: effectiveExpanded, sidebarWidth: sidebarWidth, canToggle: !isCompactStage)
+                detail()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(PegasusMonochromeTheme.background)
+            }
+            .background(PegasusMonochromeTheme.background)
         }
-        .background(PegasusMonochromeTheme.background)
     }
 
-    private var sidebar: some View {
+    private func sidebar(effectiveExpanded: Bool, sidebarWidth: CGFloat, canToggle: Bool) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                if isExpanded {
+                if effectiveExpanded {
                     Text(title)
                         .font(.headline)
                         .foregroundStyle(PegasusMonochromeTheme.label)
                         .lineLimit(1)
                     Spacer(minLength: 0)
                 }
-                Button {
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                        isExpanded.toggle()
+                if canToggle {
+                    Button {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                            isExpanded.toggle()
+                        }
+                    } label: {
+                        Image(systemName: "sidebar.left")
+                            .font(.system(size: 20, weight: .medium))
+                            .foregroundStyle(PegasusMonochromeTheme.secondaryLabel)
+                            .frame(width: 44, height: 44)
                     }
-                } label: {
-                    Image(systemName: "sidebar.left")
-                        .font(.system(size: 20, weight: .medium))
-                        .foregroundStyle(PegasusMonochromeTheme.secondaryLabel)
-                        .frame(width: 44, height: 44)
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
             }
-            .padding(.horizontal, isExpanded ? 16 : 12)
+            .padding(.horizontal, effectiveExpanded ? 16 : 12)
             .padding(.top, 12)
 
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 8) {
                     ForEach(Array(groups.enumerated()), id: \.offset) { _, group in
-                        if isExpanded {
+                        if effectiveExpanded {
                             Text(group.title.uppercased())
                                 .font(.caption2.weight(.bold))
                                 .foregroundStyle(PegasusMonochromeTheme.tertiaryLabel)
@@ -71,7 +79,7 @@ struct CollapsibleSidebar<Item: Hashable, Detail: View>: View {
                                 .padding(.top, 8)
                         }
                         ForEach(group.items) { item in
-                            sidebarRow(item)
+                            sidebarRow(item, effectiveExpanded: effectiveExpanded)
                         }
                     }
                 }
@@ -82,12 +90,12 @@ struct CollapsibleSidebar<Item: Hashable, Detail: View>: View {
                 footer()
             }
         }
-        .frame(width: isExpanded ? 280 : 88)
+        .frame(width: sidebarWidth)
         .background(PegasusMonochromeTheme.card)
-        .animation(.spring(response: 0.35, dampingFraction: 0.8), value: isExpanded)
+        .animation(.spring(response: 0.35, dampingFraction: 0.8), value: effectiveExpanded)
     }
 
-    private func sidebarRow(_ item: CollapsibleSidebarItem<Item>) -> some View {
+    private func sidebarRow(_ item: CollapsibleSidebarItem<Item>, effectiveExpanded: Bool) -> some View {
         let selected = selection == item.tag
         return Button {
             selection = item.tag
@@ -97,7 +105,7 @@ struct CollapsibleSidebar<Item: Hashable, Detail: View>: View {
                     .font(.system(size: 18, weight: selected ? .semibold : .regular))
                     .frame(width: 28)
                     .foregroundStyle(selected ? PegasusMonochromeTheme.label : PegasusMonochromeTheme.secondaryLabel)
-                if isExpanded {
+                if effectiveExpanded {
                     Text(item.label)
                         .font(.subheadline.weight(selected ? .semibold : .regular))
                         .foregroundStyle(selected ? PegasusMonochromeTheme.label : PegasusMonochromeTheme.secondaryLabel)
@@ -105,7 +113,7 @@ struct CollapsibleSidebar<Item: Hashable, Detail: View>: View {
                     Spacer(minLength: 0)
                 }
             }
-            .padding(.horizontal, isExpanded ? 16 : 12)
+            .padding(.horizontal, effectiveExpanded ? 16 : 12)
             .padding(.vertical, 10)
             .background(
                 RoundedRectangle(cornerRadius: PegasusMonochromeTheme.radiusMD, style: .continuous)

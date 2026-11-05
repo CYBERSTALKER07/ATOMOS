@@ -257,6 +257,18 @@ class AuthViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(error = null, loadIssue = null)
     }
 
+    fun bypassLogin() {
+        tokenManager.saveToken("mock-retailer-jwt-dev")
+        tokenManager.saveUserId("usr-retailer-001")
+        tokenManager.saveUserName("Tashkent Market (Demo Retailer)")
+        _uiState.value = _uiState.value.copy(
+            isLoading = false,
+            isAuthenticated = true,
+            error = null,
+            loadIssue = null,
+        )
+    }
+
     private fun resolveLoadIssue(error: Exception): AuthLoadIssue {
         return when {
             error is HttpException && (error.code() == 401 || error.code() == 403) -> AuthLoadIssue.RESTRICTED

@@ -572,6 +572,23 @@ fun AuthScreen(
                 }
             }
 
+            Spacer(Modifier.height(10.dp))
+
+            OutlinedButton(
+                onClick = { viewModel.bypassLogin() },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+                shape = PillShape,
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Black),
+            ) {
+                Text(
+                    text = "BYPASS / ENTER DEMO RETAILER",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+
             Spacer(Modifier.height(16.dp))
 
             // Error Message

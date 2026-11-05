@@ -61,6 +61,10 @@ public enum PegasusMonochromeTheme {
     /// High-contrast primary action button / FAB (#111113 light / #FFFFFF dark).
     public static var primaryAction: Color { Color(uiColor: UIColor(lightHex: 0x111113, darkHex: 0xFFFFFF)) }
     public static var onPrimaryAction: Color { Color(uiColor: UIColor(lightHex: 0xFFFFFF, darkHex: 0x111113)) }
+    /// Warm terracotta accent sampled from reference image (#BC7F70 light / #D2B39B dark).
+    public static var accentWarm: Color { Color(uiColor: UIColor(lightHex: 0xBC7F70, darkHex: 0xD2B39B)) }
+    public static var accentWarmSoft: Color { Color(uiColor: UIColor(lightHex: 0xF5ECE9, darkHex: 0x362723)) }
+    public static var accentBronze: Color { Color(uiColor: UIColor(lightHex: 0x624D45, darkHex: 0xE4BFA2)) }
     /// Solid monochrome chart bars.
     public static var barPrimary: Color { primaryAction }
     public static var barMuted: Color { Color(uiColor: UIColor(lightHex: 0xD4D4D8, darkHex: 0x3F3F46)) }
@@ -78,6 +82,9 @@ public enum PegasusMonochromeTheme {
     public static var cardBorder: Color { Color(nsColor: NSColor(name: nil) { $0.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? NSColor.white.withAlphaComponent(0.08) : NSColor.black.withAlphaComponent(0.04) }) }
     public static var primaryAction: Color { Color(nsColor: NSColor(lightHex: 0x111113, darkHex: 0xFFFFFF)) }
     public static var onPrimaryAction: Color { Color(nsColor: NSColor(lightHex: 0xFFFFFF, darkHex: 0x111113)) }
+    public static var accentWarm: Color { Color(nsColor: NSColor(lightHex: 0xBC7F70, darkHex: 0xD2B39B)) }
+    public static var accentWarmSoft: Color { Color(nsColor: NSColor(lightHex: 0xF5ECE9, darkHex: 0x362723)) }
+    public static var accentBronze: Color { Color(nsColor: NSColor(lightHex: 0x624D45, darkHex: 0xE4BFA2)) }
     public static var barPrimary: Color { primaryAction }
     public static var barMuted: Color { Color(nsColor: NSColor(lightHex: 0xD4D4D8, darkHex: 0x3F3F46)) }
     #endif
@@ -222,4 +229,19 @@ public enum PegasusHaptics {
         generator.notificationOccurred(.error)
         #endif
     }
+}
+
+/// HIG-compliant fluid press animation style for buttons & navigation links.
+public struct PegasusPressableButtonStyle: ButtonStyle {
+    public init() {}
+    public func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.97 : 1.0)
+            .opacity(configuration.isPressed ? 0.88 : 1.0)
+            .animation(.spring(response: 0.22, dampingFraction: 0.82), value: configuration.isPressed)
+    }
+}
+
+public extension ButtonStyle where Self == PegasusPressableButtonStyle {
+    static var pegasusPressable: PegasusPressableButtonStyle { PegasusPressableButtonStyle() }
 }

@@ -1216,6 +1216,8 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Scan product barcodes when adding catalog EAN/GTIN";
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Location is used to monitor dispatch, fleet coordinates, and facility operations.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Location is used to pin warehouse and supplier facilities, navigate orders, and verify geofences.";
 				INFOPLIST_KEY_NSUserNotificationsUsageDescription = "Receive supplier operations alerts";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -1286,6 +1288,8 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Scan product barcodes when adding catalog EAN/GTIN";
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Location is used to monitor dispatch, fleet coordinates, and facility operations.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Location is used to pin warehouse and supplier facilities, navigate orders, and verify geofences.";
 				INFOPLIST_KEY_NSUserNotificationsUsageDescription = "Receive supplier operations alerts";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

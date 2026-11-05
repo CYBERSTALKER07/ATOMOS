@@ -46,6 +46,7 @@ struct ProfileView: View {
             }
             .padding(.horizontal, LabTheme.s16)
             .padding(.bottom, 20)
+            .labReadableWidth()
         }
         .background(LabTheme.bg)
         .sheet(isPresented: $showFleetDVIR) {

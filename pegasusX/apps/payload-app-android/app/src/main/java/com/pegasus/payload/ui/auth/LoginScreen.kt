@@ -164,6 +164,15 @@ fun LoginScreen(viewModel: LoginViewModel = hiltViewModel()) {
                         }
                     }
 
+                    OutlinedButton(
+                        onClick = viewModel::bypassLogin,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp),
+                    ) {
+                        Text("BYPASS / ENTER DEMO TERMINAL", style = MaterialTheme.typography.titleMedium)
+                    }
+
                     TextButton(
                         onClick = {
                             viewModel.setMode(

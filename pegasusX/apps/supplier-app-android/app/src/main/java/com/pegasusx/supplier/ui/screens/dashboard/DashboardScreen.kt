@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -184,13 +185,19 @@ fun DashboardScreen(
             )
             dashboard != null -> {
                 val d = dashboard ?: return@Scaffold
-                Column(
+                Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(padding)
-                        .padding(horizontal = PegasusSpacing.lg),
-                    verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
+                        .padding(padding),
+                    contentAlignment = Alignment.TopCenter,
                 ) {
+                    Column(
+                        modifier = Modifier
+                            .widthIn(max = 960.dp)
+                            .fillMaxSize()
+                            .padding(horizontal = PegasusSpacing.lg),
+                        verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
+                    ) {
                     if (showBillingBanner || !d.isConfigured) {
                         ElevatedCard(
                             modifier = Modifier.fillMaxWidth(),
@@ -282,6 +289,7 @@ fun DashboardScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(bottom = PegasusSpacing.lg),
                     )
+                }
                 }
             }
         }

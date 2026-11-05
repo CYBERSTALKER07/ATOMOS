@@ -253,6 +253,19 @@ fun LoginScreen(
             Spacer(Modifier.height(PegasusSpacing.lg))
             OutlinedButton(
                 onClick = {
+                    TokenHolder.token = "mock-warehouse-jwt-dev"
+                    TokenHolder.refreshToken = "mock-refresh-dev"
+                    TokenHolder.warehouseId = "wh-tashkent-001"
+                    onLoginSuccess()
+                },
+                enabled = !loading,
+                modifier = Modifier.fillMaxWidth().height(48.dp),
+            ) {
+                Text("BYPASS / ENTER DEMO WAREHOUSE")
+            }
+            Spacer(Modifier.height(PegasusSpacing.sm))
+            OutlinedButton(
+                onClick = {
                     error = null
                     otpSent = false
                     otpCode = ""

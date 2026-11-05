@@ -909,6 +909,8 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Location is used to monitor dispatch, fleet coordinates, and factory operations.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Location is used to pin factory facilities, loading bays, and verify geofences.";
 				INFOPLIST_KEY_NSUserNotificationsUsageDescription = "Receive factory operations alerts";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -999,6 +1001,8 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Location is used to monitor dispatch, fleet coordinates, and factory operations.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Location is used to pin factory facilities, loading bays, and verify geofences.";
 				INFOPLIST_KEY_NSUserNotificationsUsageDescription = "Receive factory operations alerts";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

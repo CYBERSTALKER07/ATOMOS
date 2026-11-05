@@ -2,6 +2,7 @@ import SwiftUI
 
 struct RecentActivitySection: View {
     var vm: FleetViewModel
+    var onSelectMission: ((Mission) -> Void)? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -16,33 +17,45 @@ struct RecentActivitySection: View {
                 )
             } else {
                 ForEach(vm.completedMissions.prefix(3)) { mission in
-                    HStack(spacing: 12) {
-                        ZStack {
-                            Circle()
-                                .fill(LabTheme.success.opacity(0.12))
-                                .frame(width: 32, height: 32)
-                            Image(systemName: "checkmark")
-                                .font(.system(size: 11, weight: .bold))
-                                .foregroundStyle(LabTheme.success)
+                    Button {
+                        Haptics.light()
+                        onSelectMission?(mission)
+                    } label: {
+                        HStack(spacing: 12) {
+                            ZStack {
+                                Circle()
+                                    .fill(LabTheme.success.opacity(0.12))
+                                    .frame(width: 32, height: 32)
+                                Image(systemName: "checkmark")
+                                    .font(.system(size: 11, weight: .bold))
+                                    .foregroundStyle(LabTheme.success)
+                            }
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(mission.order_id)
+                                    .font(.system(size: 12, weight: .bold, design: .monospaced))
+                                    .foregroundStyle(LabTheme.fg)
+                                Text(mission.amount.formattedAmount)
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundStyle(LabTheme.fgSecondary)
+                            }
+
+                            Spacer()
+
+                            Text(mission.gateway)
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundStyle(LabTheme.fgTertiary)
+
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundStyle(LabTheme.fgTertiary)
                         }
-
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(mission.order_id)
-                                .font(.system(size: 12, weight: .bold, design: .monospaced))
-                                .foregroundStyle(LabTheme.fg)
-                            Text(mission.amount.formattedAmount)
-                                .font(.system(size: 11, weight: .medium))
-                                .foregroundStyle(LabTheme.fgSecondary)
-                        }
-
-                        Spacer()
-
-                        Text(mission.gateway)
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundStyle(LabTheme.fgTertiary)
+                        .padding(LabTheme.s12)
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
+                        .labCard()
                     }
-                    .padding(LabTheme.s12)
-                    .labCard()
+                    .buttonStyle(.plain)
                 }
             }
         }

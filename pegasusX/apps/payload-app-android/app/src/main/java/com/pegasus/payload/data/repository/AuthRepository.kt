@@ -88,4 +88,22 @@ class AuthRepository @Inject constructor(
         secureStore.clear()
         _session.value = null
     }
+
+    fun bypassLogin(): Session {
+        val s = Session(
+            token = "mock-payload-jwt-dev",
+            workerId = "wrk-demo-001",
+            supplierId = "sup-tashkent-001",
+            name = "Demo Loader",
+            warehouseId = "wh-tashkent-001",
+            warehouseName = "Tashkent Central Warehouse",
+        )
+        secureStore.token = s.token
+        secureStore.name = s.name
+        secureStore.supplierId = s.supplierId
+        secureStore.warehouseId = s.warehouseId
+        secureStore.warehouseName = s.warehouseName
+        _session.value = s
+        return s
+    }
 }

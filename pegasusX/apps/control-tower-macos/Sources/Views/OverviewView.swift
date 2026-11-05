@@ -239,10 +239,10 @@ public struct OverviewView: View {
     private func metricCard(title: String, value: String, subtext: String, icon: String, color: Color, trend: String) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title)
-                        .font(.caption)
-                        .fontWeight(.semibold)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title.uppercased())
+                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .tracking(0.8)
                         .foregroundColor(.secondary)
                     Text(trend)
                         .font(.system(size: 9, weight: .bold, design: .monospaced))
@@ -254,19 +254,18 @@ public struct OverviewView: View {
                 }
                 Spacer()
                 ZStack {
-                    Circle()
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
                         .fill(color.opacity(0.15))
-                        .frame(width: 32, height: 32)
+                        .frame(width: 36, height: 36)
                     Image(systemName: icon)
-                        .font(.system(size: 15, weight: .bold))
+                        .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(color)
                 }
             }
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(value)
-                    .font(.system(.title2, design: .rounded))
-                    .fontWeight(.bold)
+                    .font(.system(size: 22, weight: .bold, design: .monospaced))
                     .monospacedDigit()
                 Text(subtext)
                     .font(.caption2)
@@ -276,17 +275,17 @@ public struct OverviewView: View {
         .padding(16)
         .background(.ultraThinMaterial)
         .overlay(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .stroke(
                     LinearGradient(
-                        colors: [Color.primary.opacity(0.12), Color.primary.opacity(0.02)],
+                        colors: [Color.primary.opacity(0.15), Color.primary.opacity(0.05)],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     ),
                     lineWidth: 1
                 )
         )
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 3)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(title): \(value)")

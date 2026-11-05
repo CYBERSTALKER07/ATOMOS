@@ -65,6 +65,16 @@ struct HomeView: View {
                 )
                 .navigationTitle(isTruckSidebarExpanded ? "Vehicles" : "")
                 .toolbar { sidebarToolbar }
+                .navigationDestination(for: String.self) { _ in
+                    ManifestDetailPane(
+                        viewModel: viewModel,
+                        onShowException: { exceptionTargetOrderId = $0 },
+                        onShowReDispatch: { id in Task { await viewModel.openReDispatch(orderId: id) } },
+                        onScanProduct: { showProductScanner = true }
+                    )
+                    .navigationTitle("warehouse_portal.manifests.text.manifest")
+                    .toolbar { detailToolbar }
+                }
         } detail: {
             ManifestDetailPane(
                 viewModel: viewModel,

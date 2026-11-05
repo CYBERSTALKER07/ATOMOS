@@ -150,6 +150,20 @@ fun LoginScreen(
                 }
             }
             Spacer(Modifier.height(PegasusSpacing.md))
+            OutlinedButton(
+                onClick = {
+                    TokenHolder.token = "mock-supplier-jwt-dev"
+                    TokenHolder.refreshToken = "mock-refresh-dev"
+                    TokenHolder.supplierId = "sup-tashkent-001"
+                    TokenHolder.isConfigured = true
+                    onLoginSuccess()
+                },
+                enabled = !loading,
+                modifier = Modifier.fillMaxWidth().height(48.dp),
+            ) {
+                Text("BYPASS / ENTER DEMO SUPPLIER")
+            }
+            Spacer(Modifier.height(PegasusSpacing.sm))
             TextButton(onClick = onRegister, modifier = Modifier.fillMaxWidth()) {
                 Text("Create supplier account")
             }

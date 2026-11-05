@@ -19,6 +19,8 @@ settings:
     INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
     TARGETED_DEVICE_FAMILY: "1,2"
     INFOPLIST_KEY_NSCameraUsageDescription: "Scan product barcodes during inbound returns"
+    INFOPLIST_KEY_NSLocationWhenInUseUsageDescription: "Location is used to pin warehouse facilities, navigate orders, and verify geofences."
+    INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription: "Location is used to monitor dispatch, fleet coordinates, and warehouse operations."
     INFOPLIST_KEY_NSUserNotificationsUsageDescription: "Receive warehouse operations alerts"
 targets:
   WarehouseAppIOS:

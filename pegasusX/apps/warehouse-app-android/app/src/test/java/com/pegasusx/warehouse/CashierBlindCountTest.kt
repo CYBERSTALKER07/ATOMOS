@@ -104,7 +104,7 @@ class CashierBlindCountTest {
 
     @Test
     fun testAMLExposureCompliance() {
-        val dynamicCeilingMinor = 5000000000L // Dynamic ceiling in Tiyin
+        val dynamicCeilingMinor = 2500000000L // 25,000,000 UZS ceiling in Tiyin
         val uncappedCeilingMinor = 0L // Uncapped mode
 
         val uncappedCheck = AMLCheckResponse(
@@ -125,7 +125,7 @@ class CashierBlindCountTest {
         val breachedCheck = AMLCheckResponse(
             legalEntityTin = "123456789",
             accumulatedCashMinor = 2650000000L, // 26,500,000 UZS
-            ceilingMinor = ceilingMinor,
+            ceilingMinor = dynamicCeilingMinor,
         )
         assertTrue(breachedCheck.accumulatedCashMinor > breachedCheck.ceilingMinor)
     }

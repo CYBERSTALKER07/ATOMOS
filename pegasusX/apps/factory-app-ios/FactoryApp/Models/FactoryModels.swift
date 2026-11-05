@@ -42,6 +42,22 @@ struct AuthResponse: Decodable {
         factoryName = try container.decodeIfPresent(String.self, forKey: .factoryName) ?? ""
         isConfigured = try container.decodeIfPresent(Bool.self, forKey: .isConfigured) ?? false
     }
+
+    init(
+        token: String = "mock-factory-jwt-dev",
+        refreshToken: String = "mock-factory-refresh",
+        factoryId: String = "fac-tashkent-01",
+        factoryName: String = "Tashkent Central Factory #1",
+        isConfigured: Bool = true
+    ) {
+        self.token = token
+        self.refreshToken = refreshToken
+        self.factoryId = factoryId
+        self.factoryName = factoryName
+        self.isConfigured = isConfigured
+    }
+
+    static let mock = AuthResponse()
 }
 
 struct DeviceTokenRequest: Encodable, Equatable {
@@ -159,6 +175,28 @@ struct DashboardStats: Decodable {
     }
 
     static let empty = DashboardStats()
+
+    static let sample = DashboardStats(
+        pendingTransfers: 6,
+        loadingTransfers: 2,
+        activeManifests: 4,
+        dispatchedToday: 18,
+        vehiclesTotal: 15,
+        vehiclesAvailable: 9,
+        staffOnShift: 24,
+        criticalInsights: 1,
+        source: "FOUNDRY",
+        plane: "factory_trucks",
+        transfersByState: ["PENDING": 6, "LOADING": 2, "IN_TRANSIT": 10],
+        manifestsByState: ["IN_PROGRESS": 4, "COMPLETED": 14],
+        vehiclesByState: ["AVAILABLE": 9, "IN_TRANSIT": 5, "MAINTENANCE": 1],
+        driverDuty: ["ON_SHIFT": 12, "REST": 3],
+        slaByStatus: ["ON_TIME": 17, "AT_RISK": 1],
+        qcByResult: ["PASS": 22, "RECHECK": 2],
+        qcAvailable: true,
+        bayLoadingTransfers: 2,
+        bayLoadingManifests: 1
+    )
 }
 
 // MARK: - Transfer

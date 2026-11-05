@@ -215,13 +215,21 @@ fun DashboardScreen(
                     .fillMaxSize()
                     .padding(innerPadding),
             )
-            else -> LazyVerticalGrid(
-                columns = GridCells.Adaptive(minSize = 160.dp),
-                contentPadding = PaddingValues(PegasusSpacing.lg),
-                horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
-                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
-                modifier = Modifier.fillMaxSize().padding(innerPadding),
+            else -> Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
+                contentAlignment = Alignment.TopCenter,
             ) {
+                LazyVerticalGrid(
+                    columns = GridCells.Adaptive(minSize = 160.dp),
+                    contentPadding = PaddingValues(PegasusSpacing.lg),
+                    horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
+                    verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
+                    modifier = Modifier
+                        .widthIn(max = 1000.dp)
+                        .fillMaxSize(),
+                ) {
                 item(span = { GridItemSpan(maxLineSpan) }) {
                     ClientPolicyBanner(
                         message = clientPolicyMessage,
@@ -310,6 +318,7 @@ fun DashboardScreen(
                         source = stats.source,
                     )
                 }
+            }
             }
         }
     }

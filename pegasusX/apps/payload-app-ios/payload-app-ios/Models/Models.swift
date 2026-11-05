@@ -40,6 +40,34 @@ struct LoginResponse: Decodable {
     let warehouseLat: Double
     let warehouseLng: Double
     let firebaseToken: String?
+
+    init(
+        token: String = "mock-payload-jwt-dev",
+        refreshToken: String? = "mock-payload-refresh-dev",
+        workerId: String = "wrk-payload-001",
+        supplierId: String = "sup-tashkent-01",
+        role: String = "PAYLOAD_OPERATOR",
+        name: String = "Sardor Karimov (Payload Demo)",
+        warehouseId: String = "wh-tashkent-central",
+        warehouseName: String = "Tashkent Central Depot",
+        warehouseLat: Double = 41.2995,
+        warehouseLng: Double = 69.2401,
+        firebaseToken: String? = nil
+    ) {
+        self.token = token
+        self.refreshToken = refreshToken
+        self.workerId = workerId
+        self.supplierId = supplierId
+        self.role = role
+        self.name = name
+        self.warehouseId = warehouseId
+        self.warehouseName = warehouseName
+        self.warehouseLat = warehouseLat
+        self.warehouseLng = warehouseLng
+        self.firebaseToken = firebaseToken
+    }
+
+    static let mock = LoginResponse()
 }
 
 struct RefreshTokenRequest: Encodable {

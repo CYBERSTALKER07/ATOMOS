@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.cashier
 
+import com.pegasusx.warehouse.ui.theme.PegasusSpacing
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement

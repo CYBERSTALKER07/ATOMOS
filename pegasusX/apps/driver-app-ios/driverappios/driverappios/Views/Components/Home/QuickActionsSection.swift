@@ -2,6 +2,8 @@ import SwiftUI
 
 struct QuickActionsSection: View {
     @Binding var showRescueSheet: Bool
+    var onScanQR: (() -> Void)? = nil
+    var onOfflineVerify: (() -> Void)? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -9,30 +11,20 @@ struct QuickActionsSection: View {
                 .padding(.horizontal, LabTheme.s4)
 
             HStack(spacing: 12) {
-                actionTile(icon: "qrcode.viewfinder", label: "Scan QR")
-                actionTile(icon: "shield.checkered", label: "Offline\nVerify")
+                actionTileButton(icon: "qrcode.viewfinder", label: "Scan QR") {
+                    Haptics.light()
+                    onScanQR?()
+                }
+                actionTileButton(icon: "shield.checkered", label: "Offline\nVerify") {
+                    Haptics.light()
+                    onOfflineVerify?()
+                }
                 actionTileButton(icon: "exclamationmark.triangle.fill", label: "Rescue", tint: LabTheme.warning) {
+                    Haptics.light()
                     showRescueSheet = true
                 }
             }
         }
-    }
-
-    private func actionTile(icon: String, label: String) -> some View {
-        VStack(spacing: 8) {
-            Image(systemName: icon)
-                .font(.system(size: 18, weight: .medium))
-                .foregroundStyle(LabTheme.fg)
-
-            Text(label)
-                .font(.system(size: 10, weight: .semibold))
-                .foregroundStyle(LabTheme.fgSecondary)
-                .multilineTextAlignment(.center)
-                .lineLimit(2)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 16)
-        .labCard()
     }
 
     private func actionTileButton(icon: String, label: String, tint: Color = LabTheme.fg, action: @escaping () -> Void) -> some View {
@@ -48,7 +40,7 @@ struct QuickActionsSection: View {
                     .multilineTextAlignment(.center)
                     .lineLimit(2)
             }
-            .frame(maxWidth: .infinity)
+            .frame(maxWidth: .infinity, minHeight: 72)
             .padding(.vertical, 16)
             .labCard()
         }

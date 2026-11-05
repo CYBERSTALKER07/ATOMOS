@@ -7,8 +7,10 @@ import com.pegasus.payload.ui.components.PayloadSectionTitle
 import com.pegasus.payload.ui.components.ExplainStatusBanner
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -20,6 +22,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -67,9 +71,7 @@ fun TruckListPane(
 ) {
     Surface(
         color = MaterialTheme.colorScheme.surface,
-        modifier = Modifier
-            .width(if (isExpanded) 320.dp else 72.dp)
-            .fillMaxHeight(),
+        modifier = (if (!isExpanded) Modifier.width(72.dp) else Modifier.fillMaxWidth()).fillMaxHeight(),
     ) {
         Column(Modifier.fillMaxSize()) {
             Row(
@@ -93,9 +95,10 @@ fun TruckListPane(
                 }
             }
             if (!isExpanded) {
-                LazyVerticalGrid(
-                    columns = GridCells.Adaptive(minSize = 340.dp),
+                LazyColumn(
                     contentPadding = PaddingValues(vertical = 8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
                     items(trucks, key = { it.id }) { truck ->
                         val selected = truck.id == selectedTruckId
@@ -177,7 +180,7 @@ fun TruckListPane(
             val columns = ManifestBoard.group(trucks)
             val unassigned = ManifestBoard.unassigned(trucks)
             LazyVerticalGrid(
-                columns = GridCells.Adaptive(minSize = 340.dp),
+                columns = GridCells.Adaptive(minSize = 280.dp),
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
             ) {
                 columns.forEach { column ->
@@ -233,6 +236,14 @@ fun TruckRow(truck: Truck, selected: Boolean, onClick: () -> Unit) {
         targetValue = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
         label = "truck-fg",
     )
+    val displayLabel = truck.label.ifBlank { truck.licensePlate.ifBlank { "TRK-${truck.id.take(6)}" } }.uppercase()
+    val subtitleParts = listOfNotNull(
+        truck.licensePlate.takeIf { it.isNotBlank() },
+        truck.vehicleClass.takeIf { it.isNotBlank() },
+        ManifestBoard.canonicalState(truck.truckStatus).takeIf { it.isNotEmpty() },
+        if (truck.maxVolumeVu > 0) "${truck.usedVolumeVu.toInt()}/${truck.maxVolumeVu.toInt()} VU" else null,
+    ).joinToString(" — ").uppercase()
+
     Surface(
         color = bgColor,
         contentColor = fgColor,
@@ -244,24 +255,37 @@ fun TruckRow(truck: Truck, selected: Boolean, onClick: () -> Unit) {
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(14.dp),
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
         ) {
-            Icon(Icons.Filled.LocalShipping, contentDescription = null)
-            Spacer(Modifier.size(12.dp))
-            Column(Modifier.fillMaxWidth()) {
-                Text(
-                    truck.label.ifBlank { truck.licensePlate.ifBlank { truck.id.take(8) } },
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Medium,
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.Filled.LocalShipping,
+                    contentDescription = null,
+                    modifier = Modifier.size(24.dp),
+                    tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                 )
+            }
+            Spacer(Modifier.width(16.dp))
+            Column(Modifier.weight(1f)) {
                 Text(
-                    listOfNotNull(
-                        truck.licensePlate.takeIf { it.isNotBlank() },
-                        truck.vehicleClass.takeIf { it.isNotBlank() },
-                        ManifestBoard.canonicalState(truck.truckStatus).takeIf { it.isNotEmpty() },
-                        if (truck.maxVolumeVu > 0) "${truck.usedVolumeVu}/${truck.maxVolumeVu} VU" else null,
-                    ).joinToString(" • "),
-                    style = MaterialTheme.typography.bodySmall,
+                    displayLabel,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Black,
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    subtitleParts,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }

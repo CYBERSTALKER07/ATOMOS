@@ -16,6 +16,8 @@ settings:
     INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
     TARGETED_DEVICE_FAMILY: "2" # iPad only
     INFOPLIST_KEY_NSCameraUsageDescription: "Scan product barcodes during inbound returns and manifest loading"
+    INFOPLIST_KEY_NSLocationWhenInUseUsageDescription: "Location is used to verify terminal facility and staging dock geofences."
+    INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription: "Location is used to track dock loading positions and dispatch geofences."
     INFOPLIST_KEY_NSUserNotificationsUsageDescription: "Receive load-out and dispatch alerts"
 packages:
   Firebase:

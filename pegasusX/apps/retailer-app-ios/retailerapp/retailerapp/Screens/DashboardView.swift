@@ -135,10 +135,42 @@ struct DashboardView: View {
                     .foregroundStyle(AppTheme.destructive)
                     .accessibilityIdentifier("gs-u-retailer-command-error")
             } else if commandPulse?.empty == true {
-                Text("No live ops signals yet. Empty pulse — not demo tiles.")
-                    .font(.footnote)
-                    .foregroundStyle(AppTheme.textSecondary)
-                    .accessibilityIdentifier("gs-u-retailer-pulse-empty")
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("No live ops signals yet. Empty pulse — not demo tiles.")
+                        .font(.footnote)
+                        .foregroundStyle(AppTheme.textSecondary)
+                        .accessibilityIdentifier("gs-u-retailer-pulse-empty")
+
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 140), spacing: 8)], spacing: 8) {
+                        NavigationLink {
+                            OrdersView()
+                        } label: {
+                            commandTile("Open orders", "0")
+                        }
+                        .buttonStyle(.pressable)
+
+                        NavigationLink {
+                            DeliveriesHubView()
+                        } label: {
+                            commandTile("Fulfillment", "0")
+                        }
+                        .buttonStyle(.pressable)
+
+                        NavigationLink {
+                            ArrivalView()
+                        } label: {
+                            commandTile("Dock", "0")
+                        }
+                        .buttonStyle(.pressable)
+
+                        NavigationLink {
+                            PosView()
+                        } label: {
+                            commandTile("POS", "0")
+                        }
+                        .buttonStyle(.pressable)
+                    }
+                }
             } else if let pulse = commandPulse {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 140), spacing: 8)], spacing: 8) {
                     NavigationLink {

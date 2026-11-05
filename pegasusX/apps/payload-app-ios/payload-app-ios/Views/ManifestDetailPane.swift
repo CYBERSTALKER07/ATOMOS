@@ -75,9 +75,14 @@ struct ManifestWorkflow: View {
                     Button {
                         Task { await viewModel.startLoading() }
                     } label: {
-                        Text("mobile_payload.ui.start_loading")
-                            .font(.headline)
-                            .frame(maxWidth: .infinity, minHeight: 48)
+                        if viewModel.startingLoading {
+                            ProgressView().controlSize(.regular)
+                                .frame(maxWidth: .infinity, minHeight: 48)
+                        } else {
+                            Text("mobile_payload.ui.start_loading")
+                                .font(.headline)
+                                .frame(maxWidth: .infinity, minHeight: 48)
+                        }
                     }
                     .buttonStyle(.borderedProminent)
                     .disabled(viewModel.startingLoading)
@@ -111,7 +116,11 @@ struct ManifestWorkflow: View {
                         } label: {
                             HStack {
                                 Image(systemName: "lock.fill")
-                                Text("mobile_payload.ui.seal_manifest").font(.headline)
+                                if viewModel.sealingManifest {
+                                    ProgressView().controlSize(.regular)
+                                } else {
+                                    Text("mobile_payload.ui.seal_manifest").font(.headline)
+                                }
                             }
                             .frame(maxWidth: .infinity, minHeight: 48)
                         }

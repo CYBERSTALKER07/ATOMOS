@@ -8,6 +8,7 @@ struct OrderCardView: View {
     var onConfirmPreorder: (() -> Void)? = nil
     var onEditPreorder: (() -> Void)? = nil
     var onReviewDeliveryProposal: (() -> Void)? = nil
+    var onTap: (() -> Void)? = nil
 
     @State private var appeared = false
 
@@ -216,6 +217,13 @@ struct OrderCardView: View {
         .background(AppTheme.cardBackground)
         .clipShape(.rect(cornerRadius: AppTheme.radiusCard))
         .shadow(color: AppTheme.shadowColor, radius: AppTheme.shadowRadius, x: 0, y: AppTheme.shadowOffsetY)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            if let onTap {
+                Haptics.light()
+                onTap()
+            }
+        }
         .opacity(appeared ? 1 : 0)
         .offset(y: appeared ? 0 : 16)
         .onAppear {

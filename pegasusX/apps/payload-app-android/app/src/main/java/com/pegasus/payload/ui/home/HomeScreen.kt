@@ -64,7 +64,10 @@ import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffold
 import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffoldRole
 import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaffoldNavigator
 import androidx.compose.material.icons.Icons
+import androidx.activity.compose.BackHandler
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
@@ -127,12 +130,17 @@ import com.pegasus.payload.R
 fun HomeScreen(
     onLogout: () -> Unit,
     onInboundReturns: () -> Unit = {},
+    windowSizeClass: WindowSizeClass? = null,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val navigator = rememberListDetailPaneScaffoldNavigator<String>()
     val snackbarHostState = remember { SnackbarHostState() }
     val lifecycleOwner = LocalLifecycleOwner.current
+
+    BackHandler(enabled = navigator.canNavigateBack()) {
+        navigator.navigateBack()
+    }
 
     var showInjectDialog by remember { mutableStateOf(false) }
     var showChecklistScanner by remember { mutableStateOf(false) }
@@ -200,6 +208,16 @@ fun HomeScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
+                navigationIcon = {
+                    if (navigator.canNavigateBack()) {
+                        IconButton(onClick = { navigator.navigateBack() }) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back to vehicles",
+                            )
+                        }
+                    }
+                },
                 title = {
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text("Pegasus Payload Terminal")
