@@ -35,25 +35,24 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 
-	cfg, err := bootstrap.LoadConfig()
+	container, err := bootstrap.BuildCLIContainer(ctx)
 	if err != nil {
-		slog.Error("Failed to load config", "err", err)
+		slog.Error("Failed to build CLI DI container", "err", err)
 		os.Exit(1)
 	}
 
-	brokers := strings.Split(cfg.KafkaBrokers, ",")
-	if len(brokers) == 0 || brokers[0] == "" {
-		slog.Error("KafkaBrokers not configured")
-		os.Exit(1)
-	}
-
-	switch strings.ToLower(*source) {
-	case "spanner":
-		replayFromSpanner(ctx, cfg, brokers, *tenantID, *maxMsgs, *dryRun)
-	case "kafka":
-		replayFromKafka(ctx, cfg, brokers, *tenantID, *maxMsgs, *dryRun)
-	default:
-		slog.Error("Invalid source: must be 'kafka' or 'spanner'", "source", *source)
+	if err := container.Invoke(func(p bootstrap.CLIInfraParams) {
+		switch strings.ToLower(*source) {
+		case "spanner":
+			replayFromSpanner(ctx, p.Config, p.Brokers, *tenantID, *maxMsgs, *dryRun)
+		case "kafka":
+			replayFromKafka(ctx, p.Config, p.Brokers, *tenantID, *maxMsgs, *dryRun)
+		default:
+			slog.Error("Invalid source: must be 'kafka' or 'spanner'", "source", *source)
+			os.Exit(1)
+		}
+	}); err != nil {
+		slog.Error("Failed to resolve CLI dependencies", "err", err)
 		os.Exit(1)
 	}
 }
