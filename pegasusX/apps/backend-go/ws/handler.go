@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -76,8 +77,21 @@ func RegisterRoutes(r chi.Router, log *slog.Logger, jwtSecret string,
 			gConn.close()
 			return
 		}
+		var unsubMu sync.Mutex
+		registerDynamicUnsub := func(unsub func()) {
+			if unsub == nil {
+				return
+			}
+			unsubMu.Lock()
+			unsubscribeFuncs = append(unsubscribeFuncs, unsub)
+			unsubMu.Unlock()
+		}
 		gConn.onClose = func() {
-			for _, unsubscribe := range unsubscribeFuncs {
+			unsubMu.Lock()
+			fns := append([]func(){}, unsubscribeFuncs...)
+			unsubscribeFuncs = nil
+			unsubMu.Unlock()
+			for _, unsubscribe := range fns {
 				unsubscribe()
 			}
 		}
@@ -85,7 +99,7 @@ func RegisterRoutes(r chi.Router, log *slog.Logger, jwtSecret string,
 
 		replayMissedEvents(req, ident, gConn, hubs, cfg)
 
-		go runConnectionLoop(req, gConn, platformSvc, hubs, log)
+		go runConnectionLoop(req, gConn, platformSvc, hubs, registerDynamicUnsub, log)
 	})
 
 	r.Get("/v1/ws", wsHandler)
@@ -360,17 +374,13 @@ func roleHubsForIdentity(ident auth.Claims, hubs roleHubs) []*Hub {
 	}
 }
 
-func runConnectionLoop(req *http.Request, conn *gorillaConn, platformSvc *platform.Service, hubs roleHubs, log *slog.Logger) {
+func runConnectionLoop(req *http.Request, conn *gorillaConn, platformSvc *platform.Service, hubs roleHubs, registerDynamicUnsub func(func()), log *slog.Logger) {
 	maybeSendOutdated(req, conn, platformSvc, log)
 	done := make(chan struct{})
 
 	// Touch presence on initial connect (use Background — req.Context() is
 	// cancelled by the HTTP server after the WebSocket upgrade completes).
-	for _, h := range roleHubsForIdentity(conn.Identity(), hubs) {
-		if h != nil {
-			h.TouchPresence(context.Background(), conn)
-		}
-	}
+	touchIdentityPresence(context.Background(), conn, hubs)
 
 	// startPingLoop(conn, done, log) // handled by writePump now
 	defer func() {
@@ -384,27 +394,40 @@ func runConnectionLoop(req *http.Request, conn *gorillaConn, platformSvc *platfo
 		}
 		conn.close()
 	}()
-	conn.conn.SetReadLimit(1024)
+	conn.conn.SetReadLimit(4096)
 	_ = conn.conn.SetReadDeadline(time.Now().Add(websocketPongWait))
 	conn.conn.SetPongHandler(func(string) error {
-		// Touch presence on pong
-		for _, h := range roleHubsForIdentity(conn.Identity(), hubs) {
-			if h != nil {
-				h.TouchPresence(context.Background(), conn)
-			}
-		}
+		touchIdentityPresence(context.Background(), conn, hubs)
 		return conn.conn.SetReadDeadline(time.Now().Add(websocketPongWait))
+	})
+	defaultPingHandler := conn.conn.PingHandler()
+	conn.conn.SetPingHandler(func(appData string) error {
+		touchIdentityPresence(context.Background(), conn, hubs)
+		_ = conn.conn.SetReadDeadline(time.Now().Add(websocketPongWait))
+		if defaultPingHandler != nil {
+			return defaultPingHandler(appData)
+		}
+		return nil
 	})
 
 	limiter := NewIngressRateLimiter()
 	for {
-		if _, _, err := conn.conn.ReadMessage(); err != nil {
+		_, rawMsg, err := conn.conn.ReadMessage()
+		if err != nil {
 			return
 		}
+		_ = conn.conn.SetReadDeadline(time.Now().Add(websocketPongWait))
 		if !limiter.Allow() {
+			recordRateLimited()
 			log.Warn("websocket ingress rate limit exceeded", "conn_id", conn.ID())
+			sendJSONFrame(context.Background(), conn, map[string]any{
+				"type":    "error",
+				"code":    "rate_limit_exceeded",
+				"message": "websocket ingress rate limit exceeded",
+			})
 			return
 		}
+		handleClientMessage(context.Background(), rawMsg, conn, hubs, registerDynamicUnsub, log)
 	}
 }
 

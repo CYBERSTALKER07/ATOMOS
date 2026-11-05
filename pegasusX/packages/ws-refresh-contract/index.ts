@@ -330,3 +330,63 @@ export function applyDriverLocationPatch<
     };
   });
 }
+
+export const WS_HEARTBEAT_INTERVAL_MS = 25000;
+
+export interface WSClientEnvelope {
+  type: "ping" | "ack" | "presence" | "room:join" | "room:leave" | "replay";
+  id?: string;
+  event_id?: string;
+  room?: string;
+  status?: "online" | "away" | "offline";
+  last_event_id?: string;
+  since_seq?: number;
+}
+
+export function buildWSPingFrame(id?: string): string {
+  return JSON.stringify(id ? { type: "ping", id } : { type: "ping" });
+}
+
+export function buildWSAckFrame(eventId: string): string {
+  return JSON.stringify({ type: "ack", event_id: eventId });
+}
+
+export function buildWSPresenceFrame(status: "online" | "away" | "offline"): string {
+  return JSON.stringify({ type: "presence", status });
+}
+
+export function buildWSRoomJoinFrame(room: string): string {
+  return JSON.stringify({ type: "room:join", room });
+}
+
+export function buildWSRoomLeaveFrame(room: string): string {
+  return JSON.stringify({ type: "room:leave", room });
+}
+
+export function buildWSReplayFrame(room: string, lastEventId?: string, sinceSeq?: number): string {
+  return JSON.stringify({
+    type: "replay",
+    room,
+    ...(lastEventId ? { last_event_id: lastEventId } : {}),
+    ...(typeof sinceSeq === "number" && sinceSeq > 0 ? { since_seq: sinceSeq } : {}),
+  });
+}
+
+const WS_CONTROL_FRAME_TYPES = new Set([
+  "pong",
+  "ack:confirmed",
+  "presence:updated",
+  "room:joined",
+  "room:left",
+  "replay:completed",
+]);
+
+export function isWSControlFrame(type?: string | null): boolean {
+  if (!type) return false;
+  return WS_CONTROL_FRAME_TYPES.has(type.trim().toLowerCase());
+}
+
+export function isWSResyncRequired(type?: string | null): boolean {
+  return typeof type === "string" && type.trim() === "WS_RESYNC_REQUIRED";
+}
+

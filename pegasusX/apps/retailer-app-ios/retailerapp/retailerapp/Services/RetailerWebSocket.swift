@@ -455,6 +455,9 @@ final class RetailerWebSocket {
             if let payload = try? decoder.decode(PromotionChangedEvent.self, from: data) {
                 emit(.promotionChanged(supplierId: payload.supplierId))
             }
+        case "WS_RESYNC_REQUIRED":
+            self.reconnectEpoch += 1
+            emit(.transportReconnected)
         default:
             break
         }

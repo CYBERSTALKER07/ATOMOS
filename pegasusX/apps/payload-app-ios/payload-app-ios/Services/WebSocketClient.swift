@@ -113,7 +113,7 @@ final class WebSocketClient {
                     }
                     if let frame = try? self.decoder.decode(WsMessage.self, from: data) {
                         let hasContent = !(frame.title ?? "").isEmpty || !(frame.body ?? "").isEmpty
-                        let isPayloadSync = frame.type == "PAYLOAD_SYNC" || (frame.type?.hasPrefix("MANIFEST_") ?? false)
+                        let isPayloadSync = frame.type == "PAYLOAD_SYNC" || frame.type == "WS_RESYNC_REQUIRED" || (frame.type?.hasPrefix("MANIFEST_") ?? false)
                         if hasContent {
                             self.onFrame?(frame)
                         } else if isPayloadSync {

@@ -98,15 +98,17 @@ type gorillaConn struct {
 	mu        sync.Mutex
 	send      chan []byte
 	stop      chan struct{}
+	stopOnce  sync.Once
 	onClose   func()
 	closeOnce sync.Once
 }
 
 func (c *gorillaConn) writePump() {
-	ticker := time.NewTicker(30 * time.Second) // Ping interval
+	ticker := time.NewTicker(websocketPingInterval)
 	defer func() {
 		ticker.Stop()
-		c.conn.Close()
+		c.closeStopChan()
+		_ = c.conn.Close()
 		c.signalClosed()
 	}()
 	for {
@@ -115,24 +117,37 @@ func (c *gorillaConn) writePump() {
 			return
 		case payload, ok := <-c.send:
 			if !ok {
-				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
+				_ = c.conn.SetWriteDeadline(time.Now().Add(websocketWriteWait))
+				_ = c.conn.WriteMessage(websocket.CloseMessage, []byte{})
 				return
 			}
-			c.conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
+			_ = c.conn.SetWriteDeadline(time.Now().Add(websocketWriteWait))
 			if err := c.conn.WriteMessage(websocket.TextMessage, payload); err != nil {
 				return
 			}
 			n := len(c.send)
 			for i := 0; i < n; i++ {
-				c.conn.WriteMessage(websocket.TextMessage, <-c.send)
+				_ = c.conn.SetWriteDeadline(time.Now().Add(websocketWriteWait))
+				if err := c.conn.WriteMessage(websocket.TextMessage, <-c.send); err != nil {
+					return
+				}
 			}
 		case <-ticker.C:
-			c.conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
+			_ = c.conn.SetWriteDeadline(time.Now().Add(websocketWriteWait))
 			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 				return
 			}
 		}
 	}
+}
+
+func (c *gorillaConn) closeStopChan() {
+	if c == nil || c.stop == nil {
+		return
+	}
+	c.stopOnce.Do(func() {
+		close(c.stop)
+	})
 }
 
 func (c *gorillaConn) ID() string {
@@ -145,10 +160,17 @@ func (c *gorillaConn) Identity() auth.Claims {
 
 func (c *gorillaConn) Send(ctx context.Context, payload []byte) error {
 	select {
+	case <-c.stop:
+		return fmt.Errorf("connection closed")
+	default:
+	}
+	select {
 	case c.send <- payload:
 		return nil
 	case <-c.stop:
 		return fmt.Errorf("connection closed")
+	case <-ctx.Done():
+		return ctx.Err()
 	default:
 		// Queue full, drop slow consumer
 		c.close()
@@ -164,6 +186,7 @@ func (c *gorillaConn) ping(timeout time.Duration) error {
 }
 
 func (c *gorillaConn) close() {
+	c.closeStopChan()
 	c.Reap()
 	c.signalClosed()
 }
@@ -174,6 +197,7 @@ func (c *gorillaConn) signalClosed() {
 	if c == nil {
 		return
 	}
+	c.closeStopChan()
 	c.closeOnce.Do(func() {
 		if c.onClose != nil {
 			c.onClose()
@@ -184,6 +208,7 @@ func (c *gorillaConn) signalClosed() {
 // Reap force-closes the socket. Invoked by hub shedding when a fresher session
 // supersedes a stale connection (Desert Protocol).
 func (c *gorillaConn) Reap() {
+	c.closeStopChan()
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	_ = c.conn.Close()

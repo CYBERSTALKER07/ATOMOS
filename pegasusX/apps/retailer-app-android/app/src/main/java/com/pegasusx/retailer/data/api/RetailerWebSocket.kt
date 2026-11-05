@@ -142,6 +142,10 @@ class RetailerWebSocket @Inject constructor(
             override fun onMessage(webSocket: WebSocket, text: String) {
                 try {
                     val msg = json.decodeFromString<RetailerWSMessage>(text)
+                    if (msg.type == "WS_RESYNC_REQUIRED") {
+                        _reconnects.tryEmit(Unit)
+                        return
+                    }
                     if (!msg.eventId.isNullOrBlank()) {
                         lastEventId = msg.eventId
                     }

@@ -198,12 +198,23 @@ export async function connectWarehouseWS(lastEventId?: string | null): Promise<W
 
 export type WarehouseSocketStatus = 'idle' | 'connecting' | 'live' | 'reconnecting' | 'offline';
 
+const WAREHOUSE_WS_HEARTBEAT_MS = 25_000;
+const WAREHOUSE_WS_CONTROL_TYPES = new Set([
+  'pong',
+  'ack:confirmed',
+  'presence:updated',
+  'room:joined',
+  'room:left',
+  'replay:completed',
+]);
+
 export function subscribeWarehouseWS(options: {
   onMessage: (payload: string) => void;
   onStatusChange?: (status: WarehouseSocketStatus) => void;
 }): () => void {
   let socket: WebSocket | null = null;
   let reconnectTimer: number | null = null;
+  let heartbeatTimer: number | null = null;
   let reconnectAttempt = 0;
   let hasConnectedOnce = false;
   let lastEventId: string | null = null;
@@ -216,7 +227,24 @@ export function subscribeWarehouseWS(options: {
     }
   };
 
+  const clearHeartbeat = () => {
+    if (heartbeatTimer !== null) {
+      window.clearInterval(heartbeatTimer);
+      heartbeatTimer = null;
+    }
+  };
+
+  const triggerWarehouseReconcile = () => {
+    void reconcileSession({
+      role: 'warehouse',
+      baseUrl: warehouseApiBaseUrl(),
+      getAuthToken: () => readTokenFromCookie() || null,
+      fetchImpl: warehouseSessionFetch,
+    }).then(() => notifyWarehouseSessionReconciled());
+  };
+
   const scheduleReconnect = () => {
+    clearHeartbeat();
     if (disposed) {
       options.onStatusChange?.('idle');
       return;
@@ -255,20 +283,29 @@ export function subscribeWarehouseWS(options: {
           hasConnectedOnce = true;
           reconnectAttempt = 0;
           options.onStatusChange?.('live');
+          clearHeartbeat();
+          heartbeatTimer = window.setInterval(() => {
+            if (ws.readyState === WebSocket.OPEN) {
+              ws.send(JSON.stringify({ type: 'ping', id: `hb-${Date.now()}` }));
+            }
+          }, WAREHOUSE_WS_HEARTBEAT_MS);
           if (wasReconnect) {
-            void reconcileSession({
-              role: 'warehouse',
-              baseUrl: warehouseApiBaseUrl(),
-              getAuthToken: () => readTokenFromCookie() || null,
-              fetchImpl: warehouseSessionFetch,
-            }).then(() => notifyWarehouseSessionReconciled());
+            triggerWarehouseReconcile();
           }
         };
 
         socket.onmessage = (event) => {
           const raw = String(event.data);
           try {
-            const parsed = JSON.parse(raw) as { event_id?: unknown; id?: unknown };
+            const parsed = JSON.parse(raw) as { type?: unknown; event_id?: unknown; id?: unknown };
+            const msgType = typeof parsed?.type === 'string' ? parsed.type.trim() : '';
+            if (msgType && WAREHOUSE_WS_CONTROL_TYPES.has(msgType.toLowerCase())) {
+              return;
+            }
+            if (msgType === 'WS_RESYNC_REQUIRED') {
+              triggerWarehouseReconcile();
+              return;
+            }
             const eid = typeof parsed?.event_id === 'string' && parsed.event_id.trim()
               ? parsed.event_id.trim()
               : typeof parsed?.id === 'string' && parsed.id.trim()
@@ -288,11 +325,13 @@ export function subscribeWarehouseWS(options: {
         };
 
         socket.onclose = () => {
+          clearHeartbeat();
           socket = null;
           scheduleReconnect();
         };
       })
       .catch(() => {
+        clearHeartbeat();
         socket = null;
         scheduleReconnect();
       });
@@ -304,6 +343,7 @@ export function subscribeWarehouseWS(options: {
   };
 
   const handleOffline = () => {
+    clearHeartbeat();
     clearReconnect();
     options.onStatusChange?.('offline');
     socket?.close();
@@ -316,6 +356,7 @@ export function subscribeWarehouseWS(options: {
 
   return () => {
     disposed = true;
+    clearHeartbeat();
     clearReconnect();
     window.removeEventListener('online', handleOnline);
     window.removeEventListener('offline', handleOffline);

@@ -181,6 +181,14 @@ func (h *Hub) unsubscribe(room, connID string) {
 	h.recordMetricsLocked()
 }
 
+// UnsubscribeRoom removes conn from a specific room on this hub.
+func (h *Hub) UnsubscribeRoom(room string, conn Connection) {
+	if h == nil || conn == nil || room == "" {
+		return
+	}
+	h.unsubscribe(room, conn.ID())
+}
+
 // noteJoinLocked records one more room for a socket. Caller holds h.mu.
 func (h *Hub) noteJoinLocked(connID string, now time.Time) {
 	if h.socketRooms[connID] == 0 {
@@ -342,6 +350,7 @@ func (h *Hub) Broadcast(ctx context.Context, room string, payload []byte) {
 	if h == nil || room == "" || len(payload) == 0 {
 		return
 	}
+	h.recordBroadcast()
 	_, eventID := parseSSEEventMetadata(payload)
 	if eventID == "" {
 		eventID = newPodEventID(h.podID)
@@ -367,9 +376,10 @@ func (h *Hub) fanoutLocal(ctx context.Context, room string, payload []byte, even
 	}
 
 	var (
-		deadMu sync.Mutex
-		dead   []string
-		wg     sync.WaitGroup
+		deadMu    sync.Mutex
+		dead      []string
+		delivered atomic.Int64
+		wg        sync.WaitGroup
 	)
 	wg.Add(len(conns))
 	for _, c := range conns {
@@ -384,10 +394,13 @@ func (h *Hub) fanoutLocal(ctx context.Context, room string, payload []byte, even
 				deadMu.Unlock()
 				h.log.Debug("ws send failed; reaping connection",
 					"hub", h.name, "room", room, "conn_id", conn.ID(), "err", err)
+			} else {
+				delivered.Add(1)
 			}
 		}(c)
 	}
 	wg.Wait()
+	h.recordDelivered(int(delivered.Load()))
 
 	if len(dead) > 0 {
 		h.mu.Lock()
@@ -512,6 +525,7 @@ func (h *Hub) ReplaySince(ctx context.Context, room string, sinceSeq int64, last
 		}
 		replayed++
 	}
+	h.recordReplayed(replayed)
 	return replayed
 }
 
@@ -687,20 +701,49 @@ type HubStats struct {
 var ErrUnauthorized = errors.New("ws: connection not authorized for room")
 
 func (h *Hub) TouchPresence(ctx context.Context, conn Connection) {
-	if h.relay == nil {
+	h.SetPresenceStatus(ctx, conn, "ONLINE")
+}
+
+// SetPresenceStatus updates the caller's presence key in Redis with a 3x ping TTL.
+// Valid statuses are normalized to uppercase ("ONLINE", "AWAY", "OFFLINE").
+func (h *Hub) SetPresenceStatus(ctx context.Context, conn Connection, status string) {
+	if h == nil || h.relay == nil || conn == nil {
 		return
 	}
 	identity := conn.Identity()
 	if identity.Subject == "" {
 		return
 	}
+	normalized := strings.ToUpper(strings.TrimSpace(status))
+	switch normalized {
+	case "AWAY":
+		normalized = "AWAY"
+	case "OFFLINE":
+		h.ClearPresence(ctx, conn)
+		return
+	default:
+		normalized = "ONLINE"
+	}
 	key := fmt.Sprintf("{presence:%s}:%s", identity.Role, identity.Subject)
 	// 3x ping interval for TTL
-	_ = h.relay.Set(ctx, key, []byte("ONLINE"), 45*time.Second)
+	_ = h.relay.Set(ctx, key, []byte(normalized), 45*time.Second)
+}
+
+// GetPresence returns the current presence status ("ONLINE", "AWAY", or "OFFLINE") for a role and subject.
+func (h *Hub) GetPresence(ctx context.Context, role auth.Role, subject string) (string, bool) {
+	if h == nil || h.relay == nil || strings.TrimSpace(subject) == "" {
+		return "OFFLINE", false
+	}
+	key := fmt.Sprintf("{presence:%s}:%s", role, strings.TrimSpace(subject))
+	val, found, err := h.relay.Get(ctx, key)
+	if err != nil || !found || len(val) == 0 {
+		return "OFFLINE", false
+	}
+	return string(val), true
 }
 
 func (h *Hub) ClearPresence(ctx context.Context, conn Connection) {
-	if h.relay == nil {
+	if h == nil || h.relay == nil || conn == nil {
 		return
 	}
 	identity := conn.Identity()

@@ -284,8 +284,15 @@ export function useManifestData({
     if (!token) return;
     fetchNotifications();
     let reconnectTimer: ReturnType<typeof setTimeout>;
+    let heartbeatTimer: ReturnType<typeof setInterval> | undefined;
     let syncDebounceTimer: ReturnType<typeof setTimeout> | undefined;
     let reconnectAttempt = 0;
+    const clearHeartbeat = () => {
+      if (heartbeatTimer !== undefined) {
+        clearInterval(heartbeatTimer);
+        heartbeatTimer = undefined;
+      }
+    };
     const connect = async () => {
       let wsTicket = '';
       try {
@@ -309,6 +316,12 @@ export function useManifestData({
       ws.onopen = () => {
         reconnectAttempt = 0;
         setIsOnline(true);
+        clearHeartbeat();
+        heartbeatTimer = setInterval(() => {
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'ping', id: `hb-${Date.now()}` }));
+          }
+        }, 25000);
         const wasReconnect = wsHasConnectedOnceRef.current;
         wsHasConnectedOnceRef.current = true;
         void (async () => {
@@ -331,11 +344,14 @@ export function useManifestData({
       ws.onmessage = (event) => {
         try {
           const msg = JSON.parse(event.data) as LiveNotifFrame & { event_id?: string; id?: string };
+          if (msg.type === 'pong' || msg.type === 'ack:confirmed' || msg.type === 'presence:updated') {
+            return;
+          }
           const eid = msg.event_id || msg.id;
           if (typeof eid === 'string' && eid.trim() !== '') {
             lastEventIdRef.current = eid.trim();
           }
-          if (msg.type === 'PAYLOAD_SYNC' || msg.type?.startsWith('MANIFEST_')) {
+          if (msg.type === 'PAYLOAD_SYNC' || msg.type === 'WS_RESYNC_REQUIRED' || msg.type?.startsWith('MANIFEST_')) {
             if (syncDebounceTimer !== undefined) {
               clearTimeout(syncDebounceTimer);
             }
@@ -359,15 +375,17 @@ export function useManifestData({
         } catch {}
       };
       ws.onclose = () => {
+        clearHeartbeat();
         setIsOnline(false);
         const delay = reconnectDelayMs(reconnectAttempt);
         reconnectAttempt += 1;
         reconnectTimer = setTimeout(() => { void connect(); }, delay);
       };
-      ws.onerror = () => { setIsOnline(false); ws.close(); };
+      ws.onerror = () => { clearHeartbeat(); setIsOnline(false); ws.close(); };
     };
     void connect();
     return () => {
+      clearHeartbeat();
       clearTimeout(reconnectTimer);
       if (syncDebounceTimer !== undefined) {
         clearTimeout(syncDebounceTimer);

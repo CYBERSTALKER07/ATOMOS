@@ -31,6 +31,10 @@ interface WSContextType {
   eventBuffer: WSEventEnvelope[];
   reconnect: () => void;
   subscribe: (handler: (event: WSEventEnvelope) => void) => () => void;
+  sendMessage: (payload: Record<string, unknown>) => void;
+  joinRoom: (room: string) => void;
+  leaveRoom: (room: string) => void;
+  ackEvent: (eventId: string) => void;
   refreshKey: number;
 }
 
@@ -41,10 +45,24 @@ const WSContext = createContext<WSContextType>({
   eventBuffer: [],
   reconnect: () => {},
   subscribe: () => () => {},
+  sendMessage: () => {},
+  joinRoom: () => {},
+  leaveRoom: () => {},
+  ackEvent: () => {},
   refreshKey: 0,
 });
 
 const MAX_EVENT_BUFFER = 50;
+const MAX_OUTBOUND_QUEUE = 64;
+const HEARTBEAT_INTERVAL_MS = 25000;
+const CONTROL_FRAME_TYPES = new Set([
+  "pong",
+  "ack:confirmed",
+  "presence:updated",
+  "room:joined",
+  "room:left",
+  "replay:completed",
+]);
 
 export function AdminWebSocketProvider({ children }: { children: ReactNode }) {
   const { token } = useAdminToken();
@@ -56,7 +74,10 @@ export function AdminWebSocketProvider({ children }: { children: ReactNode }) {
 
   const socketRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const backoffRef = useRef(1000);
+  const lastEventIdRef = useRef<string | null>(null);
+  const outboundQueueRef = useRef<string[]>([]);
   const handlersRef = useRef<Set<(event: WSEventEnvelope) => void>>(new Set());
   const lastInvalidationRef = useRef<Record<string, number>>({});
 
@@ -67,8 +88,50 @@ export function AdminWebSocketProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  const sendMessage = useCallback((payload: Record<string, unknown>) => {
+    const serialized = JSON.stringify(payload);
+    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+      socketRef.current.send(serialized);
+      return;
+    }
+    if (outboundQueueRef.current.length >= MAX_OUTBOUND_QUEUE) {
+      outboundQueueRef.current.shift();
+    }
+    outboundQueueRef.current.push(serialized);
+  }, []);
+
+  const joinRoom = useCallback(
+    (room: string) => {
+      sendMessage({ type: "room:join", room });
+    },
+    [sendMessage],
+  );
+
+  const leaveRoom = useCallback(
+    (room: string) => {
+      sendMessage({ type: "room:leave", room });
+    },
+    [sendMessage],
+  );
+
+  const ackEvent = useCallback(
+    (eventId: string) => {
+      if (!eventId.trim()) return;
+      sendMessage({ type: "ack", event_id: eventId.trim() });
+    },
+    [sendMessage],
+  );
+
+  const clearHeartbeat = useCallback(() => {
+    if (heartbeatIntervalRef.current) {
+      clearInterval(heartbeatIntervalRef.current);
+      heartbeatIntervalRef.current = null;
+    }
+  }, []);
+
   const connect = useCallback(async () => {
     if (!token) {
+      clearHeartbeat();
       if (socketRef.current) {
         socketRef.current.close();
         socketRef.current = null;
@@ -89,7 +152,10 @@ export function AdminWebSocketProvider({ children }: { children: ReactNode }) {
       const host = (process.env.NEXT_PUBLIC_BACKEND_BASE_URL || "http://localhost:8080")
         .replace(/^https?:\/\//, "")
         .replace(/\/$/, "");
-      const wsUrl = `${wsProto}//${host}/v1/ws?token=${encodeURIComponent(session.token)}`;
+      const lastIdParam = lastEventIdRef.current
+        ? `&last_event_id=${encodeURIComponent(lastEventIdRef.current)}`
+        : "";
+      const wsUrl = `${wsProto}//${host}/v1/ws?token=${encodeURIComponent(session.token)}${lastIdParam}`;
 
       const ws = new WebSocket(wsUrl);
       socketRef.current = ws;
@@ -98,23 +164,57 @@ export function AdminWebSocketProvider({ children }: { children: ReactNode }) {
         setStatus("connected");
         backoffRef.current = 1000;
         setLastHeartbeat(new Date());
+
+        while (outboundQueueRef.current.length > 0 && ws.readyState === WebSocket.OPEN) {
+          const queued = outboundQueueRef.current.shift();
+          if (queued) {
+            ws.send(queued);
+          }
+        }
+
+        clearHeartbeat();
+        heartbeatIntervalRef.current = setInterval(() => {
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: "ping", id: `hb-${Date.now()}` }));
+          }
+        }, HEARTBEAT_INTERVAL_MS);
       };
 
       ws.onmessage = (event) => {
         try {
           const raw = JSON.parse(event.data) as Record<string, unknown>;
+          const rawType = String(raw.type || "UNKNOWN");
+          const now = new Date();
+          setLastHeartbeat(now);
+
+          if (CONTROL_FRAME_TYPES.has(rawType.toLowerCase())) {
+            return;
+          }
+
+          if (rawType === "WS_RESYNC_REQUIRED") {
+            setRefreshKey((k) => k + 1);
+            return;
+          }
+
+          const eventId = raw.event_id
+            ? String(raw.event_id).trim()
+            : raw.id
+              ? String(raw.id).trim()
+              : undefined;
+          if (eventId) {
+            lastEventIdRef.current = eventId;
+          }
+
           const envelope: WSEventEnvelope = {
-            type: String(raw.type || "UNKNOWN"),
+            type: rawType,
             room: raw.room ? String(raw.room) : undefined,
-            event_id: raw.event_id ? String(raw.event_id) : undefined,
+            event_id: eventId,
             seq: typeof raw.seq === "number" ? raw.seq : undefined,
-            timestamp: String(raw.timestamp || new Date().toISOString()),
+            timestamp: String(raw.timestamp || now.toISOString()),
             payload: raw.payload as Record<string, unknown> | undefined,
           };
 
-          const now = new Date();
           setLastEventTime(now);
-          setLastHeartbeat(now);
 
           // Append to bounded FIFO buffer
           setEventBuffer((prev) => {
@@ -149,6 +249,7 @@ export function AdminWebSocketProvider({ children }: { children: ReactNode }) {
       };
 
       ws.onclose = () => {
+        clearHeartbeat();
         socketRef.current = null;
         setStatus("disconnected");
 
@@ -165,14 +266,16 @@ export function AdminWebSocketProvider({ children }: { children: ReactNode }) {
         }
       };
     } catch {
+      clearHeartbeat();
       setStatus("disconnected");
       reconnectTimeoutRef.current = setTimeout(() => {
         void connect();
       }, 5000);
     }
-  }, [token]);
+  }, [token, clearHeartbeat]);
 
   const reconnect = useCallback(() => {
+    clearHeartbeat();
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current);
       reconnectTimeoutRef.current = null;
@@ -183,11 +286,28 @@ export function AdminWebSocketProvider({ children }: { children: ReactNode }) {
     }
     backoffRef.current = 1000;
     void connect();
-  }, [connect]);
+  }, [connect, clearHeartbeat]);
 
   useEffect(() => {
     void connect();
+    const onOnline = () => {
+      backoffRef.current = 1000;
+      void connect();
+    };
+    const onOffline = () => {
+      clearHeartbeat();
+      setStatus("disconnected");
+    };
+    if (typeof window !== "undefined") {
+      window.addEventListener("online", onOnline);
+      window.addEventListener("offline", onOffline);
+    }
     return () => {
+      clearHeartbeat();
+      if (typeof window !== "undefined") {
+        window.removeEventListener("online", onOnline);
+        window.removeEventListener("offline", onOffline);
+      }
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
       }
@@ -196,7 +316,7 @@ export function AdminWebSocketProvider({ children }: { children: ReactNode }) {
         socketRef.current = null;
       }
     };
-  }, [connect]);
+  }, [connect, clearHeartbeat]);
 
   return (
     <WSContext.Provider
@@ -207,6 +327,10 @@ export function AdminWebSocketProvider({ children }: { children: ReactNode }) {
         eventBuffer,
         reconnect,
         subscribe,
+        sendMessage,
+        joinRoom,
+        leaveRoom,
+        ackEvent,
         refreshKey,
       }}
     >
