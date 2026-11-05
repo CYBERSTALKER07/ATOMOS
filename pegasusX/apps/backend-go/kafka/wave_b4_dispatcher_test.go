@@ -6,7 +6,9 @@ import (
 	"testing"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
+	"github.com/segmentio/kafka-go"
 )
 
 func TestHandlePlanningScenarioPublished_NoError(t *testing.T) {
@@ -109,5 +111,51 @@ func TestHandleRefundAndBuyerAcceptance_B6(t *testing.T) {
 	})
 	if err := d.handleBuyerAcceptanceEvent(context.Background(), baPayload, "tr-b6-ba"); err != nil {
 		t.Fatalf("handleBuyerAcceptanceEvent: %v", err)
+	}
+}
+
+func TestHandleFoundryOperationalEvents_AndTraceParent(t *testing.T) {
+	d := NewNotificationDispatcher(DispatcherDeps{
+		SupplierHub:  ws.NewHub("supplier", nil, nil),
+		WarehouseHub: ws.NewHub("warehouse", nil, nil),
+		DriverHub:    ws.NewHub("driver", nil, nil),
+		RetailerHub:  ws.NewHub("retailer", nil, nil),
+	})
+	for _, evtType := range []string{
+		events.EventCashierSessionStarted,
+		events.EventCashierSessionTransition,
+		events.EventFleetDVIRInspected,
+		events.EventFleetDVIRRedTag,
+		events.EventYardGateCheckRecorded,
+		events.EventContainerLedgerUpdated,
+		events.EventOfflineQuotaLeaseUpdated,
+		events.EventAMLExposureUpdated,
+		events.EventOntologyObjectUpdated,
+	} {
+		payload, _ := json.Marshal(map[string]any{
+			"type":        evtType,
+			"supplier_id": "sup-1",
+			"depot_id":    "wh-1",
+			"driver_id":   "drv-1",
+			"retailer_id": "ret-1",
+			"session_id":  "sess-" + evtType,
+		})
+		msg := kafka.Message{
+			Topic:     events.TopicOrders,
+			Partition: 0,
+			Offset:    100,
+			Value:     payload,
+			Headers: []kafka.Header{
+				{Key: "trace_id", Value: []byte("tr-foundry-1")},
+				{Key: "traceparent", Value: []byte("00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01")},
+			},
+		}
+		ctx := WithTraceFromMessage(context.Background(), msg)
+		if got := outbox.TraceParentFromContext(ctx); got != "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01" {
+			t.Fatalf("expected traceparent in context, got %q", got)
+		}
+		if err := d.dispatchParityEvent(ctx, evtType, payload, "tr-foundry-1"); err != nil {
+			t.Fatalf("dispatchParityEvent(%s): %v", evtType, err)
+		}
 	}
 }

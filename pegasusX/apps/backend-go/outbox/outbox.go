@@ -166,6 +166,7 @@ func EmitJSON(ctx context.Context, txn TxnBuffer, aggregateType, aggregateID, to
 		return fmt.Errorf("outbox: aggregateType/aggregateID/topic required")
 	}
 	traceID := TraceIDFromContext(ctx)
+	traceParent := TraceParentFromContext(ctx)
 	if s, ok := payload.(customerStageStamper); ok {
 		payload = s.WithCustomerStage()
 	}
@@ -178,6 +179,12 @@ func EmitJSON(ctx context.Context, txn TxnBuffer, aggregateType, aggregateID, to
 		raw, err = injectTraceID(raw, traceID)
 		if err != nil {
 			return fmt.Errorf("outbox: inject trace id: %w", err)
+		}
+	}
+	if traceParent != "" {
+		raw, err = injectTraceParent(raw, traceParent)
+		if err != nil {
+			return fmt.Errorf("outbox: inject traceparent: %w", err)
 		}
 	}
 	raw, err = injectEventID(raw, eventID)
@@ -249,6 +256,25 @@ func injectTraceID(raw []byte, traceID string) ([]byte, error) {
 		return raw, nil
 	}
 	object["trace_id"] = traceID
+	patched, err := json.Marshal(object)
+	if err != nil {
+		return nil, err
+	}
+	return patched, nil
+}
+
+func injectTraceParent(raw []byte, traceParent string) ([]byte, error) {
+	if strings.TrimSpace(traceParent) == "" {
+		return raw, nil
+	}
+	var object map[string]any
+	if err := json.Unmarshal(raw, &object); err != nil {
+		return raw, nil
+	}
+	if _, exists := object["traceparent"]; exists {
+		return raw, nil
+	}
+	object["traceparent"] = traceParent
 	patched, err := json.Marshal(object)
 	if err != nil {
 		return nil, err

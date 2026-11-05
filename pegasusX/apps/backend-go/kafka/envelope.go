@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/kafka/workerpool"
-	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/segmentio/kafka-go"
 )
 
@@ -73,9 +72,5 @@ func TraceIDFromMessage(msg kafka.Message) string {
 
 // WithTraceFromMessage is a convenience for handlers that only need trace ctx.
 func WithTraceFromMessage(parent context.Context, msg kafka.Message) context.Context {
-	traceID := TraceIDFromMessage(msg)
-	if traceID == "" {
-		return parent
-	}
-	return outbox.WithTraceID(parent, traceID)
+	return workerpool.ContextWithTrace(parent, msg)
 }

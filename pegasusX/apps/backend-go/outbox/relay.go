@@ -406,6 +406,9 @@ func publishOutboxEvent(ctx context.Context, pub Publisher, topic string, key []
 	if traceID := TraceIDFromContext(ctx); traceID != "" {
 		headers["trace_id"] = []byte(traceID)
 	}
+	if traceParent := TraceParentFromContext(ctx); traceParent != "" {
+		headers["traceparent"] = []byte(traceParent)
+	}
 	if hp, ok := pub.(HeaderPublisher); ok {
 		return hp.PublishWithHeaders(ctx, topic, key, e.Payload, headers)
 	}

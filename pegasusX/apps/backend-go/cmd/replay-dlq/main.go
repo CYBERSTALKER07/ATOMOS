@@ -11,6 +11,7 @@ import (
 
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/bootstrap"
+	"github.com/pegasusx/pegasusx/apps/backend-go/kafkautil"
 	"github.com/segmentio/kafka-go"
 	"google.golang.org/api/iterator"
 )
@@ -74,12 +75,30 @@ func replayFromKafka(ctx context.Context, cfg *bootstrap.Config, brokers []strin
 		"dry_run", dryRun,
 	)
 
+	auth := kafkautil.ClientAuth{
+		Mode:     cfg.KafkaAuthMode,
+		Username: cfg.KafkaSASLUsername,
+	}
+	dialer, err := kafkautil.Dialer(auth)
+	if err != nil {
+		slog.Error("Failed to configure Kafka dialer", "err", err)
+		os.Exit(1)
+	}
+	transport, err := kafkautil.Transport(auth)
+	if err != nil {
+		slog.Error("Failed to configure Kafka transport", "err", err)
+		os.Exit(1)
+	}
+
 	reader := kafka.NewReader(kafka.ReaderConfig{
-		Brokers:  brokers,
-		GroupID:  fmt.Sprintf("dlq-replayer-%d", time.Now().Unix()),
-		Topic:    dlqTopic,
-		MinBytes: 10e3,
-		MaxBytes: 10e6,
+		Brokers:        brokers,
+		Dialer:         dialer,
+		GroupID:        fmt.Sprintf("dlq-replayer-%d", time.Now().Unix()),
+		Topic:          dlqTopic,
+		MinBytes:       1,
+		MaxBytes:       10e6,
+		CommitInterval: 0,
+		StartOffset:    kafka.FirstOffset,
 	})
 	defer reader.Close()
 
@@ -87,9 +106,14 @@ func replayFromKafka(ctx context.Context, cfg *bootstrap.Config, brokers []strin
 	if !dryRun {
 		writer = &kafka.Writer{
 			Addr:                   kafka.TCP(brokers...),
-			Topic:                  mainTopic,
-			Balancer:               &kafka.LeastBytes{},
+			Balancer:               &kafka.Hash{},
+			RequiredAcks:           kafka.RequireAll,
+			Compression:            kafka.Snappy,
+			MaxAttempts:            3,
+			WriteTimeout:           10 * time.Second,
+			ReadTimeout:            10 * time.Second,
 			AllowAutoTopicCreation: false,
+			Transport:              transport,
 		}
 		defer writer.Close()
 	}
@@ -134,11 +158,26 @@ func replayFromKafka(ctx context.Context, cfg *bootstrap.Config, brokers []strin
 			continue
 		}
 
-		slog.Info("Replaying message to main topic", "offset", msg.Offset, "key", string(msg.Key))
+		targetTopic := mainTopic
+		replayHeaders := make([]kafka.Header, 0, len(msg.Headers)+1)
+		for _, h := range msg.Headers {
+			if (h.Key == "original_topic" || h.Key == "dlq_original_topic") && len(h.Value) > 0 {
+				targetTopic = string(h.Value)
+				continue
+			}
+			if strings.HasPrefix(h.Key, "dlq_") || strings.HasPrefix(h.Key, "original_") {
+				continue
+			}
+			replayHeaders = append(replayHeaders, h)
+		}
+		replayHeaders = append(replayHeaders, kafka.Header{Key: "replayed", Value: []byte("true")})
+
+		slog.Info("Replaying message to topic", "topic", targetTopic, "offset", msg.Offset, "key", string(msg.Key))
 		err = writer.WriteMessages(ctx, kafka.Message{
+			Topic:   targetTopic,
 			Key:     msg.Key,
 			Value:   msg.Value,
-			Headers: msg.Headers,
+			Headers: replayHeaders,
 		})
 		if err != nil {
 			slog.Error("Error writing message to main topic", "err", err)
@@ -223,11 +262,24 @@ func replayFromSpanner(ctx context.Context, cfg *bootstrap.Config, brokers []str
 
 	var writer *kafka.Writer
 	if !dryRun && len(rows) > 0 {
+		transport, err := kafkautil.Transport(kafkautil.ClientAuth{
+			Mode:     cfg.KafkaAuthMode,
+			Username: cfg.KafkaSASLUsername,
+		})
+		if err != nil {
+			slog.Error("Failed to configure Kafka transport for Spanner DLQ replay", "err", err)
+			return
+		}
 		writer = &kafka.Writer{
 			Addr:                   kafka.TCP(brokers...),
-			Topic:                  cfg.KafkaTopicMain,
-			Balancer:               &kafka.LeastBytes{},
+			Balancer:               &kafka.Hash{},
+			RequiredAcks:           kafka.RequireAll,
+			Compression:            kafka.Snappy,
+			MaxAttempts:            3,
+			WriteTimeout:           10 * time.Second,
+			ReadTimeout:            10 * time.Second,
 			AllowAutoTopicCreation: false,
+			Transport:              transport,
 		}
 		defer writer.Close()
 	}

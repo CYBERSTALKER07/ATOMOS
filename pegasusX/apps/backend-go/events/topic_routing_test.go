@@ -22,6 +22,18 @@ func TestDomainTopicForEventType(t *testing.T) {
 	if got := DomainTopicForEventType(EventDemandSignal); got != TopicDemand {
 		t.Fatalf("DEMAND_SIGNAL -> %q, want %q", got, TopicDemand)
 	}
+	if got := DomainTopicForEventType(EventCashierSessionTransition); got != TopicOrders {
+		t.Fatalf("CASHIER_SESSION_TRANSITION -> %q, want %q", got, TopicOrders)
+	}
+	if got := DomainTopicForEventType(EventFleetDVIRRedTag); got != TopicDispatch {
+		t.Fatalf("FLEET_DVIR_RED_TAG -> %q, want %q", got, TopicDispatch)
+	}
+	if got := DomainTopicForEventType(EventYardGateCheckRecorded); got != TopicDispatch {
+		t.Fatalf("YARD_GATE_CHECK_RECORDED -> %q, want %q", got, TopicDispatch)
+	}
+	if got := DomainTopicForEventType(EventContainerLedgerUpdated); got != TopicExceptions {
+		t.Fatalf("CONTAINER_LEDGER_UPDATED -> %q, want %q", got, TopicExceptions)
+	}
 }
 
 func TestRelayPublishTopics_demandSignalDualWrite(t *testing.T) {

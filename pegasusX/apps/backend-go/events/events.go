@@ -371,6 +371,17 @@ const (
 	EventPlanningPromoSimulationReady = "PLANNING_PROMO_SIMULATION_READY"
 	EventPlanningConfidenceDowngraded = "PLANNING_CONFIDENCE_DOWNGRADED"
 	EventPlanningSignalIngest         = "planning.signal.ingest.v1"
+
+	// Foundry Ontology, Cashier Vault, Fleet DVIR & Edge Guard Ledger Events
+	EventOntologyObjectUpdated    = "ONTOLOGY_OBJECT_UPDATED"
+	EventCashierSessionStarted    = "CASHIER_SESSION_STARTED"
+	EventCashierSessionTransition = "CASHIER_SESSION_TRANSITION"
+	EventFleetDVIRInspected       = "FLEET_DVIR_INSPECTED"
+	EventFleetDVIRRedTag          = "FLEET_DVIR_RED_TAG"
+	EventYardGateCheckRecorded    = "YARD_GATE_CHECK_RECORDED"
+	EventContainerLedgerUpdated   = "CONTAINER_LEDGER_UPDATED"
+	EventOfflineQuotaLeaseUpdated = "OFFLINE_QUOTA_LEASE_UPDATED"
+	EventAMLExposureUpdated       = "AML_EXPOSURE_UPDATED"
 )
 
 const (

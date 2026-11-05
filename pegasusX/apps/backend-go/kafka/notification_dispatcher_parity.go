@@ -17,6 +17,7 @@ type partyEnvelope struct {
 	RetailerID   string `json:"retailer_id"`
 	DriverID     string `json:"driver_id"`
 	WarehouseID  string `json:"warehouse_id"`
+	DepotID      string `json:"depot_id"`
 	FactoryID    string `json:"factory_id"`
 	ManifestID   string `json:"manifest_id"`
 	TransferID   string `json:"transfer_id"`
@@ -47,6 +48,9 @@ func decodePartyEnvelope(payload []byte) (partyEnvelope, error) {
 	}
 	if e.WarehouseID == "" {
 		e.WarehouseID = legacy.WarehouseId
+	}
+	if e.WarehouseID == "" && e.DepotID != "" {
+		e.WarehouseID = e.DepotID
 	}
 	if e.FactoryID == "" {
 		e.FactoryID = legacy.FactoryId
@@ -136,6 +140,18 @@ func (d *NotificationDispatcher) dispatchParityEvent(ctx context.Context, eventT
 	// Supplier onboarding parity aliases.
 	case "SUPPLIER_REGISTERED", "SUPPLIER_CONFIGURED":
 		return d.handleSupplierUpdated(ctx, payload, traceID)
+
+	// Foundry / Cashier / Fleet DVIR / Yard Gate / Container Ledger / Offline Lease / AML parity.
+	case events.EventCashierSessionStarted,
+		events.EventCashierSessionTransition,
+		events.EventFleetDVIRInspected,
+		events.EventFleetDVIRRedTag,
+		events.EventYardGateCheckRecorded,
+		events.EventContainerLedgerUpdated,
+		events.EventOfflineQuotaLeaseUpdated,
+		events.EventAMLExposureUpdated,
+		events.EventOntologyObjectUpdated:
+		return d.handleFoundryOperationalEvent(ctx, payload, traceID)
 
 	default:
 		switch {
@@ -598,5 +614,45 @@ func (d *NotificationDispatcher) handleProductAndCategoryCreated(ctx context.Con
 	}
 	d.broadcastSupplier(ctx, e.SupplierID, payload)
 	d.broadcastRetailerPromoSupplier(ctx, e.SupplierID, payload)
+	return nil
+}
+
+func (d *NotificationDispatcher) handleFoundryOperationalEvent(ctx context.Context, payload []byte, traceID string) error {
+	e, err := decodePartyEnvelope(payload)
+	if err != nil {
+		return err
+	}
+	var foundryKeys struct {
+		SessionID    string `json:"session_id"`
+		InspectionID string `json:"inspection_id"`
+		EventID      string `json:"event_id"`
+		ObjectID     string `json:"object_id"`
+		LeaseID      string `json:"lease_id"`
+		VehicleID    string `json:"vehicle_id"`
+	}
+	_ = json.Unmarshal(payload, &foundryKeys)
+
+	aggregateID := ""
+	for _, candidate := range []string{
+		foundryKeys.SessionID,
+		foundryKeys.InspectionID,
+		foundryKeys.ObjectID,
+		foundryKeys.LeaseID,
+		foundryKeys.VehicleID,
+		foundryKeys.EventID,
+		e.dedupAggregateID(),
+	} {
+		if strings.TrimSpace(candidate) != "" {
+			aggregateID = strings.TrimSpace(candidate)
+			break
+		}
+	}
+	if d.dropFanout(e.Type, traceID, aggregateID) {
+		return nil
+	}
+	d.broadcastSupplier(ctx, e.supplierID(), payload)
+	d.broadcastWarehouse(ctx, e.warehouseID(), payload)
+	d.broadcastDriver(ctx, strings.TrimSpace(e.DriverID), payload)
+	d.broadcastRetailer(ctx, e.retailerID(), payload)
 	return nil
 }

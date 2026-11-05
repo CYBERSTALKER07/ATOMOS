@@ -54,5 +54,41 @@ class TestDispatchOptimizerConsumer(unittest.TestCase):
         total_orders = sum(len(r["order_ids"]) for r in res["routes"])
         self.assertEqual(total_orders, 4)
 
+    def test_extract_header_and_dlq_routing(self):
+        class FakeMsg:
+            def headers(self):
+                return [("trace_id", b"tr-123"), ("traceparent", b"00-abc-def-01")]
+            def topic(self):
+                return "orders.v1"
+            def partition(self):
+                return 2
+            def offset(self):
+                return 42
+            def key(self):
+                return b"sup-456"
+            def value(self):
+                return b"invalid-json"
+
+        class FakeProducer:
+            def __init__(self):
+                self.produced = []
+            def produce(self, topic, key=None, value=None, headers=None):
+                self.produced.append((topic, key, value, dict(headers or [])))
+            def flush(self, timeout=None):
+                return 0
+
+        msg = FakeMsg()
+        self.assertEqual(consumer._extract_header(msg, "trace_id"), "tr-123")
+        self.assertEqual(consumer._extract_header(msg, "traceparent"), "00-abc-def-01")
+        prod = FakeProducer()
+        consumer._route_to_dlq(prod, msg, "decode_error", trace_id="tr-123")
+        self.assertEqual(len(prod.produced), 1)
+        topic, key, val, hdrs = prod.produced[0]
+        self.assertEqual(topic, consumer.DLQ_TOPIC)
+        self.assertEqual(key, b"sup-456")
+        self.assertEqual(val, b"invalid-json")
+        self.assertEqual(hdrs[b"original_topic" if b"original_topic" in hdrs else "original_topic"], b"orders.v1")
+        self.assertEqual(hdrs[b"trace_id" if b"trace_id" in hdrs else "trace_id"], b"tr-123")
+
 if __name__ == "__main__":
     unittest.main()

@@ -229,16 +229,24 @@ func (p *Pool) runWorker(parent context.Context, cancel context.CancelFunc, in <
 	}
 }
 
-// ContextWithTrace binds trace_id from Kafka headers, then JSON body fallback.
+// ContextWithTrace binds trace_id and W3C traceparent from Kafka headers, then JSON body fallback.
 func ContextWithTrace(parent context.Context, m kafka.Message) context.Context {
+	ctx := parent
 	traceID := HeaderValue(m.Headers, "trace_id")
 	if traceID == "" {
 		traceID = TraceIDFromPayload(m.Value)
 	}
-	if traceID == "" {
-		return parent
+	if traceID != "" {
+		ctx = outbox.WithTraceID(ctx, traceID)
 	}
-	return outbox.WithTraceID(parent, traceID)
+	traceParent := HeaderValue(m.Headers, "traceparent")
+	if traceParent == "" {
+		traceParent = TraceParentFromPayload(m.Value)
+	}
+	if traceParent != "" {
+		ctx = outbox.WithTraceParent(ctx, traceParent)
+	}
+	return ctx
 }
 
 // HeaderValue returns the named header value or "".
@@ -260,6 +268,17 @@ func TraceIDFromPayload(value []byte) string {
 		return ""
 	}
 	return envelope.TraceID
+}
+
+// TraceParentFromPayload reads traceparent from a JSON object envelope.
+func TraceParentFromPayload(value []byte) string {
+	var envelope struct {
+		TraceParent string `json:"traceparent"`
+	}
+	if err := json.Unmarshal(value, &envelope); err != nil {
+		return ""
+	}
+	return envelope.TraceParent
 }
 
 type backoff struct {

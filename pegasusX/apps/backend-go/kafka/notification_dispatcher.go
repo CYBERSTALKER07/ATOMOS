@@ -38,6 +38,8 @@ type DispatcherDeps struct {
 	Cache           *cache.Cache
 	// RetailerActors optional: multi-user FCM targets under a retailer org.
 	RetailerActors RetailerPushActorLister
+	// StreamProcessor optional: real-time Kafka stream analytics aggregator.
+	StreamProcessor *AnalyticsStreamProcessor
 }
 
 // NotificationDispatcher consumes generic events from Kafka and routes
@@ -47,6 +49,7 @@ type NotificationDispatcher struct {
 	dedup           *fanoutDedup
 	eventDedup      EventDedupStore
 	consumerGroupID string
+	streamProcessor *AnalyticsStreamProcessor
 }
 
 // NewNotificationDispatcher creates a new dispatcher instance.
@@ -55,11 +58,16 @@ func NewNotificationDispatcher(deps DispatcherDeps) *NotificationDispatcher {
 	if eventDedup == nil {
 		eventDedup = NewInMemoryEventDedup(defaultFanoutDedupTTL)
 	}
+	sp := deps.StreamProcessor
+	if sp == nil {
+		sp = NewAnalyticsStreamProcessor()
+	}
 	return &NotificationDispatcher{
 		deps:            deps,
 		dedup:           newFanoutDedup(defaultFanoutDedupTTL),
 		eventDedup:      eventDedup,
 		consumerGroupID: strings.TrimSpace(deps.ConsumerGroupID),
+		streamProcessor: sp,
 	}
 }
 
@@ -85,6 +93,9 @@ func (d *NotificationDispatcher) HandleEvent(ctx context.Context, msg kafka.Mess
 	if envelope.Type == "" {
 		consumerPoisonSkipped.WithLabelValues("notification_dispatcher").Inc()
 		return nil
+	}
+	if d.streamProcessor != nil {
+		d.streamProcessor.ObservePayload(ctx, msg.Value)
 	}
 
 	traceID := outbox.TraceIDFromContext(ctx)

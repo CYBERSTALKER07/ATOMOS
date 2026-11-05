@@ -203,7 +203,19 @@ func (r *SpannerRepository) PersistOntologyObject(ctx context.Context, obj *Onto
 			"ValidFrom":        validFrom,
 			"UpdatedAt":        spanner.CommitTimestamp,
 		})
-		return txn.BufferWrite([]*spanner.Mutation{mut})
+		buf := &spannerOutboxBuffer{}
+		if emitErr := outbox.EmitJSON(ctx, buf, events.AggregateControlTower, obj.ObjectID, events.TopicMain, map[string]any{
+			"type":        events.EventOntologyObjectUpdated,
+			"cell_id":     obj.CellID,
+			"object_type": obj.ObjectType,
+			"object_id":   obj.ObjectID,
+			"supplier_id": obj.SupplierID,
+			"version":     obj.Version,
+		}); emitErr != nil {
+			return emitErr
+		}
+		muts := append([]*spanner.Mutation{mut}, toOutboxMutations(buf.events)...)
+		return txn.BufferWrite(muts)
 	})
 	return err
 }
@@ -420,7 +432,7 @@ func (r *SpannerRepository) PersistScenarioObjectPatches(ctx context.Context, pa
 	return err
 }
 
-// PersistCashierSession writes a single CashierBlindCountSession to Cloud Spanner.
+// PersistCashierSession writes a single CashierBlindCountSession to Cloud Spanner with atomic OutboxEvent buffering.
 func (r *SpannerRepository) PersistCashierSession(ctx context.Context, sess *CashierBlindCountSession) error {
 	if r == nil || r.client == nil || sess == nil {
 		return nil
@@ -446,7 +458,22 @@ func (r *SpannerRepository) PersistCashierSession(ctx context.Context, sess *Cas
 			"CreatedAt":                 spanner.CommitTimestamp,
 			"ResolvedAt":                sess.ResolvedAt,
 		})
-		return txn.BufferWrite([]*spanner.Mutation{mut})
+		buf := &spannerOutboxBuffer{}
+		if emitErr := outbox.EmitJSON(ctx, buf, events.AggregateControlTower, sess.SessionID, events.TopicMain, map[string]any{
+			"type":             events.EventCashierSessionStarted,
+			"session_id":       sess.SessionID,
+			"supplier_id":      sess.SupplierID,
+			"depot_id":         sess.DepotID,
+			"warehouse_id":     sess.DepotID,
+			"driver_id":        sess.DriverID,
+			"route_id":         sess.RouteID,
+			"bag_seal_barcode": sess.BagSealBarcode,
+			"status":           sess.Status,
+		}); emitErr != nil {
+			return emitErr
+		}
+		muts := append([]*spanner.Mutation{mut}, toOutboxMutations(buf.events)...)
+		return txn.BufferWrite(muts)
 	})
 	return err
 }
@@ -611,7 +638,7 @@ func (r *SpannerRepository) ResolveRouteExpectedCash(ctx context.Context, suppli
 	return totalMinor, nil
 }
 
-// PersistDVIRInspection writes a FleetDVIRInspection to Cloud Spanner.
+// PersistDVIRInspection writes a FleetDVIRInspection to Cloud Spanner with atomic OutboxEvent buffering.
 func (r *SpannerRepository) PersistDVIRInspection(ctx context.Context, insp *FleetDVIRInspection) error {
 	if r == nil || r.client == nil || insp == nil {
 		return nil
@@ -635,7 +662,21 @@ func (r *SpannerRepository) PersistDVIRInspection(ctx context.Context, insp *Fle
 			"MaintenanceWorkOrderId": insp.MaintenanceWorkOrderID,
 			"CreatedAt":              spanner.CommitTimestamp,
 		})
-		return txn.BufferWrite([]*spanner.Mutation{mut})
+		buf := &spannerOutboxBuffer{}
+		if emitErr := outbox.EmitJSON(ctx, buf, events.AggregateControlTower, insp.InspectionID, events.TopicMain, map[string]any{
+			"type":                  events.EventFleetDVIRInspected,
+			"inspection_id":         insp.InspectionID,
+			"supplier_id":           insp.SupplierID,
+			"vehicle_id":            insp.VehicleID,
+			"driver_id":             insp.DriverID,
+			"status":                insp.Status,
+			"critical_defect_found": insp.CriticalDefectFound,
+			"red_tag_applied":       insp.RedTagApplied,
+		}); emitErr != nil {
+			return emitErr
+		}
+		muts := append([]*spanner.Mutation{mut}, toOutboxMutations(buf.events)...)
+		return txn.BufferWrite(muts)
 	})
 	return err
 }
@@ -784,7 +825,7 @@ func (r *SpannerRepository) GetLatestDVIRForVehicle(ctx context.Context, vehicle
 	return &insp, nil
 }
 
-// PersistAMLExposure writes a MerchantDailyCashExposure record to Cloud Spanner.
+// PersistAMLExposure writes a MerchantDailyCashExposure record to Cloud Spanner with atomic OutboxEvent buffering.
 func (r *SpannerRepository) PersistAMLExposure(ctx context.Context, legalEntityTIN, supplierID, calendarDate string, accumulatedMinor int64) error {
 	if r == nil || r.client == nil {
 		return nil
@@ -801,7 +842,18 @@ func (r *SpannerRepository) PersistAMLExposure(ctx context.Context, legalEntityT
 			"AccumulatedCashMinor": accumulatedMinor,
 			"UpdatedAt":            spanner.CommitTimestamp,
 		})
-		return txn.BufferWrite([]*spanner.Mutation{mut})
+		buf := &spannerOutboxBuffer{}
+		if emitErr := outbox.EmitJSON(ctx, buf, events.AggregateControlTower, legalEntityTIN+":"+parsedDate.String(), events.TopicMain, map[string]any{
+			"type":                   events.EventAMLExposureUpdated,
+			"legal_entity_tin":       legalEntityTIN,
+			"supplier_id":            supplierID,
+			"calendar_date":          parsedDate.String(),
+			"accumulated_cash_minor": accumulatedMinor,
+		}); emitErr != nil {
+			return emitErr
+		}
+		muts := append([]*spanner.Mutation{mut}, toOutboxMutations(buf.events)...)
+		return txn.BufferWrite(muts)
 	})
 	return err
 }
@@ -838,7 +890,7 @@ func (r *SpannerRepository) GetAMLExposure(ctx context.Context, legalEntityTIN, 
 	return &exp, nil
 }
 
-// PersistGateCheckEvent writes a YardGateCheckEvent to Cloud Spanner.
+// PersistGateCheckEvent writes a YardGateCheckEvent to Cloud Spanner with atomic OutboxEvent buffering.
 func (r *SpannerRepository) PersistGateCheckEvent(ctx context.Context, evt *YardGateCheckEvent) error {
 	if r == nil || r.client == nil || evt == nil {
 		return nil
@@ -856,12 +908,28 @@ func (r *SpannerRepository) PersistGateCheckEvent(ctx context.Context, evt *Yard
 			"AssignedBaySlot": evt.AssignedBaySlot,
 			"CreatedAt":       spanner.CommitTimestamp,
 		})
-		return txn.BufferWrite([]*spanner.Mutation{mut})
+		buf := &spannerOutboxBuffer{}
+		if emitErr := outbox.EmitJSON(ctx, buf, events.AggregateControlTower, evt.GateEventID, events.TopicMain, map[string]any{
+			"type":              events.EventYardGateCheckRecorded,
+			"gate_event_id":     evt.GateEventID,
+			"depot_id":          evt.DepotID,
+			"warehouse_id":      evt.DepotID,
+			"supplier_id":       evt.SupplierID,
+			"vehicle_id":        evt.VehicleID,
+			"license_plate":     evt.LicensePlate,
+			"direction":         evt.Direction,
+			"bolt_seal_barcode": evt.BoltSealBarcode,
+			"seal_intact":       evt.SealIntact,
+		}); emitErr != nil {
+			return emitErr
+		}
+		muts := append([]*spanner.Mutation{mut}, toOutboxMutations(buf.events)...)
+		return txn.BufferWrite(muts)
 	})
 	return err
 }
 
-// PersistReturnableContainerLedger updates the balance of returnable packaging for an account.
+// PersistReturnableContainerLedger updates the balance of returnable packaging for an account with atomic OutboxEvent buffering.
 func (r *SpannerRepository) PersistReturnableContainerLedger(ctx context.Context, entry *ReturnableContainerLedger) error {
 	if r == nil || r.client == nil || entry == nil {
 		return nil
@@ -876,7 +944,20 @@ func (r *SpannerRepository) PersistReturnableContainerLedger(ctx context.Context
 			"DepositLockedMinor": entry.DepositLockedMinor,
 			"UpdatedAt":          spanner.CommitTimestamp,
 		})
-		return txn.BufferWrite([]*spanner.Mutation{mut})
+		buf := &spannerOutboxBuffer{}
+		if emitErr := outbox.EmitJSON(ctx, buf, events.AggregateControlTower, entry.AccountID+":"+entry.ContainerSKU, events.TopicMain, map[string]any{
+			"type":                 events.EventContainerLedgerUpdated,
+			"account_id":           entry.AccountID,
+			"container_sku":        entry.ContainerSKU,
+			"supplier_id":          entry.SupplierID,
+			"holder_type":          entry.HolderType,
+			"balance_qty":          entry.BalanceQty,
+			"deposit_locked_minor": entry.DepositLockedMinor,
+		}); emitErr != nil {
+			return emitErr
+		}
+		muts := append([]*spanner.Mutation{mut}, toOutboxMutations(buf.events)...)
+		return txn.BufferWrite(muts)
 	})
 	return err
 }
@@ -915,7 +996,7 @@ func (r *SpannerRepository) GetReturnableContainerBalance(ctx context.Context, a
 	return &entry, nil
 }
 
-// PersistOfflineQuotaLease stores an active or expired driver offline quota lease in Cloud Spanner.
+// PersistOfflineQuotaLease stores an active or expired driver offline quota lease in Cloud Spanner with atomic OutboxEvent buffering.
 func (r *SpannerRepository) PersistOfflineQuotaLease(ctx context.Context, lease *OfflineQuotaLease) error {
 	if r == nil || r.client == nil || lease == nil {
 		return nil
@@ -934,7 +1015,22 @@ func (r *SpannerRepository) PersistOfflineQuotaLease(ctx context.Context, lease 
 			"Status":                lease.Status,
 			"CreatedAt":             spanner.CommitTimestamp,
 		})
-		return txn.BufferWrite([]*spanner.Mutation{mut})
+		buf := &spannerOutboxBuffer{}
+		if emitErr := outbox.EmitJSON(ctx, buf, events.AggregateControlTower, lease.LeaseID, events.TopicMain, map[string]any{
+			"type":                    events.EventOfflineQuotaLeaseUpdated,
+			"lease_id":                lease.LeaseID,
+			"order_id":                lease.OrderID,
+			"driver_id":               lease.DriverID,
+			"supplier_id":             lease.SupplierID,
+			"legal_entity_tin":        lease.LegalEntityTIN,
+			"max_cash_allowed_minor":  lease.MaxCashAllowedMinor,
+			"max_credit_allowed_minor": lease.MaxCreditAllowedMinor,
+			"status":                  lease.Status,
+		}); emitErr != nil {
+			return emitErr
+		}
+		muts := append([]*spanner.Mutation{mut}, toOutboxMutations(buf.events)...)
+		return txn.BufferWrite(muts)
 	})
 	return err
 }

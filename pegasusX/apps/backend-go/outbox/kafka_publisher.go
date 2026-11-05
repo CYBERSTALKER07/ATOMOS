@@ -145,6 +145,7 @@ func (p *KafkaPublisher) PublishWithHeaders(ctx context.Context, topic string, k
 	}
 	var hdrs []kafka.Header
 	hasTraceID := false
+	hasTraceParent := false
 	for k, v := range headers {
 		trimmedKey := strings.TrimSpace(k)
 		if trimmedKey == "" || len(v) == 0 {
@@ -153,11 +154,23 @@ func (p *KafkaPublisher) PublishWithHeaders(ctx context.Context, topic string, k
 		if strings.EqualFold(trimmedKey, "trace_id") {
 			hasTraceID = true
 		}
+		if strings.EqualFold(trimmedKey, "traceparent") {
+			hasTraceParent = true
+		}
 		hdrs = append(hdrs, kafka.Header{Key: trimmedKey, Value: v})
 	}
 	if !hasTraceID {
 		if traceID := traceIDFromPayload(value); traceID != "" {
 			hdrs = append(hdrs, kafka.Header{Key: "trace_id", Value: []byte(traceID)})
+		} else if traceID := TraceIDFromContext(ctx); traceID != "" {
+			hdrs = append(hdrs, kafka.Header{Key: "trace_id", Value: []byte(traceID)})
+		}
+	}
+	if !hasTraceParent {
+		if tp := traceParentFromPayload(value); tp != "" {
+			hdrs = append(hdrs, kafka.Header{Key: "traceparent", Value: []byte(tp)})
+		} else if tp := TraceParentFromContext(ctx); tp != "" {
+			hdrs = append(hdrs, kafka.Header{Key: "traceparent", Value: []byte(tp)})
 		}
 	}
 	msg.Headers = hdrs
@@ -177,6 +190,16 @@ func traceIDFromPayload(value []byte) string {
 		return ""
 	}
 	return strings.TrimSpace(envelope.TraceID)
+}
+
+func traceParentFromPayload(value []byte) string {
+	var envelope struct {
+		TraceParent string `json:"traceparent"`
+	}
+	if err := json.Unmarshal(value, &envelope); err != nil {
+		return ""
+	}
+	return strings.TrimSpace(envelope.TraceParent)
 }
 
 // Close releases writer resources.

@@ -65,14 +65,15 @@ type DLQWriter interface {
 }
 
 type ConsumerDeps struct {
-	Brokers     []string
-	GroupID     string
-	Topic       string
-	Topics      []string
-	Handler     EventHandler
-	DLQWriter   DLQWriter
-	OnDLQ       DLQHook
-	MaxAttempts int
+	Brokers        []string
+	GroupID        string
+	Topic          string
+	Topics         []string
+	Handler        EventHandler
+	DLQWriter      DLQWriter
+	OnDLQ          DLQHook
+	MaxAttempts    int
+	ProcessTimeout time.Duration
 	// Auth: empty = local plaintext; GCP_MANAGED_OAUTH for Managed Kafka.
 	Auth kafkautil.ClientAuth
 }
@@ -92,6 +93,9 @@ type consumerReader interface {
 func NewConsumer(deps ConsumerDeps) *Consumer {
 	if deps.MaxAttempts <= 0 {
 		deps.MaxAttempts = 4
+	}
+	if deps.ProcessTimeout <= 0 {
+		deps.ProcessTimeout = 30 * time.Second
 	}
 	dialer, err := kafkautil.Dialer(deps.Auth)
 	if err != nil {
@@ -208,7 +212,13 @@ func (c *Consumer) processWithRetries(ctx context.Context, m kafka.Message) (err
 					consumerErrors.WithLabelValues(c.deps.Topic, fmt.Sprintf("%d", m.Partition)).Inc()
 				}
 			}()
-			attemptErr = c.deps.Handler(ctx, m)
+			attemptCtx := ctx
+			var cancelAttempt context.CancelFunc
+			if c.deps.ProcessTimeout > 0 {
+				attemptCtx, cancelAttempt = context.WithTimeout(ctx, c.deps.ProcessTimeout)
+				defer cancelAttempt()
+			}
+			attemptErr = c.deps.Handler(attemptCtx, m)
 		}()
 
 		if attemptErr == nil {

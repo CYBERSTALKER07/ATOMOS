@@ -119,21 +119,25 @@ func DomainTopicForEventType(eventType string) string {
 		EventMissingItemsReported, EventSplitPaymentCreated,
 		EventFiscalReceiptRequested, EventFiscalReceiptSucceeded, EventFiscalReceiptFailed,
 		EventRefundRequested, EventRefundSucceeded, EventRefundFailed, EventFiscalCorrectiveRequested,
-		EventOrderForceCompleted, EventCashShortfall, EventCashOverage:
+		EventOrderForceCompleted, EventCashShortfall, EventCashOverage,
+		EventCashierSessionStarted, EventCashierSessionTransition,
+		EventOfflineQuotaLeaseUpdated, EventAMLExposureUpdated:
 		return TopicOrders
 	case EventWarehouseDispatchLockChanged, EventManifestDraftCreated,
 		EventManifestLoadingStarted, EventManifestOrderInjected, EventManifestOrderException,
 		EventManifestDLQEscalation, EventManifestRebalanced, EventManifestCancelled,
 		EventManifestSealed, EventManifestDispatched, EventManifestCompleted,
 		EventRouteCreated, EventRouteReordered, EventRouteReplanned, EventDriverAvailabilityChanged,
-		EventVehicleAvailabilityChanged, EventFreezeLockAcquired, EventFreezeLockReleased:
+		EventVehicleAvailabilityChanged, EventFreezeLockAcquired, EventFreezeLockReleased,
+		EventFleetDVIRInspected, EventFleetDVIRRedTag, EventYardGateCheckRecorded,
+		EventOntologyObjectUpdated:
 		return TopicDispatch
 	case EventDriverLocationUpdated, EventDriverReturnApproaching,
 		EventSupplyTransferApproaching, EventCommandDispatched, EventCommandReceived,
 		EventCommandSettled:
 		return TopicRealtime
 	case EventClaimFiled, EventClaimUnderReview, EventClaimResolved, EventLogisticsExceptionReported,
-		EventReverseLogisticsRequired:
+		EventReverseLogisticsRequired, EventContainerLedgerUpdated:
 		// MISSING_ITEMS_REPORTED stays on TopicOrders (above); dual-emit to exceptions
 		// is done explicitly in order handlers when needed.
 		return TopicExceptions

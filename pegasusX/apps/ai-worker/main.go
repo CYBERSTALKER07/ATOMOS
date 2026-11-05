@@ -326,7 +326,7 @@ func main() {
 		})
 	}
 
-	if planningIngest := planningingest.NewRuntimeWithDialer(brokers, dialer, spannerClient, logger); planningIngest != nil {
+	if planningIngest := planningingest.NewRuntimeWithDLQ(brokers, dialer, dlqWriter, spannerClient, logger); planningIngest != nil {
 		g.Go(func() error {
 			defer planningIngest.Close()
 			planningIngest.Run(gCtx)

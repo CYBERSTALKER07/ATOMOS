@@ -31,6 +31,18 @@ var (
 		Name:      "stream_processor_cancellations_total",
 		Help:      "Total aggregated cancellations processed by stream processor",
 	})
+	streamProcessorCashierSessionsTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: "void",
+		Subsystem: "kafka",
+		Name:      "stream_processor_cashier_sessions_total",
+		Help:      "Total cashier session events processed by stream processor",
+	})
+	streamProcessorDVIRRedTagsTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: "void",
+		Subsystem: "kafka",
+		Name:      "stream_processor_dvir_red_tags_total",
+		Help:      "Total fleet DVIR red-tag events processed by stream processor",
+	})
 )
 
 // StreamProcessor defines an interface for continuous stream analytics and transformations.
@@ -42,10 +54,12 @@ type StreamProcessor interface {
 // AnalyticsStreamProcessor aggregates system events in real-time.
 // This is useful for dashboard metrics, fraud detection, or materializing views.
 type AnalyticsStreamProcessor struct {
-	mu           sync.RWMutex
-	orderCount   int64
-	revenueMinor int64
-	cancelCount  int64
+	mu                  sync.RWMutex
+	orderCount          int64
+	revenueMinor        int64
+	cancelCount         int64
+	cashierSessionCount int64
+	dvirRedTagCount     int64
 
 	cancelFunc context.CancelFunc
 	wg         sync.WaitGroup
@@ -100,6 +114,14 @@ func (s *AnalyticsStreamProcessor) Stop() error {
 	return nil
 }
 
+// ObservePayload records a single Kafka payload into the stream processor counters and Prometheus metrics.
+func (s *AnalyticsStreamProcessor) ObservePayload(ctx context.Context, payload []byte) {
+	if s == nil || len(payload) == 0 {
+		return
+	}
+	s.processMessage(ctx, payload)
+}
+
 // processMessage dynamically determines the event type and applies the correct stream transformation.
 func (s *AnalyticsStreamProcessor) processMessage(ctx context.Context, payload []byte) {
 	// First extract the base event to determine routing
@@ -115,18 +137,29 @@ func (s *AnalyticsStreamProcessor) processMessage(ctx context.Context, payload [
 	switch base.Type {
 	case events.EventOrderCreated:
 		s.orderCount++
+		streamProcessorOrdersTotal.Inc()
 	case events.EventOrderStatusChanged:
 		var orderEvt events.OrderEvent
 		if err := json.Unmarshal(payload, &orderEvt); err == nil {
 			if orderEvt.Status == "CANCELLED" {
 				s.cancelCount++
+				streamProcessorCancelsTotal.Inc()
 			}
 		}
 	case events.EventPaymentCleared:
 		var fin events.FinanceEvent
 		if err := json.Unmarshal(payload, &fin); err == nil {
 			s.revenueMinor += fin.AmountMinor
+			if fin.AmountMinor > 0 {
+				streamProcessorRevenueTotal.Add(float64(fin.AmountMinor))
+			}
 		}
+	case events.EventCashierSessionStarted, events.EventCashierSessionTransition:
+		s.cashierSessionCount++
+		streamProcessorCashierSessionsTotal.Inc()
+	case events.EventFleetDVIRRedTag:
+		s.dvirRedTagCount++
+		streamProcessorDVIRRedTagsTotal.Inc()
 	}
 }
 
