@@ -72,7 +72,7 @@ class OfflineSyncWorker @AssistedInject constructor(
         for (mutation in remaining) {
             when (flushOne(mutation)) {
                 FlushOutcome.RETRY -> retryableFailures++
-                FlushOutcome.SKIP_KEEP -> retryableFailures++ // proximity too stale — retry later
+                FlushOutcome.SKIP_KEEP -> Unit
                 FlushOutcome.ACK, FlushOutcome.DEAD -> Unit
             }
         }
@@ -86,12 +86,12 @@ class OfflineSyncWorker @AssistedInject constructor(
         if (ep == DriverOfflineActionCatalog.ENDPOINT_PROXIMITY) {
             val ageMs = ageMillis(mutation)
             if (ageMs > DriverOfflineActionCatalog.PROXIMITY_MAX_AGE_MS) {
-                pendingDao.recordAttempt(
+                pendingDao.markDead(
                     mutation.id,
                     "proximity_timestamp_stale ageMs=$ageMs",
                 )
-                Log.w(TAG, "Skip proximity ${mutation.orderId}: GPS/timestamp too stale")
-                return FlushOutcome.SKIP_KEEP
+                Log.w(TAG, "Dead-lettered proximity ${mutation.orderId}: GPS/timestamp too stale (ageMs=$ageMs)")
+                return FlushOutcome.DEAD
             }
         }
 

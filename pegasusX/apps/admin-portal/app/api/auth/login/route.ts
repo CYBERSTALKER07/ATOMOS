@@ -14,7 +14,22 @@ export async function POST(req: Request) {
     let sub = subject || "platform_admin";
 
     if (directToken && typeof directToken === "string") {
-      token = directToken.trim();
+      const candidate = directToken.trim();
+      // Verify token authenticity against backend session endpoint
+      const verifyRes = await fetch(`${BACKEND_BASE()}/v1/auth/session`, {
+        method: "GET",
+        headers: { Authorization: `Bearer ${candidate}` },
+      });
+      if (!verifyRes.ok) {
+        return NextResponse.json(
+          { error: "Invalid or expired direct token" },
+          { status: 401 },
+        );
+      }
+      const sess = await verifyRes.json();
+      token = candidate;
+      role = sess.role || role;
+      sub = sess.subject || sess.sub || sub;
     } else if (subject && password) {
       const res = await fetch(`${BACKEND_BASE()}/v1/auth/platform-admin/login`, {
         method: "POST",

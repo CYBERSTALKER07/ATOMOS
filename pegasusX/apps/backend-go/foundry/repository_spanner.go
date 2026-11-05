@@ -578,6 +578,39 @@ func (r *SpannerRepository) GetCashierSession(ctx context.Context, sessionID str
 	return &sess, nil
 }
 
+// ResolveRouteExpectedCash sums the cash total of all completed/delivered orders for a driver route.
+func (r *SpannerRepository) ResolveRouteExpectedCash(ctx context.Context, supplierID, driverID, routeID string) (int64, error) {
+	if r == nil || r.client == nil {
+		return 0, nil
+	}
+	stmt := spanner.Statement{
+		SQL: `SELECT COALESCE(SUM(TotalMinor), 0)
+		      FROM Orders
+		      WHERE DriverId = @driverID
+		        AND RouteId = @routeID
+		        AND Status IN ('COMPLETED', 'DELIVERED', 'PENDING_CASH_COLLECTION')`,
+		Params: map[string]any{
+			"driverID": driverID,
+			"routeID":  routeID,
+		},
+	}
+	iter := r.client.Single().Query(ctx, stmt)
+	defer iter.Stop()
+
+	row, err := iter.Next()
+	if err != nil {
+		if errors.Is(err, iterator.Done) {
+			return 0, nil
+		}
+		return 0, err
+	}
+	var totalMinor int64
+	if err := row.Column(0, &totalMinor); err != nil {
+		return 0, err
+	}
+	return totalMinor, nil
+}
+
 // PersistDVIRInspection writes a FleetDVIRInspection to Cloud Spanner.
 func (r *SpannerRepository) PersistDVIRInspection(ctx context.Context, insp *FleetDVIRInspection) error {
 	if r == nil || r.client == nil || insp == nil {

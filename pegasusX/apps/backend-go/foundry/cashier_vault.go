@@ -213,6 +213,14 @@ func (e *Engine) StartBlindCountSession(ctx context.Context, req StartCashierSes
 		cellID = "cell-uz"
 	}
 
+	repo := e.spannerRepo
+	expectedMinor := req.ExpectedCashMinor
+	if repo != nil && strings.TrimSpace(req.RouteID) != "" {
+		if dbExpected, err := repo.ResolveRouteExpectedCash(ctx, strings.TrimSpace(req.SupplierID), driverID, strings.TrimSpace(req.RouteID)); err == nil && dbExpected > 0 {
+			expectedMinor = dbExpected
+		}
+	}
+
 	sess := &CashierBlindCountSession{
 		SessionID:         uuid.NewString(),
 		CellID:            cellID,
@@ -223,13 +231,12 @@ func (e *Engine) StartBlindCountSession(ctx context.Context, req StartCashierSes
 		BagSealBarcode:    seal,
 		AttemptNumber:     0,
 		DenominationsUZS:  make(map[int64]int64),
-		ExpectedCashMinor: req.ExpectedCashMinor,
+		ExpectedCashMinor: expectedMinor,
 		Status:            CashierStatusAwaitingBlindCount1,
 		CreatedAt:         e.now(),
 	}
 	e.bagSeals[seal] = sess.SessionID
 	e.cashierSessions[sess.SessionID] = sess
-	repo := e.spannerRepo
 	view := toCashierView(sess, false, false)
 
 	if repo != nil {

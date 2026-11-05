@@ -199,7 +199,7 @@ export default function CashierPage() {
                       className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm font-mono text-slate-100 focus:outline-none focus:border-emerald-500"
                     />
                     <span className="text-[11px] text-slate-400 mt-0.5 block">
-                      Note: strictly masked from cashier blind count screen!
+                      Note: Verified server-side against route orders; strictly masked from cashier blind count!
                     </span>
                   </div>
 

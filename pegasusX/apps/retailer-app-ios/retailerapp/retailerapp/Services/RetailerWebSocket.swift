@@ -259,13 +259,6 @@ final class RetailerWebSocket {
         let wsTask = session.webSocketTask(with: request)
         self.task = wsTask
         wsTask.resume()
-        let wasReconnect = reconnectAttempts > 0
-        isConnected = true
-        reconnectAttempts = 0
-        if wasReconnect {
-            reconnectEpoch += 1
-            emit(.transportReconnected)
-        }
         startHeartbeat()
         receiveNext()
     }
@@ -292,9 +285,19 @@ final class RetailerWebSocket {
                 try? await Task.sleep(nanoseconds: 25_000_000_000)
                 guard !Task.isCancelled, let self, self.shouldReconnect, let socket = self.task else { return }
                 socket.sendPing { [weak self] error in
-                    guard let self, error != nil else { return }
-                    self.isConnected = false
-                    self.scheduleReconnect()
+                    guard let self else { return }
+                    if error != nil {
+                        self.isConnected = false
+                        self.scheduleReconnect()
+                    } else if !self.isConnected {
+                        self.isConnected = true
+                        let wasReconnect = self.reconnectAttempts > 0
+                        self.reconnectAttempts = 0
+                        if wasReconnect {
+                            self.reconnectEpoch += 1
+                            self.emit(.transportReconnected)
+                        }
+                    }
                 }
             }
         }
@@ -307,6 +310,15 @@ final class RetailerWebSocket {
             guard let self else { return }
             switch result {
             case .success(let message):
+                if !self.isConnected {
+                    self.isConnected = true
+                    let wasReconnect = self.reconnectAttempts > 0
+                    self.reconnectAttempts = 0
+                    if wasReconnect {
+                        self.reconnectEpoch += 1
+                        self.emit(.transportReconnected)
+                    }
+                }
                 self.handleMessage(message)
                 self.receiveNext()
             case .failure:

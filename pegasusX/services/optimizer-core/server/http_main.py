@@ -335,7 +335,8 @@ class OptimizerHandler(BaseHTTPRequestHandler):
                 except ValueError:
                     pass
 
-        if not done.wait(timeout=self.soft_timeout_sec):
+        # Give solver up to soft_timeout_sec plus 0.5s serialization buffer before declaring 504
+        if not done.wait(timeout=self.soft_timeout_sec + 0.5):
             METRICS.record_timeout()
             _write_json(
                 self,
