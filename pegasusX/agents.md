@@ -169,3 +169,29 @@ make sandbox-infra-up
 make money-path-gate
 make ci-enterprise-gates
 ```
+
+---
+
+## 4. Frontend & Mobile UI Engineering Doctrine (Mobbin & 21st.dev MCPs)
+
+### 4.1. Zero Shared UI Packages (Absolute Invariant)
+- **Law**: Never create, import, or wire shared cross-app UI libraries (e.g. `@pegasusx/ui-kit`, `:mobile-design`, `:mobile-kit`, or `packages/mobile-ios-design`).
+- **Required**: Every application must own its UI components, design tokens, layouts, animations, and motion primitives natively and locally:
+  - **Web & Desktop Portals** (`apps/*-portal`, `apps/retailer-app-desktop`): Local `components/ui/`, `app/styles/`, and `lib/enterprise-swr.ts`.
+  - **iOS Applications** (`apps/*-app-ios`): Local `Theme/`, `Design/`, `Views/`, and `Services/NetworkLifecycleEngine.swift`.
+  - **Android Applications** (`apps/*-app-android`): Local `ui/design/`, `ui/components/`, `ui/theme/`, and `network/NetworkLifecycleEngine.kt`.
+- **Enforcement**: Mechanically verified by `UiIndependenceTest` on Android/vitest and `ci_anti_theatre_gate.sh`.
+
+### 4.2. UI Design Tooling & MCP Integration
+To guarantee that user interfaces remain production-grade without hallucinating amateur layouts or introducing prohibited shared packages, agents use two designated MCP design tools:
+
+1. **Mobbin MCP (`https://api.mobbin.com/mcp`) — Mobile & Web Pattern Grounding**:
+   - **Role**: Reference engine for real-world, battle-tested UX flows (e.g., Amazon Flex / Uber Driver delivery manifests, Square POS checkout, Flexport warehouse pallet receiving, DoorDash live tracking).
+   - **Usage**: Query Mobbin (`search_screens`, `search_flows`, `search_sections`) to understand production UX structure, hierarchy, and edge-state displays before authoring screens.
+   - **Policy**: Pure visual and structural reference only. Never import external code directly; reimplement all patterns natively in local SwiftUI, Jetpack Compose, or Tailwind React.
+
+2. **21st.dev MCP (`https://21st.dev/api/mcp`) — Web & Desktop Component Code Generation**:
+   - **Role**: Source code retrieval for modern React, Tailwind CSS, and Framer Motion components (Bento grids, count-up stats, command palettes, telemetry EKG strips, glassmorphic panels).
+   - **Usage**: Retrieve raw component source code and place it directly into the target app's local `components/ui/` directory (following the copy-paste `shadcn/ui` model).
+   - **Policy**: Strict adaptation to the **Pegasus Monochrome Enterprise Theme** (`bg-neutral-900`, `border-neutral-800`, `text-neutral-100`). Never install npm runtime dependencies from 21st.dev; embed source code locally to preserve zero shared package boundaries.
+

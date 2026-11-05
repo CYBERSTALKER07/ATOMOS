@@ -2,6 +2,8 @@ package ar
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"os"
@@ -89,7 +91,7 @@ func NewService(repo Repository) *Service {
 	return &Service{
 		repo:  repo,
 		now:   func() time.Time { return time.Now().UTC() },
-		newID: func() string { return fmt.Sprintf("ari_%s", uuid.NewString()) },
+		newID: func() string { return fmt.Sprintf("ari_%s", strings.ReplaceAll(uuid.NewString(), "-", "")) },
 	}
 }
 
@@ -553,6 +555,15 @@ func (r *SpannerRepository) OpenInvoice(ctx context.Context, inv Invoice) error 
 	})
 }
 
+func ledgerEntryID(prefix, key string) string {
+	raw := prefix + ":" + key
+	if len(raw) <= 36 {
+		return raw
+	}
+	h := sha256.Sum256([]byte(raw))
+	return fmt.Sprintf("arl_%s", hex.EncodeToString(h[:]))[:36]
+}
+
 // openInvoiceInTxn inserts ArInvoices + ledger OPEN + outbox on an existing RW txn (B6).
 func openInvoiceInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, inv Invoice) error {
 	if txn == nil {
@@ -612,7 +623,7 @@ func openInvoiceInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, in
 			"UpdatedAt":       spanner.CommitTimestamp,
 		}),
 		spanner.InsertOrUpdateMap("ArLedgerEntries", map[string]any{
-			"EntryId":        inv.InvoiceID + ":OPEN",
+			"EntryId":        ledgerEntryID("open", inv.OrderID),
 			"InvoiceId":      inv.InvoiceID,
 			"SupplierId":     inv.SupplierID,
 			"RetailerId":     inv.RetailerID,
@@ -784,10 +795,7 @@ func applyPaymentInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, i
 		newStatus = StatusPaid
 	}
 	// Stable entry id from idempotency key so retries that race still collide safely.
-	entryID := "arl-pay:" + idempotencyKey
-	if len(entryID) > 128 {
-		entryID = entryID[:128]
-	}
+	entryID := ledgerEntryID("pay", idempotencyKey)
 	buf := outbox.NewSpannerTxnBuffer(txn)
 	eventType := events.EventARInvoicePayment
 	if newStatus == StatusPaid {
@@ -858,10 +866,7 @@ func (r *SpannerRepository) VoidInvoice(ctx context.Context, invoiceID string, i
 			return err
 		}
 
-		entryID := "arl-void:" + idempotencyKey
-		if len(entryID) > 128 {
-			entryID = entryID[:128]
-		}
+		entryID := ledgerEntryID("void", idempotencyKey)
 		buf := outbox.NewSpannerTxnBuffer(txn)
 		
 		// Optional: emit VOID event if needed
