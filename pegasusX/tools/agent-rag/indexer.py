@@ -7,6 +7,7 @@ os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 os.environ["TRANSFORMERS_VERBOSITY"] = "error"
 os.environ["TQDM_DISABLE"] = "1"
+os.environ["HF_HUB_OFFLINE"] = "1"
 
 import chromadb
 from chromadb.utils import embedding_functions
@@ -56,6 +57,12 @@ def chunk_code(filepath, content, language):
     if language in ('kotlin', 'swift'):
         raw_chunks = re.split(r'(?m)(?=^(?:public\s+|private\s+|internal\s+)?(?:class|struct|enum|fun|func|interface|extension)\s+)', content)
         chunks = [c.strip() for c in raw_chunks if len(c.strip()) > 40]
+        return chunks if chunks else [content[:2000]]
+
+    # Python: split by def / class boundaries
+    if language == 'python':
+        raw_chunks = re.split(r'(?m)(?=^(?:def|class|async\s+def)\s+)', content)
+        chunks = [c.strip() for c in raw_chunks if len(c.strip()) > 30]
         return chunks if chunks else [content[:2000]]
 
     # Go and TypeScript / TSX: use Tree-sitter if available, else regex function boundaries
@@ -156,6 +163,7 @@ def index_layer_files(layer_name, files, language_hint, workspace_root):
     return total_chunks
 
 def main():
+    global collection
     workspace = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     os.chdir(workspace)
     print("=" * 80)
@@ -163,20 +171,35 @@ def main():
     print(f"Workspace Root: {workspace}")
     print(f"ChromaDB Storage: {MEMORY_DIR}")
     print("=" * 80)
+
+    if "--no-reset" not in sys.argv:
+        print("[RESET] Recreating pegasusx_codebase collection for clean full index...")
+        try:
+            client.delete_collection("pegasusx_codebase")
+        except Exception:
+            pass
+        collection = client.get_or_create_collection(name="pegasusx_codebase", embedding_function=emb_fn)
     
     start_time = time.time()
     total_indexed_chunks = 0
     
     # 1. Backend Layer (Go)
-    backend_files = collect_files("apps/backend-go", [".go"])
+    backend_files = (
+        collect_files("apps/backend-go", [".go"]) +
+        collect_files("apps/ai-worker", [".go"]) +
+        collect_files("apps/handoff-service", [".go"])
+    )
     total_indexed_chunks += index_layer_files("backend", backend_files, "go", workspace)
     
     # 2. Infra Layer (Spanner DDL & SQL)
-    infra_files = collect_files("apps/backend-go/schema", [".ddl", ".sql"])
+    infra_files = (
+        collect_files("apps/backend-go/schema", [".ddl", ".sql"]) +
+        collect_files("infra", [".yaml", ".yml", ".tf", ".hcl", ".sql"])
+    )
     total_indexed_chunks += index_layer_files("infra", infra_files, "sql", workspace)
     
     # 3. Client Web & Desktop (Next.js / React / TypeScript)
-    web_files = collect_files("apps", [".tsx", ".ts"], path_filter=lambda p: any(x in p for x in ('portal', 'desktop', 'terminal')))
+    web_files = collect_files("apps", [".tsx", ".ts"], path_filter=lambda p: any(x in p for x in ('portal', 'desktop', 'terminal', 'bot-telegram')))
     total_indexed_chunks += index_layer_files("client-web", web_files, "typescript", workspace)
     
     # 4. Mobile Android (Kotlin)
@@ -184,13 +207,20 @@ def main():
                     collect_files("packages", [".kt"], path_filter=lambda p: 'android' in p)
     total_indexed_chunks += index_layer_files("mobile-android", android_files, "kotlin", workspace)
     
-    # 5. Mobile iOS (Swift)
-    ios_files = collect_files("apps", [".swift"], path_filter=lambda p: 'ios' in p) + \
-                collect_files("packages", [".swift"], path_filter=lambda p: 'ios' in p)
-    total_indexed_chunks += index_layer_files("mobile-ios", ios_files, "swift", workspace)
+    # 5. Mobile & Desktop Apple (Swift)
+    apple_files = collect_files("apps", [".swift"], path_filter=lambda p: any(x in p for x in ('ios', 'macos', 'apple'))) + \
+                  collect_files("packages", [".swift"], path_filter=lambda p: any(x in p for x in ('ios', 'macos', 'apple')))
+    total_indexed_chunks += index_layer_files("mobile-ios", apple_files, "swift", workspace)
     
-    # 6. Shared Packages (TypeScript / TSX)
-    shared_files = collect_files("packages", [".ts", ".tsx"], path_filter=lambda p: 'android' not in p and 'ios' not in p)
+    # 6. Python Optimizers & Services
+    python_files = (
+        collect_files("apps/dispatch-optimizer-py", [".py"]) +
+        collect_files("apps/ml-scorer-py", [".py"])
+    )
+    total_indexed_chunks += index_layer_files("python", python_files, "python", workspace)
+
+    # 7. Shared Packages (TypeScript / TSX)
+    shared_files = collect_files("packages", [".ts", ".tsx"], path_filter=lambda p: 'android' not in p and 'ios' not in p and 'macos' not in p)
     total_indexed_chunks += index_layer_files("shared-packages", shared_files, "typescript", workspace)
     
     duration = time.time() - start_time

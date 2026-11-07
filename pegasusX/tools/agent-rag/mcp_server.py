@@ -6,6 +6,7 @@ os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 os.environ["TRANSFORMERS_VERBOSITY"] = "error"
 os.environ["TQDM_DISABLE"] = "1"
+os.environ["HF_HUB_OFFLINE"] = "1"
 
 import chromadb
 from chromadb.utils import embedding_functions
@@ -33,7 +34,7 @@ def semantic_code_search(query: str, layer: str = None, limit: int = 5) -> str:
     
     Args:
         query: The natural language or code query to search for (e.g., "Supplier WebSocket payload definition").
-        layer: Optional filter to restrict search to a specific layer (e.g., "backend", "infra", "client-web", "mobile-android", "mobile-ios", "shared-packages").
+        layer: Optional filter to restrict search to a specific layer (e.g., "backend", "infra", "client-web", "mobile-android", "mobile-ios", "python", "shared-packages").
         limit: Number of code chunks to return (default: 5).
     """
     where_filter = {"layer": layer} if layer else None

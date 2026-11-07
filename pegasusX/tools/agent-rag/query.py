@@ -6,6 +6,7 @@ os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 os.environ["TRANSFORMERS_VERBOSITY"] = "error"
 os.environ["TQDM_DISABLE"] = "1"
+os.environ["HF_HUB_OFFLINE"] = "1"
 
 import chromadb
 from chromadb.utils import embedding_functions
@@ -48,7 +49,8 @@ if __name__ == "__main__":
         print("Usage: python3 query.py <search_query> [layer] [limit]")
         sys.exit(1)
         
-    q = sys.argv[1]
-    l = sys.argv[2] if len(sys.argv) > 2 else None
-    lim = int(sys.argv[3]) if len(sys.argv) > 3 else 5
-    search(q, l, lim)
+    query_text = sys.argv[1]
+    layer_filter = sys.argv[2] if len(sys.argv) > 2 and sys.argv[2] != "all" else None
+    limit_count = int(sys.argv[3]) if len(sys.argv) > 3 else 5
+    
+    search(query_text, layer_filter, limit_count)
