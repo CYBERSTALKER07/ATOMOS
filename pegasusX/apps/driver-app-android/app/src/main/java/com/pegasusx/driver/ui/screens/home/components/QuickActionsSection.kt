@@ -1,5 +1,7 @@
 package com.pegasusx.driver.ui.screens.home.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -27,6 +29,7 @@ import com.pegasusx.driver.ui.components.PegasusCard
 import com.pegasusx.driver.ui.theme.LocalPegasusColors
 import com.pegasusx.driver.ui.theme.PegasusSpacing
 import com.pegasusx.driver.ui.theme.pressable
+import com.pegasusx.driver.R
 
 @Composable
 fun QuickActionsSection(
@@ -38,7 +41,7 @@ fun QuickActionsSection(
     val lab = LocalPegasusColors.current
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(
-            text = "Quick Actions",
+            text = stringResource(R.string.mobile_driver_ui_quick_actions),
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.Bold,
             color = lab.fg,
@@ -50,20 +53,20 @@ fun QuickActionsSection(
         ) {
             ActionTile(
                 icon = Icons.Default.QrCodeScanner,
-                label = "Scan QR",
+                label = stringResource(R.string.mobile_driver_ui_scan_qr),
                 modifier = Modifier.weight(1f),
                 enabled = hasArrivedOrder,
                 onClick = onScanQR
             )
             ActionTile(
                 icon = Icons.Default.ShieldMoon,
-                label = "Offline\nVerify",
+                label = stringResource(R.string.mobile_driver_ui_offline_nverify),
                 modifier = Modifier.weight(1f),
                 onClick = onOfflineVerify
             )
             ActionTile(
                 icon = Icons.Default.Warning,
-                label = "Rescue",
+                label = stringResource(R.string.mobile_driver_ui_rescue),
                 modifier = Modifier.weight(1f),
                 iconTint = lab.warning,
                 onClick = onRequestRescue

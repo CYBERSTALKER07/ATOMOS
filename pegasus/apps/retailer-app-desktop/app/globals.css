@@ -47,7 +47,7 @@
 /* ═══════════════════════════════════════════════════════════════════════════ */
 
 :root {
-    /* Conceptzilla theme — orange accent on light cool surface */
+    /* Linear Style — Monochrome Black & White Palette */
     --background: var(--desk-canvas);
     --foreground: var(--desk-text-primary);
     --surface: var(--desk-surface);
@@ -55,7 +55,7 @@
     --overlay: var(--desk-surface);
     --overlay-foreground: var(--desk-text-primary);
 
-    /* Accent — vibrant orange primary action */
+    /* Accent — Crisp Monochrome Action */
     --accent: var(--desk-accent);
     --accent-foreground: var(--desk-accent-on);
     --accent-soft: var(--desk-accent-soft);
@@ -78,7 +78,7 @@
     --field-placeholder: var(--desk-text-tertiary);
     --field-border: var(--desk-border);
 
-    /* Semantic */
+    /* Semantic — Monochrome High-Contrast */
     --success: var(--desk-success);
     --success-foreground: #ffffff;
     --warning: var(--desk-warning);
@@ -115,12 +115,14 @@
     --field-placeholder: oklch(0.45 0 0);
     --field-border: oklch(0.25 0 0);
 
-    --success: oklch(0.68 0.18 145);
-    --success-foreground: oklch(0.2 0.06 145);
-    --warning: oklch(0.72 0.16 75);
-    --warning-foreground: oklch(0.2 0.06 75);
-    --danger: oklch(0.65 0.18 20);
-    --danger-foreground: oklch(0.2 0.08 20);
+    --desk-surface-raised: #18181b;
+
+    --success: oklch(1 0 0);
+    --success-foreground: oklch(0 0 0);
+    --warning: oklch(0.85 0 0);
+    --warning-foreground: oklch(0 0 0);
+    --danger: oklch(0.93 0 0);
+    --danger-foreground: oklch(0 0 0);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════ */
@@ -2668,10 +2670,10 @@ body {
     --color-md-tertiary-container: oklch(16% 0 0);
     --color-md-on-tertiary-container: oklch(75% 0 0);
 
-    --color-md-error: oklch(65% 0.18 20);
-    --color-md-on-error: oklch(20% 0.08 20);
-    --color-md-error-container: oklch(22% 0.06 20);
-    --color-md-on-error-container: oklch(85% 0.06 20);
+    --color-md-error: oklch(93% 0 0);
+    --color-md-on-error: oklch(0% 0 0);
+    --color-md-error-container: oklch(20% 0 0);
+    --color-md-on-error-container: oklch(93% 0 0);
 
     --color-md-surface: oklch(0% 0 0);
     --color-md-on-surface: oklch(93% 0 0);
@@ -2695,18 +2697,18 @@ body {
     --color-md-scrim: oklch(0% 0 0);
     --color-md-shadow: oklch(0% 0 0);
 
-    --color-md-success: oklch(68% 0.18 145);
-    --color-md-on-success: oklch(20% 0.06 145);
-    --color-md-success-container: oklch(20% 0.05 145);
-    --color-md-on-success-container: oklch(85% 0.06 145);
-    --color-md-warning: oklch(72% 0.16 75);
-    --color-md-on-warning: oklch(20% 0.06 75);
-    --color-md-warning-container: oklch(20% 0.04 75);
-    --color-md-on-warning-container: oklch(85% 0.06 75);
-    --color-md-info: oklch(65% 0.12 240);
-    --color-md-on-info: oklch(20% 0.05 240);
-    --color-md-info-container: oklch(18% 0.04 240);
-    --color-md-on-info-container: oklch(85% 0.05 240);
+    --color-md-success: oklch(93% 0 0);
+    --color-md-on-success: oklch(0% 0 0);
+    --color-md-success-container: oklch(20% 0 0);
+    --color-md-on-success-container: oklch(93% 0 0);
+    --color-md-warning: oklch(85% 0 0);
+    --color-md-on-warning: oklch(0% 0 0);
+    --color-md-warning-container: oklch(20% 0 0);
+    --color-md-on-warning-container: oklch(85% 0 0);
+    --color-md-info: oklch(85% 0 0);
+    --color-md-on-info: oklch(0% 0 0);
+    --color-md-info-container: oklch(20% 0 0);
+    --color-md-on-info-container: oklch(85% 0 0);
 
     --color-accent: oklch(100% 0 0);
     --color-on-accent: oklch(0% 0 0);
@@ -3537,10 +3539,10 @@ body {
     --color-md-surface-container-highest: oklch(23% 0 0);
     --color-md-outline: oklch(45% 0 0);
     --color-md-outline-variant: oklch(30% 0 0);
-    --color-md-error: oklch(65% 0.2 25);
-    --color-md-on-error: oklch(15% 0.04 25);
-    --color-md-error-container: oklch(25% 0.08 25);
-    --color-md-on-error-container: oklch(85% 0.08 25);
+    --color-md-error: oklch(93% 0 0);
+    --color-md-on-error: oklch(10% 0 0);
+    --color-md-error-container: oklch(25% 0 0);
+    --color-md-on-error-container: oklch(90% 0 0);
     --color-md-secondary-container: oklch(25% 0 0);
     --color-md-on-secondary-container: oklch(90% 0 0);
 }
@@ -5657,10 +5659,10 @@ body {
     --color-md-tertiary-container: oklch(16% 0 0);
     --color-md-on-tertiary-container: oklch(75% 0 0);
 
-    --color-md-error: oklch(65% 0.18 20);
-    --color-md-on-error: oklch(20% 0.08 20);
-    --color-md-error-container: oklch(22% 0.06 20);
-    --color-md-on-error-container: oklch(85% 0.06 20);
+    --color-md-error: oklch(93% 0 0);
+    --color-md-on-error: oklch(0% 0 0);
+    --color-md-error-container: oklch(20% 0 0);
+    --color-md-on-error-container: oklch(93% 0 0);
 
     --color-md-surface: oklch(0% 0 0);
     --color-md-on-surface: oklch(93% 0 0);
@@ -5684,18 +5686,18 @@ body {
     --color-md-scrim: oklch(0% 0 0);
     --color-md-shadow: oklch(0% 0 0);
 
-    --color-md-success: oklch(68% 0.18 145);
-    --color-md-on-success: oklch(20% 0.06 145);
-    --color-md-success-container: oklch(20% 0.05 145);
-    --color-md-on-success-container: oklch(85% 0.06 145);
-    --color-md-warning: oklch(72% 0.16 75);
-    --color-md-on-warning: oklch(20% 0.06 75);
-    --color-md-warning-container: oklch(20% 0.04 75);
-    --color-md-on-warning-container: oklch(85% 0.06 75);
-    --color-md-info: oklch(65% 0.12 240);
-    --color-md-on-info: oklch(20% 0.05 240);
-    --color-md-info-container: oklch(18% 0.04 240);
-    --color-md-on-info-container: oklch(85% 0.05 240);
+    --color-md-success: oklch(93% 0 0);
+    --color-md-on-success: oklch(0% 0 0);
+    --color-md-success-container: oklch(20% 0 0);
+    --color-md-on-success-container: oklch(93% 0 0);
+    --color-md-warning: oklch(85% 0 0);
+    --color-md-on-warning: oklch(0% 0 0);
+    --color-md-warning-container: oklch(20% 0 0);
+    --color-md-on-warning-container: oklch(85% 0 0);
+    --color-md-info: oklch(85% 0 0);
+    --color-md-on-info: oklch(0% 0 0);
+    --color-md-info-container: oklch(20% 0 0);
+    --color-md-on-info-container: oklch(85% 0 0);
 
     --color-accent: oklch(100% 0 0);
     --color-on-accent: oklch(0% 0 0);
@@ -5762,34 +5764,34 @@ body {
 /* ═══════════════════════════════════════════════════════════════════════════ */
 
 :root.synthwave {
-    /* Core variables overriding M3 standard dark */
-    --background: oklch(0.12 0.04 285);
-    --foreground: oklch(0.98 0.01 285);
-    --surface: oklch(0.16 0.04 285);
-    --surface-foreground: oklch(0.95 0.02 285);
-    --overlay: oklch(0.1 0.04 285);
+    /* Core variables overriding M3 standard dark — strict monochrome */
+    --background: oklch(0 0 0);
+    --foreground: oklch(0.98 0 0);
+    --surface: oklch(0.1 0 0);
+    --surface-foreground: oklch(0.95 0 0);
+    --overlay: oklch(0.08 0 0);
 
-    /* M3 Token Overrides (Neon Pink/Magenta primary, Dark Purple base) */
-    --color-md-primary: oklch(70% 0.3 340); /* Vibrantly Neon Pink/Magenta */
-    --color-md-on-primary: oklch(100% 0 0);
-    --color-md-primary-container: oklch(25% 0.15 340);
-    --color-md-on-primary-container: oklch(95% 0.05 340);
+    /* M3 Token Overrides (Monochrome Linear) */
+    --color-md-primary: oklch(100% 0 0);
+    --color-md-on-primary: oklch(0% 0 0);
+    --color-md-primary-container: oklch(18% 0 0);
+    --color-md-on-primary-container: oklch(95% 0 0);
 
-    --color-md-secondary: oklch(80% 0.2 195); /* Electric Cyan */
-    --color-md-on-secondary: oklch(15% 0.1 195);
-    --color-md-secondary-container: oklch(22% 0.12 195);
-    --color-md-on-secondary-container: oklch(92% 0.05 195);
+    --color-md-secondary: oklch(80% 0 0);
+    --color-md-on-secondary: oklch(0% 0 0);
+    --color-md-secondary-container: oklch(22% 0 0);
+    --color-md-on-secondary-container: oklch(92% 0 0);
 
-    --color-md-tertiary: oklch(85% 0.22 145); /* Neon Green */
-    --color-md-on-tertiary: oklch(15% 0.1 145);
+    --color-md-tertiary: oklch(85% 0 0);
+    --color-md-on-tertiary: oklch(0% 0 0);
 
-    --color-md-surface: oklch(12% 0.04 285);
-    --color-md-surface-container-low: oklch(15% 0.04 285);
-    --color-md-surface-container: oklch(18% 0.04 285);
-    --color-md-surface-container-high: oklch(22% 0.04 285);
+    --color-md-surface: oklch(0% 0 0);
+    --color-md-surface-container-low: oklch(7% 0 0);
+    --color-md-surface-container: oklch(10% 0 0);
+    --color-md-surface-container-high: oklch(14% 0 0);
 
-    --color-md-outline: oklch(45% 0.08 285);
-    --color-md-outline-variant: oklch(25% 0.06 285);
+    --color-md-outline: oklch(30% 0 0);
+    --color-md-outline-variant: oklch(20% 0 0);
 
     --color-accent: var(--color-md-primary);
     --color-on-accent: var(--color-md-on-primary);

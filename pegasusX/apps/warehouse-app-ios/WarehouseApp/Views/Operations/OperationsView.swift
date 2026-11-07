@@ -41,10 +41,10 @@ struct OperationsView: View {
                 }
             }
             .background(LabTheme.background)
-            .navigationTitle("Depot operations")
+            .navigationTitle("warehouse_portal.operations.text.depot_operations")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Refresh", systemImage: "arrow.clockwise") {
+                    Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") {
                         Task { await loadTemplates(silent: true) }
                     }
                     .labelStyle(.iconOnly)

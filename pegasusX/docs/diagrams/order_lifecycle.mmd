@@ -1,0 +1,84 @@
+sequenceDiagram
+    autonumber
+    actor Retailer as Retailer (Storefront)
+    participant Edge as Edge Gateway / API
+    participant Spanner as Cloud Spanner Multi-Cell
+    participant Outbox as Outbox / Kafka Event Bus
+    participant WMS as Warehouse Operations
+    actor Yard as Yard Marshal
+    actor Driver as Driver / Fleet
+    participant Soliq as Soliq Fiscal Engine
+    actor Cashier as Warehouse Cashier
+    participant FinOps as FinOps Settlement Engine
+
+    %% Phase 1: Order Placement & Reservation
+    Note over Retailer,Spanner: Phase 1: Ingestion & Distributed ACID Reservation (No Credit/Payment Limits)
+    Retailer->>Edge: POST /v1/order/create (Items, Currency, Idempotency-Key)
+    Edge->>Spanner: ReadWriteTransaction (Active KYC & Stock Check - Uncapped Terms)
+    Spanner->>Spanner: Insert Order (DRAFT -> RESERVED, Uncapped Multi-Tender Terms)
+    Spanner->>Spanner: Insert Outbox Event (OrderCreated)
+    Spanner-->>Edge: Commit Timestamp (P99 < 18ms)
+    Edge-->>Retailer: 201 Created (Order ID, Delivery Slot)
+
+    %% Phase 2: Event Mesh & WMS Wave Planning
+    Note over Outbox,WMS: Phase 2: Wave Planning & Pick-Pack Execution
+    Outbox->>WMS: Consume Event orders.created (Partition Offset Marked)
+    WMS->>WMS: Slotting Engine (Group SKUs into Wave 81)
+    WMS->>Spanner: Update Order (RESERVED -> WAVE_PLANNED)
+    WMS->>WMS: Pick-Pack RF Scan (Verify EAN/GTIN & Serialized SSCC)
+    WMS->>Spanner: Update Order (PICKED -> PACKED_SSCC -> STAGED)
+
+    %% Phase 3: Gate Clearance & Fleet Dispatch
+    Note over WMS,Driver: Phase 3: Pre-Trip DVIR Walkaround & Gate Clearance
+    Driver->>Edge: Submit Pre-Trip DVIR (8-Point Walkaround, Reefer: -18.4°C)
+    alt Critical Defect Found (Brakes, Steering, Reefer Fault)
+        Edge-->>Driver: RED-TAG QUARANTINE (Dispatch Blocked)
+    else DVIR Passed
+        Edge->>Spanner: Record FleetDVIR (Status: PASSED)
+        Yard->>Edge: ALPR Gate Scan + Bolt Seal Match (UZ-01-778-AAA)
+        Edge->>Spanner: Update Order (STAGED -> DISPATCHED -> IN_TRANSIT)
+        Outbox->>Retailer: Push WebSocket Notification (Driver Dispatched)
+    end
+
+    %% Phase 4: Doorstep Delivery & Payment
+    Note over Driver,Retailer: Phase 4: Doorstep Delivery & Zero-Trust Handoff
+    Driver->>Edge: POST /v1/delivery/arrive (GPS within 50m geofence)
+    Driver->>Retailer: Present Physical Goods & Scan QR Handoff
+    Retailer->>Driver: Confirm Quantity & Tender Payment
+    alt Payment via Cash (COD)
+        Driver->>Edge: POST /v1/order/collect-cash (Collected UZS 100M)
+        Edge->>Spanner: Update Order (DELIVERED -> AWAITING_CASH_TURNIN)
+    else Payment via Humo / Uzcard / Bank Wire
+        Driver->>Edge: Tap Card / Terminal Payment
+        Edge->>Spanner: Update Order (DELIVERED -> PAID_DIGITAL)
+    end
+
+    %% Phase 5: Soliq Fiscal Factura & EDS Signing
+    Note over Edge,Soliq: Phase 5: Soliq State Tax Committee Fiscalization
+    Edge->>Soliq: Sign Canonical EHF Payload (PKCS#12 E-IMZO EDS)
+    Soliq->>Soliq: Validate 17-digit MXIK / IKPU + VAT 12%
+    Soliq-->>Edge: Factura QR Code & Fiscal Receipt ID
+    Edge->>Spanner: Update Order (FISCALIZED_SOLIQ)
+    Outbox->>Retailer: Deliver Branded Soliq Fiscal Factura PDF
+
+    %% Phase 6: Blind Cashier Turn-in & Vault Reconciliation
+    Note over Driver,Cashier: Phase 6: Zero-Trust Blind Vault Turn-In
+    Driver->>Cashier: Driver Arrives at Warehouse Cash Desk
+    Cashier->>Edge: Open Blind Turn-In Form (Expected Amount Masked to 0)
+    Cashier->>Cashier: Physical Banknote Count (UZS 200k..1k Denominations)
+    Cashier->>Edge: Submit Declared Cash (UZS 100M)
+    Edge->>Spanner: Reveal Expected vs Declared Cash
+    alt Variance == 0
+        Edge->>Spanner: Update CashReconciliation (SETTLED)
+        Cashier->>Cashier: Deposit in Drop-Vault & Generate CIT Manifest
+    else Discrepancy Found (> 0)
+        Edge->>Spanner: Flag CashReconciliation (ESCALATED_FINANCE)
+    end
+
+    %% Phase 7: FinOps Multi-Tier Settlement Waterfall
+    Note over Spanner,FinOps: Phase 7: Settlement Waterfall & Payout Disbursal
+    FinOps->>Spanner: Trigger Order Settlement Batch
+    FinOps->>FinOps: Compute Waterfall Slices:
+    Note right of FinOps: Dynamic Multi-Tender Settlement Waterfall:<br/>Gross Order GMV (Aggregated Lines)<br/>- Dynamic Platform Take-Rate (Configured Market Pack)<br/>- Logistics Handling & Last-Mile Surcharge<br/>- Statutory Soliq VAT (Computed per IKPU/MXIK Rate)<br/>- Payment Processing Gateway Fee<br/>= Net Disbursable Supplier Payout
+    FinOps->>Spanner: Credit Supplier Bank Account (Status: SETTLED_WATERFALL)
+    FinOps->>Spanner: Update Order (Final State: CLOSED)

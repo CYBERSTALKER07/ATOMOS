@@ -11,7 +11,7 @@ import Drawer from '@/components/Drawer';
 import { buildSupplierOrgInviteIdempotencyKey, buildSupplierOrgMemberActionIdempotencyKey } from '../_shared/idempotency';
 import { normalizeCollectionResponse } from '../_shared/referenceData';
 
-/* ── Types ─────────────────────────────────────────────────────────────── */
+/* -- Types --------------------------------------------------------------- */
 
 type SupplierRole = 'GLOBAL_ADMIN' | 'NODE_ADMIN' | 'FACTORY_ADMIN' | 'FACTORY_PAYLOADER';
 
@@ -34,7 +34,7 @@ interface Factory { factory_id: string; name: string; }
 type RoleFilter = 'ALL' | SupplierRole;
 type StatusFilter = 'ALL' | 'ACTIVE' | 'INACTIVE';
 
-/* ── Helpers ───────────────────────────────────────────────────────────── */
+/* -- Helpers ------------------------------------------------------------- */
 
 const ROLE_META: Record<string, { label: string; bg: string; fg: string }> = {
   GLOBAL_ADMIN: {
@@ -63,7 +63,7 @@ function roleMeta(role: string) {
   return ROLE_META[role] ?? { label: role, bg: 'var(--color-md-surface-container)', fg: 'var(--foreground)' };
 }
 
-/* ── Main Page ─────────────────────────────────────────────────────────── */
+/* -- Main Page ----------------------------------------------------------- */
 
 export default function StaffManagementPage() {
   const { userId, isGlobalAdmin } = useAuth();
@@ -110,7 +110,7 @@ export default function StaffManagementPage() {
     return () => clearTimeout(searchTimer.current);
   }, [search]);
 
-  /* ── Data Fetching ── */
+  /* -- Data Fetching -- */
 
   const fetchMembers = useCallback(async () => {
     setLoading(true);
@@ -145,7 +145,7 @@ export default function StaffManagementPage() {
 
   useEffect(() => { fetchMembers(); fetchWarehouses(); fetchFactories(); }, [fetchMembers, fetchWarehouses, fetchFactories]);
 
-  /* ── Filtered + Sorted ── */
+  /* -- Filtered + Sorted -- */
 
   const filtered = useMemo(() => {
     let list = members;
@@ -165,7 +165,7 @@ export default function StaffManagementPage() {
 
   const pagination = usePagination(filtered, 25);
 
-  /* ── Node Name Resolvers ── */
+  /* -- Node Name Resolvers -- */
 
   function warehouseName(id: string) {
     return warehouses.find(w => w.warehouse_id === id)?.name || id || '—';
@@ -184,7 +184,7 @@ export default function StaffManagementPage() {
     return '';
   }
 
-  /* ── KPIs ── */
+  /* -- KPIs -- */
 
   const kpi = useMemo(() => ({
     total: members.length,
@@ -195,7 +195,7 @@ export default function StaffManagementPage() {
     factory: members.filter(m => m.supplier_role === 'FACTORY_ADMIN' || m.supplier_role === 'FACTORY_PAYLOADER').length,
   }), [members]);
 
-  /* ── Invite ── */
+  /* -- Invite -- */
 
   function resetInviteForm() {
     setFormName(''); setFormEmail(''); setFormPhone(''); setFormPassword('');
@@ -246,7 +246,7 @@ export default function StaffManagementPage() {
     } catch { setFormError('Network error'); } finally { setSubmitting(false); }
   }
 
-  /* ── Toggle Active ── */
+  /* -- Toggle Active -- */
 
   async function toggleActive(m: OrgMember) {
     if (m.user_id === userId) return; // Self-protection
@@ -274,7 +274,7 @@ export default function StaffManagementPage() {
     }
   }
 
-  /* ── Edit Member ── */
+  /* -- Edit Member -- */
 
   function openEdit(m: OrgMember) {
     setEditTarget(m);
@@ -327,7 +327,7 @@ export default function StaffManagementPage() {
     } catch { setEditError('Network error'); } finally { setEditSaving(false); }
   }
 
-  /* ── Guard: Global Admin only ── */
+  /* -- Guard: Global Admin only -- */
 
   if (!isGlobalAdmin) {
     return (
@@ -341,7 +341,7 @@ export default function StaffManagementPage() {
     );
   }
 
-  /* ── Render ── */
+  /* -- Render -- */
 
   return (
     <div className="flex-1 overflow-y-auto p-6 md:p-8" style={{ background: 'var(--background)' }}>
@@ -380,7 +380,10 @@ export default function StaffManagementPage() {
       <div className="flex flex-col sm:flex-row gap-3 mb-4">
         <div className="relative flex-1">
           <Icon name="search" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+          <label htmlFor="staff-search-input" className="sr-only">Search by name, email, or phone</label>
           <input
+            id="staff-search-input"
+            aria-label="Search by name, email, or phone"
             className="md-input-outlined w-full pl-9"
             placeholder="Search by name, email, or phone..."
             value={search}
@@ -511,7 +514,7 @@ export default function StaffManagementPage() {
         </div>
       )}
 
-      {/* ── Invite Drawer ── */}
+      {/* -- Invite Drawer -- */}
       <Drawer open={showInvite} onClose={() => setShowInvite(false)} title="Add Organization Member">
         <form onSubmit={handleInvite} className="flex flex-col gap-4 p-4">
           {formError && (
@@ -521,27 +524,27 @@ export default function StaffManagementPage() {
             </div>
           )}
 
-          <label className="flex flex-col gap-1">
+          <label htmlFor="staff-form-name" className="flex flex-col gap-1">
             <span className="md-typescale-label-medium text-foreground">Full Name</span>
-            <input className="md-input-outlined" value={formName}
+            <input id="staff-form-name" aria-label="Full Name" className="md-input-outlined" value={formName}
               onChange={e => setFormName(e.target.value)} placeholder="John Doe" required />
           </label>
 
-          <label className="flex flex-col gap-1">
+          <label htmlFor="staff-form-email" className="flex flex-col gap-1">
             <span className="md-typescale-label-medium text-foreground">Email</span>
-            <input className="md-input-outlined" type="email" value={formEmail}
+            <input id="staff-form-email" aria-label="Email" className="md-input-outlined" type="email" value={formEmail}
               onChange={e => setFormEmail(e.target.value)} placeholder="john@example.com" />
           </label>
 
-          <label className="flex flex-col gap-1">
+          <label htmlFor="staff-form-phone" className="flex flex-col gap-1">
             <span className="md-typescale-label-medium text-foreground">Phone</span>
-            <input className="md-input-outlined" type="tel" value={formPhone}
+            <input id="staff-form-phone" aria-label="Phone" className="md-input-outlined" type="tel" value={formPhone}
               onChange={e => setFormPhone(e.target.value)} placeholder="+998901234567" />
           </label>
 
-          <label className="flex flex-col gap-1">
+          <label htmlFor="staff-form-password" className="flex flex-col gap-1">
             <span className="md-typescale-label-medium text-foreground">Password</span>
-            <input className="md-input-outlined" type="password" value={formPassword}
+            <input id="staff-form-password" aria-label="Password" className="md-input-outlined" type="password" value={formPassword}
               onChange={e => setFormPassword(e.target.value)} placeholder="Minimum 8 characters" required />
           </label>
 
@@ -593,7 +596,7 @@ export default function StaffManagementPage() {
         </form>
       </Drawer>
 
-      {/* ── Edit Drawer ── */}
+      {/* -- Edit Drawer -- */}
       <Drawer open={!!editTarget} onClose={() => setEditTarget(null)} title="Edit Member">
         {editTarget && (
           <form onSubmit={handleEditSave} className="flex flex-col gap-4 p-4">
@@ -620,9 +623,9 @@ export default function StaffManagementPage() {
               </div>
             )}
 
-            <label className="flex flex-col gap-1">
+            <label htmlFor="staff-edit-name" className="flex flex-col gap-1">
               <span className="md-typescale-label-medium text-foreground">Name</span>
-              <input className="md-input-outlined" value={editName}
+              <input id="staff-edit-name" aria-label="Name" className="md-input-outlined" value={editName}
                 onChange={e => setEditName(e.target.value)} />
             </label>
 

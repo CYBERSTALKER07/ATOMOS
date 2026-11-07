@@ -1,12 +1,18 @@
 import SwiftUI
 
 struct LoginView: View {
+    private enum Field: Hashable {
+        case phone
+        case password
+    }
+
     @Environment(TokenStore.self) private var tokenStore
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var phone = ""
     @State private var password = ""
     @State private var loading = false
     @State private var error: String?
+    @FocusState private var focusedField: Field?
 
     private var formMaxWidth: CGFloat {
         horizontalSizeClass == .regular ? 420 : 360
@@ -20,9 +26,9 @@ struct LoginView: View {
                     Spacer(minLength: proxy.size.height * 0.08)
 
                     VStack(spacing: SupplierTheme.spacingSM) {
-                        Text("Pegasus Supplier")
+                        Text("mobile_supplier.ui.pegasus_supplier")
                             .font(horizontalSizeClass == .regular ? .largeTitle.bold() : .title.bold())
-                        Text("Fleet, orders, and treasury for your operation")
+                        Text("mobile_supplier.ui.fleet_orders_and_treasury_for_your_operation")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)
@@ -30,14 +36,18 @@ struct LoginView: View {
                     .padding(.horizontal)
 
                     VStack(spacing: SupplierTheme.spacingLG) {
-                        TextField("Phone", text: $phone)
+                        TextField("common.field.phone", text: $phone)
                             .textContentType(.telephoneNumber)
                             .keyboardType(.phonePad)
                             .textFieldStyle(.roundedBorder)
+                            .focused($focusedField, equals: .phone)
+                            .submitLabel(.next)
 
                         SecureField("Password", text: $password)
                             .textContentType(.password)
                             .textFieldStyle(.roundedBorder)
+                            .focused($focusedField, equals: .password)
+                            .submitLabel(.go)
                     }
                     .frame(maxWidth: formMaxWidth)
 
@@ -53,7 +63,7 @@ struct LoginView: View {
                             if loading {
                                 ProgressView().tint(.white)
                             } else {
-                                Text("Sign In")
+                                Text("common.action.sign_in")
                             }
                         }
                         .frame(maxWidth: formMaxWidth, minHeight: 48)
@@ -64,7 +74,7 @@ struct LoginView: View {
                     NavigationLink {
                         RegisterView()
                     } label: {
-                        Text("Create supplier account")
+                        Text("mobile_supplier.ui.create_supplier_account")
                             .frame(maxWidth: formMaxWidth, minHeight: 44)
                     }
                     .buttonStyle(.bordered)
@@ -76,10 +86,27 @@ struct LoginView: View {
             }
         }
         .background(SupplierTheme.background)
+        .defaultFocus($focusedField, .phone)
+        .onAppear {
+            focusedField = .phone
+        }
+        .onSubmit {
+            switch focusedField {
+            case .phone:
+                focusedField = .password
+            case .password:
+                if !loading && !phone.isEmpty && !password.isEmpty {
+                    login()
+                }
+            case nil:
+                break
+            }
+        }
         }
     }
 
     private func login() {
+        focusedField = nil
         loading = true
         error = nil
         Task {
@@ -91,6 +118,7 @@ struct LoginView: View {
                     return
                 }
                 tokenStore.store(auth: auth)
+                Task { await PushNotificationManager.shared.uploadStoredTokenIfPossible() }
             } catch {
                 self.error = error.localizedDescription
             }

@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.rescues
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -43,6 +45,7 @@ import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import com.pegasusx.warehouse.util.WarehouseIdempotencyKeys
 import java.util.UUID
 import kotlinx.coroutines.launch
+import com.pegasusx.warehouse.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -67,7 +70,7 @@ fun RescuesScreen(
             try {
                 val resp = api.getDispatchPreview()
                 if (resp.isSuccessful && resp.body() != null) {
-                    val body = resp.body()!!
+                    val body = resp.body() ?: return@launch
                     brokenDrivers = (body.availableDrivers + body.unavailableDrivers)
                         .filter { it.truckStatus.equals("NEEDS_RESCUE", ignoreCase = true) }
                 } else {
@@ -90,7 +93,7 @@ fun RescuesScreen(
             try {
                 val resp = api.previewRescue(RescuePreviewRequest(brokenDriverId = driver.driverId))
                 if (resp.isSuccessful && resp.body() != null) {
-                    rescueOptions = resp.body()!!.rescueOptions
+                    resp.body()?.let { rescueOptions = it.rescueOptions }
                 } else {
                     statusMessage = "Preview failed (${resp.code()})"
                     selectedBroken = null
@@ -166,7 +169,7 @@ fun RescuesScreen(
             }
             error != null -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(error!!, color = MaterialTheme.colorScheme.error)
+                    Text(error.orEmpty(), color = MaterialTheme.colorScheme.error)
                     Spacer(Modifier.height(PegasusSpacing.lg))
                     Button(onClick = { loadDrivers() }) { Text("Retry") }
                 }
@@ -199,8 +202,7 @@ fun RescuesScreen(
                             ) {
                                 Column(Modifier.weight(1f)) {
                                     Text(d.name.ifBlank { d.driverId }, style = MaterialTheme.typography.titleSmall)
-                                    Text(
-                                        "${d.vehicleLabel.ifBlank { "—" }} · ${d.truckStatus}",
+                                    Text(stringResource(R.string.mobile_warehouse_ui_ifblank_truckstatus, d.vehicleLabel.ifBlank { "—" }, d.truckStatus),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
@@ -216,7 +218,7 @@ fun RescuesScreen(
                     item {
                         Spacer(Modifier.height(PegasusSpacing.md))
                         Text(
-                            "Rescue Options for ${broken.name.ifBlank { broken.driverId }}",
+                            stringResource(R.string.mobile_warehouse_ui_rescue_options_for_driverid, broken.name.ifBlank { broken.driverId }),
                             style = MaterialTheme.typography.titleMedium,
                         )
                     }
@@ -239,8 +241,7 @@ fun RescuesScreen(
                                 ) {
                                     Column(Modifier.weight(1f)) {
                                         Text(opt.name.ifBlank { opt.driverId }, style = MaterialTheme.typography.titleSmall)
-                                        Text(
-                                            "${opt.licensePlate} · Capacity: ${"%.1f".format(opt.effectiveCapacityVu)} VU",
+                                        Text(stringResource(R.string.mobile_warehouse_ui_licenseplate_capacity_format_vu, opt.licensePlate, "%.1f".format(opt.effectiveCapacityVu)),
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         )

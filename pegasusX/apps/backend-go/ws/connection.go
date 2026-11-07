@@ -2,6 +2,7 @@ package ws
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"net/http"
 	"net/url"
@@ -90,11 +91,63 @@ func isLocalDevelopmentOrigin(origin string) bool {
 
 // gorillaConn wraps a gorilla/websocket connection to implement ws.Connection.
 type gorillaConn struct {
-	id       string
-	ident    auth.Claims
-	conn     *websocket.Conn
-	joinedAt time.Time
-	mu       sync.Mutex
+	id        string
+	ident     auth.Claims
+	conn      *websocket.Conn
+	joinedAt  time.Time
+	mu        sync.Mutex
+	send      chan []byte
+	stop      chan struct{}
+	stopOnce  sync.Once
+	onClose   func()
+	closeOnce sync.Once
+}
+
+func (c *gorillaConn) writePump() {
+	ticker := time.NewTicker(websocketPingInterval)
+	defer func() {
+		ticker.Stop()
+		c.closeStopChan()
+		_ = c.conn.Close()
+		c.signalClosed()
+	}()
+	for {
+		select {
+		case <-c.stop:
+			return
+		case payload, ok := <-c.send:
+			if !ok {
+				_ = c.conn.SetWriteDeadline(time.Now().Add(websocketWriteWait))
+				_ = c.conn.WriteMessage(websocket.CloseMessage, []byte{})
+				return
+			}
+			_ = c.conn.SetWriteDeadline(time.Now().Add(websocketWriteWait))
+			if err := c.conn.WriteMessage(websocket.TextMessage, payload); err != nil {
+				return
+			}
+			n := len(c.send)
+			for i := 0; i < n; i++ {
+				_ = c.conn.SetWriteDeadline(time.Now().Add(websocketWriteWait))
+				if err := c.conn.WriteMessage(websocket.TextMessage, <-c.send); err != nil {
+					return
+				}
+			}
+		case <-ticker.C:
+			_ = c.conn.SetWriteDeadline(time.Now().Add(websocketWriteWait))
+			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+				return
+			}
+		}
+	}
+}
+
+func (c *gorillaConn) closeStopChan() {
+	if c == nil || c.stop == nil {
+		return
+	}
+	c.stopOnce.Do(func() {
+		close(c.stop)
+	})
 }
 
 func (c *gorillaConn) ID() string {
@@ -106,14 +159,23 @@ func (c *gorillaConn) Identity() auth.Claims {
 }
 
 func (c *gorillaConn) Send(ctx context.Context, payload []byte) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	deadline, ok := ctx.Deadline()
-	if !ok {
-		deadline = time.Now().Add(5 * time.Second)
+	select {
+	case <-c.stop:
+		return fmt.Errorf("connection closed")
+	default:
 	}
-	_ = c.conn.SetWriteDeadline(deadline)
-	return c.conn.WriteMessage(websocket.TextMessage, payload)
+	select {
+	case c.send <- payload:
+		return nil
+	case <-c.stop:
+		return fmt.Errorf("connection closed")
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+		// Queue full, drop slow consumer
+		c.close()
+		return fmt.Errorf("slow consumer dropped")
+	}
 }
 
 func (c *gorillaConn) ping(timeout time.Duration) error {
@@ -124,12 +186,29 @@ func (c *gorillaConn) ping(timeout time.Duration) error {
 }
 
 func (c *gorillaConn) close() {
+	c.closeStopChan()
 	c.Reap()
+	c.signalClosed()
+}
+
+// signalClosed runs the disconnect hook once. Unsubscribe must happen here so
+// a closed socket frees its capacity slot before the next upgrade.
+func (c *gorillaConn) signalClosed() {
+	if c == nil {
+		return
+	}
+	c.closeStopChan()
+	c.closeOnce.Do(func() {
+		if c.onClose != nil {
+			c.onClose()
+		}
+	})
 }
 
 // Reap force-closes the socket. Invoked by hub shedding when a fresher session
 // supersedes a stale connection (Desert Protocol).
 func (c *gorillaConn) Reap() {
+	c.closeStopChan()
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	_ = c.conn.Close()

@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.planning
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -11,13 +13,14 @@ import androidx.compose.ui.Modifier
 import com.pegasusx.supplier.data.model.KnowledgeGraphNode
 import com.pegasusx.supplier.data.model.SupplierKnowledgeGraph
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
-import com.pegasus.design.PegasusLoadingState
+import com.pegasus.design.ui.PegasusLoadingState
 import com.pegasusx.supplier.ui.components.SupplierOpsListCard
 import com.pegasusx.supplier.ui.components.SupplierSectionTitle
-import com.pegasus.design.PegasusStateKind
-import com.pegasus.design.PegasusStatePane
+import com.pegasus.design.ui.PegasusStateKind
+import com.pegasus.design.ui.PegasusStatePane
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
+import com.pegasusx.supplier.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -52,7 +55,7 @@ fun KnowledgeGraphScreen(
                 title = { Text("Knowledge graph") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                     }
                 },
             )
@@ -63,7 +66,7 @@ fun KnowledgeGraphScreen(
             error != null -> PegasusStatePane(
                 kind = PegasusStateKind.Error,
                 headline = "Knowledge graph unavailable",
-                body = error!!,
+                body = error.orEmpty(),
                 modifier = Modifier.padding(padding),
                 actionLabel = "Retry",
                 onAction = { load() },
@@ -74,30 +77,36 @@ fun KnowledgeGraphScreen(
                 body = "Planning entities will appear when the graph is populated.",
                 modifier = Modifier.padding(padding),
             )
-            else -> LazyColumn(
-                modifier = Modifier.padding(padding),
-                contentPadding = PaddingValues(PegasusSpacing.lg),
-                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
-            ) {
-                item {
-                    SupplierSectionTitle("Nodes (${graph!!.nodes.size})")
-                }
-                items(graph!!.nodes, key = KnowledgeGraphNode::id) { node ->
-                    SupplierOpsListCard(
-                        headline = node.name?.ifBlank { node.id } ?: node.id,
-                        supporting = "${node.type} · ${node.id}",
-                    )
-                }
-                item {
-                    SupplierSectionTitle("Edges (${graph!!.edges.size})")
-                }
-                items(graph!!.edges, key = { "${it.from}-${it.to}-${it.relation}" }) { edge ->
-                    SupplierOpsListCard(
-                        headline = edge.relation,
-                        supporting = "${edge.from} → ${edge.to}",
-                    )
+            else -> {
+                val g = graph
+                if (g != null) {
+                    LazyColumn(
+                    modifier = Modifier.padding(padding),
+                    contentPadding = PaddingValues(PegasusSpacing.lg),
+                    verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
+                ) {
+                    item {
+                        SupplierSectionTitle("Nodes (${g.nodes.size})")
+                    }
+                    items(g.nodes, key = KnowledgeGraphNode::id) { node ->
+                        SupplierOpsListCard(
+                            headline = node.name?.ifBlank { node.id } ?: node.id,
+                            supporting = "${node.type} · ${node.id}",
+                        )
+                    }
+                    item {
+                        SupplierSectionTitle("Edges (${g.edges.size})")
+                    }
+                    items(g.edges, key = { "${it.from}-${it.to}-${it.relation}" }) { edge ->
+                        SupplierOpsListCard(
+                            headline = edge.relation,
+                            supporting = "${edge.from} → ${edge.to}",
+                        )
+                    }
                 }
             }
         }
     }
 }
+}
+

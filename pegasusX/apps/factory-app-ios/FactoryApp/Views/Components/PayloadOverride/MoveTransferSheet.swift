@@ -15,20 +15,20 @@ struct MoveTransferSheet: View {
                 VStack(alignment: .leading) {
                     Text(target.truckPlate.isEmpty ? String(target.truckId.prefix(8)) : target.truckPlate)
                         .font(.headline)
-                    Text("\(Int(target.totalVolumeVU)) / \(Int(target.maxCapacityVU)) VU")
+                    Text(L10n.format("mobile_factory.ui.totalvolumevu_maxcapacityvu_vu", "\(Int(target.totalVolumeVU))", "\(Int(target.maxCapacityVU))"))
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
                 .tag(target.id)
             }
-            .navigationTitle("Move Transfer")
+            .navigationTitle("mobile_factory.ui.move_transfer")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel", action: onCancel)
+                    Button("common.action.cancel", action: onCancel)
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Move") {
+                    Button("mobile_factory.ui.move") {
                         if let targetId = selectedTargetManifestId {
                             onMove(targetId)
                         }

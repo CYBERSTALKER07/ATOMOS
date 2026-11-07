@@ -1,7 +1,8 @@
 package optimizercontract
 
 // OptimizationJobType identifies the backend domain workflow that queued the
-// solver run. Values stay aligned with backend-go/optimizationjobs job types.
+// solver run. Contract enums for dispatch/optimizer envelopes (Spanner
+// OptimizationJobs table may still exist; the unused Go enqueue package was removed).
 type OptimizationJobType string
 
 const (
@@ -29,8 +30,13 @@ const (
 type OptimizationSolverType string
 
 const (
-	OptimizationSolverTypeVRP   OptimizationSolverType = "VRP"
+	OptimizationSolverTypeVRP OptimizationSolverType = "VRP"
+	// OptimizationSolverTypeCPSAT is a legacy alias for factory-slot assignment.
+	// The Rust path is greedy + swap (not OR-Tools CP-SAT) and always returns
+	// HEURISTIC — prefer GREEDY_ASSIGN for new producers (G6.C).
 	OptimizationSolverTypeCPSAT OptimizationSolverType = "CP_SAT"
+	// OptimizationSolverTypeGreedyAssign is the honest name for factory-slot greedy.
+	OptimizationSolverTypeGreedyAssign OptimizationSolverType = "GREEDY_ASSIGN"
 )
 
 // OptimizationSolverStatus describes the solver's result quality for a
@@ -42,6 +48,8 @@ const (
 	OptimizationSolverStatusFeasible     OptimizationSolverStatus = "FEASIBLE"
 	OptimizationSolverStatusInfeasible   OptimizationSolverStatus = "INFEASIBLE"
 	OptimizationSolverStatusModelInvalid OptimizationSolverStatus = "MODEL_INVALID"
+	// Heuristic is for greedy / NN sidecars that never prove optimality (P2-2).
+	OptimizationSolverStatusHeuristic OptimizationSolverStatus = "HEURISTIC"
 )
 
 // OptimizationJobEnvelope is the canonical Kafka payload for

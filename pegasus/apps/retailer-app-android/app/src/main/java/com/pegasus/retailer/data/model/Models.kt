@@ -269,14 +269,14 @@ data class ProductCategory(
 ) {
     companion object {
         val samples = listOf(
-            ProductCategory("cat-dairy", "Dairy & Eggs", "🥛", 12),
-            ProductCategory("cat-bakery", "Bakery", "🍞", 8),
-            ProductCategory("cat-produce", "Fresh Produce", "🥬", 24),
-            ProductCategory("cat-meat", "Meat & Poultry", "🥩", 15),
-            ProductCategory("cat-beverages", "Beverages", "🧃", 18),
-            ProductCategory("cat-snacks", "Snacks & Confectionery", "🍫", 20),
-            ProductCategory("cat-frozen", "Frozen Foods", "🧊", 10),
-            ProductCategory("cat-condiments", "Condiments & Sauces", "🫙", 14),
+            ProductCategory("cat-dairy", "Dairy & Eggs", "dairy", 12),
+            ProductCategory("cat-bakery", "Bakery", "bakery", 8),
+            ProductCategory("cat-produce", "Fresh Produce", "produce", 24),
+            ProductCategory("cat-meat", "Meat & Poultry", "meat", 15),
+            ProductCategory("cat-beverages", "Beverages", "beverages", 18),
+            ProductCategory("cat-snacks", "Snacks & Confectionery", "snacks", 20),
+            ProductCategory("cat-frozen", "Frozen Foods", "frozen", 10),
+            ProductCategory("cat-condiments", "Condiments & Sauces", "condiments", 14),
         )
     }
 }

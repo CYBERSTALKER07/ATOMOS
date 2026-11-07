@@ -191,9 +191,10 @@ export default function SupplierPricingPage() {
 
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
-                <label className={labelClass} style={{ color: 'var(--muted)' }}>SKU</label>
+                <label htmlFor="pricing-sku-id" className={labelClass} style={{ color: 'var(--muted)' }}>SKU</label>
                 {products.length > 0 ? (
                   <select
+                    id="pricing-sku-id"
                     required
                     className={inputClass}
                     value={form.sku_id}
@@ -206,6 +207,8 @@ export default function SupplierPricingPage() {
                   </select>
                 ) : (
                   <input
+                    id="pricing-sku-id"
+                    aria-label="SKU"
                     required
                     type="text"
                     placeholder="e.g. SKU-COKE-001"
@@ -218,8 +221,10 @@ export default function SupplierPricingPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className={labelClass} style={{ color: 'var(--muted)' }}>Min Pallets</label>
+                  <label htmlFor="pricing-min-pallets" className={labelClass} style={{ color: 'var(--muted)' }}>Min Pallets</label>
                   <input
+                    id="pricing-min-pallets"
+                    aria-label="Min Pallets"
                     required
                     type="number"
                     min={1}
@@ -229,8 +234,10 @@ export default function SupplierPricingPage() {
                   />
                 </div>
                 <div>
-                  <label className={labelClass} style={{ color: 'var(--muted)' }}>Discount %</label>
+                  <label htmlFor="pricing-discount-percent" className={labelClass} style={{ color: 'var(--muted)' }}>Discount %</label>
                   <input
+                    id="pricing-discount-percent"
+                    aria-label="Discount %"
                     required
                     type="number"
                     min={1}
@@ -260,8 +267,10 @@ export default function SupplierPricingPage() {
               </div>
 
               <div>
-                <label className={labelClass} style={{ color: 'var(--muted)' }}>Valid Until (optional)</label>
+                <label htmlFor="pricing-valid-until" className={labelClass} style={{ color: 'var(--muted)' }}>Valid Until (optional)</label>
                 <input
+                  id="pricing-valid-until"
+                  aria-label="Valid Until (optional)"
                   type="datetime-local"
                   className={inputClass}
                   value={form.valid_until}
@@ -270,8 +279,10 @@ export default function SupplierPricingPage() {
               </div>
 
               <div>
-                <label className={labelClass} style={{ color: 'var(--muted)' }}>Tier ID (optional — auto-generated if blank)</label>
+                <label htmlFor="pricing-tier-id" className={labelClass} style={{ color: 'var(--muted)' }}>Tier ID (optional — auto-generated if blank)</label>
                 <input
+                  id="pricing-tier-id"
+                  aria-label="Tier ID (optional — auto-generated if blank)"
                   type="text"
                   placeholder="UUID for idempotent upserts"
                   className={inputClass}

@@ -11,11 +11,33 @@ spec:
   jobTemplate:
     spec:
       backoffLimit: 2
+      ttlSecondsAfterFinished: 3600
       template:
         metadata:
           labels:
             app: pegasusx-planning-training-export
+            cost-center: platform-engineering
+            workload-tier: batch-cron
+            pricing-model: spot
         spec:
+          serviceAccountName: backend-go
+          automountServiceAccountToken: false
+          priorityClassName: pegasusx-batch-spot
+          tolerations:
+            - key: "cloud.google.com/gke-spot"
+              operator: "Equal"
+              value: "true"
+              effect: "NoSchedule"
+          affinity:
+            nodeAffinity:
+              preferredDuringSchedulingIgnoredDuringExecution:
+                - weight: 100
+                  preference:
+                    matchExpressions:
+                      - key: cloud.google.com/gke-spot
+                        operator: In
+                        values:
+                          - "true"
           containers:
           - name: planning-export
             image: us-central1-docker.pkg.dev/pegasusx-production/pegasusx/backend-go:latest

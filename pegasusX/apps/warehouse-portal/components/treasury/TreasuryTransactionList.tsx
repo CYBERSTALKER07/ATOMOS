@@ -1,3 +1,6 @@
+"use client";
+
+import { usePortalT } from "@/lib/i18n";
 import React from 'react';
 import EmptyState from '@/components/EmptyState';
 import { Invoice } from '@/app/treasury/page';
@@ -17,9 +20,10 @@ export function TreasuryTransactionList({
   resolveCurrency,
   formatPayoutOwner,
 }: TreasuryTransactionListProps) {
+  const t = usePortalT();
   if (invoices.length === 0) {
     return (
-      <EmptyState variant="no-data" headline="No invoices found" body="Invoices appear when retailers are billed for fulfilled orders." />
+      <EmptyState variant="no-data" headline={t("warehouse_portal.residual.text.no_invoices_found")} body={t("warehouse_portal.residual.text.invoices_appear_when_retailers_are_billed_for_fulfilled_orders")} />
     );
   }
 
@@ -28,11 +32,11 @@ export function TreasuryTransactionList({
       <table className="desk-table w-full text-sm">
         <thead>
           <tr className="border-b border-[var(--border)]">
-            <th className="text-left py-2 px-3 font-medium">Invoice</th>
-            <th className="text-left py-2 px-3 font-medium">Retailer</th>
-            <th className="text-right py-2 px-3 font-medium">Amount</th>
-            <th className="text-left py-2 px-3 font-medium">Status</th>
-            <th className="text-right py-2 px-3 font-medium">Due</th>
+            <th className="text-left py-2 px-3 font-medium">{t("warehouse_portal.treasury.treasury_transaction_list.text.invoice")}</th>
+            <th className="text-left py-2 px-3 font-medium">{t("warehouse_portal.orders._id_.text.retailer")}</th>
+            <th className="text-right py-2 px-3 font-medium">{t("warehouse_portal.treasury.treasury_transaction_list.text.amount")}</th>
+            <th className="text-left py-2 px-3 font-medium">{t("warehouse_portal.bins.text.status")}</th>
+            <th className="text-right py-2 px-3 font-medium">{t("warehouse_portal.treasury.treasury_transaction_list.text.due")}</th>
           </tr>
         </thead>
         <tbody>

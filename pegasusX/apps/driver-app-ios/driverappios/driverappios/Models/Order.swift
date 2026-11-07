@@ -13,11 +13,15 @@ enum OrderState: String, Codable, CaseIterable {
     case PENDING
     case PENDING_REVIEW
     case SCHEDULED
+    case AUTO_ACCEPTED
+    case BACKORDERED
+    case DELAYED
     case LOADED
     case DISPATCHED
     case IN_TRANSIT
     case ARRIVING
     case ARRIVED
+    case SHOP_CLOSED_PENDING
     case ARRIVED_SHOP_CLOSED
     case AWAITING_PAYMENT
     case PENDING_CASH_COLLECTION
@@ -29,17 +33,28 @@ enum OrderState: String, Codable, CaseIterable {
     case CANCELLED
     case QUARANTINE
     case DELIVERED_ON_CREDIT
+    case RECONCILIATION_REQUIRED
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let raw = try container.decode(String.self)
+        self = OrderState(rawValue: raw) ?? .PENDING
+    }
 
     var label: String {
         switch self {
         case .PENDING:                  return "Pending"
         case .PENDING_REVIEW:           return "Under Review"
         case .SCHEDULED:                return "Scheduled"
+        case .AUTO_ACCEPTED:            return "Auto-Accepted"
+        case .BACKORDERED:              return "Backordered"
+        case .DELAYED:                  return "Delayed"
         case .LOADED:                   return "Loaded"
         case .DISPATCHED:               return "Dispatched"
         case .IN_TRANSIT:               return "In Transit"
         case .ARRIVING:                 return "Arriving"
         case .ARRIVED:                  return "Arrived"
+        case .SHOP_CLOSED_PENDING:      return "Shop Closed"
         case .ARRIVED_SHOP_CLOSED:      return "Shop Closed"
         case .AWAITING_PAYMENT:         return "Awaiting Payment"
         case .PENDING_CASH_COLLECTION:  return "Cash Collection"
@@ -51,6 +66,26 @@ enum OrderState: String, Codable, CaseIterable {
         case .CANCELLED:                return "Cancelled"
         case .QUARANTINE:               return "Quarantine"
         case .DELIVERED_ON_CREDIT:       return "On Credit"
+        case .RECONCILIATION_REQUIRED:  return "Reconciliation Required"
+        }
+    }
+
+    var customerStage: CustomerStage {
+        switch self {
+        case .SCHEDULED, .AUTO_ACCEPTED, .BACKORDERED, .PENDING_REVIEW:
+            return .PLACED
+        case .PENDING, .DELAYED, .LOADED, .DISPATCHED:
+            return .PROCESSING
+        case .IN_TRANSIT, .ARRIVING, .ARRIVED,
+             .AWAITING_PAYMENT, .PENDING_CASH_COLLECTION:
+            return .OUT_FOR_DELIVERY
+        case .COMPLETED, .DELIVERED_ON_CREDIT, .FISCALIZING:
+            return .DELIVERED
+        case .CANCELLED, .NO_CAPACITY:
+            return .CANCELLED
+        case .SHOP_CLOSED_PENDING, .ARRIVED_SHOP_CLOSED, .CANCEL_REQUESTED,
+             .FISCAL_FAILED, .RECONCILIATION_REQUIRED, .QUARANTINE:
+            return .EXCEPTION_ACTION_REQUIRED
         }
     }
 
@@ -61,6 +96,39 @@ enum OrderState: String, Codable, CaseIterable {
             return true
         default:
             return false
+        }
+    }
+}
+
+// MARK: - Customer Stage (High-level 4-step progress facade matching backend)
+
+enum CustomerStage: String, Codable, CaseIterable {
+    case PLACED
+    case PROCESSING
+    case OUT_FOR_DELIVERY
+    case DELIVERED
+    case CANCELLED
+    case EXCEPTION_ACTION_REQUIRED
+
+    var displayName: String {
+        switch self {
+        case .PLACED:                     return "Order Placed"
+        case .PROCESSING:                 return "Preparing Order"
+        case .OUT_FOR_DELIVERY:           return "Out for Delivery"
+        case .DELIVERED:                  return "Delivered"
+        case .CANCELLED:                  return "Cancelled"
+        case .EXCEPTION_ACTION_REQUIRED:  return "Action Required"
+        }
+    }
+
+    var progressPercent: Int {
+        switch self {
+        case .PLACED:                     return 20
+        case .PROCESSING:                 return 50
+        case .OUT_FOR_DELIVERY:           return 80
+        case .DELIVERED:                  return 100
+        case .CANCELLED:                  return 0
+        case .EXCEPTION_ACTION_REQUIRED:  return 75
         }
     }
 }
@@ -142,6 +210,65 @@ struct Order: Codable, Identifiable, Hashable {
         guard let fee = deliveryFeeMinor, fee > 0 else { return nil }
         return "+\(fee.formattedAmount) delivery fee"
     }
+
+    static let samples: [Order] = [
+        Order(
+            id: "ord-tash-101",
+            retailerId: "ret-chilonzor-4",
+            retailerName: "Chilonzor Supermarket #4",
+            state: .IN_TRANSIT,
+            totalAmount: 1_450_000,
+            deliveryFeeMinor: 25_000,
+            deliveryDistanceKm: 4.2,
+            deliveryAddress: "Bunyodkor Ave 15, Chilonzor, Tashkent",
+            latitude: 41.2858,
+            longitude: 69.2035,
+            qrToken: "qr-ord-tash-101-token",
+            paymentGateway: "CASH",
+            createdAt: "2026-11-01T08:00:00Z",
+            updatedAt: "2026-11-01T08:30:00Z",
+            items: [
+                OrderLineItem(productId: "prod-cola-15", productName: "Coca-Cola Classic 1.5L (Pack of 6)", quantity: 10, unitPrice: 72000),
+                OrderLineItem(productId: "prod-water-5", productName: "Nestle Pure Life 5L", quantity: 20, unitPrice: 18000),
+                OrderLineItem(productId: "prod-oil-1", productName: "O'Ble 1L Sunflower Oil", quantity: 15, unitPrice: 24000)
+            ],
+            estimatedArrivalAt: "10:45 AM",
+            etaDurationSec: 900,
+            etaDistanceM: 4200,
+            routeId: "route-tashkent-south-1",
+            sequenceIndex: 1,
+            isPartial: false,
+            splitGroupId: nil
+        ),
+        Order(
+            id: "ord-tash-102",
+            retailerId: "ret-yunusobod-12",
+            retailerName: "Yunusobod Eco Market",
+            state: .DISPATCHED,
+            totalAmount: 2_890_000,
+            deliveryFeeMinor: 30_000,
+            deliveryDistanceKm: 7.8,
+            deliveryAddress: "Amir Temur Street 108, Yunusobod, Tashkent",
+            latitude: 41.3456,
+            longitude: 69.2891,
+            qrToken: "qr-ord-tash-102-token",
+            paymentGateway: "PAYME",
+            createdAt: "2026-11-01T08:15:00Z",
+            updatedAt: "2026-11-01T08:45:00Z",
+            items: [
+                OrderLineItem(productId: "prod-sugar-50", productName: "Khorazm Sugar 50kg Sack", quantity: 2, unitPrice: 650000),
+                OrderLineItem(productId: "prod-flour-50", productName: "Qozogiston Un 1-nav 50kg", quantity: 2, unitPrice: 420000),
+                OrderLineItem(productId: "prod-rice-25", productName: "Alanga Rice 25kg", quantity: 3, unitPrice: 250000)
+            ],
+            estimatedArrivalAt: "11:30 AM",
+            etaDurationSec: 1800,
+            etaDistanceM: 7800,
+            routeId: "route-tashkent-south-1",
+            sequenceIndex: 2,
+            isPartial: false,
+            splitGroupId: nil
+        )
+    ]
 }
 
 // MARK: - Delivery Submit

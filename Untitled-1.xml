@@ -1,0 +1,509 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1150" width="100%" height="100%" style="background:#080C14; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+  <defs>
+    <!-- Gradients -->
+    <linearGradient id="bgGradient" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#080C14"/>
+      <stop offset="100%" stop-color="#0F172A"/>
+    </linearGradient>
+    <linearGradient id="trunkGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#78350F"/>
+      <stop offset="50%" stop-color="#451A03"/>
+      <stop offset="100%" stop-color="#1E120A"/>
+    </linearGradient>
+    <linearGradient id="accentCyan" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#0284C7"/>
+      <stop offset="100%" stop-color="#38BDF8"/>
+    </linearGradient>
+    <linearGradient id="accentAmber" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#D97706"/>
+      <stop offset="100%" stop-color="#F59E0B"/>
+    </linearGradient>
+    <linearGradient id="accentEmerald" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#059669"/>
+      <stop offset="100%" stop-color="#10B981"/>
+    </linearGradient>
+
+    <!-- Filters -->
+    <filter id="cardShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#000000" flood-opacity="0.6"/>
+    </filter>
+    <filter id="glowCyan" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="5" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+    
+    <!-- Markers -->
+    <marker id="arrowCyan" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#38BDF8"/>
+    </marker>
+    <marker id="arrowAmber" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#F59E0B"/>
+    </marker>
+    <marker id="arrowEmerald" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#10B981"/>
+    </marker>
+    <marker id="arrowRed" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#EF4444"/>
+    </marker>
+  </defs>
+
+  <!-- BACKGROUND -->
+  <rect width="1600" height="1150" fill="url(#bgGradient)"/>
+  
+  <!-- GRID ACCENTS -->
+  <g opacity="0.04" stroke="#FFFFFF" stroke-width="1">
+    <line x1="0" y1="150" x2="1600" y2="150"/>
+    <line x1="0" y1="300" x2="1600" y2="300"/>
+    <line x1="0" y1="450" x2="1600" y2="450"/>
+    <line x1="0" y1="600" x2="1600" y2="600"/>
+    <line x1="0" y1="750" x2="1600" y2="750"/>
+    <line x1="0" y1="900" x2="1600" y2="900"/>
+    <line x1="380" y1="0" x2="380" y2="1150"/>
+    <line x1="1080" y1="0" x2="1080" y2="1150"/>
+  </g>
+
+  <!-- ==================== HEADER BANNER ==================== -->
+  <g transform="translate(40, 30)">
+    <rect width="1520" height="85" rx="10" fill="#0F172A" stroke="#334155" stroke-width="1.5" filter="url(#cardShadow)"/>
+    
+    <!-- Logo Badge -->
+    <rect x="20" y="16" width="52" height="52" rx="8" fill="url(#accentAmber)"/>
+    <text x="46" y="50" font-size="24" font-weight="900" fill="#1E120A" text-anchor="middle">PX</text>
+    
+    <!-- Title -->
+    <text x="88" y="42" font-size="22" font-weight="800" fill="#F8FAFC" letter-spacing="-0.5">Pegasus.X Sovereign Commerce OS: Ecosystem Master Blueprint</text>
+    <text x="88" y="62" font-size="12" fill="#94A3B8" font-family="ui-monospace, monospace">The Central Dark Oak Trunk • 5 Roles • 14 Stages • 12 TimescaleDB Chests • Real-Time Pipelines</text>
+
+    <!-- Invariant Pills -->
+    <g transform="translate(860, 26)">
+      <rect x="0" y="0" width="125" height="32" rx="6" fill="#1E293B" stroke="#F59E0B" stroke-width="1"/>
+      <text x="62" y="20" font-size="11" font-weight="700" fill="#FDE68A" text-anchor="middle" font-family="monospace">1 UZS = 100 Tiyin</text>
+
+      <rect x="135" y="0" width="120" height="32" rx="6" fill="#1E293B" stroke="#10B981" stroke-width="1"/>
+      <text x="195" y="20" font-size="11" font-weight="700" fill="#6EE7B7" text-anchor="middle" font-family="monospace">Soliq 12% VAT</text>
+
+      <rect x="265" y="0" width="115" height="32" rx="6" fill="#1E293B" stroke="#06B6D4" stroke-width="1"/>
+      <text x="322" y="20" font-size="11" font-weight="700" fill="#7DD3FC" text-anchor="middle" font-family="monospace">95% Tetris Cap</text>
+
+      <rect x="390" y="0" width="115" height="32" rx="6" fill="#1E293B" stroke="#EF4444" stroke-width="1"/>
+      <text x="447" y="20" font-size="11" font-weight="700" fill="#FCA5A5" text-anchor="middle" font-family="monospace">AML 50M Limit</text>
+      
+      <rect x="515" y="0" width="130" height="32" rx="6" fill="#1E293B" stroke="#8B5CF6" stroke-width="1"/>
+      <text x="580" y="20" font-size="11" font-weight="700" fill="#DDD6FE" text-anchor="middle" font-family="monospace">3L 11.5T GAWR</text>
+    </g>
+  </g>
+
+  <!-- ==================== COLUMN 1: 5 ROLES (SAPLINGS) ==================== -->
+  <g transform="translate(40, 140)">
+    <rect width="320" height="820" rx="12" fill="#0C1322" stroke="#1E2E4A" stroke-width="1.5" filter="url(#cardShadow)"/>
+    <rect width="320" height="42" rx="12" fill="#111C33"/>
+    <text x="16" y="26" font-size="13" font-weight="800" fill="#38BDF8" letter-spacing="1">🌱 5 ROOT ROLES (SAPLINGS)</text>
+    
+    <!-- Role 1: Supplier -->
+    <g transform="translate(15, 55)">
+      <rect width="290" height="135" rx="8" fill="#10192D" stroke="#1E293B" stroke-width="1"/>
+      <text x="14" y="24" font-size="13" font-weight="700" fill="#60A5FA">🏢 1. Supplier / Brand Owner</text>
+      <text x="14" y="44" font-size="10" fill="#94A3B8">Workspaces: Desktop (Tauri), Android, iOS</text>
+      <rect x="14" y="54" width="262" height="22" rx="4" fill="#1E293B"/>
+      <text x="20" y="69" font-size="9" fill="#F59E0B" font-family="monospace">S&amp;OP Demand • TPM Promos • Vetting</text>
+      <rect x="14" y="84" width="262" height="38" rx="4" fill="#311313" stroke="#EF4444" stroke-width="0.8"/>
+      <text x="20" y="98" font-size="8.5" font-weight="700" fill="#F87171">Gate: requireSupplierOnboarding (428)</text>
+      <text x="20" y="112" font-size="8" fill="#FCA5A5">Blocks catalog until legal INN/regimen OK</text>
+    </g>
+
+    <!-- Role 2: Warehouse -->
+    <g transform="translate(15, 205)">
+      <rect width="290" height="135" rx="8" fill="#10192D" stroke="#1E293B" stroke-width="1"/>
+      <text x="14" y="24" font-size="13" font-weight="700" fill="#34D399">🏭 2. Warehouse / DC</text>
+      <text x="14" y="44" font-size="10" fill="#94A3B8">Workspaces: Desktop (Tauri), Android, iOS</text>
+      <rect x="14" y="54" width="262" height="22" rx="4" fill="#1E293B"/>
+      <text x="20" y="69" font-size="9" fill="#6EE7B7" font-family="monospace">3D Bins • Dynamic FEFO • S-Curve Waves</text>
+      <rect x="14" y="84" width="262" height="38" rx="4" fill="#311313" stroke="#EF4444" stroke-width="0.8"/>
+      <text x="20" y="98" font-size="8.5" font-weight="700" fill="#F87171">Gate: requireWarehouseOnboarding (428)</text>
+      <text x="20" y="112" font-size="8" fill="#FCA5A5">Blocks pick wave release until racks valid</text>
+    </g>
+
+    <!-- Role 3: Payloader -->
+    <g transform="translate(15, 355)">
+      <rect width="290" height="135" rx="8" fill="#10192D" stroke="#1E293B" stroke-width="1"/>
+      <text x="14" y="24" font-size="13" font-weight="700" fill="#FBBF24">🚜 3. Payloader Dock Crew</text>
+      <text x="14" y="44" font-size="10" fill="#94A3B8">Workspaces: Rugged Tablet (Expo), Mobile</text>
+      <rect x="14" y="54" width="262" height="22" rx="4" fill="#1E293B"/>
+      <text x="20" y="69" font-size="9" fill="#FDE68A" font-family="monospace">3L Axle Statics • Bounce-Back • Bolt Seals</text>
+      <rect x="14" y="84" width="262" height="38" rx="4" fill="#311313" stroke="#EF4444" stroke-width="0.8"/>
+      <text x="20" y="98" font-size="8.5" font-weight="700" fill="#F87171">Gate: requirePayloaderOnboarding (428)</text>
+      <text x="20" y="112" font-size="8" fill="#FCA5A5">Blocks bay terminal until door paired</text>
+    </g>
+
+    <!-- Role 4: Driver -->
+    <g transform="translate(15, 505)">
+      <rect width="290" height="135" rx="8" fill="#10192D" stroke="#1E293B" stroke-width="1"/>
+      <text x="14" y="24" font-size="13" font-weight="700" fill="#F87171">🚚 4. Fleet Driver</text>
+      <text x="14" y="44" font-size="10" fill="#94A3B8">Workspaces: Android, iOS Mobile</text>
+      <rect x="14" y="54" width="262" height="22" rx="4" fill="#1E293B"/>
+      <text x="20" y="69" font-size="9" fill="#FCA5A5" font-family="monospace">DVIR Shift • Sub-100m Geofence • Pings</text>
+      <rect x="14" y="84" width="262" height="38" rx="4" fill="#311313" stroke="#EF4444" stroke-width="0.8"/>
+      <text x="20" y="98" font-size="8.5" font-weight="700" fill="#F87171">Gate: requireDriverShiftReady (DVIR 428)</text>
+      <text x="20" y="112" font-size="8" fill="#FCA5A5">Blocks route access until 4-step DVIR done</text>
+    </g>
+
+    <!-- Role 5: Retailer -->
+    <g transform="translate(15, 655)">
+      <rect width="290" height="145" rx="8" fill="#10192D" stroke="#1E293B" stroke-width="1"/>
+      <text x="14" y="24" font-size="13" font-weight="700" fill="#C084FC">🏪 5. Retailer / Merchant</text>
+      <text x="14" y="44" font-size="10" fill="#94A3B8">Web, Apps, Telegram Bot &amp; MiniApp (Vite)</text>
+      <rect x="14" y="54" width="262" height="22" rx="4" fill="#1E293B"/>
+      <text x="20" y="69" font-size="9" fill="#DDD6FE" font-family="monospace">Catalog • GlobalPay.uz • 6-Digit OTP</text>
+      <rect x="14" y="84" width="262" height="48" rx="4" fill="#201533" stroke="#8B5CF6" stroke-width="0.8"/>
+      <text x="20" y="98" font-size="8.5" font-weight="700" fill="#C4B5FD">Gate: STIR/INN &amp; Credit Underwriting</text>
+      <text x="20" y="112" font-size="8" fill="#E9D5FF">Bilateral trade limits &amp; AML ceilings</text>
+      <text x="20" y="124" font-size="8" fill="#E9D5FF">Hard block on overdue debt</text>
+    </g>
+  </g>
+
+  <!-- ==================== COLUMN 2: THE CENTRAL DARK OAK TRUNK (14 STAGES) ==================== -->
+  <g transform="translate(380, 140)">
+    <rect width="680" height="820" rx="12" fill="url(#trunkGrad)" stroke="#B45309" stroke-width="2" filter="url(#cardShadow)"/>
+    <rect width="680" height="42" rx="12" fill="#3D1D09"/>
+    <text x="340" y="26" font-size="14" font-weight="900" fill="#FEF3C7" text-anchor="middle" letter-spacing="1">🌲 THE CENTRAL DARK OAK TRUNK (14-STAGE ORDER LIFECYCLE)</text>
+
+    <!-- Stage 1 & 2 -->
+    <g transform="translate(20, 52)">
+      <rect width="310" height="66" rx="6" fill="#0F172A" stroke="#334155" stroke-width="1.2"/>
+      <text x="12" y="20" font-size="11" font-weight="800" fill="#38BDF8">1. Channel Order Inception</text>
+      <text x="12" y="36" font-size="9.5" fill="#CBD5E1">Retailer / Field Sales / Auto (R,s,S)</text>
+      <rect x="12" y="44" width="90" height="16" rx="3" fill="#1E293B"/>
+      <text x="57" y="56" font-size="8.5" fill="#38BDF8" text-anchor="middle" font-family="monospace">DRAFT / PEND</text>
+    </g>
+
+    <g transform="translate(350, 52)">
+      <rect width="310" height="66" rx="6" fill="#0F172A" stroke="#334155" stroke-width="1.2"/>
+      <text x="12" y="20" font-size="11" font-weight="800" fill="#F59E0B">2. Dynamic TPM Promotions</text>
+      <text x="12" y="36" font-size="9.5" fill="#CBD5E1">Volume steps, BXGY, floor margin clamp</text>
+      <rect x="12" y="44" width="105" height="16" rx="3" fill="#1E293B"/>
+      <text x="64" y="56" font-size="8.5" fill="#F59E0B" text-anchor="middle" font-family="monospace">PRICING_EVAL</text>
+    </g>
+    <path d="M 330 85 L 350 85" stroke="#38BDF8" stroke-width="1.5" marker-end="url(#arrowCyan)"/>
+
+    <!-- Connector down to Stage 3 -->
+    <path d="M 505 118 L 505 130 L 175 130 L 175 142" stroke="#F59E0B" stroke-width="1.5" marker-end="url(#arrowAmber)"/>
+
+    <!-- Stage 3 (Decision) & Stage 4 -->
+    <g transform="translate(20, 142)">
+      <rect width="310" height="85" rx="6" fill="#0F172A" stroke="#EF4444" stroke-width="1.5"/>
+      <text x="12" y="20" font-size="11" font-weight="800" fill="#F87171">3. Credit &amp; AML 50M Cash Gate</text>
+      <text x="12" y="36" font-size="9.5" fill="#CBD5E1">Debt check, AML 50M UZS ceiling</text>
+      <rect x="12" y="45" width="135" height="16" rx="3" fill="#311313"/>
+      <text x="79" y="57" font-size="8.5" fill="#FCA5A5" text-anchor="middle" font-family="monospace">Score > 70: HOLD</text>
+      <text x="12" y="75" font-size="8.5" fill="#94A3B8">Branch: PENDING_APPROVAL -> Admin</text>
+    </g>
+
+    <g transform="translate(350, 142)">
+      <rect width="310" height="85" rx="6" fill="#0F172A" stroke="#10B981" stroke-width="1.2"/>
+      <text x="12" y="20" font-size="11" font-weight="800" fill="#34D399">4. Dynamic FEFO &amp; 3D Bins</text>
+      <text x="12" y="36" font-size="9.5" fill="#CBD5E1">Zone-Aisle-Rack-Shelf-Bin allocation</text>
+      <rect x="12" y="45" width="95" height="16" rx="3" fill="#132B20"/>
+      <text x="59" y="57" font-size="8.5" fill="#6EE7B7" text-anchor="middle" font-family="monospace">CONFIRMED</text>
+      <text x="12" y="75" font-size="8.5" fill="#FBBF24">Shortage: BACKORDERED -> Staging</text>
+    </g>
+    <path d="M 330 184 L 350 184" stroke="#10B981" stroke-width="1.5" marker-end="url(#arrowEmerald)"/>
+
+    <!-- Connector down to Stage 5 -->
+    <path d="M 505 227 L 505 240 L 175 240 L 175 252" stroke="#10B981" stroke-width="1.5" marker-end="url(#arrowEmerald)"/>
+
+    <!-- Stage 5 & 6 -->
+    <g transform="translate(20, 252)">
+      <rect width="310" height="70" rx="6" fill="#0F172A" stroke="#334155" stroke-width="1.2"/>
+      <text x="12" y="20" font-size="11" font-weight="800" fill="#6EE7B7">5. Warehouse Pick Waves &amp; QC</text>
+      <text x="12" y="36" font-size="9.5" fill="#CBD5E1">S-Curve single-pass, carton verify</text>
+      <rect x="12" y="46" width="125" height="16" rx="3" fill="#1E293B"/>
+      <text x="74" y="58" font-size="8.5" fill="#A7F3D0" text-anchor="middle" font-family="monospace">PICKING -> PACKED</text>
+    </g>
+
+    <g transform="translate(350, 252)">
+      <rect width="310" height="70" rx="6" fill="#0F172A" stroke="#334155" stroke-width="1.2"/>
+      <text x="12" y="20" font-size="11" font-weight="800" fill="#A78BFA">6. 3L-CVRP Dispatch Optimization</text>
+      <text x="12" y="36" font-size="9.5" fill="#CBD5E1">95% Volumetric Tetris buffer, 3L GAWR</text>
+      <rect x="12" y="46" width="105" height="16" rx="3" fill="#1E293B"/>
+      <text x="64" y="58" font-size="8.5" fill="#DDD6FE" text-anchor="middle" font-family="monospace">PENDING_LOAD</text>
+    </g>
+    <path d="M 330 287 L 350 287" stroke="#A78BFA" stroke-width="1.5" marker-end="url(#arrowCyan)"/>
+
+    <!-- Connector down to Stage 7 -->
+    <path d="M 505 322 L 505 335 L 175 335 L 175 347" stroke="#A78BFA" stroke-width="1.5" marker-end="url(#arrowCyan)"/>
+
+    <!-- Stage 7 (Bounce Back Rule) & Stage 8 -->
+    <g transform="translate(20, 347)">
+      <rect width="310" height="90" rx="6" fill="#0F172A" stroke="#F59E0B" stroke-width="1.5"/>
+      <text x="12" y="20" font-size="11" font-weight="800" fill="#FBBF24">7. Dock Axle Statics &amp; Bolt Seal</text>
+      <text x="12" y="36" font-size="9.5" fill="#CBD5E1">Scale check, SHA256 digital bolt seal</text>
+      <rect x="12" y="46" width="70" height="16" rx="3" fill="#1E293B"/>
+      <text x="47" y="58" font-size="8.5" fill="#FDE68A" text-anchor="middle" font-family="monospace">LOADED</text>
+      <rect x="90" y="46" width="205" height="34" rx="3" fill="#331A00" stroke="#D97706" stroke-width="0.8"/>
+      <text x="96" y="59" font-size="8.2" font-weight="700" fill="#FDE68A">The Bounce-Back Rule (REVIEW)</text>
+      <text x="96" y="72" font-size="7.8" fill="#FEF3C7">0 split shipments; locks manifest</text>
+    </g>
+
+    <g transform="translate(350, 347)">
+      <rect width="310" height="90" rx="6" fill="#0F172A" stroke="#EF4444" stroke-width="1.5"/>
+      <text x="12" y="20" font-size="11" font-weight="800" fill="#F87171">8. Driver Shift DVIR Precondition</text>
+      <text x="12" y="36" font-size="9.5" fill="#CBD5E1">HTTP 428 Precondition Gate</text>
+      <rect x="12" y="46" width="80" height="16" rx="3" fill="#1E293B"/>
+      <text x="52" y="58" font-size="8.5" fill="#BAE6FD" text-anchor="middle" font-family="monospace">ON_SHIFT</text>
+      <text x="12" y="75" font-size="8.5" fill="#FCA5A5">Blocks vehicle release until 4-step DVIR</text>
+    </g>
+    <path d="M 330 392 L 350 392" stroke="#F59E0B" stroke-width="1.5" marker-end="url(#arrowAmber)"/>
+
+    <!-- Connector down to Stage 9 -->
+    <path d="M 505 437 L 505 450 L 175 450 L 175 462" stroke="#38BDF8" stroke-width="1.5" marker-end="url(#arrowCyan)"/>
+
+    <!-- Stage 9 & 10 -->
+    <g transform="translate(20, 462)">
+      <rect width="310" height="75" rx="6" fill="#0F172A" stroke="#334155" stroke-width="1.2"/>
+      <text x="12" y="20" font-size="11" font-weight="800" fill="#38BDF8">9. In-Transit GPS &amp; SOS Rescue</text>
+      <text x="12" y="36" font-size="9.5" fill="#CBD5E1">Sub-second pings, Redis stream fanout</text>
+      <rect x="12" y="46" width="85" height="16" rx="3" fill="#1E293B"/>
+      <text x="54" y="58" font-size="8.5" fill="#7DD3FC" text-anchor="middle" font-family="monospace">IN_TRANSIT</text>
+      <text x="110" y="58" font-size="8.5" fill="#94A3B8">Zero-rerender "map" patch</text>
+    </g>
+
+    <g transform="translate(350, 462)">
+      <rect width="310" height="75" rx="6" fill="#0F172A" stroke="#334155" stroke-width="1.2"/>
+      <text x="12" y="20" font-size="11" font-weight="800" fill="#FBBF24">10. Sub-100m Geofence Gate</text>
+      <text x="12" y="36" font-size="9.5" fill="#CBD5E1">6-digit dynamic OTP verification</text>
+      <rect x="12" y="46" width="75" height="16" rx="3" fill="#1E293B"/>
+      <text x="49" y="58" font-size="8.5" fill="#CBD5E1" text-anchor="middle" font-family="monospace">ARRIVED</text>
+      <text x="100" y="58" font-size="8" fill="#FCA5A5">Drift > 100m: Camera Proof</text>
+    </g>
+    <path d="M 330 500 L 350 500" stroke="#38BDF8" stroke-width="1.5" marker-end="url(#arrowCyan)"/>
+
+    <!-- Connector down to Stage 11 -->
+    <path d="M 505 537 L 505 550 L 175 550 L 175 562" stroke="#F59E0B" stroke-width="1.5" marker-end="url(#arrowAmber)"/>
+
+    <!-- Stage 11 & 12 -->
+    <g transform="translate(20, 562)">
+      <rect width="310" height="85" rx="6" fill="#0F172A" stroke="#F59E0B" stroke-width="1.5"/>
+      <text x="12" y="20" font-size="11" font-weight="800" fill="#FBBF24">11. UMP Discrepancy &amp; Offload</text>
+      <text x="12" y="36" font-size="9.5" fill="#CBD5E1">Universal Mutation Protocol (UMP)</text>
+      <rect x="12" y="46" width="80" height="16" rx="3" fill="#1E293B"/>
+      <text x="52" y="58" font-size="8.5" fill="#FCA5A5" text-anchor="middle" font-family="monospace">DISPUTED</text>
+      <text x="100" y="58" font-size="8.5" fill="#34D399">DELIVERED (Clean)</text>
+      <text x="12" y="76" font-size="8" fill="#FEF3C7">Auto Credit Note issued; Shutter down hold</text>
+    </g>
+
+    <g transform="translate(350, 562)">
+      <rect width="310" height="85" rx="6" fill="#0F172A" stroke="#8B5CF6" stroke-width="1.5"/>
+      <text x="12" y="20" font-size="11" font-weight="800" fill="#A78BFA">12. Soliq Fiscal Sealing</text>
+      <text x="12" y="36" font-size="9.5" fill="#CBD5E1">Tax Code Art. 257 Tuzatuvchi Factura</text>
+      <rect x="12" y="46" width="115" height="16" rx="3" fill="#201533"/>
+      <text x="69" y="58" font-size="8.5" fill="#C4B5FD" text-anchor="middle" font-family="monospace">FISCAL_SEALED</text>
+      <text x="12" y="76" font-size="8" fill="#DDD6FE">Asl Belgisi 3-tier: CIS -> ATK -> SSCC</text>
+    </g>
+    <path d="M 330 604 L 350 604" stroke="#8B5CF6" stroke-width="1.5" marker-end="url(#arrowCyan)"/>
+
+    <!-- Connector down to Stage 13 -->
+    <path d="M 505 647 L 505 660 L 175 660 L 175 672" stroke="#8B5CF6" stroke-width="1.5" marker-end="url(#arrowCyan)"/>
+
+    <!-- Stage 13 & 14 -->
+    <g transform="translate(20, 672)">
+      <rect width="310" height="80" rx="6" fill="#0F172A" stroke="#10B981" stroke-width="1.2"/>
+      <text x="12" y="20" font-size="11" font-weight="800" fill="#34D399">13. Split-Tender Settlement</text>
+      <text x="12" y="36" font-size="9.5" fill="#CBD5E1">GlobalPay.uz 1-click card, SoftPOS, Cash</text>
+      <rect x="12" y="46" width="60" height="16" rx="3" fill="#132B20"/>
+      <text x="42" y="58" font-size="8.5" fill="#6EE7B7" text-anchor="middle" font-family="monospace">PAID</text>
+      <text x="80" y="58" font-size="8" fill="#94A3B8">Double-entry: sum(deb) == sum(cred)</text>
+      <text x="12" y="72" font-size="8" fill="#FCA5A5">Cash limit &lt;= 50M UZS per order</text>
+    </g>
+
+    <g transform="translate(350, 672)">
+      <rect width="310" height="80" rx="6" fill="#0F172A" stroke="#10B981" stroke-width="2"/>
+      <text x="12" y="20" font-size="11" font-weight="800" fill="#10B981">14. Cage Drop &amp; SAP Empties</text>
+      <text x="12" y="36" font-size="9.5" fill="#CBD5E1">Vault envelope drop, Tara container swap</text>
+      <rect x="12" y="46" width="95" height="16" rx="3" fill="#132B20"/>
+      <text x="59" y="58" font-size="8.5" fill="#34D399" text-anchor="middle" font-family="monospace">RECONCILED</text>
+      <text x="12" y="72" font-size="8" fill="#6EE7B7">Full shift closeout audit complete</text>
+    </g>
+    <path d="M 330 712 L 350 712" stroke="#10B981" stroke-width="1.5" marker-end="url(#arrowEmerald)"/>
+  </g>
+
+  <!-- ==================== COLUMN 3: THE 12 DATA CHESTS ==================== -->
+  <g transform="translate(1080, 140)">
+    <rect width="480" height="820" rx="12" fill="#090E1A" stroke="#D97706" stroke-width="1.5" filter="url(#cardShadow)"/>
+    <rect width="480" height="42" rx="12" fill="#2E1B09"/>
+    <text x="240" y="26" font-size="13" font-weight="900" fill="#FBBF24" text-anchor="middle" letter-spacing="1">📦 THE 12 DATA CHESTS (TIMESCALEDB / POSTGRESQL)</text>
+
+    <!-- Chest 1 to 12 Grid (2 columns x 6 rows) -->
+    <g transform="translate(15, 52)">
+      <!-- CH-01 -->
+      <g transform="translate(0, 0)">
+        <rect width="215" height="115" rx="6" fill="#101827" stroke="#1E293B"/>
+        <text x="10" y="18" font-size="10" font-weight="800" fill="#F59E0B">CH-01: Commercial Orders</text>
+        <text x="10" y="32" font-size="8" fill="#94A3B8" font-family="monospace">orders, order_items</text>
+        <text x="10" y="46" font-size="7.5" fill="#CBD5E1">effective_total recalculated;</text>
+        <text x="10" y="58" font-size="7.5" fill="#CBD5E1">original_total immutable.</text>
+        <text x="10" y="72" font-size="7.5" fill="#38BDF8">Multi-supplier split orders</text>
+      </g>
+      <!-- CH-02 -->
+      <g transform="translate(235, 0)">
+        <rect width="215" height="115" rx="6" fill="#101827" stroke="#1E293B"/>
+        <text x="10" y="18" font-size="10" font-weight="800" fill="#F59E0B">CH-02: Catalog &amp; 17d MXIK</text>
+        <text x="10" y="32" font-size="8" fill="#94A3B8" font-family="monospace">skus, packaging_units</text>
+        <text x="10" y="46" font-size="7.5" fill="#CBD5E1">Exact 17-digit numeric MXIK;</text>
+        <text x="10" y="58" font-size="7.5" fill="#CBD5E1">floor_price_minor protects</text>
+        <text x="10" y="72" font-size="7.5" fill="#FCA5A5">negative promo margins</text>
+      </g>
+
+      <!-- CH-03 -->
+      <g transform="translate(0, 125)">
+        <rect width="215" height="115" rx="6" fill="#101827" stroke="#1E293B"/>
+        <text x="10" y="18" font-size="10" font-weight="800" fill="#F59E0B">CH-03: WMS 3D Bins &amp; FEFO</text>
+        <text x="10" y="32" font-size="8" fill="#94A3B8" font-family="monospace">warehouse_bins, fefo_lots</text>
+        <text x="10" y="46" font-size="7.5" fill="#CBD5E1">Zone-Aisle-Rack-Shelf-Bin;</text>
+        <text x="10" y="58" font-size="7.5" fill="#CBD5E1">expiry_date ASC sorting;</text>
+        <text x="10" y="72" font-size="7.5" fill="#34D399">Auto-quarantine on expiry</text>
+      </g>
+      <!-- CH-04 -->
+      <g transform="translate(235, 125)">
+        <rect width="215" height="115" rx="6" fill="#101827" stroke="#1E293B"/>
+        <text x="10" y="18" font-size="10" font-weight="800" fill="#F59E0B">CH-04: Fleet &amp; 3L-CVRP</text>
+        <text x="10" y="32" font-size="8" fill="#94A3B8" font-family="monospace">fleet_vehicles, manifests</text>
+        <text x="10" y="46" font-size="7.5" fill="#CBD5E1">95% Volumetric Tetris Buffer;</text>
+        <text x="10" y="58" font-size="7.5" fill="#CBD5E1">3L GAWR static moments;</text>
+        <text x="10" y="72" font-size="7.5" fill="#38BDF8">Steer >= 20% traction</text>
+      </g>
+
+      <!-- CH-05 -->
+      <g transform="translate(0, 250)">
+        <rect width="215" height="115" rx="6" fill="#101827" stroke="#1E293B"/>
+        <text x="10" y="18" font-size="10" font-weight="800" fill="#F59E0B">CH-05: Docks &amp; Axle Statics</text>
+        <text x="10" y="32" font-size="8" fill="#94A3B8" font-family="monospace">dock_bays, tamper_seals</text>
+        <text x="10" y="46" font-size="7.5" fill="#CBD5E1">The Bounce-Back Rule: 0 split;</text>
+        <text x="10" y="58" font-size="7.5" fill="#CBD5E1">Seal = SHA256(manifest +</text>
+        <text x="10" y="70" font-size="7.5" fill="#CBD5E1">driver + plate + bolt_no)</text>
+      </g>
+      <!-- CH-06 -->
+      <g transform="translate(235, 250)">
+        <rect width="215" height="115" rx="6" fill="#101827" stroke="#1E293B"/>
+        <text x="10" y="18" font-size="10" font-weight="800" fill="#F59E0B">CH-06: Telemetry &amp; SOS</text>
+        <text x="10" y="32" font-size="8" fill="#94A3B8" font-family="monospace">telemetry_pings, rescues</text>
+        <text x="10" y="46" font-size="7.5" fill="#CBD5E1">Zero-rerender "map" updates;</text>
+        <text x="10" y="58" font-size="7.5" fill="#CBD5E1">Breakdown incident creates</text>
+        <text x="10" y="70" font-size="7.5" fill="#FCA5A5">hot-swap route transfer</text>
+      </g>
+
+      <!-- CH-07 -->
+      <g transform="translate(0, 375)">
+        <rect width="215" height="115" rx="6" fill="#101827" stroke="#1E293B"/>
+        <text x="10" y="18" font-size="10" font-weight="800" fill="#F59E0B">CH-07: Doorstep EPOD &amp; UMP</text>
+        <text x="10" y="32" font-size="8" fill="#94A3B8" font-family="monospace">handshake_tokens, credit_notes</text>
+        <text x="10" y="46" font-size="7.5" fill="#CBD5E1">Sub-100m geofence lock;</text>
+        <text x="10" y="58" font-size="7.5" fill="#CBD5E1">Camera-direct proof (no gallery);</text>
+        <text x="10" y="70" font-size="7.5" fill="#6EE7B7">UMP auto credit note issue</text>
+      </g>
+      <!-- CH-08 -->
+      <g transform="translate(235, 375)">
+        <rect width="215" height="115" rx="6" fill="#101827" stroke="#1E293B"/>
+        <text x="10" y="18" font-size="10" font-weight="800" fill="#F59E0B">CH-08: Soliq &amp; Asl Belgisi</text>
+        <text x="10" y="32" font-size="8" fill="#94A3B8" font-family="monospace">soliq_efacturas, cis_codes</text>
+        <text x="10" y="46" font-size="7.5" fill="#CBD5E1">Tax Code Art. 257 Tuzatuvchi;</text>
+        <text x="10" y="58" font-size="7.5" fill="#CBD5E1">Asl Belgisi 3-tier DataMatrix;</text>
+        <text x="10" y="70" font-size="7.5" fill="#C4B5FD">12.00% VAT half-up exact</text>
+      </g>
+
+      <!-- CH-09 -->
+      <g transform="translate(0, 500)">
+        <rect width="215" height="115" rx="6" fill="#101827" stroke="#1E293B"/>
+        <text x="10" y="18" font-size="10" font-weight="800" fill="#F59E0B">CH-09: Payments &amp; GlobalPay</text>
+        <text x="10" y="32" font-size="8" fill="#94A3B8" font-family="monospace">retailer_cards, payments</text>
+        <text x="10" y="46" font-size="7.5" fill="#CBD5E1">GlobalPay.uz 2-step SMS OTP;</text>
+        <text x="10" y="58" font-size="7.5" fill="#CBD5E1">Split-tender; Double-entry</text>
+        <text x="10" y="70" font-size="7.5" fill="#6EE7B7">sum(deb) == sum(cred)</text>
+      </g>
+      <!-- CH-10 -->
+      <g transform="translate(235, 500)">
+        <rect width="215" height="115" rx="6" fill="#101827" stroke="#1E293B"/>
+        <text x="10" y="18" font-size="10" font-weight="800" fill="#F59E0B">CH-10: Credit &amp; AML Ceilings</text>
+        <text x="10" y="32" font-size="8" fill="#94A3B8" font-family="monospace">credit_profiles, aml_ledger</text>
+        <text x="10" y="46" font-size="7.5" fill="#CBD5E1">Statutory 50M UZS cash limit;</text>
+        <text x="10" y="58" font-size="7.5" fill="#CBD5E1">Overdue invoice debt triggers</text>
+        <text x="10" y="70" font-size="7.5" fill="#F87171">hard checkout block</text>
+      </g>
+
+      <!-- CH-11 -->
+      <g transform="translate(0, 625)">
+        <rect width="215" height="115" rx="6" fill="#101827" stroke="#1E293B"/>
+        <text x="10" y="18" font-size="10" font-weight="800" fill="#F59E0B">CH-11: TPM Promos &amp; Loyalty</text>
+        <text x="10" y="32" font-size="8" fill="#94A3B8" font-family="monospace">promotions, loyalty_ledger</text>
+        <text x="10" y="46" font-size="7.5" fill="#CBD5E1">Dynamic pricing from DB;</text>
+        <text x="10" y="58" font-size="7.5" fill="#CBD5E1">Co-fund budget ceiling pause;</text>
+        <text x="10" y="70" font-size="7.5" fill="#FDE68A">Loyalty tiers display-only</text>
+      </g>
+      <!-- CH-12 -->
+      <g transform="translate(235, 625)">
+        <rect width="215" height="115" rx="6" fill="#101827" stroke="#1E293B"/>
+        <text x="10" y="18" font-size="10" font-weight="800" fill="#F59E0B">CH-12: Reverse SAP Empties</text>
+        <text x="10" y="32" font-size="8" fill="#94A3B8" font-family="monospace">returnable_items, tara_tallies</text>
+        <text x="10" y="46" font-size="7.5" fill="#CBD5E1">Crates, pallets, keg tracking;</text>
+        <text x="10" y="58" font-size="7.5" fill="#CBD5E1">Intake tallies decrement debt;</text>
+        <text x="10" y="70" font-size="7.5" fill="#CBD5E1">Concealed damage dispute window</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- ==================== REAL-TIME PIPELINES SPINE (BOTTOM BAR) ==================== -->
+  <g transform="translate(40, 980)">
+    <rect width="1520" height="140" rx="10" fill="#0B1322" stroke="#0284C7" stroke-width="1.5" filter="url(#cardShadow)"/>
+    
+    <text x="20" y="24" font-size="12" font-weight="800" fill="#38BDF8" letter-spacing="1">⚡ REAL-TIME PIPELINE: POSTGRESQL OUTBOX &rarr; REDIS 7 STREAMS &rarr; WEBSOCKET DIRTY SLICES</text>
+    
+    <!-- 6 Dirty Slice Cards -->
+    <g transform="translate(20, 38)">
+      <rect x="0" y="0" width="230" height="85" rx="6" fill="#0F172A" stroke="#1E293B"/>
+      <text x="12" y="20" font-size="11" font-weight="800" fill="#38BDF8">Slice: "map"</text>
+      <text x="12" y="36" font-size="9" fill="#10B981">DRIVER_LOCATION_UPDATED</text>
+      <text x="12" y="52" font-size="8" fill="#94A3B8">applyDriverLocationPatch</text>
+      <text x="12" y="66" font-size="8" fill="#CBD5E1">Zero-Rerender • Sub-second GPS</text>
+    </g>
+
+    <g transform="translate(270, 38)">
+      <rect x="0" y="0" width="230" height="85" rx="6" fill="#0F172A" stroke="#1E293B"/>
+      <text x="12" y="20" font-size="11" font-weight="800" fill="#38BDF8">Slice: "orders"</text>
+      <text x="12" y="36" font-size="9" fill="#F59E0B">ORDER_CREATED / CHANGED</text>
+      <text x="12" y="52" font-size="8" fill="#94A3B8">Refetches order tables</text>
+      <text x="12" y="66" font-size="8" fill="#CBD5E1">Receivers: Retailer, Supplier, WMS</text>
+    </g>
+
+    <g transform="translate(520, 38)">
+      <rect x="0" y="0" width="230" height="85" rx="6" fill="#0F172A" stroke="#1E293B"/>
+      <text x="12" y="20" font-size="11" font-weight="800" fill="#38BDF8">Slice: "manifests"</text>
+      <text x="12" y="36" font-size="9" fill="#FBBF24">MANIFEST_SEALED / DRAFT</text>
+      <text x="12" y="52" font-size="8" fill="#94A3B8">Unlocks driver shift route</text>
+      <text x="12" y="66" font-size="8" fill="#CBD5E1">Receivers: Warehouse, Payloader, Driver</text>
+    </g>
+
+    <g transform="translate(770, 38)">
+      <rect x="0" y="0" width="230" height="85" rx="6" fill="#0F172A" stroke="#1E293B"/>
+      <text x="12" y="20" font-size="11" font-weight="800" fill="#38BDF8">Slice: "money"</text>
+      <text x="12" y="36" font-size="9" fill="#34D399">PAYMENT_SETTLED / REQUIRED</text>
+      <text x="12" y="52" font-size="8" fill="#94A3B8">Refetches credit / cash totals</text>
+      <text x="12" y="66" font-size="8" fill="#CBD5E1">Receivers: Retailer, Supplier, Cashier</text>
+    </g>
+
+    <g transform="translate(1020, 38)">
+      <rect x="0" y="0" width="230" height="85" rx="6" fill="#0F172A" stroke="#1E293B"/>
+      <text x="12" y="20" font-size="11" font-weight="800" fill="#38BDF8">Slice: "shop_closed"</text>
+      <text x="12" y="36" font-size="9" fill="#EF4444">SHOP_CLOSED / DISPUTED</text>
+      <text x="12" y="52" font-size="8" fill="#94A3B8">Alerts dispatch control tower</text>
+      <text x="12" y="66" font-size="8" fill="#CBD5E1">Receivers: Supplier, WMS, Driver</text>
+    </g>
+
+    <g transform="translate(1270, 38)">
+      <rect x="0" y="0" width="210" height="85" rx="6" fill="#0F172A" stroke="#1E293B"/>
+      <text x="12" y="20" font-size="11" font-weight="800" fill="#38BDF8">Slice: "plan"</text>
+      <text x="12" y="36" font-size="9" fill="#A78BFA">PLANNING_SCENARIO_PUB</text>
+      <text x="12" y="52" font-size="8" fill="#94A3B8">Warms forecast models</text>
+      <text x="12" y="66" font-size="8" fill="#CBD5E1">Receivers: S&amp;OP Lead, Warehouse</text>
+    </g>
+  </g>
+
+</svg>

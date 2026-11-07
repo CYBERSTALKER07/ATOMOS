@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.inventory
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -17,6 +19,7 @@ import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import com.pegasusx.warehouse.util.GeocodeLocationSupport
 import com.pegasusx.warehouse.util.WarehouseIdempotencyKeys
 import kotlinx.coroutines.launch
+import com.pegasusx.warehouse.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -30,6 +33,7 @@ fun LocationSettingsScreen(
     var error by remember { mutableStateOf<String?>(null) }
     var saveMessage by remember { mutableStateOf<String?>(null) }
     var warehouseName by remember { mutableStateOf("") }
+    var packCountry by remember { mutableStateOf("") }
     var location by remember { mutableStateOf(AddressLocationValue()) }
     val scope = rememberCoroutineScope()
 
@@ -40,8 +44,9 @@ fun LocationSettingsScreen(
             try {
                 val resp = api.getWarehouseLocation()
                 if (resp.isSuccessful && resp.body() != null) {
-                    val body = resp.body()!!
+                    val body = resp.body() ?: return@launch
                     warehouseName = body.name
+                    packCountry = body.packCountryCode.ifBlank { body.countryCode }
                     location = AddressLocationValue(
                         address = body.address,
                         lat = body.lat,
@@ -99,7 +104,7 @@ fun LocationSettingsScreen(
                 navigationIcon = {
                     if (onBack != null) {
                         IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                         }
                     }
                 },
@@ -111,7 +116,7 @@ fun LocationSettingsScreen(
                 CircularProgressIndicator(Modifier.padding(PegasusSpacing.lg))
             }
             error != null -> Column(Modifier.padding(padding).padding(PegasusSpacing.lg)) {
-                Text(error!!, color = MaterialTheme.colorScheme.error)
+                Text(error.orEmpty(), color = MaterialTheme.colorScheme.error)
                 TextButton(onClick = { load() }) { Text("Retry") }
             }
             else -> Column(
@@ -124,6 +129,15 @@ fun LocationSettingsScreen(
                 if (warehouseName.isNotBlank()) {
                     Text(warehouseName, style = MaterialTheme.typography.titleMedium)
                 }
+                if (packCountry.isNotBlank()) {
+                    OutlinedTextField(
+                        value = packCountry,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Pack country") },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
                 Text(
                     "Dispatch routing uses this address. Coordinates stay hidden from daily ops screens.",
                     style = MaterialTheme.typography.bodySmall,
@@ -133,12 +147,12 @@ fun LocationSettingsScreen(
                     geocodeApi = geocodeApi,
                     value = location,
                     onValueChange = { location = it },
-                    label = "Depot address",
+                    label = stringResource(R.string.factory_portal_settings_location_text_depot_address),
                 )
                 if (!saveMessage.isNullOrBlank()) {
                     Text(
-                        saveMessage!!,
-                        color = if (saveMessage!!.contains("saved", ignoreCase = true)) {
+                        saveMessage.orEmpty(),
+                        color = if (saveMessage.orEmpty().contains("saved", ignoreCase = true)) {
                             MaterialTheme.colorScheme.primary
                         } else {
                             MaterialTheme.colorScheme.error

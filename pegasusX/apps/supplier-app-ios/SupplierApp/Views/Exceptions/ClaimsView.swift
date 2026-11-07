@@ -21,7 +21,7 @@ struct ClaimsView: View {
                 Picker("Status", selection: $statusFilter) {
                     Text("OPEN").tag("OPEN")
                     Text("UNDER_REVIEW").tag("UNDER_REVIEW")
-                    Text("All").tag("")
+                    Text("supplier_portal.demand.signals.text.all").tag("")
                 }
                 .onChange(of: statusFilter) { _, _ in
                     Task { await load() }
@@ -34,7 +34,7 @@ struct ClaimsView: View {
                 }
 
                 if let lastSettlement {
-                    Text("Last settle: \(lastSettlement)")
+                    Text(L10n.format("mobile_supplier.ui.last_settle_lastsettlement_2", "\(lastSettlement)"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -42,7 +42,7 @@ struct ClaimsView: View {
                 NavigationLink {
                     ClaimChargebacksView()
                 } label: {
-                    Label("Claim chargebacks ledger", systemImage: "list.bullet.rectangle")
+                    Label("mobile_supplier.ui.claim_chargebacks_ledger", systemImage: "list.bullet.rectangle")
                 }
             }
 
@@ -53,15 +53,15 @@ struct ClaimsView: View {
             } else if let error {
                 Section {
                     Text(error).foregroundStyle(.red)
-                    Button("Retry") { Task { await load() } }
+                    Button("common.action.retry") { Task { await load() } }
                 }
             } else if claims.isEmpty {
                 Section {
-                    Text("No claims in this filter. Retailer post-delivery claims appear within the 48h window.")
+                    Text("mobile_supplier.ui.no_claims_in_this_filter_retailer_post_delivery_claims_appear_wi")
                         .foregroundStyle(.secondary)
                 }
             } else {
-                Section("Claims") {
+                Section("portal.nav.claims") {
                     ForEach(claims) { claim in
                         VStack(alignment: .leading, spacing: 6) {
                             HStack {
@@ -74,22 +74,22 @@ struct ClaimsView: View {
                             Text(claim.claimId)
                                 .font(.caption.monospaced())
                                 .foregroundStyle(.tint)
-                            Text("Order \(claim.orderId) · Retailer \(claim.retailerId)")
+                            Text(L10n.format("mobile_supplier.ui.order_orderid_retailer_retailerid", "\(claim.orderId)", "\(claim.retailerId)"))
                                 .font(.caption)
-                            Text("\(claim.amountMinor ?? 0) \(claim.currency ?? "UZS")")
+                            Text("\(claim.amountMinor ?? 0) \(displayPackCurrency(claim.currency))")
                                 .font(.subheadline.weight(.medium))
                             if let description = claim.description, !description.isEmpty {
                                 Text(description).font(.caption).foregroundStyle(.secondary)
                             }
                             if claim.status == "OPEN" || claim.status == "UNDER_REVIEW" {
                                 HStack {
-                                    Button("Approve (\(settlementModes.first { $0.0 == settlementMode }?.1 ?? settlementMode))") {
+                                    Button(L10n.format("mobile_supplier.ui.approve_n_1_settlementmode", "\(settlementModes.first { $0.0 == settlementMode }?.1 ?? settlementMode)")) {
                                         Task { await approve(claim.claimId) }
                                     }
                                     .buttonStyle(.borderedProminent)
                                     .disabled(busyId == claim.claimId)
 
-                                    Button("Reject", role: .destructive) {
+                                    Button("mobile_supplier.ui.reject", role: .destructive) {
                                         Task { await reject(claim.claimId) }
                                     }
                                     .disabled(busyId == claim.claimId)
@@ -102,7 +102,7 @@ struct ClaimsView: View {
                 }
             }
         }
-        .navigationTitle("Claims")
+        .navigationTitle("portal.nav.claims")
         .refreshable { await load() }
         .task { await load() }
     }

@@ -19,8 +19,9 @@ object GeocodeLocationSupport {
         if (hasValidCoordinates(value.lat, value.lng)) return value
 
         val top = runCatching { geocodeApi.autocomplete(address).predictions.firstOrNull() }.getOrNull()
-        if (!top?.placeId.isNullOrBlank()) {
-            val byPlace = runCatching { geocodeApi.resolvePlace(top!!.placeId) }.getOrNull()
+        val placeId = top?.placeId
+        if (!placeId.isNullOrBlank()) {
+            val byPlace = runCatching { geocodeApi.resolvePlace(placeId) }.getOrNull()
             if (byPlace != null && hasValidCoordinates(byPlace.lat, byPlace.lng)) {
                 return AddressLocationValue(
                     address = byPlace.address.ifBlank { address },

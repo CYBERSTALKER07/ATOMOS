@@ -2,12 +2,12 @@ import { BarChart3, Brain, TrendingUp, Zap } from "lucide-react";
 import { BentoGrid, BentoCard } from "../../components/BentoGrid";
 import CountUp from "../../components/CountUp";
 import MiniSparkline from "../../components/MiniSparkline";
-import type { Prediction, TopProduct } from "../../lib/types";
+import type { RetailerAIPrediction, TopProduct } from "../../lib/types";
 
 interface InsightsSummaryProps {
   totalThisMonth: number;
   sparkRevenue: number[];
-  predList: Prediction[];
+  predList: RetailerAIPrediction[];
   sparkOrders: number[];
   topProducts: TopProduct[];
 }

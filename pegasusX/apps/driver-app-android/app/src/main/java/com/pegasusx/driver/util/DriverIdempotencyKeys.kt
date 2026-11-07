@@ -51,7 +51,16 @@ object DriverIdempotencyKeys {
 
     fun reportDamage(orderId: String): String = "driver-report-damage:${driverId()}:$orderId"
 
+    fun reportCondition(orderId: String, conditionType: String): String =
+        "report-condition:${driverId()}:$orderId:${conditionType.trim().uppercase()}"
+
     fun requestEarlyComplete(reason: String): String = "driver-request-early-complete:${driverId()}:${stableHash(reason)}"
+
+    fun requestRescue(reason: String, note: String): String =
+        "driver-rescue-request:${driverId()}:${stableHash("${reason.trim()}:${note.trim()}")}"
+
+    fun respondRescue(rescueId: String, accept: Boolean): String =
+        "driver-rescue-respond:${driverId()}:$rescueId:$accept"
 
     fun routeReorder(routeId: String, orderSequence: List<String>): String {
         val seq = orderSequence.map { it.trim() }.filter { it.isNotEmpty() }

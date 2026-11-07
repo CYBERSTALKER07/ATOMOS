@@ -196,3 +196,7 @@ func (s *Service) ScoredByOrderID(ctx context.Context, supplierID string) (map[s
 	}
 	return out, nil
 }
+
+func (s *Service) AbortManifest(ctx context.Context, manifestID, supplierID, operatorID, reasonCode, notes string) error {
+	return s.repo.RecordIntervention(ctx, manifestID, supplierID, operatorID, "ABORT_MANIFEST", reasonCode, notes)
+}

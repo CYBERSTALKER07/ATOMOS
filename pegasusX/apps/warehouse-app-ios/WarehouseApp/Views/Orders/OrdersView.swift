@@ -3,6 +3,7 @@ import SwiftUI
 
 
 struct OrdersView: View {
+    var initialState: String? = nil
     @State private var hubTab: OrdersHubTab = .active
     @State private var orders: [Order] = []
     @State private var preorders: [WarehousePreorderRow] = []
@@ -16,6 +17,10 @@ struct OrdersView: View {
     @State private var statusMessage: String?
 
     private let states = ["ALL", "PENDING", "LOADED", "IN_TRANSIT", "ARRIVED", "COMPLETED", "CANCELLED"]
+
+    private var filterStates: [String] {
+        states.contains(selectedState) ? states : states + [selectedState]
+    }
 
     var body: some View {
         NavigationStack {
@@ -43,7 +48,7 @@ struct OrdersView: View {
                 )
             }
             .background(LabTheme.background)
-            .navigationTitle("Orders")
+            .navigationTitle("portal.nav.orders")
             .navigationDestination(for: String.self) { orderId in
                 OrderDetailView(orderId: orderId)
             }
@@ -51,7 +56,7 @@ struct OrdersView: View {
                 if hubTab == .active {
                     ToolbarItem(placement: .topBarTrailing) {
                         Menu {
-                            ForEach(states, id: \.self) { state in
+                            ForEach(filterStates, id: \.self) { state in
                                 Button {
                                     selectedState = state
                                 } label: {
@@ -63,12 +68,17 @@ struct OrdersView: View {
                                 }
                             }
                         } label: {
-                            Label("Filter", systemImage: "line.3.horizontal.decrease.circle")
+                            Label("mobile_warehouse.ui.filter", systemImage: "line.3.horizontal.decrease.circle")
                         }
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Refresh", systemImage: "arrow.clockwise") { load() }
+                    Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") { load() }
+                }
+            }
+            .onAppear {
+                if let initialState, !initialState.isEmpty {
+                    selectedState = initialState
                 }
             }
             .task(id: "\(hubTab)-\(selectedState)") { load() }
@@ -81,18 +91,18 @@ struct OrdersView: View {
                 NavigationStack {
                     Form {
                         DatePicker("New delivery date", selection: $proposeDate, displayedComponents: .date)
-                        TextField("Reason (required)", text: $reasonInput, axis: .vertical)
+                        TextField("supplier_portal.orders.order_ops_actions.text.reason_required", text: $reasonInput, axis: .vertical)
                     }
-                    .navigationTitle("Propose new delivery date")
+                    .navigationTitle("mobile_warehouse.ui.propose_new_delivery_date")
                     .toolbar {
                         ToolbarItem(placement: .cancellationAction) {
-                            Button("Cancel") {
+                            Button("common.action.cancel") {
                                 proposeTarget = nil
                                 reasonInput = ""
                             }
                         }
                         ToolbarItem(placement: .confirmationAction) {
-                            Button("Notify retailer") {
+                            Button("mobile_warehouse.ui.notify_retailer") {
                                 Task { await submitPropose(orderId: target.id) }
                             }
                             .disabled(reasonInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
@@ -105,8 +115,8 @@ struct OrdersView: View {
                 get: { rejectTarget != nil },
                 set: { if !$0 { rejectTarget = nil; reasonInput = "" } },
             )) {
-                TextField("Reason (required)", text: $reasonInput)
-                Button("Cancel order", role: .destructive) {
+                TextField("supplier_portal.orders.order_ops_actions.text.reason_required", text: $reasonInput)
+                Button("warehouse_portal.dispatch.text.cancel_order", role: .destructive) {
                     guard let orderId = rejectTarget, !reasonInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
                     Task {
                         do {
@@ -125,9 +135,9 @@ struct OrdersView: View {
                         }
                     }
                 }
-                Button("Cancel", role: .cancel) { rejectTarget = nil; reasonInput = "" }
+                Button("common.action.cancel", role: .cancel) { rejectTarget = nil; reasonInput = "" }
             } message: {
-                Text("The retailer will be notified.")
+                Text("mobile_warehouse.ui.the_retailer_will_be_notified")
             }
             .overlay(alignment: .bottom) {
                 if let statusMessage {
@@ -172,16 +182,21 @@ struct OrdersView: View {
         }
     }
 
-    private func isoDeliveryDate(from date: Date) -> String {
+    private static let tashkentIsoFractionalFormatter: ISO8601DateFormatter = {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         formatter.timeZone = TimeZone(secondsFromGMT: 5 * 3600)
-        var components = Calendar.current.dateComponents(in: TimeZone(secondsFromGMT: 5 * 3600)!, from: date)
+        return formatter
+    }()
+
+    private func isoDeliveryDate(from date: Date) -> String {
+        let tz = TimeZone(secondsFromGMT: 5 * 3600) ?? .current
+        var components = Calendar.current.dateComponents(in: tz, from: date)
         components.hour = 12
         components.minute = 0
         components.second = 0
         let noon = Calendar.current.date(from: components) ?? date
-        return formatter.string(from: noon)
+        return Self.tashkentIsoFractionalFormatter.string(from: noon)
     }
 
     private func load() {

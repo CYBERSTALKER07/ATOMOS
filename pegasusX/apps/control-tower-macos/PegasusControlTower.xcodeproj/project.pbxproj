@@ -1,0 +1,531 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		01D13A5CB5F66541652143CD /* MainSplitView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 220CD902A4C65F350F8DDB20 /* MainSplitView.swift */; };
+		0514D491539A7BF157081CF8 /* ControlTowerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F804592448F31FF183785F7 /* ControlTowerTests.swift */; };
+		0AB7BEB448C19B73E6CEE825 /* ExportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCCA18CC4EBF4C5914A310A0 /* ExportService.swift */; };
+		0C71071E7A677B0D8904B827 /* FinOpsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5628C9E085B9746F4AF552C0 /* FinOpsView.swift */; };
+		17226DA297E384BDFD7D38CE /* InfraHealthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93C3BA2630F591340212F884 /* InfraHealthView.swift */; };
+		2C9B514C7DED3ECCB065721F /* ControlTowerAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D84C801C989AEB1DA6844D3 /* ControlTowerAPIClient.swift */; };
+		370AC87F4B771B3B58A21F8A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 4CC93130F908B38071DB06BF /* Assets.xcassets */; };
+		418277076780153C773BB0B2 /* InfraModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 635E474C6597FA2A951F515E /* InfraModels.swift */; };
+		499D8C33CE34C69498FAD851 /* InspectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1AB147861CFA84F6FAFC3F82 /* InspectorView.swift */; };
+		4FB2EFBBCB8D1F1872F9F90E /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9ACAEC33595EA6FAAF2ACF2B /* SidebarView.swift */; };
+		5DADA20B9AE53C36B7DADEB4 /* WebSocketStreamClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6780CE329710338A30F81CCC /* WebSocketStreamClient.swift */; };
+		6EA2840F2A551205CCB1CADE /* FinOpsModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53154162645A7DEBB92F5A1F /* FinOpsModels.swift */; };
+		757A4159A80B6BF238A473F1 /* ExportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCCA18CC4EBF4C5914A310A0 /* ExportService.swift */; };
+		7A59E0FDF5DF94D7E80C2E33 /* PegasusControlTowerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B817B102CAA1CC10DFF72CE /* PegasusControlTowerApp.swift */; };
+		7DC3C4132F8BF58C098B3C4A /* TelemetryModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10D15A1A39DC2A03D863B72 /* TelemetryModels.swift */; };
+		7F824313D5C2B5F5D91AF8A2 /* AnalyticsScorecardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C13A3AF859F4CF95A3C62E61 /* AnalyticsScorecardView.swift */; };
+		876957DB90432D184D62B34A /* TelemetryStreamView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D582328462FA60D5F4184503 /* TelemetryStreamView.swift */; };
+		8C8FE8374987B0CE036360CE /* OverviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3FB1F16B228E22A58882E09 /* OverviewView.swift */; };
+		A1AF4504C805176F15E5A386 /* MenuBarStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7AE046B28D4B66138F9F13D /* MenuBarStatusView.swift */; };
+		A5054FF9395E2BEC743873C4 /* FinOpsModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53154162645A7DEBB92F5A1F /* FinOpsModels.swift */; };
+		A98911F737A3264B59829846 /* WebSocketStreamClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6780CE329710338A30F81CCC /* WebSocketStreamClient.swift */; };
+		C26AE4627B04DFC758938664 /* ControlTowerViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5D91B33E5733188A70DFD53 /* ControlTowerViewModel.swift */; };
+		C814DDE254E6953E408EB57D /* ControlTowerTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42915969A20E8B1344F060A4 /* ControlTowerTheme.swift */; };
+		CAFCF9CF972648F3018120F2 /* InfraModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 635E474C6597FA2A951F515E /* InfraModels.swift */; };
+		CFBB4761077108A4D70804EF /* ControlTowerViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5D91B33E5733188A70DFD53 /* ControlTowerViewModel.swift */; };
+		D9D2757BEF198C6C519CC24E /* AnalyticsModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB62CA2A229FA6A825A19FC9 /* AnalyticsModels.swift */; };
+		DE19441B10F3BBFDA400E577 /* ControlTowerAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D84C801C989AEB1DA6844D3 /* ControlTowerAPIClient.swift */; };
+		EA4D30CE8C39C29712E9C802 /* AnalyticsModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB62CA2A229FA6A825A19FC9 /* AnalyticsModels.swift */; };
+		F8788F8AE27D68FDDA8125A2 /* TelemetryModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10D15A1A39DC2A03D863B72 /* TelemetryModels.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		0B817B102CAA1CC10DFF72CE /* PegasusControlTowerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PegasusControlTowerApp.swift; sourceTree = "<group>"; };
+		1AB147861CFA84F6FAFC3F82 /* InspectorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InspectorView.swift; sourceTree = "<group>"; };
+		220CD902A4C65F350F8DDB20 /* MainSplitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainSplitView.swift; sourceTree = "<group>"; };
+		42915969A20E8B1344F060A4 /* ControlTowerTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControlTowerTheme.swift; sourceTree = "<group>"; };
+		4CC93130F908B38071DB06BF /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		4D84C801C989AEB1DA6844D3 /* ControlTowerAPIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControlTowerAPIClient.swift; sourceTree = "<group>"; };
+		53154162645A7DEBB92F5A1F /* FinOpsModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FinOpsModels.swift; sourceTree = "<group>"; };
+		5628C9E085B9746F4AF552C0 /* FinOpsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FinOpsView.swift; sourceTree = "<group>"; };
+		635E474C6597FA2A951F515E /* InfraModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InfraModels.swift; sourceTree = "<group>"; };
+		6780CE329710338A30F81CCC /* WebSocketStreamClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebSocketStreamClient.swift; sourceTree = "<group>"; };
+		6F804592448F31FF183785F7 /* ControlTowerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControlTowerTests.swift; sourceTree = "<group>"; };
+		8D786CB8CA73371AF0C864A3 /* PegasusControlTower.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PegasusControlTower.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		93C3BA2630F591340212F884 /* InfraHealthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InfraHealthView.swift; sourceTree = "<group>"; };
+		9ACAEC33595EA6FAAF2ACF2B /* SidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarView.swift; sourceTree = "<group>"; };
+		A5D91B33E5733188A70DFD53 /* ControlTowerViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControlTowerViewModel.swift; sourceTree = "<group>"; };
+		B7AE046B28D4B66138F9F13D /* MenuBarStatusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarStatusView.swift; sourceTree = "<group>"; };
+		C10D15A1A39DC2A03D863B72 /* TelemetryModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TelemetryModels.swift; sourceTree = "<group>"; };
+		C13A3AF859F4CF95A3C62E61 /* AnalyticsScorecardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsScorecardView.swift; sourceTree = "<group>"; };
+		C3FB1F16B228E22A58882E09 /* OverviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverviewView.swift; sourceTree = "<group>"; };
+		CB62CA2A229FA6A825A19FC9 /* AnalyticsModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsModels.swift; sourceTree = "<group>"; };
+		D582328462FA60D5F4184503 /* TelemetryStreamView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TelemetryStreamView.swift; sourceTree = "<group>"; };
+		DCCA18CC4EBF4C5914A310A0 /* ExportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportService.swift; sourceTree = "<group>"; };
+		E10166FE5F06D6B83E570DC5 /* PegasusControlTowerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PegasusControlTowerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		017ABFF06CF46DA37A42037E /* Tests */ = {
+			isa = PBXGroup;
+			children = (
+				6F804592448F31FF183785F7 /* ControlTowerTests.swift */,
+			);
+			path = Tests;
+			sourceTree = "<group>";
+		};
+		6D889F4879A4123FB21B9199 /* ViewModels */ = {
+			isa = PBXGroup;
+			children = (
+				A5D91B33E5733188A70DFD53 /* ControlTowerViewModel.swift */,
+			);
+			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		95ECCE946616E48ABE525757 /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				0B817B102CAA1CC10DFF72CE /* PegasusControlTowerApp.swift */,
+				D3E68D5C1C23E3FA723444E2 /* Models */,
+				BE3431193474BCF29916DB49 /* Services */,
+				965636071EDE3C3091F90B0D /* Theme */,
+				6D889F4879A4123FB21B9199 /* ViewModels */,
+				E37CD16465C3935EEA3BA724 /* Views */,
+			);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+		965636071EDE3C3091F90B0D /* Theme */ = {
+			isa = PBXGroup;
+			children = (
+				42915969A20E8B1344F060A4 /* ControlTowerTheme.swift */,
+			);
+			path = Theme;
+			sourceTree = "<group>";
+		};
+		BAA22D11598D74DC5175EF1D /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				8D786CB8CA73371AF0C864A3 /* PegasusControlTower.app */,
+				E10166FE5F06D6B83E570DC5 /* PegasusControlTowerTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		BE3431193474BCF29916DB49 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				4D84C801C989AEB1DA6844D3 /* ControlTowerAPIClient.swift */,
+				DCCA18CC4EBF4C5914A310A0 /* ExportService.swift */,
+				6780CE329710338A30F81CCC /* WebSocketStreamClient.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		D3E68D5C1C23E3FA723444E2 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				CB62CA2A229FA6A825A19FC9 /* AnalyticsModels.swift */,
+				53154162645A7DEBB92F5A1F /* FinOpsModels.swift */,
+				635E474C6597FA2A951F515E /* InfraModels.swift */,
+				C10D15A1A39DC2A03D863B72 /* TelemetryModels.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		DEA277CD9052A220C1AB5E5C = {
+			isa = PBXGroup;
+			children = (
+				4CC93130F908B38071DB06BF /* Assets.xcassets */,
+				95ECCE946616E48ABE525757 /* Sources */,
+				017ABFF06CF46DA37A42037E /* Tests */,
+				BAA22D11598D74DC5175EF1D /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		E37CD16465C3935EEA3BA724 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				C13A3AF859F4CF95A3C62E61 /* AnalyticsScorecardView.swift */,
+				5628C9E085B9746F4AF552C0 /* FinOpsView.swift */,
+				93C3BA2630F591340212F884 /* InfraHealthView.swift */,
+				1AB147861CFA84F6FAFC3F82 /* InspectorView.swift */,
+				220CD902A4C65F350F8DDB20 /* MainSplitView.swift */,
+				B7AE046B28D4B66138F9F13D /* MenuBarStatusView.swift */,
+				C3FB1F16B228E22A58882E09 /* OverviewView.swift */,
+				9ACAEC33595EA6FAAF2ACF2B /* SidebarView.swift */,
+				D582328462FA60D5F4184503 /* TelemetryStreamView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		366AC5F84D22CB9119DC39A7 /* PegasusControlTowerTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 297F1A51DDAD786207B8614C /* Build configuration list for PBXNativeTarget "PegasusControlTowerTests" */;
+			buildPhases = (
+				13C61954699D5606E732E881 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = PegasusControlTowerTests;
+			packageProductDependencies = (
+			);
+			productName = PegasusControlTowerTests;
+			productReference = E10166FE5F06D6B83E570DC5 /* PegasusControlTowerTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		7151FD42971F20DAE49878E9 /* PegasusControlTower */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 129754A717C85B69E12C4E97 /* Build configuration list for PBXNativeTarget "PegasusControlTower" */;
+			buildPhases = (
+				A60103A0C79934FCBBC1C539 /* Sources */,
+				3A9C09490461414984045756 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = PegasusControlTower;
+			packageProductDependencies = (
+			);
+			productName = PegasusControlTower;
+			productReference = 8D786CB8CA73371AF0C864A3 /* PegasusControlTower.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		3DFEBD5460D5D88ABEEF35F9 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+				};
+			};
+			buildConfigurationList = EF0C7B928D1B44BECA456843 /* Build configuration list for PBXProject "PegasusControlTower" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = DEA277CD9052A220C1AB5E5C;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = BAA22D11598D74DC5175EF1D /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				7151FD42971F20DAE49878E9 /* PegasusControlTower */,
+				366AC5F84D22CB9119DC39A7 /* PegasusControlTowerTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		3A9C09490461414984045756 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				370AC87F4B771B3B58A21F8A /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		13C61954699D5606E732E881 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				EA4D30CE8C39C29712E9C802 /* AnalyticsModels.swift in Sources */,
+				2C9B514C7DED3ECCB065721F /* ControlTowerAPIClient.swift in Sources */,
+				0514D491539A7BF157081CF8 /* ControlTowerTests.swift in Sources */,
+				C26AE4627B04DFC758938664 /* ControlTowerViewModel.swift in Sources */,
+				0AB7BEB448C19B73E6CEE825 /* ExportService.swift in Sources */,
+				6EA2840F2A551205CCB1CADE /* FinOpsModels.swift in Sources */,
+				CAFCF9CF972648F3018120F2 /* InfraModels.swift in Sources */,
+				7DC3C4132F8BF58C098B3C4A /* TelemetryModels.swift in Sources */,
+				5DADA20B9AE53C36B7DADEB4 /* WebSocketStreamClient.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A60103A0C79934FCBBC1C539 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D9D2757BEF198C6C519CC24E /* AnalyticsModels.swift in Sources */,
+				7F824313D5C2B5F5D91AF8A2 /* AnalyticsScorecardView.swift in Sources */,
+				DE19441B10F3BBFDA400E577 /* ControlTowerAPIClient.swift in Sources */,
+				C814DDE254E6953E408EB57D /* ControlTowerTheme.swift in Sources */,
+				CFBB4761077108A4D70804EF /* ControlTowerViewModel.swift in Sources */,
+				757A4159A80B6BF238A473F1 /* ExportService.swift in Sources */,
+				A5054FF9395E2BEC743873C4 /* FinOpsModels.swift in Sources */,
+				0C71071E7A677B0D8904B827 /* FinOpsView.swift in Sources */,
+				17226DA297E384BDFD7D38CE /* InfraHealthView.swift in Sources */,
+				418277076780153C773BB0B2 /* InfraModels.swift in Sources */,
+				499D8C33CE34C69498FAD851 /* InspectorView.swift in Sources */,
+				01D13A5CB5F66541652143CD /* MainSplitView.swift in Sources */,
+				A1AF4504C805176F15E5A386 /* MenuBarStatusView.swift in Sources */,
+				8C8FE8374987B0CE036360CE /* OverviewView.swift in Sources */,
+				7A59E0FDF5DF94D7E80C2E33 /* PegasusControlTowerApp.swift in Sources */,
+				4FB2EFBBCB8D1F1872F9F90E /* SidebarView.swift in Sources */,
+				F8788F8AE27D68FDDA8125A2 /* TelemetryModels.swift in Sources */,
+				876957DB90432D184D62B34A /* TelemetryStreamView.swift in Sources */,
+				A98911F737A3264B59829846 /* WebSocketStreamClient.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		3159A12A3621919F102E6592 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.pegasusx.controltower.tests;
+				PRODUCT_MODULE_NAME = PegasusControlTowerTests;
+				PRODUCT_NAME = PegasusControlTowerTests;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		32F14E4F40748C0ABD75F22E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGN_IDENTITY = "-";
+				COMBINE_HIDPI_IMAGES = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_HARDENED_RUNTIME = NO;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_MODULE_NAME = PegasusControlTower;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.10;
+			};
+			name = Release;
+		};
+		6BAFB5E98A6CC0BECE708734 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Pegasus Control Tower";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.business";
+				INFOPLIST_KEY_NSHighResolutionCapable = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2026 PegasusX Inc. All rights reserved.";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.pegasusx.controltower;
+				PRODUCT_MODULE_NAME = PegasusControlTower;
+				PRODUCT_NAME = PegasusControlTower;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		9534C6E64D6A45AF363FD99C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGN_IDENTITY = "-";
+				COMBINE_HIDPI_IMAGES = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_HARDENED_RUNTIME = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_MODULE_NAME = PegasusControlTower;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.10;
+			};
+			name = Debug;
+		};
+		B8EE2275AAE76D589DA1AF18 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Pegasus Control Tower";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.business";
+				INFOPLIST_KEY_NSHighResolutionCapable = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2026 PegasusX Inc. All rights reserved.";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.pegasusx.controltower;
+				PRODUCT_MODULE_NAME = PegasusControlTower;
+				PRODUCT_NAME = PegasusControlTower;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		C87AC43BE44958D76AFB6E6E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.pegasusx.controltower.tests;
+				PRODUCT_MODULE_NAME = PegasusControlTowerTests;
+				PRODUCT_NAME = PegasusControlTowerTests;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		129754A717C85B69E12C4E97 /* Build configuration list for PBXNativeTarget "PegasusControlTower" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6BAFB5E98A6CC0BECE708734 /* Debug */,
+				B8EE2275AAE76D589DA1AF18 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		297F1A51DDAD786207B8614C /* Build configuration list for PBXNativeTarget "PegasusControlTowerTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				3159A12A3621919F102E6592 /* Debug */,
+				C87AC43BE44958D76AFB6E6E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		EF0C7B928D1B44BECA456843 /* Build configuration list for PBXProject "PegasusControlTower" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				9534C6E64D6A45AF363FD99C /* Debug */,
+				32F14E4F40748C0ABD75F22E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 3DFEBD5460D5D88ABEEF35F9 /* Project object */;
+}

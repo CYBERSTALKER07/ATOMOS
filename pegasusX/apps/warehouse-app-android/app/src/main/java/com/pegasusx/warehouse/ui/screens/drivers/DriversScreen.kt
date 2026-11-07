@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.drivers
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -21,13 +23,14 @@ import com.pegasusx.warehouse.data.remote.WarehouseApi
 import com.pegasusx.warehouse.data.remote.WarehouseRealtimeSignals
 import com.pegasusx.warehouse.ui.realtime.WAREHOUSE_RECONNECT_RECOVERY_HINT
 import com.pegasusx.warehouse.ui.realtime.WarehouseReconnectRecoveryEffect
-import com.pegasus.design.PegasusLoadingState
-import com.pegasus.design.PegasusStateKind
-import com.pegasus.design.PegasusStatePane
+import com.pegasus.design.ui.PegasusLoadingState
+import com.pegasus.design.ui.PegasusStateKind
+import com.pegasus.design.ui.PegasusStatePane
 import com.pegasusx.warehouse.ui.components.WarehouseStatusChip
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import com.pegasusx.warehouse.util.WarehouseIdempotencyKeys
 import kotlinx.coroutines.launch
+import com.pegasusx.warehouse.R
 
 
 
@@ -67,12 +70,12 @@ fun DriversScreen(
                 val driverResp = api.getDrivers()
                 val vehicleResp = api.getVehicles()
                 if (driverResp.isSuccessful && driverResp.body() != null) {
-                    drivers = driverResp.body()!!.drivers
+                    driverResp.body()?.drivers?.let { drivers = it }
                 } else if (!silent) {
                     error = "Failed (${driverResp.code()})"
                 }
                 if (vehicleResp.isSuccessful && vehicleResp.body() != null) {
-                    vehicles = vehicleResp.body()!!.vehicles
+                    vehicleResp.body()?.vehicles?.let { vehicles = it }
                 } else if (!silent && error == null) {
                     error = "Failed (${vehicleResp.code()})"
                 }
@@ -105,14 +108,14 @@ fun DriversScreen(
     ) { innerPadding ->
         when {
             loading && drivers.isEmpty() -> PegasusLoadingState(
-                title = "Loading drivers…",
+                title = stringResource(R.string.mobile_warehouse_ui_loading_drivers),
                 body = "Fleet driver roster",
                 modifier = Modifier.padding(innerPadding),
             )
             error != null && drivers.isEmpty() -> PegasusStatePane(
                 kind = PegasusStateKind.Error,
                 headline = "Drivers unavailable",
-                body = error!!,
+                body = error.orEmpty(),
                 actionLabel = "Retry",
                 onAction = { load() },
                 modifier = Modifier.padding(innerPadding),
@@ -156,26 +159,27 @@ fun DriversScreen(
                 Column {
                     Text("One-time PIN — save it now:")
                     Spacer(Modifier.height(PegasusSpacing.md))
-                    Text(createdPin!!, style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary)
+                    Text(createdPin.orEmpty(), style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary)
                 }
             },
             confirmButton = { TextButton(onClick = { createdPin = null }) { Text("Done") } },
         )
     }
 
-    if (assignDriver != null) {
+    val targetDriver = assignDriver
+    if (targetDriver != null) {
         AssignVehicleDialog(
-            driver = assignDriver!!,
-            vehicles = vehicles.filter { it.isActive || it.vehicleId == assignDriver!!.vehicleId },
+            driver = targetDriver,
+            vehicles = vehicles.filter { it.isActive || it.vehicleId == targetDriver.vehicleId },
             onDismiss = { assignDriver = null },
             onAssign = { vehicleId ->
-                assigningDriverId = assignDriver!!.driverId
+                assigningDriverId = targetDriver.driverId
                 scope.launch {
                     try {
                         val resp = api.assignDriverVehicle(
-                            assignDriver!!.driverId,
+                            targetDriver.driverId,
                             AssignVehicleRequest(vehicleId = vehicleId),
-                            WarehouseIdempotencyKeys.assignDriverVehicle(assignDriver!!.driverId, vehicleId),
+                            WarehouseIdempotencyKeys.assignDriverVehicle(assignDriver?.driverId.orEmpty(), vehicleId),
                         )
                         if (resp.isSuccessful) {
                             assignDriver = null
@@ -254,7 +258,7 @@ private fun CreateDriverDialog(
             Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md)) {
                 OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Name") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(value = phone, onValueChange = { phone = it }, label = { Text("Phone") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                if (error != null) Text(error!!, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                if (error != null) Text(error.orEmpty(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
             }
         },
         confirmButton = {
@@ -267,7 +271,7 @@ private fun CreateDriverDialog(
                                 CreateDriverRequest(name = name, phone = phone),
                                 WarehouseIdempotencyKeys.createDriver(phone),
                             )
-                            if (resp.isSuccessful && resp.body() != null) onCreated(resp.body()!!.pin)
+                            if (resp.isSuccessful && resp.body() != null) resp.body()?.pin?.let(onCreated)
                             else error = "Failed (${resp.code()})"
                         } catch (e: Exception) { error = e.message ?: "Error" }
                         finally { submitting = false }

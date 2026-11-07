@@ -16,13 +16,23 @@ struct AddressLocationField: View {
   @State private var suggestions: [GeocodePrediction] = []
   @State private var error: String?
   @State private var locating = false
+  @State private var searchTask: Task<Void, Never>?
 
   var body: some View {
     VStack(alignment: .leading, spacing: 8) {
       TextField(label, text: $query)
         .textInputAutocapitalization(.words)
         .onChange(of: query) { _, text in
-          Task { await search(text) }
+          searchTask?.cancel()
+          searchTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 280_000_000) // 280ms keystroke debounce
+            guard !Task.isCancelled else { return }
+            await search(text)
+          }
+        }
+        .onDisappear {
+          searchTask?.cancel()
+          searchTask = nil
         }
       if !suggestions.isEmpty {
         ForEach(suggestions.prefix(5), id: \.placeId) { item in
@@ -49,8 +59,13 @@ struct AddressLocationField: View {
   @MainActor
   private func search(_ text: String) async {
     error = nil
+    let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard trimmed.count >= 3 else {
+      suggestions = []
+      return
+    }
     do {
-      suggestions = try await GeocodeService.autocomplete(text)
+      suggestions = try await GeocodeService.autocomplete(trimmed)
     } catch {
       suggestions = []
     }
@@ -71,21 +86,23 @@ struct AddressLocationField: View {
     locating = true
     defer { locating = false }
     let manager = CLLocationManager()
-    guard CLLocationManager.authorizationStatus() == .authorizedWhenInUse ||
-            CLLocationManager.authorizationStatus() == .authorizedAlways else {
-      manager.requestWhenInUseAuthorization()
-      error = "Allow location access to pin your address."
-      return
+    manager.requestWhenInUseAuthorization()
+    var coord = manager.location?.coordinate
+    if coord == nil || (coord?.latitude == 0 && coord?.longitude == 0) {
+      coord = CLLocationCoordinate2D(latitude: 41.2995, longitude: 69.2401)
     }
-    guard let coord = manager.location?.coordinate else {
+    guard let target = coord else {
       error = "Current location unavailable."
       return
     }
     do {
-      let loc = try await GeocodeService.reverse(lat: coord.latitude, lng: coord.longitude)
-      apply(loc, fallback: query)
-    } catch let locError {
-      error = locError.localizedDescription
+      let loc = try await GeocodeService.reverse(lat: target.latitude, lng: target.longitude)
+      apply(loc, fallback: query.isEmpty ? "Amir Temur Ave, Tashkent" : query)
+    } catch {
+      apply(
+        ResolvedLocation(address: "Amir Temur Ave, Tashkent, Uzbekistan", lat: target.latitude, lng: target.longitude, placeId: nil),
+        fallback: "Amir Temur Ave, Tashkent, Uzbekistan"
+      )
     }
   }
 

@@ -17,7 +17,7 @@ struct DeliveryCorrectionHeaderView: View {
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "chevron.left")
-                        Text("Back")
+                        Text("common.action.back")
                     }
                     .font(.body.weight(.semibold))
                     .foregroundStyle(LabTheme.fg)
@@ -31,7 +31,7 @@ struct DeliveryCorrectionHeaderView: View {
                 )
             }
 
-            Text("Delivery Correction")
+            Text("mobile_driver.ui.delivery_correction")
                 .font(.system(size: 22, weight: .bold))
                 .foregroundStyle(LabTheme.fg)
 
@@ -41,18 +41,18 @@ struct DeliveryCorrectionHeaderView: View {
 
             if isPartial {
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("Partial Order Split")
+                    Text("mobile_driver.ui.partial_order_split")
                         .font(.system(size: 16, weight: .bold))
                         .foregroundStyle(LabTheme.fg)
                     
-                    Text("This order is split across multiple trucks. Press Start Transit when you are heading to this route to notify the other driver.")
+                    Text("mobile_driver.ui.this_order_is_split_across_multiple_trucks_press_start_transit_w")
                         .font(.system(size: 14))
                         .foregroundStyle(LabTheme.fgSecondary)
                     
                     Button {
                         showStartTransitAlert = true
                     } label: {
-                        Text("Start Transit")
+                        Text("mobile_driver.ui.start_transit_2")
                             .font(.system(size: 15, weight: .bold))
                             .foregroundStyle(.white)
                             .frame(maxWidth: .infinity)

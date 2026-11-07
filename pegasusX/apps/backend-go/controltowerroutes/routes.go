@@ -8,10 +8,8 @@ import (
 
 // Deps is the dependency contract for control tower routes.
 type Deps struct {
-	Handlers            *controltower.Handlers
-	FirebaseAuthEnabled bool
-	FirebaseVerifier    auth.FirebaseVerifier
-	AllowAuthBypass     bool
+	Handlers        *controltower.Handlers
+	AllowAuthBypass bool
 }
 
 // RegisterRoutes mounts /v1/control-tower/* for supplier admins.
@@ -28,10 +26,9 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		gr.With(auth.RequireRole(auth.RoleAdmin)).Get("/v1/control-tower/runs", d.Handlers.HandleRuns)
 		gr.With(auth.RequireRole(auth.RoleAdmin)).Post("/v1/control-tower/runs/{id}/{action}", d.Handlers.HandleRunAction)
 		gr.With(auth.RequireRole(auth.RoleAdmin)).Post("/v1/control-tower/evaluate", d.Handlers.HandleEvaluate)
+		gr.With(auth.RequireRole(auth.RoleAdmin)).Post("/v1/control-tower/manifests/{id}/abort", d.Handlers.HandleManifestAbort)
 	}
 	auth.ProtectMutations(r, auth.MutationGuardConfig{
-		FirebaseEnabled:  d.FirebaseAuthEnabled,
-		FirebaseVerifier: d.FirebaseVerifier,
-		AllowBypass:      d.AllowAuthBypass,
+		AllowBypass: d.AllowAuthBypass,
 	}, mount)
 }

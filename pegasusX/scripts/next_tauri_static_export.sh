@@ -20,9 +20,9 @@ cleanup() {
 trap cleanup EXIT
 
 if [[ -d "$API_DIR" ]] && compgen -G "$API_DIR/**/*" >/dev/null 2>&1; then
-  STASH="$(mktemp -d)"
+  STASH="$(mktemp -d)/api"
   # move contents via renaming the folder
-  mv "$API_DIR" "$STASH/api"
+  mv "$API_DIR" "$STASH"
   mkdir -p "$API_DIR"
 fi
 

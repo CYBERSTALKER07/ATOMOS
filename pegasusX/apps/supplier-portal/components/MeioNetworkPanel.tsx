@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useEffect, useState } from "react";
 import { supplierFetch } from "@/lib/auth";
 import { createSupplierApi } from "@/lib/api";
@@ -28,6 +29,7 @@ type MEIOSummary = {
 };
 
 export default function MeioNetworkPanel() {
+  const t = usePortalT();
   const [summary, setSummary] = useState<MEIOSummary | null>(null);
   const [demandGeneratedAt, setDemandGeneratedAt] = useState<string | undefined>();
   const [demandConfidence, setDemandConfidence] = useState<ReturnType<typeof forecastConfidenceFromDemand> | null>(null);
@@ -51,7 +53,7 @@ export default function MeioNetworkPanel() {
           setDemandConfidence(forecastConfidenceFromDemand(demandResp));
         }
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : "MEIO unavailable");
+        if (!cancelled) setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.meio_unavailable"));
       }
     })();
     return () => {
@@ -76,10 +78,10 @@ export default function MeioNetworkPanel() {
       ) : summary ? (
         <>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <Stat label="Warehouses" value={summary.warehouses_scanned} />
-            <Stat label="SKUs" value={summary.skus_analyzed} />
-            <Stat label="Insights" value={summary.insights_generated} />
-            <Stat label="Transfers" value={summary.transfer_recommendations} />
+            <Stat label={t("portal.nav.warehouses")} value={summary.warehouses_scanned} />
+            <Stat label={t("supplier_portal.residual.text.skus")} value={summary.skus_analyzed} />
+            <Stat label={t("portal.nav.insights")} value={summary.insights_generated} />
+            <Stat label={t("portal.nav.transfers")} value={summary.transfer_recommendations} />
           </div>
           {demandConfidence ? (
             <ForecastConfidenceCard

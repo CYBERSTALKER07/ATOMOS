@@ -136,19 +136,7 @@ final class CorrectionViewModel {
                 return false
             }
 
-            let location = await MainActor.run { FleetViewModel.lastKnownLocation }
-            if let location, location.latitude != 0 || location.longitude != 0 {
-                let edge = try await fleetService.updateOrderDuringDelivery(
-                    orderId: orderId,
-                    latitude: location.latitude,
-                    longitude: location.longitude
-                )
-                guard edge.success else {
-                    submitError = edge.message
-                    Haptics.error()
-                    return false
-                }
-            }
+            // G1.C: skip mid-delivery update (no durable writer). Missing-items / amend is SoT.
 
             let missingItems: [MissingItemRequest] = lineItems.compactMap { item in
                 guard item.status == .REJECTED_DAMAGED else { return nil }

@@ -15,6 +15,58 @@ data class H3DensityData(
     val count: Int
 )
 
+private data class RenderedHexPolygon(
+    val hex: String,
+    val boundary: List<LatLng>,
+    val fillColor: Color,
+)
+
+private val DARK_MAP_STYLE = """
+    [
+      {
+        "elementType": "geometry",
+        "stylers": [
+          {
+            "color": "#212121"
+          }
+        ]
+      },
+      {
+        "elementType": "labels.icon",
+        "stylers": [
+          {
+            "visibility": "off"
+          }
+        ]
+      },
+      {
+        "elementType": "labels.text.fill",
+        "stylers": [
+          {
+            "color": "#757575"
+          }
+        ]
+      },
+      {
+        "elementType": "labels.text.stroke",
+        "stylers": [
+          {
+            "color": "#212121"
+          }
+        ]
+      },
+      {
+        "featureType": "water",
+        "elementType": "geometry",
+        "stylers": [
+          {
+            "color": "#000000"
+          }
+        ]
+      }
+    ]
+""".trimIndent()
+
 @Composable
 fun HexagonalControlTowerMap(
     data: List<H3DensityData>,
@@ -22,77 +74,45 @@ fun HexagonalControlTowerMap(
 ) {
     val h3 = remember { H3Core.newInstance() }
 
+    val packCenter = com.pegasus.design.sessionMapCenter()
+    val centerLatLng = LatLng(packCenter?.lat ?: 0.0, packCenter?.lng ?: 0.0)
+
     val cameraPositionState = rememberCameraPositionState {
-        position = CameraPosition.fromLatLngZoom(LatLng(37.74, -122.4), 11f)
+        position = CameraPosition.fromLatLngZoom(centerLatLng, 11f)
     }
 
-    // A dark map style JSON to match the dashboard aesthetic
-    val darkMapStyle = """
-        [
-          {
-            "elementType": "geometry",
-            "stylers": [
-              {
-                "color": "#212121"
-              }
-            ]
-          },
-          {
-            "elementType": "labels.icon",
-            "stylers": [
-              {
-                "visibility": "off"
-              }
-            ]
-          },
-          {
-            "elementType": "labels.text.fill",
-            "stylers": [
-              {
-                "color": "#757575"
-              }
-            ]
-          },
-          {
-            "elementType": "labels.text.stroke",
-            "stylers": [
-              {
-                "color": "#212121"
-              }
-            ]
-          },
-          {
-            "featureType": "water",
-            "elementType": "geometry",
-            "stylers": [
-              {
-                "color": "#000000"
-              }
-            ]
-          }
-        ]
-    """.trimIndent()
+    val mapProperties = remember {
+        MapProperties(mapStyleOptions = MapStyleOptions(DARK_MAP_STYLE))
+    }
+
+    val renderedHexes = remember(data) {
+        data.mapNotNull { h3Data ->
+            runCatching {
+                val boundary = h3.cellToBoundary(h3Data.hex).map { LatLng(it.lat, it.lng) }
+                val alpha = (h3Data.count / 100f * 200).coerceIn(0f, 255f).toInt()
+                RenderedHexPolygon(
+                    hex = h3Data.hex,
+                    boundary = boundary,
+                    fillColor = Color(255, (255 - alpha).coerceIn(0, 255), 0, alpha),
+                )
+            }.getOrNull()
+        }
+    }
 
     GoogleMap(
         modifier = modifier.fillMaxSize(),
         cameraPositionState = cameraPositionState,
-        properties = MapProperties(
-            mapStyleOptions = MapStyleOptions(darkMapStyle)
-        )
+        properties = mapProperties,
     ) {
-        data.forEach { h3Data ->
-            // Get coordinates for the hexagon boundary
-            val boundary = h3.cellToBoundary(h3Data.hex).map { LatLng(it.lat, it.lng) }
-            
-            // Map count to an alpha value (e.g., 0 to 200 based on count out of 100 max)
-            val alpha = (h3Data.count / 100f * 200).coerceIn(0f, 255f).toInt()
-            
-            Polygon(
-                points = boundary,
-                fillColor = Color(255, 255 - alpha, 0, alpha),
-                strokeColor = Color.Transparent,
-                strokeWidth = 0f
-            )
+        renderedHexes.forEach { hexPolygon ->
+            key(hexPolygon.hex) {
+                Polygon(
+                    points = hexPolygon.boundary,
+                    fillColor = hexPolygon.fillColor,
+                    strokeColor = Color(0x44F59E0B),
+                    strokeWidth = 2f
+                )
+            }
         }
     }
 }

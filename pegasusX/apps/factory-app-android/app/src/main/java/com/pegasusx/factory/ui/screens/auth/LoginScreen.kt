@@ -1,5 +1,7 @@
 package com.pegasusx.factory.ui.screens.auth
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -45,6 +47,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.pegasusx.factory.data.model.LoginRequest
+import com.pegasusx.factory.data.push.DeviceTokenRegistrar
 import com.pegasusx.factory.data.remote.FactoryApi
 import com.pegasusx.factory.data.remote.FirebaseAuthHelper
 import com.pegasusx.factory.data.remote.TokenHolder
@@ -52,6 +55,7 @@ import com.pegasus.design.PegasusRuntimeBanner
 import com.pegasus.design.PegasusRuntimeTone
 import com.pegasusx.factory.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
+import com.pegasusx.factory.R
 
 private enum class LoginMode {
     Otp,
@@ -85,6 +89,7 @@ fun LoginScreen(
         TokenHolder.token = token
         TokenHolder.refreshToken = refreshToken
         TokenHolder.factoryId = factoryId
+        DeviceTokenRegistrar.uploadBestEffort(api)
         onLoginSuccess()
     }
 
@@ -109,7 +114,7 @@ fun LoginScreen(
                 val idToken = FirebaseAuthHelper.verifySmsCode(otpCode)
                 val resp = api.login(LoginRequest(idToken = idToken))
                 if (resp.isSuccessful && resp.body() != null) {
-                    val auth = resp.body()!!
+                    val auth = resp.body() ?: return@launch
                     applyAuth(auth.token, auth.refreshToken, auth.factoryId)
                 } else {
                     handleLoginFailure(resp.code())
@@ -162,7 +167,7 @@ fun LoginScreen(
             try {
                 val resp = api.login(LoginRequest(phone = phone.trim(), password = password))
                 if (resp.isSuccessful && resp.body() != null) {
-                    val auth = resp.body()!!
+                    val auth = resp.body() ?: return@launch
                     applyAuth(auth.token, auth.refreshToken, auth.factoryId)
                 } else {
                     handleLoginFailure(resp.code())
@@ -195,7 +200,7 @@ fun LoginScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
-                text = "Pegasus Factory",
+                text = stringResource(R.string.mobile_factory_ui_pegasus_factory),
                 style = MaterialTheme.typography.headlineLarge,
                 color = MaterialTheme.colorScheme.onSurface,
             )
@@ -288,7 +293,7 @@ fun LoginScreen(
                 Spacer(Modifier.height(PegasusSpacing.sm))
                 PegasusRuntimeBanner(
                     tone = PegasusRuntimeTone.Warning,
-                    message = error!!,
+                    message = error.orEmpty(),
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
@@ -368,6 +373,21 @@ fun LoginScreen(
                         }
                     }
                 }
+            }
+
+            Spacer(Modifier.height(PegasusSpacing.sm))
+
+            OutlinedButton(
+                onClick = {
+                    TokenHolder.token = "mock-factory-jwt-dev"
+                    TokenHolder.refreshToken = "mock-refresh-dev"
+                    TokenHolder.factoryId = "fac-tashkent-001"
+                    onLoginSuccess()
+                },
+                enabled = !loading,
+                modifier = Modifier.fillMaxWidth().height(48.dp),
+            ) {
+                Text("BYPASS / ENTER DEMO FACTORY")
             }
 
             Spacer(Modifier.height(PegasusSpacing.sm))

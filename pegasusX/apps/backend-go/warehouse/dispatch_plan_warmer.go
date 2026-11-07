@@ -53,7 +53,7 @@ func (s *Service) runDispatchPlanWarmerTick(parent context.Context) {
 }
 
 func (s *Service) listWarehousesWithDispatchableOrders(ctx context.Context) ([]string, error) {
-	sid := strings.TrimSpace(s.supplierID)
+	sid := strings.TrimSpace(s.seedSupplierID)
 	if sid == "" || s.spannerClient == nil {
 		return nil, nil
 	}

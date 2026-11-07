@@ -8,11 +8,12 @@ struct FleetLiveMapSection: View {
     @State private var error: String?
     @State private var cameraPosition: MapCameraPosition = .region(
         MKCoordinateRegion(
-            center: CLLocationCoordinate2D(latitude: 41.2995, longitude: 69.2401),
+            center: CLLocationCoordinate2D(latitude: packMapCoordinate().lat, longitude: packMapCoordinate().lng),
             span: MKCoordinateSpan(latitudeDelta: 0.18, longitudeDelta: 0.18)
         )
     )
     @State private var animator = FleetDriverMarkerAnimator()
+    @State private var hasFittedInitialCamera = false
 
     var mapHeight: CGFloat = 280
     var showsExpand: Bool = true
@@ -22,19 +23,19 @@ struct FleetLiveMapSection: View {
         VStack(alignment: .leading, spacing: LabTheme.spacingSM) {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Live fleet")
+                    Text("portal.nav.live_fleet")
                         .font(.headline)
-                    Text("\(routes.count) active route\(routes.count == 1 ? "" : "s")")
+                    Text(L10n.format("mobile_warehouse.ui.count_active_routecount_1_s", "\(routes.count)", "\(routes.count == 1 ? "" : "s")"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
-                Button("Refresh", systemImage: "arrow.clockwise") {
+                Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") {
                     Task { await load() }
                 }
                 .labelStyle(.iconOnly)
                 if showsExpand, let onExpand {
-                    Button("Expand", systemImage: "arrow.up.left.and.arrow.down.right", action: onExpand)
+                    Button("mobile_warehouse.ui.expand", systemImage: "arrow.up.left.and.arrow.down.right", action: onExpand)
                         .labelStyle(.iconOnly)
                 }
             }
@@ -46,7 +47,7 @@ struct FleetLiveMapSection: View {
                 } else if let error, routes.isEmpty {
                     ContentUnavailableView("Live fleet unavailable", systemImage: "exclamationmark.triangle", description: Text(error))
                 } else if routes.isEmpty {
-                    ContentUnavailableView("No active routes", systemImage: "map", description: Text("Sealed manifests with route geometry appear during dispatch."))
+                    ContentUnavailableView("No active routes", systemImage: "map", description: Text("mobile_warehouse.ui.sealed_manifests_with_route_geometry_appear_during_dispatch"))
                         .frame(maxWidth: .infinity, minHeight: mapHeight)
                 } else {
                     TimelineView(.animation) { timeline in
@@ -98,7 +99,12 @@ struct FleetLiveMapSection: View {
             let response = try await WarehouseService.fleetLiveMap(warehouseId: TokenStore.shared.warehouseId)
             routes = response.routes
             animator.updateTargets(routes)
-            fitCamera()
+            if !silent || !hasFittedInitialCamera {
+                fitCamera()
+                if !routes.isEmpty {
+                    hasFittedInitialCamera = true
+                }
+            }
         } catch {
             if !silent { self.error = error.localizedDescription }
         }

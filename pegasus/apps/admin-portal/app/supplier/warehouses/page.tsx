@@ -507,7 +507,7 @@ export default function WarehousesPage() {
   );
 }
 
-/* ── Warehouse Edit Form (inline) ─────────────────────────────────────────── */
+/* -- Warehouse Edit Form (inline) ------------------------------------------- */
 
 const editFieldStyle = {
   background: 'var(--field-background)',
@@ -600,26 +600,26 @@ function WarehouseEditForm({
   return (
     <div className="p-6 space-y-5">
       <div>
-        <label className="md-typescale-label-medium block mb-1.5" style={{ color: 'var(--muted)' }}>Name</label>
-        <input className="w-full px-3 py-2.5 md-typescale-body-medium outline-none focus:ring-2 focus:ring-accent" style={editFieldStyle} value={name} onChange={e => setName(e.target.value)} />
+        <label htmlFor="warehouse-edit-name" className="md-typescale-label-medium block mb-1.5" style={{ color: 'var(--muted)' }}>Name</label>
+        <input id="warehouse-edit-name" aria-label="Name" className="w-full px-3 py-2.5 md-typescale-body-medium outline-none focus:ring-2 focus:ring-accent" style={editFieldStyle} value={name} onChange={e => setName(e.target.value)} />
       </div>
       <div>
-        <label className="md-typescale-label-medium block mb-1.5" style={{ color: 'var(--muted)' }}>Address</label>
-        <input className="w-full px-3 py-2.5 md-typescale-body-medium outline-none focus:ring-2 focus:ring-accent" style={editFieldStyle} value={address} onChange={e => setAddress(e.target.value)} />
+        <label htmlFor="warehouse-edit-address" className="md-typescale-label-medium block mb-1.5" style={{ color: 'var(--muted)' }}>Address</label>
+        <input id="warehouse-edit-address" aria-label="Address" className="w-full px-3 py-2.5 md-typescale-body-medium outline-none focus:ring-2 focus:ring-accent" style={editFieldStyle} value={address} onChange={e => setAddress(e.target.value)} />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="md-typescale-label-medium block mb-1.5" style={{ color: 'var(--muted)' }}>Latitude</label>
-          <input className="w-full px-3 py-2.5 md-typescale-body-medium outline-none focus:ring-2 focus:ring-accent" style={editFieldStyle} type="number" step="any" value={lat} onChange={e => setLat(e.target.value)} />
+          <label htmlFor="warehouse-edit-lat" className="md-typescale-label-medium block mb-1.5" style={{ color: 'var(--muted)' }}>Latitude</label>
+          <input id="warehouse-edit-lat" aria-label="Latitude" className="w-full px-3 py-2.5 md-typescale-body-medium outline-none focus:ring-2 focus:ring-accent" style={editFieldStyle} type="number" step="any" value={lat} onChange={e => setLat(e.target.value)} />
         </div>
         <div>
-          <label className="md-typescale-label-medium block mb-1.5" style={{ color: 'var(--muted)' }}>Longitude</label>
-          <input className="w-full px-3 py-2.5 md-typescale-body-medium outline-none focus:ring-2 focus:ring-accent" style={editFieldStyle} type="number" step="any" value={lng} onChange={e => setLng(e.target.value)} />
+          <label htmlFor="warehouse-edit-lng" className="md-typescale-label-medium block mb-1.5" style={{ color: 'var(--muted)' }}>Longitude</label>
+          <input id="warehouse-edit-lng" aria-label="Longitude" className="w-full px-3 py-2.5 md-typescale-body-medium outline-none focus:ring-2 focus:ring-accent" style={editFieldStyle} type="number" step="any" value={lng} onChange={e => setLng(e.target.value)} />
         </div>
       </div>
       <div>
-        <label className="md-typescale-label-medium block mb-1.5" style={{ color: 'var(--muted)' }}>Coverage Radius (km)</label>
-        <input className="w-full px-3 py-2.5 md-typescale-body-medium outline-none focus:ring-2 focus:ring-accent" style={editFieldStyle} type="number" value={radius} onChange={e => setRadius(e.target.value)} />
+        <label htmlFor="warehouse-edit-radius" className="md-typescale-label-medium block mb-1.5" style={{ color: 'var(--muted)' }}>Coverage Radius (km)</label>
+        <input id="warehouse-edit-radius" aria-label="Coverage Radius (km)" className="w-full px-3 py-2.5 md-typescale-body-medium outline-none focus:ring-2 focus:ring-accent" style={editFieldStyle} type="number" value={radius} onChange={e => setRadius(e.target.value)} />
       </div>
 
       {/* Status toggles */}
@@ -650,8 +650,8 @@ function WarehouseEditForm({
       {/* Disabled reason (shown when Active is off) */}
       {!isActive && (
         <div>
-          <label className="md-typescale-label-medium block mb-1.5" style={{ color: 'var(--danger)' }}>Disabled Reason</label>
-          <input className="w-full px-3 py-2.5 md-typescale-body-medium outline-none focus:ring-2 focus:ring-accent" style={editFieldStyle} placeholder="e.g. Maintenance, Out of stock" value={disabledReason} onChange={e => setDisabledReason(e.target.value)} />
+          <label htmlFor="warehouse-edit-disabled-reason" className="md-typescale-label-medium block mb-1.5" style={{ color: 'var(--danger)' }}>Disabled Reason</label>
+          <input id="warehouse-edit-disabled-reason" aria-label="Disabled Reason" className="w-full px-3 py-2.5 md-typescale-body-medium outline-none focus:ring-2 focus:ring-accent" style={editFieldStyle} placeholder="e.g. Maintenance, Out of stock" value={disabledReason} onChange={e => setDisabledReason(e.target.value)} />
         </div>
       )}
 
@@ -673,7 +673,7 @@ function WarehouseEditForm({
                 className="md-typescale-label-small px-2 py-0.5 rounded-full"
                 style={{
                   background: (inflightVU / capacityNum) > 0.8
-                    ? 'color-mix(in srgb, var(--danger) 15%, transparent)'
+                     ? 'color-mix(in srgb, var(--danger) 15%, transparent)'
                     : 'color-mix(in srgb, var(--success) 15%, transparent)',
                   color: (inflightVU / capacityNum) > 0.8 ? 'var(--danger)' : 'var(--success)',
                 }}
@@ -684,10 +684,12 @@ function WarehouseEditForm({
           </div>
         )}
         <div>
-          <label className="md-typescale-label-medium block mb-1.5" style={{ color: 'var(--muted)' }}>
+          <label htmlFor="warehouse-edit-max-capacity" className="md-typescale-label-medium block mb-1.5" style={{ color: 'var(--muted)' }}>
             Max Capacity (VU)
           </label>
           <input
+            id="warehouse-edit-max-capacity"
+            aria-label="Max Capacity (VU)"
             className="w-full px-3 py-2.5 md-typescale-body-medium outline-none focus:ring-2 focus:ring-accent"
             style={{
               ...editFieldStyle,

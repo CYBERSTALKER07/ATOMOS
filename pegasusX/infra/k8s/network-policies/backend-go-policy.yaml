@@ -1,0 +1,68 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: backend-go-network-policy
+  namespace: pegasusx
+  labels:
+    app: backend-go
+    app.kubernetes.io/part-of: pegasusx
+    security.pegasusx.io/tier: zero-trust
+spec:
+  podSelector:
+    matchLabels:
+      app: backend-go
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # 1. Allow HTTP/WS ingress on port 8080 from Ingress / Gateway controllers or cluster services
+    - from:
+        - namespaceSelector: {}
+      ports:
+        - protocol: TCP
+          port: 8080
+    # 2. Allow Prometheus scraper on port 8080
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - protocol: TCP
+          port: 8080
+  egress:
+    # 1. DNS Resolution (kube-system)
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # 2. Allow call to optimizer-core on port 8082
+    - to:
+        - podSelector:
+            matchLabels:
+              app: optimizer-core
+      ports:
+        - protocol: TCP
+          port: 8082
+    # 3. Allow Redis in cluster or external
+    - ports:
+        - protocol: TCP
+          port: 6379
+    # 4. Allow Kafka in cluster or external
+    - ports:
+        - protocol: TCP
+          port: 9092
+        - protocol: TCP
+          port: 29092
+    # 5. Allow Google Cloud APIs (Cloud Spanner, GCS, Cloud KMS, Firebase) via HTTPS
+    - ports:
+        - protocol: TCP
+          port: 443
+        - protocol: TCP
+          port: 9010
+        - protocol: TCP
+          port: 9020

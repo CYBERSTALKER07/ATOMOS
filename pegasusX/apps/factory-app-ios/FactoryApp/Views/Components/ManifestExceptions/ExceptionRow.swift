@@ -12,14 +12,14 @@ struct ExceptionRow: View {
                     .font(.headline)
                 Spacer()
                 if exception.escalated {
-                    Text("Escalated")
+                    Text("factory_portal.residual.text.escalated")
                         .font(.caption.bold())
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
                         .background(LabTheme.destructive.opacity(0.15), in: Capsule())
                 }
             }
-            Text("Transfer \(shortId(exception.transferId)) · Manifest \(shortId(exception.manifestId))")
+            Text(L10n.format("mobile_factory.ui.transfer_shortid_manifest_shortid_2", "\(shortId(exception.transferId))", "\(shortId(exception.manifestId))"))
                 .font(.footnote.monospaced())
                 .foregroundStyle(.secondary)
             Text(attemptLabel)
@@ -52,10 +52,15 @@ struct ExceptionRow: View {
         value.count > 12 ? String(value.prefix(8)) + "…" : value
     }
 
-    private func formattedDate(_ raw: String) -> String {
+    private static let isoFractionalFormatter: ISO8601DateFormatter = {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        if let date = formatter.date(from: raw) ?? ISO8601DateFormatter().date(from: raw) {
+        return formatter
+    }()
+    private static let isoStandardFormatter = ISO8601DateFormatter()
+
+    private func formattedDate(_ raw: String) -> String {
+        if let date = Self.isoFractionalFormatter.date(from: raw) ?? Self.isoStandardFormatter.date(from: raw) {
             return date.formatted(date: .abbreviated, time: .shortened)
         }
         return raw

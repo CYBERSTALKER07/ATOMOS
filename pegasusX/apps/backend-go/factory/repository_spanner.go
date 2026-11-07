@@ -2,10 +2,16 @@ package factory
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"time"
 
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"google.golang.org/grpc/codes"
+	"github.com/pegasusx/pegasusx/apps/backend-go/inventory"
+	"github.com/pegasusx/pegasusx/apps/backend-go/stocklots"
+
 	"google.golang.org/api/iterator"
 )
 
@@ -37,23 +43,7 @@ func (b *spannerTxnBuffer) BufferOutbox(_ context.Context, e outbox.Event) error
 func outboxMutations(eventsList []outbox.Event) []*spanner.Mutation {
 	muts := make([]*spanner.Mutation, 0, len(eventsList))
 	for _, e := range eventsList {
-		createdAt := e.CreatedAt.UTC()
-		if createdAt.IsZero() {
-			createdAt = time.Now().UTC()
-		}
-		row := map[string]any{
-			"EventId":       e.EventID,
-			"AggregateType": e.AggregateType,
-			"AggregateId":   e.AggregateID,
-			"TopicName":     e.TopicName,
-			"Payload":       e.Payload,
-			"CreatedAt":     createdAt,
-			"PublishedAt":   nil,
-		}
-		if e.PublishedAt != nil {
-			row["PublishedAt"] = e.PublishedAt.UTC()
-		}
-		muts = append(muts, spanner.InsertOrUpdateMap("OutboxEvents", row))
+		muts = append(muts, spanner.InsertOrUpdateMap("OutboxEvents", outbox.EventRowMap(e)))
 	}
 	return muts
 }
@@ -76,23 +66,7 @@ func (r *SpannerRepository) RunTx(ctx context.Context, fn func(ctx context.Conte
 			}
 			muts := make([]*spanner.Mutation, 0, len(buf.events))
 			for _, e := range buf.events {
-				createdAt := e.CreatedAt.UTC()
-				if createdAt.IsZero() {
-					createdAt = time.Now().UTC()
-				}
-				row := map[string]any{
-					"EventId":       e.EventID,
-					"AggregateType": e.AggregateType,
-					"AggregateId":   e.AggregateID,
-					"TopicName":     e.TopicName,
-					"Payload":       e.Payload,
-					"CreatedAt":     createdAt,
-					"PublishedAt":   nil,
-				}
-				if e.PublishedAt != nil {
-					row["PublishedAt"] = e.PublishedAt.UTC()
-				}
-				muts = append(muts, spanner.InsertOrUpdateMap("OutboxEvents", row))
+				muts = append(muts, spanner.InsertOrUpdateMap("OutboxEvents", outbox.EventRowMap(e)))
 			}
 			if len(muts) > 0 {
 				if err := txn.BufferWrite(muts); err != nil {
@@ -164,11 +138,21 @@ func (tx *spannerFactoryTx) ListManifests(ctx context.Context) ([]ManifestRow, e
 		m.VehicleID = vehicleID.StringVal
 		m.CreatedAt = createdAt.Format(time.RFC3339Nano)
 		m.UpdatedAt = updatedAt.Format(time.RFC3339Nano)
-		if loadingAt.Valid { m.LoadingStartedAt = loadingAt.Time.Format(time.RFC3339Nano) }
-		if sealedAt.Valid { m.SealedAt = sealedAt.Time.Format(time.RFC3339Nano) }
-		if dispatchedAt.Valid { m.DispatchedAt = dispatchedAt.Time.Format(time.RFC3339Nano) }
-		if completedAt.Valid { m.CompletedAt = completedAt.Time.Format(time.RFC3339Nano) }
-		if cancelledAt.Valid { m.CancelledAt = cancelledAt.Time.Format(time.RFC3339Nano) }
+		if loadingAt.Valid {
+			m.LoadingStartedAt = loadingAt.Time.Format(time.RFC3339Nano)
+		}
+		if sealedAt.Valid {
+			m.SealedAt = sealedAt.Time.Format(time.RFC3339Nano)
+		}
+		if dispatchedAt.Valid {
+			m.DispatchedAt = dispatchedAt.Time.Format(time.RFC3339Nano)
+		}
+		if completedAt.Valid {
+			m.CompletedAt = completedAt.Time.Format(time.RFC3339Nano)
+		}
+		if cancelledAt.Valid {
+			m.CancelledAt = cancelledAt.Time.Format(time.RFC3339Nano)
+		}
 
 		manifests = append(manifests, m)
 	}
@@ -177,23 +161,23 @@ func (tx *spannerFactoryTx) ListManifests(ctx context.Context) ([]ManifestRow, e
 
 func (tx *spannerFactoryTx) SaveManifest(ctx context.Context, m ManifestRow) error {
 	mut := spanner.InsertOrUpdateMap("FactoryTruckManifests", map[string]interface{}{
-		"ManifestId": m.ManifestID,
-		"FactoryId": tx.factoryNode,
-		"SupplierId": tx.supplierID,
-		"State": m.State,
-		"TotalVolumeVU": float64(m.TotalVolumeVU),
-		"MaxVolumeVU": float64(m.MaxVolumeVU),
-		"StopCount": int64(m.TransferCnt),
-		"TransferCount": int64(m.TransferCnt),
-		"DriverId": spanner.NullString{StringVal: m.DriverID, Valid: m.DriverID != ""},
-		"VehicleId": spanner.NullString{StringVal: m.VehicleID, Valid: m.VehicleID != ""},
-		"CreatedAt": parseTime(m.CreatedAt),
-		"UpdatedAt": parseTime(m.UpdatedAt),
+		"ManifestId":       m.ManifestID,
+		"FactoryId":        tx.factoryNode,
+		"SupplierId":       tx.supplierID,
+		"State":            m.State,
+		"TotalVolumeVU":    float64(m.TotalVolumeVU),
+		"MaxVolumeVU":      float64(m.MaxVolumeVU),
+		"StopCount":        int64(m.TransferCnt),
+		"TransferCount":    int64(m.TransferCnt),
+		"DriverId":         spanner.NullString{StringVal: m.DriverID, Valid: m.DriverID != ""},
+		"VehicleId":        spanner.NullString{StringVal: m.VehicleID, Valid: m.VehicleID != ""},
+		"CreatedAt":        parseTime(m.CreatedAt),
+		"UpdatedAt":        parseTime(m.UpdatedAt),
 		"LoadingStartedAt": parseNullTime(m.LoadingStartedAt),
-		"SealedAt": parseNullTime(m.SealedAt),
-		"DispatchedAt": parseNullTime(m.DispatchedAt),
-		"CompletedAt": parseNullTime(m.CompletedAt),
-		"CancelledAt": parseNullTime(m.CancelledAt),
+		"SealedAt":         parseNullTime(m.SealedAt),
+		"DispatchedAt":     parseNullTime(m.DispatchedAt),
+		"CompletedAt":      parseNullTime(m.CompletedAt),
+		"CancelledAt":      parseNullTime(m.CancelledAt),
 	})
 	return tx.txn.BufferWrite([]*spanner.Mutation{mut})
 }
@@ -243,23 +227,178 @@ func (tx *spannerFactoryTx) ListTransfers(ctx context.Context) ([]TransferRow, e
 	return transfers, nil
 }
 
-func (tx *spannerFactoryTx) SaveTransfer(ctx context.Context, t TransferRow) error {
-	mut := spanner.InsertOrUpdateMap("FactoryInternalTransfers", map[string]interface{}{
-		"TransferId": t.TransferID,
-		"FactoryId": tx.factoryNode,
-		"SupplierId": tx.supplierID,
-		"OrderId": spanner.NullString{StringVal: t.OrderID, Valid: t.OrderID != ""},
-		"ManifestId": spanner.NullString{StringVal: t.ManifestID, Valid: t.ManifestID != ""},
-		"State": t.State,
-		"TotalVolumeVU": float64(t.TotalVU),
-		"DriverId": spanner.NullString{StringVal: t.DriverID, Valid: t.DriverID != ""},
-		"VehicleId": spanner.NullString{StringVal: t.VehicleID, Valid: t.VehicleID != ""},
-		"ReassignDepth": int64(t.ReassignDepth),
-		"ExceptionCount": t.ExceptionCount,
-		"CreatedAt": parseTime(t.CreatedAt),
-		"UpdatedAt": parseTime(t.UpdatedAt),
+func (tx *spannerFactoryTx) SaveStaff(ctx context.Context, row StaffRow) error {
+	hash := strings.TrimSpace(row.PasswordHash)
+	if hash == "" || strings.EqualFold(hash, staffPasswordUnsetSentinel) {
+		return fmt.Errorf("staff password hash required")
+	}
+	now := time.Now().UTC()
+	mut := spanner.InsertOrUpdateMap("SupplierUsers", map[string]interface{}{
+		"UserId":            row.StaffID,
+		"SupplierId":        tx.supplierID,
+		"Phone":             spanner.NullString{StringVal: row.Phone, Valid: strings.TrimSpace(row.Phone) != ""},
+		"Name":              row.Name,
+		"PasswordHash":      hash,
+		"SupplierRole":      row.Role,
+		"AssignedFactoryId": tx.factoryNode,
+		"IsActive":          true,
+		"CreatedAt":         now,
+		"UpdatedAt":         now,
 	})
 	return tx.txn.BufferWrite([]*spanner.Mutation{mut})
+}
+
+func (tx *spannerFactoryTx) SaveException(ctx context.Context, row ManifestException) error {
+	oid := strings.TrimSpace(row.TransferID)
+	if oid == "" {
+		oid = strings.TrimSpace(row.ExceptionID)
+	}
+	if oid == "" {
+		return fmt.Errorf("exception order id required")
+	}
+	mut := map[string]interface{}{
+		"ExceptionId":  row.ExceptionID,
+		"OrderId":      oid,
+		"ManifestId":   spanner.NullString{StringVal: row.ManifestID, Valid: strings.TrimSpace(row.ManifestID) != ""},
+		"SupplierId":   tx.supplierID,
+		"Reason":       row.Reason,
+		"Metadata":     spanner.NullString{StringVal: row.Metadata, Valid: row.Metadata != ""},
+		"AttemptCount": row.AttemptCount,
+		"CreatedAt":    parseTime(row.CreatedAt),
+	}
+	if row.Escalated {
+		mut["EscalatedAt"] = parseTime(row.CreatedAt)
+	}
+	return tx.txn.BufferWrite([]*spanner.Mutation{spanner.InsertOrUpdateMap("ManifestExceptions", mut)})
+}
+
+func (tx *spannerFactoryTx) ResolveException(ctx context.Context, row ManifestException, orderID string) error {
+	now := time.Now().UTC()
+	oid := strings.TrimSpace(orderID)
+	if oid == "" {
+		oid = strings.TrimSpace(row.TransferID)
+	}
+	if oid == "" {
+		oid = strings.TrimSpace(row.ExceptionID)
+	}
+	mut := spanner.InsertOrUpdateMap("ManifestExceptions", map[string]interface{}{
+		"ExceptionId":  row.ExceptionID,
+		"OrderId":      oid,
+		"ManifestId":   spanner.NullString{StringVal: row.ManifestID, Valid: row.ManifestID != ""},
+		"SupplierId":   tx.supplierID,
+		"Reason":       row.Reason,
+		"Metadata":     spanner.NullString{StringVal: row.Metadata, Valid: row.Metadata != ""},
+		"AttemptCount": row.AttemptCount,
+		"CreatedAt":    parseTime(row.CreatedAt),
+		"ResolvedAt":   now,
+	})
+	return tx.txn.BufferWrite([]*spanner.Mutation{mut})
+}
+
+func (tx *spannerFactoryTx) SaveTransfer(ctx context.Context, t TransferRow) error {
+	mut := spanner.InsertOrUpdateMap("FactoryInternalTransfers", map[string]interface{}{
+		"TransferId":     t.TransferID,
+		"FactoryId":      tx.factoryNode,
+		"SupplierId":     tx.supplierID,
+		"OrderId":        spanner.NullString{StringVal: t.OrderID, Valid: t.OrderID != ""},
+		"ManifestId":     spanner.NullString{StringVal: t.ManifestID, Valid: t.ManifestID != ""},
+		"State":          t.State,
+		"TotalVolumeVU":  float64(t.TotalVU),
+		"DriverId":       spanner.NullString{StringVal: t.DriverID, Valid: t.DriverID != ""},
+		"VehicleId":      spanner.NullString{StringVal: t.VehicleID, Valid: t.VehicleID != ""},
+		"ReassignDepth":  int64(t.ReassignDepth),
+		"ExceptionCount": t.ExceptionCount,
+		"CreatedAt":      parseTime(t.CreatedAt),
+		"UpdatedAt":      parseTime(t.UpdatedAt),
+	})
+	if err := tx.txn.BufferWrite([]*spanner.Mutation{mut}); err != nil {
+		return err
+	}
+	
+	if t.State == "COMPLETED" || t.State == "RECEIVED" {
+		return tx.autoReceiveTransfer(ctx, t.TransferID)
+	}
+	return nil
+}
+
+func (tx *spannerFactoryTx) autoReceiveTransfer(ctx context.Context, transferID string) error {
+	row, err := tx.txn.ReadRow(ctx, "FactoryInternalTransfers", spanner.Key{transferID}, []string{"SupplierId", "WarehouseId", "SupplyRequestId", "State"})
+	if err != nil {
+		if spanner.ErrCode(err) == codes.NotFound {
+			return nil
+		}
+		return err
+	}
+	var supplierID, warehouseID, reqID, state spanner.NullString
+	if err := row.Columns(&supplierID, &warehouseID, &reqID, &state); err != nil {
+		return err
+	}
+	if !reqID.Valid || reqID.StringVal == "" {
+		return nil
+	}
+
+	if err := tx.txn.BufferWrite([]*spanner.Mutation{
+		spanner.UpdateMap("WarehouseSupplyRequests", map[string]any{
+			"RequestId": reqID.StringVal,
+			"State":     "RECEIVED",
+			"UpdatedAt": spanner.CommitTimestamp,
+		}),
+	}); err != nil {
+		return err
+	}
+
+	iter := tx.txn.Query(ctx, spanner.Statement{
+		SQL: `SELECT ItemId, ProductId, COALESCE(ShippedQuantity, RequestedQuantity)
+		      FROM WarehouseSupplyRequestItems WHERE RequestId = @rid`,
+		Params: map[string]any{"rid": reqID.StringVal},
+	})
+	defer iter.Stop()
+
+	for {
+		irow, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return err
+		}
+		var itemID, productID string
+		var qty int64
+		if err := irow.Columns(&itemID, &productID, &qty); err != nil {
+			return err
+		}
+		if qty > 0 {
+			if stocklots.LotsEnabled() {
+				if _, err := stocklots.UpsertBinInTxn(ctx, tx.txn, stocklots.CreateBinRequest{
+					WarehouseID: warehouseID.StringVal, LocationID: "recv-default", Zone: "RECV",
+					LocationType: "STAGE", PickSequence: 0,
+				}); err != nil {
+					return err
+				}
+				if _, err := stocklots.PutawayInTxn(ctx, tx.txn, stocklots.PutawayRequest{
+					SupplierID: supplierID.StringVal, WarehouseID: warehouseID.StringVal, ProductID: productID,
+					LocationID: "recv-default", Quantity: qty,
+				}); err != nil {
+					return err
+				}
+			} else {
+				if err := inventory.CreditSupplierInventoryV2InTxn(ctx, tx.txn, supplierID.StringVal, warehouseID.StringVal, productID, qty); err != nil {
+					return err
+				}
+			}
+			
+			if err := tx.txn.BufferWrite([]*spanner.Mutation{
+				spanner.UpdateMap("WarehouseSupplyRequestItems", map[string]any{
+					"RequestId":        reqID.StringVal,
+					"ItemId":           itemID,
+					"ReceivedQuantity": qty,
+				}),
+			}); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func parseTime(s string) time.Time {

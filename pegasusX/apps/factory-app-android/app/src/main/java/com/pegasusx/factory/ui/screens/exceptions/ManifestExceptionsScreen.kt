@@ -1,5 +1,7 @@
 package com.pegasusx.factory.ui.screens.exceptions
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.ui.unit.dp
 
 import androidx.compose.foundation.lazy.grid.items
@@ -52,6 +54,7 @@ import com.pegasusx.factory.ui.theme.PegasusSpacing
 import java.text.DateFormat
 import java.util.Date
 import kotlinx.coroutines.launch
+import com.pegasusx.factory.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -77,7 +80,7 @@ fun ManifestExceptionsScreen(
                     escalated = if (escalatedOnly) "true" else null,
                 )
                 if (resp.isSuccessful && resp.body() != null) {
-                    exceptions = resp.body()!!.exceptions
+                    resp.body()?.let { exceptions = it.exceptions }
                 } else {
                     error = "Failed (${resp.code()})"
                 }
@@ -139,7 +142,7 @@ fun ManifestExceptionsScreen(
     ) { innerPadding ->
         when {
             loading && exceptions.isEmpty() -> PegasusLoadingState(
-                title = "Loading exceptions",
+                title = stringResource(R.string.mobile_factory_ui_loading_exceptions),
                 body = "Fetching transfers removed from manifests during loading.",
                 modifier = Modifier
                     .fillMaxSize()
@@ -148,7 +151,7 @@ fun ManifestExceptionsScreen(
             error != null -> PegasusStatePane(
                 kind = PegasusStateKind.Error,
                 headline = "Unable to load exceptions",
-                body = error!!,
+                body = error.orEmpty(),
                 actionLabel = "Retry",
                 onAction = { load() },
                 modifier = Modifier

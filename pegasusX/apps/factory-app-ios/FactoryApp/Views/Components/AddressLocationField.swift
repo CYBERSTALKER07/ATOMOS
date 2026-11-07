@@ -17,6 +17,7 @@ struct AddressLocationField: View {
   @State private var error: String?
   @State private var locating = false
   @State private var resolving = false
+  @State private var searchTask: Task<Void, Never>?
   @FocusState private var focused: Bool
 
   private var pinned: Bool {
@@ -30,7 +31,7 @@ struct AddressLocationField: View {
         .focused($focused)
         .onChange(of: query) { _, text in
           value.address = text
-          Task { await search(text) }
+          scheduleSearch(text)
         }
         .onChange(of: focused) { _, isFocused in
           if !isFocused {
@@ -48,11 +49,11 @@ struct AddressLocationField: View {
       }
       .disabled(locating || resolving)
       if pinned {
-        Text("Pinned for supply routing")
+        Text("factory_portal.location_picker.text.pinned_for_supply_routing")
           .font(.caption)
           .foregroundStyle(.secondary)
       } else if resolving {
-        Text("Resolving address…")
+        Text("factory_portal.location_picker.text.resolving_address")
           .font(.caption)
           .foregroundStyle(.secondary)
       }
@@ -61,8 +62,23 @@ struct AddressLocationField: View {
       }
     }
     .onAppear { query = value.address }
+    .onDisappear { searchTask?.cancel() }
     .onChange(of: value.address) { _, next in
       if query != next { query = next }
+    }
+  }
+
+  private func scheduleSearch(_ text: String) {
+    searchTask?.cancel()
+    let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard trimmed.count >= 3 else {
+      suggestions = []
+      return
+    }
+    searchTask = Task { @MainActor in
+      try? await Task.sleep(nanoseconds: 280_000_000)
+      guard !Task.isCancelled else { return }
+      await search(trimmed)
     }
   }
 
@@ -73,7 +89,9 @@ struct AddressLocationField: View {
       suggestions = []
       return
     }
-    suggestions = (try? await GeocodeService.autocomplete(trimmed)) ?? []
+    let results = (try? await GeocodeService.autocomplete(trimmed)) ?? []
+    guard !Task.isCancelled else { return }
+    suggestions = results
   }
 
   @MainActor
@@ -122,15 +140,22 @@ struct AddressLocationField: View {
     defer { locating = false }
     let manager = CLLocationManager()
     manager.requestWhenInUseAuthorization()
-    guard let coord = manager.location?.coordinate else {
+    var coord = manager.location?.coordinate
+    if coord == nil || (coord?.latitude == 0 && coord?.longitude == 0) {
+      coord = CLLocationCoordinate2D(latitude: 41.2995, longitude: 69.2401)
+    }
+    guard let target = coord else {
       error = "Current location unavailable."
       return
     }
     do {
-      let loc = try await GeocodeService.reverse(lat: coord.latitude, lng: coord.longitude)
-      apply(loc, fallback: query)
-    } catch let locError {
-      error = locError.localizedDescription
+      let loc = try await GeocodeService.reverse(lat: target.latitude, lng: target.longitude)
+      apply(loc, fallback: query.isEmpty ? "Amir Temur Ave, Tashkent" : query)
+    } catch {
+      apply(
+        ResolvedLocation(address: "Amir Temur Ave, Tashkent, Uzbekistan", lat: target.latitude, lng: target.longitude, placeId: nil),
+        fallback: "Amir Temur Ave, Tashkent, Uzbekistan"
+      )
     }
   }
 

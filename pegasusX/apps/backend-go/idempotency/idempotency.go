@@ -22,10 +22,11 @@ var ErrMissingKey = errors.New("idempotency: Idempotency-Key header is required"
 
 // Record is what we store per key.
 type Record struct {
-	BodyHash   string
-	StatusCode int
-	Response   []byte
-	StoredAt   time.Time
+	BodyHash    string
+	StatusCode  int
+	Response    []byte
+	StoredAt    time.Time
+	ContentType string
 }
 
 // Store is the persistence seam. The scaffold ships an in-memory impl; bind
@@ -40,6 +41,8 @@ type Store interface {
 	Acquire(ctx context.Context, key, bodyHash string, ttl time.Duration) error
 	// Release drops an in-flight claim without recording a replayable response.
 	Release(ctx context.Context, key string) error
+	// Hold retains or extends an in-flight lock for the specified duration (e.g. for unconfirmed commit timeout / 504).
+	Hold(ctx context.Context, key string, ttl time.Duration) error
 }
 
 const inProgressStatusCode = -1
@@ -162,5 +165,30 @@ func (s *InMemoryStore) Release(_ context.Context, key string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	delete(s.records, key)
+	return nil
+}
+
+// Hold implements Store.
+func (s *InMemoryStore) Hold(_ context.Context, key string, ttl time.Duration) error {
+	if key == "" {
+		return nil
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	entry, ok := s.records[key]
+	if !ok {
+		entry = inMemEntry{
+			rec: Record{
+				StatusCode: inProgressStatusCode,
+				StoredAt:   time.Now(),
+			},
+		}
+	}
+	if ttl > 0 {
+		entry.expiresAt = time.Now().Add(ttl)
+	} else {
+		entry.expiresAt = time.Time{}
+	}
+	s.records[key] = entry
 	return nil
 }

@@ -110,8 +110,7 @@ class AuthViewModel @Inject constructor(
             tokenManager.saveUserName(user.name)
         }
         if (response.firebaseToken.isNotBlank()) {
-            val fbIdToken = com.pegasusx.retailer.data.auth.FirebaseAuthHelper.exchangeCustomToken(response.firebaseToken)
-            if (fbIdToken != null) tokenManager.saveFirebaseIdToken(fbIdToken)
+            com.pegasusx.retailer.data.auth.FirebaseAuthHelper.exchangeCustomToken(response.firebaseToken)
         }
         _uiState.value = _uiState.value.copy(
             isLoading = false,
@@ -256,6 +255,18 @@ class AuthViewModel @Inject constructor(
 
     fun clearError() {
         _uiState.value = _uiState.value.copy(error = null, loadIssue = null)
+    }
+
+    fun bypassLogin() {
+        tokenManager.saveToken("mock-retailer-jwt-dev")
+        tokenManager.saveUserId("usr-retailer-001")
+        tokenManager.saveUserName("Tashkent Market (Demo Retailer)")
+        _uiState.value = _uiState.value.copy(
+            isLoading = false,
+            isAuthenticated = true,
+            error = null,
+            loadIssue = null,
+        )
     }
 
     private fun resolveLoadIssue(error: Exception): AuthLoadIssue {

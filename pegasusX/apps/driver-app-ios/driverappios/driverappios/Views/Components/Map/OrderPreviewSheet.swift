@@ -21,7 +21,7 @@ struct OrderPreviewSheet: View {
 
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("ORD-\(mission.order_id.suffix(6).uppercased())")
+                    Text(L10n.format("mobile_driver.ui.ord_uppercased", "\(mission.order_id.suffix(6).uppercased())"))
                         .font(.system(size: 20, weight: .black, design: .monospaced))
                         .foregroundStyle(LabTheme.fg)
                         .tracking(1.2)
@@ -71,16 +71,16 @@ struct OrderPreviewSheet: View {
                         Image(systemName: "clock.fill")
                             .font(.system(size: 10, weight: .semibold))
                             .foregroundStyle(LabTheme.fgTertiary)
-                        Text("ETA \(formatETATime(eta))")
+                        Text(L10n.format("mobile_driver.ui.eta_formatetatime", "\(formatETATime(eta))"))
                             .font(.system(size: 12, weight: .bold, design: .monospaced))
                             .foregroundStyle(LabTheme.fg)
                         if let dur = order.etaDurationSec {
-                            Text("· \(formatDuration(dur))")
+                            Text(L10n.format("mobile_driver.ui.formatduration", "\(formatDuration(dur))"))
                                 .font(.system(size: 11, weight: .medium))
                                 .foregroundStyle(LabTheme.fgSecondary)
                         }
                         if let distM = order.etaDistanceM {
-                            Text("· \(formatETADistance(distM))")
+                            Text(L10n.format("mobile_driver.ui.formatetadistance", "\(formatETADistance(distM))"))
                                 .font(.system(size: 11, weight: .medium))
                                 .foregroundStyle(LabTheme.fgSecondary)
                         }
@@ -143,7 +143,7 @@ struct OrderPreviewSheet: View {
                     Haptics.light()
                     withAnimation(Anim.snappy) { selectedMission = nil; phase = .pickingOrder }
                 } label: {
-                    Text("Choose Another")
+                    Text("mobile_driver.ui.choose_another")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(LabTheme.fgSecondary)
                         .frame(maxWidth: .infinity).padding(.vertical, 11)
@@ -157,13 +157,22 @@ struct OrderPreviewSheet: View {
     }
     
     // ETA Helpers
+    private static let isoFractionalFormatter: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return f
+    }()
+    private static let isoStandardFormatter = ISO8601DateFormatter()
+    private static let etaTimeFormatter: DateFormatter = {
+        let tf = DateFormatter()
+        tf.locale = Locale(identifier: "en_US_POSIX")
+        tf.dateFormat = "HH:mm"
+        return tf
+    }()
+
     private func formatETATime(_ iso: String) -> String {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        if let date = formatter.date(from: iso) ?? ISO8601DateFormatter().date(from: iso) {
-            let tf = DateFormatter()
-            tf.dateFormat = "HH:mm"
-            return tf.string(from: date)
+        if let date = Self.isoFractionalFormatter.date(from: iso) ?? Self.isoStandardFormatter.date(from: iso) {
+            return Self.etaTimeFormatter.string(from: date)
         }
         return iso.suffix(8).prefix(5).description
     }

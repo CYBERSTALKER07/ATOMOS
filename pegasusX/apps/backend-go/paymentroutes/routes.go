@@ -10,11 +10,9 @@ import (
 
 // Deps is the narrow dependency contract for payment routes.
 type Deps struct {
-	Service             *payment.Service
-	JWTSecret           string
-	FirebaseAuthEnabled bool
-	FirebaseVerifier    auth.FirebaseVerifier
-	AllowAuthBypass     bool
+	Service         *payment.Service
+	JWTSecret       string
+	AllowAuthBypass bool
 }
 
 // RegisterRoutes mounts checkout and payment mutation endpoints.
@@ -47,9 +45,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	}
 
 	guard := auth.MutationGuardConfig{
-		FirebaseEnabled:  d.FirebaseAuthEnabled,
-		FirebaseVerifier: d.FirebaseVerifier,
-		AllowBypass:      d.AllowAuthBypass,
+		AllowBypass: d.AllowAuthBypass,
 	}
 
 	if d.AllowAuthBypass {

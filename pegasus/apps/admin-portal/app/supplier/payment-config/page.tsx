@@ -6,7 +6,7 @@ import { apiFetch } from '@/lib/auth';
 import Icon from '@/components/Icon';
 import { Shield, Link2, KeyRound, ChevronDown, ChevronUp, CheckCircle2, XCircle, Clock } from 'lucide-react';
 
-// ── Types ─────────────────────────────────────────────────────────────────
+// -- Types -----------------------------------------------------------------
 
 type GatewayConfig = {
   config_id: string;
@@ -130,7 +130,7 @@ function buildPaymentConfigDeactivateIdempotencyKey(configId: string): string {
   return ['supplier-payment-config-deactivate', configId.trim()].join(':');
 }
 
-// ── Component ─────────────────────────────────────────────────────────────
+// -- Component -------------------------------------------------------------
 
 export default function GlobalPayntConfigPage() {
   const [configs, setConfigs] = useState<GatewayConfig[]>([]);
@@ -368,9 +368,11 @@ export default function GlobalPayntConfigPage() {
                   <option value="WAREHOUSE_LOCAL">Warehouse Local</option>
                 </select>
               </label>
-              <label className="md-typescale-label-medium" style={{ color: 'var(--muted)' }}>
+              <label htmlFor="policy-change-reason" className="md-typescale-label-medium" style={{ color: 'var(--muted)' }}>
                 Change reason (optional)
                 <input
+                  id="policy-change-reason"
+                  aria-label="Change reason (optional)"
                   value={policyReason}
                   onChange={(e) => setPolicyReason(e.target.value)}
                   placeholder="e.g. Region warehouse settlement go-live"
@@ -569,10 +571,12 @@ export default function GlobalPayntConfigPage() {
 
                         return (
                           <div key={field.name}>
-                            <label className="md-typescale-label-medium block mb-1" style={{ color: 'var(--muted)' }}>
+                            <label htmlFor={`config-${field.name}`} className="md-typescale-label-medium block mb-1" style={{ color: 'var(--muted)' }}>
                               {field.label}
                             </label>
                             <input
+                              id={`config-${field.name}`}
+                              aria-label={field.label}
                               type={field.input_type || (field.name === 'secret_key' ? 'password' : 'text')}
                               value={value}
                               onChange={(e) => onChange(e.target.value)}
@@ -635,7 +639,7 @@ export default function GlobalPayntConfigPage() {
   );
 }
 
-// ── Gateway Icon ──────────────────────────────────────────────────────────
+// -- Gateway Icon ----------------------------------------------------------
 // Simple SVG badge per gateway — avoids emoji per project UX doctrine.
 
 function CreditCardIcon({ gateway, configured }: { gateway: GatewayName; configured: boolean }) {

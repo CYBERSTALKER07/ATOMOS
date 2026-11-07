@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.screens.settings
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -36,6 +38,8 @@ import com.pegasusx.retailer.data.api.PegasusApi
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.pegasusx.retailer.R
+import com.pegasusx.retailer.data.json.*
 
 data class SectionRow(val id: String, val name: String, val aisle: String?)
 
@@ -54,6 +58,7 @@ fun SectionsScreen(
     var skuText by remember { mutableStateOf("") }
     var selectedId by remember { mutableStateOf<String?>(null) }
     var banner by remember { mutableStateOf<String?>(null) }
+    var saveError by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
     val rows = remember { mutableStateListOf<SectionRow>() }
 
@@ -88,7 +93,7 @@ fun SectionsScreen(
                 title = { Text("Sections") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                     }
                 },
             )
@@ -106,7 +111,8 @@ fun SectionsScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            banner?.let { item { Text(it, color = MaterialTheme.colorScheme.primary) } }
+            saveError?.let { item { Text(it, color = MaterialTheme.colorScheme.error) } }
+            banner?.let { if (saveError == null) item { Text(it, color = MaterialTheme.colorScheme.primary) } }
             item {
                 Card {
                     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -119,6 +125,7 @@ fun SectionsScreen(
                                     val body = mutableMapOf<String, Any>("name" to name)
                                     if (aisle.isNotBlank()) body["aisle_tag"] = aisle
                                     viewModel.api.createSection(body = body, idempotencyKey = "sec-${System.currentTimeMillis()}")
+                                    saveError = null
                                     banner = "Section created"
                                     refresh()
                                 } catch (e: Exception) {
@@ -135,7 +142,7 @@ fun SectionsScreen(
                 Card(onClick = { selectedId = row.id }) {
                     Column(Modifier.padding(14.dp)) {
                         Text(row.name, style = MaterialTheme.typography.titleMedium)
-                        row.aisle?.let { Text("Aisle $it", style = MaterialTheme.typography.bodySmall) }
+                        row.aisle?.let { Text(stringResource(R.string.mobile_retailer_ui_aisle_it, it), style = MaterialTheme.typography.bodySmall) }
                     }
                 }
             }
@@ -156,9 +163,10 @@ fun SectionsScreen(
                                     try {
                                         val skus = skuText.split(",", " ", "\n").map { it.trim() }.filter { it.isNotEmpty() }
                                         viewModel.api.putSectionSkus(sectionId = id, body = mapOf("skus" to skus))
+                                        saveError = null
                                         banner = "SKUs saved"
-                                    } catch (e: Exception) {
-                                        banner = e.message
+                                    } catch (_: Exception) {
+                                        saveError = "section_skus_failed"
                                     } finally {
                                         busy = false
                                     }

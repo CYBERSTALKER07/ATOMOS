@@ -58,13 +58,27 @@ final class APIClient: @unchecked Sendable {
         return raw.contains(":") ? "http://\(raw)" : "http://\(raw):8180"
     }()
     #else
-    let apiBaseURL = "https://api.pegasus.uz"
+    let apiBaseURL: String = {
+        let raw = (ProcessInfo.processInfo.environment["PEGASUSX_API_BASE_URL"] ?? "")
+            .trimmingCharacters(in: .whitespaces)
+        if raw.isEmpty { return "https://api.pegasusx.app" }
+        return raw.hasSuffix("/") ? String(raw.dropLast()) : raw
+    }()
     #endif
 
-    private var baseURL: String { apiBaseURL }
+    var resolvedBaseURL: String { baseURL }
+
+    private var baseURL: String {
+        CellApi.pinApiBaseUrl(
+            bootstrap: apiBaseURL,
+            homeCell: CellApi.homeCellFromJwt(CellTokenCache.token),
+            sessionApiUrl: MarketPackStore.sessionApiUrl
+        )
+    }
 
     private let session: URLSession
     private let decoder: JSONDecoder
+    private let coalescer = DriverHTTPCoalescer()
 
     private init() {
         let config = URLSessionConfiguration.default
@@ -218,6 +232,8 @@ final class APIClient: @unchecked Sendable {
         )
     }
 
+    /// G1.C: do not call — backend always 501. Use arrive / depart / cash / card / credit edges.
+    @available(*, deprecated, message: "PATCH state is theatre (501); use delivery edge routes")
     func transitionState(orderId: String, newState: String) async throws -> Order {
         let body = ["state": newState]
         return try await patch(
@@ -234,12 +250,14 @@ final class APIClient: @unchecked Sendable {
         return try await post("v1/delivery/verify-handshake", body: body)
     }
 
+    /// G1.C: do not call — no durable writer. Use amend / missing-items / partial-offload.
+    @available(*, deprecated, message: "Mid-delivery update is not implemented; use amend edges")
     func updateOrderDuringDelivery(orderId: String, latitude: Double, longitude: Double) async throws -> UpdateOrderDuringDeliveryResponse {
         let body = UpdateOrderDuringDeliveryRequest(orderId: orderId, latitude: latitude, longitude: longitude)
         return try await post("v1/delivery/update-order-during-delivery", body: body)
     }
 
-    /// Mark arrived — driver enters 500m geofence (IN_TRANSIT → ARRIVED)
+    /// Mark arrived — driver enters pack breach_radius_meters (UZ 150m; IN_TRANSIT → ARRIVED)
     func markArrived(orderId: String) async throws {
         struct Resp: Decodable { let status: String; let orderId: String }
         let body = ["order_id": orderId]
@@ -550,15 +568,21 @@ final class APIClient: @unchecked Sendable {
         struct Req: Encodable { let reason: String; let note: String }
         return try await post(
             "v1/driver/ops/rescue/request",
-            body: Req(reason: reason, note: note)
+            body: Req(reason: reason, note: note),
+            headers: ["Idempotency-Key": DriverIdempotency.requestRescue(reason: reason, note: note)]
         )
     }
 
-    func respondRescue(rescueId: String, accept: Bool) async throws -> [String: String] {
-        struct Req: Encodable { let rescue_id: String; let accept: Bool }
+    func respondRescue(rescueId: String, brokenDriverId: String, accept: Bool) async throws -> [String: String] {
+        struct Req: Encodable {
+            let rescue_id: String
+            let broken_driver_id: String
+            let accept: Bool
+        }
         return try await post(
             "v1/driver/ops/rescue/respond",
-            body: Req(rescue_id: rescueId, accept: accept)
+            body: Req(rescue_id: rescueId, broken_driver_id: brokenDriverId, accept: accept),
+            headers: ["Idempotency-Key": DriverIdempotency.respondRescue(rescueId: rescueId, accept: accept)]
         )
     }
 
@@ -578,10 +602,12 @@ final class APIClient: @unchecked Sendable {
     func markCreditDelivery(
         orderId: String,
         photoProofUrl: String? = nil,
+        signatureUrl: String? = nil,
         forceBypassToken: String? = nil
     ) async throws -> [String: String] {
         var body: [String: String] = ["order_id": orderId]
         if let url = photoProofUrl { body["photo_proof_url"] = url }
+        if let url = signatureUrl { body["signature_url"] = url }
         if let token = forceBypassToken { body["force_bypass_token"] = token }
         return try await post(
             "v1/delivery/credit-delivery",
@@ -723,7 +749,8 @@ final class APIClient: @unchecked Sendable {
     }
 
     private func buildRequest(path: String, method: String, authenticated: Bool = true) throws -> URLRequest {
-        guard let url = URL(string: "\(baseURL)/\(path)") else {
+        let cleanPath = path.hasPrefix("/") ? String(path.dropFirst()) : path
+        guard let url = URL(string: "\(baseURL)/\(cleanPath)") else {
             throw APIError.invalidURL
         }
         var request = URLRequest(url: url)
@@ -738,18 +765,57 @@ final class APIClient: @unchecked Sendable {
     }
 
     private func dataWithFallback(for request: URLRequest) async throws -> (Data, URLResponse) {
-        try await session.data(for: request)
+        let isIdempotent = request.httpMethod == "GET" || request.value(forHTTPHeaderField: "Idempotency-Key") != nil
+        let maxAttempts = isIdempotent ? 3 : 1
+        var lastError: Error = URLError(.unknown)
+
+        for attempt in 0..<maxAttempts {
+            try Task.checkCancellation()
+            do {
+                let (data, response) = try await session.data(for: request)
+                if let http = response as? HTTPURLResponse,
+                   isIdempotent && (502...504).contains(http.statusCode) && attempt + 1 < maxAttempts {
+                    let delayNs = UInt64(300_000_000 * (1 << attempt)) + UInt64.random(in: 0...150_000_000)
+                    try await Task.sleep(nanoseconds: delayNs)
+                    continue
+                }
+                return (data, response)
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch let urlErr as URLError where urlErr.code == .cancelled {
+                throw CancellationError()
+            } catch {
+                lastError = error
+                if isIdempotent && attempt + 1 < maxAttempts {
+                    let delayNs = UInt64(300_000_000 * (1 << attempt)) + UInt64.random(in: 0...150_000_000)
+                    try await Task.sleep(nanoseconds: delayNs)
+                    continue
+                }
+                throw error
+            }
+        }
+        throw lastError
     }
 
-    /// Flag to prevent recursive refresh loops
-    private var isRefreshing = false
-
     private func execute<T: Decodable>(_ request: URLRequest, isRetry: Bool = false) async throws -> T {
+        let method = request.httpMethod ?? "GET"
+        if method != "GET" && !isRetry {
+            await coalescer.invalidateCache()
+        }
+
         let data: Data
         let response: URLResponse
 
         do {
-            (data, response) = try await dataWithFallback(for: request)
+            if method == "GET", !isRetry, let urlKey = request.url?.absoluteString {
+                (data, response) = try await coalescer.fetchOrCoalesce(key: urlKey) { [self] in
+                    try await self.dataWithFallback(for: request)
+                }
+            } else {
+                (data, response) = try await dataWithFallback(for: request)
+            }
+        } catch is CancellationError {
+            throw CancellationError()
         } catch {
             throw APIError.networkError
         }
@@ -762,10 +828,11 @@ final class APIClient: @unchecked Sendable {
         case 200...299:
             break
         case 401:
-            // On first 401, attempt silent token refresh before giving up
-            if !isRetry && !isRefreshing {
-                if let newToken = await attemptTokenRefresh() {
-                    // Re-build the request with fresh token and retry once
+            // On first 401, attempt single-flight silent token refresh before giving up
+            if !isRetry {
+                if let newToken = await coalescer.refreshToken(using: { [self] in
+                    await self.attemptTokenRefresh()
+                }) {
                     var retryRequest = request
                     retryRequest.setValue("Bearer \(newToken)", forHTTPHeaderField: "Authorization")
                     return try await execute(retryRequest, isRetry: true)
@@ -802,10 +869,12 @@ final class APIClient: @unchecked Sendable {
 
     // MARK: - Problem Detail
 
+    private static let sharedDecoder = JSONDecoder()
+
     private static func parseProblemDetail(data: Data, response: HTTPURLResponse) -> ProblemDetail? {
         let contentType = response.value(forHTTPHeaderField: "Content-Type") ?? ""
         guard contentType.contains("application/problem+json") else { return nil }
-        return try? JSONDecoder().decode(ProblemDetail.self, from: data)
+        return try? sharedDecoder.decode(ProblemDetail.self, from: data)
     }
 
     // MARK: - Token Refresh
@@ -814,8 +883,6 @@ final class APIClient: @unchecked Sendable {
         guard let currentToken = await MainActor.run(body: { TokenStore.shared.token }) else {
             return nil
         }
-        isRefreshing = true
-        defer { isRefreshing = false }
 
         guard let url = URL(string: "\(baseURL)/v1/auth/refresh") else { return nil }
         var request = URLRequest(url: url)
@@ -829,13 +896,65 @@ final class APIClient: @unchecked Sendable {
         }
 
         struct RefreshResponse: Decodable { let token: String }
-        guard let refreshed = try? JSONDecoder().decode(RefreshResponse.self, from: data) else {
+        guard let refreshed = try? decoder.decode(RefreshResponse.self, from: data) else {
             return nil
         }
 
         // Persist the new token
         await MainActor.run { TokenStore.shared.updateToken(refreshed.token) }
         return refreshed.token
+    }
+}
+
+private actor DriverHTTPCoalescer {
+    private var inFlightGETs: [String: Task<(Data, URLResponse), Error>] = [:]
+    private var getCache: [String: (data: Data, response: URLResponse, expiresAt: Date)] = [:]
+    private var refreshTask: Task<String?, Never>?
+    private let cacheTTL: TimeInterval = 2.0
+
+    func fetchOrCoalesce(
+        key: String,
+        operation: @Sendable @escaping () async throws -> (Data, URLResponse)
+    ) async throws -> (Data, URLResponse) {
+        let now = Date()
+        if let cached = getCache[key], cached.expiresAt > now {
+            return (cached.data, cached.response)
+        }
+        if let existing = inFlightGETs[key] {
+            return try await existing.value
+        }
+        let task = Task<(Data, URLResponse), Error> {
+            try await operation()
+        }
+        inFlightGETs[key] = task
+        do {
+            let (data, response) = try await task.value
+            inFlightGETs.removeValue(forKey: key)
+            if let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) {
+                getCache[key] = (data, response, Date().addingTimeInterval(cacheTTL))
+            }
+            return (data, response)
+        } catch {
+            inFlightGETs.removeValue(forKey: key)
+            throw error
+        }
+    }
+
+    func invalidateCache() {
+        getCache.removeAll()
+    }
+
+    func refreshToken(using operation: @Sendable @escaping () async -> String?) async -> String? {
+        if let existing = refreshTask {
+            return await existing.value
+        }
+        let task = Task<String?, Never> {
+            await operation()
+        }
+        refreshTask = task
+        let result = await task.value
+        refreshTask = nil
+        return result
     }
 }
 

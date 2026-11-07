@@ -1,5 +1,7 @@
 package com.pegasusx.factory.ui.screens.location
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -38,6 +40,7 @@ import com.pegasusx.factory.ui.theme.PegasusSpacing
 import com.pegasusx.factory.util.GeocodeLocationSupport
 import com.pegasusx.factory.util.FactoryIdempotencyKeys
 import kotlinx.coroutines.launch
+import com.pegasusx.factory.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -61,7 +64,7 @@ fun LocationSettingsScreen(
             try {
                 val resp = api.getFactoryLocation()
                 if (resp.isSuccessful && resp.body() != null) {
-                    val body = resp.body()!!
+                    val body = resp.body() ?: return@launch
                     factoryName = body.name
                     location = AddressLocationValue(
                         address = body.address,
@@ -120,7 +123,7 @@ fun LocationSettingsScreen(
                 navigationIcon = {
                     if (onBack != null) {
                         IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                         }
                     }
                 },
@@ -129,14 +132,14 @@ fun LocationSettingsScreen(
     ) { padding ->
         when {
             loading -> PegasusLoadingState(
-                title = "Updating...",
+                title = stringResource(R.string.mobile_factory_ui_updating),
                 body = "Applying location settings...",
                 modifier = Modifier.padding(padding).fillMaxSize()
             )
             error != null -> PegasusStatePane(
                 kind = PegasusStateKind.Error,
                 headline = "Update Failed",
-                body = error!!,
+                body = error.orEmpty(),
                 actionLabel = "Retry",
                 onAction = { load() },
                 modifier = Modifier.padding(padding).fillMaxSize()
@@ -160,12 +163,12 @@ fun LocationSettingsScreen(
                     geocodeApi = geocodeApi,
                     value = location,
                     onValueChange = { location = it },
-                    label = "Factory address",
+                    label = stringResource(R.string.factory_portal_residual_text_factory_address),
                 )
                 if (!saveMessage.isNullOrBlank()) {
                     Text(
-                        saveMessage!!,
-                        color = if (saveMessage!!.contains("saved", ignoreCase = true)) {
+                        saveMessage.orEmpty(),
+                        color = if (saveMessage.orEmpty().contains("saved", ignoreCase = true)) {
                             MaterialTheme.colorScheme.primary
                         } else {
                             MaterialTheme.colorScheme.error

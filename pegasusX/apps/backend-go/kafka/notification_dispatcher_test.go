@@ -925,3 +925,77 @@ func TestNotificationDispatcher_ProductHandlingUpdatedFansSupplierOnly(t *testin
 		t.Fatalf("retailer hub should not receive product handling updated")
 	}
 }
+
+func TestNotificationDispatcher_ProductAndCategoryLifecycleFansSupplierAndRetailerPromoRoom(t *testing.T) {
+	supplierConn := &dispatcherConnSpy{id: "supplier"}
+	retailerPromoConn := &dispatcherConnSpy{id: "retailer-promo"}
+	supplierHub := ws.NewHub("supplier", nil, nil)
+	retailerHub := ws.NewHub("retailer", nil, nil)
+
+	supplierHub.Subscribe("supplier:sup-42", supplierConn)
+	retailerHub.Subscribe(ws.SupplierPromoRoom("sup-42"), retailerPromoConn)
+
+	dispatcher := NewNotificationDispatcher(DispatcherDeps{
+		SupplierHub: supplierHub,
+		RetailerHub: retailerHub,
+	})
+
+	// 1. PRODUCT_CREATED
+	prodPayload, _ := json.Marshal(map[string]any{
+		"type":        events.EventProductCreated,
+		"trace_id":    "trace-prod-create",
+		"product_id":  "prod-42",
+		"supplier_id": "sup-42",
+		"name":        "Test Product",
+		"price_minor": 10000,
+	})
+	if err := dispatcher.HandleEvent(context.Background(), kafka.Message{Value: prodPayload}); err != nil {
+		t.Fatalf("handle product created: %v", err)
+	}
+	if len(supplierConn.messages) != 1 {
+		t.Fatalf("expected 1 supplier message for product created, got %d", len(supplierConn.messages))
+	}
+	if len(retailerPromoConn.messages) != 1 {
+		t.Fatalf("expected 1 retailer promo message for product created, got %d", len(retailerPromoConn.messages))
+	}
+
+	// 2. CATEGORY_CREATED
+	catPayload, _ := json.Marshal(map[string]any{
+		"type":        events.EventCategoryCreated,
+		"trace_id":    "trace-cat-create",
+		"category_id": "cat-42",
+		"supplier_id": "sup-42",
+		"name":        "Beverages",
+	})
+	if err := dispatcher.HandleEvent(context.Background(), kafka.Message{Offset: 1, Value: catPayload}); err != nil {
+		t.Fatalf("handle category created: %v", err)
+	}
+	if len(supplierConn.messages) != 2 {
+		t.Fatalf("expected 2 supplier messages after category created, got %d", len(supplierConn.messages))
+	}
+	if len(retailerPromoConn.messages) != 2 {
+		t.Fatalf("expected 2 retailer promo messages after category created, got %d", len(retailerPromoConn.messages))
+	}
+}
+
+
+type replannerSpy struct {
+	replanCount int
+	lastRouteID string
+	lastReason  string
+	ch          chan struct{}
+}
+
+func (r *replannerSpy) ReplanRoute(ctx context.Context, routeID, reason, actor string) error {
+	r.replanCount++
+	r.lastRouteID = routeID
+	r.lastReason = reason
+	if r.ch != nil {
+		select {
+		case r.ch <- struct{}{}:
+		default:
+		}
+	}
+	return nil
+}
+

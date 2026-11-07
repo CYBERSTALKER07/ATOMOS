@@ -16,11 +16,11 @@ import (
 
 // VetOrderParams captures a supplier vet decision for a queued order.
 type VetOrderParams struct {
-	OrderID    string
-	Decision   string
-	Note       string
-	DecidedBy  string
-	ActorRole  string
+	OrderID   string
+	Decision  string
+	Note      string
+	DecidedBy string
+	ActorRole string
 }
 
 // ErrOrderNotFound is returned when the order id does not exist for the supplier.
@@ -75,18 +75,18 @@ func (r *SpannerRepository) VetOrder(ctx context.Context, supplierID string, par
 		}
 
 		var (
-			current       SupplierOrder
-			confirmation  string
-			orderSource   string
-			lineItemsRaw  []byte
-			version       int64
-			warehouseID   spanner.NullString
-			driverID      spanner.NullString
-			vehicleID     spanner.NullString
-			routeID       spanner.NullString
-			manifestID    spanner.NullString
-			createdAt     time.Time
-			updatedAt     time.Time
+			current      SupplierOrder
+			confirmation string
+			orderSource  string
+			lineItemsRaw []byte
+			version      int64
+			warehouseID  spanner.NullString
+			driverID     spanner.NullString
+			vehicleID    spanner.NullString
+			routeID      spanner.NullString
+			manifestID   spanner.NullString
+			createdAt    time.Time
+			updatedAt    time.Time
 		)
 		if err := row.Columns(
 			&current.OrderID,
@@ -193,23 +193,7 @@ func (r *SpannerRepository) VetOrder(ctx context.Context, supplierID string, par
 			}),
 		}
 		for _, e := range buf.events {
-			createdAt := e.CreatedAt.UTC()
-			if createdAt.IsZero() {
-				createdAt = time.Now().UTC()
-			}
-			row := map[string]any{
-				"EventId":       e.EventID,
-				"AggregateType": e.AggregateType,
-				"AggregateId":   e.AggregateID,
-				"TopicName":     e.TopicName,
-				"Payload":       e.Payload,
-				"CreatedAt":     createdAt,
-				"PublishedAt":   nil,
-			}
-			if e.PublishedAt != nil {
-				row["PublishedAt"] = e.PublishedAt.UTC()
-			}
-			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", row))
+			mutations = append(mutations, portalOutboxMutation(e))
 		}
 		if err := txn.BufferWrite(mutations); err != nil {
 			return fmt.Errorf("buffer vet order %s: %w", orderID, err)
@@ -261,11 +245,17 @@ func orderPaymentClearedInTxn(ctx context.Context, txn *spanner.ReadWriteTransac
 		          WHERE ple.OrderId = @orderId
 		            AND ple.EntryType IN UNNEST(@clearedEntryTypes)
 		        ) AS ledger_cleared,
-		        EXISTS (
-		          SELECT 1
+		        (
+		          SELECT 
+		            CASE 
+		              WHEN ps.Gateway IN ('CASH', 'CREDIT', 'B2B_CREDIT', 'INTERNAL') THEN true
+		              WHEN ps.Status IN UNNEST(@clearedSessionStatuses) THEN true
+		              ELSE false
+		            END
 		          FROM PaymentSessions ps
 		          WHERE ps.OrderId = @orderId
-		            AND ps.Status IN UNNEST(@clearedSessionStatuses)
+		          ORDER BY ps.CreatedAt DESC
+		          LIMIT 1
 		        ) AS session_cleared`,
 		Params: map[string]any{
 			"orderId":                orderID,
@@ -279,9 +269,16 @@ func orderPaymentClearedInTxn(ctx context.Context, txn *spanner.ReadWriteTransac
 	if err != nil {
 		return false, fmt.Errorf("query payment clearance: %w", err)
 	}
-	var ledgerCleared, sessionCleared bool
+	var ledgerCleared bool
+	var sessionCleared spanner.NullBool
 	if err := row.Columns(&ledgerCleared, &sessionCleared); err != nil {
 		return false, fmt.Errorf("scan payment clearance: %w", err)
 	}
-	return ledgerCleared || sessionCleared, nil
+	
+	sessionIsCleared := true
+	if sessionCleared.Valid {
+		sessionIsCleared = sessionCleared.Bool
+	}
+	return ledgerCleared || sessionIsCleared, nil
 }
+

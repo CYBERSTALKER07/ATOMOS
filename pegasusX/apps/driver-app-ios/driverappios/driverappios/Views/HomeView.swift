@@ -4,6 +4,7 @@
 //
 
 import SwiftUI
+import SwiftData
 import CoreLocation
 import MapKit
 
@@ -12,6 +13,8 @@ struct HomeView: View {
     @Bindable var vm: FleetViewModel
     let onOpenMap: () -> Void
     var onHandoffNavigate: ((HandoffDestination) -> Void)? = nil
+    @Environment(\.modelContext) private var modelContext
+    @Environment(\.horizontalSizeClass) private var sizeClass
 
     @State private var appeared = false
     @State private var showNotificationInbox = false
@@ -19,11 +22,26 @@ struct HomeView: View {
     @State private var handoffAlertMessage: String?
     @State private var pulseEvents: [PulseEvent] = []
     @State private var pulseLoading = true
+    @State private var pulseError: String?
     @State private var driverSocketState = DriverSocketState.shared
     @State private var showRescueSheet = false
+    @State private var showSyncQueue = false
+    @State private var offlinePending = 0
+    @State private var showQRScanner = false
+    @State private var showOfflineVerifier = false
+    @State private var selectedRecentMission: Mission?
 
     var body: some View {
-        ScrollView {
+        HStack(alignment: .top, spacing: 0) {
+            if sizeClass == .regular {
+                RemainingStopsStepper(stops: RemainingStops.remaining(vm.orders)) { id in
+                    _ = id
+                    onHandoffNavigate?(.manifestList)
+                }
+                .frame(width: 320)
+                .padding(.top, 24)
+            }
+            ScrollView {
 
             VStack(alignment: .leading, spacing: 20) {
                 // MARK: - Greeting
@@ -46,12 +64,13 @@ struct HomeView: View {
                             .font(.system(size: 18, weight: .medium))
                             .foregroundStyle(LabTheme.fgSecondary)
                     }
+                    .accessibilityLabel("Notifications")
                     .padding(.top, 8)
                 }
                 .padding(.horizontal, LabTheme.s4)
-                .padding(.top, 60)
+                .padding(.top, sizeClass == .regular ? 20 : 54)
 
-                PulseStrip(events: pulseEvents, loading: pulseLoading)
+                PulseStrip(events: pulseEvents, loading: pulseLoading, error: pulseError)
                     .padding(.horizontal, LabTheme.s4)
                     .staggeredAppear(index: 0)
 
@@ -95,8 +114,37 @@ struct HomeView: View {
                 TransitControlCard(vm: vm)
                     .staggeredAppear(index: TokenStore.shared.isFactoryScopedDriver ? 3 : 2)
 
+                if offlinePending > 0 {
+                    Button { showSyncQueue = true } label: {
+                        Text("Offline sync queue · \(offlinePending)")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(LabTheme.warning)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(12)
+                            .labCard()
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                if sizeClass != .regular {
+                    RemainingStopsStepper(stops: RemainingStops.remaining(vm.orders)) { id in
+                        _ = id
+                        onHandoffNavigate?(.manifestList)
+                    }
+                }
+
+                ManifestBulletMeter(state: vm.manifestState, usedVU: nil, maxVU: vm.maxVolumeVU)
+                FieldMoneyStrip(counts: MoneyHealthCounts.from(orders: vm.orders))
+                fieldEarningsRow
+                fieldHistoryPeek
+
                 // MARK: - Today Summary Card
-                TodaySummaryCard(vm: vm)
+                TodaySummaryCard(
+                    vm: vm,
+                    onSelectPending: { onHandoffNavigate?(.manifestList) },
+                    onSelectDone: { onHandoffNavigate?(.manifestList) },
+                    onSelectRevenue: { onHandoffNavigate?(.home) }
+                )
                     .staggeredAppear(index: TokenStore.shared.isFactoryScopedDriver ? 4 : 3)
 
                 // MARK: - Open Map CTA
@@ -104,17 +152,23 @@ struct HomeView: View {
                     .staggeredAppear(index: TokenStore.shared.isFactoryScopedDriver ? 5 : 4)
 
                 // MARK: - Quick Actions
-                QuickActionsSection(showRescueSheet: $showRescueSheet)
+                QuickActionsSection(
+                    showRescueSheet: $showRescueSheet,
+                    onScanQR: { showQRScanner = true },
+                    onOfflineVerify: { showOfflineVerifier = true }
+                )
                     .staggeredAppear(index: TokenStore.shared.isFactoryScopedDriver ? 6 : 5)
 
                 // MARK: - Recent Activity
-                RecentActivitySection(vm: vm)
+                RecentActivitySection(vm: vm, onSelectMission: { selectedRecentMission = $0 })
                     .staggeredAppear(index: TokenStore.shared.isFactoryScopedDriver ? 7 : 6)
             }
             .padding(.horizontal, LabTheme.s16)
             .padding(.bottom, 20)
+            .labReadableWidth()
         }
         .scrollIndicators(.hidden)
+        }
         .background(LabTheme.bg)
         .sheet(isPresented: $showNotificationInbox) {
             DriverNotificationInboxView { link in
@@ -141,13 +195,90 @@ struct HomeView: View {
                 .presentationDetents([.medium])
                 .presentationDragIndicator(.visible)
         }
+        .sheet(isPresented: $showSyncQueue) {
+            SyncQueueView()
+                .presentationDetents([.large])
+        }
+        .sheet(isPresented: $showQRScanner) {
+            QRScannerView(
+                onValidated: { _, _ in showQRScanner = false },
+                onCancel: { showQRScanner = false }
+            )
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $showOfflineVerifier) {
+            OfflineVerifierView(modelContext: modelContext)
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+        }
+        .sheet(item: $selectedRecentMission) { mission in
+            MissionDetailSheet(
+                mission: mission,
+                driverLocation: vm.displayLocation ?? vm.location,
+                isInRange: true,
+                distance: 0,
+                onScan: {},
+                onCorrection: {}
+            )
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
+        }
         .task {
             await vm.loadMissions()
             await loadPulse()
+            DriverOfflineQueue.shared.attach(container: modelContext.container)
+            offlinePending = DriverOfflineQueue.shared.pendingCount()
         }
         .onChange(of: driverSocketState.eventSequence) { _, _ in
             vm.handleSocketEvent(driverSocketState.lastEvent)
         }
+    }
+
+    private var fieldEarningsRow: some View {
+        let code = packCurrency(MarketPackStore.pack)
+        let today = vm.earnings?.todayMinor
+        return VStack(alignment: .leading, spacing: 6) {
+            Text("EARNINGS")
+                .font(.system(size: 11, weight: .heavy, design: .monospaced))
+                .foregroundStyle(LabTheme.fgTertiary)
+            if vm.earnings == nil {
+                Text("unavailable")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(LabTheme.fgTertiary)
+            } else if code.isEmpty {
+                Text(today == 0 ? "empty" : "\(today ?? 0)")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(LabTheme.fg)
+            } else {
+                Text(today == 0 ? "empty" : "\(today ?? 0) \(code)")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(LabTheme.fg)
+            }
+        }
+        .padding(LabTheme.s16)
+        .labCard()
+    }
+
+    private var fieldHistoryPeek: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("HISTORY · 30D")
+                .font(.system(size: 11, weight: .heavy, design: .monospaced))
+                .foregroundStyle(LabTheme.fgTertiary)
+            if vm.historyRows.isEmpty {
+                Text("empty")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(LabTheme.fgTertiary)
+            } else {
+                ForEach(vm.historyRows.prefix(3)) { row in
+                    Text("\(row.orderId) · \(row.status)")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(LabTheme.fgSecondary)
+                }
+            }
+        }
+        .padding(LabTheme.s16)
+        .labCard()
     }
 
     private func handleHandoffLink(_ link: String) {
@@ -167,12 +298,17 @@ struct HomeView: View {
 
     private func loadPulse() async {
         pulseLoading = true
+        pulseError = nil
         defer { pulseLoading = false }
         do {
             let response = try await APIClient.shared.getPulse()
-            pulseEvents = response.events
+            let result = PulseHonesty.apply(ok: true, incoming: response.events, previous: pulseEvents)
+            pulseEvents = result.events
+            pulseError = result.error
         } catch {
-            pulseEvents = []
+            let result = PulseHonesty.apply(ok: false, incoming: nil, previous: pulseEvents)
+            pulseEvents = result.events
+            pulseError = result.error
         }
     }
 

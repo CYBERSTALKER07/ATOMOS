@@ -26,6 +26,9 @@ type CapabilityPackRow struct {
 
 // LoadEnabledPacks returns the enabled set for a retailer (memory + Spanner).
 func (s *Service) LoadEnabledPacks(ctx context.Context, retailerID string) (EnabledSet, error) {
+	if s != nil && s.enabledPacksQuery != nil {
+		return s.enabledPacksQuery(ctx, retailerID)
+	}
 	set := EnabledSet{}.WithCORE()
 	if s.spannerClient == nil {
 		s.mu.RLock()
@@ -69,6 +72,9 @@ func (s *Service) LoadEnabledPacks(ctx context.Context, retailerID string) (Enab
 
 // SetPackEnabled persists a pack enable/disable with optional config JSON.
 func (s *Service) SetPackEnabled(ctx context.Context, retailerID, packID, actorUserID string, enabled bool, config map[string]any) error {
+	if s != nil && s.setPackEnabledFn != nil {
+		return s.setPackEnabledFn(ctx, retailerID, packID, actorUserID, enabled, config)
+	}
 	packID = NormalizePackID(packID)
 	cfgBytes, _ := json.Marshal(config)
 	if cfgBytes == nil {

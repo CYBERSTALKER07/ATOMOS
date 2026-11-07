@@ -6,9 +6,13 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"cloud.google.com/go/spanner"
 	"google.golang.org/api/iterator"
+
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 )
 
 const (
@@ -171,9 +175,36 @@ func (s *Service) HandleInventoryPolicy(w http.ResponseWriter, r *http.Request) 
 	if req.ReorderThreshold != nil {
 		update["ReorderThreshold"] = *req.ReorderThreshold
 	}
-	if _, err := s.portalSpanner.Apply(r.Context(), []*spanner.Mutation{spanner.InsertOrUpdateMap("SupplierInventoryV2", update)}); err != nil {
+	// B4: policy write + INVENTORY_POLICY_UPDATED outbox in one RW txn.
+	_, err = s.portalSpanner.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		if err := txn.BufferWrite([]*spanner.Mutation{spanner.InsertOrUpdateMap("SupplierInventoryV2", update)}); err != nil {
+			return err
+		}
+		payload := map[string]any{
+			"type":         events.EventInventoryPolicyUpdated,
+			"supplier_id":  sid,
+			"warehouse_id": warehouseID,
+			"product_id":   productID,
+			"timestamp":    time.Now().UTC().Format(time.RFC3339Nano),
+		}
+		if policy != "" {
+			payload["out_of_stock_policy"] = policy
+		}
+		if req.ReorderThreshold != nil {
+			payload["reorder_threshold"] = *req.ReorderThreshold
+		}
+		buf := outbox.NewSpannerTxnBuffer(txn)
+		if err := outbox.EmitJSON(ctx, buf, events.AggregateWarehouse, warehouseID, events.TopicMain, payload); err != nil {
+			return err
+		}
+		return buf.Flush(ctx)
+	})
+	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_update_inventory_policy"})
 		return
+	}
+	if s.cache != nil {
+		s.cache.Invalidate(r.Context(), "supplier:inventory:"+sid)
 	}
 
 	resp := map[string]string{"status": "updated"}

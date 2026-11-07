@@ -5,29 +5,22 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/url"
 	"os"
 	"strings"
 	"time"
 
+	"github.com/gorilla/websocket"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/bootstrap"
+	"github.com/pegasusx/pegasusx/apps/backend-go/seed"
 )
 
 func ensureSupplierSession(ctx context.Context, client *http.Client, base string, cfg *bootstrap.Config) (string, string, error) {
 	phone := envOr("SSMR_SMOKE_SUPPLIER_PHONE", "+998901000001")
 	password := envOr("SSMR_SMOKE_SUPPLIER_PASSWORD", "SmokeTest!234")
-
-	loginBody, _ := json.Marshal(map[string]string{
-		"phone":    phone,
-		"password": password,
-	})
-	status, respBody, hdrs, err := clientPostRetry(ctx, client, base+"/v1/auth/supplier/login", loginBody, "", "")
-	if err != nil {
-		return "", "", err
-	}
-	if status == http.StatusOK {
-		return supplierSessionFromResponse(respBody, hdrs, cfg)
+	sid, cookie, err := loginSupplierSession(ctx, client, base, phone, password, cfg)
+	if err == nil {
+		return sid, cookie, nil
 	}
 
 	registerBody, _ := json.Marshal(map[string]any{
@@ -57,18 +50,30 @@ func ensureSupplierSession(ctx context.Context, client *http.Client, base string
 		},
 		"categories": []string{"GENERAL"},
 	})
-	status, respBody, hdrs, err = clientPostRetry(ctx, client, base+"/v1/auth/supplier/register", registerBody, "", "ssmr-supplier-register")
+	status, respBody, hdrs, err := clientPostRetry(ctx, client, base+"/v1/auth/supplier/register", registerBody, "", "ssmr-supplier-register")
 	if err != nil {
 		return "", "", err
 	}
 	if status == http.StatusConflict || status == http.StatusTooManyRequests {
-		status, respBody, hdrs, err = clientPostRetry(ctx, client, base+"/v1/auth/supplier/login", loginBody, "", "")
-		if err != nil {
-			return "", "", err
-		}
+		return loginSupplierSession(ctx, client, base, phone, password, cfg)
 	}
 	if status != http.StatusCreated && status != http.StatusOK {
 		return "", "", fmt.Errorf("supplier session status %d body %s", status, string(respBody))
+	}
+	return supplierSessionFromResponse(respBody, hdrs, cfg)
+}
+
+func loginSupplierSession(ctx context.Context, client *http.Client, base, phone, password string, cfg *bootstrap.Config) (string, string, error) {
+	loginBody, _ := json.Marshal(map[string]string{
+		"phone":    phone,
+		"password": password,
+	})
+	status, respBody, hdrs, err := clientPostRetry(ctx, client, base+"/v1/auth/supplier/login", loginBody, "", "")
+	if err != nil {
+		return "", "", err
+	}
+	if status != http.StatusOK {
+		return "", "", fmt.Errorf("supplier login status %d body %s", status, string(respBody))
 	}
 	return supplierSessionFromResponse(respBody, hdrs, cfg)
 }
@@ -96,10 +101,10 @@ func demoWarehouseID() string {
 	if id := strings.TrimSpace(os.Getenv("WAREHOUSE_DEMO_ID")); id != "" {
 		return id
 	}
-	if id := strings.TrimSpace(os.Getenv("SSMR_SMOKE_WAREHOUSE_ID")); id != "" {
+	if id := envOr("SSMR_SMOKE_WAREHOUSE_ID", ""); id != "" {
 		return id
 	}
-	return "ssmr-warehouse-1"
+	return ""
 }
 
 func demoFactoryID() string {
@@ -117,23 +122,41 @@ func issueRoleJWT(cfg *bootstrap.Config, claims auth.Claims) (string, error) {
 	})
 }
 
-func wsURL(base, token string) string {
+func wsURL(base string) string {
 	root := strings.TrimRight(base, "/")
 	root = strings.Replace(root, "https://", "wss://", 1)
 	root = strings.Replace(root, "http://", "ws://", 1)
-	return root + "/v1/ws?token=" + url.QueryEscape(token)
+	return root + "/v1/ws"
+}
+
+func dialWS(ctx context.Context, base, token string) (*websocket.Conn, *http.Response, error) {
+	header := http.Header{}
+	header.Set("Authorization", "Bearer "+token)
+	return websocket.DefaultDialer.DialContext(ctx, wsURL(base), header)
 }
 
 func registerRetailer(ctx context.Context, client *http.Client, base string, cfg *bootstrap.Config) (string, string, error) {
 	return registerRetailerWithPhone(ctx, client, base, cfg, envOr("SSMR_SMOKE_RETAILER_PHONE", "+998901000099"))
 }
 
+// smokeSupplierID is the seed supplier a smoke retailer attaches to.
+// envOr("SSMR_SMOKE_SUPPLIER_ID") is empty in sandbox when the env key is
+// unset (sandboxIdentityKey fail-closed). Seed identity is compile-time SoT
+// — same as assertSeedSupplier.
+func smokeSupplierID() string {
+	if v := envOr("SSMR_SMOKE_SUPPLIER_ID", seed.DefaultSupplierID); v != "" {
+		return v
+	}
+	return seed.DefaultSupplierID
+}
+
 func registerRetailerWithPhone(ctx context.Context, client *http.Client, base string, cfg *bootstrap.Config, phone string) (string, string, error) {
 	body, _ := json.Marshal(map[string]any{
-		"phone": phone,
-		"name":  "SSMR Retailer",
-		"lat":   cfg.DeliveryZoneCenterLat,
-		"lng":   cfg.DeliveryZoneCenterLng,
+		"phone":       phone,
+		"name":        "SSMR Retailer",
+		"supplier_id": smokeSupplierID(),
+		"lat":         cfg.DeliveryZoneCenterLat,
+		"lng":         cfg.DeliveryZoneCenterLng,
 	})
 	status, respBody, _, err := clientPostRetry(ctx, client, base+"/v1/auth/retailer/register", body, "", "")
 	if err != nil {

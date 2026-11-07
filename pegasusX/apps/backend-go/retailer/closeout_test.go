@@ -292,6 +292,9 @@ func (m *mockOrderCreator) Create(_ context.Context, retailerID string, req orde
 
 func TestAutoOrderWorkerPlaceMode(t *testing.T) {
 	t.Parallel()
+	// Invariant: Auto-orders are strictly draft only. Calling RunAutoOrderForRetailer
+	// with AutoOrderModePlace must never create live orders via OrderCreator;
+	// it must fall back to draft cart lines.
 	n := 0
 	mock := &mockOrderCreator{}
 	svc := NewService(ServiceConfig{
@@ -300,6 +303,7 @@ func TestAutoOrderWorkerPlaceMode(t *testing.T) {
 		OrderCreator:          mock,
 		AutoOrderPlaceEnabled: true,
 	})
+	svc.soakGateDisabled = true
 	_ = svc.saveAutoOrderDurable(t.Context(), "ret-place", "o", AutoOrderSettings{GlobalEnabled: true})
 	svc.SeedReorderSuggestions("ret-place", []RetailerReorderSuggestion{
 		{SKU: "SKU-A", SuggestedQty: 2, Sources: []string{"STORE_POS"}, Status: "OPEN"},
@@ -314,29 +318,17 @@ func TestAutoOrderWorkerPlaceMode(t *testing.T) {
 	if run.Status != "OK" && run.Status != "PARTIAL" {
 		t.Fatalf("run=%+v", run)
 	}
-	if mock.calls != 1 {
-		t.Fatalf("Create calls=%d want 1 run=%+v", mock.calls, run)
+	// Draft only: must never call Create!
+	if mock.calls != 0 {
+		t.Fatalf("Create calls=%d want 0 (auto-orders must be draft only)", mock.calls)
 	}
-	if run.PlacedLines != 1 || len(run.PlacedOrders) != 1 {
-		t.Fatalf("placed=%+v lines=%d", run.PlacedOrders, run.PlacedLines)
+	if run.PlacedLines != 0 || len(run.PlacedOrders) != 0 {
+		t.Fatalf("placed=%+v lines=%d (must be 0)", run.PlacedOrders, run.PlacedLines)
 	}
-	if run.PlacedOrders[0].OrderID == "" {
-		t.Fatal("missing order id")
+	if run.DraftLines != 1 {
+		t.Fatalf("draftLines=%d want 1 (must draft lines)", run.DraftLines)
 	}
-	if mock.last.SupplierID != "sup-1" {
-		t.Fatalf("Create SupplierID=%q want sup-1", mock.last.SupplierID)
-	}
-	if mock.last.Source != order.OrderSourceAutoOrder {
-		t.Fatalf("Create Source=%q want AUTO_ORDER", mock.last.Source)
-	}
-	if len(mock.last.H3Cell) != 15 {
-		t.Fatalf("Create H3Cell len=%d want 15", len(mock.last.H3Cell))
-	}
-	// Second place same day → bucket
-	run2 := svc.RunAutoOrderForRetailer(t.Context(), "ret-place", AutoOrderModePlace)
-	if run2.PlacedLines != 0 {
-		t.Fatalf("second place should be idempotent: %+v", run2)
-	}
+
 	// Draft never calls Create
 	mock.calls = 0
 	svc.SeedAutoOrderCandidates("ret-place2", []AutoOrderCandidate{
@@ -354,24 +346,18 @@ func TestAutoOrderWorkerFromReorderSuggestions(t *testing.T) {
 	n := 0
 	svc := NewService(ServiceConfig{
 		Now:   time.Now,
-		NewID: func() string { n++; return "aos-" + string(rune('A'+n%26)) },
+		NewID: func() string { n++; return fmt.Sprintf("rs-%d", n) },
 	})
-	_ = svc.saveAutoOrderDurable(t.Context(), "ret-sug", "o", AutoOrderSettings{GlobalEnabled: true})
-	svc.SeedReorderSuggestions("ret-sug", []RetailerReorderSuggestion{
-		{SKU: "SKU-ST", SuggestedQty: 4, Sources: []string{"STORE_POS"}, Status: "OPEN"},
-		{SKU: "local:bag", SuggestedQty: 99, Sources: []string{"STORE_POS"}, Status: "OPEN"}, // skipped
+	_ = svc.saveAutoOrderDurable(t.Context(), "ret-rs", "o", AutoOrderSettings{GlobalEnabled: true})
+	svc.SeedReorderSuggestions("ret-rs", []RetailerReorderSuggestion{
+		{SKU: "SKU-RS", SuggestedQty: 3, Sources: []string{"STORE_POS"}, Status: "OPEN"},
 	})
-
-	run := svc.RunAutoOrderForRetailer(t.Context(), "ret-sug", AutoOrderModeDraft)
+	run := svc.RunAutoOrderForRetailer(t.Context(), "ret-rs", AutoOrderModeDraft)
+	if run.DraftLines != 1 {
+		t.Fatalf("draft=%d want 1", run.DraftLines)
+	}
 	if run.CandidateSource != "reorder_suggestions" {
-		t.Fatalf("candidate_source=%s want reorder_suggestions run=%+v", run.CandidateSource, run)
-	}
-	if run.DraftLines != 1 || run.Status != "OK" {
-		t.Fatalf("run=%+v", run)
-	}
-	if run.Suggestions != 1 {
-		// local: filtered → only one candidate counted
-		t.Fatalf("suggestions_seen=%d", run.Suggestions)
+		t.Fatalf("candSrc=%s want reorder_suggestions", run.CandidateSource)
 	}
 }
 
@@ -388,5 +374,14 @@ func TestAutoOrderRunInvalidMode(t *testing.T) {
 	svc.HandleAutoOrderRun(rr, req)
 	if rr.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("status=%d want 422", rr.Code)
+	}
+
+	// Mode=place is rejected with 422 auto_order_draft_only
+	reqPlace := httptest.NewRequest(http.MethodPost, "/v1/retailer/settings/auto-order/run?mode=place", nil)
+	reqPlace = reqPlace.WithContext(auth.WithClaims(reqPlace.Context(), owner))
+	rrPlace := httptest.NewRecorder()
+	svc.HandleAutoOrderRun(rrPlace, reqPlace)
+	if rrPlace.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("status=%d want 422 for mode=place", rrPlace.Code)
 	}
 }

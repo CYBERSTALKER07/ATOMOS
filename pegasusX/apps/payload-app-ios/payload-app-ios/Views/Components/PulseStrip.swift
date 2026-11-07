@@ -1,18 +1,25 @@
 import SwiftUI
 
+
 struct PulseStrip: View {
     let events: [PulseEvent]
     let loading: Bool
+    var error: String? = nil
 
     var body: some View {
-        if loading && events.isEmpty {
-            Text("Loading network pulse…")
+        if loading && events.isEmpty && (error ?? "").isEmpty {
+            Text("mobile_payload.ui.loading_network_pulse")
                 .font(.footnote)
                 .foregroundStyle(TermTheme.tertiary)
                 .padding(.vertical, 8)
+        } else if let error, !error.isEmpty {
+            Text(error)
+                .font(.footnote)
+                .foregroundStyle(.red)
+                .padding(.vertical, 8)
         } else if !events.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
-                Text("NETWORK PULSE")
+                Text("mobile_payload.ui.network_pulse")
                     .font(.system(size: 10, weight: .bold, design: .monospaced))
                     .foregroundStyle(TermTheme.tertiary)
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -45,8 +52,10 @@ struct PulseStrip: View {
         }
     }
 
+    private static let isoFormatter = ISO8601DateFormatter()
+
     private func formatTimestamp(_ iso: String) -> String {
-        guard let date = ISO8601DateFormatter().date(from: iso) else { return "" }
+        guard let date = Self.isoFormatter.date(from: iso) else { return "" }
         let mins = Int(Date().timeIntervalSince(date) / 60)
         if mins < 1 { return "now" }
         if mins < 60 { return "\(mins)m" }
@@ -70,7 +79,7 @@ struct ExplainStatusBanner: View {
                 }
                 if let steps = explain?.nextSteps {
                     ForEach(steps, id: \.self) { step in
-                        Text("• \(step)").font(.caption)
+                        Text(L10n.format("mobile_payload.ui.step", "\(step)")).font(.caption)
                     }
                 }
             }
@@ -94,7 +103,7 @@ struct HandoffInboxCard: View {
             }
             if let fields = metadata.fields {
                 ForEach(fields.sorted(by: { $0.key < $1.key }), id: \.key) { key, value in
-                    Text("\(key.replacingOccurrences(of: "_", with: " ")): \(value)")
+                    Text(L10n.format("mobile_payload.ui.replacingoccurrences_value", "\(key.replacingOccurrences(of: "_", with: " "))", "\(value)"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }

@@ -44,7 +44,7 @@ private struct LaneUtilizationRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text("Lane utilization").foregroundStyle(.secondary)
+                Text("mobile_supplier.ui.lane_utilization").foregroundStyle(.secondary)
                 Spacer()
                 Text(String(format: "%.0f%%", pct)).fontWeight(.medium).foregroundStyle(tint)
             }

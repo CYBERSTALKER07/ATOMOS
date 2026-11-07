@@ -51,6 +51,8 @@ enum class FactoryRealtimeEventType(val wireName: String) {
 @Serializable
 data class FactoryLiveEvent(
     @SerialName("type") val type: String,
+    @SerialName("event_id") val eventId: String? = null,
+    @SerialName("id") val id: String? = null,
     @SerialName("timestamp") val timestamp: String? = null,
 ) {
     val eventType: FactoryRealtimeEventType?
@@ -66,6 +68,7 @@ class FactoryRealtimeClient(
     },
     private val client: OkHttpClient = OkHttpClient.Builder()
         .readTimeout(0, TimeUnit.MILLISECONDS)
+        .pingInterval(25, TimeUnit.SECONDS)
         .build(),
 ) {
     private val appContext = context.applicationContext
@@ -104,6 +107,7 @@ class FactoryRealtimeClient(
     private var manualDisconnect = true
     private var networkAvailable = hasNetworkConnectivity()
     private var hasConnectedOnce = false
+    @Volatile private var lastEventId: String? = null
     private var onReconnectHandler: (() -> Unit)? = null
     private var stateHandler: ((FactoryRealtimeStatus) -> Unit)? = null
     private var eventHandler: ((FactoryLiveEvent) -> Unit)? = null
@@ -160,13 +164,21 @@ class FactoryRealtimeClient(
             return
         }
 
-        val wsUrl = baseUrl.newBuilder()
+        val currentLastId = lastEventId
+        val wsUrlBuilder = baseUrl.newBuilder()
             .scheme(if (baseUrl.isHttps) "wss" else "ws")
             .encodedPath("/v1/ws")
             .addQueryParameter("token", token)
-            .build()
+        if (!currentLastId.isNullOrBlank()) {
+            wsUrlBuilder.addQueryParameter("last_event_id", currentLastId)
+        }
+        val wsUrl = wsUrlBuilder.build()
 
-        val request = Request.Builder().url(wsUrl).build()
+        val reqBuilder = Request.Builder().url(wsUrl)
+        if (!currentLastId.isNullOrBlank()) {
+            reqBuilder.addHeader("Last-Event-ID", currentLastId)
+        }
+        val request = reqBuilder.build()
 
         notifyState(if (isReconnect) FactoryRealtimeStatus.RECONNECTING else FactoryRealtimeStatus.CONNECTING)
         webSocket?.cancel()
@@ -185,6 +197,10 @@ class FactoryRealtimeClient(
                 runCatching { json.decodeFromString<FactoryLiveEvent>(text) }
                     .getOrNull()
                     ?.let { event ->
+                        val eid = event.eventId?.takeIf { it.isNotBlank() } ?: event.id?.takeIf { it.isNotBlank() }
+                        if (eid != null) {
+                            lastEventId = eid
+                        }
                         notifyState(FactoryRealtimeStatus.LIVE)
                         mainHandler.post { eventHandler?.invoke(event) }
                     }
@@ -220,7 +236,9 @@ class FactoryRealtimeClient(
         notifyState(FactoryRealtimeStatus.RECONNECTING)
         reconnectJob?.cancel()
         reconnectJob = scope.launch {
-            val delayMs = min(30_000L, 1_000L shl (reconnectAttempt - 1).coerceAtMost(4))
+            val baseDelayMs = min(30_000L, 1_000L shl (reconnectAttempt - 1).coerceAtMost(4))
+            val jitterFactor = 0.85 + kotlin.random.Random.nextDouble(0.0, 0.30)
+            val delayMs = (baseDelayMs * jitterFactor).toLong()
             delay(delayMs)
             if (!manualDisconnect) {
                 connectInternal(isReconnect = true)

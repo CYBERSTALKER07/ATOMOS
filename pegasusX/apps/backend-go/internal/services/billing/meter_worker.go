@@ -3,10 +3,13 @@ package billing
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
+	"strings"
 
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"google.golang.org/api/iterator"
 )
 
@@ -24,8 +27,21 @@ func NewMeterWorker(client *spanner.Client) *MeterWorker {
 
 // ProcessOrderFinalized performs idempotent metering when an order is finalized.
 // It checks if global billing milestones are crossed and adjusts system fee rates accordingly.
-func (w *MeterWorker) ProcessOrderFinalized(ctx context.Context, orderID string, amount float64, supplierID string) error {
-	log.Printf("Metering ORDER_FINALIZED: orderID=%s amount=%.2f supplierID=%s", orderID, amount, supplierID)
+func (w *MeterWorker) ProcessOrderFinalized(ctx context.Context, orderID string, amount int64, supplierID string) error {
+	orderID = strings.TrimSpace(orderID)
+	supplierID = strings.TrimSpace(supplierID)
+	if orderID == "" || supplierID == "" {
+		return nil
+	}
+	if amount <= 0 {
+		slog.DebugContext(ctx, "metering skip ORDER_FINALIZED non-positive amount", "order_id", orderID, "amount", amount)
+		return nil
+	}
+	if w == nil || w.client == nil {
+		return fmt.Errorf("billing meter: nil spanner client")
+	}
+
+	slog.InfoContext(ctx, "metering ORDER_FINALIZED", "order_id", orderID, "amount", amount, "supplier_id", supplierID)
 
 	_, err := w.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		// 1. Idempotency: skip when this order was already metered.
@@ -38,14 +54,14 @@ func (w *MeterWorker) ProcessOrderFinalized(ctx context.Context, orderID string,
 		iter := txn.Query(ctx, stmt)
 		defer iter.Stop()
 		if _, err := iter.Next(); err == nil {
-			log.Printf("Order %s already metered, skipping", orderID)
+			slog.DebugContext(ctx, "order already metered, skipping", "order_id", orderID)
 			return nil
 		} else if err != iterator.Done {
 			return fmt.Errorf("billing meter idempotency lookup: %w", err)
 		}
 
 		const shardID int64 = 0
-		var current float64
+		var current int64
 		row, err := txn.ReadRow(ctx, "BillingSupplierMeters", spanner.Key{supplierID, shardID}, []string{"CurrentValue"})
 		if err == nil {
 			if err := row.Column(0, &current); err != nil {
@@ -71,11 +87,24 @@ func (w *MeterWorker) ProcessOrderFinalized(ctx context.Context, orderID string,
 				"UpdatedAt":    spanner.CommitTimestamp,
 			}),
 		}
-		return txn.BufferWrite(mutations)
+		if err := txn.BufferWrite(mutations); err != nil {
+			return err
+		}
+		buf := outbox.NewSpannerTxnBuffer(txn)
+		if err := outbox.EmitJSON(ctx, buf, "BillingSupplierMeter", supplierID, events.TopicMain, map[string]any{
+			"type":          "BILLING_METER_UPDATED",
+			"supplier_id":   supplierID,
+			"order_id":      orderID,
+			"amount":        amount,
+			"current_value": current + amount,
+		}); err != nil {
+			return err
+		}
+		return buf.Flush(ctx)
 	})
 
 	if err != nil {
-		log.Printf("Failed to process billing for order %s: %v", orderID, err)
+		slog.ErrorContext(ctx, "failed to process billing for order", "order_id", orderID, "err", err)
 		return err
 	}
 	return nil

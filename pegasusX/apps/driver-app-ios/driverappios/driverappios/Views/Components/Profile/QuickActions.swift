@@ -4,10 +4,25 @@ struct QuickActions: View {
     let onOfflineVerifier: () -> Void
     let onSyncQueue: () -> Void
     let onEndSession: () -> Void
+    var onFleetDVIR: () -> Void = {}
+    var onMidRouteRescue: () -> Void = {}
+    var onYardGate: () -> Void = {}
     var pendingCount: Int = 0
     
     var body: some View {
         VStack(spacing: 10) {
+            ActionRow(icon: "checkmark.shield.fill", title: "Pre-Trip DVIR Inspection", subtitle: "8-point safety checklist & Red-Tag gate") {
+                Haptics.light()
+                onFleetDVIR()
+            }
+            ActionRow(icon: "wrench.and.screwdriver.fill", title: "Mid-Route Breakdown Rescue", subtitle: "Custody transfer & thermal quarantine") {
+                Haptics.light()
+                onMidRouteRescue()
+            }
+            ActionRow(icon: "lock.shield.fill", title: "Yard Gate Check-In/Out", subtitle: "ALPR vehicle & bolt-seal verification") {
+                Haptics.light()
+                onYardGate()
+            }
             ActionRow(icon: "shield.checkered", title: "Offline Verifier", subtitle: "Hash manifest protocol") {
                 onOfflineVerifier()
             }

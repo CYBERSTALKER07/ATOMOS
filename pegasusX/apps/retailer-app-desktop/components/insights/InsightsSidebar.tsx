@@ -1,4 +1,5 @@
 import { Zap, ArrowUpRight, ChevronRight } from "lucide-react";
+import { moneyCurrency } from "../../lib/payment-catalog";
 import type { TopProduct } from "../../lib/types";
 
 type DetailedSeriesRow = {
@@ -106,7 +107,7 @@ export function InsightsSidebar({
                 </span>
                 <span className="text-sm font-light tabular-nums">
                   {(row.total_minor ?? 0).toLocaleString()}{" "}
-                  {row.currency ?? "UZS"}
+                  {moneyCurrency(row.currency)}
                 </span>
               </div>
             ))}

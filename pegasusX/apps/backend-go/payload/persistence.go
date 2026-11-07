@@ -46,9 +46,29 @@ func supplierBatchFromSnapshot(supplierID string, snap *PersistenceSnapshot) *ma
 			batch.Orders = append(batch.Orders, supplierOrderFromManifestOrder(manifestID, mo, int64(i+1)))
 		}
 	}
-	// Order rows are not projected here: demo payload orders may not exist in Spanner.
-	// Manifest + ManifestOrders durability is sufficient for PX9-B; order status stays on the service L1 cache.
-	_ = snap.Orders
+	// Project order patches for payload state durability (Gap 5 correction).
+	for _, o := range snap.Orders {
+		updatedAt, _ := time.Parse(time.RFC3339Nano, o.UpdatedAt)
+
+		// Find driver ID from manifests if possible
+		var driverID string
+		for _, m := range snap.Manifests {
+			if m.ManifestID == o.ManifestID {
+				driverID = m.DriverID
+				break
+			}
+		}
+
+		batch.OrderPatches = append(batch.OrderPatches, manifest.OrderPatch{
+			OrderID:    o.OrderID,
+			Status:     o.Status,
+			ManifestID: o.ManifestID,
+			RouteID:    o.RouteID,
+			VehicleID:  o.VehicleID,
+			DriverID:   driverID,
+			UpdatedAt:  updatedAt,
+		})
+	}
 	for _, e := range snap.Exceptions {
 		createdAt, _ := time.Parse(time.RFC3339Nano, e.CreatedAt)
 		row := manifest.SupplierExceptionRow{

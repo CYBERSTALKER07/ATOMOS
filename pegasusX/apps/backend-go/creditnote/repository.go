@@ -10,6 +10,7 @@ type Repository interface {
 	ListCreditNotesByOrder(ctx context.Context, orderId string) ([]CreditNote, error)
 	ListBySupplier(ctx context.Context, supplierID string, status CreditNoteStatus, limit int) ([]CreditNote, error)
 	GetDeliveredOrderLines(ctx context.Context, orderId string) ([]CreditNoteLine, error)
+	OrderOwnedBySupplier(ctx context.Context, orderID, supplierID string) (bool, error)
 	GetClaimOrder(ctx context.Context, claimID string) (orderID string, amountMinor int64, ok bool, err error)
 	SaveReverseLogisticsTask(ctx context.Context, task ReverseLogisticsTask, eventType string) error
 	GetReverseLogisticsTask(ctx context.Context, taskID string) (*ReverseLogisticsTask, error)

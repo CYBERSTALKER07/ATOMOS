@@ -14,11 +14,11 @@ struct OrderPickerSheet: View {
             SheetHandle()
 
             VStack(alignment: .leading, spacing: 4) {
-                Text("SELECT ORDER")
+                Text("mobile_driver.ui.select_order")
                     .font(.system(size: 9, weight: .heavy, design: .monospaced))
                     .foregroundStyle(LabTheme.fgTertiary)
                     .tracking(1)
-                Text("Choose a delivery")
+                Text("mobile_driver.ui.choose_a_delivery")
                     .font(.system(size: 20, weight: .bold))
                     .foregroundStyle(LabTheme.fg)
             }
@@ -50,7 +50,7 @@ struct OrderPickerSheet: View {
     private var loadingRow: some View {
         HStack(spacing: 8) {
             ProgressView().tint(LabTheme.fg)
-            Text("Loading...").font(.subheadline).foregroundStyle(LabTheme.fgSecondary)
+            Text("supplier_portal.admin.audit_log.state.loading").font(.subheadline).foregroundStyle(LabTheme.fgSecondary)
         }
         .frame(maxWidth: .infinity).padding(.vertical, 40)
     }
@@ -58,7 +58,7 @@ struct OrderPickerSheet: View {
     private var emptyRow: some View {
         VStack(spacing: 8) {
             Image(systemName: "shippingbox").font(.system(size: 24)).foregroundStyle(LabTheme.fgTertiary)
-            Text("No pending deliveries").font(.subheadline.weight(.medium)).foregroundStyle(LabTheme.fgSecondary)
+            Text("mobile_driver.ui.no_pending_deliveries").font(.subheadline.weight(.medium)).foregroundStyle(LabTheme.fgSecondary)
         }
         .frame(maxWidth: .infinity).padding(.vertical, 40)
     }
@@ -84,7 +84,7 @@ struct OrderPickerSheet: View {
                 }
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("ORD-\(mission.order_id.suffix(4).uppercased())")
+                    Text(L10n.format("mobile_driver.ui.ord_uppercased", "\(mission.order_id.suffix(4).uppercased())"))
                         .font(.system(size: 13, weight: .black, design: .monospaced))
                         .foregroundStyle(LabTheme.fg)
                     HStack(spacing: 4) {

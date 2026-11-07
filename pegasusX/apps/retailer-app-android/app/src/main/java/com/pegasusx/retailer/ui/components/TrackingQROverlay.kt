@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.components
 
+import androidx.compose.ui.res.stringResource
+
 import android.graphics.Bitmap
 import android.os.Build
 import android.view.WindowManager
@@ -41,6 +43,7 @@ import com.pegasusx.retailer.data.model.TrackingOrder
 import com.pegasusx.retailer.ui.theme.PillShape
 import com.pegasusx.retailer.ui.theme.SoftSquircleShape
 import org.json.JSONObject
+import com.pegasusx.retailer.R
 
 @Composable
 fun TrackingQROverlay(
@@ -102,7 +105,7 @@ fun TrackingQROverlay(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        "Order #${order.orderId.takeLast(8)}",
+                        stringResource(R.string.mobile_retailer_ui_order_takelast, order.orderId.takeLast(8)),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                     )
@@ -150,13 +153,13 @@ private fun TrackingDeliveryQrCode(order: TrackingOrder) {
     if (bitmap != null) {
         Image(
             bitmap = bitmap.asImageBitmap(),
-            contentDescription = "QR Code",
+            contentDescription = stringResource(R.string.mobile_retailer_ui_qr_code),
             modifier = Modifier.size(180.dp),
         )
     } else {
         Icon(
             Icons.Outlined.QrCode2,
-            contentDescription = "QR Code",
+            contentDescription = stringResource(R.string.mobile_retailer_ui_qr_code),
             modifier = Modifier.size(180.dp),
             tint = MaterialTheme.colorScheme.onSurface,
         )

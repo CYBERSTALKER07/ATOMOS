@@ -1,6 +1,9 @@
 package com.pegasus.payload.ui.home
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -10,6 +13,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -27,11 +31,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.background
 import com.pegasus.design.PegasusStatePane
 import com.pegasus.design.PegasusStateKind
 import com.pegasus.payload.data.model.Truck
 import com.pegasus.payload.ui.components.ExplainStatusBanner
 import com.pegasus.payload.ui.components.ManifestKpiGrid
+import com.pegasus.payload.R
 
 @Composable
 fun ManifestDetailPane(
@@ -59,12 +68,17 @@ fun ManifestDetailPane(
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         modifier = Modifier.fillMaxSize(),
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.TopCenter
         ) {
+            Column(
+                modifier = Modifier
+                    .widthIn(max = 840.dp)
+                    .fillMaxSize()
+                    .padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
             if (truck == null) {
                 PegasusStatePane(
                     kind = PegasusStateKind.Empty,
@@ -72,6 +86,16 @@ fun ManifestDetailPane(
                     body = "Pick a truck from the sidebar to load its manifest.",
                 )
                 return@Column
+            }
+            val inboundLat = state.manifest?.driverLat
+            val inboundLng = state.manifest?.driverLng
+            if (inboundLat != null && inboundLng != null) {
+                Text(
+                    text = "Inbound truck ${if (state.manifest?.liveLocationAvailable == true) "LIVE" else "last known"}: " +
+                        "%.5f, %.5f".format(inboundLat, inboundLng),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
             DetailHeader(
                 truck = truck,
@@ -103,7 +127,7 @@ fun ManifestDetailPane(
 
             when {
                 state.loadingManifest -> com.pegasus.design.PegasusLoadingState(
-                    title = "Loading manifest",
+                    title = stringResource(R.string.mobile_payload_ui_loading_manifest),
                     body = "Syncing orders and volume for this vehicle.",
                 )
                 state.manifest == null -> PegasusStatePane(
@@ -176,6 +200,7 @@ fun ManifestDetailPane(
         }
     }
 }
+}
 
 @Composable
 fun DetailHeader(
@@ -184,33 +209,76 @@ fun DetailHeader(
     showInject: Boolean,
     onShowInject: () -> Unit,
 ) {
+    val displayLabel = truck.label.ifBlank { truck.licensePlate.ifBlank { "TRK-${truck.id.take(8)}" } }.uppercase()
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Column(Modifier.weight(1f)) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
-                truck.label.ifBlank { truck.licensePlate.ifBlank { truck.id.take(8) } },
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.SemiBold,
+                displayLabel,
+                style = MaterialTheme.typography.headlineMedium,
+                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Black,
+                letterSpacing = 1.2.sp,
             )
-            Text(
-                listOfNotNull(
-                    truck.licensePlate.takeIf { it.isNotBlank() },
-                    truck.vehicleClass.takeIf { it.isNotBlank() },
-                ).joinToString(" • "),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                if (truck.licensePlate.isNotBlank()) {
+                    Text(
+                        truck.licensePlate.uppercase(),
+                        style = MaterialTheme.typography.bodySmall,
+                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                if (truck.vehicleClass.isNotBlank()) {
+                    Text("—", color = MaterialTheme.colorScheme.outlineVariant)
+                    Text(
+                        truck.vehicleClass.uppercase(),
+                        style = MaterialTheme.typography.bodySmall,
+                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Surface(
+                    color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.12f),
+                    shape = RoundedCornerShape(50),
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(6.dp)
+                                .clip(RoundedCornerShape(50))
+                                .background(MaterialTheme.colorScheme.tertiary)
+                        )
+                        Text(
+                            "ACTIVE",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.Black,
+                            color = MaterialTheme.colorScheme.tertiary,
+                        )
+                    }
+                }
+            }
         }
         Spacer(Modifier.width(12.dp))
         if (showInject) {
             IconButton(onClick = onShowInject) {
-                Icon(Icons.Filled.Add, contentDescription = "Inject order")
+                Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.mobile_payload_ui_inject_order))
             }
         }
         IconButton(onClick = onRefresh) {
-            Icon(Icons.Filled.Refresh, contentDescription = "Refresh manifest")
+            Icon(Icons.Filled.Refresh, contentDescription = stringResource(R.string.mobile_payload_ui_refresh_manifest))
         }
     }
 }
@@ -220,7 +288,8 @@ fun StartLoadingButton(loading: Boolean, onClick: () -> Unit) {
     Button(
         onClick = onClick,
         enabled = !loading,
-        modifier = Modifier.fillMaxWidth().height(56.dp),
+        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier.fillMaxWidth().height(52.dp),
     ) {
         if (loading) {
             CircularProgressIndicator(
@@ -229,7 +298,12 @@ fun StartLoadingButton(loading: Boolean, onClick: () -> Unit) {
                 color = MaterialTheme.colorScheme.onPrimary,
             )
         } else {
-            Text("Start Loading", style = MaterialTheme.typography.titleMedium)
+            Text(
+                "START LOADING",
+                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Black,
+                letterSpacing = 0.5.sp,
+            )
         }
     }
 }
@@ -239,7 +313,8 @@ fun SealManifestButton(loading: Boolean, onClick: () -> Unit) {
     Button(
         onClick = onClick,
         enabled = !loading,
-        modifier = Modifier.fillMaxWidth().height(56.dp),
+        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier.fillMaxWidth().height(52.dp),
         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary),
     ) {
         Icon(Icons.Filled.Lock, contentDescription = null)
@@ -251,7 +326,12 @@ fun SealManifestButton(loading: Boolean, onClick: () -> Unit) {
                 color = MaterialTheme.colorScheme.onTertiary,
             )
         } else {
-            Text("Seal Manifest", style = MaterialTheme.typography.titleMedium)
+            Text(
+                "SEAL MANIFEST",
+                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Black,
+                letterSpacing = 0.5.sp,
+            )
         }
     }
 }

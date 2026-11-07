@@ -1,3 +1,6 @@
+"use client";
+
+import { usePortalT } from "@/lib/i18n";
 import Link from 'next/link';
 import type { WarehouseFleetVehicle } from '@pegasusx/types';
 import { formatUnavailableReason, vehicleStatusLabel } from '@/lib/vehicle-fleet';
@@ -9,11 +12,12 @@ interface VehiclesListProps {
 }
 
 export function VehiclesList({ vehicles, loading }: VehiclesListProps) {
+  const t = usePortalT();
   if (!loading && vehicles.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-(--muted)">
         <Icon name="fleet" size={48} className="mb-3 opacity-40" />
-        <p className="text-sm">No trucks registered</p>
+        <p className="text-sm">{t("warehouse_portal.vehicles.vehicles_list.text.no_trucks_registered")}</p>
       </div>
     );
   }
@@ -28,6 +32,7 @@ export function VehiclesList({ vehicles, loading }: VehiclesListProps) {
 }
 
 function TruckCard({ vehicle }: { vehicle: WarehouseFleetVehicle }) {
+  const t = usePortalT();
   const capacity = vehicle.capacity_vu ?? vehicle.max_volume_vu ?? 0;
   return (
     <Link
@@ -46,11 +51,11 @@ function TruckCard({ vehicle }: { vehicle: WarehouseFleetVehicle }) {
       </div>
       <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
         <div>
-          <div className="text-xs text-(--muted)">Capacity</div>
+          <div className="text-xs text-(--muted)">{t("warehouse_portal.vehicles._vehicle_id_.text.capacity")}</div>
           <div className="font-mono">{capacity} VU</div>
         </div>
         <div>
-          <div className="text-xs text-(--muted)">Driver</div>
+          <div className="text-xs text-(--muted)">{t("warehouse_portal.manifests.text.driver")}</div>
           <div>{vehicle.assigned_driver_name || 'Unassigned'}</div>
         </div>
       </div>

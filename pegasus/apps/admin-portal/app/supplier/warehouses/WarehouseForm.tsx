@@ -82,8 +82,10 @@ export default function WarehouseForm({ onSuccess, onCancel }: Props) {
       )}
 
       <div className="space-y-1.5">
-        <label className="md-typescale-label-medium" style={{ color: 'var(--muted)' }}>Name *</label>
+        <label htmlFor="warehouse-name-input" className="md-typescale-label-medium" style={{ color: 'var(--muted)' }}>Name *</label>
         <input
+          id="warehouse-name-input"
+          aria-label="Name"
           type="text"
           value={name}
           onChange={e => setName(e.target.value)}
@@ -104,8 +106,10 @@ export default function WarehouseForm({ onSuccess, onCancel }: Props) {
       </div>
 
       <div className="space-y-1.5">
-        <label className="md-typescale-label-medium" style={{ color: 'var(--muted)' }}>Coverage Radius (km)</label>
+        <label htmlFor="warehouse-radius-input" className="md-typescale-label-medium" style={{ color: 'var(--muted)' }}>Coverage Radius (km)</label>
         <input
+          id="warehouse-radius-input"
+          aria-label="Coverage Radius (km)"
           type="number"
           step="0.1"
           value={radius}
@@ -117,16 +121,20 @@ export default function WarehouseForm({ onSuccess, onCancel }: Props) {
       </div>
 
       <label className="flex items-center gap-3 cursor-pointer py-1">
-        <div
+        <button
+          type="button"
+          role="checkbox"
+          aria-checked={isDefault}
+          aria-label="Set as default warehouse"
           onClick={() => setIsDefault(!isDefault)}
-          className="w-5 h-5 rounded flex items-center justify-center transition-colors"
+          className="w-5 h-5 rounded flex items-center justify-center transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-cyan-500"
           style={{
             background: isDefault ? 'var(--accent)' : 'transparent',
             border: isDefault ? 'none' : '2px solid var(--border)',
           }}
         >
           {isDefault && <Icon name="verified" size={14} className="text-white" />}
-        </div>
+        </button>
         <span className="md-typescale-body-medium">Set as default warehouse</span>
       </label>
 

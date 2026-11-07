@@ -1,8 +1,8 @@
 package order
 
 import (
-	"context"
 	"cloud.google.com/go/spanner"
+	"context"
 	"errors"
 	"io"
 	"log/slog"
@@ -13,6 +13,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/proximity"
 )
 
 type testTxnBuffer struct {
@@ -77,7 +78,7 @@ type testWarehouseResolver struct {
 	calls       int
 }
 
-func (r *testWarehouseResolver) ResolveNearestWarehouseID(_ context.Context, _ string, _, _ float64) (string, error) {
+func (r *testWarehouseResolver) ResolveNearestWarehouseID(_ context.Context, _ string, _ proximity.StorePoint) (string, error) {
 	r.calls++
 	if r.err != nil {
 		return "", r.err
@@ -477,6 +478,54 @@ func TestServiceCreateFailsClosedOnZoneMiss(t *testing.T) {
 	}
 	if repo.createCalls != 0 {
 		t.Fatalf("create calls = %d, want 0", repo.createCalls)
+	}
+}
+
+func TestServiceCreate_GeographyIncompleteNotServiceability(t *testing.T) {
+	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	repo := &testRepo{}
+	svc := newTestServiceWithResolver(repo, &testWarehouseResolver{err: auth.ErrGeographyIncomplete}, now)
+	_, err := svc.Create(context.Background(), "ret-1", CreateRequest{
+		LineItems: []LineItem{{SKU: "sku-1", Quantity: 1, UnitPrice: 250}},
+		H3Cell:    "872830828ffffff",
+		Lat:       41.3,
+		Lng:       69.2,
+	})
+	if !errors.Is(err, auth.ErrGeographyIncomplete) {
+		t.Fatalf("err=%v", err)
+	}
+	if errors.Is(err, ErrServiceabilityUnavailable) {
+		t.Fatal("geography must not become delivery_perimeter_unavailable")
+	}
+}
+
+func TestServiceCreate_CrossMarketDeferred(t *testing.T) {
+	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	repo := &testRepo{}
+	svc := newTestServiceWithResolver(repo, &testWarehouseResolver{err: auth.ErrCrossMarketDeferred}, now)
+	_, err := svc.Create(context.Background(), "ret-1", CreateRequest{
+		LineItems: []LineItem{{SKU: "sku-1", Quantity: 1, UnitPrice: 250}},
+		H3Cell:    "872830828ffffff",
+		Lat:       41.3,
+		Lng:       69.2,
+	})
+	if !errors.Is(err, auth.ErrCrossMarketDeferred) {
+		t.Fatalf("err=%v", err)
+	}
+}
+
+func TestServiceCreate_ProximityZoneMiss(t *testing.T) {
+	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	repo := &testRepo{}
+	svc := newTestServiceWithResolver(repo, &testWarehouseResolver{err: proximity.ErrZoneMiss}, now)
+	_, err := svc.Create(context.Background(), "ret-1", CreateRequest{
+		LineItems: []LineItem{{SKU: "sku-1", Quantity: 1, UnitPrice: 250}},
+		H3Cell:    "872830828ffffff",
+		Lat:       41.3,
+		Lng:       69.2,
+	})
+	if !errors.Is(err, ErrZoneMiss) {
+		t.Fatalf("err=%v", err)
 	}
 }
 
@@ -905,8 +954,8 @@ func TestServiceCollectCashEntersFiscalizingWithPaymentEvents(t *testing.T) {
 	if resp.Amount != 1500 || resp.Currency != "UZS" {
 		t.Fatalf("amount/currency = %d/%s, want 1500/UZS", resp.Amount, resp.Currency)
 	}
-	if resp.DistanceM > deliveryGeofenceMeters {
-		t.Fatalf("distance = %.2f, want within %.2f", resp.DistanceM, deliveryGeofenceMeters)
+	if resp.DistanceM > testPackBreachRadius(t) {
+		t.Fatalf("distance = %.2f, want within %.2f", resp.DistanceM, testPackBreachRadius(t))
 	}
 	if repo.captured.Status != StatusFiscalizing {
 		t.Fatalf("captured status = %s, want %s", repo.captured.Status, StatusFiscalizing)
@@ -925,8 +974,8 @@ func TestServiceCollectCashEntersFiscalizingWithPaymentEvents(t *testing.T) {
 	if proof.ProofType != DeliveryProofTypeCashCollectionGeo {
 		t.Fatalf("proof type = %s, want %s", proof.ProofType, DeliveryProofTypeCashCollectionGeo)
 	}
-	if proof.DistanceM == nil || *proof.DistanceM > deliveryGeofenceMeters {
-		t.Fatalf("proof distance = %+v want within %.2f", proof.DistanceM, deliveryGeofenceMeters)
+	if proof.DistanceM == nil || *proof.DistanceM > testPackBreachRadius(t) {
+		t.Fatalf("proof distance = %+v want within %.2f", proof.DistanceM, testPackBreachRadius(t))
 	}
 
 	// Worker success → COMPLETED + ORDER_FINALIZED
@@ -1034,6 +1083,56 @@ func driverClaims() auth.Claims {
 	return auth.Claims{Role: auth.RoleDriver, Subject: "drv-1", SupplierID: "sup-1"}
 }
 
+func testPackBreachRadius(t *testing.T) float64 {
+	t.Helper()
+	r, err := auth.BreachRadiusFromContext(context.Background(), "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return r
+}
+
+func TestValidateRequiredGeofence_PackRadius150(t *testing.T) {
+	t.Setenv("DEFAULT_MARKET_CODE", "UZ")
+	o := deliveryTestOrder(StatusArrived)
+	ctx := context.Background()
+	// ~100 m north of the stop — inside UZ 150, would also pass old 500.
+	lat100 := o.Lat + 100.0/111320.0
+	if _, err := validateRequiredGeofence(ctx, lat100, o.Lng, o); err != nil {
+		t.Fatalf("100m should pass pack 150: %v", err)
+	}
+	// ~200 m — passed the deleted 500 m dual; must fail at pack 150.
+	lat200 := o.Lat + 200.0/111320.0
+	_, err := validateRequiredGeofence(ctx, lat200, o.Lng, o)
+	if !errors.Is(err, ErrGeofenceViolation) {
+		t.Fatalf("200m should violate pack 150, got %v", err)
+	}
+}
+
+func TestValidateRequiredGeofence_PlannedPackFailsClosed(t *testing.T) {
+	o := deliveryTestOrder(StatusArrived)
+	ctx := auth.WithClaims(context.Background(), auth.Claims{MarketCode: "EU"})
+	_, err := validateRequiredGeofence(ctx, o.Lat, o.Lng, o)
+	if !errors.Is(err, auth.ErrMarketPackNotShipped) {
+		t.Fatalf("planned pack err=%v", err)
+	}
+}
+
+func TestValidateRequiredGeofence_ProfilePlannedFailsClosed(t *testing.T) {
+	auth.SetMarketProfileLookup(func(id string) (auth.MarketProfile, bool) {
+		if id == "sup-1" {
+			return auth.MarketProfile{MarketCode: "EU", HomeCell: "cell-eu"}, true
+		}
+		return auth.MarketProfile{}, false
+	})
+	t.Cleanup(func() { auth.SetMarketProfileLookup(nil) })
+	o := deliveryTestOrder(StatusArrived)
+	_, err := validateRequiredGeofence(context.Background(), o.Lat, o.Lng, o)
+	if !errors.Is(err, auth.ErrMarketPackNotShipped) {
+		t.Fatalf("profile planned pack err=%v", err)
+	}
+}
+
 func deliveryTestOrder(status Status) Order {
 	return Order{
 		OrderID:     "ord-1",
@@ -1076,5 +1175,30 @@ func (r *testRepo) UpdateOrderWithTxn(_ context.Context, o Order, proofs []Deliv
 		r.bufferedEvents += len(buf.events)
 		r.lastEvents = append(r.lastEvents, buf.events...)
 	}
+	return nil
+}
+
+func (r *testRepo) CreateOrderWithBackorder(ctx context.Context, o *Order, bo *Order, inTxn func(context.Context, *spanner.ReadWriteTransaction) error, emit func(outbox.TxnBuffer) error, stockOpts StockReservationOpts) error {
+	if r.createErr != nil {
+		return r.createErr
+	}
+	if o == nil {
+		return errors.New("nil order")
+	}
+	r.createCalls++
+	if r.retailerWindowOpen != "" || r.retailerWindowClose != "" {
+		if err := SnapshotReceivingWindowsOnOrder(o, r.retailerWindowOpen, r.retailerWindowClose); err != nil {
+			return err
+		}
+	}
+	if emit != nil {
+		buf := &testTxnBuffer{}
+		if err := emit(buf); err != nil {
+			return err
+		}
+		r.bufferedEvents += len(buf.events)
+		r.lastEvents = append(r.lastEvents, buf.events...)
+	}
+	r.created = *o
 	return nil
 }

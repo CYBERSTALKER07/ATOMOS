@@ -1,7 +1,9 @@
 'use client';
+import { usePolling } from '@pegasusx/api-react';
 
+
+import { usePortalT } from "@/lib/i18n";
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { usePolling } from '@pegasusx/api-client';
 import { apiFetch, parseFactoryLiveEvent, subscribeFactoryWS } from '@/lib/auth';
 import { useFactorySessionReconcile } from '@/lib/use-factory-session-reconcile';
 import { useToast } from '@/components/Toast';
@@ -45,6 +47,7 @@ function formatSyncTime(value: number | null) {
 }
 
 export default function PayloadOverridePage() {
+  const t = usePortalT();
   const { toast } = useToast();
   const [manifests, setManifests] = useState<Manifest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -127,9 +130,7 @@ export default function PayloadOverridePage() {
         if (!event) {
           return;
         }
-        if (event.type !== 'FACTORY_TRANSFER_UPDATE' && event.type !== 'FACTORY_MANIFEST_UPDATE') {
-          return;
-        }
+        if (!event.type.startsWith('TRANSFER_') && !event.type.startsWith('MANIFEST_') && !event.type.startsWith('WAREHOUSE_TRANSFER_') && !event.type.startsWith('FACTORY_SUPPLY_')) { return; }
         void fetchManifests({ background: true, silent: true });
       },
     });
@@ -265,8 +266,8 @@ export default function PayloadOverridePage() {
       <PageTransition>
         <PageChrome
           icon="manifests"
-          title="Payload override"
-          description="Rebalance or cancel transfers on manifests currently in LOADING state."
+          title={t("factory_portal.payload_override.text.payload_override")}
+          description={t("factory_portal.residual.text.rebalance_or_cancel_transfers_on_manifests_currently_in_loading_")}
           loading
           skeletonVariant="table"
         >
@@ -281,8 +282,8 @@ export default function PayloadOverridePage() {
       <PageTransition>
         <PageChrome
           icon="manifests"
-          title="Payload override"
-          description="Rebalance or cancel transfers on manifests currently in LOADING state."
+          title={t("factory_portal.payload_override.text.payload_override")}
+          description={t("factory_portal.residual.text.rebalance_or_cancel_transfers_on_manifests_currently_in_loading_")}
           error={error}
           actions={
             <button type="button" className="portal-btn portal-btn--ghost inline-flex items-center gap-2" onClick={() => void fetchManifests()}>
@@ -300,8 +301,8 @@ export default function PayloadOverridePage() {
     <PageTransition>
       <PageChrome
         icon="manifests"
-        title="Payload override"
-        description="Rebalance or cancel transfers on manifests currently in LOADING state."
+        title={t("factory_portal.payload_override.text.payload_override")}
+        description={t("factory_portal.residual.text.rebalance_or_cancel_transfers_on_manifests_currently_in_loading_")}
         actions={
           <div className="flex items-center gap-3">
             <span className="text-sm text-[var(--muted)]">
@@ -331,8 +332,8 @@ export default function PayloadOverridePage() {
         {loadingManifests.length === 0 ? (
           <EmptyState
             imageUrl="/images/empty-production-line.png"
-            headline="No manifests currently in LOADING state"
-            body="Payload override is only available during the loading phase. All current manifests are either dispatched or completed."
+            headline={t("factory_portal.residual.text.no_manifests_currently_in_loading_state")}
+            body={t("factory_portal.residual.text.payload_override_is_only_available_during_the_loading_phase_all_")}
           />
         ) : (
           <PayloadList

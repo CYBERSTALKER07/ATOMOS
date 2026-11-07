@@ -6,7 +6,7 @@ struct DispatchPreviewMapView: View {
 
     @State private var cameraPosition: MapCameraPosition = .region(
         MKCoordinateRegion(
-            center: CLLocationCoordinate2D(latitude: 41.2995, longitude: 69.2401),
+            center: CLLocationCoordinate2D(latitude: packMapCoordinate().lat, longitude: packMapCoordinate().lng),
             span: MKCoordinateSpan(latitudeDelta: 0.18, longitudeDelta: 0.18)
         )
     )
@@ -18,7 +18,7 @@ struct DispatchPreviewMapView: View {
     var body: some View {
         Group {
             if routesWithGeometry.isEmpty {
-                Text("Route preview unavailable until optimizer proposes stops with coordinates.")
+                Text("supplier_portal.dispatch_preview_map.text.route_preview_unavailable_until_optimizer_proposes_stops_with_co")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -27,7 +27,7 @@ struct DispatchPreviewMapView: View {
                     .background(.quaternary.opacity(0.25), in: RoundedRectangle(cornerRadius: LabTheme.radiusMD))
             } else {
                 Map(position: $cameraPosition) {
-                    ForEach(Array(routesWithGeometry.enumerated()), id: \.offset) { index, route in
+                    ForEach(Array(routesWithGeometry.enumerated()), id: \.element.id) { index, route in
                         if let geometry = route.routeGeometry, geometry.coordinates.count >= 2 {
                             let coordinates = geometry.coordinates.map {
                                 CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lng)

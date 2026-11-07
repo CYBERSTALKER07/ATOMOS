@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ShoppingCart,
@@ -46,6 +47,7 @@ const EMPTY_CATEGORIES: Category[] = [];
 const EMPTY_SUPPLIERS: Supplier[] = [];
 
 export default function CatalogPage() {
+  const t = usePortalT();
   const {
     data: products,
     loading: loadingProducts,
@@ -184,28 +186,28 @@ export default function CatalogPage() {
       return {
         kind: "warning" as const,
         icon: AlertTriangle,
-        message: "Catalog access restricted for this account.",
+        message: t("retailer_desktop.residual.text.catalog_access_restricted_for_this_account"),
       };
     }
     if (loadIssue === "offline") {
       return {
         kind: "warning" as const,
         icon: WifiOff,
-        message: "Offline mode active. Showing the latest cached catalog.",
+        message: t("retailer_desktop.residual.text.offline_mode_active_showing_the_latest_cached_catalog"),
       };
     }
     if (loadIssue === "error") {
       return {
         kind: "warning" as const,
         icon: AlertTriangle,
-        message: "Catalog sync degraded. Auto-retry is active.",
+        message: t("retailer_desktop.residual.text.catalog_sync_degraded_auto_retry_is_active"),
       };
     }
     if (isRefreshing && !loadingProducts) {
       return {
         kind: "refreshing" as const,
         icon: RefreshCw,
-        message: "Syncing catalog feeds...",
+        message: t("retailer_desktop.residual.text.syncing_catalog_feeds"),
       };
     }
     return null;
@@ -214,34 +216,34 @@ export default function CatalogPage() {
   const emptyStateConfig = useMemo(() => {
     if (loadIssue === "restricted") {
       return {
-        headline: "Catalog access restricted",
+        headline: t("retailer_desktop.residual.text.catalog_access_restricted"),
         body: "Your account currently cannot load supplier catalog data.",
         variant: "restricted" as const,
       };
     }
     if (loadIssue === "offline") {
       return {
-        headline: "Catalog is offline",
+        headline: t("retailer_desktop.residual.text.catalog_is_offline"),
         body: "Reconnect your network and retry to refresh product availability.",
         variant: "offline" as const,
       };
     }
     if (loadIssue === "error") {
       return {
-        headline: "Catalog unavailable",
+        headline: t("retailer_desktop.residual.text.catalog_unavailable"),
         body: "Product feeds could not be loaded right now.",
         variant: "error" as const,
       };
     }
     if (productList.length === 0) {
       return {
-        headline: "No approved products yet",
+        headline: t("retailer_desktop.residual.text.no_approved_products_yet"),
         body: "Supplier catalogs are still syncing into your workspace.",
         variant: "no-products" as const,
       };
     }
     return {
-      headline: "No assets match criteria",
+      headline: t("retailer_desktop.residual.text.no_assets_match_criteria"),
       body: "Try adjusting the search query or node selection.",
       variant: "no-results" as const,
     };
@@ -277,7 +279,7 @@ export default function CatalogPage() {
         if (!cancelled) {
           setCategorySuppliers([]);
           setCategorySuppliersError(
-            err instanceof Error ? err.message : "Category suppliers unavailable",
+            err instanceof Error ? err.message : t("retailer_desktop.residual.text.category_suppliers_unavailable"),
           );
         }
       })
@@ -311,8 +313,8 @@ export default function CatalogPage() {
     >
       <PageChrome
         icon="catalog"
-        title="Product Catalog"
-        description="Explore approved suppliers and stage procurement orders."
+        title={t("retailer_desktop.catalog.text.product_catalog")}
+        description={t("retailer_desktop.residual.text.explore_approved_suppliers_and_stage_procurement_orders")}
         loading={loadingProducts}
         skeletonVariant="catalog"
         actions={
@@ -475,7 +477,7 @@ export default function CatalogPage() {
                     : "text-[var(--desk-text-secondary)] hover:bg-[var(--desk-surface-subtle)]"
                 }`}
               >
-                <span className="md-typescale-body-medium">Global Network</span>
+                <span className="md-typescale-body-medium">{t("retailer_desktop.catalog.text.global_network")}</span>
                 <Building2 size={16} />
               </button>
               {supplierList.slice(0, 8).map((supplier) => (
@@ -499,7 +501,7 @@ export default function CatalogPage() {
         </aside>
 
         <PageSection
-          title="Browse products"
+          title={t("retailer_desktop.catalog.text.browse_products")}
           description={`${filteredProducts.length} SKUs match your filters.`}
           className="flex-1 min-w-0"
         >

@@ -445,12 +445,13 @@ func (s *Service) FileRetailerClaim(ctx context.Context, claims auth.Claims, ord
 	}
 	amountMinor = CapAmount(amountMinor, rem.RemainingClaimableMinor)
 
-	currency := strings.TrimSpace(req.Currency)
-	if currency == "" {
-		currency = o.Currency
+	stored := strings.TrimSpace(req.Currency)
+	if stored == "" {
+		stored = o.Currency
 	}
-	if currency == "" {
-		currency = "UZS"
+	currency, err := claimCurrency(ctx, o.SupplierID, stored)
+	if err != nil {
+		return Claim{}, err
 	}
 
 	claimID := s.newID()
@@ -614,9 +615,9 @@ func (s *Service) CreateFromDriverException(ctx context.Context, o OrderSnapshot
 			CreatedAt:    now,
 		})
 	}
-	currency := o.Currency
-	if currency == "" {
-		currency = "UZS"
+	currency, err := claimCurrency(ctx, o.SupplierID, o.Currency)
+	if err != nil {
+		return Claim{}, err
 	}
 	c := Claim{
 		ClaimID:     claimID,
@@ -636,7 +637,7 @@ func (s *Service) CreateFromDriverException(ctx context.Context, o OrderSnapshot
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
-	err := s.repo.CreateClaim(ctx, c, func(txn outbox.TxnBuffer) error {
+	err = s.repo.CreateClaim(ctx, c, func(txn outbox.TxnBuffer) error {
 		payload := map[string]any{
 			"type":         events.EventClaimFiled,
 			"claim_id":     c.ClaimID,
@@ -756,11 +757,30 @@ func (s *Service) ApproveClaim(ctx context.Context, actor auth.Claims, claimID s
 
 	now := s.now().UTC()
 	// CAS OPEN → UNDER_REVIEW so concurrent approves fail closed.
+	// B1 M-P0-13: emit CLAIM_UNDER_REVIEW so consumers see the intermediate state
+	// (settlement may still fail and leave the claim under review).
 	c.Status = StatusUnderReview
 	c.AmountMinor = amount
 	c.ResolutionNote = strings.TrimSpace(req.ResolutionNote)
 	c.UpdatedAt = now
-	if err := s.repo.TransitionStatus(ctx, c.ClaimID, []Status{StatusOpen, StatusUnderReview}, c, nil); err != nil {
+	if err := s.repo.TransitionStatus(ctx, c.ClaimID, []Status{StatusOpen, StatusUnderReview}, c, func(txn outbox.TxnBuffer) error {
+		payload := map[string]any{
+			"type":            events.EventClaimUnderReview,
+			"claim_id":        c.ClaimID,
+			"order_id":        c.OrderID,
+			"supplier_id":     c.SupplierID,
+			"retailer_id":     c.RetailerID,
+			"status":          string(StatusUnderReview),
+			"amount_minor":    c.AmountMinor,
+			"currency":        c.Currency,
+			"resolution_note": c.ResolutionNote,
+			"timestamp":       now.Format(time.RFC3339Nano),
+		}
+		if err := outbox.EmitJSON(ctx, txn, events.AggregateClaim, c.ClaimID, events.TopicExceptions, payload); err != nil {
+			return err
+		}
+		return outbox.EmitJSON(ctx, txn, events.AggregateClaim, c.ClaimID, events.TopicMain, payload)
+	}); err != nil {
 		return Claim{}, SettlementResult{}, err
 	}
 
@@ -840,7 +860,11 @@ func (s *Service) ApproveClaim(ctx context.Context, actor auth.Claims, claimID s
 		}
 	}
 	// Leave quarantine for reverse logistics / waste after money settlement.
-	s.resolveStoreStockForClaim(ctx, c, "RETURN", actor.Subject)
+	disposition := "RETURN"
+	if c.ClaimType == ClaimTypeDamaged || c.ClaimType == ClaimTypeConcealedDamage {
+		disposition = "WASTE"
+	}
+	s.resolveStoreStockForClaim(ctx, c, disposition, actor.Subject)
 	return c, settlement, nil
 }
 
@@ -953,4 +977,22 @@ func (s *Service) resolveStoreStockForClaim(ctx context.Context, c Claim, dispos
 	if err := s.storeStock.ResolveClaimStock(ctx, c.RetailerID, c.ClaimID, c.LineItems, disposition, actor); err != nil {
 		s.log.WarnContext(ctx, "store claim stock resolve failed", "claim_id", c.ClaimID, "disposition", disposition, "err", err)
 	}
+}
+
+// claimCurrency is empty-currency law: stored ISO code, else the shipped pack.
+// Planned/unknown packs fail closed — never invent UZS.
+func claimCurrency(ctx context.Context, supplierID, stored string) (string, error) {
+	c, err := auth.CoalesceCurrency(ctx, supplierID, stored)
+	if err != nil {
+		return "", err
+	}
+	if strings.TrimSpace(c) == "" {
+		return "", auth.ErrMarketPackNotShipped
+	}
+	return c, nil
+}
+
+// OrderLookup returns the order lookup interface.
+func (s *Service) OrderLookup() OrderLookup {
+	return s.orders
 }

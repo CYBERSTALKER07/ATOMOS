@@ -3,17 +3,17 @@
 <plist version="1.0">
 <dict>
 	<key>API_KEY</key>
-	<string>AIzaSyCYOxGsy4bCn6sdYR2X_ySNbcl2kccBSZ4</string>
+	<string>AIzaSyBFSKIv3J_-1ghP1uNbuf3v2VXKLZPVSzA</string>
 	<key>GCM_SENDER_ID</key>
-	<string>1002695564567</string>
+	<string>552441686615</string>
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
 	<string>com.pegasusx.driverappios</string>
 	<key>PROJECT_ID</key>
-	<string>pegasus-503013</string>
+	<string>pegasusx-prod-uz</string>
 	<key>STORAGE_BUCKET</key>
-	<string>pegasus-503013.firebasestorage.app</string>
+	<string>pegasusx-prod-uz.firebasestorage.app</string>
 	<key>IS_ADS_ENABLED</key>
 	<false></false>
 	<key>IS_ANALYTICS_ENABLED</key>
@@ -25,6 +25,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:1002695564567:ios:0f3e74bd15b0dc21546b52</string>
+	<string>1:552441686615:ios:8d414e0829d53d87f79112</string>
 </dict>
 </plist>

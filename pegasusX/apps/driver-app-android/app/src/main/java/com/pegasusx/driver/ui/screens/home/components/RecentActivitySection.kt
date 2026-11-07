@@ -1,5 +1,7 @@
 package com.pegasusx.driver.ui.screens.home.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -29,6 +31,7 @@ import com.pegasusx.driver.ui.components.PegasusCard
 import com.pegasusx.driver.ui.theme.LocalPegasusColors
 import com.pegasusx.driver.ui.theme.PegasusSpacing
 import com.pegasusx.driver.ui.theme.formattedAmount
+import com.pegasusx.driver.R
 
 @Composable
 fun RecentActivitySection(completedOrders: List<Order>) {
@@ -88,7 +91,7 @@ fun RecentActivitySection(completedOrders: List<Order>) {
                             )
                             if (order.deliveryFeeMinor > 0) {
                                 Text(
-                                    text = "+ ${order.deliveryFeeMinor.formattedAmount()} delivery fee",
+                                    text = stringResource(R.string.mobile_driver_ui_formattedamount_delivery_fee, order.deliveryFeeMinor.formattedAmount()),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = lab.warning,
                                 )

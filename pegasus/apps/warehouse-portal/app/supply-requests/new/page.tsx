@@ -104,8 +104,10 @@ export default function NewSupplyRequestPage() {
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Factory selector */}
         <div>
-          <label className="block text-xs font-medium mb-1.5 text-[var(--muted)]">Factory ID</label>
+          <label htmlFor="sr-factory-id" className="block text-xs font-medium mb-1.5 text-[var(--muted)]">Factory ID</label>
           <input
+            id="sr-factory-id"
+            aria-label="Factory ID"
             type="text"
             value={factoryId}
             onChange={e => setFactoryId(e.target.value)}
@@ -122,8 +124,10 @@ export default function NewSupplyRequestPage() {
 
         {/* Delivery date */}
         <div>
-          <label className="block text-xs font-medium mb-1.5 text-[var(--muted)]">Requested Delivery Date</label>
+          <label htmlFor="sr-delivery-date" className="block text-xs font-medium mb-1.5 text-[var(--muted)]">Requested Delivery Date</label>
           <input
+            id="sr-delivery-date"
+            aria-label="Requested Delivery Date"
             type="date"
             value={deliveryDate}
             onChange={e => setDeliveryDate(e.target.value)}
@@ -138,8 +142,10 @@ export default function NewSupplyRequestPage() {
 
         {/* Use AI forecast toggle */}
         <div className="flex items-center gap-3">
-          <label className="flex items-center gap-2 cursor-pointer">
+          <label htmlFor="sr-use-forecast" className="flex items-center gap-2 cursor-pointer">
             <input
+              id="sr-use-forecast"
+              aria-label="Use AI demand forecast"
               type="checkbox"
               checked={useForecast}
               onChange={e => setUseForecast(e.target.checked)}
@@ -220,7 +226,10 @@ export default function NewSupplyRequestPage() {
             </div>
             {manualItems.map((item, idx) => (
               <div key={idx} className="flex gap-2">
+                <label htmlFor={`manual-item-product-${idx}`} className="sr-only">{`Item ${idx + 1} Product ID`}</label>
                 <input
+                  id={`manual-item-product-${idx}`}
+                  aria-label={`Item ${idx + 1} Product ID`}
                   type="text"
                   placeholder="Product ID"
                   value={item.product_id}
@@ -232,7 +241,10 @@ export default function NewSupplyRequestPage() {
                   className="flex-1 px-3 py-2 rounded-lg border text-sm outline-none"
                   style={{ background: 'var(--field-background)', borderColor: 'var(--field-border)' }}
                 />
+                <label htmlFor={`manual-item-qty-${idx}`} className="sr-only">{`Item ${idx + 1} Quantity`}</label>
                 <input
+                  id={`manual-item-qty-${idx}`}
+                  aria-label={`Item ${idx + 1} Quantity`}
                   type="number"
                   placeholder="Qty"
                   min={1}

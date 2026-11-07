@@ -1,6 +1,7 @@
 package factory
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"strings"
@@ -9,23 +10,22 @@ import (
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/internal/web"
-	"golang.org/x/crypto/bcrypt"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/proximity"
+	"github.com/pegasusx/pegasusx/apps/backend-go/staffinvite"
 )
 
 // HandleFactoryRegister serves POST /v1/auth/factory/register
 // Accepts legacy {name, phone, password} and portal {account, id_token} shapes.
 func (s *Service) HandleFactoryRegister(w http.ResponseWriter, r *http.Request) {
-	if s.spannerClient == nil {
-		web.JSONError(w, "Spanner not configured", http.StatusServiceUnavailable)
-		return
-	}
-
 	var req struct {
 		Name              string `json:"name"`
 		Phone             string `json:"phone"`
 		Password          string `json:"password"`
 		AssignedFactoryID string `json:"assigned_factory_id"`
+		InviteToken       string `json:"invite_token"`
 		IDToken           string `json:"id_token"`
 		Account           *struct {
 			LegalName   string `json:"legalName"`
@@ -45,6 +45,7 @@ func (s *Service) HandleFactoryRegister(w http.ResponseWriter, r *http.Request) 
 	phone := strings.TrimSpace(req.Phone)
 	password := strings.TrimSpace(req.Password)
 	factoryID := strings.TrimSpace(req.AssignedFactoryID)
+	country := ""
 
 	if req.Account != nil {
 		if name == "" {
@@ -56,9 +57,14 @@ func (s *Service) HandleFactoryRegister(w http.ResponseWriter, r *http.Request) 
 		if phone == "" {
 			phone = strings.TrimSpace(req.Account.Phone)
 		}
+		country = strings.ToUpper(strings.TrimSpace(req.Account.Country))
 	}
 
 	idToken := strings.TrimSpace(req.IDToken)
+	if idToken != "" && s.firebaseVerifier == nil {
+		web.JSONError(w, auth.FirebaseLoginUnavailable, http.StatusServiceUnavailable)
+		return
+	}
 	if idToken != "" && s.firebaseVerifier != nil {
 		fbClaims, err := s.firebaseVerifier.VerifyIDToken(r.Context(), idToken)
 		if err != nil {
@@ -76,15 +82,33 @@ func (s *Service) HandleFactoryRegister(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	passwordHash := strings.TrimSpace(password)
-	if passwordHash == "" {
-		seed := uuid.NewString()
-		hashed, err := bcrypt.GenerateFromPassword([]byte(seed), bcrypt.DefaultCost)
-		if err != nil {
-			web.JSONError(w, "Failed to register factory user", http.StatusInternalServerError)
-			return
-		}
-		passwordHash = string(hashed)
+	admin, _ := staffinvite.ParseBearer(r.Header.Get("Authorization"), s.jwtSecret)
+	scope, err := staffinvite.ResolveRegister(staffinvite.ResolveOpts{
+		Secret:         s.jwtSecret,
+		InviteToken:    req.InviteToken,
+		WantRole:       staffinvite.RoleFactory,
+		RequestedNode:  factoryID,
+		SeedSupplierID: s.seedSupplierID,
+		Admin:          admin,
+		Now:            s.now(),
+		NodeOwned:      staffinvite.SpannerNodeOwned(s.spannerClient),
+		Ctx:            r.Context(),
+	})
+	if err != nil {
+		staffinvite.WriteError(w, err)
+		return
+	}
+	factoryID = scope.NodeID
+	supplierID := scope.SupplierID
+
+	passwordHash, err := staffinvite.HashPassword(password)
+	if err != nil {
+		staffinvite.WriteError(w, err)
+		return
+	}
+	if s.spannerClient == nil {
+		web.JSONError(w, "Spanner not configured", http.StatusServiceUnavailable)
+		return
 	}
 
 	userID := "usr-" + uuid.NewString()[:8]
@@ -97,10 +121,49 @@ func (s *Service) HandleFactoryRegister(w http.ResponseWriter, r *http.Request) 
 
 	m := spanner.Insert("SupplierUsers",
 		[]string{"UserId", "SupplierId", "Name", "Phone", "PasswordHash", "SupplierRole", "AssignedFactoryId", "IsActive", "CreatedAt", "UpdatedAt"},
-		[]any{userID, s.supplierID, name, phone, passwordHash, "FACTORY", assignedFactory, true, now, now},
+		[]any{userID, supplierID, name, phone, passwordHash, "FACTORY", assignedFactory, true, now, now},
 	)
+	muts := []*spanner.Mutation{m}
+	if factoryID != "" {
+		pack, packErr := auth.CheckoutPackFromContext(r.Context())
+		if packErr != nil {
+			if writeMarketLaw(w, packErr) {
+				return
+			}
+			web.JSONError(w, packErr.Error(), http.StatusUnprocessableEntity)
+			return
+		}
+		stamped, stampErr := proximity.ResolveNodeCountry(pack, country)
+		if stampErr != nil {
+			if writeMarketLaw(w, stampErr) {
+				return
+			}
+			web.JSONError(w, stampErr.Error(), http.StatusUnprocessableEntity)
+			return
+		}
+		muts = append(muts, spanner.UpdateMap("Factories", map[string]any{
+			"FactoryId":   factoryID,
+			"CountryCode": stamped,
+			"UpdatedAt":   spanner.CommitTimestamp,
+		}))
+	}
 
-	if _, err := s.spannerClient.Apply(r.Context(), []*spanner.Mutation{m}); err != nil {
+	if _, err := s.spannerClient.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		if err := txn.BufferWrite(muts); err != nil {
+			return err
+		}
+		buf := outbox.NewSpannerTxnBuffer(txn)
+		if err := outbox.EmitJSON(ctx, buf, events.AggregateFactory, factoryID, events.TopicMain, map[string]any{
+			"type":        "FACTORY_USER_REGISTERED",
+			"user_id":     userID,
+			"factory_id":  factoryID,
+			"supplier_id": supplierID,
+			"role":        "FACTORY",
+		}); err != nil {
+			return err
+		}
+		return buf.Flush(ctx)
+	}); err != nil {
 		s.log.ErrorContext(r.Context(), "failed to register factory user", "err", err)
 		web.JSONError(w, "Failed to register factory user", http.StatusInternalServerError)
 		return
@@ -115,7 +178,7 @@ func (s *Service) HandleFactoryRegister(w http.ResponseWriter, r *http.Request) 
 	jwtClaims := auth.Claims{
 		Subject:      userID,
 		Role:         auth.RoleFactory,
-		SupplierID:   s.supplierID,
+		SupplierID:   supplierID,
 		SupplierRole: auth.RoleFactory,
 		HomeNodeType: auth.HomeNodeFactory,
 		HomeNodeID:   factoryID,

@@ -3,16 +3,36 @@ use crate::scaling;
 use log::{info, warn};
 use std::time::{Instant, Duration};
 
+pub const DEFAULT_SOLVER_TIME_LIMIT_MS: u64 = 2_000;
+pub const MAX_SOLVER_TIME_LIMIT_MS: u64 = 60_000;
+pub const MIN_SOLVER_TIME_LIMIT_MS: u64 = 1;
+
 /// Solves VRP deterministically using a greedy nearest-neighbor heuristic with capacity and time windows.
 pub fn solve(req: OptimizeVrpRequest) -> OptimizeVrpResponse {
     let start_time = Instant::now();
-    let time_limit = Duration::from_millis(req.solver_time_limit_ms as u64);
+    let time_limit_ms = if req.solver_time_limit_ms <= 0 {
+        DEFAULT_SOLVER_TIME_LIMIT_MS
+    } else {
+        (req.solver_time_limit_ms as u64).clamp(MIN_SOLVER_TIME_LIMIT_MS, MAX_SOLVER_TIME_LIMIT_MS)
+    };
+    let time_limit = Duration::from_millis(time_limit_ms);
     
     let matrix_size = req.matrix_size as usize;
-    let n_nodes = req.drop_off_node_uuids.len() + 1; // 1 for depot
-    
-    if matrix_size != n_nodes {
-        warn!("Matrix size mismatch: expected {}, got {}", n_nodes, matrix_size);
+    let expected_elements = matrix_size * matrix_size;
+    let actual_elements = req.distance_matrix_km.len();
+
+    if actual_elements != expected_elements {
+        warn!(
+            "Distance matrix dimension mismatch: expected {} elements, got {}",
+            expected_elements, actual_elements
+        );
+        let structured_err = serde_json::json!({
+            "code": "INVALID_DISTANCE_MATRIX_DIMENSIONS",
+            "message": "Distance matrix size mismatch: expected N*N elements.",
+            "expected_elements": expected_elements,
+            "received_elements": actual_elements,
+            "nodes_count": matrix_size,
+        });
         return OptimizeVrpResponse {
             status: SolverStatus::ModelInvalid as i32,
             timed_out: false,
@@ -20,9 +40,45 @@ pub fn solve(req: OptimizeVrpRequest) -> OptimizeVrpResponse {
             objective_cost_scaled: 0,
             routes: vec![],
             unassigned_node_uuids: req.drop_off_node_uuids.clone(),
-            warnings: vec!["Matrix size does not match nodes count".to_string()],
+            warnings: vec![
+                structured_err.to_string(),
+                format!(
+                    "INVALID_DISTANCE_MATRIX_DIMENSIONS: Distance matrix dimension mismatch: received length {}, expected matrix_size^2 ({} * {} = {} elements).",
+                    actual_elements, matrix_size, matrix_size, expected_elements
+                ),
+            ],
         };
     }
+
+    let n_nodes = req.drop_off_node_uuids.len() + 1; // 1 for depot
+    if matrix_size != n_nodes {
+        warn!("Matrix size mismatch: expected {}, got {}", n_nodes, matrix_size);
+        let structured_err = serde_json::json!({
+            "code": "INVALID_DISTANCE_MATRIX_NODES_MISMATCH",
+            "message": format!("Matrix size ({}) does not match nodes count ({})", matrix_size, n_nodes),
+            "expected_nodes": n_nodes,
+            "matrix_size": matrix_size,
+        });
+        return OptimizeVrpResponse {
+            status: SolverStatus::ModelInvalid as i32,
+            timed_out: false,
+            matrix_size: req.matrix_size,
+            objective_cost_scaled: 0,
+            routes: vec![],
+            unassigned_node_uuids: req.drop_off_node_uuids.clone(),
+            warnings: vec![
+                structured_err.to_string(),
+                "Matrix size does not match nodes count".to_string(),
+            ],
+        };
+    }
+
+    let node_to_matrix_idx: std::collections::HashMap<&str, usize> = req
+        .drop_off_node_uuids
+        .iter()
+        .enumerate()
+        .map(|(idx, uuid)| (uuid.as_str(), idx + 1))
+        .collect();
 
     let mut unassigned = req.drop_off_node_uuids.clone();
     let mut routes = Vec::new();
@@ -49,8 +105,8 @@ pub fn solve(req: OptimizeVrpRequest) -> OptimizeVrpResponse {
             let mut best_unassigned_idx = 0;
 
             for (i, node_uuid) in unassigned.iter().enumerate() {
-                // Determine node indices: node_uuid corresponds to index i + 1 in distance matrix
-                let node_idx = i + 1;
+                // Determine node indices: lookup invariant matrix index from map
+                let node_idx = *node_to_matrix_idx.get(node_uuid.as_str()).unwrap_or(&(i + 1));
                 
                 // Fetch demand
                 let demand = req.node_demands.iter().find(|d| d.node_uuid == *node_uuid).map_or(0.0, |d| d.demand_vu);
@@ -147,7 +203,7 @@ pub fn solve(req: OptimizeVrpRequest) -> OptimizeVrpResponse {
                         eval_cost += return_cost;
 
                         // Original cost of this route
-                        let original_cost_scaled = route_cost_scaled; // This includes return to depot
+                        let _original_cost_scaled = route_cost_scaled; // This includes return to depot
 
                         if eval_cost < best_cost_f64 {
                             // It's strictly better!
@@ -180,10 +236,11 @@ pub fn solve(req: OptimizeVrpRequest) -> OptimizeVrpResponse {
         }
     }
 
-    let status = if unassigned.is_empty() {
-        SolverStatus::Optimal
+    let status = if routes.is_empty() && !unassigned.is_empty() {
+        SolverStatus::Infeasible
     } else {
-        SolverStatus::Feasible
+        // Nearest-neighbor greedy never proves optimality — report HEURISTIC (P2-2).
+        SolverStatus::Heuristic
     };
 
     info!("VRP solved with status {:?}, unassigned: {}", status, unassigned.len());

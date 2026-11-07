@@ -65,16 +65,16 @@ struct ActiveDeliverySheet: View {
                     Image(systemName: "clock.fill")
                         .font(.system(size: 10, weight: .semibold))
                         .foregroundStyle(LabTheme.fgTertiary)
-                    Text("ETA \(formatETATime(eta))")
+                    Text(L10n.format("mobile_driver.ui.eta_formatetatime", "\(formatETATime(eta))"))
                         .font(.system(size: 12, weight: .bold, design: .monospaced))
                         .foregroundStyle(LabTheme.fg)
                     if let dur = order.etaDurationSec {
-                        Text("· \(formatDuration(dur))")
+                        Text(L10n.format("mobile_driver.ui.formatduration", "\(formatDuration(dur))"))
                             .font(.system(size: 11, weight: .medium))
                             .foregroundStyle(LabTheme.fgSecondary)
                     }
                     if let distM = order.etaDistanceM {
-                        Text("· \(formatETADistance(distM))")
+                        Text(L10n.format("mobile_driver.ui.formatetadistance", "\(formatETADistance(distM))"))
                             .font(.system(size: 11, weight: .medium))
                             .foregroundStyle(LabTheme.fgSecondary)
                     }
@@ -91,7 +91,7 @@ struct ActiveDeliverySheet: View {
                     HStack(spacing: 7) {
                         Image(systemName: "arrow.triangle.turn.up.right.diamond.fill")
                             .font(.system(size: 13, weight: .semibold))
-                        Text("Navigate in Maps")
+                        Text("mobile_driver.ui.navigate_in_maps")
                             .font(.system(size: 14, weight: .bold))
                     }
                     .foregroundStyle(LabTheme.buttonFg)
@@ -127,7 +127,7 @@ struct ActiveDeliverySheet: View {
                     } label: {
                         HStack(spacing: 4) {
                             Image(systemName: "pencil.and.list.clipboard").font(.system(size: 11))
-                            Text("Delivery Correction").font(.system(size: 12, weight: .semibold))
+                            Text("mobile_driver.ui.delivery_correction").font(.system(size: 12, weight: .semibold))
                         }
                         .foregroundStyle(LabTheme.fgSecondary)
                         .frame(maxWidth: .infinity).padding(.vertical, 10)
@@ -141,7 +141,7 @@ struct ActiveDeliverySheet: View {
                     } label: {
                         HStack(spacing: 4) {
                             Image(systemName: "exclamationmark.triangle.fill").font(.system(size: 11))
-                            Text("Rescue").font(.system(size: 12, weight: .semibold))
+                            Text("mobile_driver.ui.rescue").font(.system(size: 12, weight: .semibold))
                         }
                         .foregroundStyle(LabTheme.warning)
                         .frame(maxWidth: .infinity).padding(.vertical, 10)
@@ -157,13 +157,22 @@ struct ActiveDeliverySheet: View {
     }
     
     // ETA Helpers
+    private static let isoFractionalFormatter: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return f
+    }()
+    private static let isoStandardFormatter = ISO8601DateFormatter()
+    private static let etaTimeFormatter: DateFormatter = {
+        let tf = DateFormatter()
+        tf.locale = Locale(identifier: "en_US_POSIX")
+        tf.dateFormat = "HH:mm"
+        return tf
+    }()
+
     private func formatETATime(_ iso: String) -> String {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        if let date = formatter.date(from: iso) ?? ISO8601DateFormatter().date(from: iso) {
-            let tf = DateFormatter()
-            tf.dateFormat = "HH:mm"
-            return tf.string(from: date)
+        if let date = Self.isoFractionalFormatter.date(from: iso) ?? Self.isoStandardFormatter.date(from: iso) {
+            return Self.etaTimeFormatter.string(from: date)
         }
         return iso.suffix(8).prefix(5).description
     }

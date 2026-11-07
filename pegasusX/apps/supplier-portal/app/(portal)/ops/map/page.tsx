@@ -1,7 +1,9 @@
 "use client";
+import { usePolling } from '@pegasusx/api-react';
 
+
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { usePolling } from "@pegasusx/api-client";
 import type { TwinOpsRouteView } from "@pegasusx/types";
 import { createSupplierApi } from "@/lib/api";
 import LiveOpsMap, { LiveOpsSidePanel } from "@/components/LiveOpsMap";
@@ -11,6 +13,7 @@ const api = createSupplierApi();
 const POLL_MS = 20_000;
 
 export default function LiveOpsMapPage() {
+  const t = usePortalT();
   const [routes, setRoutes] = useState<TwinOpsRouteView[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -39,7 +42,7 @@ export default function LiveOpsMapPage() {
           setSelected(data.find((r) => r.RouteID === id) ?? null);
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : "twin_routes_failed");
+        setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.twin_routes_failed"));
       } finally {
         if (!silent) setLoading(false);
       }
@@ -64,31 +67,35 @@ export default function LiveOpsMapPage() {
   return (
     <PageChrome
       icon="dispatch"
-      title="Live ops map"
-      description="Active routes from the digital twin — read-only visibility with ETA confidence colouring."
+      title={t("portal.nav.live_ops_map")}
+      description={t("supplier_portal.residual.text.active_routes_from_the_digital_twin_read_only_visibility_with_et")}
       loading={loading && routes.length === 0}
       skeletonVariant="dashboard"
       error={error && routes.length === 0 ? error : null}
     >
       <div className="flex flex-wrap gap-3 mb-4 px-1">
         <input
+          id="zoneh3-input-4"
+          aria-label="Zone h3"
           className="md-input min-w-[140px]"
-          placeholder="Zone H3"
+          placeholder={t("supplier_portal.ops.map.text.zone_h3")}
           value={zoneH3}
           onChange={(e) => setZoneH3(e.target.value)}
         />
         <input
+          id="driverid-input-3"
+          aria-label="Driver id"
           className="md-input min-w-[140px]"
-          placeholder="Driver ID"
+          placeholder={t("supplier_portal.exceptions.early_complete.text.driver_id")}
           value={driverId}
           onChange={(e) => setDriverId(e.target.value)}
         />
         <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={delayedOnly} onChange={(e) => setDelayedOnly(e.target.checked)} />
+          <input id="page-checkbox-2" aria-label="Select Page option" type="checkbox" checked={delayedOnly} onChange={(e) => setDelayedOnly(e.target.checked)} />
           Delayed only
         </label>
         <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={shopClosedOnly} onChange={(e) => setShopClosedOnly(e.target.checked)} />
+          <input id="page-checkbox-1" aria-label="Select Page option" type="checkbox" checked={shopClosedOnly} onChange={(e) => setShopClosedOnly(e.target.checked)} />
           Shop-closed open
         </label>
         <button type="button" className="md-btn md-btn-outlined" onClick={() => void refresh()}>

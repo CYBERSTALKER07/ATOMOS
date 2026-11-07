@@ -22,18 +22,56 @@ func factorySmokeVehicleID() string {
 	return envOr("SSMR_FACTORY_VEHICLE_ID", "veh_factory_1")
 }
 
-func factoryDispatchBody(reason string) []byte {
-	body, _ := json.Marshal(map[string]any{
+func factoryDispatchBody(reason string, transferIDs []string) []byte {
+	payload := map[string]any{
 		"reason":     reason,
 		"driver_id":  factorySmokeDriverID(),
 		"vehicle_id": factorySmokeVehicleID(),
-	})
+	}
+	if len(transferIDs) > 0 {
+		payload["transfer_ids"] = transferIDs
+	}
+	body, _ := json.Marshal(payload)
 	return body
 }
 
-func factoryDispatchDraft(ctx context.Context, client *http.Client, base, cookie, reason string) (string, error) {
+// factorySmokeOrderID stays inside FactoryInternalTransfers.OrderId STRING(36).
+func factorySmokeOrderID(i int) string {
+	return fmt.Sprintf("ord_ftr_%d_%d", time.Now().Unix()%1_000_000_000, i)
+}
+
+func ensureFactoryCreatedTransfers(ctx context.Context, client *http.Client, base, cookie string, n int) ([]string, error) {
+	ids := make([]string, 0, n)
+	for i := 0; i < n; i++ {
+		body, _ := json.Marshal(map[string]any{
+			"order_id": factorySmokeOrderID(i),
+			"total_vu": 12,
+		})
+		key := fmt.Sprintf("ssmr-factory-transfer-%d-%d", time.Now().UnixNano(), i)
+		status, respBody, _, err := clientPost(ctx, client, base+"/v1/factory/transfers/create", body, cookie, key)
+		if err != nil {
+			return nil, err
+		}
+		if status != http.StatusCreated && status != http.StatusOK {
+			return nil, fmt.Errorf("factory transfer create %d status %d body %s", i, status, string(respBody))
+		}
+		var created struct {
+			TransferID string `json:"transfer_id"`
+		}
+		if err := json.Unmarshal(respBody, &created); err != nil {
+			return nil, fmt.Errorf("decode factory transfer create %d: %w", i, err)
+		}
+		if strings.TrimSpace(created.TransferID) == "" {
+			return nil, fmt.Errorf("factory transfer create %d missing transfer_id: %s", i, string(respBody))
+		}
+		ids = append(ids, created.TransferID)
+	}
+	return ids, nil
+}
+
+func factoryDispatchDraft(ctx context.Context, client *http.Client, base, cookie, reason string, transferIDs ...string) (string, error) {
 	key := fmt.Sprintf("ssmr-factory-dispatch-%s-%d", reason, time.Now().UnixNano())
-	status, respBody, _, err := clientPost(ctx, client, base+"/v1/factory/dispatch", factoryDispatchBody(reason), cookie, key)
+	status, respBody, _, err := clientPost(ctx, client, base+"/v1/factory/dispatch", factoryDispatchBody(reason, transferIDs), cookie, key)
 	if err != nil {
 		return "", err
 	}
@@ -147,11 +185,15 @@ func runFactoryOps(ctx context.Context, client *http.Client, base, cookie string
 	if status != http.StatusOK {
 		return fmt.Errorf("factory manifests status %d body %s", status, string(respBody))
 	}
-	manifestA, err := factoryDispatchDraft(ctx, client, base, cookie, "ssmr-smoke-a")
+	seedIDs, err := ensureFactoryCreatedTransfers(ctx, client, base, cookie, 2)
+	if err != nil {
+		return fmt.Errorf("factory transfer seed: %w", err)
+	}
+	manifestA, err := factoryDispatchDraft(ctx, client, base, cookie, "ssmr-smoke-a", seedIDs[0])
 	if err != nil {
 		return err
 	}
-	manifestB, err := factoryDispatchDraft(ctx, client, base, cookie, "ssmr-smoke-b")
+	manifestB, err := factoryDispatchDraft(ctx, client, base, cookie, "ssmr-smoke-b", seedIDs[1])
 	if err != nil {
 		return err
 	}
@@ -180,7 +222,7 @@ func runFactoryOps(ctx context.Context, client *http.Client, base, cookie string
 	fmt.Println("PX_E2E_FACTORY_MANIFEST_EXCEPTIONS_OK")
 
 	createBody, _ := json.Marshal(map[string]any{
-		"total_vu":   int64(32),
+		"total_vu": int64(32),
 		// FactoryInternalTransfers.OrderId is STRING(36).
 		"order_id":   fmt.Sprintf("ord_ssmr_%d", time.Now().Unix()%1_000_000_000),
 		"driver_id":  factorySmokeDriverID(),

@@ -29,7 +29,7 @@ struct OrgMemberListView: View {
                                 Button(role: .destructive) {
                                     Task { await deactivateAction(member.userId) }
                                 } label: {
-                                    Text("Deactivate")
+                                    Text("supplier_portal.demand.signals.text.deactivate")
                                 }
                                 .disabled(memberActionId == member.userId)
                             }

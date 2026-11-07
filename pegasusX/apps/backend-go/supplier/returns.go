@@ -13,6 +13,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/stocklots"
 	"google.golang.org/api/iterator"
 	"google.golang.org/grpc/codes"
 )
@@ -278,33 +279,42 @@ func (s *Service) HandleResolveReturn(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if resolution == "RETURN_TO_STOCK" && warehouseID != "" && qty > 0 && physicalStatus != "RESTOCKED" {
-			invRow, err := txn.ReadRow(ctx, "SupplierInventoryV2",
-				spanner.Key{supplierID, warehouseID, skuID},
-				[]string{"QuantityOnHand"})
-			if err != nil {
-				if spanner.ErrCode(err) != codes.NotFound {
-					return fmt.Errorf("inventory read failed: %w", err)
-				}
-				mutations = append(mutations, spanner.InsertMap("SupplierInventoryV2", map[string]any{
-					"SupplierId":       supplierID,
-					"WarehouseId":      warehouseID,
-					"ProductId":        skuID,
-					"QuantityOnHand":   qty,
-					"QuantityReserved": int64(0),
-					"UpdatedAt":        spanner.CommitTimestamp,
-				}))
-			} else {
-				var onHand int64
-				if err := invRow.Columns(&onHand); err != nil {
+			if stocklots.LotsEnabled() {
+				if _, err := stocklots.CreditViaDefaultPutawayInTxn(
+					ctx, txn, supplierID, warehouseID, skuID,
+					stocklots.DefaultReturnsLocationID, "RETURNS", qty,
+				); err != nil {
 					return err
 				}
-				mutations = append(mutations, spanner.UpdateMap("SupplierInventoryV2", map[string]any{
-					"SupplierId":     supplierID,
-					"WarehouseId":    warehouseID,
-					"ProductId":      skuID,
-					"QuantityOnHand": onHand + qty,
-					"UpdatedAt":      spanner.CommitTimestamp,
-				}))
+			} else {
+				invRow, err := txn.ReadRow(ctx, "SupplierInventoryV2",
+					spanner.Key{supplierID, warehouseID, skuID},
+					[]string{"QuantityOnHand"})
+				if err != nil {
+					if spanner.ErrCode(err) != codes.NotFound {
+						return fmt.Errorf("inventory read failed: %w", err)
+					}
+					mutations = append(mutations, spanner.InsertMap("SupplierInventoryV2", map[string]any{
+						"SupplierId":       supplierID,
+						"WarehouseId":      warehouseID,
+						"ProductId":        skuID,
+						"QuantityOnHand":   qty,
+						"QuantityReserved": int64(0),
+						"UpdatedAt":        spanner.CommitTimestamp,
+					}))
+				} else {
+					var onHand int64
+					if err := invRow.Columns(&onHand); err != nil {
+						return err
+					}
+					mutations = append(mutations, spanner.UpdateMap("SupplierInventoryV2", map[string]any{
+						"SupplierId":     supplierID,
+						"WarehouseId":    warehouseID,
+						"ProductId":      skuID,
+						"QuantityOnHand": onHand + qty,
+						"UpdatedAt":      spanner.CommitTimestamp,
+					}))
+				}
 			}
 		}
 

@@ -44,6 +44,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.pegasusx.warehouse.data.model.LoginRequest
+import com.pegasusx.warehouse.data.push.DeviceTokenRegistrar
 import com.pegasusx.warehouse.data.remote.FirebaseAuthHelper
 import com.pegasusx.warehouse.data.remote.TokenHolder
 import com.pegasusx.warehouse.data.remote.WarehouseApi
@@ -79,6 +80,7 @@ fun LoginScreen(
         TokenHolder.token = token
         TokenHolder.refreshToken = refreshToken
         TokenHolder.warehouseId = warehouseId
+        DeviceTokenRegistrar.uploadBestEffort(api)
         onLoginSuccess()
     }
 
@@ -169,7 +171,7 @@ fun LoginScreen(
                                     val idToken = FirebaseAuthHelper.verifySmsCode(otpCode)
                                     val resp = api.login(LoginRequest(idToken = idToken))
                                     if (resp.isSuccessful && resp.body() != null) {
-                                        val auth = resp.body()!!
+                                        val auth = resp.body() ?: return@launch
                                         applyAuth(auth.token, auth.refreshToken, auth.warehouseId)
                                     } else {
                                         error = when (resp.code()) {
@@ -205,7 +207,7 @@ fun LoginScreen(
                         IconButton(onClick = { pinVisible = !pinVisible }) {
                             Icon(
                                 if (pinVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                                contentDescription = null,
+                                contentDescription = if (pinVisible) "Hide PIN" else "Show PIN",
                             )
                         }
                     },
@@ -221,7 +223,7 @@ fun LoginScreen(
                             try {
                                 val resp = api.login(LoginRequest(phone = phone, pin = pin))
                                 if (resp.isSuccessful && resp.body() != null) {
-                                    val auth = resp.body()!!
+                                    val auth = resp.body() ?: return@launch
                                     applyAuth(auth.token, auth.refreshToken, auth.warehouseId)
                                 } else {
                                     error = when (resp.code()) {
@@ -245,10 +247,23 @@ fun LoginScreen(
 
             if (error != null) {
                 Spacer(Modifier.height(PegasusSpacing.sm))
-                Text(error!!, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                Text(error.orEmpty(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
             }
 
             Spacer(Modifier.height(PegasusSpacing.lg))
+            OutlinedButton(
+                onClick = {
+                    TokenHolder.token = "mock-warehouse-jwt-dev"
+                    TokenHolder.refreshToken = "mock-refresh-dev"
+                    TokenHolder.warehouseId = "wh-tashkent-001"
+                    onLoginSuccess()
+                },
+                enabled = !loading,
+                modifier = Modifier.fillMaxWidth().height(48.dp),
+            ) {
+                Text("BYPASS / ENTER DEMO WAREHOUSE")
+            }
+            Spacer(Modifier.height(PegasusSpacing.sm))
             OutlinedButton(
                 onClick = {
                     error = null

@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -69,6 +70,7 @@ import com.pegasusx.retailer.ui.screens.settings.StoreStockScreen
 import com.pegasusx.retailer.ui.screens.settings.PosScreen
 import com.pegasusx.retailer.ui.screens.settings.ShiftsScreen
 import com.pegasusx.retailer.ui.screens.settings.SectionsScreen
+import com.pegasusx.retailer.ui.screens.settings.PlanogramScreen
 import com.pegasusx.retailer.ui.screens.settings.ReportsScreen
 import com.pegasusx.retailer.ui.screens.settings.AssistScreen
 import com.pegasusx.retailer.ui.screens.settings.LocalSkusScreen
@@ -233,16 +235,28 @@ fun RetailerNavigation(
                 )
             },
             bottomBar = {
-                Column {
-                    // Floating active orders bar above bottom nav
-                    FloatingActiveOrdersBar(
-                        visible = showFloatingBar && navState.activeOrderCount > 0,
-                        orderCount = navState.activeOrderCount,
-                        statusText = navState.floatingStatusText,
-                        totalDisplay = navState.floatingTotalDisplay,
-                        countdownIso = navState.floatingCountdownIso,
-                        onClick = { showActiveDeliveries = true },
-                    )
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    // Floating active orders bar above bottom nav (centered on tablets)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = if (isCompact) 0.dp else 16.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Box(modifier = Modifier.widthIn(max = 600.dp).fillMaxWidth()) {
+                            FloatingActiveOrdersBar(
+                                visible = showFloatingBar && navState.activeOrderCount > 0,
+                                orderCount = navState.activeOrderCount,
+                                statusText = navState.floatingStatusText,
+                                totalDisplay = navState.floatingTotalDisplay,
+                                countdownIso = navState.floatingCountdownIso,
+                                onClick = { showActiveDeliveries = true },
+                            )
+                        }
+                    }
                     if (isCompact) {
                         PegasusBottomBar(
                             currentTab = currentTab,
@@ -427,8 +441,17 @@ fun RetailerNavigation(
                             onPosClick = { navController.navigate("POS") },
                             onShiftsClick = { navController.navigate("SHIFTS") },
                             onSectionsClick = { navController.navigate("SECTIONS") },
+                            onPlanogramsClick = { navController.navigate("PLANOGRAM") },
                             onReportsClick = { navController.navigate("REPORTS_PRO") },
                             onAssistClick = { navController.navigate("ASSIST") },
+                        )
+                    }
+                }
+                composable("PLANOGRAM") {
+                    Box(Modifier.fillMaxSize()) {
+                        PlanogramScreen(
+                            onNavigateBack = { navController.popBackStack() },
+                            onNavigateToStoreStock = { navController.navigate("STORE_STOCK") },
                         )
                     }
                 }
@@ -752,12 +775,12 @@ fun RetailerNavigation(
                 alert = shopClosedAlert,
                 isSubmitting = shopClosedSubmitting,
                 errorMessage = shopClosedError,
-                onRespond = { option ->
+                onRespond = { option, photoUrl ->
                     if (shopClosedSubmitting) return@ShopClosedSheet
                     shopClosedSubmitting = true
                     shopClosedError = null
                     coroutineScope.launch {
-                        val result = navigationViewModel.respondToShopClosed(shopClosedAlert.orderId, option)
+                        val result = navigationViewModel.respondToShopClosed(shopClosedAlert.orderId, option, photoUrl)
                         shopClosedSubmitting = false
                         if (result.isFailure) {
                             shopClosedError = result.exceptionOrNull()?.message ?: "Could not submit response"

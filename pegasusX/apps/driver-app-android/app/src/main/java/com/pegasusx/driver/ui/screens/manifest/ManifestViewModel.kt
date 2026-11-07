@@ -87,6 +87,8 @@ data class ManifestUiState(
     val isRequestingEarlyComplete: Boolean = false,
     val historyRows: List<DriverHistoryRow> = emptyList(),
     val earnings: DriverEarningsResponse? = null,
+    val pendingRescueId: String? = null,
+    val pendingBrokenDriverId: String? = null,
 )
 
 @HiltViewModel
@@ -137,6 +139,13 @@ class ManifestViewModel @Inject constructor(
         viewModelScope.launch {
             driverWebSocket.messages.collect { message ->
                 if (message.type == "SYSTEM_APP_OUTDATED") return@collect
+                if (message.type == "RESCUE_PROPOSED" && message.rescueId != null) {
+                    _state.value = _state.value.copy(
+                        pendingRescueId = message.rescueId,
+                        pendingBrokenDriverId = message.brokenDriverId.orEmpty()
+                    )
+                    return@collect
+                }
                 if (shouldRefreshManifestOnWsEvent(message.type)) {
                     loadManifest(silent = true)
                     _state.value = _state.value.copy(lastWsRefreshAt = System.currentTimeMillis())
@@ -195,8 +204,10 @@ class ManifestViewModel @Inject constructor(
                 }
                 val hasInTransit = orders.any {
                     it.state == OrderState.IN_TRANSIT || it.state == OrderState.ARRIVING ||
-                    it.state == OrderState.ARRIVED || it.state == OrderState.AWAITING_PAYMENT ||
-                    it.state == OrderState.PENDING_CASH_COLLECTION || it.state == OrderState.DISPATCHED
+                    it.state == OrderState.ARRIVED || it.state == OrderState.ARRIVED_SHOP_CLOSED ||
+                    it.state == OrderState.AWAITING_PAYMENT ||
+                    it.state == OrderState.PENDING_CASH_COLLECTION || it.state == OrderState.DISPATCHED ||
+                    it.state == OrderState.FISCALIZING || it.state == OrderState.FISCAL_FAILED
                 }
                 val derivedStatus = when {
                     _state.value.truckStatus == "RETURNING" -> "RETURNING"
@@ -336,14 +347,23 @@ class ManifestViewModel @Inject constructor(
     }
 
     fun transitionOrder(orderId: String, newState: OrderState) {
+        // G1.C: PATCH /v1/orders/{id}/state is always 501 — route to real edges only.
         viewModelScope.launch {
             try {
-                api.transitionState(
-                    orderId,
-                    mapOf("state" to newState.name),
-                    DriverIdempotencyKeys.transitionState(orderId, newState.name),
-                )
-                loadManifest(silent = true)
+                when (newState) {
+                    OrderState.ARRIVED -> {
+                        api.markArrived(
+                            mapOf("order_id" to orderId),
+                            DriverIdempotencyKeys.markArrived(orderId),
+                        )
+                        loadManifest(silent = true)
+                    }
+                    else -> {
+                        _state.value = _state.value.copy(
+                            error = "Use delivery edges (arrive, depart, cash/card/credit) — not generic state patch (${newState.name})",
+                        )
+                    }
+                }
             } catch (e: Exception) {
                 _state.value = _state.value.copy(error = e.message)
             }
@@ -524,40 +544,12 @@ class ManifestViewModel @Inject constructor(
         }
     }
 
-    @SuppressLint("MissingPermission")
     fun updateOrderDuringDelivery(orderId: String) {
-        viewModelScope.launch {
-            _state.value = _state.value.copy(deliveryEdgeMessage = null, error = null)
-            try {
-                val location = fusedClient.getCurrentLocation(
-                    Priority.PRIORITY_HIGH_ACCURACY,
-                    CancellationTokenSource().token,
-                ).await()
-                if (location == null) {
-                    _state.value = _state.value.copy(error = "GPS unavailable for in-delivery update")
-                    return@launch
-                }
-                val response = api.updateOrderDuringDelivery(
-                    UpdateOrderDuringDeliveryRequest(
-                        orderId = orderId,
-                        latitude = location.latitude,
-                        longitude = location.longitude,
-                    )
-                )
-                if (!response.success) {
-                    _state.value = _state.value.copy(
-                        error = response.message.ifBlank { "In-delivery update rejected" },
-                    )
-                    return@launch
-                }
-                _state.value = _state.value.copy(deliveryEdgeMessage = response.message)
-                loadManifest(silent = true)
-            } catch (e: Exception) {
-                _state.value = _state.value.copy(
-                    error = e.message ?: "In-delivery update failed",
-                )
-            }
-        }
+        // G1.C: mid-delivery endpoint has no durable writer — use delivery correction / amend.
+        _state.value = _state.value.copy(
+            deliveryEdgeMessage = null,
+            error = "Use delivery correction (amend / missing items) — mid-delivery update is not implemented",
+        )
     }
 
     fun endSession(reason: String, note: String? = null) {
@@ -602,6 +594,33 @@ class ManifestViewModel @Inject constructor(
         updatedAt = updatedAt,
         itemsJson = json.encodeToString(items)
     )
+
+    fun respondRescue(accept: Boolean) {
+        val rescueId = _state.value.pendingRescueId ?: return
+        val brokenDriverId = _state.value.pendingBrokenDriverId.orEmpty()
+        viewModelScope.launch {
+            try {
+                api.respondRescue(
+                    body = mapOf(
+                        "rescue_id" to rescueId,
+                        "broken_driver_id" to brokenDriverId,
+                        "accept" to accept
+                    ),
+                    idempotencyKey = DriverIdempotencyKeys.respondRescue(rescueId, accept)
+                )
+                _state.value = _state.value.copy(pendingRescueId = null, pendingBrokenDriverId = null)
+                if (accept) {
+                    loadManifest(silent = false)
+                }
+            } catch (e: Exception) {
+                _state.value = _state.value.copy(error = e.message ?: "Failed to respond to rescue")
+            }
+        }
+    }
+
+    fun dismissRescue() {
+        _state.value = _state.value.copy(pendingRescueId = null, pendingBrokenDriverId = null)
+    }
 
     private fun OrderEntity.toDomain() = Order(
         id = id,

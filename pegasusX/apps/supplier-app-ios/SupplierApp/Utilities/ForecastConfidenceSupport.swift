@@ -4,14 +4,15 @@ import SwiftUI
 /// Canonical mapper — keep aligned with packages/types/forecast-confidence.ts
 enum ForecastConfidenceSupport {
     private static let staleMinutes: Int64 = 30
+    private static let isoFormatter = ISO8601DateFormatter()
 
     static func isForecastStale(generatedAt: String?) -> Bool {
-        guard let generatedAt, let date = ISO8601DateFormatter().date(from: generatedAt) else { return false }
+        guard let generatedAt, let date = isoFormatter.date(from: generatedAt) else { return false }
         return Int64(Date().timeIntervalSince(date) / 60) > staleMinutes
     }
 
     static func formatForecastUpdatedAt(generatedAt: String?) -> String? {
-        guard let generatedAt, let date = ISO8601DateFormatter().date(from: generatedAt) else {
+        guard let generatedAt, let date = isoFormatter.date(from: generatedAt) else {
             return generatedAt
         }
         let mins = Int64(Date().timeIntervalSince(date) / 60)
@@ -75,6 +76,26 @@ enum ForecastConfidenceSupport {
             label: summary.predictionCount < 3 ? "early_signal" : "standard"
         )
     }
+}
+
+enum PlanBrainTab: String, CaseIterable {
+    case planning
+    case brain
+}
+
+func planBrainTabFromQuery(_ raw: String?) -> PlanBrainTab {
+    raw?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == "brain" ? .brain : .planning
+}
+
+func brainForecastLine(confidence: ForecastConfidence?, accuracyPoints: [Double]) -> [Double]? {
+    if confidence?.isBlocked == true { return nil }
+    if accuracyPoints.count < 2 { return nil }
+    return accuracyPoints
+}
+
+func factoryPlanningDisabledCode(status: Int, body: String) -> String? {
+    guard status == 409, body.contains("factory_planning_disabled") else { return nil }
+    return "factory_planning_disabled"
 }
 
 extension ForecastConfidence {

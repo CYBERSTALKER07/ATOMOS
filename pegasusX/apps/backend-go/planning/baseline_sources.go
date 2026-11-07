@@ -4,10 +4,13 @@ import "strings"
 
 // Production v1 forecast sources (math-only; no ML inference in hot path).
 const (
-	BaselineSourceMovingAverage   = "moving_average"
+	BaselineSourceMovingAverage    = "moving_average"
 	BaselineSourceSeasonalTemplate = "seasonal_template"
-	BaselineSourceMixed           = "mixed"
-	BaselineSourceInventoryHint   = "inventory_hint" // AI recommendations / reorder hints — not ML inference
+	BaselineSourceMixed            = "mixed"
+	BaselineSourceInventoryHint    = "inventory_hint" // AI recommendations / reorder hints — not ML inference
+	BaselineSourceCroston          = "croston"
+	BaselineSourceHoltWinters      = "holt_winters"
+	BaselineSourceSES              = "ses"
 )
 
 // NormalizeBaselineSource maps legacy/internal labels to the production v1 math contract.
@@ -23,6 +26,12 @@ func NormalizeBaselineSource(parts ...string) string {
 			return BaselineSourceMixed
 		case "ai_recommendations", "inventory_hint":
 			return BaselineSourceInventoryHint
+		case "croston":
+			return BaselineSourceCroston
+		case "holt_winters":
+			return BaselineSourceHoltWinters
+		case "ses":
+			return BaselineSourceSES
 		case "ml":
 			return BaselineSourceMovingAverage
 		}

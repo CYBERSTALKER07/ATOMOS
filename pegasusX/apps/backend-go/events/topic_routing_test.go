@@ -22,6 +22,18 @@ func TestDomainTopicForEventType(t *testing.T) {
 	if got := DomainTopicForEventType(EventDemandSignal); got != TopicDemand {
 		t.Fatalf("DEMAND_SIGNAL -> %q, want %q", got, TopicDemand)
 	}
+	if got := DomainTopicForEventType(EventCashierSessionTransition); got != TopicOrders {
+		t.Fatalf("CASHIER_SESSION_TRANSITION -> %q, want %q", got, TopicOrders)
+	}
+	if got := DomainTopicForEventType(EventFleetDVIRRedTag); got != TopicDispatch {
+		t.Fatalf("FLEET_DVIR_RED_TAG -> %q, want %q", got, TopicDispatch)
+	}
+	if got := DomainTopicForEventType(EventYardGateCheckRecorded); got != TopicDispatch {
+		t.Fatalf("YARD_GATE_CHECK_RECORDED -> %q, want %q", got, TopicDispatch)
+	}
+	if got := DomainTopicForEventType(EventContainerLedgerUpdated); got != TopicExceptions {
+		t.Fatalf("CONTAINER_LEDGER_UPDATED -> %q, want %q", got, TopicExceptions)
+	}
 }
 
 func TestRelayPublishTopics_demandSignalDualWrite(t *testing.T) {
@@ -84,15 +96,33 @@ func TestDispatchConsumerTopic_cutover(t *testing.T) {
 	}
 }
 
-func TestDispatcherConsumerTopics_cutover(t *testing.T) {
+func TestTwinConsumerTopics_cutover(t *testing.T) {
 	os.Unsetenv("KAFKA_TOPIC_CONSUME_DOMAIN")
-	topics := DispatcherConsumerTopics()
+	topics := TwinConsumerTopics()
 	if len(topics) != 1 || topics[0] != TopicMain {
-		t.Fatalf("default topics = %v", topics)
+		t.Fatalf("default twin topics = %v", topics)
 	}
 	t.Setenv("KAFKA_TOPIC_CONSUME_DOMAIN", "true")
-	topics = DispatcherConsumerTopics()
+	topics = TwinConsumerTopics()
 	if len(topics) < 4 {
-		t.Fatalf("domain fan-in topics = %v", topics)
+		t.Fatalf("domain twin topics = %v", topics)
+	}
+	for _, tpc := range topics {
+		if tpc == TopicWebhooks {
+			t.Fatalf("retired TopicWebhooks must not be in twin fan-in: %v", topics)
+		}
+	}
+}
+
+func TestDomainTopicNeverWebhooks(t *testing.T) {
+	t.Parallel()
+	samples := []string{
+		EventOrderCreated, EventPaymentCleared, EventDriverLocationUpdated,
+		EventManifestSealed, EventDemandSignal, EventClaimFiled,
+	}
+	for _, typ := range samples {
+		if got := DomainTopicForEventType(typ); got == TopicWebhooks {
+			t.Fatalf("%s mapped to retired TopicWebhooks", typ)
+		}
 	}
 }

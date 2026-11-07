@@ -18,13 +18,15 @@ import (
 )
 
 // Settlement proximity: payment modes unlock only when driver is physically
-// at the stop (design §4.1). Tighter than approach geofence (500 m).
+// at the stop (design §4.1). Tighter than pack breach_radius_meters.
 const (
 	SettlementProximityRadiusM = 100.0
 	// SettlementH3Resolution: res 9 ~174 m edge — cell match ≈ doorstep.
 	SettlementH3Resolution = 9
 	// MaxTelemetryAge for anti-spoof: location sample must be recent.
 	SettlementTelemetryMaxAge = 2 * time.Minute
+	// MaxAllowedProximitySpeedMps is the maximum ground velocity allowed (120 km/h = 33.33 m/s).
+	MaxAllowedProximitySpeedMps = 33.33
 )
 
 // ProximityMethod codes stored on Orders.ProximityMethod.
@@ -42,13 +44,39 @@ var (
 	ErrProximityTelemetryStale = errors.New("proximity_telemetry_stale")
 	// ErrProximityMismatch: neither H3 nor 100 m geofence satisfied.
 	ErrProximityMismatch = errors.New("proximity_mismatch")
+	// ErrProximityVelocitySpoofed: displacement between fixes exceeds plausible vehicle velocity.
+	ErrProximityVelocitySpoofed = errors.New("proximity_velocity_spoofed")
 )
+
+// ValidateProximityVelocity checks if displacement between previous and current fix exceeds maximum ground speed.
+func ValidateProximityVelocity(lat1, lng1 float64, t1 time.Time, lat2, lng2 float64, t2 time.Time) error {
+	if t1.IsZero() || t2.IsZero() {
+		return nil
+	}
+	dt := t2.Sub(t1).Seconds()
+	if dt < 0 {
+		dt = -dt
+	}
+	if dt < 1.0 {
+		return nil // Avoid noise at sub-second interval
+	}
+	dist := distanceMeters(lat1, lng1, lat2, lng2)
+	// Allow natural jitter up to 50 meters
+	if dist <= 50.0 {
+		return nil
+	}
+	speed := dist / dt
+	if speed > MaxAllowedProximitySpeedMps {
+		return fmt.Errorf("%w: speed %.1f m/s exceeds max %.1f m/s", ErrProximityVelocitySpoofed, speed, MaxAllowedProximitySpeedMps)
+	}
+	return nil
+}
 
 // ProximityUnlockRequest is POST /v1/delivery/proximity-unlock.
 type ProximityUnlockRequest struct {
-	OrderID         string  `json:"order_id"`
-	Latitude        float64 `json:"latitude"`
-	Longitude       float64 `json:"longitude"`
+	OrderID   string  `json:"order_id"`
+	Latitude  float64 `json:"latitude"`
+	Longitude float64 `json:"longitude"`
 	// ClientTimestamp RFC3339 — when the location sample was taken (offline replay).
 	ClientTimestamp string `json:"client_timestamp,omitempty"`
 	// ForceBypassToken optional supervisor token (supervised MANUAL/FORCE_BYPASS).
@@ -67,6 +95,11 @@ type ProximityUnlockResponse struct {
 	Message             string  `json:"message,omitempty"`
 }
 
+// SettlementH3Cell returns the resolution 9 H3 cell for doorstep settlement / perimeter checks.
+func SettlementH3Cell(lat, lng float64) string {
+	return proximity.SettlementH3Cell(lat, lng)
+}
+
 // EvaluateSettlementProximity returns method + distance if within settlement radius or H3 match.
 // Pure function — no I/O. Used by unlock handler and tests.
 func EvaluateSettlementProximity(driverLat, driverLng, orderLat, orderLng float64, orderH3Cell string) (method string, distanceM float64, ok bool) {
@@ -79,9 +112,8 @@ func EvaluateSettlementProximity(driverLat, driverLng, orderLat, orderLng float6
 
 	// H3 cell match (preferred when order has cell).
 	if strings.TrimSpace(orderH3Cell) != "" {
-		cell, err := proximity.PanicSafeLatLngToCell(driverLat, driverLng, SettlementH3Resolution)
-		if err == nil {
-			driverCell := cell.String()
+		driverCell := proximity.SettlementH3Cell(driverLat, driverLng)
+		if driverCell != "" {
 			// Accept exact match at settlement res or prefix match against stored cell.
 			if driverCell == orderH3Cell || h3CellsCompatible(driverCell, orderH3Cell) {
 				if orderLat != 0 || orderLng != 0 {
@@ -163,17 +195,17 @@ func (s *Service) HandleProximityUnlock(w http.ResponseWriter, r *http.Request) 
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 		return
 	}
-	if s.spannerClient == nil {
-		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "proximity_unavailable"})
-		return
-	}
 
 	body, err := readLimitedBody(r, 64*1024)
 	if err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 		return
 	}
-	if s.guardIdempotency(w, r, body) {
+	if s.guardIdempotencyStrict(w, r, body) {
+		return
+	}
+	if s.spannerClient == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "proximity_unavailable"})
 		return
 	}
 	idemCommitted := false
@@ -203,6 +235,29 @@ func (s *Service) HandleProximityUnlock(w http.ResponseWriter, r *http.Request) 
 	driverID := strings.TrimSpace(claims.Subject)
 	ctx := r.Context()
 
+	// Proximity Velocity Guard: Reject impossible displacement jumps (GPS mock spoofing)
+	if s.locations != nil && driverID != "" {
+		if lastLoc, ok, _ := s.locations.GetDriverLocation(ctx, driverID); ok && !lastLoc.ReceivedAt.IsZero() {
+			sampleTime := now
+			if req.ClientTimestamp != "" {
+				if parsed, parseErr := time.Parse(time.RFC3339Nano, req.ClientTimestamp); parseErr == nil {
+					sampleTime = parsed
+				} else if parsed, parseErr := time.Parse(time.RFC3339, req.ClientTimestamp); parseErr == nil {
+					sampleTime = parsed
+				}
+			}
+			if vErr := ValidateProximityVelocity(lastLoc.Lat, lastLoc.Lng, lastLoc.ReceivedAt, req.Latitude, req.Longitude, sampleTime); vErr != nil {
+				s.log.Warn("proximity unlock rejected due to velocity anomaly",
+					"driver_id", driverID, "order_id", req.OrderID, "err", vErr)
+				writeJSON(w, http.StatusForbidden, map[string]string{
+					"error": vErr.Error(),
+					"code":  "PROXIMITY_VELOCITY_SPOOFED",
+				})
+				return
+			}
+		}
+	}
+
 	var (
 		method     string
 		distanceM  float64
@@ -221,13 +276,13 @@ func (s *Service) HandleProximityUnlock(w http.ResponseWriter, r *http.Request) 
 			return fmt.Errorf("order %s not found: %w", req.OrderID, err)
 		}
 		var (
-			status                               string
-			version                              int64
-			driverCol, retailerCol, supplierCol  spanner.NullString
-			orderLat, orderLng                   float64
-			h3Cell                               spanner.NullString
-			proxAt                               spanner.NullTime
-			proxMethod                           spanner.NullString
+			status                              string
+			version                             int64
+			driverCol, retailerCol, supplierCol spanner.NullString
+			orderLat, orderLng                  float64
+			h3Cell                              spanner.NullString
+			proxAt                              spanner.NullTime
+			proxMethod                          spanner.NullString
 		)
 		if err := row.Columns(&status, &version, &driverCol, &retailerCol, &supplierCol,
 			&orderLat, &orderLng, &h3Cell, &proxAt, &proxMethod); err != nil {
@@ -301,11 +356,11 @@ func (s *Service) HandleProximityUnlock(w http.ResponseWriter, r *http.Request) 
 		}
 		mutations := []*spanner.Mutation{
 			spanner.UpdateMap("Orders", map[string]any{
-				"OrderId":              req.OrderID,
-				"ProximityUnlockedAt":  unlockedAt,
-				"ProximityMethod":      method,
-				"Version":              version + 1,
-				"UpdatedAt":            unlockedAt,
+				"OrderId":             req.OrderID,
+				"ProximityUnlockedAt": unlockedAt,
+				"ProximityMethod":     method,
+				"Version":             version + 1,
+				"UpdatedAt":           unlockedAt,
 			}),
 		}
 		for _, e := range buf.events {

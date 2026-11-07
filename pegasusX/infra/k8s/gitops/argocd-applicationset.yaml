@@ -1,0 +1,84 @@
+# OpenGitOps Declarative Platform: ArgoCD AppProject & Multi-Cell ApplicationSet
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: pegasusx-platform
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: pegasusx
+spec:
+  description: "PegasusX FMCG Multi-Cell Enterprise Kubernetes Platform"
+  sourceRepos:
+    - "https://github.com/CYBERSTALKER07/pegasusenterprise.git"
+    - "https://github.com/CYBERSTALKER07/ATOMOS.git"
+  destinations:
+    - namespace: pegasusx
+      server: "https://*"
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+    - group: scheduling.k8s.io
+      kind: PriorityClass
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: pegasusx-cells
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: pegasusx
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - list:
+        elements:
+          - cell: dev
+            overlay: infra/k8s/overlays/dev
+            cluster: https://kubernetes.default.svc
+            autoSync: true
+          - cell: sandbox
+            overlay: infra/k8s/overlays/sandbox
+            cluster: https://kubernetes.default.svc
+            autoSync: true
+          - cell: pilot
+            overlay: infra/k8s/overlays/pilot
+            cluster: https://kubernetes.default.svc
+            autoSync: true
+          - cell: ssmr
+            overlay: infra/k8s/overlays/ssmr
+            cluster: https://kubernetes.default.svc
+            autoSync: false
+  template:
+    metadata:
+      name: "pegasusx-{{.cell}}"
+      labels:
+        app.kubernetes.io/part-of: pegasusx
+        pegasusx.io/cell: "{{.cell}}"
+    spec:
+      project: pegasusx-platform
+      source:
+        repoURL: "https://github.com/CYBERSTALKER07/pegasusenterprise.git"
+        targetRevision: main
+        path: "{{.overlay}}"
+      destination:
+        server: "{{.cluster}}"
+        namespace: pegasusx
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+          - PrunePropagationPolicy=foreground
+          - RespectIgnoreDifferences=true
+        retry:
+          limit: 5
+          backoff:
+            duration: 10s
+            factor: 2
+            maxDuration: 3m

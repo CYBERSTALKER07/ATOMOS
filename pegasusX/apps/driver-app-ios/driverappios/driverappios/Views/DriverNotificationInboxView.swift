@@ -177,18 +177,18 @@ struct DriverNotificationInboxView: View {
                     .listStyle(.plain)
                 }
             }
-            .navigationTitle("Notifications")
+            .navigationTitle("portal.nav.notifications")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Done") { dismiss() }
+                    Button("warehouse_portal.kpi_stat_card.text.done") { dismiss() }
                 }
                 if vm.unreadCount > 0 {
                     ToolbarItem(placement: .topBarTrailing) {
                         Button {
                             Task { await vm.markAllRead() }
                         } label: {
-                            Label("Read All", systemImage: "checkmark.circle")
+                            Label("mobile_driver.ui.read_all", systemImage: "checkmark.circle")
                                 .labelStyle(.titleAndIcon)
                                 .font(.caption)
                         }
@@ -255,8 +255,10 @@ private struct DriverNotifRow: View {
         }
     }
 
+    private static let isoFormatter = ISO8601DateFormatter()
+
     private var timeAgo: String {
-        guard let date = ISO8601DateFormatter().date(from: notification.createdAt) else { return "" }
+        guard let date = Self.isoFormatter.date(from: notification.createdAt) else { return "" }
         let diff = Date().timeIntervalSince(date)
         let mins = Int(diff / 60)
         if mins < 1 { return "now" }

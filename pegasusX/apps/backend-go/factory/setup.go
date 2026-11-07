@@ -10,7 +10,9 @@ import (
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/internal/web"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
 )
 
@@ -62,7 +64,16 @@ func (s *Service) HandleFactorySetup(w http.ResponseWriter, r *http.Request) {
 	factoryID := strings.TrimSpace(claims.HomeNodeID)
 	supplierID := strings.TrimSpace(claims.SupplierID)
 	if supplierID == "" {
-		supplierID = s.supplierID
+		supplierID = s.resolveSupplierScope(r.Context())
+	}
+
+	geo, err := stampFactoryCoords(r.Context(), req.Lat, req.Lng, "")
+	if err != nil {
+		if writeMarketLaw(w, err) {
+			return
+		}
+		web.JSONError(w, err.Error(), http.StatusUnprocessableEntity)
+		return
 	}
 
 	mutations := make([]*spanner.Mutation, 0, 2)
@@ -78,7 +89,7 @@ func (s *Service) HandleFactorySetup(w http.ResponseWriter, r *http.Request) {
 		}
 		factoryID = "fac-" + uuid.NewString()[:8]
 		mutations = append(mutations, spanner.Insert("Factories",
-			[]string{"FactoryId", "SupplierId", "Name", "Address", "PlaceId", "Lat", "Lng", "IsActive", "CreatedAt", "UpdatedAt"},
+			[]string{"FactoryId", "SupplierId", "Name", "Address", "PlaceId", "Lat", "Lng", "CountryCode", "H3Cell", "IsActive", "CreatedAt", "UpdatedAt"},
 			[]any{
 				factoryID,
 				supplierID,
@@ -87,6 +98,8 @@ func (s *Service) HandleFactorySetup(w http.ResponseWriter, r *http.Request) {
 				factoryNullableString(strings.TrimSpace(req.PlaceID)),
 				req.Lat,
 				req.Lng,
+				geo.CountryCode,
+				geo.H3Cell,
 				true,
 				now,
 				now,
@@ -99,12 +112,14 @@ func (s *Service) HandleFactorySetup(w http.ResponseWriter, r *http.Request) {
 		}))
 	} else {
 		update := map[string]any{
-			"FactoryId": factoryID,
-			"Address":   strings.TrimSpace(req.Address),
-			"PlaceId":   factoryNullableString(strings.TrimSpace(req.PlaceID)),
-			"Lat":       req.Lat,
-			"Lng":       req.Lng,
-			"UpdatedAt": now,
+			"FactoryId":   factoryID,
+			"Address":     strings.TrimSpace(req.Address),
+			"PlaceId":     factoryNullableString(strings.TrimSpace(req.PlaceID)),
+			"Lat":         req.Lat,
+			"Lng":         req.Lng,
+			"CountryCode": geo.CountryCode,
+			"H3Cell":      geo.H3Cell,
+			"UpdatedAt":   now,
 		}
 		if name := strings.TrimSpace(req.Name); name != "" {
 			update["Name"] = name
@@ -114,8 +129,29 @@ func (s *Service) HandleFactorySetup(w http.ResponseWriter, r *http.Request) {
 		mutations = append(mutations, spanner.UpdateMap("Factories", update))
 	}
 
+	// B7 FAC-P0-3: setup must emit FACTORY_LOCATION_UPDATED (or create) in same RW txn.
+	eventType := events.EventFactoryLocationUpdated
+	if claims.HomeNodeID == "" {
+		eventType = events.EventFactoryCreated
+	}
+	setupFactoryID := factoryID
+	setupSupplierID := supplierID
 	if err := spannerutils.RunReadWriteTransaction(r.Context(), s.spannerClient, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-		return txn.BufferWrite(mutations)
+		if err := txn.BufferWrite(mutations); err != nil {
+			return err
+		}
+		buf := outbox.NewSpannerTxnBuffer(txn)
+		if err := outbox.EmitJSON(ctx, buf, events.AggregateFactory, setupFactoryID, events.TopicMain, events.FactoryEvent{
+			BaseEvent:  events.BaseEvent{Type: eventType, Version: 1},
+			FactoryID:  setupFactoryID,
+			SupplierID: setupSupplierID,
+			Lat:        req.Lat,
+			Lng:        req.Lng,
+			UserID:     claims.Subject,
+		}); err != nil {
+			return err
+		}
+		return buf.Flush(ctx)
 	}); err != nil {
 		s.log.ErrorContext(r.Context(), "failed to complete factory setup", "err", err)
 		web.JSONError(w, "Failed to complete factory setup", http.StatusInternalServerError)

@@ -42,6 +42,27 @@ struct AuthResponse: Decodable {
         factoryName = try container.decodeIfPresent(String.self, forKey: .factoryName) ?? ""
         isConfigured = try container.decodeIfPresent(Bool.self, forKey: .isConfigured) ?? false
     }
+
+    init(
+        token: String = "mock-factory-jwt-dev",
+        refreshToken: String = "mock-factory-refresh",
+        factoryId: String = "fac-tashkent-01",
+        factoryName: String = "Tashkent Central Factory #1",
+        isConfigured: Bool = true
+    ) {
+        self.token = token
+        self.refreshToken = refreshToken
+        self.factoryId = factoryId
+        self.factoryName = factoryName
+        self.isConfigured = isConfigured
+    }
+
+    static let mock = AuthResponse()
+}
+
+struct DeviceTokenRequest: Encodable, Equatable {
+    let token: String
+    let platform: String
 }
 
 // MARK: - Dashboard
@@ -54,6 +75,17 @@ struct DashboardStats: Decodable {
     let vehiclesAvailable: Int
     let staffOnShift: Int
     let criticalInsights: Int
+    let source: String
+    let plane: String
+    let transfersByState: [String: Int]
+    let manifestsByState: [String: Int]
+    let vehiclesByState: [String: Int]
+    let driverDuty: [String: Int]
+    let slaByStatus: [String: Int]
+    let qcByResult: [String: Int]
+    let qcAvailable: Bool
+    let bayLoadingTransfers: Int
+    let bayLoadingManifests: Int
 
     enum CodingKeys: String, CodingKey {
         case pendingTransfers = "pending_transfers"
@@ -64,12 +96,106 @@ struct DashboardStats: Decodable {
         case vehiclesAvailable = "vehicles_available"
         case staffOnShift = "staff_on_shift"
         case criticalInsights = "critical_insights"
+        case source
+        case plane
+        case transfersByState = "transfers_by_state"
+        case manifestsByState = "manifests_by_state"
+        case vehiclesByState = "vehicles_by_state"
+        case driverDuty = "driver_duty"
+        case slaByStatus = "sla_by_status"
+        case qcByResult = "qc_by_result"
+        case qcAvailable = "qc_available"
+        case bayLoadingTransfers = "bay_loading_transfers"
+        case bayLoadingManifests = "bay_loading_manifests"
     }
 
-    static let empty = DashboardStats(
-        pendingTransfers: 0, loadingTransfers: 0, activeManifests: 0,
-        dispatchedToday: 0, vehiclesTotal: 0, vehiclesAvailable: 0,
-        staffOnShift: 0, criticalInsights: 0
+    init(
+        pendingTransfers: Int = 0,
+        loadingTransfers: Int = 0,
+        activeManifests: Int = 0,
+        dispatchedToday: Int = 0,
+        vehiclesTotal: Int = 0,
+        vehiclesAvailable: Int = 0,
+        staffOnShift: Int = 0,
+        criticalInsights: Int = 0,
+        source: String = "empty",
+        plane: String = "factory_trucks",
+        transfersByState: [String: Int] = [:],
+        manifestsByState: [String: Int] = [:],
+        vehiclesByState: [String: Int] = [:],
+        driverDuty: [String: Int] = [:],
+        slaByStatus: [String: Int] = [:],
+        qcByResult: [String: Int] = [:],
+        qcAvailable: Bool = false,
+        bayLoadingTransfers: Int = 0,
+        bayLoadingManifests: Int = 0
+    ) {
+        self.pendingTransfers = pendingTransfers
+        self.loadingTransfers = loadingTransfers
+        self.activeManifests = activeManifests
+        self.dispatchedToday = dispatchedToday
+        self.vehiclesTotal = vehiclesTotal
+        self.vehiclesAvailable = vehiclesAvailable
+        self.staffOnShift = staffOnShift
+        self.criticalInsights = criticalInsights
+        self.source = source
+        self.plane = plane
+        self.transfersByState = transfersByState
+        self.manifestsByState = manifestsByState
+        self.vehiclesByState = vehiclesByState
+        self.driverDuty = driverDuty
+        self.slaByStatus = slaByStatus
+        self.qcByResult = qcByResult
+        self.qcAvailable = qcAvailable
+        self.bayLoadingTransfers = bayLoadingTransfers
+        self.bayLoadingManifests = bayLoadingManifests
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        pendingTransfers = try c.decodeIfPresent(Int.self, forKey: .pendingTransfers) ?? 0
+        loadingTransfers = try c.decodeIfPresent(Int.self, forKey: .loadingTransfers) ?? 0
+        activeManifests = try c.decodeIfPresent(Int.self, forKey: .activeManifests) ?? 0
+        dispatchedToday = try c.decodeIfPresent(Int.self, forKey: .dispatchedToday) ?? 0
+        vehiclesTotal = try c.decodeIfPresent(Int.self, forKey: .vehiclesTotal) ?? 0
+        vehiclesAvailable = try c.decodeIfPresent(Int.self, forKey: .vehiclesAvailable) ?? 0
+        staffOnShift = try c.decodeIfPresent(Int.self, forKey: .staffOnShift) ?? 0
+        criticalInsights = try c.decodeIfPresent(Int.self, forKey: .criticalInsights) ?? 0
+        source = try c.decodeIfPresent(String.self, forKey: .source) ?? "empty"
+        plane = try c.decodeIfPresent(String.self, forKey: .plane) ?? "factory_trucks"
+        transfersByState = try c.decodeIfPresent([String: Int].self, forKey: .transfersByState) ?? [:]
+        manifestsByState = try c.decodeIfPresent([String: Int].self, forKey: .manifestsByState) ?? [:]
+        vehiclesByState = try c.decodeIfPresent([String: Int].self, forKey: .vehiclesByState) ?? [:]
+        driverDuty = try c.decodeIfPresent([String: Int].self, forKey: .driverDuty) ?? [:]
+        slaByStatus = try c.decodeIfPresent([String: Int].self, forKey: .slaByStatus) ?? [:]
+        qcByResult = try c.decodeIfPresent([String: Int].self, forKey: .qcByResult) ?? [:]
+        qcAvailable = try c.decodeIfPresent(Bool.self, forKey: .qcAvailable) ?? false
+        bayLoadingTransfers = try c.decodeIfPresent(Int.self, forKey: .bayLoadingTransfers) ?? 0
+        bayLoadingManifests = try c.decodeIfPresent(Int.self, forKey: .bayLoadingManifests) ?? 0
+    }
+
+    static let empty = DashboardStats()
+
+    static let sample = DashboardStats(
+        pendingTransfers: 6,
+        loadingTransfers: 2,
+        activeManifests: 4,
+        dispatchedToday: 18,
+        vehiclesTotal: 15,
+        vehiclesAvailable: 9,
+        staffOnShift: 24,
+        criticalInsights: 1,
+        source: "FOUNDRY",
+        plane: "factory_trucks",
+        transfersByState: ["PENDING": 6, "LOADING": 2, "IN_TRANSIT": 10],
+        manifestsByState: ["IN_PROGRESS": 4, "COMPLETED": 14],
+        vehiclesByState: ["AVAILABLE": 9, "IN_TRANSIT": 5, "MAINTENANCE": 1],
+        driverDuty: ["ON_SHIFT": 12, "REST": 3],
+        slaByStatus: ["ON_TIME": 17, "AT_RISK": 1],
+        qcByResult: ["PASS": 22, "RECHECK": 2],
+        qcAvailable: true,
+        bayLoadingTransfers: 2,
+        bayLoadingManifests: 1
     )
 }
 
@@ -175,6 +301,9 @@ struct SupplyRequest: Decodable, Identifiable {
     let createdBy: String
     let createdAt: String
     let updatedAt: String?
+    let slaStatus: String?
+    let slaDueAt: String?
+    let slaHoursRemaining: Double?
 
     enum CodingKeys: String, CodingKey {
         case id = "request_id"
@@ -190,11 +319,53 @@ struct SupplyRequest: Decodable, Identifiable {
         case createdBy = "created_by"
         case createdAt = "created_at"
         case updatedAt = "updated_at"
+        case slaStatus = "sla_status"
+        case slaDueAt = "sla_due_at"
+        case slaHoursRemaining = "sla_hours_remaining"
     }
 }
 
 struct SupplyRequestListResponse: Decodable {
     let requests: [SupplyRequest]
+}
+
+struct SupplyRequestQCResponse: Decodable {
+    let requestId: String
+    let result: String
+
+    enum CodingKeys: String, CodingKey {
+        case requestId = "request_id"
+        case result
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        requestId = try c.decodeIfPresent(String.self, forKey: .requestId) ?? ""
+        result = try c.decodeIfPresent(String.self, forKey: .result) ?? ""
+    }
+}
+
+struct SupplyRequestQCRequest: Encodable {
+    let result: String
+}
+
+func slaBadgeVisible(_ status: String?) -> Bool {
+    let normalized = (status ?? "").trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+    return !normalized.isEmpty && normalized != "N/A" && normalized != "MET"
+}
+
+func slaHoursLabel(_ hours: Double?) -> String? {
+    guard let hours else { return nil }
+    return hours > 0 ? "\(Int(hours))h left" : "\(Int(abs(hours)))h overdue"
+}
+
+func supplyDeliveryWithSLA(_ request: SupplyRequest) -> String {
+    let raw = request.requestedDeliveryDate?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    let date = raw.isEmpty ? "Unscheduled" : String(raw.prefix(10))
+    if let sla = slaHoursLabel(request.slaHoursRemaining) {
+        return "\(date) · \(sla)"
+    }
+    return date
 }
 
 struct SupplyRequestTransitionRequest: Encodable {
@@ -492,6 +663,59 @@ struct Vehicle: Decodable, Identifiable {
     }
 }
 
+struct FactoryFleetDriverLocation: Decodable {
+    let driverId: String?
+    let lat: Double?
+    let lng: Double?
+    let latitude: Double?
+    let longitude: Double?
+
+    enum CodingKeys: String, CodingKey {
+        case driverId = "driver_id"
+        case lat, lng, latitude, longitude
+    }
+}
+
+struct FactoryFleetLiveRoute: Decodable, Identifiable {
+    var id: String { manifestId }
+    let manifestId: String
+    let driverId: String?
+    let driverName: String?
+    let manifestState: String?
+    let liveLocationAvailable: Bool?
+    let locationStale: Bool?
+    let driverLocation: FactoryFleetDriverLocation?
+
+    enum CodingKeys: String, CodingKey {
+        case manifestId = "manifest_id"
+        case driverId = "driver_id"
+        case driverName = "driver_name"
+        case manifestState = "manifest_state"
+        case liveLocationAvailable = "live_location_available"
+        case locationStale = "location_stale"
+        case driverLocation = "driver_location"
+    }
+}
+
+struct FactoryFleetLiveMapResponse: Decodable {
+    let routes: [FactoryFleetLiveRoute]
+    let factoryId: String?
+    let fetchedAt: String?
+
+    enum CodingKeys: String, CodingKey {
+        case routes
+        case factoryId = "factory_id"
+        case fetchedAt = "fetched_at"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        routes = try c.decodeIfPresent([FactoryFleetLiveRoute].self, forKey: .routes) ?? []
+        factoryId = try c.decodeIfPresent(String.self, forKey: .factoryId)
+        fetchedAt = try c.decodeIfPresent(String.self, forKey: .fetchedAt)
+    }
+}
+
 struct VehicleListResponse: Decodable {
     let vehicles: [Vehicle]
 }
@@ -663,22 +887,52 @@ struct ResolveManifestExceptionResponse: Decodable {
 
 // MARK: - Dispatch
 struct DispatchRequest: Encodable {
+    var mode: String = "AUTO"
     let transferIds: [String]
+    var forceCapacity: Bool = false
+    var acceptPartial: Bool = false
+    var reason: String = "factory-app-ios"
 
     enum CodingKeys: String, CodingKey {
+        case mode
         case transferIds = "transfer_ids"
+        case forceCapacity = "force_capacity"
+        case acceptPartial = "accept_partial"
+        case reason
     }
 }
 
 struct DispatchResponse: Decodable {
+    let status: String
     let manifestId: String
     let truckPlate: String
     let stopCount: Int
+    let createdManifestCount: Int
+    let optimizerClass: String
+    let dispatchAlgo: String
+    let unassigned: [String]
 
     enum CodingKeys: String, CodingKey {
+        case status
         case manifestId = "manifest_id"
         case truckPlate = "truck_plate"
         case stopCount = "stop_count"
+        case createdManifestCount = "created_manifest_count"
+        case optimizerClass = "optimizer_class"
+        case dispatchAlgo = "dispatch_algo"
+        case unassigned
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        status = try c.decodeIfPresent(String.self, forKey: .status) ?? ""
+        manifestId = try c.decodeIfPresent(String.self, forKey: .manifestId) ?? ""
+        truckPlate = try c.decodeIfPresent(String.self, forKey: .truckPlate) ?? ""
+        stopCount = try c.decodeIfPresent(Int.self, forKey: .stopCount) ?? 0
+        createdManifestCount = try c.decodeIfPresent(Int.self, forKey: .createdManifestCount) ?? 0
+        optimizerClass = try c.decodeIfPresent(String.self, forKey: .optimizerClass) ?? ""
+        dispatchAlgo = try c.decodeIfPresent(String.self, forKey: .dispatchAlgo) ?? ""
+        unassigned = try c.decodeIfPresent([String].self, forKey: .unassigned) ?? []
     }
 }
 

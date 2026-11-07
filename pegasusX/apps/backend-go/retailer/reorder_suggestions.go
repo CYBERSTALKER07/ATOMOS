@@ -20,6 +20,7 @@ type RetailerReorderSuggestion struct {
 	AdjustedDemand   float64  `json:"adjusted_demand_per_day"`
 	CurrentStock     int64    `json:"current_stock"`
 	InFlightQty      int64    `json:"in_flight_qty"`
+	SafetyStock      float64  `json:"safety_stock,omitempty"`
 	Status           string   `json:"status"`
 	Sources          []string `json:"sources,omitempty"`
 	SellThroughVel   float64  `json:"sell_through_velocity,omitempty"`
@@ -96,7 +97,8 @@ func (s *Service) listRetailerReorderSuggestions(ctx context.Context, orgID stri
 		return []RetailerReorderSuggestion{}, nil
 	}
 
-	sql := `SELECT Sku, SuggestedQty, AdjustedDemand, CurrentStock, InFlightQty, Status,
+	sql := `SELECT Sku, SuggestedQty, AdjustedDemand, CurrentStock, InFlightQty,
+			COALESCE(SafetyStock, 0), Status,
 			COALESCE(SourcesJson, ''), COALESCE(SellThroughVel, 0), COALESCE(BaseDemand, 0),
 			CAST(SuggestedByDate AS STRING), CAST(ComputedAt AS STRING)
 			FROM ReorderSuggestions
@@ -128,7 +130,8 @@ func (s *Service) listRetailerReorderSuggestions(ctx context.Context, orgID stri
 		var item RetailerReorderSuggestion
 		var sourcesJSON string
 		if err := row.Columns(
-			&item.SKU, &item.SuggestedQty, &item.AdjustedDemand, &item.CurrentStock, &item.InFlightQty, &item.Status,
+			&item.SKU, &item.SuggestedQty, &item.AdjustedDemand, &item.CurrentStock, &item.InFlightQty,
+			&item.SafetyStock, &item.Status,
 			&sourcesJSON, &item.SellThroughVel, &item.BaseDemand, &item.SuggestedByDate, &item.ComputedAt,
 		); err != nil {
 			return nil, err

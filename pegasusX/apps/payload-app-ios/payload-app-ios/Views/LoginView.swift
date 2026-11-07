@@ -9,7 +9,7 @@ struct LoginView: View {
     @State private var viewModel = LoginViewModel()
     @FocusState private var focus: Field?
 
-    private enum Field { case phone, otp, pin }
+    private enum Field: Hashable { case phone, otp, pin }
 
     var body: some View {
         ZStack {
@@ -39,7 +39,7 @@ struct LoginView: View {
                             Text("PHONE")
                                 .font(.system(size: 10, weight: .bold, design: .monospaced))
                                 .foregroundStyle(TermTheme.tertiary)
-                            TextField("+998 …", text: $viewModel.phone)
+                            TextField("mobile_payload.ui.998", text: $viewModel.phone)
                                 .keyboardType(.phonePad)
                                 .textContentType(.telephoneNumber)
                                 .focused($focus, equals: .phone)
@@ -56,7 +56,7 @@ struct LoginView: View {
 
                         if viewModel.mode == .otp, viewModel.otpSent {
                             VStack(alignment: .leading, spacing: TermTheme.s8) {
-                                Text("VERIFICATION CODE")
+                                Text("mobile_payload.ui.verification_code")
                                     .font(.system(size: 10, weight: .bold, design: .monospaced))
                                     .foregroundStyle(TermTheme.tertiary)
                                 TextField("000000", text: Binding(
@@ -136,7 +136,7 @@ struct LoginView: View {
                             Button {
                                 Task { await viewModel.sendOtp() }
                             } label: {
-                                Text("RESEND CODE")
+                                Text("mobile_payload.ui.resend_code")
                                     .font(.system(size: 13, weight: .bold, design: .monospaced))
                                     .frame(maxWidth: .infinity, minHeight: 44)
                             }
@@ -155,6 +155,7 @@ struct LoginView: View {
 
                     Button {
                         viewModel.setMode(viewModel.mode == .otp ? .pinDev : .otp)
+                        focus = .phone
                     } label: {
                         Text(viewModel.mode == .otp ? "USE PIN (DEV)" : "USE PHONE OTP")
                             .font(.system(size: 12, weight: .bold, design: .monospaced))
@@ -168,6 +169,7 @@ struct LoginView: View {
             }
             .scrollIndicators(.hidden)
         }
+        .defaultFocus($focus, .phone)
         .overlay {
             if viewModel.loading {
                 Color.black.opacity(0.4).ignoresSafeArea()
@@ -180,6 +182,29 @@ struct LoginView: View {
         .onAppear {
             FirebaseAuthHelper.shared.configure()
             focus = .phone
+        }
+        .onChange(of: viewModel.otpSent) { _, sent in
+            focus = sent ? .otp : .phone
+        }
+        .onSubmit {
+            switch focus {
+            case .phone:
+                if viewModel.mode == .pinDev {
+                    focus = .pin
+                } else if !viewModel.phone.trimmingCharacters(in: .whitespaces).isEmpty {
+                    Task { await viewModel.sendOtp() }
+                }
+            case .otp:
+                if viewModel.otpCode.count == 6 {
+                    Task { await viewModel.verifyOtp() }
+                }
+            case .pin:
+                if viewModel.canSubmitPin {
+                    Task { await viewModel.submitPin() }
+                }
+            case nil:
+                break
+            }
         }
     }
 

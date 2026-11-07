@@ -1,5 +1,7 @@
 package com.pegasusx.factory.ui.screens.supply
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.lazy.grid.items
 
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -58,6 +60,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import com.pegasusx.factory.data.remote.FactoryRealtimeStatus
 import com.pegasusx.factory.data.model.SupplyRequest
 import com.pegasusx.factory.data.model.SupplyFulfillOptions
+import com.pegasusx.factory.data.model.SupplyRequestQCRequest
 import com.pegasusx.factory.data.model.SupplyRequestTransitionRequest
 import com.pegasusx.factory.data.remote.FactoryApi
 import com.pegasusx.factory.util.FactoryIdempotencyKeys
@@ -72,9 +75,13 @@ import com.pegasusx.factory.ui.theme.PegasusSpacing
 import com.pegasusx.factory.ui.screens.supply.components.*
 import java.text.DateFormat
 import java.util.Date
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import com.pegasusx.factory.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -89,6 +96,7 @@ fun SupplyRequestsScreen(
     var viewMode by remember { mutableStateOf("TABLE") }
     var fulfillModal by remember { mutableStateOf<Pair<SupplyRequest, SupplyFulfillOptions>?>(null) }
     var transitioningId by remember { mutableStateOf<String?>(null) }
+    var qcById by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var refreshing by remember { mutableStateOf(false) }
     var staleMessage by remember { mutableStateOf<String?>(null) }
     var lastSyncedAt by remember { mutableStateOf<Long?>(null) }
@@ -109,10 +117,23 @@ fun SupplyRequestsScreen(
             try {
                 val resp = api.getSupplyRequests()
                 if (resp.isSuccessful && resp.body() != null) {
-                    requests = resp.body()!!.requests
+                    resp.body()?.let { requests = it.requests }
                     lastSyncedAt = System.currentTimeMillis()
                     staleMessage = null
                     error = null
+                    val ids = requests.map { it.id }
+                    qcById = try {
+                        coroutineScope {
+                            ids.map { id ->
+                                async {
+                                    val qc = api.getSupplyRequestQC(id)
+                                    id to (qc.body()?.result.orEmpty())
+                                }
+                            }.awaitAll().toMap()
+                        }
+                    } catch (_: Exception) {
+                        emptyMap()
+                    }
                 } else {
                     val message = "Failed (${resp.code()})"
                     if (requests.isEmpty()) {
@@ -178,6 +199,29 @@ fun SupplyRequestsScreen(
         runTransition(request, action)
     }
 
+    fun onQC(request: SupplyRequest, result: String) {
+        transitioningId = request.id
+        scope.launch {
+            try {
+                val resp = api.postSupplyRequestQC(
+                    request.id,
+                    FactoryIdempotencyKeys.supplyRequestQC(request.id, result),
+                    SupplyRequestQCRequest(result = result),
+                )
+                if (resp.isSuccessful) {
+                    qcById = qcById + (request.id to result)
+                    snackbarHostState.showSnackbar("QC $result")
+                } else {
+                    snackbarHostState.showSnackbar("QC failed (${resp.code()})")
+                }
+            } catch (e: Exception) {
+                snackbarHostState.showSnackbar(e.message ?: "QC failed")
+            } finally {
+                transitioningId = null
+            }
+        }
+    }
+
     LaunchedEffect(Unit) {
         load()
         while (isActive) {
@@ -213,7 +257,7 @@ fun SupplyRequestsScreen(
 
     val filteredRequests = if (filter == "ALL") requests else requests.filter { it.state == filter }
     val runtimeStatus = when {
-        staleMessage != null -> staleMessage!!
+        staleMessage != null -> staleMessage.orEmpty()
         realtimeStatus == FactoryRealtimeStatus.OFFLINE -> "Offline — showing last sync ${formatSyncTime(lastSyncedAt)}"
         realtimeStatus == FactoryRealtimeStatus.RECONNECTING -> "Reconnecting live queue — last sync ${formatSyncTime(lastSyncedAt)}"
         realtimeStatus == FactoryRealtimeStatus.CONNECTING -> "Connecting to the live supply queue…"
@@ -240,7 +284,7 @@ fun SupplyRequestsScreen(
             ) {
                 Text("Confirm fulfill", style = MaterialTheme.typography.titleLarge)
                 Text(
-                    "Warehouse: ${options.warehouseName} · Mode: ${options.transferMode}" +
+                    stringResource(R.string.mobile_factory_ui_warehouse_warehousename_mode_transfermode, options.warehouseName, options.transferMode) +
                         if (options.coLocated) " · Co-located site" else "",
                     style = MaterialTheme.typography.bodyMedium,
                 )
@@ -250,10 +294,10 @@ fun SupplyRequestsScreen(
                     color = MaterialTheme.colorScheme.surfaceContainerLowest,
                 ) {
                     Column(Modifier.padding(PegasusSpacing.md), verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
-                        Text("INTERNAL: ${options.outcomeInternal}", style = MaterialTheme.typography.bodySmall)
-                        Text("TRUCK: ${options.outcomeTruck}", style = MaterialTheme.typography.bodySmall)
+                        Text(stringResource(R.string.mobile_factory_ui_internal_outcomeinternal, options.outcomeInternal), style = MaterialTheme.typography.bodySmall)
+                        Text(stringResource(R.string.mobile_factory_ui_truck_outcometruck, options.outcomeTruck), style = MaterialTheme.typography.bodySmall)
                         options.linkedDriverEta?.let {
-                            Text("Linked transfer updated: $it", style = MaterialTheme.typography.labelSmall)
+                            Text(stringResource(R.string.mobile_factory_ui_linked_transfer_updated_it, it), style = MaterialTheme.typography.labelSmall)
                         }
                     }
                 }
@@ -291,7 +335,7 @@ fun SupplyRequestsScreen(
     ) { innerPadding ->
         when {
             loading -> PegasusLoadingState(
-                title = "Loading supply requests",
+                title = stringResource(R.string.mobile_factory_ui_loading_supply_requests),
                 body = "Fetching the current warehouse demand queue for this factory.",
                 modifier = Modifier
                     .fillMaxSize()
@@ -300,7 +344,7 @@ fun SupplyRequestsScreen(
             error != null -> PegasusStatePane(
                 kind = if (realtimeStatus == FactoryRealtimeStatus.OFFLINE) PegasusStateKind.Offline else PegasusStateKind.Error,
                 headline = if (realtimeStatus == FactoryRealtimeStatus.OFFLINE) "Supply queue unavailable offline" else "Unable to load supply requests",
-                body = error!!,
+                body = error.orEmpty(),
                 actionLabel = "Retry",
                 onAction = { load() },
                 modifier = Modifier
@@ -354,7 +398,9 @@ fun SupplyRequestsScreen(
                         SupplyBoard(
                             requests = filteredRequests,
                             transitioningId = transitioningId,
+                            qcById = qcById,
                             onAction = { request, action -> onAction(request, action) },
+                            onQC = { request, result -> onQC(request, result) },
                         )
                     }
                 } else {
@@ -362,7 +408,9 @@ fun SupplyRequestsScreen(
                     SupplyRequestCard(
                         request = request,
                         transitioning = transitioningId == request.id,
+                        qcResult = qcById[request.id].orEmpty(),
                         onAction = { action -> onAction(request, action) },
+                        onQC = { result -> onQC(request, result) },
                     )
                 }
                 }

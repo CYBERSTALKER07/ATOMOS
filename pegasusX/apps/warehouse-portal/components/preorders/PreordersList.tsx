@@ -1,7 +1,11 @@
+"use client";
+
+import { usePortalT } from "@/lib/i18n";
 import React from 'react';
 import type { RetailerOrderLifecycleResponse } from '@pegasusx/types';
 import EmptyState from '@/components/EmptyState';
 import { OrderOpsCard } from '@/components/orders';
+import { moneyCurrency } from '@pegasusx/api-core';
 
 export interface PreordersListProps {
   loading: boolean;
@@ -26,6 +30,7 @@ export function PreordersList({
   onProposeDate,
   onReject,
 }: PreordersListProps) {
+  const t = usePortalT();
   if (loading) {
     return (
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -40,8 +45,8 @@ export function PreordersList({
     return (
       <EmptyState
         variant="no-data"
-        headline="No pre-orders"
-        body="Scheduled manual pre-orders will appear here."
+        headline={t("warehouse_portal.residual.text.no_pre_orders")}
+        body={t("warehouse_portal.residual.text.scheduled_manual_pre_orders_will_appear_here")}
       />
     );
   }
@@ -54,7 +59,7 @@ export function PreordersList({
           orderId={row.order_id}
           retailerName={row.order_source || 'Manual pre-order'}
           state={row.status}
-          amountLabel={`${fmt(Math.round((row.total_minor ?? 0) / 100))} ${row.currency || 'UZS'}`}
+          amountLabel={`${fmt(Math.round((row.total_minor ?? 0) / 100))} ${moneyCurrency(row.currency)}`.trim()}
           meta={
             row.requested_delivery_date
               ? `Requested ${new Date(row.requested_delivery_date).toLocaleDateString()}`

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/go-chi/chi/v5"
 )
@@ -95,6 +96,24 @@ func TestHandleWarehouseBroadcast_IdempotencyReplay(t *testing.T) {
 	svc.HandleWarehouseBroadcast(rr, req)
 	if rr.Code != http.StatusOK {
 		t.Fatalf("status = %d body = %s", rr.Code, rr.Body.String())
+	}
+}
+
+func TestHandleWarehouseBroadcast_NoSpanner503(t *testing.T) {
+	body := []byte(`{"title":"Delay","body":"Gate slow","role":"DRIVER"}`)
+	svc := NewService(ServiceConfig{SupplierID: "sup-1"})
+	req := httptest.NewRequest(http.MethodPost, "/v1/warehouse/ops/broadcast", bytes.NewReader(body))
+	req = req.WithContext(auth.WithClaims(req.Context(), warehouseTestClaims("wh-1")))
+	rr := httptest.NewRecorder()
+	svc.HandleWarehouseBroadcast(rr, req)
+	if rr.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status = %d want 503 body = %s", rr.Code, rr.Body.String())
+	}
+}
+
+func TestWarehouseBroadcastOutboxEventType(t *testing.T) {
+	if events.EventWarehouseBroadcast != "WAREHOUSE_BROADCAST" {
+		t.Fatalf("event type %q", events.EventWarehouseBroadcast)
 	}
 }
 

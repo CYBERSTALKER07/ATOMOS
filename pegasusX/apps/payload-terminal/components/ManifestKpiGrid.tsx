@@ -17,11 +17,13 @@ type ManifestKpiGridProps = {
 };
 
 function KpiTile({
+  compact = false,
   footer,
   label,
   theme,
   value,
 }: {
+  compact?: boolean;
   footer?: ReactNode;
   label: string;
   theme: AppTheme;
@@ -31,30 +33,33 @@ function KpiTile({
     <View
       style={{
         flex: 1,
-        backgroundColor: theme.colors.fillTertiary,
+        backgroundColor: compact ? theme.colors.fillTertiary : theme.colors.cardBackground,
         borderRadius: theme.radius.card,
-        paddingHorizontal: 12,
-        paddingVertical: 10,
+        borderWidth: compact ? 0 : (isIOS ? 0.33 : 1),
+        borderColor: theme.colors.separator,
+        paddingHorizontal: compact ? 12 : 20,
+        paddingVertical: compact ? 10 : 16,
+        ...(compact ? {} : theme.shadow.card),
       }}
     >
       <Text
         style={{
-          color: theme.colors.sidebarSecondary,
+          color: compact ? theme.colors.sidebarSecondary : theme.colors.tertiaryLabel,
           fontFamily: theme.typography.mono.fontFamily,
-          fontSize: 9,
-          fontWeight: '700',
-          letterSpacing: 0.6,
-          marginBottom: 4,
+          fontSize: compact ? 9 : 10,
+          fontWeight: '900',
+          letterSpacing: 0.8,
+          marginBottom: compact ? 4 : 6,
         }}
       >
-        {isIOS ? label : label.toUpperCase()}
+        {label.toUpperCase()}
       </Text>
       <Text
         style={{
-          color: theme.colors.sidebarLabel,
+          color: compact ? theme.colors.sidebarLabel : theme.colors.label,
           fontFamily: theme.typography.mono.fontFamily,
-          fontSize: 12,
-          fontWeight: '700',
+          fontSize: compact ? 12 : 18,
+          fontWeight: '900',
         }}
       >
         {value}
@@ -94,8 +99,9 @@ export default function ManifestKpiGrid({
         </Text>
       </View>
 
-      <View style={{ flexDirection: 'row', gap: 8 }}>
+      <View style={{ flexDirection: 'row', gap: compact ? 8 : 12 }}>
         <KpiTile
+          compact={compact}
           label="Payload volume"
           theme={theme}
           value={`${totalVolumeVu.toFixed(1)} / ${maxVolumeVu.toFixed(1)} VU`}
@@ -105,7 +111,7 @@ export default function ManifestKpiGrid({
                 backgroundColor: theme.colors.fillSecondary,
                 borderRadius: 3,
                 height: 6,
-                marginTop: 8,
+                marginTop: compact ? 6 : 10,
                 overflow: 'hidden',
               }}
             >
@@ -123,9 +129,10 @@ export default function ManifestKpiGrid({
       </View>
 
       {(stopCount > 0 || regionCode) ? (
-        <View style={{ flexDirection: 'row', gap: 8 }}>
+        <View style={{ flexDirection: 'row', gap: compact ? 8 : 12 }}>
           {stopCount > 0 ? (
             <KpiTile
+              compact={compact}
               label="Target stops"
               theme={theme}
               value={`${stopCount} ${isIOS ? 'units' : 'UNITS'}`}
@@ -133,6 +140,7 @@ export default function ManifestKpiGrid({
           ) : null}
           {regionCode ? (
             <KpiTile
+              compact={compact}
               label="Deployment zone"
               theme={theme}
               value={regionCode.toUpperCase()}

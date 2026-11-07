@@ -160,4 +160,26 @@ class OrderStatusTest {
     fun ringLabel_awaitingPayment_isPay() {
         assertEquals("Pay", OrderStatus.AWAITING_PAYMENT.ringLabel)
     }
+
+    @Test
+    fun customerStage_matchesGoldenFixture() {
+        val stream = javaClass.classLoader?.getResourceAsStream("order-customer-stage.json")
+            ?: error("order-customer-stage.json resource not found")
+        val jsonStr = stream.bufferedReader().use { it.readText() }
+        val root = kotlinx.serialization.json.Json.parseToJsonElement(jsonStr) as kotlinx.serialization.json.JsonObject
+        val mappingObj = root["mapping"] as kotlinx.serialization.json.JsonObject
+
+        OrderStatus.entries.forEach { status ->
+            val mappedElement = mappingObj[status.name]
+            if (mappedElement != null) {
+                val expectedStageName = mappedElement.toString().trim('"')
+                assertEquals(
+                    "Status ${status.name} mapped to unexpected CustomerStage",
+                    expectedStageName,
+                    status.customerStage.name
+                )
+            }
+        }
+    }
 }
+

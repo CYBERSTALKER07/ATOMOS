@@ -11,7 +11,7 @@ import { extractProblemMessage, getPayloadTranslator, resolvePayloadLocale } fro
 import { buildManifest, type LiveOrder, type ManifestItem } from './utils/manifest';
 import { defaultLocale, type Locale } from '../../packages/i18n/locales';
 
-// ─── API ──────────────────────────────────────────────────────────────────────
+// --- API ----------------------------------------------------------------------
 // Resolution order for the backend base URL:
 //   1. EXPO_PUBLIC_API_URL env var (set in .env or via `npx expo start --dev-client`)
 //      — required for physical devices so they can reach the Mac's LAN IP.
@@ -36,7 +36,7 @@ function Pressable(props: ComponentProps<typeof RNPressable>) {
   );
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
+// --- Main Component -----------------------------------------------------------
 
 export default function App() {
   const T = useT();
@@ -266,7 +266,7 @@ export default function App() {
     fetchTrucks();
   }, [fetchTrucks]);
 
-  // ── Payloader Login ──────────────────────────────────────────────────────
+  // -- Payloader Login ------------------------------------------------------
   const handleLogin = async () => {
     if (!phoneInput || !pinInput) return;
     setIsLoggingIn(true);
@@ -314,7 +314,7 @@ export default function App() {
     setIsLoadingTrucks(false);
   };
 
-  // ── Notifications: WebSocket + fetch ───────────────────────────────────
+  // -- Notifications: WebSocket + fetch -----------------------------------
   const fetchNotifications = useCallback(async () => {
     if (!token) return;
     try {
@@ -627,7 +627,7 @@ export default function App() {
     };
   }, [clearToastTimer]);
 
-  // ── Re-dispatch: fetch recommendations ──────────────────────────────────
+  // -- Re-dispatch: fetch recommendations ----------------------------------
   const openReDispatch = useCallback(async (orderId: string) => {
     setReDispatchOrderId(orderId);
     setShowReDispatch(true);
@@ -696,7 +696,7 @@ export default function App() {
     }
   }, [authHeaders, locale, orders, reDispatchOrderId, sealedOrderIds, selectedOrderId, showToast, token, tx]);
 
-  // ── Fetch manifest for selected truck ────────────────────────────────────
+  // -- Fetch manifest for selected truck ------------------------------------
   const fetchManifest = useCallback(async (truckId: string) => {
     setIsLoading(true);
     setOrders([]);
@@ -764,7 +764,7 @@ export default function App() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
   };
 
-  // ── LEO: Fetch manifest entity for this truck ─────────────────────────
+  // -- LEO: Fetch manifest entity for this truck -------------------------
   const fetchTruckManifest = useCallback(async () => {
     if (!token || !activeTruck) return;
     try {
@@ -823,7 +823,7 @@ export default function App() {
     };
   }, [token, activeTruck, fetchTrucks, fetchNotifications, fetchManifest, fetchTruckManifest]);
 
-  // ── LEO: Start Loading (DRAFT → LOADING) ─────────────────────────────
+  // -- LEO: Start Loading (DRAFT → LOADING) -----------------------------
   const handleStartLoading = async () => {
     if (!manifestId || !token) return;
     setIsStartingLoad(true);
@@ -846,7 +846,7 @@ export default function App() {
     }
   };
 
-  // ── LEO: Exception — remove order from manifest ──────────────────────
+  // -- LEO: Exception — remove order from manifest ----------------------
   const handleException = async (orderId: string, reason: 'OVERFLOW' | 'DAMAGED' | 'MANUAL') => {
     if (!manifestId || !token) return;
     setExceptionLoading(orderId);
@@ -880,7 +880,7 @@ export default function App() {
     }
   };
 
-  // ── LEO: Manifest-level Seal (LOADING → SEALED) ──────────────────────
+  // -- LEO: Manifest-level Seal (LOADING → SEALED) ----------------------
   const handleManifestSeal = async () => {
     if (!manifestId || !token) return;
     setIsSealingManifest(true);
@@ -913,7 +913,7 @@ export default function App() {
     }
   };
 
-  // ── Phase A: Mid-Load Order Injection ─────────────────────────────────
+  // -- Phase A: Mid-Load Order Injection ---------------------------------
   const handleInjectOrder = async () => {
     if (!manifestId || !token || !injectOrderId.trim()) return;
     setIsInjecting(true);
@@ -966,7 +966,7 @@ export default function App() {
     }
   };
 
-  // ── Phase C: Offline Queue Flush ──────────────────────────────────────
+  // -- Phase C: Offline Queue Flush --------------------------------------
   const flushOfflineQueue = async () => {
     if (offlineQueue.length === 0 || !token) return;
     const remaining: QueuedAction[] = [];
@@ -997,7 +997,7 @@ export default function App() {
     }
   };
 
-  // ── Checkbox toggle ───────────────────────────────────────────────────────
+  // -- Checkbox toggle -------------------------------------------------------
   const toggleCheck = (itemId: string) => {
     setManifest(prev =>
       prev.map(item =>
@@ -1007,7 +1007,7 @@ export default function App() {
     Haptics.selectionAsync();
   };
 
-  // ── Seal & dispatch ───────────────────────────────────────────────────────
+  // -- Seal & dispatch -------------------------------------------------------
   const selectedOrder = orders.find(o => o.order_id === selectedOrderId);
   const selectedManifest = manifest.filter(i => i.orderId === selectedOrderId);
   const allChecked = selectedManifest.length > 0 && selectedManifest.every(i => i.scanned);
@@ -1065,7 +1065,7 @@ export default function App() {
     }
   };
 
-  // ── Render: AUTH LOADING ────────────────────────────────────────────────
+  // -- Render: AUTH LOADING ------------------------------------------------
   if (authLoading) {
     return (
       <View style={{ flex: 1, backgroundColor: T.colors.background, alignItems: 'center', justifyContent: 'center' }}>
@@ -1080,7 +1080,7 @@ export default function App() {
     );
   }
 
-  // ── Render: POST-SEAL DOUBLE-CHECK COUNTDOWN (Edge 33) ────────────────
+  // -- Render: POST-SEAL DOUBLE-CHECK COUNTDOWN (Edge 33) ----------------
   if (postSealOrderId && postSealCountdown > 0) {
     return (
       <View style={{ flex: 1, backgroundColor: (T.colors as any)?.warning ?? '#F59E0B', alignItems: 'center', justifyContent: 'center', padding: 48 }}>
@@ -1158,7 +1158,7 @@ export default function App() {
     );
   }
 
-  // ── Render: ALL SEALED ────────────────────────────────────────────────────
+  // -- Render: ALL SEALED ----------------------------------------------------
   if (allSealed) {
     return (
       <View style={{ flex: 1, backgroundColor: T.colors.success, alignItems: 'center', justifyContent: 'center', padding: 48 }}>
@@ -1207,7 +1207,7 @@ export default function App() {
     );
   }
 
-  // ── Render: AWAITING TRUCK SELECTION ─────────────────────────────────────
+  // -- Render: AWAITING TRUCK SELECTION -------------------------------------
   if (!token) {
     return (
       <View style={{ flex: 1, backgroundColor: T.colors.background, alignItems: 'center', justifyContent: 'center', padding: 48 }}>
@@ -1372,11 +1372,11 @@ export default function App() {
     );
   }
 
-  // ── Render: MANIFEST VIEW ─────────────────────────────────────────────────
+  // -- Render: MANIFEST VIEW -------------------------------------------------
   return (
     <View style={{ flex: 1, backgroundColor: T.colors.background, flexDirection: 'row' }}>
 
-      {/* ── Left pane: Shop list ─────────────────────────────────────────── */}
+      {/* -- Left pane: Shop list ------------------------------------------- */}
       <View style={{ width: 288, backgroundColor: T.colors.sidebarBackground, flexDirection: 'column' }}>
         {/* Header */}
         <View style={{ paddingHorizontal: 24, paddingVertical: 14, borderBottomWidth: 0.5, borderBottomColor: T.colors.sidebarSeparator, flexDirection: 'row', alignItems: 'center' }}>
@@ -1535,7 +1535,7 @@ export default function App() {
         </ScrollView>
       </View>
 
-      {/* ── Right pane: Manifest detail ──────────────────────────────────── */}
+      {/* -- Right pane: Manifest detail ------------------------------------ */}
       <View className="flex-1 flex-col">
         {/* Order header */}
         {selectedOrder ? (
@@ -1656,7 +1656,7 @@ export default function App() {
                     justifyContent: 'center',
                   }}>
                     {item.scanned && (
-                      <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 12 }}>✓</Text>
+                      <MaterialIcons name="check" size={14} color="#FFFFFF" />
                     )}
                   </View>
                   <View>
@@ -1769,7 +1769,7 @@ export default function App() {
         )}
       </View>
 
-      {/* ── Inject Order Modal ────────────────────────────────────────── */}
+      {/* -- Inject Order Modal ------------------------------------------ */}
       <Modal visible={showInjectOrder} transparent animationType="fade" onRequestClose={() => setShowInjectOrder(false)}>
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' }}>
           <View style={{ width: 400, backgroundColor: T.colors.background, borderRadius: isIOS ? 14 : 16, overflow: 'hidden' }}>
@@ -1835,7 +1835,7 @@ export default function App() {
         </View>
       </Modal>
 
-      {/* ── Offline Queue Indicator ────────────────────────────────────── */}
+      {/* -- Offline Queue Indicator -------------------------------------- */}
       {offlineQueue.length > 0 && (
         <View style={{
           position: 'absolute', bottom: 12, left: 12,
@@ -1850,7 +1850,7 @@ export default function App() {
         </View>
       )}
 
-      {/* ── Re-Dispatch Modal ────────────────────────────────────────── */}
+      {/* -- Re-Dispatch Modal ------------------------------------------ */}
       <Modal visible={showReDispatch} transparent animationType="fade" onRequestClose={() => { setShowReDispatch(false); setReDispatchOrderId(null); }}>
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' }}>
           <View style={{ width: 520, maxHeight: '85%', backgroundColor: T.colors.background, borderRadius: isIOS ? 14 : 16, overflow: 'hidden' }}>
@@ -2003,7 +2003,7 @@ export default function App() {
         </View>
       </Modal>
 
-      {/* ── Notification Panel Modal ─────────────────────────────────────── */}
+      {/* -- Notification Panel Modal --------------------------------------- */}
       <Modal visible={showNotifPanel} transparent animationType="fade" onRequestClose={() => setShowNotifPanel(false)}>
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' }}>
           <View style={{ width: 420, maxHeight: '80%', backgroundColor: T.colors.sidebarBackground, borderRadius: 12, overflow: 'hidden' }}>

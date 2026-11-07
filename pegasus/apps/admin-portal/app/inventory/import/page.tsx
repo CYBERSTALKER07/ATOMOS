@@ -142,6 +142,7 @@ function UploadDropzone({ disabled, onSelect }: UploadDropzoneProps) {
 
   return (
     <label
+      htmlFor="import-excel-file-input"
       className="relative block md-shape-lg p-8 cursor-pointer"
       onDragEnter={(event) => {
         event.preventDefault();
@@ -165,6 +166,8 @@ function UploadDropzone({ disabled, onSelect }: UploadDropzoneProps) {
       }}
     >
       <input
+        id="import-excel-file-input"
+        aria-label="Upload Excel File"
         type="file"
         className="hidden"
         accept={ACCEPTED_EXTENSIONS.join(',')}

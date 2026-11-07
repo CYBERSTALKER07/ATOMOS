@@ -1,5 +1,7 @@
 package com.pegasusx.driver.ui.screens.manifest.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -31,6 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.pegasusx.driver.ui.screens.manifest.CorrectionUiState
+import com.pegasusx.driver.R
 
 @Composable
 fun CorrectionFooter(
@@ -54,7 +57,7 @@ fun CorrectionFooter(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = "Original total",
+                    text = stringResource(R.string.mobile_driver_ui_original_total),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -73,12 +76,12 @@ fun CorrectionFooter(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        text = "Refund delta",
+                        text = stringResource(R.string.mobile_driver_ui_refund_delta),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.error
                     )
                     Text(
-                        text = "−${state.refundDelta.formatAmount()}",
+                        text = stringResource(R.string.mobile_driver_ui_formatamount, state.refundDelta.formatAmount()),
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.error
@@ -93,7 +96,7 @@ fun CorrectionFooter(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = "Adjusted total",
+                    text = stringResource(R.string.mobile_driver_ui_adjusted_total),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
@@ -141,7 +144,7 @@ fun CorrectionFooter(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Submit Amendment (${state.modifiedCount} rejected)",
+                        text = stringResource(R.string.mobile_driver_ui_submit_amendment_modifiedcount_rejected, state.modifiedCount),
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Bold
                     )
@@ -153,7 +156,7 @@ fun CorrectionFooter(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Confirm & Complete Delivery",
+                        text = stringResource(R.string.mobile_driver_ui_confirm_and_complete_delivery),
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Bold
                     )

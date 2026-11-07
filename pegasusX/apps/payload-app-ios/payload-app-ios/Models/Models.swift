@@ -40,6 +40,34 @@ struct LoginResponse: Decodable {
     let warehouseLat: Double
     let warehouseLng: Double
     let firebaseToken: String?
+
+    init(
+        token: String = "mock-payload-jwt-dev",
+        refreshToken: String? = "mock-payload-refresh-dev",
+        workerId: String = "wrk-payload-001",
+        supplierId: String = "sup-tashkent-01",
+        role: String = "PAYLOAD_OPERATOR",
+        name: String = "Sardor Karimov (Payload Demo)",
+        warehouseId: String = "wh-tashkent-central",
+        warehouseName: String = "Tashkent Central Depot",
+        warehouseLat: Double = 41.2995,
+        warehouseLng: Double = 69.2401,
+        firebaseToken: String? = nil
+    ) {
+        self.token = token
+        self.refreshToken = refreshToken
+        self.workerId = workerId
+        self.supplierId = supplierId
+        self.role = role
+        self.name = name
+        self.warehouseId = warehouseId
+        self.warehouseName = warehouseName
+        self.warehouseLat = warehouseLat
+        self.warehouseLng = warehouseLng
+        self.firebaseToken = firebaseToken
+    }
+
+    static let mock = LoginResponse()
 }
 
 struct RefreshTokenRequest: Encodable {
@@ -64,12 +92,62 @@ struct RefreshTokenResponse: Decodable {
 
 // MARK: - Trucks / Manifest
 
-/// Wire format: bare JSON array of {id, label, license_plate, vehicle_class}.
-struct Truck: Decodable, Identifiable {
+/// Wire format: {id, label, license_plate, vehicle_class, truck_status, used/max VU}.
+/// truck_status is the current open manifest state. Empty ≠ invented DRAFT.
+struct Truck: Decodable, Identifiable, Equatable {
     let id: String
     let label: String?
     let licensePlate: String?
     let vehicleClass: String?
+    let truckStatus: String?
+    let usedVolumeVu: Double?
+    let maxVolumeVu: Double?
+    let stopCount: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case id, label
+        case licensePlate = "license_plate"
+        case vehicleClass = "vehicle_class"
+        case truckStatus = "truck_status"
+        case usedVolumeVu = "used_volume_vu"
+        case maxVolumeVu = "max_volume_vu"
+        case stopCount = "stop_count"
+    }
+}
+
+extension Truck {
+    /// Test/UI fixture. Distinct from memberwise (all labels required, no defaults).
+    static func fixture(
+        id: String,
+        truckStatus: String? = nil,
+        usedVolumeVu: Double? = nil,
+        maxVolumeVu: Double? = nil,
+        stopCount: Int? = nil
+    ) -> Truck {
+        Truck(
+            id: id,
+            label: nil,
+            licensePlate: nil,
+            vehicleClass: nil,
+            truckStatus: truckStatus,
+            usedVolumeVu: usedVolumeVu,
+            maxVolumeVu: maxVolumeVu,
+            stopCount: stopCount
+        )
+    }
+
+    func withBoard(status: String, used: Double?, max: Double?, stops: Int?) -> Truck {
+        Truck(
+            id: id,
+            label: label,
+            licensePlate: licensePlate,
+            vehicleClass: vehicleClass,
+            truckStatus: status,
+            usedVolumeVu: used,
+            maxVolumeVu: max,
+            stopCount: stops
+        )
+    }
 }
 
 struct LiveOrderItem: Decodable, Identifiable {
@@ -97,6 +175,7 @@ struct LiveOrder: Decodable, Identifiable {
 struct Manifest: Decodable, Identifiable {
     let manifestId: String
     let truckId: String?
+    let vehicleId: String?
     let driverId: String?
     let state: String   // DRAFT | LOADING | SEALED | DISPATCHED | COMPLETED
     let totalVolumeVu: Double?
@@ -109,7 +188,65 @@ struct Manifest: Decodable, Identifiable {
     /// Hydrated by the detail endpoint only — Phase 4 wires this.
     let orders: [LiveOrder]?
     let overflowCount: Int?
+    /// Client-only: payloader | factory (P1-18 / P2-25 loading-bay merge).
+    var source: String = "payloader"
     var id: String { manifestId }
+
+    enum CodingKeys: String, CodingKey {
+        case manifestId = "manifest_id"
+        case truckId = "truck_id"
+        case vehicleId = "vehicle_id"
+        case driverId = "driver_id"
+        case state
+        case totalVolumeVu = "total_volume_vu"
+        case maxVolumeVu = "max_volume_vu"
+        case stopCount = "stop_count"
+        case regionCode = "region_code"
+        case sealedAt = "sealed_at"
+        case dispatchedAt = "dispatched_at"
+        case createdAt = "created_at"
+        case orders
+        case overflowCount = "overflow_count"
+    }
+
+    func matchesTruck(_ truckId: String) -> Bool {
+        self.truckId == truckId || vehicleId == truckId
+    }
+
+    func withSource(_ source: String) -> Manifest {
+        var copy = self
+        copy.source = source
+        return copy
+    }
+}
+
+extension Manifest {
+    init(
+        manifestId: String,
+        vehicleId: String? = nil,
+        truckId: String? = nil,
+        state: String,
+        totalVolumeVu: Double? = nil,
+        maxVolumeVu: Double? = nil,
+        stopCount: Int? = nil,
+        createdAt: String? = nil
+    ) {
+        self.manifestId = manifestId
+        self.truckId = truckId
+        self.vehicleId = vehicleId
+        self.driverId = nil
+        self.state = state
+        self.totalVolumeVu = totalVolumeVu
+        self.maxVolumeVu = maxVolumeVu
+        self.stopCount = stopCount
+        self.regionCode = nil
+        self.sealedAt = nil
+        self.dispatchedAt = nil
+        self.createdAt = createdAt
+        self.orders = nil
+        self.overflowCount = nil
+        self.source = "payloader"
+    }
 }
 
 struct ManifestsResponse: Decodable {
@@ -121,10 +258,12 @@ struct ManifestsResponse: Decodable {
 /// Backend: order/service.go::PayloadSealRequest → {order_id, terminal_id, manifest_cleared}.
 /// terminal_id is the active vehicle/truck id (Expo passes activeTruck).
 struct SealOrderRequest: Encodable {
+    let manifestId: String
     let orderId: String
     let terminalId: String
     let manifestCleared: Bool
     enum CodingKeys: String, CodingKey {
+        case manifestId = "manifest_id"
         case orderId = "order_id"
         case terminalId = "terminal_id"
         case manifestCleared = "manifest_cleared"
@@ -297,7 +436,7 @@ struct MissingItemsRequest: Encodable {
 
 struct DeviceTokenRequest: Encodable {
     let token: String
-    let platform: String   // "IOS"
+    let platform: String   // "ios"
 }
 
 // MARK: - Pulse / explain / handoff

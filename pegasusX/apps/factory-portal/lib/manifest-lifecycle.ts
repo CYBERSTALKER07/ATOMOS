@@ -3,7 +3,7 @@ import {
   factoryManifestDispatchKey,
   factoryManifestSealKey,
   factoryManifestStartLoadingKey,
-} from '@pegasusx/api-client';
+} from '@pegasusx/api-core';
 
 export type ManifestLifecycleAction = {
   path: 'start-loading' | 'seal' | 'dispatch' | 'complete';

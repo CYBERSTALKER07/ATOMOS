@@ -37,11 +37,13 @@ final class TokenStore {
             isRegistered = registered == "1"
         }
         billingGateDismissed = readKeychain(account: "billing_gate_dismissed") == "1"
+        CellTokenCache.token = token ?? ""
     }
 
     func store(auth: LoginResponse) {
         guard let token = auth.token, !token.isEmpty else { return }
         self.token = token
+        CellTokenCache.token = token
         refreshToken = auth.refreshToken
         supplierId = auth.supplierId
         isConfigured = auth.isConfigured
@@ -60,6 +62,7 @@ final class TokenStore {
     func storeRegister(_ auth: RegisterResponse) {
         guard let token = auth.token, !token.isEmpty else { return }
         self.token = token
+        CellTokenCache.token = token
         supplierId = auth.supplierId
         isConfigured = auth.isConfigured
         isRegistered = auth.isRegistered
@@ -69,6 +72,16 @@ final class TokenStore {
         writeKeychain(account: "is_configured", value: auth.isConfigured ? "1" : "0")
         writeKeychain(account: "is_registered", value: auth.isRegistered ? "1" : "0")
         deleteKeychain(account: "billing_gate_dismissed")
+    }
+
+    func updateTokens(token: String, refresh: String?) {
+        self.token = token
+        CellTokenCache.token = token
+        writeKeychain(account: "pegasus_supplier_jwt", value: token)
+        if let refresh, !refresh.isEmpty {
+            self.refreshToken = refresh
+            writeKeychain(account: "refresh_token", value: refresh)
+        }
     }
 
     func markRegistered(_ registered: Bool) {
@@ -92,6 +105,8 @@ final class TokenStore {
     }
 
     func clear() {
+        CellTokenCache.token = ""
+        MarketPackStore.clear()
         token = nil
         refreshToken = nil
         supplierId = nil

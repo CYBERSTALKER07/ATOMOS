@@ -23,6 +23,7 @@ final class FirebaseAuthHelper {
                let options = FirebaseOptions(contentsOfFile: path) {
                 FirebaseApp.configure(options: options)
             } else {
+                #if DEBUG
                 let options = FirebaseOptions(
                     googleAppID: "1:000000000000:ios:0000000000000002",
                     gcmSenderID: "000000000000"
@@ -30,6 +31,9 @@ final class FirebaseAuthHelper {
                 options.projectID = "demo-pegasus"
                 options.apiKey = "demo-key"
                 FirebaseApp.configure(options: options)
+                #else
+                fatalError("GoogleService-Info.plist missing in release build")
+                #endif
             }
         }
         #if DEBUG

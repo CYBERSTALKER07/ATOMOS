@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useEffect, useState } from "react";
 import { CreditCard, Loader2, AlertTriangle } from "lucide-react";
 import { apiFetch } from "../lib/auth";
@@ -16,6 +17,7 @@ type CreditProfile = {
 };
 
 export function CreditProfileCard({ className = "" }: { className?: string }) {
+  const t = usePortalT();
   const [profile, setProfile] = useState<CreditProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -42,7 +44,7 @@ export function CreditProfileCard({ className = "" }: { className?: string }) {
         const body = (await res.json()) as CreditProfile;
         if (!cancelled) setProfile(body);
       } catch (e) {
-        if (!cancelled) setError(e instanceof Error ? e.message : "load_failed");
+        if (!cancelled) setError(e instanceof Error ? e.message : t("retailer_desktop.residual.text.load_failed"));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -67,7 +69,7 @@ export function CreditProfileCard({ className = "" }: { className?: string }) {
       <div className={`rounded-2xl border border-[var(--desk-border)] bg-[var(--desk-surface)] p-5 ${className}`}>
         <div className="flex items-center gap-2 mb-1">
           <CreditCard size={18} className="text-[var(--desk-accent)]" />
-          <h3 className="md-typescale-title-small font-light">Supplier credit</h3>
+          <h3 className="md-typescale-title-small font-light">{t("retailer_desktop.credit_profile_card.text.supplier_credit")}</h3>
         </div>
         <p className="text-sm text-[var(--desk-text-tertiary)]">
           No credit line on file for this supplier relationship.
@@ -102,7 +104,7 @@ export function CreditProfileCard({ className = "" }: { className?: string }) {
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <CreditCard size={18} className="text-[var(--desk-accent)]" />
-          <h3 className="md-typescale-title-small font-light">Supplier credit</h3>
+          <h3 className="md-typescale-title-small font-light">{t("retailer_desktop.credit_profile_card.text.supplier_credit")}</h3>
         </div>
         <span
           className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded ${

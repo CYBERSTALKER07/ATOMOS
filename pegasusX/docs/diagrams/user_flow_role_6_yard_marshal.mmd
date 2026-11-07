@@ -1,0 +1,44 @@
+flowchart TD
+    subgraph Phase1["Phase 1: Yard Gate Setup, ALPR Camera & Scale Calibration"]
+        Y1["Provision Ruggedized Yard Marshal Tablet / Dock Master Terminal"] --> Y2["Calibrate Dual High-Resolution ALPR Automatic License Plate Cameras"]
+        Y2 --> Y3["Test Pneumatic Boom Barrier Relays & Yard Traffic Signal Lights"]
+        Y3 --> Y4["Verify Digital Axle Weighbridge Scale Integration & Network Health"]
+        Y4 --> Y5["Initialize Yard Management Console linked to PegasusX Fleet Service"]
+    end
+
+    subgraph Phase2["Phase 2: Inbound Truck Arrival & Optical Plate Clearance"]
+        Y5 --> Z1["Truck Pulls onto Inbound Gate Sensor Pad"]
+        Z1 --> Z2["ALPR Camera Captures Optical Plate: OCR Parses License Number"]
+        Z2 --> Z3["Query Cloud Spanner Active Dispatches & Vehicle Whitelist"]
+        Z3 --> Z4{"Vehicle Authorized & Scheduled for Dispatch/Receiving?"}
+        Z4 -- "Unauthorized / Unknown Vehicle" --> Z5["Deny Entry: Keep Boom Barrier Closed & Sound Security Intercom"]
+        Z4 -- "Verified & Scheduled" --> Z6["Retrieve Truck Manifest, Assigned Driver & Cargo Profile"]
+    end
+
+    subgraph Phase3["Phase 3: Digital DVIR Safety Compliance Gate"]
+        Z6 --> V1["Inspect Driver 8-Point Pre-Trip DVIR Walkaround Record"]
+        V1 --> V2{"Driver DVIR Inspection Status?"}
+        V2 -- "Red-Flag Defect Logged (Brakes/Tires/Lights)" --> V3["Refuse Gate Entry: Route Blocked until Maintenance Resolves Defect"]
+        V3 --> V4["Divert Vehicle to Yard Maintenance Bay"]
+        V2 -- "DVIR Fully Cleared & Certified" --> V5["Proceed to Physical Cargo Seal & Weighbridge Inspection"]
+    end
+
+    subgraph Phase4["Phase 4: Tamper Seal Verification & Weighbridge Gross Axle Check"]
+        V5 --> S1["Drive Truck onto Certified Axle Weighbridge Scale"]
+        S1 --> S2["Record Gross Vehicle Weight: Validate within Statutory Axle Limits"]
+        S2 --> S3["Yard Marshal Physically Inspects High-Security Bolt Seal on Trailer Door"]
+        S3 --> S4["Scan Bolt Seal Barcode / OCR Serial: Compare against Manifest Hash"]
+        S4 --> S5{"Seal Number & Physical Condition Match Manifest?"}
+        S5 -- "Broken / Mismatched Seal" --> S6["Lockdown Vehicle in Isolation Bay: Initiate Tamper Investigation"]
+        S5 -- "Seal Verified & Intact" --> S7["Open Inbound Boom Barrier & Assign Designated Loading Bay Door"]
+    end
+
+    subgraph Phase5["Phase 5: Dock Bay Operations, Dwell Time & Outbound Dispatch"]
+        S7 --> D1["Truck Docks at Designated Bay: Warehouse Loading Commences"]
+        D1 --> D2["Monitor Real-Time Dock Turnaround Timer (Target: Dwell < 10 Minutes)"]
+        D2 --> D3["Loading Complete: Marshal Applies New Outbound High-Security Bolt Seal"]
+        D3 --> D4["Scan Outbound Bolt Seal & Commit to Spanner Manifest Record"]
+        D4 --> D5["Truck Approaches Outbound Gate: ALPR Confirms Final Gate Clearance"]
+        D5 --> D6["Open Outbound Boom Barrier: Record Departure Timestamp"]
+        D6 --> D7(["Truck Dispatched on Last-Mile Delivery Route"])
+    end

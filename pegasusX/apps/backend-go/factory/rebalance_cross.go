@@ -47,7 +47,7 @@ func (s *Service) handleCrossManifestRebalance(w http.ResponseWriter, r *http.Re
 				ManifestID: req.TargetManifestID,
 				// "source_manifest_id":  req.SourceManifestID,
 				TransferID: req.TransferID,
-				SupplierID: s.supplierID,
+				SupplierID: s.resolveSupplierScope(r.Context()),
 				FactoryID:  s.factoryNodeID,
 				Reason:     strings.TrimSpace(req.Reason),
 			}); err != nil {
@@ -76,8 +76,8 @@ func (s *Service) handleCrossManifestRebalance(w http.ResponseWriter, r *http.Re
 		r.Context(),
 		factoryManifestKey(req.SourceManifestID),
 		factoryManifestKey(req.TargetManifestID),
-		factoryManifestListKey(s.supplierID),
-		factoryTransferListKey(s.supplierID),
+		factoryManifestListKey(s.resolveSupplierScope(r.Context())),
+		factoryTransferListKey(s.resolveSupplierScope(r.Context())),
 	)
 	s.broadcastFactoryEvent(r.Context(), events.EventManifestRebalanced, map[string]any{
 		"source_manifest_id": req.SourceManifestID,

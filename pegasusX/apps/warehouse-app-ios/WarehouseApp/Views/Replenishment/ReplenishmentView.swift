@@ -31,10 +31,10 @@ struct ReplenishmentView: View {
                 )
             }
         }
-        .navigationTitle("Replenishment")
+        .navigationTitle("portal.nav.replenishment")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button("Refresh", systemImage: "arrow.clockwise") { load() }
+                Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") { load() }
             }
         }
         .overlay(alignment: .bottom) {

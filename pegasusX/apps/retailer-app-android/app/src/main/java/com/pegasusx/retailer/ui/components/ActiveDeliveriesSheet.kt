@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -55,6 +57,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.EaseInOutSine
 import androidx.compose.ui.graphics.graphicsLayer
+import com.pegasusx.retailer.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -141,7 +144,7 @@ fun ActiveDeliveriesSheetContent(
             }
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                "${activeOrders.size} orders in progress",
+                stringResource(R.string.mobile_retailer_ui_size_orders_in_progress, activeOrders.size),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
             )
@@ -177,7 +180,7 @@ private fun ActiveDeliveryCard(
     val pulseScale by infiniteTransition.animateFloat(
         initialValue = 0.95f, targetValue = 1.05f,
         animationSpec = infiniteRepeatable(tween(1400, easing = EaseInOutSine), RepeatMode.Reverse),
-        label = "pulse"
+        label = stringResource(R.string.mobile_retailer_ui_pulse)
     )
 
     Surface(
@@ -229,12 +232,12 @@ private fun ActiveDeliveryCard(
                         )
                     }
                     Text(
-                        "Order #${order.id.takeLast(3)}",
+                        stringResource(R.string.mobile_retailer_ui_order_takelast, order.id.takeLast(3)),
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
                     )
                     Text(
-                        "${order.itemCount} items · ${order.displayTotal}",
+                        stringResource(R.string.mobile_retailer_ui_itemcount_items_displaytotal, order.itemCount, order.displayTotal),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                     )

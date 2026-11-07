@@ -45,22 +45,18 @@ func (s *Service) VerifyHandshake(ctx context.Context, claims auth.Claims, req V
 	}
 
 	// Geofence (Haversine) check
-	distanceM, err := validateRequiredGeofence(req.Latitude, req.Longitude, o)
+	distanceM, err := validateRequiredGeofence(ctx, req.Latitude, req.Longitude, o)
 	if err != nil {
 		return VerifyHandshakeResponse{}, fmt.Errorf("spoofing prevention: %w", err)
 	}
 
-	// Token compatibility
-	// Plain token vs JWT fallback
-	if s.jwtSecret != "" && o.ManifestID != "" && len(req.Token) > 20 {
-		if err := s.validateOfflineQR(o.ManifestID, claims.Subject, o.OrderID, req.Token); err != nil {
-			return VerifyHandshakeResponse{}, fmt.Errorf("invalid token: %w", err)
-		}
-	} else {
-		// Example plain token check, in reality verify with token hash from db
+	// Always compare against the persisted delivery token. A short or missing
+	// manifest must not skip verification.
+	if err := s.validateDeliveryToken(o, strings.TrimSpace(req.Token)); err != nil {
+		return VerifyHandshakeResponse{}, fmt.Errorf("invalid token: %w", err)
 	}
 
-	// At this point we could emit an audit or create DeliverySession, but as an MVP for the requirement we just verify.
+	// Verification only. Doorstep completion stays on scan-qr, collect-cash, and offline POD.
 	return VerifyHandshakeResponse{
 		Success: true,
 		Message: fmt.Sprintf("Handshake verified, distance: %.0fm", distanceM),
@@ -96,16 +92,15 @@ func (s *Service) UpdateOrderDuringDelivery(ctx context.Context, claims auth.Cla
 		return UpdateOrderDuringDeliveryResponse{}, ErrOrderForbidden
 	}
 
-	// Geofence check
-	_, err = validateRequiredGeofence(req.Latitude, req.Longitude, o)
+	// Geofence check (validates spoofing even when the mutator is not implemented).
+	_, err = validateRequiredGeofence(ctx, req.Latitude, req.Longitude, o)
 	if err != nil {
 		return UpdateOrderDuringDeliveryResponse{}, fmt.Errorf("spoofing prevention: %w", err)
 	}
 
-	// Add adjustments and create DeliverySessionAdjustments logic here.
-
-	return UpdateOrderDuringDeliveryResponse{
-		Success: true,
-		Message: "Order updated successfully during delivery",
-	}, nil
+	// B1 M-P0-2 / G1.C: never report success without a Spanner write + outbox.
+	// Mid-delivery line adjust is not a durable product path — use amend / missing-items / partial-offload.
+	return UpdateOrderDuringDeliveryResponse{}, errors.New(
+		"not_implemented: use_amend_or_partial_offload — POST amend, missing-items, or partial-offload; mid-delivery update has no durable writer",
+	)
 }

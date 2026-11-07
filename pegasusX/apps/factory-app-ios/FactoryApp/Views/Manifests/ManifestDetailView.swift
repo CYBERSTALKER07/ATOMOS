@@ -16,11 +16,11 @@ struct ManifestDetailView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if let error {
                 ContentUnavailableView {
-                    Label("Error", systemImage: "exclamationmark.triangle")
+                    Label("mobile_factory.ui.error", systemImage: "exclamationmark.triangle")
                 } description: {
                     Text(error)
                 } actions: {
-                    Button("Retry") { Task { await load() } }
+                    Button("common.action.retry") { Task { await load() } }
                 }
             } else if let detail {
                 ResponsiveGridContentWrapper {
@@ -43,11 +43,11 @@ struct ManifestDetailView: View {
 
                     Section("Transfers") {
                         if detail.transfers.isEmpty {
-                            Text("No transfers on this manifest.")
+                            Text("factory_portal.manifests._id_.text.no_transfers_on_this_manifest")
                                 .foregroundStyle(.secondary)
                         } else {
                             ForEach(detail.transfers) { transfer in
-                                Text("\(transfer.id) · \(transfer.state)")
+                                Text(L10n.format("mobile_factory.ui.id_state", "\(transfer.id)", "\(transfer.state)"))
                                     .font(.footnote.monospaced())
                             }
                         }
@@ -55,13 +55,13 @@ struct ManifestDetailView: View {
 
                     Section("Transitions") {
                         if detail.transitions.isEmpty {
-                            Text("No transitions recorded.")
+                            Text("mobile_factory.ui.no_transitions_recorded")
                                 .foregroundStyle(.secondary)
                         } else {
                             ForEach(detail.transitions) { transition in
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(transition.action).font(.subheadline.bold())
-                                    Text("\(transition.fromState) → \(transition.toState)")
+                                    Text(L10n.format("mobile_factory.ui.fromstate_tostate", "\(transition.fromState)", "\(transition.toState)"))
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                 }
@@ -71,13 +71,13 @@ struct ManifestDetailView: View {
                 }
             }
         }
-        .navigationTitle("Manifest")
+        .navigationTitle("warehouse_portal.manifests.text.manifest")
         .task(id: manifestId) { await load() }
         .onAppear {
             realtimeClient.connect(
                 onStateChange: { _ in },
                 onEvent: { event in
-                    guard event.eventType == .manifestUpdate else { return }
+                    guard event.type.hasPrefix("MANIFEST_") else { return }
                     Task { await load(silent: true) }
                 },
                 onReconnect: {

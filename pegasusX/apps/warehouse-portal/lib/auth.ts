@@ -1,14 +1,23 @@
 import { useEffect, useState } from 'react';
-import { reconcileSession } from '@pegasusx/api-client';
+import { homeCellFromJwt, pinApiBaseUrl, readCachedAuthSession, reconcileSession, reconnectDelayMs } from '@pegasusx/api-core';
 import { clearStoredToken, getStoredToken, isTauri, storeToken } from '@/lib/bridge';
 import { notifyWarehouseSessionReconciled } from '@/lib/warehouse-reconnect';
 
-const API = (
+const BOOTSTRAP = (
   process.env.NEXT_PUBLIC_API_URL ||
   process.env.NEXT_PUBLIC_WAREHOUSE_BACKEND_BASE_URL ||
   process.env.NEXT_PUBLIC_BACKEND_BASE_URL ||
   'http://localhost:8180'
 ).replace(/\/$/, '');
+
+/** GS-C5: pin to JWT home_cell. Login (no token) stays on bootstrap. */
+export function warehouseApiBaseUrl(): string {
+  return pinApiBaseUrl({
+    bootstrap: BOOTSTRAP,
+    homeCell: homeCellFromJwt(readTokenFromCookie()),
+    sessionApiUrl: readCachedAuthSession()?.api_url,
+  });
+}
 
 const WAREHOUSE_JWT_COOKIE = 'pegasus_warehouse_jwt';
 const WAREHOUSE_REFRESH_COOKIE = 'pegasus_warehouse_refresh';
@@ -29,9 +38,10 @@ function readRefreshFromCookie(): string {
 
 export function persistSession(token: string, refreshToken?: string) {
   if (typeof document !== 'undefined') {
-    document.cookie = `${WAREHOUSE_JWT_COOKIE}=${encodeURIComponent(token)}; path=/; max-age=86400; SameSite=Lax`;
+    const secureFlag = typeof location !== 'undefined' && location.protocol === 'https:' ? '; Secure' : '';
+    document.cookie = `${WAREHOUSE_JWT_COOKIE}=${encodeURIComponent(token)}; path=/; max-age=86400; SameSite=Strict${secureFlag}`;
     if (refreshToken) {
-      document.cookie = `${WAREHOUSE_REFRESH_COOKIE}=${encodeURIComponent(refreshToken)}; path=/; max-age=604800; SameSite=Lax`;
+      document.cookie = `${WAREHOUSE_REFRESH_COOKIE}=${encodeURIComponent(refreshToken)}; path=/; max-age=604800; SameSite=Strict${secureFlag}`;
     }
   }
   if (isTauri()) {
@@ -87,7 +97,7 @@ async function tryRefreshToken(): Promise<string | null> {
   const refresh = readRefreshFromCookie();
   if (!refresh) return null;
   try {
-    const res = await fetch(`${API}/v1/auth/warehouse/refresh`, {
+    const res = await fetch(`${warehouseApiBaseUrl()}/v1/auth/warehouse/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ refresh_token: refresh }),
@@ -106,7 +116,7 @@ export async function refreshWarehouseSession(): Promise<{ ok: boolean; isConfig
   const refresh = readRefreshFromCookie();
   if (!refresh) return { ok: false };
   try {
-    const res = await fetch(`${API}/v1/auth/warehouse/refresh`, {
+    const res = await fetch(`${warehouseApiBaseUrl()}/v1/auth/warehouse/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ refresh_token: refresh }),
@@ -130,7 +140,7 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
     ...(init?.headers as Record<string, string>),
   };
 
-  const res = await fetch(`${API}${path}`, { ...init, headers });
+  const res = await fetch(`${warehouseApiBaseUrl()}${path}`, { ...init, headers });
 
   if (res.status === 401) {
     if (!refreshInFlight) {
@@ -144,7 +154,7 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
         ...headers,
         Authorization: `Bearer ${newToken}`,
       };
-      return fetch(`${API}${path}`, { ...init, headers: retryHeaders });
+      return fetch(`${warehouseApiBaseUrl()}${path}`, { ...init, headers: retryHeaders });
     }
     clearSession();
     if (typeof window !== 'undefined') {
@@ -158,11 +168,12 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
 
 function toApiPath(input: RequestInfo | URL): string {
   const raw = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
-  if (raw.startsWith(API)) {
-    return raw.slice(API.length);
+  const base = warehouseApiBaseUrl();
+  if (raw.startsWith(base)) {
+    return raw.slice(base.length);
   }
   try {
-    const url = new URL(raw, API);
+    const url = new URL(raw, base);
     return `${url.pathname}${url.search}`;
   } catch {
     return raw.startsWith("/") ? raw : `/${raw}`;
@@ -173,14 +184,29 @@ function toApiPath(input: RequestInfo | URL): string {
 export const warehouseSessionFetch: typeof fetch = (input, init) =>
   apiFetch(toApiPath(input), init);
 
-/** Open a WebSocket to the unified pegasusX hub (warehouse rooms). */
-export async function connectWarehouseWS(): Promise<WebSocket> {
-  const wsBase = API.replace(/^http/, 'ws');
-  const token = await getWarehouseToken();
-  return new WebSocket(`${wsBase}/v1/ws?token=${encodeURIComponent(token)}`);
+/** Mint a short-lived token_use=ws ticket, then open /v1/ws (browsers cannot set Authorization). */
+export async function connectWarehouseWS(lastEventId?: string | null): Promise<WebSocket> {
+  const session = await apiFetch('/v1/warehouse/ws-session', { method: 'GET', cache: 'no-store' });
+  const payload = (await session.json().catch(() => null)) as { token?: string } | null;
+  if (!session.ok || typeof payload?.token !== 'string' || !payload.token) {
+    throw new Error('Failed to mint warehouse WebSocket session');
+  }
+  const wsBase = warehouseApiBaseUrl().replace(/^http/, 'ws');
+  const lastIdParam = lastEventId ? `&last_event_id=${encodeURIComponent(lastEventId)}` : '';
+  return new WebSocket(`${wsBase}/v1/ws?token=${encodeURIComponent(payload.token)}${lastIdParam}`);
 }
 
 export type WarehouseSocketStatus = 'idle' | 'connecting' | 'live' | 'reconnecting' | 'offline';
+
+const WAREHOUSE_WS_HEARTBEAT_MS = 25_000;
+const WAREHOUSE_WS_CONTROL_TYPES = new Set([
+  'pong',
+  'ack:confirmed',
+  'presence:updated',
+  'room:joined',
+  'room:left',
+  'replay:completed',
+]);
 
 export function subscribeWarehouseWS(options: {
   onMessage: (payload: string) => void;
@@ -188,8 +214,10 @@ export function subscribeWarehouseWS(options: {
 }): () => void {
   let socket: WebSocket | null = null;
   let reconnectTimer: number | null = null;
+  let heartbeatTimer: number | null = null;
   let reconnectAttempt = 0;
   let hasConnectedOnce = false;
+  let lastEventId: string | null = null;
   let disposed = false;
 
   const clearReconnect = () => {
@@ -197,6 +225,41 @@ export function subscribeWarehouseWS(options: {
       window.clearTimeout(reconnectTimer);
       reconnectTimer = null;
     }
+  };
+
+  const clearHeartbeat = () => {
+    if (heartbeatTimer !== null) {
+      window.clearInterval(heartbeatTimer);
+      heartbeatTimer = null;
+    }
+  };
+
+  const triggerWarehouseReconcile = () => {
+    void reconcileSession({
+      role: 'warehouse',
+      baseUrl: warehouseApiBaseUrl(),
+      getAuthToken: () => readTokenFromCookie() || null,
+      fetchImpl: warehouseSessionFetch,
+    }).then(() => notifyWarehouseSessionReconciled());
+  };
+
+  const scheduleReconnect = () => {
+    clearHeartbeat();
+    if (disposed) {
+      options.onStatusChange?.('idle');
+      return;
+    }
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      options.onStatusChange?.('offline');
+      return;
+    }
+    const delay = reconnectDelayMs(reconnectAttempt, { baseMs: 1_000, maxMs: 30_000 });
+    reconnectAttempt += 1;
+    options.onStatusChange?.('reconnecting');
+    clearReconnect();
+    reconnectTimer = window.setTimeout(() => {
+      openSocket(true);
+    }, delay);
   };
 
   const openSocket = (isReconnect: boolean) => {
@@ -207,53 +270,71 @@ export function subscribeWarehouseWS(options: {
     }
 
     options.onStatusChange?.(isReconnect ? 'reconnecting' : 'connecting');
-    void connectWarehouseWS().then((ws) => {
-      if (disposed) {
-        ws.close();
-        return;
-      }
-      socket = ws;
-
-      socket.onopen = () => {
-        const wasReconnect = hasConnectedOnce;
-        hasConnectedOnce = true;
-        reconnectAttempt = 0;
-        options.onStatusChange?.('live');
-        if (wasReconnect) {
-          void reconcileSession({
-            role: 'warehouse',
-            baseUrl: API,
-            getAuthToken: () => readTokenFromCookie() || null,
-            fetchImpl: warehouseSessionFetch,
-          }).then(() => notifyWarehouseSessionReconciled());
-        }
-      };
-
-      socket.onmessage = (event) => {
-        options.onMessage(String(event.data));
-      };
-
-      socket.onerror = () => {
-        socket?.close();
-      };
-
-      socket.onclose = () => {
-        socket = null;
+    void connectWarehouseWS(lastEventId)
+      .then((ws) => {
         if (disposed) {
-          options.onStatusChange?.('idle');
+          ws.close();
           return;
         }
-        if (typeof navigator !== 'undefined' && !navigator.onLine) {
-          options.onStatusChange?.('offline');
-          return;
-        }
-        reconnectAttempt += 1;
-        options.onStatusChange?.('reconnecting');
-        reconnectTimer = window.setTimeout(() => {
-          openSocket(true);
-        }, Math.min(30_000, 1_000 * 2 ** (reconnectAttempt - 1)));
-      };
-    });
+        socket = ws;
+
+        socket.onopen = () => {
+          const wasReconnect = hasConnectedOnce;
+          hasConnectedOnce = true;
+          reconnectAttempt = 0;
+          options.onStatusChange?.('live');
+          clearHeartbeat();
+          heartbeatTimer = window.setInterval(() => {
+            if (ws.readyState === WebSocket.OPEN) {
+              ws.send(JSON.stringify({ type: 'ping', id: `hb-${Date.now()}` }));
+            }
+          }, WAREHOUSE_WS_HEARTBEAT_MS);
+          if (wasReconnect) {
+            triggerWarehouseReconcile();
+          }
+        };
+
+        socket.onmessage = (event) => {
+          const raw = String(event.data);
+          try {
+            const parsed = JSON.parse(raw) as { type?: unknown; event_id?: unknown; id?: unknown };
+            const msgType = typeof parsed?.type === 'string' ? parsed.type.trim() : '';
+            if (msgType && WAREHOUSE_WS_CONTROL_TYPES.has(msgType.toLowerCase())) {
+              return;
+            }
+            if (msgType === 'WS_RESYNC_REQUIRED') {
+              triggerWarehouseReconcile();
+              return;
+            }
+            const eid = typeof parsed?.event_id === 'string' && parsed.event_id.trim()
+              ? parsed.event_id.trim()
+              : typeof parsed?.id === 'string' && parsed.id.trim()
+                ? parsed.id.trim()
+                : null;
+            if (eid) {
+              lastEventId = eid;
+            }
+          } catch {
+            // non-JSON frame
+          }
+          options.onMessage(raw);
+        };
+
+        socket.onerror = () => {
+          socket?.close();
+        };
+
+        socket.onclose = () => {
+          clearHeartbeat();
+          socket = null;
+          scheduleReconnect();
+        };
+      })
+      .catch(() => {
+        clearHeartbeat();
+        socket = null;
+        scheduleReconnect();
+      });
   };
 
   const handleOnline = () => {
@@ -262,6 +343,7 @@ export function subscribeWarehouseWS(options: {
   };
 
   const handleOffline = () => {
+    clearHeartbeat();
     clearReconnect();
     options.onStatusChange?.('offline');
     socket?.close();
@@ -274,6 +356,7 @@ export function subscribeWarehouseWS(options: {
 
   return () => {
     disposed = true;
+    clearHeartbeat();
     clearReconnect();
     window.removeEventListener('online', handleOnline);
     window.removeEventListener('offline', handleOffline);
@@ -283,4 +366,3 @@ export function subscribeWarehouseWS(options: {
   };
 }
 
-export { API as warehouseApiBaseUrl };

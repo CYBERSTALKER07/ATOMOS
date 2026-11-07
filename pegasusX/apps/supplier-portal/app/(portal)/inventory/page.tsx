@@ -1,9 +1,10 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useEffect, useState } from "react";
 import { supplierFetch } from "@/lib/auth";
 import { supplierScopeId } from "@/lib/supplier-scope";
-import { supplierInventoryAdjustKey } from "@pegasusx/api-client";
+import { sessionPackCurrency, supplierInventoryAdjustKey } from "@pegasusx/api-core";
 import { downloadCsv } from "@/lib/csv";
 import { usePagination } from "@/lib/use-pagination";
 import { ListToolbar } from "@/components/ListToolbar";
@@ -29,7 +30,7 @@ function mapInventoryRow(item: InventoryApiItem): InventoryRow {
     product_name: item.product_id,
     quantity: Math.max(0, onHand - reserved),
     unit_price_minor: 0,
-    currency: "UZS",
+    currency: sessionPackCurrency(),
     out_of_stock_policy: item.out_of_stock_policy || "INHERIT",
     effective_policy: item.effective_policy,
     accepts_backorder: item.accepts_backorder,
@@ -37,6 +38,7 @@ function mapInventoryRow(item: InventoryApiItem): InventoryRow {
 }
 
 export default function PortalInventoryPage() {
+  const t = usePortalT();
   const [rows, setRows] = useState<InventoryRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -53,7 +55,7 @@ export default function PortalInventoryPage() {
         const body = (await res.json()) as { items?: InventoryApiItem[] };
         setRows((body.items ?? []).map(mapInventoryRow));
       })
-      .catch((err) => setError(err instanceof Error ? err.message : "Failed to load inventory"))
+      .catch((err) => setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.failed_to_load_inventory")))
       .finally(() => setLoading(false));
   };
 
@@ -65,7 +67,7 @@ export default function PortalInventoryPage() {
     const raw = deltas[row.sku_id]?.trim() ?? "";
     const quantityDelta = Number.parseInt(raw, 10);
     if (!Number.isFinite(quantityDelta) || quantityDelta === 0) {
-      setError("Enter a non-zero quantity delta");
+      setError(t("supplier_portal.residual.text.enter_a_non_zero_quantity_delta"));
       return;
     }
     setAdjustingSku(row.sku_id);
@@ -93,7 +95,7 @@ export default function PortalInventoryPage() {
       setDeltas((prev) => ({ ...prev, [row.sku_id]: "" }));
       loadInventory();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "adjust_failed");
+      setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.adjust_failed"));
     } finally {
       setAdjustingSku(null);
     }
@@ -116,7 +118,7 @@ export default function PortalInventoryPage() {
       if (!res.ok) throw new Error(`policy ${res.status}`);
       loadInventory();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "policy_update_failed");
+      setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.policy_update_failed"));
     } finally {
       setPolicyUpdatingKey(null);
     }
@@ -127,8 +129,8 @@ export default function PortalInventoryPage() {
   return (
     <PageChrome
       icon="inventory"
-      title="Inventory"
-      description="SKU availability, stock policy per warehouse, and quantity adjustments."
+      title={t("portal.nav.inventory")}
+      description={t("supplier_portal.residual.text.sku_availability_stock_policy_per_warehouse_and_quantity_adjustm")}
       loading={loading}
       error={error}
       empty={rows.length === 0}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -140,9 +141,9 @@ func (s *Service) CreateManual(ctx context.Context, req CreateManualCreditNoteRe
 		line.CreditNoteId = cn.CreditNoteId
 		line.LineId = uuid.New().String()
 		line.Qty = qty
-		line.LineNetMinor = (base.LineNetMinor / base.Qty) * qty
-		line.LineVatMinor = (base.LineVatMinor / base.Qty) * qty
-		line.LineGrossMinor = (base.LineGrossMinor / base.Qty) * qty
+		line.LineNetMinor = (base.LineNetMinor * qty) / base.Qty
+		line.LineVatMinor = (base.LineVatMinor * qty) / base.Qty
+		line.LineGrossMinor = (base.LineGrossMinor * qty) / base.Qty
 		cn.Lines = append(cn.Lines, line)
 		cn.TotalNetMinor += line.LineNetMinor
 		cn.TotalVatMinor += line.LineVatMinor
@@ -211,6 +212,16 @@ func (s *Service) ReceiveReverseTask(ctx context.Context, taskID, warehouseID st
 
 func (s *Service) OrderLinesForCredit(ctx context.Context, orderID string) ([]CreditNoteLine, error) {
 	return s.repo.GetDeliveredOrderLines(ctx, orderID)
+}
+
+// OrderOwnedBySupplier reports whether orderID belongs to supplierID (IDOR guard).
+func (s *Service) OrderOwnedBySupplier(ctx context.Context, orderID, supplierID string) (bool, error) {
+	orderID = strings.TrimSpace(orderID)
+	supplierID = strings.TrimSpace(supplierID)
+	if orderID == "" || supplierID == "" {
+		return false, nil
+	}
+	return s.repo.OrderOwnedBySupplier(ctx, orderID, supplierID)
 }
 
 func (s *Service) ListReverseTasks(ctx context.Context, warehouseID, status string, limit int) ([]ReverseLogisticsTask, error) {

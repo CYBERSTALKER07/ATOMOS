@@ -38,6 +38,7 @@ func TestHandleManifestException_EscalationSeamParity(t *testing.T) {
 	svc.mu.Unlock()
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/payload/manifest-exception", strings.NewReader(`{"manifest_id":"mf_payload_1","order_id":"ord_payload_1","reason":"OVERFLOW","metadata":"retry"}`))
+	req.Header.Set("Idempotency-Key", "test-key-5")
 	rr := httptest.NewRecorder()
 
 	svc.HandleManifestException(rr, req)
@@ -127,6 +128,7 @@ func TestHandleApplyReassign_SeamParity(t *testing.T) {
 	svc.mu.Unlock()
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/payloader/reassign-order", strings.NewReader(`{"order_id":"ord_payload_1","to_manifest_id":"mf_payload_2","reason":"balance"}`))
+	req.Header.Set("Idempotency-Key", "test-key-6")
 	rr := httptest.NewRecorder()
 
 	svc.HandleApplyReassign(rr, req)
@@ -136,6 +138,13 @@ func TestHandleApplyReassign_SeamParity(t *testing.T) {
 	}
 	if repo.applyCalls != 1 {
 		t.Fatalf("expected 1 repo apply call, got %d", repo.applyCalls)
+	}
+	if len(repo.assignments) != 1 {
+		t.Fatalf("expected 1 Orders assignment persist, got %#v", repo.assignments)
+	}
+	gotAssign := repo.assignments[0]
+	if gotAssign.orderID != "ord_payload_1" || gotAssign.routeID != "route_veh_payload_2" || gotAssign.driverID != "drv_payload_2" {
+		t.Fatalf("unexpected assignment %#v", gotAssign)
 	}
 
 	types := payloadOutboxEventTypes(repo.events)
@@ -174,6 +183,27 @@ func TestHandleApplyReassign_SeamParity(t *testing.T) {
 	assertPayloadWSMessageContainsType(t, payloadConn.messages, events.EventManifestRebalanced)
 }
 
+func TestHandleApplyReassign_MissingOrderNoPersist(t *testing.T) {
+	repo := &payloadRepoSpy{}
+	svc := newPayloadTestService(repo, &payloadCacheBackendSpy{})
+	repo.svc = svc
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/payloader/reassign-order", strings.NewReader(`{"order_id":"ord_missing","to_manifest_id":"mf_payload_2"}`))
+	req.Header.Set("Idempotency-Key", "test-key-7")
+	rr := httptest.NewRecorder()
+	svc.HandleApplyReassign(rr, req)
+
+	if rr.Code != http.StatusNotFound {
+		t.Fatalf("expected 404, got %d body=%s", rr.Code, rr.Body.String())
+	}
+	if len(repo.assignments) != 0 {
+		t.Fatalf("expected no persist on missing order, got %#v", repo.assignments)
+	}
+	if len(repo.events) != 0 {
+		t.Fatalf("expected no outbox on missing order, got %#v", payloadOutboxEventTypes(repo.events))
+	}
+}
+
 func TestHandleApplyReassign_TargetManifestCapacityExceeded(t *testing.T) {
 	repo := &payloadRepoSpy{}
 	cacheBackend := &payloadCacheBackendSpy{}
@@ -206,6 +236,7 @@ func TestHandleApplyReassign_TargetManifestCapacityExceeded(t *testing.T) {
 	svc.mu.Unlock()
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/payloader/reassign-order", strings.NewReader(`{"order_id":"ord_payload_1","to_manifest_id":"mf_payload_2","reason":"capacity-test"}`))
+	req.Header.Set("Idempotency-Key", "test-key-8")
 	rr := httptest.NewRecorder()
 
 	svc.HandleApplyReassign(rr, req)
@@ -276,6 +307,7 @@ func TestHandleApplyReassign_OrderAlreadyAssignedNoop(t *testing.T) {
 	svc.mu.Unlock()
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/payloader/reassign-order", strings.NewReader(`{"order_id":"ord_payload_1","to_manifest_id":"mf_payload_1","reason":"noop"}`))
+	req.Header.Set("Idempotency-Key", "test-key-9")
 	rr := httptest.NewRecorder()
 
 	svc.HandleApplyReassign(rr, req)
@@ -351,6 +383,7 @@ func TestHandleApplyReassign_TargetUnavailableConflict(t *testing.T) {
 	svc.mu.Unlock()
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/payloader/reassign-order", strings.NewReader(`{"order_id":"ord_payload_1","reason":"auto-no-target"}`))
+	req.Header.Set("Idempotency-Key", "test-key-10")
 	rr := httptest.NewRecorder()
 
 	svc.HandleApplyReassign(rr, req)
@@ -422,6 +455,7 @@ func TestHandleApplyReassign_SameManifestCandidateNoop(t *testing.T) {
 	svc.mu.Unlock()
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/payloader/reassign-order", strings.NewReader(`{"order_id":"ord_payload_1","to_manifest_id":"mf_payload_1","reason":"same-manifest"}`))
+	req.Header.Set("Idempotency-Key", "test-key-11")
 	rr := httptest.NewRecorder()
 
 	svc.HandleApplyReassign(rr, req)
@@ -498,6 +532,7 @@ func TestHandleApplyReassign_ExplicitSameRouteNoop(t *testing.T) {
 	svc.mu.Unlock()
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/payloader/reassign-order", strings.NewReader(`{"order_id":"ord_payload_1","to_route_id":"route_veh_payload_1","reason":"explicit-same-route"}`))
+	req.Header.Set("Idempotency-Key", "test-key-12")
 	rr := httptest.NewRecorder()
 
 	svc.HandleApplyReassign(rr, req)
@@ -593,6 +628,7 @@ func TestHandleApplyReassign_ExplicitSameRouteSelectsAlternateManifestWhenSource
 	svc.mu.Unlock()
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/payloader/reassign-order", strings.NewReader(`{"order_id":"ord_payload_1","to_route_id":"route_veh_payload_1","reason":"sealed-source-same-route"}`))
+	req.Header.Set("Idempotency-Key", "test-key-13")
 	rr := httptest.NewRecorder()
 
 	svc.HandleApplyReassign(rr, req)
@@ -688,6 +724,7 @@ func TestHandleApplyReassign_TargetDriverManifestMismatch(t *testing.T) {
 	svc.mu.Unlock()
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/payloader/reassign-order", strings.NewReader(`{"order_id":"ord_payload_1","to_manifest_id":"mf_payload_2","to_driver_id":"drv_payload_other","reason":"driver-manifest-mismatch"}`))
+	req.Header.Set("Idempotency-Key", "test-key-14")
 	rr := httptest.NewRecorder()
 
 	svc.HandleApplyReassign(rr, req)
@@ -776,6 +813,7 @@ func TestHandleApplyReassign_SourceManifestOrderMissingConflict(t *testing.T) {
 	svc.mu.Unlock()
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/payloader/reassign-order", strings.NewReader(`{"order_id":"ord_payload_1","to_manifest_id":"mf_payload_2","reason":"source-order-missing"}`))
+	req.Header.Set("Idempotency-Key", "test-key-15")
 	rr := httptest.NewRecorder()
 
 	svc.HandleApplyReassign(rr, req)
@@ -863,6 +901,7 @@ func TestHandleApplyReassign_SourceRouteManifestMismatchConflict(t *testing.T) {
 	svc.mu.Unlock()
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/payloader/reassign-order", strings.NewReader(`{"order_id":"ord_payload_1","to_manifest_id":"mf_payload_2","reason":"source-route-mismatch"}`))
+	req.Header.Set("Idempotency-Key", "test-key-16")
 	rr := httptest.NewRecorder()
 
 	svc.HandleApplyReassign(rr, req)
@@ -938,6 +977,7 @@ func TestHandleApplyReassign_TargetRouteMismatchAfterSuccess_NoExtraFanout(t *te
 	svc.mu.Unlock()
 
 	firstReq := httptest.NewRequest(http.MethodPost, "/v1/payloader/reassign-order", strings.NewReader(`{"order_id":"ord_payload_1","to_manifest_id":"mf_payload_2","reason":"baseline-success"}`))
+	firstReq.Header.Set("Idempotency-Key", "test-key-17")
 	firstRR := httptest.NewRecorder()
 	svc.HandleApplyReassign(firstRR, firstReq)
 	if firstRR.Code != http.StatusOK {
@@ -950,6 +990,7 @@ func TestHandleApplyReassign_TargetRouteMismatchAfterSuccess_NoExtraFanout(t *te
 	payloadTypesAfterFirst := payloadWSMessageTypes(payloadConn.messages)
 
 	secondReq := httptest.NewRequest(http.MethodPost, "/v1/payloader/reassign-order", strings.NewReader(`{"order_id":"ord_payload_1","to_manifest_id":"mf_payload_2","to_route_id":"route_veh_payload_1","reason":"force-route-conflict"}`))
+	secondReq.Header.Set("Idempotency-Key", "test-key-18")
 	secondRR := httptest.NewRecorder()
 	svc.HandleApplyReassign(secondRR, secondReq)
 
@@ -1043,6 +1084,7 @@ func TestHandleApplyReassign_SourceManifestOrderMissingAfterSuccess_NoExtraFanou
 	svc.mu.Unlock()
 
 	firstReq := httptest.NewRequest(http.MethodPost, "/v1/payloader/reassign-order", strings.NewReader(`{"order_id":"ord_payload_1","to_manifest_id":"mf_payload_2","reason":"baseline-success"}`))
+	firstReq.Header.Set("Idempotency-Key", "test-key-19")
 	firstRR := httptest.NewRecorder()
 	svc.HandleApplyReassign(firstRR, firstReq)
 	if firstRR.Code != http.StatusOK {
@@ -1059,6 +1101,7 @@ func TestHandleApplyReassign_SourceManifestOrderMissingAfterSuccess_NoExtraFanou
 	svc.mu.Unlock()
 
 	secondReq := httptest.NewRequest(http.MethodPost, "/v1/payloader/reassign-order", strings.NewReader(`{"order_id":"ord_payload_1","to_manifest_id":"mf_payload_3","reason":"source-order-missing-after-success"}`))
+	secondReq.Header.Set("Idempotency-Key", "test-key-20")
 	secondRR := httptest.NewRecorder()
 	svc.HandleApplyReassign(secondRR, secondReq)
 
@@ -1146,6 +1189,7 @@ func TestHandleApplyReassign_ReplayAfterSuccessIdempotent(t *testing.T) {
 	body := `{"order_id":"ord_payload_1","to_manifest_id":"mf_payload_2","reason":"replay-idempotency"}`
 
 	firstReq := httptest.NewRequest(http.MethodPost, "/v1/payloader/reassign-order", strings.NewReader(body))
+	firstReq.Header.Set("Idempotency-Key", "test-key-21")
 	firstRR := httptest.NewRecorder()
 	svc.HandleApplyReassign(firstRR, firstReq)
 
@@ -1216,6 +1260,7 @@ func TestHandleApplyReassign_ReplayAfterSuccessIdempotent(t *testing.T) {
 	}
 
 	secondReq := httptest.NewRequest(http.MethodPost, "/v1/payloader/reassign-order", strings.NewReader(body))
+	secondReq.Header.Set("Idempotency-Key", "test-key-22")
 	secondRR := httptest.NewRecorder()
 	svc.HandleApplyReassign(secondRR, secondReq)
 
@@ -1310,6 +1355,7 @@ func TestHandleSealCompletedManifests_AttachesExplainOnFailedRows(t *testing.T) 
 		"/v1/payloader/manifests/seal-completed",
 		strings.NewReader(`{"manifest_ids":["missing_manifest","mf_payload_2"]}`),
 	)
+	req.Header.Set("Idempotency-Key", "test-key-23")
 	rr := httptest.NewRecorder()
 	svc.HandleSealCompletedManifests(rr, req)
 
@@ -1351,7 +1397,39 @@ func TestHandleSealCompletedManifests_AttachesExplainOnFailedRows(t *testing.T) 
 	}
 
 	assertBatchExplain("missing_manifest", "not_found", "manifest_not_found")
-	assertBatchExplain("mf_payload_2", "not_sealable", "manifest_not_sealable")
+	if got, _ := body["sealed_count"].(float64); got != 1 {
+		t.Fatalf("already-sealed batch should count as success, sealed_count=%v", body["sealed_count"])
+	}
+	foundAlready := false
+	for _, raw := range rawResults {
+		row, ok := raw.(map[string]any)
+		if !ok || row["manifest_id"] != "mf_payload_2" {
+			continue
+		}
+		if row["status"] != "already_sealed" {
+			t.Fatalf("mf_payload_2 expected already_sealed, got %#v", row["status"])
+		}
+		foundAlready = true
+	}
+	if !foundAlready {
+		t.Fatal("result row for mf_payload_2 not found")
+	}
+}
+
+func TestHandleSeal_RejectsOrderOnly(t *testing.T) {
+	repo := &payloadRepoSpy{}
+	svc := newPayloadTestService(repo, &payloadCacheBackendSpy{})
+	repo.svc = svc
+	req := httptest.NewRequest(http.MethodPost, "/v1/payload/seal", strings.NewReader(`{"order_id":"ord_payload_1","manifest_cleared":true}`))
+	req.Header.Set("Idempotency-Key", "test-key-24")
+	rr := httptest.NewRecorder()
+	svc.HandleSeal(rr, req)
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d body=%s", rr.Code, rr.Body.String())
+	}
+	if !strings.Contains(rr.Body.String(), "manifest_id_required") {
+		t.Fatalf("expected manifest_id_required, got %s", rr.Body.String())
+	}
 }
 
 func newPayloadTestService(repo *payloadRepoSpy, cacheBackend *payloadCacheBackendSpy) *Service {
@@ -1457,16 +1535,23 @@ func assertPayloadWSMessageContainsType(t *testing.T, messages [][]byte, wantTyp
 	t.Fatalf("expected websocket event type %q in messages: %q", wantType, messages)
 }
 
+type orderAssignmentCall struct {
+	orderID  string
+	routeID  string
+	driverID string
+}
+
 type payloadRepoSpy struct {
-	svc *Service
-	applyCalls int
-	events     []outbox.Event
+	svc         *Service
+	applyCalls  int
+	events      []outbox.Event
+	assignments []orderAssignmentCall
 }
 
 func (r *payloadRepoSpy) RunTx(ctx context.Context, fn func(ctx context.Context, tx PayloadTx) error, emit func(outbox.TxnBuffer) error) error {
 	r.applyCalls++
 	if fn != nil {
-		if err := fn(ctx, &dummyPayloadTx{svc: r.svc}); err != nil {
+		if err := fn(ctx, &dummyPayloadTx{svc: r.svc, spy: r}); err != nil {
 			return err
 		}
 	}
@@ -1541,10 +1626,48 @@ func (r *payloadRepoSpy) Hydrate(ctx context.Context, supplierID string, s *Serv
 	return nil
 }
 
-type dummyPayloadTx struct{ svc *Service }
-func (d *dummyPayloadTx) ListManifests(ctx context.Context) ([]ManifestRow, error) { return append([]ManifestRow(nil), d.svc.manifests...), nil }
+type dummyPayloadTx struct {
+	svc *Service
+	spy *payloadRepoSpy
+}
+
+func (d *dummyPayloadTx) ListManifests(ctx context.Context) ([]ManifestRow, error) {
+	return append([]ManifestRow(nil), d.svc.manifests...), nil
+}
 func (d *dummyPayloadTx) SaveManifest(ctx context.Context, m ManifestRow) error { return nil }
-func (d *dummyPayloadTx) ListManifestOrders(ctx context.Context, mid string) ([]ManifestOrder, error) { return d.svc.manifestOrders[mid], nil }
-func (d *dummyPayloadTx) SaveManifestOrder(ctx context.Context, mo ManifestOrder, seq int64) error { return nil }
-func (d *dummyPayloadTx) ListExceptions(ctx context.Context) ([]ManifestException, error) { return append([]ManifestException(nil), d.svc.exceptions...), nil }
+func (d *dummyPayloadTx) ListManifestOrders(ctx context.Context, mid string) ([]ManifestOrder, error) {
+	return d.svc.manifestOrders[mid], nil
+}
+func (d *dummyPayloadTx) SaveManifestOrder(ctx context.Context, mo ManifestOrder, seq int64) error {
+	return nil
+}
+func (d *dummyPayloadTx) ListExceptions(ctx context.Context) ([]ManifestException, error) {
+	return append([]ManifestException(nil), d.svc.exceptions...), nil
+}
 func (d *dummyPayloadTx) SaveException(ctx context.Context, e ManifestException) error { return nil }
+func (d *dummyPayloadTx) UpdateOrderAssignment(ctx context.Context, orderID, routeID, driverID string) error {
+	if d.spy != nil {
+		d.spy.assignments = append(d.spy.assignments, orderAssignmentCall{
+			orderID:  orderID,
+			routeID:  routeID,
+			driverID: driverID,
+		})
+	}
+	return nil
+}
+
+func (c *payloadCacheBackendSpy) IncrBy(ctx context.Context, key string, value int64) (int64, error) {
+	return 0, nil
+}
+
+func (c *payloadCacheBackendSpy) DecrBy(ctx context.Context, key string, value int64) (int64, error) {
+	return 0, nil
+}
+
+func (tx *dummyPayloadTx) DeleteManifestOrder(ctx context.Context, manifestID, orderID string) error {
+	return nil
+}
+
+func (tx *dummyPayloadTx) SaveShipUnits(ctx context.Context, units []ShipUnit) error {
+	return nil
+}

@@ -155,17 +155,17 @@ extension View {
 
 #Preview {
     VStack(spacing: 20) {
-        Text("Pressable")
+        Text("mobile_driver.ui.pressable")
             .padding()
             .background(.black, in: .rect(cornerRadius: 12))
             .foregroundStyle(.white)
 
-        Text("Shimmer")
+        Text("mobile_driver.ui.shimmer_2")
             .font(.title.bold())
             .shimmer()
 
         ForEach(0..<3, id: \.self) { i in
-            Text("Stagger \(i)")
+            Text(L10n.format("mobile_driver.ui.stagger_i_2", "\(i)"))
                 .padding()
                 .labCard()
                 .staggeredAppear(index: i)

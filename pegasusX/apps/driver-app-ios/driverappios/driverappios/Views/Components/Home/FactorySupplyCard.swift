@@ -13,7 +13,7 @@ struct FactorySupplyCard: View {
                     .font(.system(size: 22, weight: .semibold))
                     .foregroundStyle(LabTheme.fg)
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("Supply transfers")
+                    Text("mobile_driver.ui.supply_transfers")
                         .font(.system(size: 16, weight: .bold))
                         .foregroundStyle(LabTheme.fg)
                     Text("\(TokenStore.shared.factoryName ?? "Factory depot") → warehouse legs")

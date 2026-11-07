@@ -39,25 +39,29 @@ struct PayloadStatusBadge: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: TermTheme.s8) {
+        Group {
             if large {
-                Text("PROTOCOL_STATE")
-                    .font(.system(size: 10, weight: .black, design: .monospaced))
-                    .foregroundStyle(TermTheme.tertiary)
-                    .tracking(1.4)
-            }
-            Text(text.replacingOccurrences(of: "_", with: " ").uppercased())
-                .font(.system(size: large ? 24 : 12, weight: .black, design: .monospaced))
-                .foregroundStyle(resolvedTint)
-                .tracking(large ? 2.0 : 0)
-        }
-        .padding(large ? TermTheme.s24 : TermTheme.s12)
-        .frame(minWidth: large ? 200 : nil, alignment: .leading)
-        .background(resolvedTint.opacity(large ? 0.06 : 0.12), in: RoundedRectangle(cornerRadius: large ? TermTheme.radiusMD : TermTheme.radiusSM, style: .continuous))
-        .overlay {
-            if large {
-                RoundedRectangle(cornerRadius: TermTheme.radiusMD, style: .continuous)
-                    .stroke(TermTheme.separator.opacity(0.12), lineWidth: 1)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("PROTOCOL_STATE")
+                        .font(.system(size: 10, weight: .black, design: .monospaced))
+                        .foregroundStyle(TermTheme.tertiary)
+                        .tracking(1.4)
+                    Text(text.replacingOccurrences(of: "_", with: " ").uppercased())
+                        .font(.system(size: 24, weight: .black, design: .monospaced))
+                        .foregroundStyle(resolvedTint)
+                        .tracking(2.0)
+                }
+                .padding(TermTheme.s24)
+                .frame(minWidth: 200, alignment: .leading)
+                .tacticalCard()
+            } else {
+                VStack(alignment: .leading, spacing: TermTheme.s4) {
+                    Text(text.replacingOccurrences(of: "_", with: " ").uppercased())
+                        .font(.system(size: 12, weight: .black, design: .monospaced))
+                        .foregroundStyle(resolvedTint)
+                }
+                .padding(TermTheme.s12)
+                .background(resolvedTint.opacity(0.12), in: RoundedRectangle(cornerRadius: TermTheme.radiusSM, style: .continuous))
             }
         }
     }

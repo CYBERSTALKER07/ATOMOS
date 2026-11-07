@@ -255,3 +255,47 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(v)
 }
+
+type AbortManifestRequest struct {
+	ReasonCode    string `json:"reason_code"`
+	OperatorNotes string `json:"operator_notes,omitempty"`
+}
+
+func (h *Handlers) HandleManifestAbort(w http.ResponseWriter, r *http.Request) {
+	if !h.guardEnabled(w) {
+		return
+	}
+	manifestID := chi.URLParam(r, "id")
+	supplierID := h.SupplierID(r)
+	if supplierID == "" {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+		return
+	}
+
+	claims, ok := auth.FromContext(r.Context())
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+		return
+	}
+	operatorID := claims.Subject
+
+	var req AbortManifestRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_payload"})
+		return
+	}
+
+	if req.ReasonCode == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "missing_reason_code"})
+		return
+	}
+
+	err := h.Service.AbortManifest(r.Context(), manifestID, supplierID, operatorID, req.ReasonCode, req.OperatorNotes)
+	if err != nil {
+		slog.Error("Failed to abort manifest", "err", err, "manifest_id", manifestID)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal_error"})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]string{"status": "aborted"})
+}

@@ -1,5 +1,5 @@
+import { usePolling } from '@pegasusx/api-react';
 import { useCallback, useState } from "react";
-import { usePolling } from "@pegasusx/api-client";
 import { createSupplierApi } from "@/lib/api";
 import { SUPPLIER_DISPATCH_REFRESH_EVENTS } from "@/lib/supplier-ws-events";
 import { useSupplierWsRefresh } from "@/lib/use-supplier-ws-refresh";

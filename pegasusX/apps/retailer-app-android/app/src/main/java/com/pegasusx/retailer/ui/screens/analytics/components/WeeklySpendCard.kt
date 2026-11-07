@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.screens.analytics.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -38,6 +40,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pegasusx.retailer.ui.theme.SoftSquircleShape
+import com.pegasusx.retailer.R
 
 // ── Health Connect Style Weekly Spend Card ──
 
@@ -77,7 +80,7 @@ fun WeeklySpendCard(
                 Spacer(modifier = Modifier.weight(1f))
                 Icon(
                     Icons.Rounded.MoreVert,
-                    contentDescription = "More options",
+                    contentDescription = stringResource(R.string.retailer_desktop_orders_text_more_options),
                     modifier = Modifier.size(20.dp),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -128,7 +131,7 @@ fun WeeklySpendCard(
             }
 
             Text(
-                "You stayed on budget $daysOnBudget days, and spent a total of ${formatAmount(totalWeek)}",
+                stringResource(R.string.mobile_retailer_ui_you_stayed_on_budget_daysonbudget_days_and_spent_a_total_of_formatamount, daysOnBudget, formatAmount(totalWeek)),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -160,6 +163,8 @@ private fun HealthConnectBarChart(
 ) {
     val maxValue = (dailySpend.maxOf { it.amount } * 1.2f).toLong()
     val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
+    val ySteps = listOf(0L, maxValue / 3, maxValue * 2 / 3, maxValue)
+    val yLabels = ySteps.map { stringResource(R.string.mobile_retailer_ui_step_1_000k, it / 1_000) }
 
     Canvas(modifier = modifier) {
         val chartLeft = 40.dp.toPx()
@@ -175,10 +180,9 @@ private fun HealthConnectBarChart(
         val cornerRadiusPx = 6.dp.toPx()
 
         // Y-axis labels
-        val ySteps = listOf(0L, maxValue / 3, maxValue * 2 / 3, maxValue)
-        for (step in ySteps) {
+        ySteps.forEachIndexed { index, step ->
             val y = chartBottom - (step.toFloat() / maxValue * chartHeight)
-            val label = "${step / 1_000}k"
+            val label = yLabels[index]
             drawText(
                 textMeasurer = textMeasurer,
                 text = label,

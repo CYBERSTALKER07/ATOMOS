@@ -84,13 +84,43 @@ func (r *SpannerRepository) GetDriver(ctx context.Context, driverID string) (Dri
 }
 
 // UpdateDriver updates an existing driver record and emits a DRIVER_AVAILABILITY_CHANGED event atomically.
+// Uses UpdateMap with only supplied fields to prevent PinHash wipe (Finding 5.1).
 func (r *SpannerRepository) UpdateDriver(ctx context.Context, d Driver, emit func(outbox.TxnBuffer) error) error {
-	d.UpdatedAt = spanner.CommitTimestamp
-	m, err := spanner.UpdateStruct("Drivers", d)
-	if err != nil {
-		return err
+	cols := map[string]interface{}{
+		"DriverId":  d.DriverID,
+		"UpdatedAt": spanner.CommitTimestamp,
 	}
-	_, err = r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+	if d.Name != "" {
+		cols["Name"] = d.Name
+	}
+	if d.Phone != "" {
+		cols["Phone"] = d.Phone
+	}
+	if d.SupplierID != "" {
+		cols["SupplierId"] = d.SupplierID
+	}
+	if d.HomeNodeType != "" {
+		cols["HomeNodeType"] = d.HomeNodeType
+	}
+	if d.HomeNodeID != "" {
+		cols["HomeNodeId"] = d.HomeNodeID
+	}
+	if d.VehicleID != nil {
+		cols["VehicleId"] = *d.VehicleID
+	}
+	// Boolean flags: always include since they have meaningful zero values
+	cols["IsActive"] = d.IsActive
+	cols["OnShift"] = d.OnShift
+	if d.UnavailableReason != nil {
+		cols["UnavailableReason"] = *d.UnavailableReason
+	}
+	if d.UnavailableNote != nil {
+		cols["UnavailableNote"] = *d.UnavailableNote
+	}
+	// PinHash is NEVER set from REST updates (json:"-")
+
+	m := spanner.UpdateMap("Drivers", cols)
+	_, err := r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		muts := []*spanner.Mutation{m}
 		if emit != nil {
 			buf := &spannerTxnBuffer{}
@@ -175,13 +205,11 @@ func (r *SpannerRepository) GetVehicle(ctx context.Context, vehicleID string) (V
 }
 
 // UpdateVehicle updates an existing vehicle record and emits a VEHICLE_AVAILABILITY_CHANGED event atomically.
-func (r *SpannerRepository) UpdateVehicle(ctx context.Context, v Vehicle, emit func(outbox.TxnBuffer) error) error {
-	v.UpdatedAt = spanner.CommitTimestamp
-	m, err := spanner.UpdateStruct("Vehicles", v)
-	if err != nil {
-		return err
-	}
-	_, err = r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+func (r *SpannerRepository) UpdateVehicle(ctx context.Context, vehicleID string, updates map[string]any, emit func(outbox.TxnBuffer) error) error {
+	updates["VehicleId"] = vehicleID
+	updates["UpdatedAt"] = spanner.CommitTimestamp
+	m := spanner.UpdateMap("Vehicles", updates)
+	_, err := r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		muts := []*spanner.Mutation{m}
 		if emit != nil {
 			buf := &spannerTxnBuffer{}

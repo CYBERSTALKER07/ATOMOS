@@ -1,9 +1,83 @@
 package demand
 
 import (
+	"encoding/json"
 	"testing"
 	"time"
 )
+
+func TestSignalScopeMatches_GlobalAndCountry(t *testing.T) {
+	geo := RetailerGeo{City: "Samarkand", RegionID: "reg-sam"}
+	if !signalScopeMatches("GLOBAL", nil, "r1", geo) {
+		t.Fatal("GLOBAL should match")
+	}
+	if !signalScopeMatches("country:UZ", nil, "r1", geo) {
+		t.Fatal("country:UZ should match")
+	}
+}
+
+func TestSignalScopeMatches_CityNotGlobal(t *testing.T) {
+	tash := RetailerGeo{City: "Tashkent", Address: "1 Navoi, Tashkent"}
+	sam := RetailerGeo{City: "Samarkand", Address: "2 Registan, Samarkand"}
+	unknown := RetailerGeo{}
+
+	if !signalScopeMatches("CITY:Tashkent", nil, "r-tash", tash) {
+		t.Fatal("CITY:Tashkent should match Tashkent retailer")
+	}
+	if !signalScopeMatches("city:Tashkent", nil, "r-tash", tash) {
+		t.Fatal("legacy city:Tashkent should match Tashkent")
+	}
+	if signalScopeMatches("CITY:Tashkent", nil, "r-sam", sam) {
+		t.Fatal("CITY:Tashkent must not match Samarkand")
+	}
+	if signalScopeMatches("CITY:Tashkent", nil, "r-unk", unknown) {
+		t.Fatal("CITY:Tashkent must fail-closed when geo unknown")
+	}
+	// bare CITY without meta fails closed
+	if signalScopeMatches("CITY", nil, "r-tash", tash) {
+		t.Fatal("bare CITY without Meta must fail-closed")
+	}
+	meta, _ := json.Marshal(map[string]string{"city": "Tashkent"})
+	if !signalScopeMatches("CITY", meta, "r-tash", tash) {
+		t.Fatal("CITY + Meta.city should match")
+	}
+}
+
+func TestSignalScopeMatches_Region(t *testing.T) {
+	geo := RetailerGeo{RegionID: "reg-tash"}
+	other := RetailerGeo{RegionID: "reg-sam"}
+	if !signalScopeMatches("REGION:reg-tash", nil, "r1", geo) {
+		t.Fatal("REGION:code should match")
+	}
+	if signalScopeMatches("REGION:reg-tash", nil, "r2", other) {
+		t.Fatal("REGION must not match other region")
+	}
+	if signalScopeMatches("REGION:reg-tash", nil, "r3", RetailerGeo{}) {
+		t.Fatal("REGION fail-closed when RegionId unknown")
+	}
+}
+
+func TestSignalScopeMatches_Retailer(t *testing.T) {
+	if !signalScopeMatches("retailer:abc", nil, "abc", RetailerGeo{}) {
+		t.Fatal("retailer:uuid should match")
+	}
+	if signalScopeMatches("retailer:abc", nil, "xyz", RetailerGeo{}) {
+		t.Fatal("retailer:uuid must not match other")
+	}
+	meta, _ := json.Marshal(map[string]string{"retailer_id": "abc"})
+	if !signalScopeMatches("RETAILER", meta, "abc", RetailerGeo{}) {
+		t.Fatal("RETAILER Meta should match")
+	}
+}
+
+func TestCityHintFromAddress(t *testing.T) {
+	if got := cityHintFromAddress("12 Navoi St, Yunusabad, Tashkent"); got != "Tashkent" {
+		t.Fatalf("got %q", got)
+	}
+	if cityHintFromAddress("") != "" {
+		t.Fatal("empty")
+	}
+}
 
 func TestDayOfWeekFactor(t *testing.T) {
 	tests := []struct {
@@ -43,12 +117,18 @@ func TestPaydayFactor(t *testing.T) {
 		{28, 1.0},
 	}
 	for _, tt := range tests {
-		t.Run("day_"+string(rune('0'+tt.day/10))+string(rune('0'+tt.day%10)), func(t *testing.T) {
-			got := paydayFactor(tt.day)
-			if got != tt.want {
-				t.Errorf("paydayFactor(%d) = %v, want %v", tt.day, got, tt.want)
-			}
-		})
+		if got := paydayFactor(tt.day); got != tt.want {
+			t.Fatalf("day %d: got %v want %v", tt.day, got, tt.want)
+		}
+	}
+}
+
+func TestBlendVelocitiesWeights(t *testing.T) {
+	// Documented blend: 0.65 order + 0.35 POS flywheel.
+	order, fw := 10.0, 20.0
+	got := 0.65*order + 0.35*fw
+	if got < 13.4 || got > 13.6 {
+		t.Fatalf("blend = %v", got)
 	}
 }
 

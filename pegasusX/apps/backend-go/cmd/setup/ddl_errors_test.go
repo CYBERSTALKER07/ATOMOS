@@ -15,7 +15,11 @@ func TestIsBenignDDLConflict(t *testing.T) {
 		want bool
 	}{
 		{name: "already exists", err: status.Error(codes.AlreadyExists, "index exists"), want: true},
+		{name: "failed precondition duplicate", err: status.Error(codes.FailedPrecondition, "Duplicate name in schema: Suppliers."), want: true},
+		{name: "failed precondition lock", err: status.Error(codes.FailedPrecondition, "table locked or constraint error"), want: false},
 		{name: "instance missing", err: status.Error(codes.NotFound, "Instance not found"), want: false},
+		{name: "not found index", err: status.Error(codes.NotFound, "Index not found: Idx_OldIndex"), want: true},
+		{name: "failed precondition index not found", err: status.Error(codes.FailedPrecondition, "Index not found: Idx_OldIndex"), want: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

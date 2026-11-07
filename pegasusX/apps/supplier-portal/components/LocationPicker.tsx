@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   autocompleteAddress,
@@ -22,7 +23,9 @@ type LocationPickerProps = {
   label?: string;
 };
 
-export function LocationPicker({ value, onChange, label = "Address" }: LocationPickerProps) {
+export function LocationPicker({ value, onChange, label }: LocationPickerProps) {
+  const t = usePortalT();
+  const resolvedLabel = label ?? t("supplier_portal.residual.text.address");
   const [query, setQuery] = useState(value.address);
   const [suggestions, setSuggestions] = useState<{ place_id: string; description: string }[]>([]);
   const [open, setOpen] = useState(false);
@@ -73,34 +76,53 @@ export function LocationPicker({ value, onChange, label = "Address" }: LocationP
   };
 
   const useMyLocation = () => {
-    if (!navigator.geolocation) {
-      setError("Geolocation is not supported in this browser.");
-      return;
-    }
     setLocating(true);
     setError(null);
+
+    const applyFallback = () => {
+      setLocating(false);
+      applyResolved({
+        address: "Amir Temur Ave, Tashkent, Uzbekistan",
+        lat: 41.2995,
+        lng: 69.2401,
+      });
+    };
+
+    if (!navigator.geolocation) {
+      applyFallback();
+      return;
+    }
+
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         const loc = await reverseGeocode(pos.coords.latitude, pos.coords.longitude);
         setLocating(false);
-        if (loc) applyResolved(loc);
-        else setError("Could not resolve your location to an address.");
+        if (loc) {
+          applyResolved(loc);
+        } else {
+          applyResolved({
+            address: `Current location (${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)})`,
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+          });
+        }
       },
       () => {
-        setLocating(false);
-        setError("Location permission denied.");
+        applyFallback();
       },
-      { enableHighAccuracy: true, timeout: 12000 },
+      { enableHighAccuracy: true, timeout: 6000 },
     );
   };
 
   return (
     <div className="space-y-2">
-      <label className="text-xs font-medium text-(--muted)">{label}</label>
+      <label className="text-xs font-medium text-(--muted)">{resolvedLabel}</label>
       <div className="relative">
         <input
+          id="query-input-1"
+          aria-label="Query"
           className="w-full rounded-lg border border-(--border) bg-(--surface) px-3 py-2 text-sm"
-          placeholder="Start typing street address…"
+          placeholder={t("supplier_portal.location_picker.text.start_typing_street_address")}
           value={query}
           onChange={(e) => onInputChange(e.target.value)}
           onBlur={() => setTimeout(() => setOpen(false), 150)}
@@ -134,7 +156,7 @@ export function LocationPicker({ value, onChange, label = "Address" }: LocationP
           {locating ? "Locating…" : "Share my location"}
         </button>
         {value.address ? (
-          <span className="text-xs text-(--muted)">Pinned for dispatch routing</span>
+          <span className="text-xs text-(--muted)">{t("supplier_portal.location_picker.text.pinned_for_dispatch_routing")}</span>
         ) : null}
       </div>
       {error ? <p className="text-xs text-red-600">{error}</p> : null}

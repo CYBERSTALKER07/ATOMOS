@@ -6,15 +6,17 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
+	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
-	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
 	"google.golang.org/api/iterator"
 )
 
@@ -50,20 +52,40 @@ type ScenarioInput struct {
 	FactoryDowntimeHours int     `json:"factory_downtime_hours"`
 	DemandDeltaPct       float64 `json:"demand_delta_pct"`
 	HorizonDays          int     `json:"horizon_days"`
+	Label                string  `json:"label,omitempty"`
 }
 
-// ScenarioResult is a read-only projection cached for 15 minutes.
+const (
+	ScenarioStatusDraft      = "DRAFT"
+	ScenarioStatusPublished  = "PUBLISHED"
+	ScenarioStatusSuperseded = "SUPERSEDED"
+	ScenarioStatusRejected   = "REJECTED"
+)
+
+// ScenarioResult is a what-if projection persisted as DRAFT (also cached 15m).
 type ScenarioResult struct {
 	ScenarioID           string   `json:"scenario_id"`
 	SupplierID           string   `json:"supplier_id"`
+	Version              int64    `json:"version,omitempty"`
+	Status               string   `json:"status,omitempty"`
+	ParentScenarioID     string   `json:"parent_scenario_id,omitempty"`
+	Label                string   `json:"label,omitempty"`
+	HorizonDays          int      `json:"horizon_days,omitempty"`
 	SLARiskPct           float64  `json:"sla_risk_pct"`
 	FleetVolume          int64    `json:"fleet_volume_orders"`
 	StockoutSKUs         []string `json:"stockout_skus"`
 	CapacityBreach       bool     `json:"capacity_breach"`
-	CachedUntil          string   `json:"cached_until"`
+	CachedUntil          string   `json:"cached_until,omitempty"`
 	Mode                 string   `json:"mode,omitempty"`
 	BaselineSLARiskPct   float64  `json:"baseline_sla_risk_pct,omitempty"`
 	RevenueAtRiskMinor   int64    `json:"revenue_at_risk_minor,omitempty"`
+	UnitValueSource      string   `json:"unit_value_source,omitempty"`
+	FactoryDowntimeHours int      `json:"factory_downtime_hours,omitempty"`
+	DemandDeltaPct       float64  `json:"demand_delta_pct,omitempty"`
+	CreatedBy            string   `json:"created_by,omitempty"`
+	PublishedBy          string   `json:"published_by,omitempty"`
+	PublishedAt          string   `json:"published_at,omitempty"`
+	UpdatedAt            string   `json:"updated_at,omitempty"`
 }
 
 type cachedScenario struct {
@@ -71,8 +93,8 @@ type cachedScenario struct {
 	expiresAt time.Time
 }
 
-// RunScenario executes a read-only what-if projection.
-func (s *Service) RunScenario(ctx context.Context, supplierID string, in ScenarioInput) (ScenarioResult, error) {
+// RunScenario executes a what-if projection and persists a DRAFT row.
+func (s *Service) RunScenario(ctx context.Context, supplierID, createdBy string, in ScenarioInput) (ScenarioResult, error) {
 	if s == nil || s.Spanner == nil {
 		return ScenarioResult{}, errors.New("planning unavailable")
 	}
@@ -84,18 +106,42 @@ func (s *Service) RunScenario(ctx context.Context, supplierID string, in Scenari
 	if s.Cache != nil {
 		if raw, found, err := s.Cache.Get(ctx, redisKey); err == nil && found {
 			var result ScenarioResult
-			if json.Unmarshal(raw, &result) == nil {
+			if json.Unmarshal(raw, &result) == nil && result.ScenarioID != "" {
 				return result, nil
 			}
 		}
 	}
 	if raw, ok := s.scenarioCache.Load(cacheKey); ok {
 		entry := raw.(cachedScenario)
-		if time.Now().Before(entry.expiresAt) {
+		if time.Now().Before(entry.expiresAt) && entry.result.ScenarioID != "" {
 			return entry.result, nil
 		}
 	}
 
+	result, err := s.computeScenario(ctx, supplierID, in)
+	if err != nil {
+		return ScenarioResult{}, err
+	}
+	result.ScenarioID = uuid.NewString()
+	result.SupplierID = supplierID
+	result.Version = 1
+	result.Status = ScenarioStatusDraft
+	result.Label = strings.TrimSpace(in.Label)
+	result.HorizonDays = in.HorizonDays
+	result.FactoryDowntimeHours = in.FactoryDowntimeHours
+	result.DemandDeltaPct = in.DemandDeltaPct
+	result.CreatedBy = strings.TrimSpace(createdBy)
+	result.CachedUntil = s.Now().Add(15 * time.Minute).Format(time.RFC3339Nano)
+	result.UpdatedAt = s.Now().Format(time.RFC3339Nano)
+
+	if err := s.persistScenarioDraft(ctx, result, nil); err != nil {
+		return ScenarioResult{}, fmt.Errorf("persist scenario: %w", err)
+	}
+	s.storeScenarioCache(cacheKey, redisKey, result)
+	return result, nil
+}
+
+func (s *Service) computeScenario(ctx context.Context, supplierID string, in ScenarioInput) (ScenarioResult, error) {
 	warehouseCount, orderVolume, criticalSKUs, deliveryVolume, err := s.scenarioSignals(ctx, supplierID, in.HorizonDays)
 	if err != nil {
 		return ScenarioResult{}, err
@@ -105,20 +151,16 @@ func (s *Service) RunScenario(ctx context.Context, supplierID string, in Scenari
 		snap, snapErr := LoadNetworkSnapshot(ctx, s.Spanner, supplierID)
 		if snapErr == nil && !snap.TooLarge() {
 			projected := ProjectSnapshot(snap, in)
-			result := ScenarioResult{
-				ScenarioID:         uuid.NewString(),
-				SupplierID:         supplierID,
+			return ScenarioResult{
 				SLARiskPct:         projected.SLARiskPct,
 				BaselineSLARiskPct: projected.BaselineSLARiskPct,
 				FleetVolume:        projected.FleetVolume,
 				StockoutSKUs:       projected.StockoutSKUs,
 				CapacityBreach:     projected.CapacityBreach,
 				RevenueAtRiskMinor: projected.RevenueAtRiskMinor,
+				UnitValueSource:    projected.UnitValueSource,
 				Mode:               projected.Mode,
-				CachedUntil:        s.Now().Add(15 * time.Minute).Format(time.RFC3339Nano),
-			}
-			s.storeScenarioCache(cacheKey, redisKey, result)
-			return result, nil
+			}, nil
 		}
 	}
 
@@ -127,19 +169,23 @@ func (s *Service) RunScenario(ctx context.Context, supplierID string, in Scenari
 	slaRisk := math.Min(95, (float64(criticalSKUs)*12+float64(in.FactoryDowntimeHours)*2)*demandFactor)
 	fleetVolume := int64(float64(orderVolume+deliveryVolume) * demandFactor)
 	capacityBreach := in.FactoryDowntimeHours > 24 && warehouseCount > 0
-
-	result := ScenarioResult{
-		ScenarioID:     uuid.NewString(),
-		SupplierID:     supplierID,
-		SLARiskPct:     slaRisk * downtimeFactor,
-		FleetVolume:    fleetVolume,
-		StockoutSKUs:   s.projectStockouts(criticalSKUs),
-		CapacityBreach: capacityBreach,
-		Mode:           "heuristic",
-		CachedUntil:    s.Now().Add(15 * time.Minute).Format(time.RFC3339Nano),
+	stockouts, shortfalls := s.projectStockoutsWithQty(ctx, supplierID, criticalSKUs)
+	skuSet := make(map[string]struct{}, len(stockouts))
+	for _, sku := range stockouts {
+		skuSet[sku] = struct{}{}
 	}
-	s.storeScenarioCache(cacheKey, redisKey, result)
-	return result, nil
+	unitValues, _ := loadProductUnitValues(ctx, s.Spanner, supplierID, skuSet)
+	rar, src := heuristicRevenueAtRisk(unitValues, stockouts, shortfalls)
+
+	return ScenarioResult{
+		SLARiskPct:         slaRisk * downtimeFactor,
+		FleetVolume:        fleetVolume,
+		StockoutSKUs:       stockouts,
+		CapacityBreach:     capacityBreach,
+		RevenueAtRiskMinor: rar,
+		UnitValueSource:    src,
+		Mode:               "heuristic",
+	}, nil
 }
 
 func (s *Service) storeScenarioCache(cacheKey, redisKey string, result ScenarioResult) {
@@ -206,28 +252,72 @@ func (s *Service) scenarioSignals(ctx context.Context, supplierID string, horizo
 	return
 }
 
-func (s *Service) projectStockouts(critical int) []string {
-	out := make([]string, 0, critical)
-	for i := 0; i < critical && i < 10; i++ {
-		out = append(out, fmt.Sprintf("sku-projection-%d", i+1))
-	}
-	return out
+func (s *Service) projectStockouts(ctx context.Context, supplierID string, critical int) []string {
+	skus, _ := s.projectStockoutsWithQty(ctx, supplierID, critical)
+	return skus
 }
 
-// SAndOPSnapshot compares factory capacity vs warehouse throughput (7-day horizon).
+func (s *Service) projectStockoutsWithQty(ctx context.Context, supplierID string, critical int) ([]string, map[string]int64) {
+	out := make([]string, 0, critical)
+	qty := make(map[string]int64)
+	if s == nil || s.Spanner == nil || critical <= 0 {
+		return out, qty
+	}
+	iter := s.Spanner.Single().Query(ctx, spanner.Statement{
+		SQL: `SELECT ProductId, COALESCE(MAX(SuggestedQuantity), 1)
+		      FROM ReplenishmentInsights
+		      WHERE SupplierId = @sid AND UrgencyLevel = 'CRITICAL' AND Status = 'PENDING'
+		      GROUP BY ProductId
+		      LIMIT @lim`,
+		Params: map[string]any{"sid": supplierID, "lim": int64(critical)},
+	})
+	defer iter.Stop()
+	for {
+		row, err := iter.Next()
+		if err != nil {
+			break
+		}
+		var pid string
+		var suggested int64
+		if err := row.Columns(&pid, &suggested); err != nil || strings.TrimSpace(pid) == "" {
+			continue
+		}
+		out = append(out, pid)
+		if suggested < 1 {
+			suggested = 1
+		}
+		qty[pid] = suggested
+	}
+	return out, qty
+}
+
+// SAndOPSnapshot compares factory capacity vs warehouse throughput over a
+// configurable horizon (SOP_HORIZON_DAYS; default 7, typically 7/14/28).
 type SAndOPSnapshot struct {
 	SupplierID           string  `json:"supplier_id"`
 	HorizonDays          int     `json:"horizon_days"`
+	ProductionLineCount  int64   `json:"production_line_count"`
 	FactoryCapacityUnits int64   `json:"factory_capacity_units"`
+	ProjectedDemandUnits int64   `json:"projected_demand_units"`
 	WarehouseInboundCap  int64   `json:"warehouse_inbound_cap_units"`
 	WarehouseOutboundCap int64   `json:"warehouse_outbound_cap_units"`
 	UtilizationPct       float64 `json:"utilization_pct"`
 	CapacityAlert        bool    `json:"capacity_alert"`
+	CapacityModel        string  `json:"capacity_model"`
+	CapacitySource       string  `json:"capacity_source"`
 }
 
-// GetSAndOP returns lightweight S&OP capacity comparison.
+// GetSAndOP returns S&OP capacity comparison. Factory capacity comes from a
+// production-lines model (factories × SOP_LINES_PER_FACTORY × daily × horizon).
+// Open warehouse supply-request ProjectedUnits populate ProjectedDemandUnits
+// only — they never overwrite FactoryCapacityUnits.
 func (s *Service) GetSAndOP(ctx context.Context, supplierID string) (SAndOPSnapshot, error) {
-	out := SAndOPSnapshot{SupplierID: supplierID, HorizonDays: 7}
+	out := SAndOPSnapshot{
+		SupplierID:     supplierID,
+		HorizonDays:    sopHorizonDays(),
+		CapacityModel:  "production_lines",
+		CapacitySource: "env_default",
+	}
 	if s == nil || s.Spanner == nil {
 		return out, errors.New("planning unavailable")
 	}
@@ -249,14 +339,91 @@ func (s *Service) GetSAndOP(ctx context.Context, supplierID string) (SAndOPSnaps
 	if row, err := iter2.Next(); err == nil {
 		_ = row.Columns(&whCount)
 	}
-	out.FactoryCapacityUnits = factoryCount * 700 * 7
-	out.WarehouseInboundCap = whCount * 500 * 7
-	out.WarehouseOutboundCap = whCount * 450 * 7
-	if out.WarehouseInboundCap > 0 {
-		out.UtilizationPct = float64(out.FactoryCapacityUnits) / float64(out.WarehouseInboundCap) * 100
+
+	// Calibrated daily throughput defaults (VU/day) — overridable via env for pilots.
+	factoryDaily := envInt64("SOP_FACTORY_DAILY_UNITS", 700)
+	whInDaily := envInt64("SOP_WAREHOUSE_INBOUND_DAILY_UNITS", 500)
+	whOutDaily := envInt64("SOP_WAREHOUSE_OUTBOUND_DAILY_UNITS", 450)
+	linesPerFactory := envInt64("SOP_LINES_PER_FACTORY", 1)
+	out.ProductionLineCount = factoryCount * linesPerFactory
+	var columnSum int64
+	iterCap := s.Spanner.Single().Query(ctx, spanner.Statement{
+		SQL:    `SELECT COALESCE(SUM(DailyOutputCapacity), 0) FROM Factories WHERE SupplierId = @sid AND IsActive = true`,
+		Params: map[string]any{"sid": supplierID},
+	})
+	if row, err := iterCap.Next(); err == nil {
+		_ = row.Columns(&columnSum)
 	}
-	out.CapacityAlert = out.FactoryCapacityUnits > out.WarehouseInboundCap
+	iterCap.Stop()
+	out.FactoryCapacityUnits, out.CapacitySource = sopFactoryCapacity(columnSum, out.ProductionLineCount, factoryDaily, int64(out.HorizonDays))
+	out.WarehouseInboundCap = whCount * whInDaily * int64(out.HorizonDays)
+	out.WarehouseOutboundCap = whCount * whOutDaily * int64(out.HorizonDays)
+
+	var projected int64
+	iter3 := s.Spanner.Single().Query(ctx, spanner.Statement{
+		SQL: `SELECT COALESCE(SUM(ProjectedUnits), 0) FROM WarehouseSupplyRequests
+		      WHERE SupplierId = @sid AND State IN ('OPEN','SUBMITTED','IN_PROGRESS','PENDING')`,
+		Params: map[string]any{"sid": supplierID},
+	})
+	defer iter3.Stop()
+	if row, err := iter3.Next(); err == nil {
+		_ = row.Columns(&projected)
+	}
+	out.ProjectedDemandUnits = projected
+
+	out.UtilizationPct, out.CapacityAlert = sandopUtilization(out.ProjectedDemandUnits, out.FactoryCapacityUnits, out.WarehouseInboundCap)
 	return out, nil
+}
+
+// sandopUtilization returns demand/capacity utilization when projected demand is
+// present; otherwise factory capacity vs warehouse inbound. Alert when demand
+// exceeds factory capacity or warehouse inbound (or factory exceeds inbound when
+// no demand signal).
+func sopFactoryCapacity(columnSum, lineCount, envDaily, horizon int64) (units int64, source string) {
+	if columnSum > 0 {
+		return columnSum * horizon, "factories_column"
+	}
+	return lineCount * envDaily * horizon, "env_default"
+}
+
+func sandopUtilization(projected, factoryCap, whInbound int64) (pct float64, alert bool) {
+	if projected > 0 {
+		if factoryCap > 0 {
+			pct = float64(projected) / float64(factoryCap) * 100
+		}
+		alert = projected > factoryCap || (whInbound > 0 && projected > whInbound)
+		return pct, alert
+	}
+	if whInbound > 0 {
+		pct = float64(factoryCap) / float64(whInbound) * 100
+	}
+	alert = factoryCap > whInbound
+	return pct, alert
+}
+
+func sopHorizonDays() int {
+	n := envInt64("SOP_HORIZON_DAYS", 7)
+	switch n {
+	case 7, 14, 28:
+		return int(n)
+	default:
+		if n > 0 && n <= 90 {
+			return int(n)
+		}
+		return 7
+	}
+}
+
+func envInt64(key string, def int64) int64 {
+	v := strings.TrimSpace(os.Getenv(key))
+	if v == "" {
+		return def
+	}
+	n, err := strconv.ParseInt(v, 10, 64)
+	if err != nil || n <= 0 {
+		return def
+	}
+	return n
 }
 
 // KGNode is an EKG-lite vertex.
@@ -322,7 +489,7 @@ func (s *Service) GetKnowledgeGraph(ctx context.Context, supplierID string) (Kno
 	}
 
 	iter := s.Spanner.Single().Query(ctx, spanner.Statement{
-		SQL: `SELECT DISTINCT ProductId FROM Products WHERE SupplierId = @sid AND IsActive = true LIMIT 200`,
+		SQL:    `SELECT DISTINCT ProductId FROM Products WHERE SupplierId = @sid AND IsActive = true LIMIT 200`,
 		Params: map[string]any{"sid": supplierID},
 	})
 	defer iter.Stop()
@@ -498,10 +665,10 @@ func (s *Service) ReadDemandBaseline(ctx context.Context, supplierID, warehouseI
 
 // ZoneOverrideInput is the control-tower polygon mutation body.
 type ZoneOverrideInput struct {
-	WarehouseID      string          `json:"warehouse_id"`
-	Action           string          `json:"action"`
-	PolygonGeoJSON   json.RawMessage `json:"polygon_geojson"`
-	TTLSeconds       int64           `json:"ttl_seconds"`
+	WarehouseID    string          `json:"warehouse_id"`
+	Action         string          `json:"action"`
+	PolygonGeoJSON json.RawMessage `json:"polygon_geojson"`
+	TTLSeconds     int64           `json:"ttl_seconds"`
 }
 
 // ZoneOverrideRow is a persisted override.
@@ -621,23 +788,7 @@ func (b *planningTxnBuffer) BufferOutbox(_ context.Context, e outbox.Event) erro
 func planningOutboxMutations(eventsList []outbox.Event) []*spanner.Mutation {
 	mutations := make([]*spanner.Mutation, 0, len(eventsList))
 	for _, event := range eventsList {
-		createdAt := event.CreatedAt.UTC()
-		if createdAt.IsZero() {
-			createdAt = time.Now().UTC()
-		}
-		row := map[string]any{
-			"EventId":       event.EventID,
-			"AggregateType": event.AggregateType,
-			"AggregateId":   event.AggregateID,
-			"TopicName":     event.TopicName,
-			"Payload":       event.Payload,
-			"CreatedAt":     createdAt,
-			"PublishedAt":   nil,
-		}
-		if event.PublishedAt != nil {
-			row["PublishedAt"] = event.PublishedAt.UTC()
-		}
-		mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", row))
+		mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", outbox.EventRowMap(event)))
 	}
 	return mutations
 }

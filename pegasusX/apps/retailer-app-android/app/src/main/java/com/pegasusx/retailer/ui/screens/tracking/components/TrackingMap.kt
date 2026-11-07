@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.screens.tracking.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -21,6 +23,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,11 +38,14 @@ import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
+import com.google.maps.android.compose.Polyline
+import androidx.compose.ui.graphics.Color
 import com.pegasus.design.PegasusLoadingState
 import com.pegasus.design.PegasusStateKind
 import com.pegasus.design.PegasusStatePane
 import com.pegasusx.retailer.data.model.TrackingOrder
 import kotlinx.coroutines.launch
+import com.pegasusx.retailer.R
 
 @Composable
 fun TrackingMap(
@@ -58,7 +65,7 @@ fun TrackingMap(
     Box(modifier = modifier.fillMaxSize()) {
         if (isLoading && visibleOrders.isEmpty()) {
             PegasusLoadingState(
-                title = "Loading deliveries",
+                title = stringResource(R.string.mobile_retailer_ui_loading_deliveries),
                 body = "Fetching live driver positions and inbound orders…",
             )
         } else {
@@ -74,24 +81,43 @@ fun TrackingMap(
                 onMapClick = { onOrderSelected(null) },
             ) {
                 for (order in visibleOrders) {
-                    val driverLat = order.driverLatitude ?: continue
-                    val driverLng = order.driverLongitude ?: continue
-                    val position = LatLng(driverLat, driverLng)
+                    key(order.orderId) {
+                        val routePoints = remember(order.routeGeometry) {
+                            order.routeGeometry?.coordinates
+                                ?.map { LatLng(it.lat, it.lng) }
+                                .orEmpty()
+                        }
+                        if (routePoints.size >= 2) {
+                            Polyline(
+                                points = routePoints,
+                                color = Color(0xFF2563EB),
+                                width = 10f,
+                            )
+                        }
 
-                    val isGreen = order.isApproaching || order.state == "ARRIVED"
-                    val markerColor = if (isGreen) BitmapDescriptorFactory.HUE_GREEN
-                    else BitmapDescriptorFactory.HUE_VIOLET
+                        val driverLat = order.driverLatitude
+                        val driverLng = order.driverLongitude
+                        if (driverLat != null && driverLng != null) {
+                            val position = LatLng(driverLat, driverLng)
+                            val markerState = remember(order.orderId) { MarkerState(position = position) }
+                                .also { it.position = position }
 
-                    Marker(
-                        state = MarkerState(position = position),
-                        title = order.supplierName,
-                        snippet = "${order.state} — ${order.items.size} item${if (order.items.size != 1) "s" else ""}",
-                        icon = BitmapDescriptorFactory.defaultMarker(markerColor),
-                        onClick = {
-                            onOrderSelected(order)
-                            true
-                        },
-                    )
+                            val isGreen = order.isApproaching || order.state == "ARRIVED"
+                            val markerColor = if (isGreen) BitmapDescriptorFactory.HUE_GREEN
+                            else BitmapDescriptorFactory.HUE_VIOLET
+
+                            Marker(
+                                state = markerState,
+                                title = order.supplierName,
+                                snippet = "${order.state} — ${order.items.size} item${if (order.items.size != 1) "s" else ""}",
+                                icon = BitmapDescriptorFactory.defaultMarker(markerColor),
+                                onClick = {
+                                    onOrderSelected(order)
+                                    true
+                                },
+                            )
+                        }
+                    }
                 }
             }
 
@@ -112,7 +138,7 @@ fun TrackingMap(
                     contentColor = MaterialTheme.colorScheme.onSurface,
                     elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 2.dp),
                 ) {
-                    Icon(Icons.Default.MyLocation, contentDescription = "My location", modifier = Modifier.size(20.dp))
+                    Icon(Icons.Default.MyLocation, contentDescription = stringResource(R.string.mobile_retailer_ui_my_location), modifier = Modifier.size(20.dp))
                 }
             }
 
@@ -127,7 +153,7 @@ fun TrackingMap(
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         Icon(Icons.Default.LocalShipping, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
                         Text(
-                            "$activeDeliveryCount active",
+                            stringResource(R.string.mobile_retailer_ui_activedeliverycount_active, activeDeliveryCount),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onPrimaryContainer,
                         )

@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "description": "Canonical projection of raw order status strings onto the customer-facing stage. Every platform (Go, TS, Kotlin, Swift) must test against this file. Mobile test resources hold byte-identical copies; make customer-stage-parity-gate enforces that.",
+  "default": "PROCESSING",
+  "progress_percent": {
+    "PLACED": 20,
+    "PROCESSING": 50,
+    "OUT_FOR_DELIVERY": 80,
+    "DELIVERED": 100,
+    "CANCELLED": 0,
+    "EXCEPTION_ACTION_REQUIRED": 75
+  },
+  "mapping": {
+    "SCHEDULED": "PLACED",
+    "AUTO_ACCEPTED": "PLACED",
+    "BACKORDERED": "PLACED",
+    "PENDING_REVIEW": "PLACED",
+    "PENDING": "PROCESSING",
+    "DELAYED": "PROCESSING",
+    "LOADED": "PROCESSING",
+    "DISPATCHED": "PROCESSING",
+    "IN_TRANSIT": "OUT_FOR_DELIVERY",
+    "EN_ROUTE": "OUT_FOR_DELIVERY",
+    "ARRIVING": "OUT_FOR_DELIVERY",
+    "ARRIVED": "OUT_FOR_DELIVERY",
+    "AWAITING_PAYMENT": "OUT_FOR_DELIVERY",
+    "PENDING_CASH_COLLECTION": "OUT_FOR_DELIVERY",
+    "DELIVERED_ON_CREDIT": "DELIVERED",
+    "FISCALIZING": "DELIVERED",
+    "COMPLETED": "DELIVERED",
+    "CANCELLED": "CANCELLED",
+    "NO_CAPACITY": "CANCELLED",
+    "SHOP_CLOSED_PENDING": "EXCEPTION_ACTION_REQUIRED",
+    "ARRIVED_SHOP_CLOSED": "EXCEPTION_ACTION_REQUIRED",
+    "CANCEL_REQUESTED": "EXCEPTION_ACTION_REQUIRED",
+    "FISCAL_FAILED": "EXCEPTION_ACTION_REQUIRED",
+    "RECONCILIATION_REQUIRED": "EXCEPTION_ACTION_REQUIRED",
+    "QUARANTINE": "EXCEPTION_ACTION_REQUIRED",
+    "SYNC_CONFLICT": "EXCEPTION_ACTION_REQUIRED"
+  }
+}

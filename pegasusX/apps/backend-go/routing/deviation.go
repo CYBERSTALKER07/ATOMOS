@@ -47,18 +47,25 @@ func WaypointsAhead(from LatLng, waypoints []LatLng, passedMeters float64) []Lat
 }
 
 func distancePointToSegmentMeters(lat, lng float64, start, end LatLng) float64 {
-	dx := end.Lng - start.Lng
+	avgLat := (start.Lat + end.Lat) / 2.0
+	cosFactor := math.Cos(avgLat * math.Pi / 180.0)
+	
+	dx := (end.Lng - start.Lng) * cosFactor
 	dy := end.Lat - start.Lat
 	if dx == 0 && dy == 0 {
 		return haversineMeters(lat, lng, start.Lat, start.Lng)
 	}
-	t := ((lng-start.Lng)*dx + (lat-start.Lat)*dy) / (dx*dx + dy*dy)
+	
+	dlng := (lng - start.Lng) * cosFactor
+	dlat := lat - start.Lat
+	
+	t := (dlng*dx + dlat*dy) / (dx*dx + dy*dy)
 	if t < 0 {
 		t = 0
 	} else if t > 1 {
 		t = 1
 	}
-	closestLat := start.Lat + t*dy
-	closestLng := start.Lng + t*dx
+	closestLat := start.Lat + t*(end.Lat - start.Lat)
+	closestLng := start.Lng + t*(end.Lng - start.Lng)
 	return haversineMeters(lat, lng, closestLat, closestLng)
 }

@@ -17,6 +17,7 @@ enum class FactorySection(
     LOCATION(FactoryRoutes.LOCATION_SETTINGS, "Location", Icons.Default.Place),
     SUPPLY_REQUESTS(FactoryRoutes.SUPPLY_REQUESTS, "Supply requests", Icons.Default.Sync),
     PAYLOAD_OVERRIDE(FactoryRoutes.PAYLOAD_OVERRIDE, "Payload override", Icons.Default.SwapHoriz),
+    PAYLOAD_LOAD(FactoryRoutes.PAYLOAD_LOAD, "Payload / Load", Icons.Default.Inventory),
     MANIFESTS(FactoryRoutes.MANIFESTS, "Manifests", Icons.Default.Description),
     MANIFEST_EXCEPTIONS(FactoryRoutes.MANIFEST_EXCEPTIONS, "Gate exceptions", Icons.Default.Warning),
     INSIGHTS(FactoryRoutes.INSIGHTS, "Insights", Icons.Default.Insights),
@@ -26,14 +27,12 @@ enum class FactorySection(
     ;
 
     companion object {
-        val compactTabs: List<FactorySection> = listOf(DASHBOARD, LOADING_BAY, TRANSFERS, MORE)
+        val compactTabs: List<FactorySection> = listOf(DASHBOARD, LOADING_BAY, PAYLOAD_LOAD, TRANSFERS, MORE)
 
-        val primarySections: List<FactorySection> = listOf(
-            DASHBOARD, LOADING_BAY, TRANSFERS, FLEET, STAFF, LOCATION,
-        )
+        val primarySections: List<FactorySection> = compactTabs.filter { it != MORE }
 
         val operationsSections: List<FactorySection> = listOf(
-            SUPPLY_REQUESTS, PAYLOAD_OVERRIDE, MANIFESTS, MANIFEST_EXCEPTIONS,
+            FLEET, STAFF, LOCATION, SUPPLY_REQUESTS, PAYLOAD_OVERRIDE, MANIFESTS, MANIFEST_EXCEPTIONS,
         )
 
         val intelligenceSections: List<FactorySection> = listOf(

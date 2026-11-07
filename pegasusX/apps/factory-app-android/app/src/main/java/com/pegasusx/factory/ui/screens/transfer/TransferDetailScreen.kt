@@ -1,5 +1,7 @@
 package com.pegasusx.factory.ui.screens.transfer
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.lazy.grid.items
 
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -27,6 +29,7 @@ import com.pegasus.design.PegasusStatePane
 import com.pegasusx.factory.ui.realtime.FactoryRealtimeReloadEffect
 import com.pegasusx.factory.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
+import com.pegasusx.factory.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -51,7 +54,7 @@ fun TransferDetailScreen(
             try {
                 val resp = api.getTransfer(transferId)
                 if (resp.isSuccessful && resp.body() != null) {
-                    transfer = resp.body()!!
+                    resp.body()?.let { transfer = it }
                 } else {
                     error = "Failed (${resp.code()})"
                 }
@@ -75,7 +78,7 @@ fun TransferDetailScreen(
                     FactoryIdempotencyKeys.transferTransition(transferId, target),
                 )
                 if (resp.isSuccessful && resp.body() != null) {
-                    transfer = resp.body()!!
+                    resp.body()?.let { transfer = it }
                     snackbarHostState.showSnackbar("Transitioned to $target")
                 } else {
                     snackbarHostState.showSnackbar("Failed (${resp.code()})")
@@ -128,7 +131,7 @@ fun TransferDetailScreen(
     ) { innerPadding ->
         when {
             loading && transfer == null -> PegasusLoadingState(
-                title = "Loading transfer",
+                title = stringResource(R.string.mobile_factory_ui_loading_transfer),
                 body = "Fetching the latest manifest details and item breakdown.",
                 modifier = Modifier
                     .fillMaxSize()
@@ -137,128 +140,130 @@ fun TransferDetailScreen(
             error != null -> PegasusStatePane(
                 kind = PegasusStateKind.Error,
                 headline = "Unable to load transfer",
-                body = error!!,
+                body = error.orEmpty(),
                 actionLabel = "Retry",
                 onAction = { load() },
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding),
             )
-            transfer != null -> LazyVerticalGrid(
-        columns = GridCells.Adaptive(minSize = 340.dp),
-        
-                contentPadding = PaddingValues(PegasusSpacing.lg),
-                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
-                modifier = Modifier.fillMaxSize().padding(innerPadding),
-        horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md)
-    ) {
-                item {
-                    TransferOverviewCard(transfer = transfer!!)
-                }
-                item {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        SummaryCard("Items", "${transfer!!.totalItems}", Modifier.weight(1f))
-                        SummaryCard("Volume", "${String.format("%.0f", transfer!!.totalVolumeL)}L", Modifier.weight(1f))
+            transfer != null -> {
+                val currentTransfer = transfer ?: return@Scaffold
+                LazyVerticalGrid(
+                    columns = GridCells.Adaptive(minSize = 340.dp),
+                    contentPadding = PaddingValues(PegasusSpacing.lg),
+                    verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
+                    modifier = Modifier.fillMaxSize().padding(innerPadding),
+                    horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md)
+                ) {
+                    item {
+                        TransferOverviewCard(transfer = currentTransfer)
                     }
-                }
+                    item {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            SummaryCard("Items", "${currentTransfer.totalItems}", Modifier.weight(1f))
+                            SummaryCard("Volume", "${String.format("%.0f", currentTransfer.totalVolumeL)}L", Modifier.weight(1f))
+                        }
+                    }
 
-                item {
-                    val state = transfer!!.state
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
-                    ) {
-                        if (state == "APPROVED") {
-                            Button(
-                                onClick = { transition("LOADING") },
-                                enabled = !transitioning,
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(PegasusSpacing.xxxl),
-                            ) { Text("Start loading") }
+                    item {
+                        val state = currentTransfer.state
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
+                        ) {
+                            if (state == "APPROVED") {
+                                Button(
+                                    onClick = { transition("LOADING") },
+                                    enabled = !transitioning,
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(PegasusSpacing.xxxl),
+                                ) { Text("Start loading") }
+                            }
+                            if (state == "LOADING") {
+                                FilledTonalButton(
+                                    onClick = { transition("DISPATCHED") },
+                                    enabled = !transitioning,
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(PegasusSpacing.xxxl),
+                                ) { Text("Mark dispatched") }
+                            }
+                            if (state != "APPROVED" && state != "LOADING") {
+                                Surface(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = MaterialTheme.shapes.medium,
+                                    color = MaterialTheme.colorScheme.surfaceContainerLowest,
+                                ) {
+                                    Text(
+                                        text = stringResource(R.string.mobile_factory_ui_no_manual_transition_is_available_for_the_current_state),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(PegasusSpacing.lg),
+                                    )
+                                }
+                            }
                         }
-                        if (state == "LOADING") {
-                            FilledTonalButton(
-                                onClick = { transition("DISPATCHED") },
-                                enabled = !transitioning,
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(PegasusSpacing.xxxl),
-                            ) { Text("Mark dispatched") }
+                    }
+
+                    item {
+                        HorizontalDivider()
+                        Spacer(Modifier.height(PegasusSpacing.sm))
+                        Text("Items", style = MaterialTheme.typography.titleMedium)
+                    }
+
+                    items(currentTransfer.items) { item ->
+                        ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+                            Column(
+                                modifier = Modifier.padding(PegasusSpacing.lg),
+                                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
+                            ) {
+                                Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
+                                    Text(
+                                        text = item.productName.ifBlank { item.productId.take(8) },
+                                        style = MaterialTheme.typography.titleMedium,
+                                    )
+                                    Text(
+                                        text = item.productId.take(8),
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
+                                ) {
+                                    SummaryCard("Qty", "${item.quantity}", Modifier.weight(1f))
+                                    SummaryCard("Available", "${item.quantityAvailable}", Modifier.weight(1f))
+                                    SummaryCard("Volume", "${String.format("%.1f", item.unitVolumeL)}L", Modifier.weight(1f))
+                                }
+                            }
                         }
-                        if (state != "APPROVED" && state != "LOADING") {
+                    }
+
+                    if (currentTransfer.notes.isNotBlank()) {
+                        item {
+                            Spacer(Modifier.height(PegasusSpacing.sm))
+                            HorizontalDivider()
+                            Spacer(Modifier.height(PegasusSpacing.sm))
+                            Text("Notes", style = MaterialTheme.typography.titleMedium)
+                            Spacer(Modifier.height(PegasusSpacing.xs))
                             Surface(
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = MaterialTheme.shapes.medium,
                                 color = MaterialTheme.colorScheme.surfaceContainerLowest,
                             ) {
                                 Text(
-                                    text = "No manual transition is available for the current state.",
+                                    text = currentTransfer.notes,
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.padding(PegasusSpacing.lg),
                                 )
                             }
-                        }
-                    }
-                }
-
-                item {
-                    HorizontalDivider()
-                    Spacer(Modifier.height(PegasusSpacing.sm))
-                    Text("Items", style = MaterialTheme.typography.titleMedium)
-                }
-
-                items(transfer!!.items) { item ->
-                    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-                        Column(
-                            modifier = Modifier.padding(PegasusSpacing.lg),
-                            verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
-                        ) {
-                            Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
-                                Text(
-                                    text = item.productName.ifBlank { item.productId.take(8) },
-                                    style = MaterialTheme.typography.titleMedium,
-                                )
-                                Text(
-                                    text = item.productId.take(8),
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
-                            ) {
-                                SummaryCard("Qty", "${item.quantity}", Modifier.weight(1f))
-                                SummaryCard("Available", "${item.quantityAvailable}", Modifier.weight(1f))
-                                SummaryCard("Volume", "${String.format("%.1f", item.unitVolumeL)}L", Modifier.weight(1f))
-                            }
-                        }
-                    }
-                }
-
-                if (transfer!!.notes.isNotBlank()) {
-                    item {
-                        Spacer(Modifier.height(PegasusSpacing.sm))
-                        HorizontalDivider()
-                        Spacer(Modifier.height(PegasusSpacing.sm))
-                        Text("Notes", style = MaterialTheme.typography.titleMedium)
-                        Spacer(Modifier.height(PegasusSpacing.xs))
-                        Surface(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = MaterialTheme.shapes.medium,
-                            color = MaterialTheme.colorScheme.surfaceContainerLowest,
-                        ) {
-                            Text(
-                                text = transfer!!.notes,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(PegasusSpacing.lg),
-                            )
                         }
                     }
                 }
@@ -295,7 +300,7 @@ private fun TransferOverviewCard(transfer: Transfer) {
                     style = MaterialTheme.typography.titleLarge,
                 )
                 Text(
-                    text = "Transfer ${transfer.id.take(8)}",
+                    text = stringResource(R.string.mobile_factory_ui_transfer_take, transfer.id.take(8)),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

@@ -1,0 +1,46 @@
+flowchart TD
+    subgraph Phase1["Phase 1: Account Setup, Authentication & Provisioning"]
+        A1["Platform Root Provisioning via CLI / Seed Script"] --> A2["Generate Root Credentials & Admin Invite Link"]
+        A2 --> A3["Enroll Mandatory TOTP MFA (RFC 6238) & FIDO2 WebAuthn"]
+        A3 --> A4["Bind Master Cloud KMS & Hardware Security Key"]
+        A4 --> A5["Provision Platform Admin Session (Exempted from Single-Tenant Scope)"]
+    end
+
+    subgraph Phase2["Phase 2: Global Observability & Cell Topology Health"]
+        A5 --> B1["Launch Admin Portal Web / macOS Native Control Tower"]
+        B1 --> B2["Hydrate Live EKG Network Dashboard: Toshkent, Samarqand, Fergana Cells"]
+        B2 --> B3["Inspect Spanner Read/Write P99 Latencies & Transaction Abort Rates"]
+        B3 --> B4{"Cell Spanner Latency Normal?"}
+        B4 -- "Spike > 15ms" --> B5["Dynamically Tune Stale-Read Max Staleness Window (15s)"]
+        B4 -- "Normal < 5ms" --> B6["Verify Redis Semaphore Rate Limiters & Gateway Edge Rules"]
+        B5 --> B6
+    end
+
+    subgraph Phase3["Phase 3: Dual-Control Governance & Tenant KYB Management"]
+        B6 --> C1["Review Dual-Control Maker-Checker Approval Queue"]
+        C1 --> C2{"Pending High-Risk Request?"}
+        C2 -- "Money/Core Flag Override" --> C3["Inspect Proposed Flag (e.g., AR_INVOICES_ENABLED, FISCAL_PROVIDER)"]
+        C3 --> C4["Second Admin Executes Dual-Control Four-Eyes Cryptographic Signature"]
+        C2 -- "Tenant Onboarding KYB" --> C5["Inspect Supplier/Retailer Tax TIN, Soliq Registry & Corporate Requisites"]
+        C5 --> C6["Approve Tenant State Transition: PENDING -> ACTIVE"]
+        C4 --> D1["Global Outbox & Event Fabric Inspection"]
+        C6 --> D1
+        C2 -- "No Pending Items" --> D1
+    end
+
+    subgraph Phase4["Phase 4: Dead-Letter Queue Triage & Entity Resolution"]
+        D1 --> D2["Monitor Cloud Spanner Outbox Publishing Lag & Dead Letters"]
+        D2 --> D3{"Poison Messages in OutboxDeadLetters?"}
+        D3 -- "Yes (DLQ > 0)" --> D4["Inspect Payload Stack Trace, Failure Reason & Quarantine Context"]
+        D4 --> D5["Execute Safe Diagnostic Export & Atomic In-Order Outbox Replay"]
+        D3 -- "No" --> D6["Audit Global Catalog Entity Resolution & MXIK Classification Queue"]
+        D5 --> D6
+    end
+
+    subgraph Phase5["Phase 5: Platform Economics, FinOps & Audit Sealing"]
+        D6 --> E1["Inspect Real-Time FinOps Ledger: Configured Dynamic Platform Take-Rate Inflow"]
+        E1 --> E2["Reconcile Multi-Cloud Attributed Cost Waterfall (GCP Spanner, AWS, Azure)"]
+        E2 --> E3["Export Daily Multi-Tenant Settlement & Platform Compliance Reports"]
+        E3 --> E4["Cryptographically Seal Session Actions in PlatformAdminAudit Log"]
+        E4 --> E5(["Session Securely Closed"])
+    end

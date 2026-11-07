@@ -37,8 +37,8 @@ export function VirtualScrollList<T>({
       className={className}
       style={{ height, width: "100%" }}
       data={items}
-      computeItemKey={(index, item) => String(itemKey(item, index))}
-      itemContent={(index, item) => renderItem(item, index)}
+      computeItemKey={(index: number, item: T) => String(itemKey(item, index))}
+      itemContent={(index: number, item: T) => renderItem(item, index) as any}
     />
   );
 }

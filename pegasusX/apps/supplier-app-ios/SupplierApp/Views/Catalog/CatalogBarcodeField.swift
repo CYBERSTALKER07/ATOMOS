@@ -14,7 +14,7 @@ struct CatalogBarcodeField: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: SupplierTheme.spacingSM) {
-            TextField("EAN / GTIN barcode", text: $value)
+            TextField("mobile_supplier.ui.ean_gtin_barcode", text: $value)
                 .keyboardType(.numberPad)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()

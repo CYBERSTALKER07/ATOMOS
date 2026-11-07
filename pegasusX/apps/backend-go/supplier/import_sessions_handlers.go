@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -276,7 +277,18 @@ func handleGetImportMapping(repo *ImportRepository) http.HandlerFunc {
 	}
 }
 
-func handlePostImportUploaded(repo *ImportRepository) http.HandlerFunc {
+func loadImportWarehouseIDs(ctx context.Context, repo *ImportRepository, svc *Service, supplierID string) (map[string]struct{}, error) {
+	if svc != nil && svc.repo != nil {
+		topology, err := svc.repo.GetTopology(ctx, supplierID)
+		if err != nil {
+			return nil, err
+		}
+		return warehouseIDSet(topology), nil
+	}
+	return repo.LoadWarehouseIDSet(ctx, supplierID)
+}
+
+func handlePostImportUploaded(repo *ImportRepository, svc *Service) http.HandlerFunc {
 	type request struct {
 		GCSPath string `json:"gcs_path"`
 	}
@@ -338,6 +350,23 @@ func handlePostImportUploaded(repo *ImportRepository) http.HandlerFunc {
 				writeImportJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to mark session uploaded"})
 			}
 			return
+		}
+
+		// Sandbox/emulator: discover immediately when the object is already on disk.
+		// Worker remains the GCS path; MarkSessionDiscovering is idempotent.
+		if opener, oerr := NewImportObjectOpenerFromEnv(r.Context()); oerr == nil && opener != nil && opener.localRoot != "" {
+			discoverCtx, discoverCancel := context.WithTimeout(r.Context(), 30*time.Second)
+			warehouses, whErr := loadImportWarehouseIDs(discoverCtx, repo, svc, supplierID)
+			if whErr != nil {
+				slog.ErrorContext(r.Context(), "import local discover warehouse load failed",
+					"err", whErr, "session_id", sessionID, "supplier_id", supplierID)
+			}
+			if procErr := repo.ProcessImportUploaded(discoverCtx, opener, supplierID, sessionID, expectedGCSPath, warehouses); procErr != nil {
+				slog.ErrorContext(r.Context(), "import local discover after uploaded failed",
+					"err", procErr, "session_id", sessionID, "supplier_id", supplierID)
+			}
+			discoverCancel()
+			_ = opener.Close()
 		}
 
 		writeImportJSON(w, http.StatusAccepted, map[string]any{
@@ -413,21 +442,10 @@ func handlePostImportIngest(repo *ImportRepository, svc *Service) http.HandlerFu
 			return
 		}
 
-		warehouseIDs := map[string]struct{}{}
-		if svc != nil && svc.repo != nil {
-			topology, topoErr := svc.repo.GetTopology(ctx, supplierID)
-			if topoErr != nil {
-				writeImportJSON(w, http.StatusInternalServerError, map[string]string{"error": "load_supplier_topology_failed"})
-				return
-			}
-			warehouseIDs = warehouseIDSet(topology)
-		} else {
-			var topoErr error
-			warehouseIDs, topoErr = repo.LoadWarehouseIDSet(ctx, supplierID)
-			if topoErr != nil {
-				writeImportJSON(w, http.StatusInternalServerError, map[string]string{"error": "load_supplier_topology_failed"})
-				return
-			}
+		warehouseIDs, topoErr := loadImportWarehouseIDs(ctx, repo, svc, supplierID)
+		if topoErr != nil {
+			writeImportJSON(w, http.StatusInternalServerError, map[string]string{"error": "load_supplier_topology_failed"})
+			return
 		}
 
 		if status == "INITIALIZED" {
@@ -644,11 +662,14 @@ func handlePostImportApply(repo *ImportRepository, svc *Service, supplierHub, wa
 
 		summary, err := repo.ApplyImportSession(ctx, supplierID, sessionID)
 		if err != nil {
+			slog.Error("apply import session", "supplier_id", supplierID, "session_id", sessionID, "err", err)
 			switch {
 			case errors.Is(err, errImportSessionNotFound):
 				writeImportJSON(w, http.StatusNotFound, map[string]string{"error": "session not found"})
 			case errors.Is(err, errImportAccessDenied):
 				writeImportJSON(w, http.StatusForbidden, map[string]string{"error": "session does not belong to supplier"})
+			case errors.Is(err, errImportNoApplicableRows):
+				writeImportJSON(w, http.StatusConflict, map[string]string{"error": "no_applicable_rows"})
 			case errors.Is(err, errImportStateConflict):
 				writeImportJSON(w, http.StatusConflict, map[string]string{"error": "session not ready for apply"})
 			default:

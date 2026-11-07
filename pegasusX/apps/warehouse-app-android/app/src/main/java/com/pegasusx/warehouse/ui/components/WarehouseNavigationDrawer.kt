@@ -1,15 +1,18 @@
 package com.pegasusx.warehouse.ui.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import com.pegasus.design.PegasusCollapsibleRail
-import com.pegasus.design.PegasusRailGroup
-import com.pegasus.design.PegasusRailItem
+import com.pegasus.design.ui.PegasusCollapsibleRail
+import com.pegasus.design.ui.PegasusRailGroup
+import com.pegasus.design.ui.PegasusRailItem
 import com.pegasusx.warehouse.ui.navigation.WarehouseSection
+import com.pegasusx.warehouse.R
 
 @Composable
 fun WarehouseNavigationDrawer(
@@ -34,7 +37,7 @@ fun WarehouseNavigationDrawer(
         modifier = modifier,
         footer = {
             IconButton(onClick = onSignOut) {
-                Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Sign out")
+                Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = stringResource(R.string.mobile_warehouse_ui_sign_out))
             }
         },
     )

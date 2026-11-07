@@ -18,7 +18,7 @@ import kotlin.coroutines.resumeWithException
 
 /**
  * Firebase Auth helper for dual-mode authentication.
- * Uses google-services.json (project pegasus-503013). Auth emulator only when
+ * Uses google-services.json (project pegasusx-prod-uz). Auth emulator only when
  * local.properties sets firebase.auth.emulator=true.
  * All methods degrade gracefully — if Firebase is unavailable, legacy JWT still works.
  */
@@ -44,7 +44,10 @@ object FirebaseAuthHelper {
                 "Firebase Auth initialized (emulator=${BuildConfig.FIREBASE_AUTH_EMULATOR})",
             )
         } catch (e: Exception) {
-            Log.w(TAG, "Firebase Auth init failed (non-fatal): ${e.message}")
+            if (!BuildConfig.DEBUG) {
+                throw IllegalStateException("Firebase configuration is missing in release build", e)
+            }
+            Log.w(TAG, "Firebase Auth init failed (non-fatal in dev): ${e.message}")
         }
     }
 

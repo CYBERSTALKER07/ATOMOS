@@ -1,0 +1,63 @@
+# ==============================================================================
+# PegasusX GCP Infrastructure as Code (IaC) - Production Variables Example
+# ==============================================================================
+# Usage: Copy this file to `terraform.tfvars` and customize with your GCP Project ID
+#        cp terraform.tfvars.example terraform.tfvars
+# ==============================================================================
+
+# Core Project Configuration
+project_id  = "pegasusx-production-project"
+region      = "europe-west3" # Frankfurt (Primary Region)
+zone        = "europe-west3-a"
+environment = "production"
+
+# VPC Networking
+network_name       = "pegasusx-vpc"
+subnet_name        = "pegasusx-primary-subnet"
+primary_cidr_block = "10.10.0.0/20"
+pod_cidr_block     = "10.20.0.0/16"
+service_cidr_block = "10.30.0.0/20"
+
+# GKE Compute Cluster
+cluster_name           = "pegasusx-prod-gke"
+enable_autopilot       = true
+master_ipv4_cidr_block = "172.16.0.0/28"
+
+# Cloud Spanner Primary Relational Ledger
+spanner_instance_name         = "pegasusx-ssmr-spanner"
+spanner_config                = "regional-europe-west3"
+spanner_processing_units      = 100
+spanner_database_name         = "main"
+spanner_backup_retention_days = 30
+deletion_protection           = true
+
+# Cloud Memorystore for Redis 7.0 HA
+redis_instance_name  = "pegasusx-ssmr-redis"
+redis_memory_size_gb = 5
+
+# Google Managed Service for Apache Kafka
+kafka_cluster_id   = "pegasusx-events-cluster"
+kafka_vcpu_count   = 3
+kafka_memory_bytes = 17179869184 # 16 GiB per broker
+
+# Google Cloud Storage (GCS) Buckets
+media_bucket_name    = "pegasusx-prod-media"
+updates_bucket_name  = "pegasusx-prod-app-updates"
+imports_bucket_name  = "pegasusx-prod-imports-exports"
+tf_state_bucket_name = "pegasusx-terraform-state"
+
+# Workload Identity & Kubernetes Namespace
+k8s_namespace = "pegasusx"
+
+# Observability & Monitoring
+alert_email_endpoints = ["sre-alerts@pegasusx.io"]
+slack_webhook_url     = "" # Set to your Slack Incoming Webhook URL
+api_hostname          = "api.pegasusx.io"
+
+# Resource Tags / Labels
+labels = {
+  managed_by  = "terraform"
+  system      = "pegasusx"
+  environment = "production"
+  cost_center = "infrastructure-ops"
+}

@@ -1,5 +1,7 @@
 package com.pegasus.payload.ui.home
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -20,11 +22,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import com.pegasus.design.PegasusStateKind
 import com.pegasus.design.PegasusStatePane
 import com.pegasus.payload.data.model.LiveOrder
 import com.pegasus.payload.ui.components.PayloadSectionTitle
 import com.pegasus.payload.ui.components.PayloadSpacing
+import com.pegasus.payload.R
 
 @Composable
 fun OrderChecklist(
@@ -46,7 +52,7 @@ fun OrderChecklist(
 ) {
     if (loading) {
         com.pegasus.design.PegasusLoadingState(
-            title = "Fetching manifest",
+            title = stringResource(R.string.mobile_payload_ui_fetching_manifest),
             body = "Loading the checklist items assigned to this vehicle.",
             modifier = Modifier.fillMaxWidth().heightIn(min = 160.dp),
         )
@@ -67,12 +73,31 @@ fun OrderChecklist(
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(Modifier.padding(PayloadSpacing.lg), verticalArrangement = Arrangement.spacedBy(PayloadSpacing.md)) {
-            PayloadSectionTitle(
-                title = "Orders (${sealedOrderIds.size}/${orders.size} sealed)",
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    "ORDER_CHECKLIST",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontFamily = FontFamily.Monospace,
+                    fontWeight = FontWeight.Black,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    letterSpacing = 1.sp,
+                )
+                Text(
+                    "${sealedOrderIds.size} / ${orders.size} SEALED",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontFamily = FontFamily.Monospace,
+                    fontWeight = FontWeight.Black,
+                    color = if (orders.isNotEmpty() && sealedOrderIds.size == orders.size) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.primary,
+                    letterSpacing = 0.5.sp,
+                )
+            }
             // Order chips
             LazyVerticalGrid(
-                columns = GridCells.Adaptive(minSize = 340.dp),
+                columns = GridCells.Adaptive(minSize = 160.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.fillMaxWidth().height(160.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -95,25 +120,30 @@ fun OrderChecklist(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        "Items — ${selected.orderId.take(8)}",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
+                        "LINE_ITEMS · ORD-${selected.orderId.takeLast(6).uppercase()}",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Black,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        letterSpacing = 0.8.sp,
                     )
                     OutlinedButton(onClick = onScanProduct) {
                         Icon(Icons.Filled.QrCodeScanner, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.size(6.dp))
-                        Text("Scan product")
+                        Text("SCAN", fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = 11.sp)
                     }
                 }
                 if (selected.items.isEmpty()) {
                     Text(
-                        "No line items on this order.",
+                        "NO_ITEMS_IN_ORDER",
                         style = MaterialTheme.typography.bodySmall,
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 } else {
                     LazyVerticalGrid(
-                        columns = GridCells.Adaptive(minSize = 340.dp),
+                        columns = GridCells.Adaptive(minSize = 220.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp),
                         modifier = Modifier.fillMaxWidth().height(220.dp),
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -130,24 +160,46 @@ fun OrderChecklist(
                     }
                 }
                 if (selected.orderId in sealedOrderIds) {
-                    Text(
-                        "Order sealed. Dispatch code ${dispatchCodes[selected.orderId].orEmpty()}.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.tertiary,
-                    )
+                    Surface(
+                        color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.12f),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(14.dp),
+                        ) {
+                            Icon(Icons.Filled.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.tertiary)
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                "ORDER SEALED · ${dispatchCodes[selected.orderId].orEmpty()}",
+                                style = MaterialTheme.typography.labelLarge,
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Black,
+                                color = MaterialTheme.colorScheme.tertiary,
+                            )
+                        }
+                    }
                 } else {
                     val sealing = sealingOrderId == selected.orderId
-                    FilledTonalButton(
+                    Button(
                         onClick = onSealOrder,
                         enabled = canSealSelected && !sealing,
-                        modifier = Modifier.fillMaxWidth().height(48.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier.fillMaxWidth().height(52.dp),
                     ) {
                         if (sealing) {
-                            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
                         } else {
-                            Icon(Icons.Filled.Lock, contentDescription = null)
-                            Spacer(Modifier.size(8.dp))
-                            Text("Seal Order", style = MaterialTheme.typography.labelLarge)
+                            Icon(Icons.Filled.Lock, contentDescription = null, modifier = Modifier.size(20.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                "SEAL ORDER",
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Black,
+                                fontSize = 15.sp,
+                                letterSpacing = 0.5.sp,
+                            )
                         }
                     }
                     val excLoading = exceptionLoadingOrderId == selected.orderId
@@ -158,6 +210,7 @@ fun OrderChecklist(
                         OutlinedButton(
                             onClick = { onShowException(selected.orderId) },
                             enabled = !excLoading,
+                            shape = RoundedCornerShape(12.dp),
                             modifier = Modifier.weight(1f).height(48.dp),
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
                         ) {
@@ -166,16 +219,17 @@ fun OrderChecklist(
                             } else {
                                 Icon(Icons.Filled.Warning, contentDescription = null, modifier = Modifier.size(18.dp))
                                 Spacer(Modifier.size(6.dp))
-                                Text("Remove", style = MaterialTheme.typography.labelLarge)
+                                Text("REPORT ISSUE", fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                             }
                         }
                         OutlinedButton(
                             onClick = { onShowReDispatch(selected.orderId) },
+                            shape = RoundedCornerShape(12.dp),
                             modifier = Modifier.weight(1f).height(48.dp),
                         ) {
                             Icon(Icons.Filled.SwapHoriz, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.size(6.dp))
-                            Text("Re-Dispatch", style = MaterialTheme.typography.labelLarge)
+                            Text("RE-DISPATCH", fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                         }
                     }
                 }
@@ -193,47 +247,83 @@ private fun OrderChip(
     onClick: () -> Unit,
 ) {
     val bg = when {
-        sealed -> MaterialTheme.colorScheme.tertiaryContainer
-        selected -> MaterialTheme.colorScheme.primaryContainer
-        else -> MaterialTheme.colorScheme.surfaceContainerHigh
-    }
-    val fg = when {
-        sealed -> MaterialTheme.colorScheme.onTertiaryContainer
-        selected -> MaterialTheme.colorScheme.onPrimaryContainer
-        else -> MaterialTheme.colorScheme.onSurface
+        sealed -> MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.25f)
+        selected -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
+        else -> MaterialTheme.colorScheme.surface
     }
     Surface(
         color = bg,
-        contentColor = fg,
-        shape = RoundedCornerShape(12.dp),
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(
+            width = if (selected) 2.dp else 1.dp,
+            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f),
+        ),
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).clickable(onClick = onClick),
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
         ) {
             if (sealed) {
-                Icon(Icons.Filled.CheckCircle, contentDescription = "Sealed", modifier = Modifier.size(18.dp))
-                Spacer(Modifier.size(8.dp))
+                Icon(
+                    Icons.Filled.CheckCircle,
+                    contentDescription = stringResource(R.string.mobile_payload_ui_sealed),
+                    tint = MaterialTheme.colorScheme.tertiary,
+                    modifier = Modifier.size(20.dp),
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .size(20.dp)
+                        .clip(RoundedCornerShape(50))
+                        .background(
+                            if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                            else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.1f)
+                        ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .clip(RoundedCornerShape(50))
+                            .background(
+                                if (selected) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                    )
+                }
             }
+            Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(
-                    "Order ${order.orderId.take(8)}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
+                    "ORD-${order.orderId.takeLast(6).uppercase()}",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontFamily = FontFamily.Monospace,
+                    fontWeight = FontWeight.Black,
                 )
+                Spacer(Modifier.height(2.dp))
                 Text(
-                    "${order.items.size} item${if (order.items.size == 1) "" else "s"}",
-                    style = MaterialTheme.typography.bodySmall,
+                    "${order.items.size} UNITS",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontFamily = FontFamily.Monospace,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
             if (sealed && !dispatchCode.isNullOrBlank()) {
-                Text(
-                    dispatchCode,
-                    style = MaterialTheme.typography.labelLarge,
-                    fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.Bold,
-                )
+                Surface(
+                    color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.15f),
+                    shape = RoundedCornerShape(50),
+                ) {
+                    Text(
+                        dispatchCode,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Black,
+                        color = MaterialTheme.colorScheme.tertiary,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                    )
+                }
             }
         }
     }
@@ -247,26 +337,60 @@ private fun ItemRow(
     quantity: Int,
     onToggle: () -> Unit,
 ) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
+    Surface(
+        color = if (checked) MaterialTheme.colorScheme.primary.copy(alpha = 0.04f) else MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(12.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 48.dp)
-            .clip(RoundedCornerShape(10.dp))
-            .clickable(enabled = enabled, onClick = onToggle)
-            .padding(horizontal = 8.dp, vertical = 8.dp),
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(enabled = enabled, onClick = onToggle),
     ) {
-        Checkbox(checked = checked, onCheckedChange = { if (enabled) onToggle() }, enabled = enabled)
-        Spacer(Modifier.size(8.dp))
-        Text(
-            label,
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.weight(1f),
-        )
-        Text(
-            "x$quantity",
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Medium,
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(
+                        if (checked) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f)
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (checked) {
+                    Icon(
+                        Icons.Filled.CheckCircle,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.surface,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+            }
+            Spacer(Modifier.width(14.dp))
+            Text(
+                label.uppercase(),
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    textDecoration = if (checked) androidx.compose.ui.text.style.TextDecoration.LineThrough else null,
+                ),
+                fontFamily = FontFamily.Monospace,
+                fontWeight = FontWeight.Bold,
+                color = if (checked) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f),
+            )
+            Surface(
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f),
+                shape = RoundedCornerShape(6.dp),
+            ) {
+                Text(
+                    "QTY ×$quantity",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontFamily = FontFamily.Monospace,
+                    fontWeight = FontWeight.Black,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                )
+            }
+        }
     }
 }

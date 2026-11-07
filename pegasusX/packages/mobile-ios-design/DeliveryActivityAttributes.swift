@@ -1,0 +1,1 @@
+../mobile-ios-core/Sources/PegasusLiveActivities/DeliveryActivityAttributes.swift

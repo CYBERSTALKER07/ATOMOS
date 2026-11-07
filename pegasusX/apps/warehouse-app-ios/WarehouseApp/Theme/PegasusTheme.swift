@@ -10,12 +10,17 @@ enum Anim {
     static let quick = Animation.easeOut(duration: 0.15)
 }
 
-// MARK: - Lab Card Modifier
+// MARK: - Lab Card Modifier (Conforming to UI Design System Master Contract)
 struct LabCardModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
-            .padding(LabTheme.spacingLG)
-            .background(LabTheme.secondaryBackground, in: RoundedRectangle(cornerRadius: LabTheme.radiusMD))
+            .padding(14)
+            .background(TacticalTheme.surface)
+            .clipShape(RoundedRectangle(cornerRadius: TacticalTheme.radiusMD, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: TacticalTheme.radiusMD, style: .continuous)
+                    .stroke(TacticalTheme.border, lineWidth: 1)
+            )
     }
 }
 
@@ -61,4 +66,8 @@ struct PressableButtonStyle: ButtonStyle {
             .opacity(configuration.isPressed ? 0.85 : 1.0)
             .animation(Anim.quick, value: configuration.isPressed)
     }
+}
+
+extension ButtonStyle where Self == PressableButtonStyle {
+    static var pressable: PressableButtonStyle { PressableButtonStyle() }
 }

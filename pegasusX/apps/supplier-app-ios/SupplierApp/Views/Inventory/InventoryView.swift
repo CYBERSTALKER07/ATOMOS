@@ -28,7 +28,7 @@ struct InventoryView: View {
                 }
             }
             .background(SupplierTheme.background)
-            .navigationTitle("Inventory")
+            .navigationTitle("portal.nav.inventory")
             .searchable(text: $vm.query, prompt: "SKU or product")
             .task { await vm.load() }
             .refreshable { await vm.load(silent: true) }

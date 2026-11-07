@@ -1,9 +1,10 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Icon from "@/components/Icon";
 import { PortalField, PortalInput, PortalSelect, PortalSection, FormAlert } from "@/components/portal";
-import { factoryOpsLocationKey } from "@pegasusx/api-client";
+import { factoryOpsLocationKey } from "@pegasusx/api-core";
 import { apiFetch, decodeJwtPayload, persistSession, readTokenFromCookie, refreshFactorySession } from "@/lib/auth";
 import { factoryOperatorId } from "@/lib/factory-scope";
 import { LocationPicker, resolveLocationValue, type LocationValue } from "@/components/LocationPicker";
@@ -31,6 +32,7 @@ type FactoryLocation = {
 };
 
 export default function FactorySetupPage() {
+  const t = usePortalT();
   const [state, setState] = useState<FactorySetupState>(INITIAL);
   const [location, setLocation] = useState<LocationValue>(DEFAULT_LOCATION);
   const [loading, setLoading] = useState(true);
@@ -165,7 +167,7 @@ export default function FactorySetupPage() {
           <Icon name="factory" size={22} />
         </div>
         <div>
-          <h1>Factory location</h1>
+          <h1>{t("factory_portal.settings.location.text.factory_location")}</h1>
           <p className="setup-header-sub">
             {hasAssignedFactory
               ? "Confirm or update your facility address. Changes stay in sync with supply routing and loading bay operations."
@@ -175,13 +177,13 @@ export default function FactorySetupPage() {
       </header>
 
       {loading ? (
-        <p className="text-sm text-(--muted)">Loading factory details…</p>
+        <p className="text-sm text-(--muted)">{t("factory_portal.setup.factory.text.loading_factory_details")}</p>
       ) : (
         <>
-          <PortalSection icon="factory" title="General">
+          <PortalSection icon="factory" title={t("factory_portal.setup.factory.text.general")}>
             {!hasAssignedFactory ? (
               <>
-                <PortalField id="factoryName" label="Factory name" error={errors.factoryName}>
+                <PortalField id="factoryName" label={t("factory_portal.residual.text.factory_name")} error={errors.factoryName}>
                   <PortalInput
                     id="factoryName"
                     value={state.factoryName}
@@ -189,31 +191,31 @@ export default function FactorySetupPage() {
                     error={errors.factoryName}
                   />
                 </PortalField>
-                <PortalField id="facilityType" label="Facility type" error={errors.facilityType}>
+                <PortalField id="facilityType" label={t("factory_portal.residual.text.facility_type")} error={errors.facilityType}>
                   <PortalSelect
                     id="facilityType"
                     value={state.facilityType}
                     onChange={(e) => setState((s) => ({ ...s, facilityType: e.target.value }))}
                     error={errors.facilityType}
                   >
-                    <option value="MANUFACTURING">Manufacturing</option>
-                    <option value="ASSEMBLY">Assembly</option>
-                    <option value="PACKAGING">Packaging</option>
-                    <option value="PROCESSING">Processing</option>
+                    <option value="MANUFACTURING">{t("factory_portal.setup.factory.text.manufacturing")}</option>
+                    <option value="ASSEMBLY">{t("factory_portal.setup.factory.text.assembly")}</option>
+                    <option value="PACKAGING">{t("factory_portal.setup.factory.text.packaging")}</option>
+                    <option value="PROCESSING">{t("factory_portal.setup.factory.text.processing")}</option>
                   </PortalSelect>
                 </PortalField>
               </>
             ) : state.factoryName ? (
               <div>
-                <p className="text-xs font-medium text-(--muted)">Factory</p>
+                <p className="text-xs font-medium text-(--muted)">{t("factory_portal.setup.factory.text.factory")}</p>
                 <p className="text-sm font-semibold">{state.factoryName}</p>
               </div>
             ) : null}
           </PortalSection>
 
-          <PortalSection icon="loadingBay" title="Location" className="mt-6">
-            <PortalField id="address" label="Factory address" error={errors.address}>
-              <LocationPicker value={location} onChange={setLocation} label="Street address" />
+          <PortalSection icon="loadingBay" title={t("portal.nav.location")} className="mt-6">
+            <PortalField id="address" label={t("factory_portal.residual.text.factory_address")} error={errors.address}>
+              <LocationPicker value={location} onChange={setLocation} label={t("factory_portal.residual.text.street_address")} />
             </PortalField>
           </PortalSection>
         </>

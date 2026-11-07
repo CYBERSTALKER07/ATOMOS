@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { reconnectDelayMs } from '@pegasusx/api-client';
+import { reconnectDelayMs } from '@pegasusx/api-core';
 import { readTokenFromCookie, apiFetch } from './auth';
 import { runWarehouseSessionReconcile } from './session-reconcile';
 import type { HandoffCardMetadata } from '@pegasusx/types';

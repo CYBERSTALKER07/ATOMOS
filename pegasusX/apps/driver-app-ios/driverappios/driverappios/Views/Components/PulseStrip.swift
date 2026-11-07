@@ -1,18 +1,40 @@
 import SwiftUI
 
+enum PulseHonesty {
+    static let failed = "pulse_failed"
+
+    struct Result<T> {
+        let events: [T]
+        let error: String?
+    }
+
+    static func apply<T>(ok: Bool, incoming: [T]?, previous: [T]) -> Result<T> {
+        if ok, let incoming {
+            return Result(events: incoming, error: nil)
+        }
+        return Result(events: previous, error: failed)
+    }
+}
+
 struct PulseStrip: View {
     let events: [PulseEvent]
     let loading: Bool
+    var error: String? = nil
 
     var body: some View {
-        if loading && events.isEmpty {
-            Text("Loading network pulse…")
+        if loading && events.isEmpty && (error ?? "").isEmpty {
+            Text("mobile_driver.ui.loading_network_pulse")
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(LabTheme.fgTertiary)
                 .padding(.vertical, LabTheme.s8)
+        } else if let error, !error.isEmpty {
+            Text(error)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(LabTheme.destructive)
+                .padding(.vertical, LabTheme.s8)
         } else if !events.isEmpty {
             VStack(alignment: .leading, spacing: LabTheme.s8) {
-                Text("Network pulse")
+                Text("factory_portal.app.text.network_pulse")
                     .font(.system(size: 11, weight: .bold, design: .monospaced))
                     .foregroundStyle(LabTheme.fgTertiary)
                     .tracking(1.1)
@@ -46,8 +68,10 @@ struct PulseStrip: View {
         }
     }
 
+    private static let isoFormatter = ISO8601DateFormatter()
+
     private func formatTimestamp(_ iso: String) -> String {
-        guard let date = ISO8601DateFormatter().date(from: iso) else { return "" }
+        guard let date = Self.isoFormatter.date(from: iso) else { return "" }
         let diff = Date().timeIntervalSince(date)
         let mins = Int(diff / 60)
         if mins < 1 { return "now" }
@@ -74,7 +98,7 @@ struct ExplainStatusBanner: View {
                 }
                 if let steps = explain?.nextSteps, !steps.isEmpty {
                     ForEach(steps, id: \.self) { step in
-                        Text("• \(step)")
+                        Text(L10n.format("mobile_driver.ui.step", "\(step)"))
                             .font(.system(size: 11, weight: .medium))
                     }
                 }
@@ -102,7 +126,7 @@ struct HandoffInboxCard: View {
             }
             if let fields = metadata.fields {
                 ForEach(fields.sorted(by: { $0.key < $1.key }), id: \.key) { key, value in
-                    Text("\(key.replacingOccurrences(of: "_", with: " ")): \(value)")
+                    Text(L10n.format("mobile_driver.ui.replacingoccurrences_value", "\(key.replacingOccurrences(of: "_", with: " "))", "\(value)"))
                         .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(LabTheme.fgSecondary)
                 }

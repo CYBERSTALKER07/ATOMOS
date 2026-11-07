@@ -125,21 +125,26 @@ export default function ChargebacksPage() {
         <div className="desk-card p-4" style={{ background: 'var(--desk-surface)' }}>
           <h2 className="md-typescale-title-small mb-3">Record Chargeback</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            <input className="md-input-outlined px-3 py-2" placeholder="Order ID" value={orderId} onChange={(e) => setOrderId(e.target.value)} />
-            <input className="md-input-outlined px-3 py-2" placeholder="Retailer ID" value={retailerId} onChange={(e) => setRetailerId(e.target.value)} />
+            <label htmlFor="chargeback-order-id" className="sr-only">Order ID</label>
+            <input id="chargeback-order-id" aria-label="Order ID" className="md-input-outlined px-3 py-2" placeholder="Order ID" value={orderId} onChange={(e) => setOrderId(e.target.value)} />
+            <label htmlFor="chargeback-retailer-id" className="sr-only">Retailer ID</label>
+            <input id="chargeback-retailer-id" aria-label="Retailer ID" className="md-input-outlined px-3 py-2" placeholder="Retailer ID" value={retailerId} onChange={(e) => setRetailerId(e.target.value)} />
             <select className="md-input-outlined px-3 py-2" value={gateway} onChange={(e) => setGateway(e.target.value)}>
               <option value="CASH">CASH</option>
               <option value="GLOBAL_PAY">GLOBAL_PAY</option>
             </select>
-            <input className="md-input-outlined px-3 py-2" placeholder="Currency (e.g. UZS)" value={currency} onChange={(e) => setCurrency(e.target.value)} />
-            <input className="md-input-outlined px-3 py-2" placeholder="Amount UZS" type="number" min="1" value={amount} onChange={(e) => setAmount(e.target.value)} />
+            <label htmlFor="chargeback-currency" className="sr-only">Currency (e.g. UZS)</label>
+            <input id="chargeback-currency" aria-label="Currency (e.g. UZS)" className="md-input-outlined px-3 py-2" placeholder="Currency (e.g. UZS)" value={currency} onChange={(e) => setCurrency(e.target.value)} />
+            <label htmlFor="chargeback-amount" className="sr-only">Amount UZS</label>
+            <input id="chargeback-amount" aria-label="Amount UZS" className="md-input-outlined px-3 py-2" placeholder="Amount UZS" type="number" min="1" value={amount} onChange={(e) => setAmount(e.target.value)} />
           </div>
           <Button variant="primary" className="mt-3" onPress={createChargeback}>Record</Button>
         </div>
 
         <div className="desk-card p-4" style={{ background: 'var(--desk-surface)' }}>
           <h2 className="md-typescale-title-small mb-3">Record Reversal</h2>
-          <input className="md-input-outlined px-3 py-2 w-full" placeholder="GlobalPaynt Session ID" value={sessionId} onChange={(e) => setSessionId(e.target.value)} />
+          <label htmlFor="reversal-session-id" className="sr-only">GlobalPaynt Session ID</label>
+          <input id="reversal-session-id" aria-label="GlobalPaynt Session ID" className="md-input-outlined px-3 py-2 w-full" placeholder="GlobalPaynt Session ID" value={sessionId} onChange={(e) => setSessionId(e.target.value)} />
           <Button variant="outline" className="mt-3" onPress={createReversal}>Record Reversal</Button>
         </div>
       </div>

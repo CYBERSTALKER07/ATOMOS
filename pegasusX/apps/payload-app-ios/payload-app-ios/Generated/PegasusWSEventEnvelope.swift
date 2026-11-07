@@ -7,21 +7,22 @@ import Foundation
 
 // MARK: - PegasusWSEventEnvelope
 struct PegasusWSEventEnvelope: Codable {
-    let type: TypeEnum
     let aggregateID, aggregateType: String?
     let baseEvent: JSONAny
     let decidedBy, decision, note, recommendationID: String?
     let status, supplierID, action, actorID: String?
     let actorRole, attemptID, confirmationStatus, currency: String?
-    let driverID, escalatedTo, fromDriverID, fromRouteID: String?
+    let customerProgressPercent: Int?
+    let customerStage, driverID, escalatedTo, fromDriverID: String?
+    let fromRouteID: String?
     let gpsLat, gpsLng: Double?
     let h3Cell: String?
     let lat: Double?
     let licensePlate: String?
     let lineItems: JSONAny?
     let lng: Double?
-    let manifestID, negotiationID, orderID, orderSource: String?
-    let paymentMethod, previousStatus, proposalID: String?
+    let manifestID, message, negotiationID, orderID: String?
+    let orderSource, paymentMethod, previousStatus, proposalID: String?
     let proposedPriceMinor: Int?
     let reason, receivingWindowClose, receivingWindowOpen, requestedDeliveryDate: String?
     let resolution, response, retailerID, routeID: String?
@@ -29,17 +30,27 @@ struct PegasusWSEventEnvelope: Codable {
     let totalMinor: Int?
     let vehicleID: String?
     let version: Version?
-    let warehouseID, accountHolder, assignedWarehouseID, bankName: String?
-    let contactName, email, legalName: String?
+    let warehouseID, agingBucket: String?
+    let amountMinor, balanceMinor: Int?
+    let dueAt: String?
+    let dunningStep: Int?
+    let invoiceID, lastDunnedAt: String?
+    let principalMinor: Int?
+    let deadline, ehfID, accountHolder, assignedWarehouseID: String?
+    let bankName, contactName, email, legalName: String?
     let selectedGateways: [String]?
     let supplierRole, userID: String?
     let expectedMinor, overageMinor, receivedMinor, shortfallMinor: Int?
-    let traceID: String?
-    let amountMinor: Int?
+    let traceID, categoryID, iconKey, name: String?
+    let parentCategoryID: String?
+    let sortOrder: Int?
     let chargebackID, claimID, claimType: String?
     let photoUrls: [String]?
     let resolutionNote, settlementMode, source, commandID: String?
-    let sessionID: String?
+    let actor, campaignID: String?
+    let impactedLotCount, impactedOrderCount, impactedUnitsCount: Int?
+    let lotCode, lotID, productID, recallReason: String?
+    let severity, photoProofURL, signatureURL, sessionID: String?
     let baselineQty: Int?
     let baselineSource, blockedReason: String?
     let confidence: Double?
@@ -48,9 +59,12 @@ struct PegasusWSEventEnvelope: Codable {
     let highUnits: Int?
     let insightID: String?
     let lowUnits, networkNodes: Int?
-    let overrideID, polygonGeojson, productID, signalID: String?
-    let simulationID: String?
+    let overrideID, polygonGeojson, publishedBy, scenarioID: String?
+    let signalID, simulationID: String?
     let transferRecommendations, ttlSeconds: Int?
+    let countryCode, phone: String?
+    let orderCount: Int?
+    let orderIDS: [String]?
     let available: Bool?
     let homeNodeID, homeNodeType: String?
     let onShift: Bool?
@@ -59,17 +73,20 @@ struct PegasusWSEventEnvelope: Codable {
     let requestID, errorCode, errorMessage, fiscalQr: String?
     let fiscalReceiptID, provider, lockName, systemID: String?
     let gcsPath: String?
-    let suggestedMappings, attemptCount, depth: Int?
+    let suggestedMappings, committedUnits, coverageDays: Int?
+    let coverageStartDate, linkedTransferID, lockID: String?
+    let pendingConfirmationUnits, projectedUnits: Int?
+    let requestedBy: String?
+    let requestedUnits: Int?
+    let state, transferID, transferMode: String?
+    let attemptCount, depth: Int?
     let escalated: Bool?
-    let fromManifestID, fromVehicleID: String?
-    let orderCount: Int?
-    let state: String?
+    let fromManifestID, fromVehicleID, manifestDomain: String?
     let stopCount: Int?
     let toManifestID, toVehicleID: String?
     let totalVolumeVu: TotalVolumeVu?
     let transferCount: Int?
-    let transferID: String?
-    let driverIDS, manifestIDS, orderIDS: [String]?
+    let driverIDS, manifestIDS: [String]?
     let sharedRouteID, splitGroupID: String?
     let truckCount: Int?
     let conditionType: String?
@@ -77,35 +94,37 @@ struct PegasusWSEventEnvelope: Codable {
     let notes: String?
     let quantity: Int?
     let reportID, reporterID, reporterRole, sku: String?
-    let reasonCode, executionAction, executionMode, gateway: String?
-    let policySource, providerReference, transactionID, preOrderID: String?
-    let handlingClass: String?
-    let isHazardous, isPerishable, requiresColdChain: Bool?
+    let deliveredAt, disputeNote, proofPhotoURL, proofSignature: String?
+    let reasonCode: String?
+    let cardMinor, cashMinor: Int?
+    let executionAction, executionMode, gateway, policySource: String?
+    let providerReference, transactionID, batchID: String?
+    let netPayoutMinor: Int?
+    let railReference, preOrderID, barcode, handlingClass: String?
+    let isActive, isHazardous, isPerishable: Bool?
+    let previousPriceMinor, priceMinor: Int?
+    let requiresColdChain: Bool?
+    let stockQuantity: Int?
     let storageTempMaxC, storageTempMinC: Double?
-    let promotionID: String?
+    let unit, promotionID: String?
     let retailerIDS: [String]?
     let retailerScope: String?
     let creditLimitMinor, currentBalance, requestedAmount: Int?
     let delinquent: Bool?
-    let profileID, riskTier: String?
-    let priceMinor: Int?
-    let setBy, setByRole, countryCode, name: String?
-    let phone, assignedFactoryID: String?
+    let profileID, riskTier, setBy, setByRole: String?
+    let assignedFactoryID: String?
     let categories: [String]?
     let country: String?
     let isConfigured, isRegistered: Bool?
-    let fromWarehouse, toWarehouse: String?
-    let isActive: Bool?
-    let unavailableNote, unavailableReason: String?
-    let committedUnits, coverageDays: Int?
-    let coverageStartDate, linkedTransferID, lockID: String?
-    let pendingConfirmationUnits, projectedUnits: Int?
-    let requestedBy: String?
-    let requestedUnits: Int?
-    let transferMode: String?
+    let breachReason, breachedAt, cutoffAppliedAt: String?
+    let fillRateTargetBps: Int?
+    let guaranteedDeliveryDate: String?
+    let minOrderMinor: Int?
+    let promiseType: String?
+    let slaHours: Int?
+    let fromWarehouse, toWarehouse, unavailableNote, unavailableReason: String?
 
     enum CodingKeys: String, CodingKey {
-        case type
         case aggregateID = "aggregate_id"
         case aggregateType = "aggregate_type"
         case baseEvent = "base_event"
@@ -120,6 +139,8 @@ struct PegasusWSEventEnvelope: Codable {
         case attemptID = "attempt_id"
         case confirmationStatus = "confirmation_status"
         case currency
+        case customerProgressPercent = "customer_progress_percent"
+        case customerStage = "customer_stage"
         case driverID = "driver_id"
         case escalatedTo = "escalated_to"
         case fromDriverID = "from_driver_id"
@@ -132,6 +153,7 @@ struct PegasusWSEventEnvelope: Codable {
         case lineItems = "line_items"
         case lng
         case manifestID = "manifest_id"
+        case message
         case negotiationID = "negotiation_id"
         case orderID = "order_id"
         case orderSource = "order_source"
@@ -152,6 +174,16 @@ struct PegasusWSEventEnvelope: Codable {
         case vehicleID = "vehicle_id"
         case version
         case warehouseID = "warehouse_id"
+        case agingBucket = "aging_bucket"
+        case amountMinor = "amount_minor"
+        case balanceMinor = "balance_minor"
+        case dueAt = "due_at"
+        case dunningStep = "dunning_step"
+        case invoiceID = "invoice_id"
+        case lastDunnedAt = "last_dunned_at"
+        case principalMinor = "principal_minor"
+        case deadline
+        case ehfID = "ehf_id"
         case accountHolder = "account_holder"
         case assignedWarehouseID = "assigned_warehouse_id"
         case bankName = "bank_name"
@@ -166,7 +198,11 @@ struct PegasusWSEventEnvelope: Codable {
         case receivedMinor = "received_minor"
         case shortfallMinor = "shortfall_minor"
         case traceID = "trace_id"
-        case amountMinor = "amount_minor"
+        case categoryID = "category_id"
+        case iconKey = "icon_key"
+        case name
+        case parentCategoryID = "parent_category_id"
+        case sortOrder = "sort_order"
         case chargebackID = "chargeback_id"
         case claimID = "claim_id"
         case claimType = "claim_type"
@@ -175,6 +211,18 @@ struct PegasusWSEventEnvelope: Codable {
         case settlementMode = "settlement_mode"
         case source
         case commandID = "command_id"
+        case actor
+        case campaignID = "campaign_id"
+        case impactedLotCount = "impacted_lot_count"
+        case impactedOrderCount = "impacted_order_count"
+        case impactedUnitsCount = "impacted_units_count"
+        case lotCode = "lot_code"
+        case lotID = "lot_id"
+        case productID = "product_id"
+        case recallReason = "recall_reason"
+        case severity
+        case photoProofURL = "photo_proof_url"
+        case signatureURL = "signature_url"
         case sessionID = "session_id"
         case baselineQty = "baseline_qty"
         case baselineSource = "baseline_source"
@@ -188,11 +236,16 @@ struct PegasusWSEventEnvelope: Codable {
         case networkNodes = "network_nodes"
         case overrideID = "override_id"
         case polygonGeojson = "polygon_geojson"
-        case productID = "product_id"
+        case publishedBy = "published_by"
+        case scenarioID = "scenario_id"
         case signalID = "signal_id"
         case simulationID = "simulation_id"
         case transferRecommendations = "transfer_recommendations"
         case ttlSeconds = "ttl_seconds"
+        case countryCode = "country_code"
+        case phone
+        case orderCount = "order_count"
+        case orderIDS = "order_ids"
         case available
         case homeNodeID = "home_node_id"
         case homeNodeType = "home_node_type"
@@ -209,21 +262,30 @@ struct PegasusWSEventEnvelope: Codable {
         case systemID = "system_id"
         case gcsPath = "gcs_path"
         case suggestedMappings = "suggested_mappings"
+        case committedUnits = "committed_units"
+        case coverageDays = "coverage_days"
+        case coverageStartDate = "coverage_start_date"
+        case linkedTransferID = "linked_transfer_id"
+        case lockID = "lock_id"
+        case pendingConfirmationUnits = "pending_confirmation_units"
+        case projectedUnits = "projected_units"
+        case requestedBy = "requested_by"
+        case requestedUnits = "requested_units"
+        case state
+        case transferID = "transfer_id"
+        case transferMode = "transfer_mode"
         case attemptCount = "attempt_count"
         case depth, escalated
         case fromManifestID = "from_manifest_id"
         case fromVehicleID = "from_vehicle_id"
-        case orderCount = "order_count"
-        case state
+        case manifestDomain = "manifest_domain"
         case stopCount = "stop_count"
         case toManifestID = "to_manifest_id"
         case toVehicleID = "to_vehicle_id"
         case totalVolumeVu = "total_volume_vu"
         case transferCount = "transfer_count"
-        case transferID = "transfer_id"
         case driverIDS = "driver_ids"
         case manifestIDS = "manifest_ids"
-        case orderIDS = "order_ids"
         case sharedRouteID = "shared_route_id"
         case splitGroupID = "split_group_id"
         case truckCount = "truck_count"
@@ -234,20 +296,35 @@ struct PegasusWSEventEnvelope: Codable {
         case reporterID = "reporter_id"
         case reporterRole = "reporter_role"
         case sku
+        case deliveredAt = "delivered_at"
+        case disputeNote = "dispute_note"
+        case proofPhotoURL = "proof_photo_url"
+        case proofSignature = "proof_signature"
         case reasonCode = "reason_code"
+        case cardMinor = "card_minor"
+        case cashMinor = "cash_minor"
         case executionAction = "execution_action"
         case executionMode = "execution_mode"
         case gateway
         case policySource = "policy_source"
         case providerReference = "provider_reference"
         case transactionID = "transaction_id"
+        case batchID = "batch_id"
+        case netPayoutMinor = "net_payout_minor"
+        case railReference = "rail_reference"
         case preOrderID = "pre_order_id"
+        case barcode
         case handlingClass = "handling_class"
+        case isActive = "is_active"
         case isHazardous = "is_hazardous"
         case isPerishable = "is_perishable"
+        case previousPriceMinor = "previous_price_minor"
+        case priceMinor = "price_minor"
         case requiresColdChain = "requires_cold_chain"
+        case stockQuantity = "stock_quantity"
         case storageTempMaxC = "storage_temp_max_c"
         case storageTempMinC = "storage_temp_min_c"
+        case unit
         case promotionID = "promotion_id"
         case retailerIDS = "retailer_ids"
         case retailerScope = "retailer_scope"
@@ -257,30 +334,24 @@ struct PegasusWSEventEnvelope: Codable {
         case delinquent
         case profileID = "profile_id"
         case riskTier = "risk_tier"
-        case priceMinor = "price_minor"
         case setBy = "set_by"
         case setByRole = "set_by_role"
-        case countryCode = "country_code"
-        case name, phone
         case assignedFactoryID = "assigned_factory_id"
         case categories, country
         case isConfigured = "is_configured"
         case isRegistered = "is_registered"
+        case breachReason = "breach_reason"
+        case breachedAt = "breached_at"
+        case cutoffAppliedAt = "cutoff_applied_at"
+        case fillRateTargetBps = "fill_rate_target_bps"
+        case guaranteedDeliveryDate = "guaranteed_delivery_date"
+        case minOrderMinor = "min_order_minor"
+        case promiseType = "promise_type"
+        case slaHours = "sla_hours"
         case fromWarehouse = "from_warehouse"
         case toWarehouse = "to_warehouse"
-        case isActive = "is_active"
         case unavailableNote = "unavailable_note"
         case unavailableReason = "unavailable_reason"
-        case committedUnits = "committed_units"
-        case coverageDays = "coverage_days"
-        case coverageStartDate = "coverage_start_date"
-        case linkedTransferID = "linked_transfer_id"
-        case lockID = "lock_id"
-        case pendingConfirmationUnits = "pending_confirmation_units"
-        case projectedUnits = "projected_units"
-        case requestedBy = "requested_by"
-        case requestedUnits = "requested_units"
-        case transferMode = "transfer_mode"
     }
 }
 
@@ -303,7 +374,6 @@ extension PegasusWSEventEnvelope {
     }
 
     func with(
-        type: TypeEnum? = nil,
         aggregateID: String?? = nil,
         aggregateType: String?? = nil,
         baseEvent: JSONAny? = nil,
@@ -319,6 +389,8 @@ extension PegasusWSEventEnvelope {
         attemptID: String?? = nil,
         confirmationStatus: String?? = nil,
         currency: String?? = nil,
+        customerProgressPercent: Int?? = nil,
+        customerStage: String?? = nil,
         driverID: String?? = nil,
         escalatedTo: String?? = nil,
         fromDriverID: String?? = nil,
@@ -331,6 +403,7 @@ extension PegasusWSEventEnvelope {
         lineItems: JSONAny?? = nil,
         lng: Double?? = nil,
         manifestID: String?? = nil,
+        message: String?? = nil,
         negotiationID: String?? = nil,
         orderID: String?? = nil,
         orderSource: String?? = nil,
@@ -352,6 +425,16 @@ extension PegasusWSEventEnvelope {
         vehicleID: String?? = nil,
         version: Version?? = nil,
         warehouseID: String?? = nil,
+        agingBucket: String?? = nil,
+        amountMinor: Int?? = nil,
+        balanceMinor: Int?? = nil,
+        dueAt: String?? = nil,
+        dunningStep: Int?? = nil,
+        invoiceID: String?? = nil,
+        lastDunnedAt: String?? = nil,
+        principalMinor: Int?? = nil,
+        deadline: String?? = nil,
+        ehfID: String?? = nil,
         accountHolder: String?? = nil,
         assignedWarehouseID: String?? = nil,
         bankName: String?? = nil,
@@ -366,7 +449,11 @@ extension PegasusWSEventEnvelope {
         receivedMinor: Int?? = nil,
         shortfallMinor: Int?? = nil,
         traceID: String?? = nil,
-        amountMinor: Int?? = nil,
+        categoryID: String?? = nil,
+        iconKey: String?? = nil,
+        name: String?? = nil,
+        parentCategoryID: String?? = nil,
+        sortOrder: Int?? = nil,
         chargebackID: String?? = nil,
         claimID: String?? = nil,
         claimType: String?? = nil,
@@ -375,6 +462,18 @@ extension PegasusWSEventEnvelope {
         settlementMode: String?? = nil,
         source: String?? = nil,
         commandID: String?? = nil,
+        actor: String?? = nil,
+        campaignID: String?? = nil,
+        impactedLotCount: Int?? = nil,
+        impactedOrderCount: Int?? = nil,
+        impactedUnitsCount: Int?? = nil,
+        lotCode: String?? = nil,
+        lotID: String?? = nil,
+        productID: String?? = nil,
+        recallReason: String?? = nil,
+        severity: String?? = nil,
+        photoProofURL: String?? = nil,
+        signatureURL: String?? = nil,
         sessionID: String?? = nil,
         baselineQty: Int?? = nil,
         baselineSource: String?? = nil,
@@ -388,11 +487,16 @@ extension PegasusWSEventEnvelope {
         networkNodes: Int?? = nil,
         overrideID: String?? = nil,
         polygonGeojson: String?? = nil,
-        productID: String?? = nil,
+        publishedBy: String?? = nil,
+        scenarioID: String?? = nil,
         signalID: String?? = nil,
         simulationID: String?? = nil,
         transferRecommendations: Int?? = nil,
         ttlSeconds: Int?? = nil,
+        countryCode: String?? = nil,
+        phone: String?? = nil,
+        orderCount: Int?? = nil,
+        orderIDS: [String]?? = nil,
         available: Bool?? = nil,
         homeNodeID: String?? = nil,
         homeNodeType: String?? = nil,
@@ -409,22 +513,31 @@ extension PegasusWSEventEnvelope {
         systemID: String?? = nil,
         gcsPath: String?? = nil,
         suggestedMappings: Int?? = nil,
+        committedUnits: Int?? = nil,
+        coverageDays: Int?? = nil,
+        coverageStartDate: String?? = nil,
+        linkedTransferID: String?? = nil,
+        lockID: String?? = nil,
+        pendingConfirmationUnits: Int?? = nil,
+        projectedUnits: Int?? = nil,
+        requestedBy: String?? = nil,
+        requestedUnits: Int?? = nil,
+        state: String?? = nil,
+        transferID: String?? = nil,
+        transferMode: String?? = nil,
         attemptCount: Int?? = nil,
         depth: Int?? = nil,
         escalated: Bool?? = nil,
         fromManifestID: String?? = nil,
         fromVehicleID: String?? = nil,
-        orderCount: Int?? = nil,
-        state: String?? = nil,
+        manifestDomain: String?? = nil,
         stopCount: Int?? = nil,
         toManifestID: String?? = nil,
         toVehicleID: String?? = nil,
         totalVolumeVu: TotalVolumeVu?? = nil,
         transferCount: Int?? = nil,
-        transferID: String?? = nil,
         driverIDS: [String]?? = nil,
         manifestIDS: [String]?? = nil,
-        orderIDS: [String]?? = nil,
         sharedRouteID: String?? = nil,
         splitGroupID: String?? = nil,
         truckCount: Int?? = nil,
@@ -436,20 +549,35 @@ extension PegasusWSEventEnvelope {
         reporterID: String?? = nil,
         reporterRole: String?? = nil,
         sku: String?? = nil,
+        deliveredAt: String?? = nil,
+        disputeNote: String?? = nil,
+        proofPhotoURL: String?? = nil,
+        proofSignature: String?? = nil,
         reasonCode: String?? = nil,
+        cardMinor: Int?? = nil,
+        cashMinor: Int?? = nil,
         executionAction: String?? = nil,
         executionMode: String?? = nil,
         gateway: String?? = nil,
         policySource: String?? = nil,
         providerReference: String?? = nil,
         transactionID: String?? = nil,
+        batchID: String?? = nil,
+        netPayoutMinor: Int?? = nil,
+        railReference: String?? = nil,
         preOrderID: String?? = nil,
+        barcode: String?? = nil,
         handlingClass: String?? = nil,
+        isActive: Bool?? = nil,
         isHazardous: Bool?? = nil,
         isPerishable: Bool?? = nil,
+        previousPriceMinor: Int?? = nil,
+        priceMinor: Int?? = nil,
         requiresColdChain: Bool?? = nil,
+        stockQuantity: Int?? = nil,
         storageTempMaxC: Double?? = nil,
         storageTempMinC: Double?? = nil,
+        unit: String?? = nil,
         promotionID: String?? = nil,
         retailerIDS: [String]?? = nil,
         retailerScope: String?? = nil,
@@ -459,35 +587,27 @@ extension PegasusWSEventEnvelope {
         delinquent: Bool?? = nil,
         profileID: String?? = nil,
         riskTier: String?? = nil,
-        priceMinor: Int?? = nil,
         setBy: String?? = nil,
         setByRole: String?? = nil,
-        countryCode: String?? = nil,
-        name: String?? = nil,
-        phone: String?? = nil,
         assignedFactoryID: String?? = nil,
         categories: [String]?? = nil,
         country: String?? = nil,
         isConfigured: Bool?? = nil,
         isRegistered: Bool?? = nil,
+        breachReason: String?? = nil,
+        breachedAt: String?? = nil,
+        cutoffAppliedAt: String?? = nil,
+        fillRateTargetBps: Int?? = nil,
+        guaranteedDeliveryDate: String?? = nil,
+        minOrderMinor: Int?? = nil,
+        promiseType: String?? = nil,
+        slaHours: Int?? = nil,
         fromWarehouse: String?? = nil,
         toWarehouse: String?? = nil,
-        isActive: Bool?? = nil,
         unavailableNote: String?? = nil,
-        unavailableReason: String?? = nil,
-        committedUnits: Int?? = nil,
-        coverageDays: Int?? = nil,
-        coverageStartDate: String?? = nil,
-        linkedTransferID: String?? = nil,
-        lockID: String?? = nil,
-        pendingConfirmationUnits: Int?? = nil,
-        projectedUnits: Int?? = nil,
-        requestedBy: String?? = nil,
-        requestedUnits: Int?? = nil,
-        transferMode: String?? = nil
+        unavailableReason: String?? = nil
     ) -> PegasusWSEventEnvelope {
         return PegasusWSEventEnvelope(
-            type: type ?? self.type,
             aggregateID: aggregateID ?? self.aggregateID,
             aggregateType: aggregateType ?? self.aggregateType,
             baseEvent: baseEvent ?? self.baseEvent,
@@ -503,6 +623,8 @@ extension PegasusWSEventEnvelope {
             attemptID: attemptID ?? self.attemptID,
             confirmationStatus: confirmationStatus ?? self.confirmationStatus,
             currency: currency ?? self.currency,
+            customerProgressPercent: customerProgressPercent ?? self.customerProgressPercent,
+            customerStage: customerStage ?? self.customerStage,
             driverID: driverID ?? self.driverID,
             escalatedTo: escalatedTo ?? self.escalatedTo,
             fromDriverID: fromDriverID ?? self.fromDriverID,
@@ -515,6 +637,7 @@ extension PegasusWSEventEnvelope {
             lineItems: lineItems ?? self.lineItems,
             lng: lng ?? self.lng,
             manifestID: manifestID ?? self.manifestID,
+            message: message ?? self.message,
             negotiationID: negotiationID ?? self.negotiationID,
             orderID: orderID ?? self.orderID,
             orderSource: orderSource ?? self.orderSource,
@@ -536,6 +659,16 @@ extension PegasusWSEventEnvelope {
             vehicleID: vehicleID ?? self.vehicleID,
             version: version ?? self.version,
             warehouseID: warehouseID ?? self.warehouseID,
+            agingBucket: agingBucket ?? self.agingBucket,
+            amountMinor: amountMinor ?? self.amountMinor,
+            balanceMinor: balanceMinor ?? self.balanceMinor,
+            dueAt: dueAt ?? self.dueAt,
+            dunningStep: dunningStep ?? self.dunningStep,
+            invoiceID: invoiceID ?? self.invoiceID,
+            lastDunnedAt: lastDunnedAt ?? self.lastDunnedAt,
+            principalMinor: principalMinor ?? self.principalMinor,
+            deadline: deadline ?? self.deadline,
+            ehfID: ehfID ?? self.ehfID,
             accountHolder: accountHolder ?? self.accountHolder,
             assignedWarehouseID: assignedWarehouseID ?? self.assignedWarehouseID,
             bankName: bankName ?? self.bankName,
@@ -550,7 +683,11 @@ extension PegasusWSEventEnvelope {
             receivedMinor: receivedMinor ?? self.receivedMinor,
             shortfallMinor: shortfallMinor ?? self.shortfallMinor,
             traceID: traceID ?? self.traceID,
-            amountMinor: amountMinor ?? self.amountMinor,
+            categoryID: categoryID ?? self.categoryID,
+            iconKey: iconKey ?? self.iconKey,
+            name: name ?? self.name,
+            parentCategoryID: parentCategoryID ?? self.parentCategoryID,
+            sortOrder: sortOrder ?? self.sortOrder,
             chargebackID: chargebackID ?? self.chargebackID,
             claimID: claimID ?? self.claimID,
             claimType: claimType ?? self.claimType,
@@ -559,6 +696,18 @@ extension PegasusWSEventEnvelope {
             settlementMode: settlementMode ?? self.settlementMode,
             source: source ?? self.source,
             commandID: commandID ?? self.commandID,
+            actor: actor ?? self.actor,
+            campaignID: campaignID ?? self.campaignID,
+            impactedLotCount: impactedLotCount ?? self.impactedLotCount,
+            impactedOrderCount: impactedOrderCount ?? self.impactedOrderCount,
+            impactedUnitsCount: impactedUnitsCount ?? self.impactedUnitsCount,
+            lotCode: lotCode ?? self.lotCode,
+            lotID: lotID ?? self.lotID,
+            productID: productID ?? self.productID,
+            recallReason: recallReason ?? self.recallReason,
+            severity: severity ?? self.severity,
+            photoProofURL: photoProofURL ?? self.photoProofURL,
+            signatureURL: signatureURL ?? self.signatureURL,
             sessionID: sessionID ?? self.sessionID,
             baselineQty: baselineQty ?? self.baselineQty,
             baselineSource: baselineSource ?? self.baselineSource,
@@ -572,11 +721,16 @@ extension PegasusWSEventEnvelope {
             networkNodes: networkNodes ?? self.networkNodes,
             overrideID: overrideID ?? self.overrideID,
             polygonGeojson: polygonGeojson ?? self.polygonGeojson,
-            productID: productID ?? self.productID,
+            publishedBy: publishedBy ?? self.publishedBy,
+            scenarioID: scenarioID ?? self.scenarioID,
             signalID: signalID ?? self.signalID,
             simulationID: simulationID ?? self.simulationID,
             transferRecommendations: transferRecommendations ?? self.transferRecommendations,
             ttlSeconds: ttlSeconds ?? self.ttlSeconds,
+            countryCode: countryCode ?? self.countryCode,
+            phone: phone ?? self.phone,
+            orderCount: orderCount ?? self.orderCount,
+            orderIDS: orderIDS ?? self.orderIDS,
             available: available ?? self.available,
             homeNodeID: homeNodeID ?? self.homeNodeID,
             homeNodeType: homeNodeType ?? self.homeNodeType,
@@ -593,22 +747,31 @@ extension PegasusWSEventEnvelope {
             systemID: systemID ?? self.systemID,
             gcsPath: gcsPath ?? self.gcsPath,
             suggestedMappings: suggestedMappings ?? self.suggestedMappings,
+            committedUnits: committedUnits ?? self.committedUnits,
+            coverageDays: coverageDays ?? self.coverageDays,
+            coverageStartDate: coverageStartDate ?? self.coverageStartDate,
+            linkedTransferID: linkedTransferID ?? self.linkedTransferID,
+            lockID: lockID ?? self.lockID,
+            pendingConfirmationUnits: pendingConfirmationUnits ?? self.pendingConfirmationUnits,
+            projectedUnits: projectedUnits ?? self.projectedUnits,
+            requestedBy: requestedBy ?? self.requestedBy,
+            requestedUnits: requestedUnits ?? self.requestedUnits,
+            state: state ?? self.state,
+            transferID: transferID ?? self.transferID,
+            transferMode: transferMode ?? self.transferMode,
             attemptCount: attemptCount ?? self.attemptCount,
             depth: depth ?? self.depth,
             escalated: escalated ?? self.escalated,
             fromManifestID: fromManifestID ?? self.fromManifestID,
             fromVehicleID: fromVehicleID ?? self.fromVehicleID,
-            orderCount: orderCount ?? self.orderCount,
-            state: state ?? self.state,
+            manifestDomain: manifestDomain ?? self.manifestDomain,
             stopCount: stopCount ?? self.stopCount,
             toManifestID: toManifestID ?? self.toManifestID,
             toVehicleID: toVehicleID ?? self.toVehicleID,
             totalVolumeVu: totalVolumeVu ?? self.totalVolumeVu,
             transferCount: transferCount ?? self.transferCount,
-            transferID: transferID ?? self.transferID,
             driverIDS: driverIDS ?? self.driverIDS,
             manifestIDS: manifestIDS ?? self.manifestIDS,
-            orderIDS: orderIDS ?? self.orderIDS,
             sharedRouteID: sharedRouteID ?? self.sharedRouteID,
             splitGroupID: splitGroupID ?? self.splitGroupID,
             truckCount: truckCount ?? self.truckCount,
@@ -620,20 +783,35 @@ extension PegasusWSEventEnvelope {
             reporterID: reporterID ?? self.reporterID,
             reporterRole: reporterRole ?? self.reporterRole,
             sku: sku ?? self.sku,
+            deliveredAt: deliveredAt ?? self.deliveredAt,
+            disputeNote: disputeNote ?? self.disputeNote,
+            proofPhotoURL: proofPhotoURL ?? self.proofPhotoURL,
+            proofSignature: proofSignature ?? self.proofSignature,
             reasonCode: reasonCode ?? self.reasonCode,
+            cardMinor: cardMinor ?? self.cardMinor,
+            cashMinor: cashMinor ?? self.cashMinor,
             executionAction: executionAction ?? self.executionAction,
             executionMode: executionMode ?? self.executionMode,
             gateway: gateway ?? self.gateway,
             policySource: policySource ?? self.policySource,
             providerReference: providerReference ?? self.providerReference,
             transactionID: transactionID ?? self.transactionID,
+            batchID: batchID ?? self.batchID,
+            netPayoutMinor: netPayoutMinor ?? self.netPayoutMinor,
+            railReference: railReference ?? self.railReference,
             preOrderID: preOrderID ?? self.preOrderID,
+            barcode: barcode ?? self.barcode,
             handlingClass: handlingClass ?? self.handlingClass,
+            isActive: isActive ?? self.isActive,
             isHazardous: isHazardous ?? self.isHazardous,
             isPerishable: isPerishable ?? self.isPerishable,
+            previousPriceMinor: previousPriceMinor ?? self.previousPriceMinor,
+            priceMinor: priceMinor ?? self.priceMinor,
             requiresColdChain: requiresColdChain ?? self.requiresColdChain,
+            stockQuantity: stockQuantity ?? self.stockQuantity,
             storageTempMaxC: storageTempMaxC ?? self.storageTempMaxC,
             storageTempMinC: storageTempMinC ?? self.storageTempMinC,
+            unit: unit ?? self.unit,
             promotionID: promotionID ?? self.promotionID,
             retailerIDS: retailerIDS ?? self.retailerIDS,
             retailerScope: retailerScope ?? self.retailerScope,
@@ -643,32 +821,25 @@ extension PegasusWSEventEnvelope {
             delinquent: delinquent ?? self.delinquent,
             profileID: profileID ?? self.profileID,
             riskTier: riskTier ?? self.riskTier,
-            priceMinor: priceMinor ?? self.priceMinor,
             setBy: setBy ?? self.setBy,
             setByRole: setByRole ?? self.setByRole,
-            countryCode: countryCode ?? self.countryCode,
-            name: name ?? self.name,
-            phone: phone ?? self.phone,
             assignedFactoryID: assignedFactoryID ?? self.assignedFactoryID,
             categories: categories ?? self.categories,
             country: country ?? self.country,
             isConfigured: isConfigured ?? self.isConfigured,
             isRegistered: isRegistered ?? self.isRegistered,
+            breachReason: breachReason ?? self.breachReason,
+            breachedAt: breachedAt ?? self.breachedAt,
+            cutoffAppliedAt: cutoffAppliedAt ?? self.cutoffAppliedAt,
+            fillRateTargetBps: fillRateTargetBps ?? self.fillRateTargetBps,
+            guaranteedDeliveryDate: guaranteedDeliveryDate ?? self.guaranteedDeliveryDate,
+            minOrderMinor: minOrderMinor ?? self.minOrderMinor,
+            promiseType: promiseType ?? self.promiseType,
+            slaHours: slaHours ?? self.slaHours,
             fromWarehouse: fromWarehouse ?? self.fromWarehouse,
             toWarehouse: toWarehouse ?? self.toWarehouse,
-            isActive: isActive ?? self.isActive,
             unavailableNote: unavailableNote ?? self.unavailableNote,
-            unavailableReason: unavailableReason ?? self.unavailableReason,
-            committedUnits: committedUnits ?? self.committedUnits,
-            coverageDays: coverageDays ?? self.coverageDays,
-            coverageStartDate: coverageStartDate ?? self.coverageStartDate,
-            linkedTransferID: linkedTransferID ?? self.linkedTransferID,
-            lockID: lockID ?? self.lockID,
-            pendingConfirmationUnits: pendingConfirmationUnits ?? self.pendingConfirmationUnits,
-            projectedUnits: projectedUnits ?? self.projectedUnits,
-            requestedBy: requestedBy ?? self.requestedBy,
-            requestedUnits: requestedUnits ?? self.requestedUnits,
-            transferMode: transferMode ?? self.transferMode
+            unavailableReason: unavailableReason ?? self.unavailableReason
         )
     }
 
@@ -707,134 +878,6 @@ enum TotalVolumeVu: Codable {
             try container.encode(x)
         }
     }
-}
-
-enum TypeEnum: String, Codable {
-    case aiRecommendationCreated = "AI_RECOMMENDATION_CREATED"
-    case aiRecommendationDecided = "AI_RECOMMENDATION_DECIDED"
-    case allocationFairShareApplied = "ALLOCATION_FAIR_SHARE_APPLIED"
-    case allocationPolicyApplied = "ALLOCATION_POLICY_APPLIED"
-    case cartSyncUpdated = "CART_SYNC_UPDATED"
-    case cashOverage = "CASH_OVERAGE"
-    case cashShortfall = "CASH_SHORTFALL"
-    case claimFiled = "CLAIM_FILED"
-    case claimResolved = "CLAIM_RESOLVED"
-    case commandDispatched = "COMMAND_DISPATCHED"
-    case commandReceived = "COMMAND_RECEIVED"
-    case commandSettled = "COMMAND_SETTLED"
-    case creditDeliveryMarked = "CREDIT_DELIVERY_MARKED"
-    case creditDeliveryResolved = "CREDIT_DELIVERY_RESOLVED"
-    case creditLeave = "CREDIT_LEAVE"
-    case deliveryDisputed = "DELIVERY_DISPUTED"
-    case deliverySessionUpdated = "DELIVERY_SESSION_UPDATED"
-    case demandBaselineUpdated = "DEMAND_BASELINE_UPDATED"
-    case dispatchZoneOverride = "DISPATCH_ZONE_OVERRIDE"
-    case driverAvailabilityChanged = "DRIVER_AVAILABILITY_CHANGED"
-    case driverCreated = "DRIVER_CREATED"
-    case driverLocationUpdated = "DRIVER_LOCATION_UPDATED"
-    case driverReturnApproaching = "DRIVER_RETURN_APPROACHING"
-    case factoryCreated = "FACTORY_CREATED"
-    case factoryLocationUpdated = "FACTORY_LOCATION_UPDATED"
-    case factorySupplyRequestUpdate = "FACTORY_SUPPLY_REQUEST_UPDATE"
-    case fiscalReceiptFailed = "FISCAL_RECEIPT_FAILED"
-    case fiscalReceiptRequested = "FISCAL_RECEIPT_REQUESTED"
-    case fiscalReceiptSucceeded = "FISCAL_RECEIPT_SUCCEEDED"
-    case freezeLockAcquired = "FREEZE_LOCK_ACQUIRED"
-    case freezeLockReleased = "FREEZE_LOCK_RELEASED"
-    case inventoryImportStatusUpdate = "INVENTORY_IMPORT_STATUS_UPDATE"
-    case inventoryImportUploaded = "INVENTORY_IMPORT_UPLOADED"
-    case inventorySyncComplete = "INVENTORY_SYNC_COMPLETE"
-    case logisticsExceptionReported = "LOGISTICS_EXCEPTION_REPORTED"
-    case logisticsTelemetry = "LOGISTICS_TELEMETRY"
-    case manifestCancelled = "MANIFEST_CANCELLED"
-    case manifestCompleted = "MANIFEST_COMPLETED"
-    case manifestDispatched = "MANIFEST_DISPATCHED"
-    case manifestDlqEscalation = "MANIFEST_DLQ_ESCALATION"
-    case manifestDraftCreated = "MANIFEST_DRAFT_CREATED"
-    case manifestLoadingStarted = "MANIFEST_LOADING_STARTED"
-    case manifestOrderException = "MANIFEST_ORDER_EXCEPTION"
-    case manifestOrderInjected = "MANIFEST_ORDER_INJECTED"
-    case manifestRebalanced = "MANIFEST_REBALANCED"
-    case manifestSealed = "MANIFEST_SEALED"
-    case missingItemsReported = "MISSING_ITEMS_REPORTED"
-    case negotiationProposed = "NEGOTIATION_PROPOSED"
-    case negotiationResolved = "NEGOTIATION_RESOLVED"
-    case orderAllocated = "ORDER_ALLOCATED"
-    case orderAmended = "ORDER_AMENDED"
-    case orderAssigned = "ORDER_ASSIGNED"
-    case orderCapacityOverflow = "ORDER_CAPACITY_OVERFLOW"
-    case orderConditionReported = "ORDER_CONDITION_REPORTED"
-    case orderCreated = "ORDER_CREATED"
-    case orderFinalized = "ORDER_FINALIZED"
-    case orderForceCompleted = "ORDER_FORCE_COMPLETED"
-    case orderReassigned = "ORDER_REASSIGNED"
-    case orderStatusChanged = "ORDER_STATUS_CHANGED"
-    case orderValidationFailed = "ORDER_VALIDATION_FAILED"
-    case partialOffload = "PARTIAL_OFFLOAD"
-    case paymentCleared = "PAYMENT_CLEARED"
-    case paymentFailed = "PAYMENT_FAILED"
-    case paymentRequired = "PAYMENT_REQUIRED"
-    case planningAgentBroadcast = "PLANNING_AGENT_BROADCAST"
-    case planningConfidenceDowngraded = "PLANNING_CONFIDENCE_DOWNGRADED"
-    case planningForecastUpdated = "PLANNING_FORECAST_UPDATED"
-    case planningMeioRecommendationV1 = "planning.meio.recommendation.v1"
-    case planningPromoSimulationReady = "PLANNING_PROMO_SIMULATION_READY"
-    case planningSignalIngestV1 = "planning.signal.ingest.v1"
-    case preOrderAutoAccepted = "PRE_ORDER_AUTO_ACCEPTED"
-    case preOrderCancelled = "PRE_ORDER_CANCELLED"
-    case preOrderConfirmation = "PRE_ORDER_CONFIRMATION"
-    case preOrderConfirmed = "PRE_ORDER_CONFIRMED"
-    case preOrderDateAccepted = "PRE_ORDER_DATE_ACCEPTED"
-    case preOrderDateProposed = "PRE_ORDER_DATE_PROPOSED"
-    case preOrderDateRejected = "PRE_ORDER_DATE_REJECTED"
-    case preOrderEdited = "PRE_ORDER_EDITED"
-    case preOrderNotified = "PRE_ORDER_NOTIFIED"
-    case preOrderNudge = "PRE_ORDER_NUDGE"
-    case productHandlingUpdated = "PRODUCT_HANDLING_UPDATED"
-    case promotionChanged = "PROMOTION_CHANGED"
-    case proximityUnlocked = "PROXIMITY_UNLOCKED"
-    case replenishmentAutoApproved = "REPLENISHMENT_AUTO_APPROVED"
-    case replenishmentInsightCreated = "REPLENISHMENT_INSIGHT_CREATED"
-    case retailerCreditLimitBreached = "RETAILER_CREDIT_LIMIT_BREACHED"
-    case retailerCreditProfileChanged = "RETAILER_CREDIT_PROFILE_CHANGED"
-    case retailerPriceOverride = "RETAILER_PRICE_OVERRIDE"
-    case retailerRegistered = "RETAILER_REGISTERED"
-    case retailerSegmentUpdated = "RETAILER_SEGMENT_UPDATED"
-    case returnReceivedAtWarehouse = "RETURN_RECEIVED_AT_WAREHOUSE"
-    case reverseLogisticsRequired = "REVERSE_LOGISTICS_REQUIRED"
-    case routeCreated = "ROUTE_CREATED"
-    case routeReordered = "ROUTE_REORDERED"
-    case servicePolicyUpdated = "SERVICE_POLICY_UPDATED"
-    case settlementRequired = "SETTLEMENT_REQUIRED"
-    case shopClosed = "SHOP_CLOSED"
-    case shopClosedBypassOffload = "SHOP_CLOSED_BYPASS_OFFLOAD"
-    case shopClosedEscalated = "SHOP_CLOSED_ESCALATED"
-    case shopClosedResolved = "SHOP_CLOSED_RESOLVED"
-    case shopClosedResponse = "SHOP_CLOSED_RESPONSE"
-    case shopClosedTimeout = "SHOP_CLOSED_TIMEOUT"
-    case skuClassUpdated = "SKU_CLASS_UPDATED"
-    case splitPaymentCreated = "SPLIT_PAYMENT_CREATED"
-    case splitShipmentCreated = "SPLIT_SHIPMENT_CREATED"
-    case supplierBillingConfigured = "SUPPLIER_BILLING_CONFIGURED"
-    case supplierBillingUpdated = "SUPPLIER_BILLING_UPDATED"
-    case supplierCreated = "SUPPLIER_CREATED"
-    case supplierMemberAdded = "SUPPLIER_MEMBER_ADDED"
-    case supplierProfileUpdated = "SUPPLIER_PROFILE_UPDATED"
-    case supplierReturnCreated = "SUPPLIER_RETURN_CREATED"
-    case supplierReturnResolved = "SUPPLIER_RETURN_RESOLVED"
-    case supplierUpdated = "SUPPLIER_UPDATED"
-    case supplyRequestAccepted = "SUPPLY_REQUEST_ACCEPTED"
-    case supplyRequestUpdate = "SUPPLY_REQUEST_UPDATE"
-    case supplyTransferApproaching = "SUPPLY_TRANSFER_APPROACHING"
-    case systemAppOutdated = "SYSTEM_APP_OUTDATED"
-    case vehicleAvailabilityChanged = "VEHICLE_AVAILABILITY_CHANGED"
-    case vehicleCreated = "VEHICLE_CREATED"
-    case warehouseCreated = "WAREHOUSE_CREATED"
-    case warehouseDispatchLockChanged = "WAREHOUSE_DISPATCH_LOCK_CHANGED"
-    case warehouseLocationUpdated = "WAREHOUSE_LOCATION_UPDATED"
-    case warehouseSupplyRequestOpened = "WAREHOUSE_SUPPLY_REQUEST_OPENED"
-    case warehouseTransferCreated = "WAREHOUSE_TRANSFER_CREATED"
-    case warehouseTransferReceived = "WAREHOUSE_TRANSFER_RECEIVED"
 }
 
 enum Version: Codable {

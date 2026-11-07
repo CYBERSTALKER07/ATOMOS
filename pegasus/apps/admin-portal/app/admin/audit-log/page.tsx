@@ -74,9 +74,12 @@ export default function AuditLogPage() {
       </div>
 
       <div className="md-card md-elevation-1 md-shape-md p-4 flex flex-wrap gap-3" style={{ background: 'var(--color-md-surface)' }}>
-        <input className="md-input-outlined px-3 py-2" placeholder={t('supplier_portal.admin.audit_log.filter.resource_type')} value={resourceType} onChange={(e) => setResourceType(e.target.value)} />
-        <input className="md-input-outlined px-3 py-2" placeholder={t('supplier_portal.admin.audit_log.filter.action')} value={action} onChange={(e) => setAction(e.target.value)} />
-        <input className="md-input-outlined px-3 py-2 w-28" type="number" min="1" max="500" value={limit} onChange={(e) => setLimit(Number(e.target.value) || 50)} />
+        <label htmlFor="audit-log-resource-type" className="sr-only">{t('supplier_portal.admin.audit_log.filter.resource_type')}</label>
+        <input id="audit-log-resource-type" aria-label={t('supplier_portal.admin.audit_log.filter.resource_type')} className="md-input-outlined px-3 py-2" placeholder={t('supplier_portal.admin.audit_log.filter.resource_type')} value={resourceType} onChange={(e) => setResourceType(e.target.value)} />
+        <label htmlFor="audit-log-action" className="sr-only">{t('supplier_portal.admin.audit_log.filter.action')}</label>
+        <input id="audit-log-action" aria-label={t('supplier_portal.admin.audit_log.filter.action')} className="md-input-outlined px-3 py-2" placeholder={t('supplier_portal.admin.audit_log.filter.action')} value={action} onChange={(e) => setAction(e.target.value)} />
+        <label htmlFor="audit-log-limit" className="sr-only">Limit</label>
+        <input id="audit-log-limit" aria-label="Limit" className="md-input-outlined px-3 py-2 w-28" type="number" min="1" max="500" value={limit} onChange={(e) => setLimit(Number(e.target.value) || 50)} />
         <Button variant="outline" onPress={() => { setOffset(0); void load(); }}>
           {t('supplier_portal.admin.audit_log.action.apply')}
         </Button>

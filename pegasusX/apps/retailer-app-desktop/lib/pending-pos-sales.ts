@@ -13,7 +13,7 @@ import {
   type ParkedPosCart,
   type PendingPosSale,
 } from "@pegasusx/desktop-cache";
-import { retailerPosSaleKey } from "@pegasusx/api-client";
+import { retailerPosSaleKey } from '@pegasusx/api-core';
 
 export type { ParkedPosCart, PendingPosSale };
 export {

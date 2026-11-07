@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.crm
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -15,12 +17,13 @@ import androidx.compose.ui.unit.dp
 import com.pegasusx.warehouse.data.model.Retailer
 import com.pegasusx.warehouse.data.remote.WarehouseApi
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
-import com.pegasus.design.PegasusLoadingState
-import com.pegasus.design.PegasusStateKind
-import com.pegasus.design.PegasusStatePane
+import com.pegasus.design.ui.PegasusLoadingState
+import com.pegasus.design.ui.PegasusStateKind
+import com.pegasus.design.ui.PegasusStatePane
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.util.Locale
+import com.pegasusx.warehouse.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,7 +42,8 @@ fun CRMScreen(
         scope.launch {
             try {
                 val resp = api.getRetailers()
-                if (resp.isSuccessful && resp.body() != null) retailers = resp.body()!!.retailers
+                val respBody = resp.body()
+                if (resp.isSuccessful && respBody != null) retailers = respBody.retailers
                 else error = "Failed (${resp.code()})"
             } catch (e: Exception) { error = e.message ?: "Network error" }
             finally { loading = false }
@@ -59,14 +63,14 @@ fun CRMScreen(
     ) { innerPadding ->
         when {
             loading && retailers.isEmpty() -> PegasusLoadingState(
-                title = "Loading retailers…",
+                title = stringResource(R.string.mobile_warehouse_ui_loading_retailers),
                 body = "Fetching your retail partners",
                 modifier = Modifier.fillMaxSize().padding(innerPadding)
             )
             error != null && retailers.isEmpty() -> PegasusStatePane(
                 kind = PegasusStateKind.Error,
                 headline = "Retailers unavailable",
-                body = error!!,
+                body = error.orEmpty(),
                 actionLabel = "Retry",
                 onAction = { load() },
                 modifier = Modifier.fillMaxSize().padding(innerPadding)
@@ -90,10 +94,17 @@ fun CRMScreen(
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(r.businessName, style = MaterialTheme.typography.titleSmall)
                                 Text(
-                                    "${r.totalOrders} orders · ${fmt.format(r.totalRevenue)} UZS",
+                                    stringResource(R.string.mobile_warehouse_ui_totalorders_orders_format_uzs, r.totalOrders, fmt.format(r.totalRevenue)),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
+                                if (r.lastOrderDate.isNotBlank()) {
+                                    Text(
+                                        r.lastOrderDate,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
                             }
                         }
                     }

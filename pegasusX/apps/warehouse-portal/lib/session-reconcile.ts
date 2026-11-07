@@ -1,4 +1,4 @@
-import { reconcileSession } from '@pegasusx/api-client';
+import { reconcileSession } from '@pegasusx/api-core';
 import { apiFetch, readTokenFromCookie, warehouseApiBaseUrl, warehouseSessionFetch } from './auth';
 import { notifyWarehouseSessionReconciled } from './warehouse-reconnect';
 
@@ -8,7 +8,7 @@ export async function reconcileWarehouseSession(
 ): Promise<void> {
   await reconcileSession({
     role: 'warehouse',
-    baseUrl: warehouseApiBaseUrl,
+    baseUrl: warehouseApiBaseUrl(),
     getAuthToken: () => readTokenFromCookie() || null,
     fetchImpl: warehouseSessionFetch,
     query,

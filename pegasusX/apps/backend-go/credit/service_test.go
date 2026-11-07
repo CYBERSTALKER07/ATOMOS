@@ -59,6 +59,26 @@ func (r *testCreditRepo) ListBySupplier(_ context.Context, supplierID, status st
 	return out, nil
 }
 
+func (r *testCreditRepo) ListDelinquentCandidates(_ context.Context, limit int) ([]Profile, error) {
+	if r.getErr != nil {
+		return nil, r.getErr
+	}
+	if !r.found {
+		return nil, nil
+	}
+	if r.profile.Status != StatusActive {
+		return nil, nil
+	}
+	if r.profile.DelinquencyCount == 0 && r.profile.CurrentBalanceMinor == 0 {
+		return nil, nil
+	}
+	out := []Profile{r.profile}
+	if limit > 0 && len(out) > limit {
+		out = out[:limit]
+	}
+	return out, nil
+}
+
 func (r *testCreditRepo) UpsertProfile(_ context.Context, p Profile, emit func(outbox.TxnBuffer) error) error {
 	if r.upsertErr != nil {
 		return r.upsertErr

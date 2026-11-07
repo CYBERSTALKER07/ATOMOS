@@ -33,6 +33,7 @@ import { VirtualScrollList } from "@pegasusx/ui-kit/desktop";
 import { ListRowSkeleton } from "../../../components/Skeleton";
 import { useLiveData } from "../../../lib/hooks";
 import { apiFetch } from "../../../lib/auth";
+import { sessionPackCurrency } from "../../../lib/payment-catalog";
 import { OrderTimelinePanel } from "../../../components/OrderTimelinePanel";
 import { FileClaimPanel } from "../../../components/FileClaimPanel";
 import {
@@ -48,10 +49,12 @@ import {
 import {
   retailerCancelKey,
   retailerRequestCancelKey,
-} from "@pegasusx/api-client";
+} from "@pegasusx/api-core";
+import { toOrderCustomerStage } from "@pegasusx/types";
 import { useOptionalWebSocket } from "../../../lib/ws";
 import { getRetailerProfile } from "@/lib/retailer-profile";
 import type { Order, TrackingResponse } from "../../../lib/types";
+import { usePortalT } from "@/lib/i18n";
 
 const chipCfg: Record<
   string,
@@ -68,6 +71,7 @@ const chipCfg: Record<
   ARRIVING: { color: "success", label: "Arriving" },
   ARRIVED: { color: "success", label: "Driver Arrived" },
   ARRIVED_SHOP_CLOSED: { color: "warning", label: "Shop Closed" },
+  SHOP_CLOSED_PENDING: { color: "warning", label: "Shop Closed" },
   AWAITING_PAYMENT: { color: "warning", label: "Awaiting Payment" },
   PENDING_CASH_COLLECTION: { color: "warning", label: "Cash Collection" },
   CANCELLED: { color: "danger", label: "Cancelled" },
@@ -75,13 +79,18 @@ const chipCfg: Record<
   NO_CAPACITY: { color: "danger", label: "No Capacity" },
   SCHEDULED: { color: "default", label: "Scheduled" },
   AUTO_ACCEPTED: { color: "default", label: "Auto-Accepted" },
+  BACKORDERED: { color: "default", label: "Backordered" },
+  DELAYED: { color: "default", label: "Delayed" },
   QUARANTINE: { color: "danger", label: "Quarantined" },
   DELIVERED_ON_CREDIT: { color: "success", label: "Delivered (Credit)" },
+  RECONCILIATION_REQUIRED: { color: "warning", label: "Reconciliation Required" },
+  SYNC_CONFLICT: { color: "danger", label: "Disputed - Pending Review" },
 };
 
 type LoadIssue = "restricted" | "offline" | "error";
 
 function OrdersPageContent() {
+  const t = usePortalT();
   const profile = getRetailerProfile();
   const ordersUrl = profile?.id
     ? `/v1/retailers/${profile.id}/orders`
@@ -197,7 +206,7 @@ function OrdersPageContent() {
       }
       await Promise.all([mutateOrders(), mutateTracking()]);
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : "Confirm AI order failed");
+      setActionError(err instanceof Error ? err.message : t("retailer_desktop.residual.text.confirm_ai_order_failed"));
     } finally {
       setAiActionPending(false);
     }
@@ -213,7 +222,7 @@ function OrdersPageContent() {
       }
       await Promise.all([mutateOrders(), mutateTracking()]);
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : "Reject AI order failed");
+      setActionError(err instanceof Error ? err.message : t("retailer_desktop.residual.text.reject_ai_order_failed"));
     } finally {
       setAiActionPending(false);
     }
@@ -231,7 +240,7 @@ function OrdersPageContent() {
         await Promise.all([mutateOrders(), mutateTracking()]);
       } catch (err) {
         setActionError(
-          err instanceof Error ? err.message : "Confirm preorder failed",
+          err instanceof Error ? err.message : t("retailer_desktop.residual.text.confirm_preorder_failed"),
         );
       } finally {
         setPreorderActionPending(false);
@@ -260,7 +269,7 @@ function OrdersPageContent() {
         await Promise.all([mutateOrders(), mutateTracking()]);
       } catch (err) {
         setActionError(
-          err instanceof Error ? err.message : "Edit preorder failed",
+          err instanceof Error ? err.message : t("retailer_desktop.residual.text.edit_preorder_failed"),
         );
       } finally {
         setPreorderActionPending(false);
@@ -281,7 +290,7 @@ function OrdersPageContent() {
         await Promise.all([mutateOrders(), mutateTracking()]);
       } catch (err) {
         setActionError(
-          err instanceof Error ? err.message : "Accept delivery proposal failed",
+          err instanceof Error ? err.message : t("retailer_desktop.residual.text.accept_delivery_proposal_failed"),
         );
       } finally {
         setPreorderActionPending(false);
@@ -302,7 +311,7 @@ function OrdersPageContent() {
         await Promise.all([mutateOrders(), mutateTracking()]);
       } catch (err) {
         setActionError(
-          err instanceof Error ? err.message : "Reject delivery proposal failed",
+          err instanceof Error ? err.message : t("retailer_desktop.residual.text.reject_delivery_proposal_failed"),
         );
       } finally {
         setPreorderActionPending(false);
@@ -376,7 +385,7 @@ function OrdersPageContent() {
         }
         await Promise.all([mutateOrders(), mutateTracking()]);
       } catch (err) {
-        setActionError(err instanceof Error ? err.message : "Cancel order failed");
+        setActionError(err instanceof Error ? err.message : t("retailer_desktop.residual.text.cancel_order_failed"));
       } finally {
         setCancelling(false);
       }
@@ -385,26 +394,48 @@ function OrdersPageContent() {
   );
 
   const list = orders ?? [];
+  const statusFilter = (searchParams.get("status") || "").trim().toUpperCase();
+  const supplierFilter = (searchParams.get("supplier") || "").trim();
   const filtered = useMemo(() => {
-    if (activeTab === "ACTIVE")
-      return list.filter(
-        (o) => o.state !== "COMPLETED" && o.state !== "CANCELLED",
-      );
-    if (activeTab === "COMPLETED")
-      return list.filter((o) => o.state === "COMPLETED");
-    return list;
-  }, [activeTab, list]);
+    let rows = list;
+    if (activeTab === "ACTIVE") {
+      rows = rows.filter((o) => {
+        const stage = o.customer_stage || toOrderCustomerStage(o.state);
+        return stage !== "DELIVERED" && stage !== "CANCELLED";
+      });
+    } else if (activeTab === "COMPLETED") {
+      rows = rows.filter((o) => {
+        const stage = o.customer_stage || toOrderCustomerStage(o.state);
+        return stage === "DELIVERED";
+      });
+    }
+    if (statusFilter) {
+      rows = rows.filter((o) => String(o.state || "").toUpperCase() === statusFilter);
+    }
+    if (supplierFilter) {
+      rows = rows.filter((o) => o.supplier_id === supplierFilter);
+    }
+    return rows;
+  }, [activeTab, list, statusFilter, supplierFilter]);
 
   const kpi = useMemo(() => {
-    const active = list.filter(
-      (o) => o.state === "IN_TRANSIT" || o.state === "DISPATCHED",
-    ).length;
-    const pending = list.filter(
-      (o) => o.state === "PENDING" || o.state === "SCHEDULED",
-    ).length;
-    const completed = list.filter((o) => o.state === "COMPLETED").length;
+    const active = list.filter((o) => {
+      const stage = o.customer_stage || toOrderCustomerStage(o.state);
+      return stage === "OUT_FOR_DELIVERY" || stage === "EXCEPTION_ACTION_REQUIRED";
+    }).length;
+    const pending = list.filter((o) => {
+      const stage = o.customer_stage || toOrderCustomerStage(o.state);
+      return stage === "PLACED" || stage === "PROCESSING";
+    }).length;
+    const completed = list.filter((o) => {
+      const stage = o.customer_stage || toOrderCustomerStage(o.state);
+      return stage === "DELIVERED";
+    }).length;
     const totalRev = list
-      .filter((o) => o.state === "COMPLETED")
+      .filter((o) => {
+        const stage = o.customer_stage || toOrderCustomerStage(o.state);
+        return stage === "DELIVERED";
+      })
       .reduce((s, o) => s + o.amount, 0);
     return { active, pending, completed, totalRev, total: list.length };
   }, [list]);
@@ -507,35 +538,35 @@ function OrdersPageContent() {
       return {
         kind: "warning" as const,
         icon: AlertTriangle,
-        message: "Orders access is partially restricted for this account.",
+        message: t("retailer_desktop.residual.text.orders_access_is_partially_restricted_for_this_account"),
       };
     }
     if (loadIssue === "offline") {
       return {
         kind: "warning" as const,
         icon: WifiOff,
-        message: "Offline mode active. Showing latest cached order data.",
+        message: t("retailer_desktop.residual.text.offline_mode_active_showing_latest_cached_order_data"),
       };
     }
     if (loadIssue === "error") {
       return {
         kind: "warning" as const,
         icon: AlertTriangle,
-        message: "Order sync degraded. Auto-retry is active.",
+        message: t("retailer_desktop.residual.text.order_sync_degraded_auto_retry_is_active"),
       };
     }
     if (ws && !ws.isConnected) {
       return {
         kind: "warning" as const,
         icon: AlertTriangle,
-        message: "Live socket reconnecting. Event updates may be delayed.",
+        message: t("retailer_desktop.residual.text.live_socket_reconnecting_event_updates_may_be_delayed"),
       };
     }
     if (isOrdersRefreshing && !loading) {
       return {
         kind: "refreshing" as const,
         icon: RefreshCw,
-        message: "Syncing order feeds...",
+        message: t("retailer_desktop.residual.text.syncing_order_feeds"),
       };
     }
     return null;
@@ -544,7 +575,7 @@ function OrdersPageContent() {
   const listEmptyState = useMemo(() => {
     if (loadIssue === "restricted") {
       return {
-        headline: "Orders access restricted",
+        headline: t("retailer_desktop.residual.text.orders_access_restricted"),
         body: "Your account currently cannot load logistics orders.",
         variant: "restricted" as const,
         action: "Retry",
@@ -553,7 +584,7 @@ function OrdersPageContent() {
     }
     if (loadIssue === "offline") {
       return {
-        headline: "Orders are offline",
+        headline: t("retailer_desktop.residual.text.orders_are_offline"),
         body: "Reconnect your network and retry to refresh order status.",
         variant: "offline" as const,
         action: "Retry",
@@ -562,7 +593,7 @@ function OrdersPageContent() {
     }
     if (loadIssue === "error") {
       return {
-        headline: "Orders unavailable",
+        headline: t("retailer_desktop.residual.text.orders_unavailable"),
         body: "Order feeds could not be loaded right now.",
         variant: "error" as const,
         action: "Retry",
@@ -571,7 +602,7 @@ function OrdersPageContent() {
     }
     if (list.length === 0) {
       return {
-        headline: "No orders yet",
+        headline: t("retailer_desktop.residual.text.no_orders_yet"),
         body: "New and active logistics orders will appear here.",
         variant: "no-orders" as const,
         action: "Refresh",
@@ -599,8 +630,8 @@ function OrdersPageContent() {
     >
       <PageChrome
         icon="orders"
-        title="Logistics Tracking"
-        description="Monitor inbound nodes and verify delivery manifests."
+        title={t("portal.page.orders.retailer.title")}
+        description={t("portal.page.orders.retailer.description")}
         loading={loading}
         skeletonVariant="table"
         actions={
@@ -609,7 +640,7 @@ function OrdersPageContent() {
             onClick={() => router.push("/catalog")}
             className="portal-btn portal-btn--primary h-11 px-6 rounded-xl font-light shadow-[var(--shadow-sm)]"
           >
-            <PackageOpen size={18} className="mr-2" /> New Order
+            <PackageOpen size={18} className="mr-2" /> {t("portal.page.orders.action.new_order")}
           </button>
         }
       >
@@ -637,7 +668,7 @@ function OrdersPageContent() {
           <div className="flex flex-col gap-1">
             <div className="flex items-center justify-between mb-2">
               <span className="md-typescale-label-small uppercase tracking-widest text-[var(--desk-text-tertiary)]">
-                Completed
+                {t("portal.page.orders.filter.completed")}
               </span>
               <CheckCircle2
                 size={18}
@@ -685,7 +716,7 @@ function OrdersPageContent() {
               className="md-typescale-metric text-[var(--desk-text-primary)]"
             />
             <p className="md-typescale-body-small text-[var(--desk-text-secondary)]">
-              UZS Volume
+              {[sessionPackCurrency(), "Volume"].filter(Boolean).join(" ")}
             </p>
           </div>
         </BentoCard>
@@ -730,7 +761,7 @@ function OrdersPageContent() {
 
       <div className="flex gap-8 min-h-[520px]">
         <PageSection
-          title="Order queue"
+          title={t("portal.page.orders.section.order_queue")}
           description={`${filtered.length} orders in ${activeTab.toLowerCase()} view.`}
           className="w-[440px] shrink-0 !overflow-visible"
         >
@@ -751,7 +782,7 @@ function OrdersPageContent() {
         </PageSection>
 
         <PageSection
-          title="Order details"
+          title={t("retailer_desktop.orders.text.order_details")}
           description={detail ? `Manifest and actions for #${detail.order_id.slice(-8)}.` : "Select an order from the queue."}
           className="flex-1 min-w-0"
         >
@@ -776,11 +807,23 @@ function OrdersPageContent() {
                 <button
                   type="button"
                   className="portal-btn portal-btn--ghost desk-icon-btn text-[var(--desk-text-tertiary)]"
-                  aria-label="More options"
+                  aria-label={t("retailer_desktop.orders.text.more_options")}
                 >
                   <MoreVertical size={20} />
                 </button>
               </div>
+
+              {detail.state === "SYNC_CONFLICT" && (
+                <div className="mb-8 p-4 rounded-xl border border-[var(--desk-danger)] bg-[var(--desk-danger)]/10 text-[var(--desk-danger)] flex items-start gap-3">
+                  <AlertTriangle size={20} className="mt-0.5" />
+                  <div>
+                    <h4 className="font-medium text-sm">Offline Sync Conflict Detected</h4>
+                    <p className="text-sm opacity-80 mt-1">
+                      This order&apos;s state is disputed due to conflicting physical reality reports. It is pending Control Tower manual review.
+                    </p>
+                  </div>
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-4 mb-10">
                 <div className="p-5 rounded-2xl bg-[var(--desk-surface-subtle)] border border-[var(--desk-border)]">
@@ -837,7 +880,7 @@ function OrdersPageContent() {
               {showDeliveryProposalReview && (
                 <div className="mb-10 rounded-2xl border border-[var(--desk-border)] bg-[var(--desk-surface-subtle)] p-5 space-y-4">
                   <div className="flex items-center gap-2">
-                    <Chip color="warning" variant="soft">Review Delivery</Chip>
+                    <Chip color="warning" variant="soft">{t("retailer_desktop.orders.text.review_delivery")}</Chip>
                     <span className="md-typescale-label-medium text-[var(--desk-text-secondary)]">
                       Warehouse proposed a new delivery date
                     </span>
@@ -995,8 +1038,8 @@ function OrdersPageContent() {
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center py-16">
               <EmptyState
-                headline="Select an order"
-                body="Choose a node from the queue to inspect manifest lines and actions."
+                headline={t("retailer_desktop.residual.text.select_an_order")}
+                body={t("retailer_desktop.residual.text.choose_a_node_from_the_queue_to_inspect_manifest_lines_and_actio")}
                 variant="no-orders"
               />
             </div>
@@ -1010,8 +1053,9 @@ function OrdersPageContent() {
 }
 
 export default function OrdersPage() {
+  const t = usePortalT();
   return (
-    <Suspense fallback={<div className="p-8">Loading orders...</div>}>
+    <Suspense fallback={<div className="p-8">{t("retailer_desktop.orders.text.loading_orders")}</div>}>
       <OrdersPageContent />
     </Suspense>
   );

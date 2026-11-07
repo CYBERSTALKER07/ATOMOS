@@ -1,5 +1,7 @@
 package com.pegasus.payload.ui.home
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 
@@ -62,7 +64,10 @@ import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffold
 import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffoldRole
 import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaffoldNavigator
 import androidx.compose.material.icons.Icons
+import androidx.activity.compose.BackHandler
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
@@ -112,6 +117,7 @@ import com.pegasus.payload.ui.components.PayloadSpacing
 import com.pegasus.payload.ui.components.PayloadStatusChip
 import com.pegasus.design.PegasusStatePane
 import com.pegasus.design.PegasusStateKind
+import com.pegasus.payload.R
 
 /**
  * Master-detail home with Phase 4 loading workflow.
@@ -124,12 +130,17 @@ import com.pegasus.design.PegasusStateKind
 fun HomeScreen(
     onLogout: () -> Unit,
     onInboundReturns: () -> Unit = {},
+    windowSizeClass: WindowSizeClass? = null,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val navigator = rememberListDetailPaneScaffoldNavigator<String>()
     val snackbarHostState = remember { SnackbarHostState() }
     val lifecycleOwner = LocalLifecycleOwner.current
+
+    BackHandler(enabled = navigator.canNavigateBack()) {
+        navigator.navigateBack()
+    }
 
     var showInjectDialog by remember { mutableStateOf(false) }
     var showChecklistScanner by remember { mutableStateOf(false) }
@@ -197,31 +208,42 @@ fun HomeScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
+                navigationIcon = {
+                    if (navigator.canNavigateBack()) {
+                        IconButton(onClick = { navigator.navigateBack() }) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back to vehicles",
+                            )
+                        }
+                    }
+                },
                 title = {
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text("Pegasus Payload Terminal")
+                        com.pegasus.design.PackBanner(state.pack)
                         PayloadConnectionStatus(online = state.online, queued = state.queuedActions)
                     }
                 },
                 actions = {
                     IconButton(onClick = onInboundReturns) {
-                        Icon(Icons.Filled.Undo, contentDescription = "Inbound returns")
+                        Icon(Icons.Filled.Undo, contentDescription = stringResource(R.string.mobile_payload_ui_inbound_returns))
                     }
                     IconButton(onClick = { viewModel.toggleExceptionsPanel() }) {
-                        Icon(Icons.Filled.Warning, contentDescription = "Manifest exceptions")
+                        Icon(Icons.Filled.Warning, contentDescription = stringResource(R.string.mobile_payload_ui_manifest_exceptions))
                     }
                     IconButton(onClick = { viewModel.toggleNotificationsPanel() }) {
                         BadgedBox(badge = {
                             if (state.unreadCount > 0) Badge { Text(state.unreadCount.toString()) }
                         }) {
-                            Icon(Icons.Filled.Notifications, contentDescription = "Notifications")
+                            Icon(Icons.Filled.Notifications, contentDescription = stringResource(R.string.portal_nav_notifications))
                         }
                     }
                     IconButton(onClick = { viewModel.refreshTrucks() }) {
-                        Icon(Icons.Filled.Refresh, contentDescription = "Refresh trucks")
+                        Icon(Icons.Filled.Refresh, contentDescription = stringResource(R.string.mobile_payload_ui_refresh_trucks))
                     }
                     IconButton(onClick = onLogout) {
-                        Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = "Logout")
+                        Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = stringResource(R.string.mobile_payload_ui_logout))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -234,6 +256,7 @@ fun HomeScreen(
             PulseStrip(
                 events = state.pulseEvents,
                 loading = state.pulseLoading,
+                error = state.pulseError,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = PayloadSpacing.lg, vertical = PayloadSpacing.sm),
@@ -338,7 +361,7 @@ fun HomeScreen(
         }
         if (state.reDispatchOrderId != null) {
             ReDispatchDialog(
-                orderId = state.reDispatchOrderId!!,
+                orderId = state.reDispatchOrderId.orEmpty(),
                 loading = state.loadingRecommendations,
                 response = state.recommendations,
                 reassigning = state.reassigning,
@@ -444,7 +467,7 @@ private fun ManifestDetailPane(
 
             when {
                 state.loadingManifest -> com.pegasus.design.PegasusLoadingState(
-                    title = "Loading manifest",
+                    title = stringResource(R.string.mobile_payload_ui_loading_manifest),
                     body = "Syncing orders and volume for this vehicle.",
                 )
                 state.manifest == null -> PegasusStatePane(
@@ -547,11 +570,11 @@ private fun DetailHeader(
         Spacer(Modifier.width(12.dp))
         if (showInject) {
             IconButton(onClick = onShowInject) {
-                Icon(Icons.Filled.Add, contentDescription = "Inject order")
+                Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.mobile_payload_ui_inject_order))
             }
         }
         IconButton(onClick = onRefresh) {
-            Icon(Icons.Filled.Refresh, contentDescription = "Refresh manifest")
+            Icon(Icons.Filled.Refresh, contentDescription = stringResource(R.string.mobile_payload_ui_refresh_manifest))
         }
     }
 }
@@ -621,7 +644,7 @@ internal fun PostSealCountdownCard(
     ) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(
-                "Order ${orderId.take(8)} sealed",
+                stringResource(R.string.mobile_payload_ui_order_take_sealed, orderId.take(8)),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
             )
@@ -636,7 +659,7 @@ internal fun PostSealCountdownCard(
                 fontWeight = FontWeight.Bold,
             )
             Text(
-                "Double-check window: ${secondsLeft}s",
+                stringResource(R.string.mobile_payload_ui_double_check_window_secondslefts, secondsLeft),
                 style = MaterialTheme.typography.bodyMedium,
             )
             LinearProgressIndicator(
@@ -690,8 +713,7 @@ internal fun AllSealedSuccessCard(
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
             )
-            Text(
-                "${dispatchCodes.size} order${if (dispatchCodes.size == 1) "" else "s"} dispatched",
+            Text(stringResource(R.string.mobile_payload_ui_size_orderif_else_s_dispatched, dispatchCodes.size, if (dispatchCodes.size == 1) "" else "s"),
                 style = MaterialTheme.typography.bodyMedium,
             )
             if (dispatchCodes.isNotEmpty()) {
@@ -773,7 +795,7 @@ internal fun EscalatedBanner(message: String, onDismiss: () -> Unit) {
             Spacer(Modifier.size(8.dp))
             Text(message, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.fillMaxWidth(0.85f))
             IconButton(onClick = onDismiss) {
-                Icon(Icons.Filled.Close, contentDescription = "Dismiss")
+                Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.factory_portal_toast_text_dismiss))
             }
         }
     }
@@ -857,7 +879,7 @@ private fun ExceptionReasonDialog(
     )
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Remove order ${orderId.take(8)}") },
+        title = { Text(stringResource(R.string.mobile_payload_ui_remove_order_take, orderId.take(8))) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
@@ -892,12 +914,12 @@ private fun ReDispatchDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Re-Dispatch ${orderId.take(8)}") },
+        title = { Text(stringResource(R.string.mobile_payload_ui_re_dispatch_take, orderId.take(8))) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (loading) {
                     com.pegasus.design.PegasusLoadingState(
-                        title = "Loading recommendations",
+                        title = stringResource(R.string.mobile_payload_ui_loading_recommendations),
                         body = "Finding nearby drivers to re-dispatch this order.",
                         modifier = Modifier.fillMaxWidth().padding(32.dp)
                     )

@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Pegasus Retailer Desktop",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "identifier": "com.pegasus.retailer",
   "build": {
     "frontendDist": "../out",
@@ -21,7 +21,7 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' http://localhost:* http://127.0.0.1:* https://*.pegasusx.app ws://localhost:* wss://localhost:*"
     }
   },
   "bundle": {
@@ -50,7 +50,7 @@
         "https://storage.googleapis.com/pegasusx-ssmr-app-updates/retailer-desktop/{{target}}/{{arch}}/updater.json"
       ],
       "windows": {
-        "installMode": "passive"
+        "installMode": "basic"
       }
     }
   }

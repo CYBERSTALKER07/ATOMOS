@@ -184,8 +184,10 @@ export default function WarehouseStaffPanel({
           <p className="md-typescale-label-medium font-medium">New Warehouse Staff</p>
 
           <div>
-            <label className="md-typescale-label-small block mb-1" style={{ color: 'var(--muted)' }}>Name</label>
+            <label htmlFor="staff-panel-name" className="md-typescale-label-small block mb-1" style={{ color: 'var(--muted)' }}>Name</label>
             <input
+              id="staff-panel-name"
+              aria-label="Name"
               className="w-full px-3 py-2.5 md-typescale-body-medium outline-none focus:ring-2 focus:ring-[var(--accent)]"
               style={fieldStyle}
               value={formName}
@@ -195,8 +197,10 @@ export default function WarehouseStaffPanel({
           </div>
 
           <div>
-            <label className="md-typescale-label-small block mb-1" style={{ color: 'var(--muted)' }}>Phone</label>
+            <label htmlFor="staff-panel-phone" className="md-typescale-label-small block mb-1" style={{ color: 'var(--muted)' }}>Phone</label>
             <input
+              id="staff-panel-phone"
+              aria-label="Phone"
               className="w-full px-3 py-2.5 md-typescale-body-medium outline-none focus:ring-2 focus:ring-[var(--accent)]"
               style={fieldStyle}
               value={formPhone}
@@ -207,8 +211,10 @@ export default function WarehouseStaffPanel({
           </div>
 
           <div>
-            <label className="md-typescale-label-small block mb-1" style={{ color: 'var(--muted)' }}>PIN (8 digits)</label>
+            <label htmlFor="staff-panel-pin" className="md-typescale-label-small block mb-1" style={{ color: 'var(--muted)' }}>PIN (8 digits)</label>
             <input
+              id="staff-panel-pin"
+              aria-label="PIN (8 digits)"
               className="w-full px-3 py-2.5 md-typescale-body-medium outline-none focus:ring-2 focus:ring-[var(--accent)] font-mono tracking-widest"
               style={fieldStyle}
               value={formPin}

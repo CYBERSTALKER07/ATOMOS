@@ -64,6 +64,28 @@ func (r *inMemoryCreditRepo) ListBySupplier(_ context.Context, supplierID, statu
 	return out, nil
 }
 
+func (r *inMemoryCreditRepo) ListDelinquentCandidates(_ context.Context, limit int) ([]credit.Profile, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	if limit <= 0 {
+		limit = 100
+	}
+	out := make([]credit.Profile, 0, len(r.byKey))
+	for _, p := range r.byKey {
+		if p.Status != credit.StatusActive {
+			continue
+		}
+		if p.DelinquencyCount > 0 || p.CurrentBalanceMinor > 0 {
+			p.AvailableCreditMinor = p.Available()
+			out = append(out, p)
+			if len(out) >= limit {
+				break
+			}
+		}
+	}
+	return out, nil
+}
+
 func (r *inMemoryCreditRepo) UpsertProfile(ctx context.Context, p credit.Profile, emit func(outbox.TxnBuffer) error) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()

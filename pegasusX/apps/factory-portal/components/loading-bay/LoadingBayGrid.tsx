@@ -1,3 +1,6 @@
+"use client";
+
+import { usePortalT } from "@/lib/i18n";
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { PageSection } from '@/components/PageSection';
@@ -25,6 +28,7 @@ interface LoadingBayGridProps {
 }
 
 export default function LoadingBayGrid({ grouped }: LoadingBayGridProps) {
+  const t = usePortalT();
   return (
     <div className="mt-6 grid gap-4 xl:grid-cols-3">
       {grouped.map((column) => (
@@ -69,11 +73,11 @@ export default function LoadingBayGrid({ grouped }: LoadingBayGridProps) {
 
                   <div className="mt-4 grid grid-cols-2 gap-3">
                     <div className="rounded-xl bg-[var(--background)] p-3">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">Items</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">{t("factory_portal.loading_bay.loading_bay_grid.text.items")}</p>
                       <p className="mt-2 text-lg font-semibold tabular-nums text-[var(--foreground)]">{transfer.total_items}</p>
                     </div>
                     <div className="rounded-xl bg-[var(--background)] p-3">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">Volume</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">{t("factory_portal.transfers._id_.text.volume")}</p>
                       <p className="mt-2 text-lg font-semibold tabular-nums text-[var(--foreground)]">{transfer.total_volume_m3.toFixed(1)} m³</p>
                     </div>
                   </div>

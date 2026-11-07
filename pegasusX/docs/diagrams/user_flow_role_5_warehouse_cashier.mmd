@@ -1,0 +1,45 @@
+flowchart TD
+    subgraph Phase1["Phase 1: Cash Desk Setup, Auth & Opening Float Declaration"]
+        K1["Assign Physical Cash Desk Terminal & Depository Drop-Safe Vault ID"] --> K2["Cashier Authenticates via Biometric / TOTP MFA with Role Scopes"]
+        K2 --> K3["Inspect & Calibrate High-Speed Dual-CIS Banknote Sorting Machine"]
+        K3 --> K4["Declare Physical Opening Change Float in Register Drawer"]
+        K4 --> K5["Initialize Real-Time Cashier Session linked to Cloud Spanner CashReconciliation"]
+    end
+
+    subgraph Phase2["Phase 2: Driver Return Queue & Tamper-Evident Bag Handover"]
+        K5 --> L1["Monitor Active Driver Return Queue in Warehouse Portal / Mobile App"]
+        L1 --> L2["Driver Arrives from Completed Route: Check In at Cash Desk"]
+        L2 --> L3["Driver Hands Over Barcoded Tamper-Evident Cash Deposit Bag"]
+        L3 --> L4["Cashier Scans Bag Barcode & Inspects Security Void-Tape for Physical Tampering"]
+        L4 --> L5{"Bag Integrity Intact?"}
+        L5 -- "Tampered / Broken Seal" --> L6["Flag Security Breach Incident: Summon Yard Security & Station Supervisor"]
+        L5 -- "Intact & Unbroken" --> L7["Acknowledge Physical Custody of Bag"]
+    end
+
+    subgraph Phase3["Phase 3: Zero-Trust Blind Counting by Denomination"]
+        L7 --> M1["Open Driver Cash Turn-In Interface: Expected Cash Minor Blinded to 0"]
+        M1 --> M2["Break Bag Seal Directly Under Overhead CCTV Camera Coverage"]
+        M2 --> M3["Sort & Count Banknotes through Currency Counter by Denomination"]
+        M3 --> M4["Enter Physical Counts: 200k, 100k, 50k, 20k, 10k, 5k, 2k, 1k UZS"]
+        M4 --> M5["Submit Declared Cash Total to Spanner ReadWriteTransaction"]
+    end
+
+    subgraph Phase4["Phase 4: Automated Variance Evaluation & Escalation"]
+        M5 --> N1["Spanner Calculates Variance: Difference = Expected - Declared"]
+        N1 --> N2{"Cash Variance == 0 UZS?"}
+        N2 -- "Variance Detected (Short/Over)" --> N3["Prompt Immediate Re-count with Driver Witnessing"]
+        N3 --> N4{"Variance Persists?"}
+        N4 -- "Confirmed Discrepancy" --> N5["Record Finance & Driver Dispute Notes: Status DISPUTED"]
+        N5 --> N6["Escalate to Financial Auditor & Debit Driver Account Balance"]
+        N2 -- "Exact Match (Zero Variance)" --> N7["Mark Status ACCEPTED: Issue Digital Release Receipt to Driver"]
+        N6 --> N7
+    end
+
+    subgraph Phase5["Phase 5: Depository Drop-Safe Vault & Armored CIT Handover"]
+        N7 --> P1["Bundle Verified Cash Stacks into Bank-Standard Currency Straps"]
+        P1 --> P2["Deposit Strapped Cash into Heavy-Duty Time-Delay Drop-Safe Vault"]
+        P2 --> P3["Generate Armored Cash-in-Transit (CIT) Manifest & Security Seal"]
+        P3 --> P4["Armored Guard Arrives: Scan CIT Bag Seal & Dual-Sign Handover"]
+        P4 --> P5["Execute Shift Cash Drawer Closure & Reconcile Spanner Cash Journal"]
+        P5 --> P6(["Cash Desk Balanced & Shift Closed"])
+    end

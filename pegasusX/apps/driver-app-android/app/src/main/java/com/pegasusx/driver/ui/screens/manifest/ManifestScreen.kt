@@ -1,5 +1,7 @@
 package com.pegasusx.driver.ui.screens.manifest
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -13,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
@@ -65,11 +68,14 @@ import com.pegasusx.driver.ui.theme.LocalPegasusColors
 import com.pegasusx.driver.ui.theme.formattedAmount
 import com.pegasusx.driver.ui.theme.pressable
 import androidx.compose.material3.MaterialTheme
+import com.pegasusx.driver.ui.screens.home.RemainingStops
+import com.pegasusx.driver.ui.screens.home.components.RemainingStopsStepper
 import com.pegasusx.driver.ui.screens.manifest.components.EarlyCompleteDialog
 import com.pegasusx.driver.ui.screens.manifest.components.ManifestEmptyView
 import com.pegasusx.driver.ui.screens.manifest.components.ManifestHeader
 import com.pegasusx.driver.ui.screens.manifest.components.ManifestLoadingView
 import com.pegasusx.driver.ui.screens.manifest.components.RideCard
+import com.pegasusx.driver.R
 
 /**
  * ManifestScreen — redesigned to match iOS RidesListView.
@@ -97,13 +103,17 @@ fun ManifestScreen(
         )
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(lab.bg)
+            .background(lab.bg),
+        contentAlignment = Alignment.TopCenter
     ) {
+        Column(
+            modifier = Modifier
+                .widthIn(max = 680.dp)
+                .fillMaxSize()
+        ) {
         when {
             state.isLoading -> ManifestLoadingView()
             state.orders.isEmpty() -> ManifestEmptyView()
@@ -142,6 +152,14 @@ fun ManifestScreen(
                         }
                     }
 
+                    item {
+                        RemainingStopsStepper(
+                            stops = RemainingStops.remaining(pendingOrders),
+                            onSelect = { id -> pendingOrders.firstOrNull { it.id == id }?.let(onOrderClick) },
+                            modifier = Modifier.padding(horizontal = PegasusSpacing.s16, vertical = 8.dp),
+                        )
+                    }
+
                     // Ride cards
                     itemsIndexed(
                         items = displayOrders,
@@ -165,7 +183,7 @@ fun ManifestScreen(
                                         ) {
                                             Icon(
                                                 Icons.Default.KeyboardArrowUp,
-                                                contentDescription = "Move up",
+                                                contentDescription = stringResource(R.string.mobile_driver_ui_move_up),
                                                 tint = if (index > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
                                                 modifier = Modifier.size(24.dp)
                                             )
@@ -177,7 +195,7 @@ fun ManifestScreen(
                                         ) {
                                             Icon(
                                                 Icons.Default.KeyboardArrowDown,
-                                                contentDescription = "Move down",
+                                                contentDescription = stringResource(R.string.mobile_driver_ui_move_down),
                                                 tint = if (index < displayOrders.lastIndex) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
                                                 modifier = Modifier.size(24.dp)
                                             )
@@ -212,7 +230,7 @@ fun ManifestScreen(
                 containerColor = MaterialTheme.colorScheme.errorContainer,
                 contentColor = MaterialTheme.colorScheme.onErrorContainer,
             ) {
-                Icon(Icons.Default.Warning, contentDescription = "Request Early Complete")
+                Icon(Icons.Default.Warning, contentDescription = stringResource(R.string.mobile_driver_ui_request_early_complete))
             }
         }
     } // end Box

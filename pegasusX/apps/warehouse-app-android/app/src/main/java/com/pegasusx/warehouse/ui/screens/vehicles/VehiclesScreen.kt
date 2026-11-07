@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.vehicles
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -16,14 +18,15 @@ import com.pegasusx.warehouse.data.remote.WarehouseApi
 import com.pegasusx.warehouse.data.remote.WarehouseRealtimeSignals
 import com.pegasusx.warehouse.ui.realtime.WAREHOUSE_RECONNECT_RECOVERY_HINT
 import com.pegasusx.warehouse.ui.realtime.WarehouseReconnectRecoveryEffect
-import com.pegasus.design.PegasusLoadingState
-import com.pegasus.design.PegasusStateKind
-import com.pegasus.design.PegasusStatePane
+import com.pegasus.design.ui.PegasusLoadingState
+import com.pegasus.design.ui.PegasusStateKind
+import com.pegasus.design.ui.PegasusStatePane
 import com.pegasusx.warehouse.ui.components.WarehouseStatusChip
-import com.pegasus.design.showFullScreenLoading
+import com.pegasus.design.network.showFullScreenLoading
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import com.pegasusx.warehouse.util.WarehouseIdempotencyKeys
 import kotlinx.coroutines.launch
+import com.pegasusx.warehouse.R
 
 private val VEHICLE_CLASSES = listOf("CLASS_A" to "50 VU", "CLASS_B" to "150 VU", "CLASS_C" to "400 VU")
 
@@ -48,7 +51,8 @@ fun VehiclesScreen(
         scope.launch {
             try {
                 val resp = api.getVehicles()
-                if (resp.isSuccessful && resp.body() != null) vehicles = resp.body()!!.vehicles
+                val respBody = resp.body()
+                if (resp.isSuccessful && respBody != null) vehicles = respBody.vehicles
                 else if (!silent) error = "Failed (${resp.code()})"
             } catch (e: Exception) {
                 if (!silent) error = e.message ?: "Network error"
@@ -79,14 +83,14 @@ fun VehiclesScreen(
     ) { innerPadding ->
         when {
             loading && vehicles.isEmpty() -> PegasusLoadingState(
-                title = "Loading trucks…",
+                title = stringResource(R.string.mobile_warehouse_ui_loading_trucks),
                 body = "Fleet vehicle roster",
                 modifier = Modifier.padding(innerPadding),
             )
             error != null -> PegasusStatePane(
                 kind = PegasusStateKind.Error,
                 headline = "Trucks unavailable",
-                body = error!!,
+                body = error.orEmpty(),
                 actionLabel = "Retry",
                 onAction = { load() },
                 modifier = Modifier.padding(innerPadding),
@@ -156,11 +160,11 @@ private fun CreateVehicleDialog(
                         FilterChip(
                             selected = selectedClass == cls,
                             onClick = { selectedClass = cls },
-                            label = { Text("$cls ($cap)") },
+                            label = { Text(stringResource(R.string.mobile_warehouse_ui_cls_cap, cls, cap)) },
                         )
                     }
                 }
-                if (error != null) Text(error!!, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                if (error != null) Text(error.orEmpty(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
             }
         },
         confirmButton = {

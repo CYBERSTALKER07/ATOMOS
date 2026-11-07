@@ -97,8 +97,9 @@ fun DispatchPreviewMapLibre(
             val callback: (Style) -> Unit = { style ->
                 updateDispatchPreviewMap(style, map, routesWithGeometry)
             }
-            if (map.style != null) {
-                callback(map.style!!)
+            val currentStyle = map.style
+            if (currentStyle != null) {
+                callback(currentStyle)
             } else {
                 map.setStyle(Style.Builder().fromUri(DISPATCH_PREVIEW_STYLE_URL), callback)
             }

@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-chi/chi/v5"
 	"cloud.google.com/go/spanner"
+	"github.com/go-chi/chi/v5"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
@@ -171,7 +171,7 @@ func (s *Service) HandlePartialOffload(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 		return
 	}
-	if s.guardIdempotency(w, r, body) {
+	if s.guardIdempotencyStrict(w, r, body) {
 		return
 	}
 	idemCommitted := false
@@ -293,16 +293,16 @@ func (s *Service) HandlePartialOffload(w http.ResponseWriter, r *http.Request) {
 
 		for _, ret := range pendingReturns {
 			if err := outbox.EmitJSON(ctx, txn, events.AggregateOrder, current.OrderID, events.TopicMain, map[string]any{
-				"type":            events.EventSupplierReturnCreated,
-				"order_id":        current.OrderID,
-				"return_id":       ret.ReturnID,
-				"sku":             ret.SKU,
-				"rejected_qty":    ret.RejectedQty,
-				"reason":          ret.Reason,
-				"driver_id":       claims.Subject,
-				"supplier_id":     current.SupplierID,
-				"retailer_id":     current.RetailerID,
-				"timestamp":       now.UTC().Format(time.RFC3339Nano),
+				"type":         events.EventSupplierReturnCreated,
+				"order_id":     current.OrderID,
+				"return_id":    ret.ReturnID,
+				"sku":          ret.SKU,
+				"rejected_qty": ret.RejectedQty,
+				"reason":       ret.Reason,
+				"driver_id":    claims.Subject,
+				"supplier_id":  current.SupplierID,
+				"retailer_id":  current.RetailerID,
+				"timestamp":    now.UTC().Format(time.RFC3339Nano),
 			}); err != nil {
 				return err
 			}
@@ -316,21 +316,8 @@ func (s *Service) HandlePartialOffload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Best-effort flag on Orders.PartialDelivery when Spanner columns exist.
-	if s.spannerClient != nil {
-		_, _ = s.spannerClient.Apply(ctx, []*spanner.Mutation{
-			spanner.UpdateMap("Orders", map[string]any{
-				"OrderId":         current.OrderID,
-				"PartialDelivery": current.PartialDelivery,
-				"UpdatedAt":       now.UTC(),
-			}),
-		})
-	}
-
-	if s.replanner != nil && current.ManifestID != "" {
-		go func(rID, act string) {
-			_ = s.replanner.ReplanRoute(context.Background(), rID, "partial_offload", act)
-		}(current.ManifestID, claims.Subject)
+	if current.ManifestID != "" {
+		s.replanAsync(current.ManifestID, "partial_offload", claims.Subject)
 	}
 
 	s.invalidateOrderCache(ctx, orderID)

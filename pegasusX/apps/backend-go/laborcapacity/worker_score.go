@@ -14,11 +14,11 @@ import (
 )
 
 // RunDriverScoreWorker recomputes driver scores on a ticker.
-// Scheduled to run nightly (e.g. 02:00 Asia/Tashkent).
+// Scheduled to run nightly (pack timezone, e.g. 02:00 on the shipped pack).
 func (s *Service) RunDriverScoreWorker(ctx context.Context, interval time.Duration) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
-	
+
 	// Initial run
 	_ = s.RunDriverScoreComputation(ctx)
 
@@ -45,25 +45,7 @@ type txBuf struct {
 }
 
 func (b *txBuf) BufferOutbox(_ context.Context, e outbox.Event) error {
-	createdAt := e.CreatedAt.UTC()
-	if createdAt.IsZero() {
-		createdAt = time.Now().UTC()
-	}
-
-	row := map[string]any{
-		"EventId":       e.EventID,
-		"AggregateType": e.AggregateType,
-		"AggregateId":   e.AggregateID,
-		"TopicName":     e.TopicName,
-		"Payload":       e.Payload,
-		"CreatedAt":     createdAt,
-		"PublishedAt":   nil,
-	}
-	if e.PublishedAt != nil {
-		row["PublishedAt"] = e.PublishedAt.UTC()
-	}
-
-	*b.mutations = append(*b.mutations, spanner.InsertOrUpdateMap("OutboxEvents", row))
+	*b.mutations = append(*b.mutations, spanner.InsertOrUpdateMap("OutboxEvents", outbox.EventRowMap(e)))
 	return nil
 }
 
@@ -135,7 +117,7 @@ func (s *Service) RunDriverScoreComputation(ctx context.Context) error {
 			"End":   civil.DateOf(windowEnd),
 		},
 	}
-	
+
 	iter := s.spanner.Single().Query(ctx, stmt)
 	defer iter.Stop()
 
@@ -201,8 +183,7 @@ func (s *Service) RunDriverScoreComputation(ctx context.Context) error {
 		// Calculate Score
 		score := 70.0 // Edge Rule: New driver (< 15 stops) -> 70 neutral
 		if totalCompleted >= 15 {
-			score = 100.0 * (
-				0.35*onTimeRate +
+			score = 100.0 * (0.35*onTimeRate +
 				0.25*completionRate +
 				0.20*(1.0-damageRate) +
 				0.10*(1.0-shopClosedRate) +
@@ -264,4 +245,3 @@ func (s *Service) flushScoreMutations(ctx context.Context, mutations []*spanner.
 	})
 	return err
 }
-

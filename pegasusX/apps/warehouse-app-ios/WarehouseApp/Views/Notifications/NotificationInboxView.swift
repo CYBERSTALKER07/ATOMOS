@@ -13,11 +13,11 @@ struct NotificationInboxView: View {
                     .frame(maxWidth: .infinity, minHeight: 200)
             } else if let error {
                 ContentUnavailableView {
-                    Label("Notifications unavailable", systemImage: "bell.slash")
+                    Label("retailer_desktop.residual.text.notifications_unavailable", systemImage: "bell.slash")
                 } description: {
                     Text(error)
                 } actions: {
-                    Button("Retry") { load() }
+                    Button("common.action.retry") { load() }
                 }
             } else if items.isEmpty {
                 ContentUnavailableView("No notifications", systemImage: "bell")
@@ -47,11 +47,11 @@ struct NotificationInboxView: View {
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
                 if unreadCount > 0 {
-                    Button("Mark all read") {
+                    Button("mobile_warehouse.ui.mark_all_read") {
                         Task { await markAllRead() }
                     }
                 }
-                Button("Refresh", systemImage: "arrow.clockwise") {
+                Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") {
                     load()
                 }
             }

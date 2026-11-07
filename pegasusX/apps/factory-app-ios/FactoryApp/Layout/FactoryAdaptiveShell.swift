@@ -1,13 +1,24 @@
 import SwiftUI
 import Network
 
+struct FocusedFactorySectionKey: FocusedValueKey {
+    typealias Value = Binding<FactorySection?>
+}
+
+extension FocusedValues {
+    var factorySection: Binding<FactorySection?>? {
+        get { self[FocusedFactorySectionKey.self] }
+        set { self[FocusedFactorySectionKey.self] = newValue }
+    }
+}
+
 struct FactoryAdaptiveShell: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var sidebarSelection: FactorySection? = .dashboard
     @State private var isSidebarExpanded = true
     @State private var compactTab: FactoryCompactTab = .dashboard
-    @State private var pathMonitor: NWPathMonitor?
-    @State private var wasOffline = false
+    @State private var pendingTransferFilter: String?
+    @ObservedObject private var network = NetworkLifecycleEngine.shared
 
     var body: some View {
         Group {
@@ -17,11 +28,7 @@ struct FactoryAdaptiveShell: View {
                 compactShell
             }
         }
-        .onAppear { startNetworkMonitor() }
-        .onDisappear {
-            pathMonitor?.cancel()
-            pathMonitor = nil
-        }
+        .focusedSceneValue(\.factorySection, $sidebarSelection)
     }
 
     private var regularShell: some View {
@@ -54,13 +61,16 @@ struct FactoryAdaptiveShell: View {
     private var compactShell: some View {
         TabView(selection: $compactTab) {
             sectionView(.dashboard)
-                .tabItem { Label("Dashboard", systemImage: FactorySection.dashboard.icon) }
+                .tabItem { Label("portal.nav.dashboard", systemImage: FactorySection.dashboard.icon) }
                 .tag(FactoryCompactTab.dashboard)
             sectionView(.loadingBay)
-                .tabItem { Label("Loading Bay", systemImage: FactorySection.loadingBay.icon) }
+                .tabItem { Label("portal.nav.loading_bay", systemImage: FactorySection.loadingBay.icon) }
                 .tag(FactoryCompactTab.loadingBay)
+            sectionView(.payloadLoad)
+                .tabItem { Label("portal.nav.payload", systemImage: FactorySection.payloadLoad.icon) }
+                .tag(FactoryCompactTab.payload)
             sectionView(.transfers)
-                .tabItem { Label("Transfers", systemImage: FactorySection.transfers.icon) }
+                .tabItem { Label("portal.nav.transfers", systemImage: FactorySection.transfers.icon) }
                 .tag(FactoryCompactTab.transfers)
             NavigationStack {
                 FactoryMoreHubView { section in
@@ -68,7 +78,7 @@ struct FactoryAdaptiveShell: View {
                     compactTab = .dashboard
                 }
             }
-            .tabItem { Label("More", systemImage: "ellipsis.circle") }
+            .tabItem { Label("mobile_factory.ui.more", systemImage: "ellipsis.circle") }
             .tag(FactoryCompactTab.more)
         }
     }
@@ -82,12 +92,21 @@ struct FactoryAdaptiveShell: View {
                 onOpenPayloadOverride: { sidebarSelection = .payloadOverride },
                 onOpenManifestExceptions: { sidebarSelection = .manifestExceptions },
                 onOpenAnalytics: { sidebarSelection = .analytics },
-                onOpenInsights: { sidebarSelection = .insights }
+                onOpenInsights: { sidebarSelection = .insights },
+                onOpenTransfers: { key in
+                    pendingTransferFilter = key
+                    sidebarSelection = .transfers
+                    compactTab = .transfers
+                },
+                onOpenLoadingBay: {
+                    sidebarSelection = .loadingBay
+                    compactTab = .loadingBay
+                }
             )
         case .loadingBay:
             LoadingBayView()
         case .transfers:
-            TransferListView()
+            TransferListView(initialFilter: pendingTransferFilter)
         case .fleet:
             FleetView()
         case .staff:
@@ -98,6 +117,8 @@ struct FactoryAdaptiveShell: View {
             SupplyRequestsView()
         case .payloadOverride:
             PayloadOverrideView()
+        case .payloadLoad:
+            PayloadLoadView()
         case .manifests:
             ManifestsView()
         case .manifestExceptions:
@@ -109,21 +130,5 @@ struct FactoryAdaptiveShell: View {
         case .notifications:
             NotificationInboxView()
         }
-    }
-
-    private func startNetworkMonitor() {
-        guard pathMonitor == nil else { return }
-        let monitor = NWPathMonitor()
-        monitor.pathUpdateHandler = { path in
-            DispatchQueue.main.async {
-                if path.status == .satisfied {
-                    wasOffline = false
-                } else {
-                    wasOffline = true
-                }
-            }
-        }
-        monitor.start(queue: DispatchQueue(label: "com.pegasus.factory.network"))
-        pathMonitor = monitor
     }
 }

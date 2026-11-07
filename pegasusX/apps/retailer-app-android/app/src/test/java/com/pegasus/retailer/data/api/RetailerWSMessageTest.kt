@@ -47,8 +47,8 @@ class RetailerWSMessageTest {
         assertEquals("tok_abc", msg.deliveryToken)
         assertEquals("GLOBAL_PAY", msg.gateway)
         assertEquals(140000L, msg.adjustedAmount)
-        assertEquals(41.2995, msg.driverLatitude!!, 0.001)
-        assertEquals(69.2401, msg.driverLongitude!!, 0.001)
+        assertEquals(41.2995, checkNotNull(msg.driverLatitude), 0.001)
+        assertEquals(69.2401, checkNotNull(msg.driverLongitude), 0.001)
         assertEquals("SUP-001", msg.supplierId)
         assertEquals("ARRIVED", msg.state)
     }

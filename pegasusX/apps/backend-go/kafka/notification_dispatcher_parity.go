@@ -6,8 +6,29 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
 )
+
+func (d *NotificationDispatcher) invalidateOperationalDashboards(ctx context.Context, supplierID, warehouseID, factoryID string) {
+	if d == nil || d.deps.Cache == nil {
+		return
+	}
+	var keys []string
+	if sid := strings.TrimSpace(supplierID); sid != "" {
+		keys = append(keys, cache.DashboardKey("supplier", sid))
+	}
+	if wid := strings.TrimSpace(warehouseID); wid != "" {
+		keys = append(keys, cache.DashboardKey("warehouse", wid))
+	}
+	if fid := strings.TrimSpace(factoryID); fid != "" {
+		keys = append(keys, cache.DashboardKey("factory", fid))
+	}
+	if len(keys) > 0 {
+		d.deps.Cache.Invalidate(ctx, keys...)
+	}
+}
 
 type partyEnvelope struct {
 	Type         string `json:"type"`
@@ -16,6 +37,7 @@ type partyEnvelope struct {
 	RetailerID   string `json:"retailer_id"`
 	DriverID     string `json:"driver_id"`
 	WarehouseID  string `json:"warehouse_id"`
+	DepotID      string `json:"depot_id"`
 	FactoryID    string `json:"factory_id"`
 	ManifestID   string `json:"manifest_id"`
 	TransferID   string `json:"transfer_id"`
@@ -46,6 +68,9 @@ func decodePartyEnvelope(payload []byte) (partyEnvelope, error) {
 	}
 	if e.WarehouseID == "" {
 		e.WarehouseID = legacy.WarehouseId
+	}
+	if e.WarehouseID == "" && e.DepotID != "" {
+		e.WarehouseID = e.DepotID
 	}
 	if e.FactoryID == "" {
 		e.FactoryID = legacy.FactoryId
@@ -136,6 +161,18 @@ func (d *NotificationDispatcher) dispatchParityEvent(ctx context.Context, eventT
 	case "SUPPLIER_REGISTERED", "SUPPLIER_CONFIGURED":
 		return d.handleSupplierUpdated(ctx, payload, traceID)
 
+	// Foundry / Cashier / Fleet DVIR / Yard Gate / Container Ledger / Offline Lease / AML parity.
+	case events.EventCashierSessionStarted,
+		events.EventCashierSessionTransition,
+		events.EventFleetDVIRInspected,
+		events.EventFleetDVIRRedTag,
+		events.EventYardGateCheckRecorded,
+		events.EventContainerLedgerUpdated,
+		events.EventOfflineQuotaLeaseUpdated,
+		events.EventAMLExposureUpdated,
+		events.EventOntologyObjectUpdated:
+		return d.handleFoundryOperationalEvent(ctx, payload, traceID)
+
 	default:
 		switch {
 		case strings.HasPrefix(eventType, "TRANSFER_"),
@@ -210,6 +247,9 @@ func (d *NotificationDispatcher) handleTelemetryLocation(ctx context.Context, pa
 	}
 	d.broadcastSupplier(ctx, supplierID, payload)
 	d.broadcastDriver(ctx, driverID, payload)
+	if supplierID != "" && d.deps.TelemetryHub != nil {
+		d.deps.TelemetryHub.Broadcast(ctx, ws.SupplierTelemetryRoom(supplierID), payload)
+	}
 	return nil
 }
 
@@ -296,8 +336,23 @@ func (d *NotificationDispatcher) handleTransferEvent(ctx context.Context, payloa
 	if err != nil {
 		return err
 	}
-	// Typed WarehouseEvent / nested transfer payloads.
+	// Typed WarehouseEvent / WarehouseTransferEvent / nested transfer payloads.
 	if e.warehouseID() == "" && e.supplierID() == "" {
+		var xfer events.WarehouseTransferEvent
+		if json.Unmarshal(payload, &xfer) == nil {
+			if e.Type == "" {
+				e.Type = xfer.Type
+			}
+			if e.SupplierID == "" {
+				e.SupplierID = xfer.SupplierID
+			}
+			if e.FactoryID == "" {
+				e.FactoryID = xfer.FactoryID
+			}
+			if e.TransferID == "" {
+				e.TransferID = xfer.TransferID
+			}
+		}
 		var wh events.WarehouseEvent
 		if json.Unmarshal(payload, &wh) == nil {
 			if e.Type == "" {
@@ -333,6 +388,7 @@ func (d *NotificationDispatcher) handleTransferEvent(ctx context.Context, payloa
 	if d.dropFanout(e.Type, traceID, aggregateID) {
 		return nil
 	}
+	d.invalidateOperationalDashboards(ctx, e.supplierID(), e.warehouseID(), e.factoryID())
 	d.broadcastSupplier(ctx, e.supplierID(), payload)
 	d.broadcastWarehouse(ctx, e.warehouseID(), payload)
 	factoryRoom := e.factoryID()
@@ -557,5 +613,68 @@ func (d *NotificationDispatcher) handleFinanceGapEvent(ctx context.Context, payl
 	}
 	d.broadcastSupplier(ctx, e.supplierID(), payload)
 	d.persistInbox(ctx, e.supplierID(), "ADMIN", payload)
+	return nil
+}
+
+func (d *NotificationDispatcher) handleProductAndCategoryCreated(ctx context.Context, payload []byte, traceID string) error {
+	var e struct {
+		Type       string `json:"type"`
+		SupplierID string `json:"supplier_id"`
+		ProductID  string `json:"product_id"`
+		CategoryID string `json:"category_id"`
+	}
+	if err := json.Unmarshal(payload, &e); err != nil {
+		return fmt.Errorf("decode product/category event: %w", err)
+	}
+	aggregateID := e.ProductID
+	if aggregateID == "" {
+		aggregateID = e.CategoryID
+	}
+	if d.dropFanout(e.Type, traceID, aggregateID) {
+		return nil
+	}
+	d.broadcastSupplier(ctx, e.SupplierID, payload)
+	d.broadcastRetailerPromoSupplier(ctx, e.SupplierID, payload)
+	return nil
+}
+
+func (d *NotificationDispatcher) handleFoundryOperationalEvent(ctx context.Context, payload []byte, traceID string) error {
+	e, err := decodePartyEnvelope(payload)
+	if err != nil {
+		return err
+	}
+	var foundryKeys struct {
+		SessionID    string `json:"session_id"`
+		InspectionID string `json:"inspection_id"`
+		EventID      string `json:"event_id"`
+		ObjectID     string `json:"object_id"`
+		LeaseID      string `json:"lease_id"`
+		VehicleID    string `json:"vehicle_id"`
+	}
+	_ = json.Unmarshal(payload, &foundryKeys)
+
+	aggregateID := ""
+	for _, candidate := range []string{
+		foundryKeys.SessionID,
+		foundryKeys.InspectionID,
+		foundryKeys.ObjectID,
+		foundryKeys.LeaseID,
+		foundryKeys.VehicleID,
+		foundryKeys.EventID,
+		e.dedupAggregateID(),
+	} {
+		if strings.TrimSpace(candidate) != "" {
+			aggregateID = strings.TrimSpace(candidate)
+			break
+		}
+	}
+	if d.dropFanout(e.Type, traceID, aggregateID) {
+		return nil
+	}
+	d.invalidateOperationalDashboards(ctx, e.supplierID(), e.warehouseID(), e.factoryID())
+	d.broadcastSupplier(ctx, e.supplierID(), payload)
+	d.broadcastWarehouse(ctx, e.warehouseID(), payload)
+	d.broadcastDriver(ctx, strings.TrimSpace(e.DriverID), payload)
+	d.broadcastRetailer(ctx, e.retailerID(), payload)
 	return nil
 }

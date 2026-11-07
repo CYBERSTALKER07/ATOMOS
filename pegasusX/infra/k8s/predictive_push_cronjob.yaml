@@ -10,16 +10,38 @@ spec:
   failedJobsHistoryLimit: 3
   jobTemplate:
     spec:
+      ttlSecondsAfterFinished: 3600
       template:
         metadata:
           labels:
             app: pegasusx-predictive-push
+            cost-center: platform-engineering
+            workload-tier: batch-cron
+            pricing-model: spot
         spec:
+          serviceAccountName: ai-worker-sa
+          automountServiceAccountToken: false
+          priorityClassName: pegasusx-batch-spot
+          tolerations:
+            - key: "cloud.google.com/gke-spot"
+              operator: "Equal"
+              value: "true"
+              effect: "NoSchedule"
+          affinity:
+            nodeAffinity:
+              preferredDuringSchedulingIgnoredDuringExecution:
+                - weight: 100
+                  preference:
+                    matchExpressions:
+                      - key: cloud.google.com/gke-spot
+                        operator: In
+                        values:
+                          - "true"
           containers:
           - name: ai-worker
             image: us-central1-docker.pkg.dev/pegasusx-production/pegasusx/ai-worker:latest
             command:
-            - "/app/ai-worker"
+            - "/usr/local/bin/pegasusx-ai-worker"
             env:
             - name: AI_WORKER_MODE
               value: "predictive-push-cron"

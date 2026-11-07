@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.screens.tracking
 
+import androidx.compose.ui.res.stringResource
+
 import android.Manifest
 import android.content.pm.PackageManager
 import android.graphics.Color as AndroidColor
@@ -95,6 +97,7 @@ import com.pegasusx.retailer.ui.screens.tracking.components.RecentReceiptsStrip
 import com.pegasusx.retailer.ui.screens.tracking.components.FiscalReceiptQROverlay
 import com.pegasusx.retailer.ui.screens.tracking.components.TrackingMap
 import kotlinx.coroutines.launch
+import com.pegasusx.retailer.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -128,8 +131,8 @@ fun DeliveryMapScreen(
     val visibleOrders = uiState.visibleOrders
     var selectedOrder by remember { mutableStateOf<TrackingOrder?>(null) }
 
-    // Default center: Tashkent
-    val defaultPosition = LatLng(41.2995, 69.2401)
+    val packCenter = com.pegasus.design.sessionMapCenter()
+    val defaultPosition = LatLng(packCenter?.lat ?: 0.0, packCenter?.lng ?: 0.0)
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(defaultPosition, 12f)
     }
@@ -163,12 +166,12 @@ fun DeliveryMapScreen(
                 title = { Text("Delivery Tracking") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                     }
                 },
                 actions = {
                     IconButton(onClick = viewModel::refresh) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                        Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.portal_page_orders_action_refresh))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(

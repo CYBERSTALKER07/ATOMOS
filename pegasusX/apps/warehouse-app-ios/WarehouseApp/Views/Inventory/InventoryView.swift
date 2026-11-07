@@ -31,17 +31,17 @@ struct InventoryView: View {
                 }
             }
             .background(LabTheme.background)
-            .navigationTitle("Inventory")
+            .navigationTitle("portal.nav.inventory")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Toggle(isOn: $lowOnly) {
-                        Label("Low Stock", systemImage: "exclamationmark.triangle")
+                        Label("mobile_warehouse.ui.low_stock", systemImage: "exclamationmark.triangle")
                     }
                     .toggleStyle(.button)
                     .controlSize(.small)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Refresh", systemImage: "arrow.clockwise") { load() }
+                    Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") { load() }
                 }
             }
             .task { load() }
@@ -114,21 +114,21 @@ private struct AdjustInventorySheet: View {
                     Form {
                         Section {
                             if let newQty = Int(qty) {
-                                Text("Change \(skuLabel) from \(item.quantity) to \(newQty)? This affects retailer availability immediately.")
+                                Text(L10n.format("mobile_warehouse.ui.change_skulabel_from_quantity_to_newqty_this_affects_retailer_availabili", "\(skuLabel)", "\(item.quantity)", "\(newQty)"))
                                     .font(.subheadline)
                             }
                         }
                         Section("Reason (optional)") {
-                            TextField("e.g. cycle count, damaged goods", text: $reason)
+                            TextField("warehouse_portal.inventory.text.e_g_cycle_count_damaged_goods", text: $reason)
                         }
                         if let error {
                             Text(error).foregroundStyle(.red).font(.caption)
                         }
                     }
-                    .navigationTitle("Confirm change")
+                    .navigationTitle("mobile_warehouse.ui.confirm_change")
                     .toolbar {
                         ToolbarItem(placement: .cancellationAction) {
-                            Button("Back") { showConfirm = false }
+                            Button("common.action.back") { showConfirm = false }
                                 .disabled(submitting)
                         }
                         ToolbarItem(placement: .confirmationAction) {
@@ -142,17 +142,17 @@ private struct AdjustInventorySheet: View {
                             Text(item.productName)
                         }
                         Section("Quantity") {
-                            TextField("New Quantity", text: $qty)
+                            TextField("mobile_warehouse.ui.new_quantity", text: $qty)
                                 .keyboardType(.numberPad)
                         }
                     }
-                    .navigationTitle("Adjust Inventory")
+                    .navigationTitle("mobile_warehouse.ui.adjust_inventory")
                     .toolbar {
                         ToolbarItem(placement: .cancellationAction) {
-                            Button("Cancel") { dismiss() }
+                            Button("common.action.cancel") { dismiss() }
                         }
                         ToolbarItem(placement: .confirmationAction) {
-                            Button("Review") { showConfirm = true }
+                            Button("mobile_warehouse.ui.review") { showConfirm = true }
                                 .disabled(Int(qty) == nil || Int(qty) == item.quantity)
                         }
                     }

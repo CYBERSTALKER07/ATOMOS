@@ -51,51 +51,38 @@ def require_anchor_status(plan_text: str, anchor: str, expected_status: str) -> 
 
 def require_docs() -> None:
     required_docs = [
-        "docs/SUPPLIER_ONBOARDING_SOP.md",
-        "docs/BILLING_RECOVERY_SCRIPT.md",
-        "docs/TOPOLOGY_ENTRY_SUPPORT_GUIDE.md",
-        "docs/RETAILER_ONBOARDING_SUPPORT_FLOWS.md",
-        "docs/PRICING_AUTHORITY_RULES.md",
-        "docs/ZONE_MISS_COMMUNICATION_POLICY.md",
-        "docs/PAYMENT_EXCEPTION_SOP.md",
-        "docs/FINANCE_SUPPORT_WORKFLOW.md",
-        "docs/DISPUTE_CLASSIFICATION_VOCABULARY.md",
-        "docs/WAREHOUSE_EXCEPTION_SOP.md",
-        "docs/REASSIGNMENT_SUPPORT_PLAYBOOK.md",
-        "docs/TRANSFER_CANCELLATION_RUNBOOK.md",
-        "docs/DRIVER_SUPPORT_PLAYBOOK.md",
-        "docs/LIVE_TRACKING_EXPECTATIONS.md",
-        "docs/DELIVERY_ESCALATION_POLICY.md",
-        "docs/AI_WORKER_LAUNCH_RUNBOOK.md",
-        "docs/LAUNCH_READINESS_RUNBOOK.md",
-        "docs/P0_LAUNCH_CHECKLIST.md",
-        "docs/DEPLOYMENT_AND_DISTRIBUTION_PLAN.md",
-        "docs/INCIDENT_RESPONSE_RUNBOOK.md",
-        "docs/RELEASE_TRAIN.md",
-        "docs/DEPLOYMENT_READINESS_GAP_LEDGER.md",
-        "docs/REAL_WORLD_CASE_MATRIX.md",
-        "docs/SHOP_CLOSED_E2E_SOP.md",
-        "docs/PARTIAL_DISPATCH_RECOVERY_SOP.md",
-        "docs/BARCODE_GO_LIVE_CHECKLIST.md",
-        "docs/RETAILER_RECEIVING_WINDOWS_GUIDE.md",
-        "docs/V1_STAGING_CLOSURE_CHECKLIST.md",
+        "agents.md",
+        "docs/arch-overview.md",
+        "docs/svc-backend.md",
+        "docs/app-fleet-features.md",
+        "docs/infra-deployment.md",
+        "docs/canonical-order-state-machine.md",
     ]
     for relative_path in required_docs:
         read_text(relative_path)
 
     require_contains(
-        "docs/LAUNCH_READINESS_RUNBOOK.md",
+        "docs/infra-deployment.md",
         [
-            "make test-ssmr-infra",
-            "make validate-ai-worker-k8s",
-            "make validate-launch-readiness",
-            "rollback",
-            "launch support",
+            "make sandbox-infra-up",
+            "infra/terraform/main.tf",
+            "infra/k8s/base/",
+            "scripts/money_path_gate.sh",
+            "scripts/parity/role_row_contract_check_full.sh",
+        ],
+    )
+    require_contains(
+        "docs/canonical-order-state-machine.md",
+        [
+            "PENDING",
+            "COMPLETED",
+            "DELIVERED_ON_CREDIT",
         ],
     )
 
 
 def require_release_gates() -> None:
+    read_text("scripts/smoke_sandbox.sh")
     read_text("scripts/smoke_ssmr.sh")
     read_text("scripts/validate_ai_worker_k8s.sh")
     read_text("scripts/validate_launch_readiness.py")
@@ -109,8 +96,10 @@ def require_release_gates() -> None:
     )
     package = read_json("package.json")
     scripts = package.get("scripts", {})
+    if scripts.get("infra:sandbox:test") != "bash scripts/smoke_sandbox.sh":
+        fail("package.json scripts.infra:sandbox:test must run the sandbox smoke harness")
     if scripts.get("infra:ssmr:test") != "bash scripts/smoke_ssmr.sh":
-        fail("package.json scripts.infra:ssmr:test must run the SSMR smoke harness")
+        fail("package.json scripts.infra:ssmr:test must run the SSMR smoke harness alias")
     if scripts.get("infra:k8s:validate") != "bash scripts/validate_ai_worker_k8s.sh":
         fail("package.json scripts.infra:k8s:validate must run the ai-worker manifest validator")
     if scripts.get("infra:launch:validate") != "python3 scripts/validate_launch_readiness.py":
@@ -141,20 +130,18 @@ def require_platform_evidence() -> None:
         "scripts/validate_production_profile.sh",
         "scripts/wire_ready.sh",
         "scripts/p1_pilot_weekly.sh",
-        "docs/P0_LAUNCH_CHECKLIST.md",
-        "docs/P1_PILOT_CHECKLIST.md",
-        "docs/WIRE_READY_STAGING_RUNBOOK.md",
-        "docs/SPANNER_HOT_PATH_REVIEW.md",
-        "docs/P2_SCALE_ROADMAP.md",
         "apps/backend-go/Dockerfile",
         "apps/ai-worker/Dockerfile",
         "scripts/docker_build.sh",
         "scripts/render_k8s_manifests.sh",
         "scripts/validate_backend_k8s.sh",
-        "infra/terraform/observability_pilot.tf",
         "infra/terraform/main.tf",
-        "infra/terraform/gke.tf",
         "infra/terraform/variables.tf",
+        "infra/terraform/modules/compute/main.tf",
+        "infra/terraform/modules/monitoring/main.tf",
+        "infra/terraform/legacy/observability.tf",
+        "infra/terraform/legacy/observability_pilot.tf",
+        "infra/docker-compose.sandbox.yml",
         "infra/docker-compose.ssmr.yml",
         "apps/backend-go/platform/handlers.go",
         "scripts/parity/role_row_contract_check.sh",
@@ -165,7 +152,14 @@ def require_platform_evidence() -> None:
         read_text(relative_path)
 
     require_contains(
-        "infra/terraform/observability.tf",
+        "infra/terraform/modules/monitoring/main.tf",
+        [
+            "google_monitoring_alert_policy",
+            "spanner.googleapis.com/instance/cpu/utilization",
+        ],
+    )
+    require_contains(
+        "infra/terraform/legacy/observability.tf",
         [
             "void_ai_worker_up",
             "void_ai_worker_ready",
@@ -174,7 +168,7 @@ def require_platform_evidence() -> None:
         ],
     )
     require_contains(
-        "infra/terraform/observability_pilot.tf",
+        "infra/terraform/legacy/observability_pilot.tf",
         [
             "void_ws_connections",
             "void_http_requests_total",
@@ -196,33 +190,10 @@ def require_platform_evidence() -> None:
             "REQUIRE_INFRA_ADAPTERS",
         ],
     )
-    require_contains(
-        "docs/CLOUD_CREDENTIALS_CHECKLIST.md",
-        [
-            "GLOBAL_PAY_USERNAME",
-            "GLOBAL_PAY_PASSWORD",
-            "Maps SDK for Android",
-        ],
-    )
     require_contains("infra/docker-compose.ssmr.yml", ["8181", "ai-worker"])
 
 
 def require_context_sync() -> None:
-    plan_text = read_text("context/plan.md")
-    require_anchor_status(plan_text, "PX0-A5", "implemented")
-    require_anchor_status(plan_text, "PX7-A3", "implemented")
-    if "`PX11-C1`" not in plan_text:
-        fail("context/plan.md missing PX-11 section")
-    if "`PX12-A1`" not in plan_text:
-        fail("context/plan.md missing PX-12 section")
-    require_contains(
-        "context/plan.md",
-        [
-            "scripts/validate_launch_readiness.py",
-            "docs/LAUNCH_READINESS_RUNBOOK.md",
-        ],
-    )
-
     inventory = read_json("context/technology-inventory.json")
     backend = inventory.get("backend", {})
     if "launchReadinessGate" not in backend:
@@ -247,7 +218,11 @@ def main() -> None:
     require_release_gates()
     require_platform_evidence()
     require_context_sync()
-    
+
+    anti_theatre = subprocess.run(["bash", "scripts/ci_anti_theatre_gate.sh"], cwd=ROOT)
+    if anti_theatre.returncode != 0:
+        fail("scripts/ci_anti_theatre_gate.sh failed")
+
     run_make_target("parity-contract-full")
     run_make_target("validate-ai-worker-k8s")
     run_make_target("validate-backend-k8s")

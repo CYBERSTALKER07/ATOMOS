@@ -16,31 +16,56 @@ struct ManifestKpiGrid: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: TermTheme.s20) {
-            HStack(alignment: .top, spacing: TermTheme.s20) {
-                PayloadStatusBadge(text: manifest.state, large: true)
-                KpiTile(label: "PAYLOAD VOLUME", value: volumeLabel) {
-                    ProgressView(value: progress)
-                        .tint(TermTheme.accent)
-                        .scaleEffect(x: 1, y: 1.5, anchor: .center)
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .top, spacing: TermTheme.s20) {
+                    PayloadStatusBadge(text: manifest.state, large: true)
+                    volumeKpiTile
+                }
+                VStack(alignment: .leading, spacing: 12) {
+                    PayloadStatusBadge(text: manifest.state, large: true)
+                    volumeKpiTile
                 }
             }
 
-            HStack(spacing: TermTheme.s20) {
-                KpiTile(
-                    label: "TARGET STOPS",
-                    value: "\(manifest.stopCount ?? 0) UNITS"
-                )
-                if let region = manifest.regionCode, !region.isEmpty {
-                    KpiTile(
-                        label: "DEPLOYMENT ZONE",
-                        value: region.uppercased()
-                    )
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: TermTheme.s20) {
+                    stopsKpiTile
+                    regionKpiTile
+                }
+                VStack(alignment: .leading, spacing: 12) {
+                    stopsKpiTile
+                    regionKpiTile
                 }
             }
 
-            Text("Manifest \(manifest.manifestId.prefix(8))")
+            Text(L10n.format("mobile_payload.ui.manifest_prefix", "\(manifest.manifestId.prefix(8))"))
                 .font(.system(size: 11, weight: .bold, design: .monospaced))
                 .foregroundStyle(TermTheme.tertiary)
+        }
+    }
+
+    private var volumeKpiTile: some View {
+        KpiTile(label: "PAYLOAD VOLUME", value: volumeLabel) {
+            ProgressView(value: progress)
+                .tint(TermTheme.accent)
+                .scaleEffect(x: 1, y: 1.5, anchor: .center)
+        }
+    }
+
+    private var stopsKpiTile: some View {
+        KpiTile(
+            label: "TARGET STOPS",
+            value: "\(manifest.stopCount ?? 0) UNITS"
+        )
+    }
+
+    @ViewBuilder
+    private var regionKpiTile: some View {
+        if let region = manifest.regionCode, !region.isEmpty {
+            KpiTile(
+                label: "DEPLOYMENT ZONE",
+                value: region.uppercased()
+            )
         }
     }
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from "react";
 
 /**
@@ -34,6 +35,7 @@ type Relationship = {
 };
 
 export default function WarehouseCreditPolicyPage() {
+  const t = usePortalT();
   const [program, setProgram] = useState<Program | null>(null);
   const [rels, setRels] = useState<Relationship[]>([]);
   const [invoices, setInvoices] = useState<Array<{ invoice_id: string; due_at: string; balance_minor: number; aging_bucket?: string }>>([]);
@@ -48,7 +50,7 @@ export default function WarehouseCreditPolicyPage() {
         whFetch("/v1/supplier/ar/invoices?status=OPEN"),
       ]);
       if (p.status === 403) {
-        setError("finance_permission_required");
+        setError(t("warehouse_portal.residual.text.finance_permission_required"));
         return;
       }
       if (!p.ok) throw new Error(`program_${p.status}`);
@@ -62,7 +64,7 @@ export default function WarehouseCreditPolicyPage() {
         setInvoices(body.invoices ?? []);
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "load_failed");
+      setError(e instanceof Error ? e.message : t("warehouse_portal.residual.text.load_failed"));
     }
   }, []);
 
@@ -72,19 +74,19 @@ export default function WarehouseCreditPolicyPage() {
 
   return (
     <main className="p-6 max-w-4xl mx-auto">
-      <h1 className="text-xl font-semibold">Credit policy (supplier-scoped)</h1>
+      <h1 className="text-xl font-semibold">{t("warehouse_portal.credit.policy.text.credit_policy_supplier_scoped")}</h1>
       <p className="text-sm mt-1 opacity-70">
         Same ledger as supplier finance — not a second credit book. Permanent disable requires Pegaus support.
       </p>
       {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
       <section className="mt-6">
-        <h2 className="font-medium">Program</h2>
+        <h2 className="font-medium">{t("warehouse_portal.credit.policy.text.program")}</h2>
         <p className="text-sm mt-1">
           {program?.program_enabled ? `ON · Net ${program.global_terms_days}` : "OFF"}
         </p>
       </section>
       <section className="mt-6">
-        <h2 className="font-medium">Relationships</h2>
+        <h2 className="font-medium">{t("warehouse_portal.credit.policy.text.relationships")}</h2>
         <ul className="mt-2 space-y-2 text-sm">
           {rels.map((r) => (
             <li key={r.retailer_id}>
@@ -95,7 +97,7 @@ export default function WarehouseCreditPolicyPage() {
         </ul>
       </section>
       <section className="mt-6">
-        <h2 className="font-medium">Open AR (dock ops)</h2>
+        <h2 className="font-medium">{t("warehouse_portal.credit.policy.text.open_ar_dock_ops")}</h2>
         <ul className="mt-2 space-y-2 text-sm">
           {invoices.map((inv) => (
             <li key={inv.invoice_id}>

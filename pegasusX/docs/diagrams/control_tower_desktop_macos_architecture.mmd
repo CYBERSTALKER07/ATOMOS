@@ -1,0 +1,35 @@
+flowchart TD
+    subgraph Data_Engines["PegasusX Multi-Cell Backplanes"]
+        CS[("Cloud Spanner Multi-Region<br/>P99 Read 4.2ms | Write 18.4ms")]
+        KF["Distributed Kafka Partitions<br/>Topic Lag & DLQ Poison Queues"]
+        RD["Redis Distributed Semaphore<br/>Priority Rate Permits"]
+        WS["WebSocket Telemetry Bus<br/>Live Ingest & 50-Event Buffer"]
+    end
+
+    subgraph Desktop_Tauri["Cross-Platform Desktop (apps/admin-portal/src-tauri)"]
+        T_Core["Tauri 2 Rust Core<br/>Single-Instance • Updater • Keyring"]
+        T_UI["Next.js 15 Static Out<br/>20 Offline/Desktop Exported Routes"]
+        T_Core <--> T_UI
+    end
+
+    subgraph Native_macOS["Native macOS App (apps/control-tower-macos)"]
+        M_App["PegasusControlTowerApp<br/>Unified Toolbar • ⌘1..5 • ⌘R • ⌘E"]
+        M_MB["MenuBarExtra<br/>Top System Status Popover"]
+        M_Split["NavigationSplitView<br/>Sidebar • Main Canvas • Inspector"]
+        M_Charts["Swift Charts Engine<br/>Spanner Latencies • Tender Waterfall"]
+        M_Net["URLSession & WebSocket Stream<br/>Async Actor & Ring Buffer"]
+
+        M_App --> M_MB
+        M_App --> M_Split
+        M_Split --> M_Charts
+        M_Split --> M_Net
+    end
+
+    CS --> T_Core
+    KF --> T_Core
+    WS --> T_UI
+
+    CS --> M_Net
+    KF --> M_Net
+    RD --> M_Net
+    WS --> M_Net

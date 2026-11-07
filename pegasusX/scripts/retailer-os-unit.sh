@@ -8,7 +8,7 @@ go test ./retailer/ ./retailerroutes/ -count=1
 if grep -R "sup-demo-1" \
   "$ROOT/apps/retailer-app-desktop" \
   "$ROOT/apps/retailer-app-android/app/src" \
-  "$ROOT/apps/retailer-app-ios/retailerapp/reatilerapp" \
+  "$ROOT/apps/retailer-app-ios/retailerapp/retailerapp" \
   --include='*.tsx' --include='*.ts' --include='*.kt' --include='*.swift' \
   2>/dev/null; then
   echo "FAIL: sup-demo-1 found in retailer apps" >&2

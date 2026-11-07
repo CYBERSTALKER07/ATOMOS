@@ -191,6 +191,7 @@ final class TokenStore {
 
     func save(response: AuthResponse) {
         token = response.token
+        CellTokenCache.token = response.token
         userId = response.userId
         driverName = response.name
         vehicleType = response.vehicleType
@@ -312,10 +313,12 @@ final class DriverSocketState {
         let status: String?
         let state: String?
         let rescueId: String?
+        let brokenDriverId: String?
     }
 
     private struct DriverEnvelope: Decodable {
         let type: String
+        let event_id: String?
         let order_id: String?
         let response: String?
         let bypass_token: String?
@@ -329,6 +332,7 @@ final class DriverSocketState {
         let status: String?
         let state: String?
         let rescue_id: String?
+        let broken_driver_id: String?
     }
 
     static let shared = DriverSocketState()
@@ -346,6 +350,7 @@ final class DriverSocketState {
     var connectionState: SocketConnectionState = .disconnected
 
     private let wsSchemaVersion = 2
+    private var lastEventID: String?
     private var webSocketTask: URLSessionWebSocketTask?
     private var reconnectWorkItem: DispatchWorkItem?
     private var shouldReconnect = false
@@ -363,6 +368,9 @@ final class DriverSocketState {
 
         stopMonitoring()
         shouldReconnect = true
+        if currentBaseURL != baseURL || currentToken != token {
+            lastEventID = nil
+        }
         currentBaseURL = baseURL
         currentToken = token
         reconnectAttempt = 0
@@ -413,12 +421,22 @@ final class DriverSocketState {
             .replacingOccurrences(of: "https://", with: "wss://")
             .replacingOccurrences(of: "http://", with: "ws://")
 
-        guard let url = URL(string: "\(wsBase)/v1/ws?sv=\(wsSchemaVersion)") else {
+        var components = URLComponents(string: "\(wsBase)/v1/ws")
+        var queryItems = [URLQueryItem(name: "sv", value: "\(wsSchemaVersion)")]
+        if let lastEventID, !lastEventID.isEmpty {
+            queryItems.append(URLQueryItem(name: "last_event_id", value: lastEventID))
+        }
+        components?.queryItems = queryItems
+
+        guard let url = components?.url else {
             return
         }
 
         var request = URLRequest(url: url)
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        if let lastEventID, !lastEventID.isEmpty {
+            request.setValue(lastEventID, forHTTPHeaderField: "Last-Event-ID")
+        }
 
         let task = URLSession.shared.webSocketTask(with: request)
         webSocketTask = task
@@ -468,6 +486,10 @@ final class DriverSocketState {
             return
         }
 
+        if let eventId = envelope.event_id, !eventId.isEmpty {
+            lastEventID = eventId
+        }
+
         if envelope.type == "SYSTEM_APP_OUTDATED" {
             publishOutdatedEvent(
                 message: envelope.message,
@@ -501,7 +523,8 @@ final class DriverSocketState {
             attemptId: envelope.attempt_id,
             status: envelope.status,
             state: envelope.state,
-            rescueId: envelope.rescue_id
+            rescueId: envelope.rescue_id,
+            brokenDriverId: envelope.broken_driver_id
         )
         eventSequence += 1
     }
@@ -597,6 +620,31 @@ struct AuthResponse: Codable {
         case factoryLat = "factory_lat"
         case factoryLng = "factory_lng"
     }
+
+    static let mock = AuthResponse(
+        token: "mock-driver-jwt-token-dev",
+        userId: "drv-tashkent-001",
+        driverId: "drv-tashkent-001",
+        name: "Temur Alimov (Demo Driver)",
+        vehicleType: "Isuzu NPR 4t",
+        licensePlate: "01 777 AAA",
+        supplierId: "sup-tashkent-01",
+        vehicleId: "veh-tashkent-001",
+        vehicleClass: "MEDIUM_TRUCK",
+        maxVolumeVU: 18.5,
+        firebaseToken: nil,
+        warehouseId: "wh-tashkent-central",
+        warehouseName: "Tashkent Central Hub",
+        warehouseLat: 41.2995,
+        warehouseLng: 69.2401,
+        homeNodeType: "WAREHOUSE",
+        homeNodeId: "wh-tashkent-central",
+        driverMode: "DISTRIBUTION",
+        factoryId: "fac-tashkent-01",
+        factoryName: "Chilonzor Beverage Plant",
+        factoryLat: 41.2721,
+        factoryLng: 69.2045
+    )
 }
 
 // MARK: - Driver Profile (polling response)
@@ -648,4 +696,29 @@ struct DriverProfileResponse: Codable {
         case factoryLat = "factory_lat"
         case factoryLng = "factory_lng"
     }
+
+    static let mock = AuthResponse(
+        token: "mock-driver-jwt-token-dev",
+        userId: "drv-tashkent-001",
+        driverId: "drv-tashkent-001",
+        name: "Temur Alimov (Demo Driver)",
+        vehicleType: "Isuzu NPR 4t",
+        licensePlate: "01 777 AAA",
+        supplierId: "sup-tashkent-01",
+        vehicleId: "veh-tashkent-001",
+        vehicleClass: "MEDIUM_TRUCK",
+        maxVolumeVU: 18.5,
+        firebaseToken: nil,
+        warehouseId: "wh-tashkent-central",
+        warehouseName: "Tashkent Central Hub",
+        warehouseLat: 41.2995,
+        warehouseLng: 69.2401,
+        homeNodeType: "WAREHOUSE",
+        homeNodeId: "wh-tashkent-central",
+        driverMode: "DISTRIBUTION",
+        factoryId: "fac-tashkent-01",
+        factoryName: "Chilonzor Beverage Plant",
+        factoryLat: 41.2721,
+        factoryLng: 69.2045
+    )
 }

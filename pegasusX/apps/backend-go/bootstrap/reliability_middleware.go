@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"github.com/pegasusx/pegasusx/apps/backend-go/partner"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -26,12 +27,13 @@ const (
 	reliabilityClassPayment     reliabilityClass = "payment"
 	reliabilityClassAuth        reliabilityClass = "auth"
 	reliabilityClassWebhook     reliabilityClass = "webhook"
-	reliabilityClassTelemetry   reliabilityClass = "telemetry"
-	reliabilityClassGeocode     reliabilityClass = "geocode"
+	reliabilityClassTelemetry       reliabilityClass = "telemetry"
+	reliabilityClassGeocode         reliabilityClass = "geocode"
+	reliabilityClassFoundryCritical reliabilityClass = "foundry_critical"
 )
 
 func (c reliabilityClass) isCritical() bool {
-	return c == reliabilityClassPayment || c == reliabilityClassAuth || c == reliabilityClassWebhook
+	return c == reliabilityClassPayment || c == reliabilityClassAuth || c == reliabilityClassWebhook || c == reliabilityClassFoundryCritical
 }
 
 // ReliabilityConfig controls request-side safety layers: fixed-window rate
@@ -127,6 +129,7 @@ func ReliabilityConfigFromEnv() ReliabilityConfig {
 // RateLimiter enforces per-actor request limits.
 type RateLimiter interface {
 	Allow(key string, max int, window time.Duration, now time.Time) (allowed bool, remaining int, retryAfter int)
+	Close()
 }
 
 // ReliabilityMiddleware applies API-side resilience controls.
@@ -162,7 +165,20 @@ func (m *ReliabilityMiddleware) SetRedisRateLimiter(client *redis.Client) {
 	if m == nil || client == nil {
 		return
 	}
+	if m.limiter != nil {
+		m.limiter.Close()
+	}
 	m.limiter = newRedisRateLimiter(client)
+}
+
+// Close stops background resources such as limiter sweeps cleanly.
+func (m *ReliabilityMiddleware) Close() {
+	if m == nil {
+		return
+	}
+	if m.limiter != nil {
+		m.limiter.Close()
+	}
 }
 
 // Middleware returns an http middleware ready for chi r.Use.
@@ -233,7 +249,7 @@ func (m *ReliabilityMiddleware) Middleware(next http.Handler) http.Handler {
 			)
 			return
 		}
-		defer m.guard.Release()
+		defer m.guard.Release(class)
 
 		sw := &statusCapturingResponseWriter{ResponseWriter: w, statusCode: http.StatusOK}
 		next.ServeHTTP(sw, r)
@@ -270,12 +286,22 @@ func isReliabilityRateLimitExempt(path string, r *http.Request) bool {
 	if strings.TrimSpace(r.Header.Get(loadBootstrapHeader)) != secret {
 		return false
 	}
+	// Never exempt partner machine API — keys must rate-limit by KeyId.
+	if strings.HasPrefix(lower, "/partner/") {
+		return false
+	}
 	return strings.HasPrefix(lower, "/v1/auth/")
 }
 
 func classifyReliabilityPath(path string) reliabilityClass {
 	lower := strings.ToLower(strings.TrimSpace(path))
 	switch {
+	case strings.HasPrefix(lower, "/v1/foundry/cashier/") || lower == "/v1/foundry/cashier" ||
+		strings.HasPrefix(lower, "/v1/foundry/kinetic/") || lower == "/v1/foundry/kinetic" ||
+		strings.HasPrefix(lower, "/v1/foundry/fleet/dvir") ||
+		strings.HasPrefix(lower, "/v1/foundry/fleet/mid-route-rescue") ||
+		strings.HasPrefix(lower, "/v1/foundry/guards/") || lower == "/v1/foundry/guards":
+		return reliabilityClassFoundryCritical
 	case strings.HasPrefix(lower, "/v1/webhooks/"):
 		return reliabilityClassWebhook
 	case strings.HasPrefix(lower, "/v1/payment/") || strings.HasPrefix(lower, "/v1/checkout/"):
@@ -294,6 +320,33 @@ func classifyReliabilityPath(path string) reliabilityClass {
 func reliabilityActorKey(r *http.Request) string {
 	if r == nil {
 		return "anonymous"
+	}
+	// Gate 5 Week 10: primary key is tenant; partner class keys remain secondary.
+	if t, ok := auth.TenantFromContext(r.Context()); ok && strings.TrimSpace(t.SupplierID) != "" {
+		tenantKey := "tenant:" + strings.TrimSpace(t.SupplierID)
+		if p, ok := partner.PrincipalFromContext(r.Context()); ok && strings.TrimSpace(p.KeyID) != "" {
+			return tenantKey + ":partner:" + p.KeyID
+		}
+		if claims, ok := auth.FromContext(r.Context()); ok {
+			subject := strings.TrimSpace(claims.Subject)
+			if subject != "" {
+				// Secondary subject segment for single-actor abuse — same tenant shares budget
+				// when TENANT_RATE_LIMIT_SHARED=1 (default on).
+				if tenantRateLimitShared() {
+					return tenantKey
+				}
+				return tenantKey + ":sub:" + subject
+			}
+		}
+		return tenantKey
+	}
+	if p, ok := partner.PrincipalFromContext(r.Context()); ok && strings.TrimSpace(p.KeyID) != "" {
+		return "partner:" + p.KeyID
+	}
+	if token := auth.BearerToken(r); strings.HasPrefix(token, "pxk_") {
+		if prefix, ok := partner.ParseBearerKey(token); ok {
+			return "partner_prefix:" + prefix
+		}
 	}
 	if claims, ok := auth.FromContext(r.Context()); ok {
 		subject := strings.TrimSpace(claims.Subject)
@@ -315,6 +368,19 @@ func reliabilityActorKey(r *http.Request) string {
 		return "ip:" + strings.TrimSpace(r.RemoteAddr)
 	}
 	return "anonymous"
+}
+
+func tenantRateLimitShared() bool {
+	v := strings.TrimSpace(os.Getenv("TENANT_RATE_LIMIT_SHARED"))
+	if v == "" {
+		return true
+	}
+	switch strings.ToLower(v) {
+	case "0", "false", "no", "off":
+		return false
+	default:
+		return true
+	}
 }
 
 func reliabilityClientIPKey(r *http.Request) string {
@@ -361,7 +427,8 @@ func (w *statusCapturingResponseWriter) Flush() {
 }
 
 type priorityGuard struct {
-	sem             chan struct{}
+	totalSem        chan struct{}
+	nonCriticalSem  chan struct{}
 	criticalTimeout time.Duration
 }
 
@@ -372,8 +439,23 @@ func newPriorityGuard(maxInFlight int, criticalTimeout time.Duration) *priorityG
 	if criticalTimeout <= 0 {
 		criticalTimeout = 250 * time.Millisecond
 	}
+
+	reserved := int(math.Ceil(float64(maxInFlight) * 0.20))
+	if reserved < 8 {
+		reserved = 8
+	}
+
+	nonCriticalLimit := maxInFlight - reserved
+	if nonCriticalLimit < 1 {
+		nonCriticalLimit = 1
+	}
+	if nonCriticalLimit > maxInFlight {
+		nonCriticalLimit = maxInFlight
+	}
+
 	return &priorityGuard{
-		sem:             make(chan struct{}, maxInFlight),
+		totalSem:        make(chan struct{}, maxInFlight),
+		nonCriticalSem:  make(chan struct{}, nonCriticalLimit),
 		criticalTimeout: criticalTimeout,
 	}
 }
@@ -382,11 +464,14 @@ func (g *priorityGuard) Acquire(ctx context.Context, class reliabilityClass) boo
 	if g == nil {
 		return true
 	}
-	if class.isCritical() {
+
+	// Foundry critical requests exclusively access the reserved headroom in totalSem.
+	// They bypass nonCriticalSem completely.
+	if class == reliabilityClassFoundryCritical {
 		timer := time.NewTimer(g.criticalTimeout)
 		defer timer.Stop()
 		select {
-		case g.sem <- struct{}{}:
+		case g.totalSem <- struct{}{}:
 			return true
 		case <-ctx.Done():
 			return false
@@ -395,36 +480,117 @@ func (g *priorityGuard) Acquire(ctx context.Context, class reliabilityClass) boo
 		}
 	}
 
+	// For other critical classes (payment, auth, webhook), they must acquire nonCriticalSem
+	// and totalSem, waiting up to criticalTimeout.
+	if class.isCritical() {
+		timer := time.NewTimer(g.criticalTimeout)
+		defer timer.Stop()
+
+		select {
+		case g.nonCriticalSem <- struct{}{}:
+		case <-ctx.Done():
+			return false
+		case <-timer.C:
+			return false
+		}
+
+		select {
+		case g.totalSem <- struct{}{}:
+			return true
+		case <-ctx.Done():
+			<-g.nonCriticalSem
+			return false
+		case <-timer.C:
+			<-g.nonCriticalSem
+			return false
+		}
+	}
+
+	// Non-critical operational classes: non-blocking acquire (shed load if full).
 	select {
-	case g.sem <- struct{}{}:
+	case g.nonCriticalSem <- struct{}{}:
+	default:
+		return false
+	}
+
+	select {
+	case g.totalSem <- struct{}{}:
 		return true
 	default:
+		<-g.nonCriticalSem
 		return false
 	}
 }
 
-func (g *priorityGuard) Release() {
+func (g *priorityGuard) Release(class ...reliabilityClass) {
 	if g == nil {
 		return
 	}
+	isFoundryCritical := len(class) > 0 && class[0] == reliabilityClassFoundryCritical
+
 	select {
-	case <-g.sem:
+	case <-g.totalSem:
 	default:
+	}
+
+	if !isFoundryCritical {
+		select {
+		case <-g.nonCriticalSem:
+		default:
+		}
 	}
 }
 
 type fixedWindowRateLimiter struct {
 	mu      sync.Mutex
 	buckets map[string]rateBucket
+	stop    chan struct{}
+	once    sync.Once
 }
 
 type rateBucket struct {
 	windowStart time.Time
+	window      time.Duration
 	count       int
 }
 
 func newFixedWindowRateLimiter() *fixedWindowRateLimiter {
-	return &fixedWindowRateLimiter{buckets: make(map[string]rateBucket)}
+	l := &fixedWindowRateLimiter{
+		buckets: make(map[string]rateBucket),
+		stop:    make(chan struct{}),
+	}
+	go l.sweep()
+	return l
+}
+
+func (l *fixedWindowRateLimiter) sweep() {
+	ticker := time.NewTicker(5 * time.Minute)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-l.stop:
+			return
+		case <-ticker.C:
+			now := time.Now()
+			l.mu.Lock()
+			for k, b := range l.buckets {
+				if now.Sub(b.windowStart) >= b.window*2 {
+					delete(l.buckets, k)
+				}
+			}
+			l.mu.Unlock()
+		}
+	}
+}
+
+// Close cleanly stops the background sweep.
+func (l *fixedWindowRateLimiter) Close() {
+	if l == nil {
+		return
+	}
+	l.once.Do(func() {
+		close(l.stop)
+	})
 }
 
 func (l *fixedWindowRateLimiter) Allow(key string, max int, window time.Duration, now time.Time) (bool, int, int) {
@@ -440,7 +606,7 @@ func (l *fixedWindowRateLimiter) Allow(key string, max int, window time.Duration
 
 	bucket := l.buckets[key]
 	if bucket.windowStart.IsZero() || now.Sub(bucket.windowStart) >= window {
-		bucket = rateBucket{windowStart: now, count: 0}
+		bucket = rateBucket{windowStart: now, window: window, count: 0}
 	}
 
 	if bucket.count >= max {

@@ -2,15 +2,38 @@ import SwiftUI
 
 struct TodaySummaryCard: View {
     var vm: FleetViewModel
+    var onSelectPending: (() -> Void)? = nil
+    var onSelectDone: (() -> Void)? = nil
+    var onSelectRevenue: (() -> Void)? = nil
 
     var body: some View {
         VStack(spacing: LabTheme.s12) {
             DriverSectionHeader(title: "Today", trailing: todayDate)
 
             HStack(spacing: LabTheme.s12) {
-                KpiTile(label: "Pending", value: "\(vm.pendingMissions.count)", icon: "clock")
-                KpiTile(label: "Done", value: "\(vm.completedIds.count)", icon: "checkmark", tint: LabTheme.success)
-                KpiTile(label: "Revenue", value: totalRevenue, icon: "banknote")
+                Button {
+                    Haptics.light()
+                    onSelectPending?()
+                } label: {
+                    KpiTile(label: "Pending", value: "\(vm.pendingMissions.count)", icon: "clock")
+                }
+                .buttonStyle(.plain)
+
+                Button {
+                    Haptics.light()
+                    onSelectDone?()
+                } label: {
+                    KpiTile(label: "Done", value: "\(vm.completedIds.count)", icon: "checkmark", tint: LabTheme.success)
+                }
+                .buttonStyle(.plain)
+
+                Button {
+                    Haptics.light()
+                    onSelectRevenue?()
+                } label: {
+                    KpiTile(label: "Revenue", value: totalRevenue, icon: "banknote")
+                }
+                .buttonStyle(.plain)
             }
         }
     }

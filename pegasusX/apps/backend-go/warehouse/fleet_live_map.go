@@ -190,7 +190,7 @@ func (s *Service) attachWarehouseDriverLocation(ctx context.Context, route *Ware
 	if err != nil || !found {
 		return
 	}
-	if strings.TrimSpace(s.supplierID) != "" && strings.TrimSpace(location.SupplierID) != s.supplierID {
+	if sid := strings.TrimSpace(s.resolveSupplierScope(ctx)); sid != "" && strings.TrimSpace(location.SupplierID) != sid {
 		return
 	}
 	now := s.now()

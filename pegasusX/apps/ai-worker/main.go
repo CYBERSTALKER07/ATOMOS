@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -28,6 +27,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/ai-worker/predictivepush"
 	"github.com/pegasusx/pegasusx/apps/ai-worker/synthesis"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/kafkautil"
 	"github.com/pegasusx/pegasusx/apps/backend-go/supplier"
 	contract "github.com/pegasusx/pegasusx/packages/optimizer-contract"
 )
@@ -207,17 +207,19 @@ func main() {
 		os.Exit(1)
 	}
 
-	spannerDB := ""
 	if cfg.SpannerEmulatorHost != "" {
 		os.Setenv("SPANNER_EMULATOR_HOST", cfg.SpannerEmulatorHost)
-		spannerDB = "projects/" + cfg.SpannerProject + "/instances/" + cfg.SpannerInstance + "/databases/" + cfg.SpannerDatabase
+	} else {
+		os.Unsetenv("SPANNER_EMULATOR_HOST")
 	}
+	spannerDB := "projects/" + cfg.SpannerProject + "/instances/" + cfg.SpannerInstance + "/databases/" + cfg.SpannerDatabase
 
-	if spannerDB == "" {
-		spannerDB = "projects/my-project/instances/my-instance/databases/my-database"
-	}
-
-	spannerClient, err := spanner.NewClient(ctx, spannerDB)
+	spannerClient, err := spanner.NewClientWithConfig(ctx, spannerDB, spanner.ClientConfig{
+		SessionPoolConfig: spanner.SessionPoolConfig{
+			MinOpened: 10,
+			MaxOpened: 100,
+		},
+	})
 	if err != nil {
 		slog.Error("failed to create spanner client", "err", err)
 		os.Exit(1)
@@ -232,30 +234,59 @@ func main() {
 		os.Exit(0)
 	}
 
-	brokers := []string{"localhost:9092"}
-	if cfg.KafkaBrokers != "" {
-		brokers = []string{cfg.KafkaBrokers}
+	brokers := kafkautil.SplitBrokers(cfg.KafkaBrokers)
+	if len(brokers) == 0 {
+		brokers = []string{"localhost:9092"}
 	}
+
+	dialer, err := kafkautil.Dialer(kafkautil.ClientAuth{
+		Mode:     cfg.KafkaAuthMode,
+		Username: cfg.KafkaSASLUsername,
+	})
+	if err != nil {
+		slog.Error("failed to configure kafka dialer", "err", err)
+		os.Exit(1)
+	}
+
+	dlqTransport, err := kafkautil.Transport(kafkautil.ClientAuth{
+		Mode:     cfg.KafkaAuthMode,
+		Username: cfg.KafkaSASLUsername,
+	})
+	if err != nil {
+		slog.Error("failed to configure dlq transport", "err", err)
+		os.Exit(1)
+	}
+	dlqWriter := &kafka.Writer{
+		Addr:         kafka.TCP(brokers...),
+		Topic:        events.TopicDeadLetter,
+		Balancer:     &kafka.Hash{},
+		RequiredAcks: kafka.RequireAll,
+		WriteTimeout: 5 * time.Second,
+		Transport:    dlqTransport,
+	}
+	defer dlqWriter.Close()
 
 	reader := kafka.NewReader(kafka.ReaderConfig{
 		Brokers:        brokers,
+		Dialer:         dialer,
 		GroupID:        aiWorkerConsumerName,
 		Topic:          events.TopicMain,
 		MinBytes:       10e3,
 		MaxBytes:       10e6,
-		CommitInterval: time.Second,
-		StartOffset:    kafka.LastOffset,
+		CommitInterval: 0,
+		StartOffset:    kafka.FirstOffset,
 	})
 	defer reader.Close()
 
 	freezeReader := kafka.NewReader(kafka.ReaderConfig{
 		Brokers:        brokers,
+		Dialer:         dialer,
 		GroupID:        aiWorkerConsumerName + "-freeze",
 		Topic:          events.TopicFreezeLocks,
 		MinBytes:       1e3,
 		MaxBytes:       10e6,
-		CommitInterval: time.Second,
-		StartOffset:    kafka.LastOffset,
+		CommitInterval: 0,
+		StartOffset:    kafka.FirstOffset,
 	})
 	defer freezeReader.Close()
 
@@ -272,12 +303,12 @@ func main() {
 		"topic", events.TopicMain,
 		"freeze_topic", events.TopicFreezeLocks,
 		"import_topic", events.TopicInventoryImportEvents,
+		"dlq_topic", events.TopicDeadLetter,
 		"brokers", brokers,
 		"health_port", workerHTTPPort,
 	)
 
 	g, gCtx := errgroup.WithContext(ctx)
-	g.SetLimit(runtime.GOMAXPROCS(0) * 2)
 	g.Go(func() error {
 		frozen.RunCleanup(gCtx)
 		return nil
@@ -286,7 +317,7 @@ func main() {
 	importRepo := supplier.NewImportRepository(spannerClient)
 	if importOpener, importOpenerErr := supplier.NewImportObjectOpenerFromEnv(ctx); importOpenerErr != nil {
 		slog.Warn("inventory import worker disabled", "err", importOpenerErr)
-	} else if importRuntime := newInventoryImportRuntime(brokers, importRepo, importOpener, logger); importRuntime != nil {
+	} else if importRuntime := newInventoryImportRuntime(brokers, dialer, dlqWriter, importRepo, importOpener, logger); importRuntime != nil {
 		g.Go(func() error {
 			defer importRuntime.Close()
 			defer importOpener.Close()
@@ -295,7 +326,7 @@ func main() {
 		})
 	}
 
-	if planningIngest := planningingest.NewRuntime(brokers, spannerClient, logger); planningIngest != nil {
+	if planningIngest := planningingest.NewRuntimeWithDLQ(brokers, dialer, dlqWriter, spannerClient, logger); planningIngest != nil {
 		g.Go(func() error {
 			defer planningIngest.Close()
 			planningIngest.Run(gCtx)
@@ -332,25 +363,36 @@ func main() {
 			metrics.observe(aiWorkerConsumerName, m)
 			msg := m
 
-			g.Go(func() error {
+			// Process synchronously to maintain offset commit ordering per partition
+			func() {
 				defer func() {
 					if r := recover(); r != nil {
 						slog.Error("panic in event handler", "panic", r, "topic", msg.Topic, "partition", msg.Partition, "offset", msg.Offset)
 					}
 				}()
 
-				if err := processMessage(gCtx, msg, spannerClient, frozen); err != nil {
+				// Detached context with 4s deadline on SIGTERM so in-flight work completes before shutdown
+				procCtx, cancelProc := detachedDrainContext(gCtx, 4*time.Second)
+				defer cancelProc()
+
+				if err := processMessage(procCtx, msg, spannerClient, frozen, dlqWriter); err != nil {
 					slog.Error("failed to process message", "err", err, "topic", msg.Topic, "partition", msg.Partition, "offset", msg.Offset)
 					cb.RecordFailure()
-				} else {
-					cb.RecordSuccess()
-				}
 
-				if err := reader.CommitMessages(context.Background(), msg); err != nil {
+					// Do not commit on failure to avoid data loss from implicit offset commits
+					if gCtx.Err() == nil {
+						time.Sleep(2 * time.Second)
+					}
+					return
+				}
+				cb.RecordSuccess()
+
+				commitCtx, cancelCommit := context.WithTimeout(context.WithoutCancel(gCtx), 2*time.Second)
+				defer cancelCommit()
+				if err := reader.CommitMessages(commitCtx, msg); err != nil {
 					slog.Error("failed to commit message", "err", err, "topic", msg.Topic, "partition", msg.Partition, "offset", msg.Offset)
 				}
-				return nil
-			})
+			}()
 		}
 	})
 
@@ -394,10 +436,13 @@ func main() {
 	slog.Info("ai-worker shutdown complete")
 }
 
-func processMessage(ctx context.Context, msg kafka.Message, spannerClient *spanner.Client, frozen *freezeRegistry) error {
+func processMessage(ctx context.Context, msg kafka.Message, spannerClient *spanner.Client, frozen *freezeRegistry, dlqWriter *kafka.Writer) error {
 	var env EventEnvelope
 	if err := json.Unmarshal(msg.Value, &env); err != nil {
-		slog.Warn("failed to parse event envelope", "err", err, "body", string(msg.Value))
+		slog.Warn("failed to parse event envelope; routing poison pill to DLQ", "err", err, "body", string(msg.Value))
+		if dlqErr := routeToDLQ(ctx, dlqWriter, msg, "unmarshal_error: "+err.Error()); dlqErr != nil {
+			slog.Error("failed to route poison pill to DLQ", "err", dlqErr)
+		}
 		return nil
 	}
 
@@ -424,6 +469,42 @@ func processMessage(ctx context.Context, msg kafka.Message, spannerClient *spann
 	}
 
 	return nil
+}
+
+// detachedDrainContext returns a context that cancels drainTimeout after parent is cancelled,
+// allowing in-flight message processing to finish gracefully on SIGTERM before process exit.
+func detachedDrainContext(parent context.Context, drainTimeout time.Duration) (context.Context, context.CancelFunc) {
+	ctx, cancel := context.WithCancel(context.WithoutCancel(parent))
+	go func() {
+		<-parent.Done()
+		timer := time.NewTimer(drainTimeout)
+		select {
+		case <-timer.C:
+			cancel()
+		case <-ctx.Done():
+			timer.Stop()
+		}
+	}()
+	return ctx, cancel
+}
+
+// routeToDLQ delivers unparseable poison pills to TopicDeadLetter before committing the offset.
+func routeToDLQ(ctx context.Context, writer *kafka.Writer, msg kafka.Message, reason string) error {
+	if writer == nil {
+		return nil
+	}
+	dlqMsg := kafka.Message{
+		Key:   msg.Key,
+		Value: msg.Value,
+		Headers: append(msg.Headers,
+			kafka.Header{Key: "dlq_original_topic", Value: []byte(msg.Topic)},
+			kafka.Header{Key: "dlq_reason", Value: []byte(reason)},
+			kafka.Header{Key: "dlq_time", Value: []byte(time.Now().UTC().Format(time.RFC3339Nano))},
+		),
+	}
+	writeCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 4*time.Second)
+	defer cancel()
+	return writer.WriteMessages(writeCtx, dlqMsg)
 }
 
 func synthesisDisabled() bool {

@@ -1,5 +1,7 @@
 package com.pegasusx.factory.ui.screens.manifest
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.ui.unit.dp
 
 import androidx.compose.foundation.lazy.grid.items
@@ -47,6 +49,7 @@ import com.pegasus.design.PegasusStatePane
 import com.pegasusx.factory.ui.realtime.FactoryRealtimeReloadEffect
 import com.pegasusx.factory.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
+import com.pegasusx.factory.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -71,7 +74,7 @@ fun ManifestDetailScreen(
             try {
                 val resp = api.getManifestDetail(manifestId)
                 if (resp.isSuccessful && resp.body() != null) {
-                    detail = resp.body()!!
+                    resp.body()?.let { detail = it }
                 } else {
                     error = "Failed (${resp.code()})"
                 }
@@ -138,20 +141,21 @@ fun ManifestDetailScreen(
     ) { innerPadding ->
         when {
             loading && detail == null -> PegasusLoadingState(
-                title = "Loading manifest",
+                title = stringResource(R.string.mobile_factory_ui_loading_manifest),
                 body = "Fetching manifest detail and lifecycle history.",
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
             )
             error != null -> PegasusStatePane(
                 kind = PegasusStateKind.Error,
                 headline = "Unable to load manifest",
-                body = error!!,
+                body = error.orEmpty(),
                 actionLabel = "Retry",
                 onAction = { load() },
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
             )
             detail != null -> {
-                val manifest = detail!!.manifest
+                val d = detail ?: return@Scaffold
+                val manifest = d.manifest
                 val next = nextManifestLifecycleStep(manifest.state)
                 LazyVerticalGrid(
         columns = GridCells.Adaptive(minSize = 340.dp),
@@ -164,9 +168,8 @@ fun ManifestDetailScreen(
                     item {
                         Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
                             Text(manifest.id, style = MaterialTheme.typography.titleMedium, fontFamily = FontFamily.Monospace)
-                            Text("State: ${manifest.state}", style = MaterialTheme.typography.bodyLarge)
-                            Text(
-                                "Route ${detail!!.routeId.ifBlank { "—" }} · ${detail!!.orderCount} orders",
+                            Text(stringResource(R.string.mobile_factory_ui_state_state, manifest.state), style = MaterialTheme.typography.bodyLarge)
+                            Text(stringResource(R.string.mobile_factory_ui_route_ifblank_ordercount_orders, d.routeId.ifBlank { "—" }, d.orderCount),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -186,14 +189,13 @@ fun ManifestDetailScreen(
                     item {
                         Text("Transfers", style = MaterialTheme.typography.titleSmall)
                     }
-                    if (detail!!.transfers.isEmpty()) {
+                    if (d.transfers.isEmpty()) {
                         item {
                             Text("No transfers on this manifest.", style = MaterialTheme.typography.bodySmall)
                         }
                     } else {
-                        items(detail!!.transfers, key = { it.transferId }) { transfer ->
-                            Text(
-                                "${transfer.transferId} · ${transfer.state}",
+                        items(d.transfers, key = { it.transferId }) { transfer ->
+                            Text(stringResource(R.string.mobile_factory_ui_transferid_state, transfer.transferId, transfer.state),
                                 style = MaterialTheme.typography.bodySmall,
                                 fontFamily = FontFamily.Monospace,
                             )
@@ -202,14 +204,13 @@ fun ManifestDetailScreen(
                     item {
                         Text("Transitions", style = MaterialTheme.typography.titleSmall)
                     }
-                    if (detail!!.transitions.isEmpty()) {
+                    if (d.transitions.isEmpty()) {
                         item {
                             Text("No transitions recorded.", style = MaterialTheme.typography.bodySmall)
                         }
                     } else {
-                        items(detail!!.transitions, key = { "${it.action}-${it.at}" }) { transition ->
-                            Text(
-                                "${transition.action}: ${transition.fromState} → ${transition.toState}",
+                        items(d.transitions, key = { "${it.action}-${it.at}" }) { transition ->
+                            Text(stringResource(R.string.mobile_factory_ui_action_fromstate_tostate, transition.action, transition.fromState, transition.toState),
                                 style = MaterialTheme.typography.bodySmall,
                             )
                         }

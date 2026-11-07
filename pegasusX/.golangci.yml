@@ -1,0 +1,47 @@
+# Gate-0 golangci-lint v2 config (Go 1.25).
+# Focused enable-set so Gate-0 stays fail-closed without burning down the whole tree first.
+
+version: "2"
+
+run:
+  timeout: 8m
+  tests: true
+
+linters:
+  default: none
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - misspell
+  settings:
+    errcheck:
+      check-type-assertions: false
+    govet:
+      enable-all: true
+      disable:
+        - fieldalignment
+    staticcheck:
+      checks:
+        - all
+        - "-ST1000"
+        - "-ST1003"
+        - "-ST1005"
+        - "-QF1008"
+  exclusions:
+    paths:
+      - vendor
+      - third_party
+      - Generated
+      - '.*\.pb\.go$'
+      - '.*_string\.go$'
+
+issues:
+  # 0 disables the cap. Every finding fails the lint job.
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
+severity:
+  default: error

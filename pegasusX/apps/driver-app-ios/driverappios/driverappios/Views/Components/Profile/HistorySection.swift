@@ -6,13 +6,13 @@ struct HistorySection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Ride History")
+                Text("mobile_driver.ui.ride_history")
                     .font(.system(size: 17, weight: .bold))
                     .foregroundStyle(LabTheme.fg)
 
                 Spacer()
 
-                Text("\(vm.historyRows.count) rides")
+                Text(L10n.format("mobile_driver.ui.count_rides", "\(vm.historyRows.count)"))
                     .font(.system(size: 12, weight: .medium, design: .monospaced))
                     .foregroundStyle(LabTheme.fgTertiary)
             }
@@ -24,7 +24,7 @@ struct HistorySection: View {
                         .font(.system(size: 24))
                         .foregroundStyle(LabTheme.fgTertiary)
 
-                    Text("No completed rides yet")
+                    Text("mobile_driver.ui.no_completed_rides_yet")
                         .font(.subheadline.weight(.medium))
                         .foregroundStyle(LabTheme.fgSecondary)
                 }

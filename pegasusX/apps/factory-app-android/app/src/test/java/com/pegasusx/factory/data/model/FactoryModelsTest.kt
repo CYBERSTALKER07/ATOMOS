@@ -40,6 +40,18 @@ class FactoryModelsTest {
         assertEquals("Test Factory", auth.factoryName)
     }
 
+    @Test
+    fun `DeviceTokenRequest encodes token and platform only`() {
+        val encoded = json.encodeToString(
+            DeviceTokenRequest.serializer(),
+            DeviceTokenRequest(token = "fcm-reg-token", platform = "android"),
+        )
+        val map = json.decodeFromString<Map<String, String>>(encoded)
+        assertEquals("fcm-reg-token", map["token"])
+        assertEquals("android", map["platform"])
+        assertTrue(!encoded.contains("factory_id"))
+    }
+
     // ── Dashboard ──
 
     @Test

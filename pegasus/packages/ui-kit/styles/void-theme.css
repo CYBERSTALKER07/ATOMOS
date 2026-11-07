@@ -1,18 +1,18 @@
-/* Minimal void-theme token bridge — core colors and spacing for Pegasus portals. */
+/* Minimal void-theme token bridge — monochrome core colors and spacing for Pegasus portals. */
 
 :root {
-    --void-canvas: #0f001a;
-    --void-surface: #1a0030;
-    --void-surface-raised: #250045;
-    --void-border: rgba(204, 102, 204, 0.27);
-    --void-text-primary: #e0d8ee;
-    --void-text-secondary: #9080bb;
-    --void-accent: #cc66cc;
-    --void-accent-strong: #b359b3;
-    --void-accent-on: #ffffff;
-    --void-success: #36f9f6;
-    --void-warning: #f8c555;
-    --void-danger: #f92aad;
+    --void-canvas: #000000;
+    --void-surface: #09090b;
+    --void-surface-raised: #121217;
+    --void-border: #27272a;
+    --void-text-primary: #ffffff;
+    --void-text-secondary: #a1a1aa;
+    --void-accent: #ffffff;
+    --void-accent-strong: #e4e4e7;
+    --void-accent-on: #000000;
+    --void-success: #ffffff;
+    --void-warning: #a1a1aa;
+    --void-danger: #ffffff;
 
     --void-space-xs: 4px;
     --void-space-sm: 8px;

@@ -8,6 +8,7 @@ struct LocationSetupView: View {
     @State private var loading = false
     @State private var submitting = false
     @State private var error: String?
+    @State private var packCountry = ""
 
     private var hasAssignedWarehouse: Bool { tokenStore.hasAssignedWarehouse }
 
@@ -29,11 +30,16 @@ struct LocationSetupView: View {
                             .foregroundStyle(.secondary)
                         }
                         if !hasAssignedWarehouse {
-                            Section("Warehouse name") {
-                                TextField("Warehouse name", text: $warehouseName)
+                            Section("warehouse_portal.residual.text.warehouse_name") {
+                                TextField("warehouse_portal.residual.text.warehouse_name", text: $warehouseName)
                             }
                         } else if !warehouseName.isEmpty {
                             Section { Text(warehouseName) }
+                        }
+                        if !packCountry.isEmpty {
+                            Section("Pack country") {
+                                Text(packCountry)
+                            }
                         }
                         Section("Depot address") {
                             AddressLocationField(value: $location, label: "Depot address")
@@ -52,7 +58,7 @@ struct LocationSetupView: View {
                     }
                 }
             }
-            .navigationTitle("Warehouse location")
+            .navigationTitle("warehouse_portal.setup.location.text.warehouse_location")
         }
         .task { await loadExistingIfNeeded() }
     }
@@ -70,6 +76,7 @@ struct LocationSetupView: View {
                 lng: resp.lng,
                 placeId: resp.placeId
             )
+            packCountry = resp.packCountryCode.isEmpty ? resp.countryCode : resp.packCountryCode
         } catch {
             self.error = error.localizedDescription
         }

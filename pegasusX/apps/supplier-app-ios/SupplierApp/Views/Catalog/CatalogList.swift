@@ -46,7 +46,7 @@ struct CatalogList: View {
                 Text(product.name)
                     .font(.headline)
             }
-            Text("\(product.priceMinor.formatted()) \(product.currency) · \(product.unit)")
+            Text(L10n.format("mobile_supplier.ui.formatted_currency_unit", "\(product.priceMinor.formatted())", "\(product.currency)", "\(product.unit)"))
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
             if let imageUrl = product.imageUrl, !imageUrl.isEmpty, let url = URL(string: imageUrl) {
@@ -72,7 +72,7 @@ struct CatalogList: View {
             }
             CatalogBarcodeField(value: barcodeBinding, enabled: savingId != product.productId)
             HStack {
-                TextField("Unit VU", text: vuBinding)
+                TextField("supplier_portal.catalog.components.catalog_table.text.unit_vu", text: vuBinding)
                     .keyboardType(.decimalPad)
                     .textFieldStyle(.roundedBorder)
                     .frame(maxWidth: 120)
@@ -119,9 +119,13 @@ private struct CatalogProductImageButton: View {
 }
 
 extension Int64 {
-    func formatted() -> String {
+    private static let decimalFormatter: NumberFormatter = {
         let formatter = NumberFormatter()
         formatter.numberStyle = .decimal
-        return formatter.string(from: NSNumber(value: self)) ?? "\(self)"
+        return formatter
+    }()
+
+    func formatted() -> String {
+        Self.decimalFormatter.string(from: NSNumber(value: self)) ?? "\(self)"
     }
 }

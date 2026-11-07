@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.inventory
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -22,11 +24,12 @@ import com.pegasusx.warehouse.ui.realtime.WAREHOUSE_RECONNECT_RECOVERY_HINT
 import com.pegasusx.warehouse.ui.realtime.WarehouseReconnectRecoveryEffect
 import com.pegasusx.warehouse.util.WarehouseIdempotencyKeys
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
-import com.pegasus.design.PegasusLoadingState
-import com.pegasus.design.PegasusStateKind
-import com.pegasus.design.PegasusStatePane
+import com.pegasus.design.ui.PegasusLoadingState
+import com.pegasus.design.ui.PegasusStateKind
+import com.pegasus.design.ui.PegasusStatePane
 import com.pegasusx.warehouse.ui.components.InventoryStockList
 import kotlinx.coroutines.launch
+import com.pegasusx.warehouse.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,7 +53,8 @@ fun InventoryScreen(
         scope.launch {
             try {
                 val resp = api.getInventory(lowStock = if (lowOnly) true else null)
-                if (resp.isSuccessful && resp.body() != null) items = resp.body()!!.items
+                val respBody = resp.body()
+                if (resp.isSuccessful && respBody != null) items = respBody.items
                 else if (!silent) error = "Failed (${resp.code()})"
             } catch (e: Exception) {
                 if (!silent) error = e.message ?: "Network error"
@@ -87,14 +91,14 @@ fun InventoryScreen(
     ) { innerPadding ->
         when {
             loading && items.isEmpty() -> PegasusLoadingState(
-                title = "Loading inventory…",
+                title = stringResource(R.string.mobile_warehouse_ui_loading_inventory),
                 body = "Fetching latest stock quantities",
                 modifier = Modifier.fillMaxSize().padding(innerPadding)
             )
             error != null && items.isEmpty() -> PegasusStatePane(
                 kind = PegasusStateKind.Error,
                 headline = "Inventory unavailable",
-                body = error!!,
+                body = error.orEmpty(),
                 actionLabel = "Retry",
                 onAction = { load() },
                 modifier = Modifier.fillMaxSize().padding(innerPadding)
@@ -130,9 +134,10 @@ fun InventoryScreen(
         }
     }
 
-    if (adjustItem != null) {
+    val currentAdjustItem = adjustItem
+    if (currentAdjustItem != null) {
         AdjustDialog(
-            item = adjustItem!!,
+            item = currentAdjustItem,
             api = api,
             realtimeSignals = realtimeSignals,
             onDismiss = { adjustItem = null },
@@ -234,7 +239,7 @@ private fun AdjustDialog(
             title = { Text("Confirm inventory change") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
-                    Text("Change $skuLabel from ${item.quantity} to $newQty? This affects retailer availability immediately.")
+                    Text(stringResource(R.string.mobile_warehouse_ui_change_skulabel_from_quantity_to_newqty_this_affects_retailer_availabili, skuLabel, item.quantity, newQty))
                     OutlinedTextField(
                         value = reason,
                         onValueChange = { reason = it },
@@ -243,7 +248,7 @@ private fun AdjustDialog(
                         modifier = Modifier.fillMaxWidth(),
                     )
                     if (error != null) {
-                        Text(error!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                        Text(error.orEmpty(), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                     }
                 }
             },
@@ -261,7 +266,7 @@ private fun AdjustDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Adjust ${item.productName}") },
+        title = { Text(stringResource(R.string.mobile_warehouse_ui_adjust_productname, item.productName)) },
         text = {
             Column {
                 OutlinedTextField(value = qty, onValueChange = { qty = it }, label = { Text("New Quantity") }, singleLine = true, modifier = Modifier.fillMaxWidth())

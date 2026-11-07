@@ -76,7 +76,7 @@ export function OrderList({
                       #{order.order_id.slice(-8)}
                     </span>
                     <span
-                      className={`rounded-md px-2 py-0.5 text-[10px] font-light uppercase tracking-widest ${c.color === "success" ? "bg-green-100 text-green-700" : c.color === "warning" ? "bg-orange-100 text-orange-700" : "bg-gray-100 text-gray-700"}`}
+                      className={`rounded-md px-2 py-0.5 text-[10px] font-light uppercase tracking-widest ${c.color === "success" ? "bg-green-100 text-green-700" : c.color === "warning" ? "bg-orange-100 text-orange-700" : c.color === "danger" ? "bg-red-100 text-red-700" : "bg-gray-100 text-gray-700"}`}
                     >
                       {c.label}
                     </span>

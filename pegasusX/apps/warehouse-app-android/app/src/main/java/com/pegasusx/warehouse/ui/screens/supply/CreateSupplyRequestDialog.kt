@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.supply
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -21,6 +23,7 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
+import com.pegasusx.warehouse.R
 
 data class SupplyRequestFormResult(
     val factoryId: String,
@@ -38,6 +41,7 @@ fun CreateSupplyRequestDialog(
     onCreate: (SupplyRequestFormResult) -> Unit,
 ) {
     var factoryId by remember { mutableStateOf("") }
+    var factoryLocked by remember { mutableStateOf(false) }
     var priority by remember { mutableStateOf("NORMAL") }
     var notes by remember { mutableStateOf("") }
     var useForecast by remember { mutableStateOf(true) }
@@ -59,6 +63,15 @@ fun CreateSupplyRequestDialog(
         }
     }
 
+    LaunchedEffect(Unit) {
+        runCatching { api.getOpsSupplyFactory() }.getOrNull()?.body()?.factoryId
+            ?.takeIf { it.isNotBlank() }
+            ?.let {
+                factoryId = it
+                factoryLocked = true
+            }
+    }
+
     LaunchedEffect(useForecast) {
         if (useForecast) loadForecast()
     }
@@ -76,8 +89,14 @@ fun CreateSupplyRequestDialog(
             ) {
                 OutlinedTextField(
                     value = factoryId,
-                    onValueChange = { factoryId = it },
+                    onValueChange = { if (!factoryLocked) factoryId = it },
+                    readOnly = factoryLocked,
                     label = { Text("Factory ID") },
+                    supportingText = if (factoryLocked) {
+                        { Text("Nearest factory from the engine.") }
+                    } else {
+                        null
+                    },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -128,7 +147,7 @@ fun CreateSupplyRequestDialog(
                         ) {
                             itemsIndexed(forecast, key = { _, p -> p.productId }) { _, product ->
                                 Text(
-                                    "${product.productName.ifBlank { product.productId.take(8) }} · stock ${product.currentStock} · rec ${product.recommendedQty}",
+                                    stringResource(R.string.mobile_warehouse_ui_take_stock_currentstock_rec_recommendedqty, product.productName.ifBlank { product.productId.take(8) }, product.currentStock, product.recommendedQty),
                                     style = MaterialTheme.typography.bodySmall,
                                 )
                             }
@@ -142,7 +161,7 @@ fun CreateSupplyRequestDialog(
                     ) {
                         Text("Manual items", style = MaterialTheme.typography.labelMedium)
                         IconButton(onClick = { manualItems = manualItems + ManualSupplyLine() }) {
-                            Icon(Icons.Default.Add, contentDescription = "Add item")
+                            Icon(Icons.Default.Add, contentDescription = stringResource(R.string.mobile_warehouse_ui_add_item))
                         }
                     }
                     manualItems.forEachIndexed { index, line ->
@@ -173,7 +192,7 @@ fun CreateSupplyRequestDialog(
                                 IconButton(onClick = {
                                     manualItems = manualItems.filterIndexed { i, _ -> i != index }
                                 }) {
-                                    Icon(Icons.Default.Delete, contentDescription = "Remove")
+                                    Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.supplier_portal_demand_payday_calendar_text_remove))
                                 }
                             }
                         }

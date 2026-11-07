@@ -56,6 +56,15 @@ func (s *Service) guardIdempotency(w http.ResponseWriter, r *http.Request, body 
 	return false
 }
 
+// guardIdempotencyStrict requires Idempotency-Key on a mutating retailer route.
+func (s *Service) guardIdempotencyStrict(w http.ResponseWriter, r *http.Request, body []byte) bool {
+	if idempotencyKeyFromRequest(r) == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "idempotency_key_required"})
+		return true
+	}
+	return s.guardIdempotency(w, r, body)
+}
+
 func (s *Service) saveIdempotency(ctx context.Context, r *http.Request, body []byte, status int, resp []byte) {
 	key := idempotencyKeyFromRequest(r)
 	if key == "" || s.idem == nil {

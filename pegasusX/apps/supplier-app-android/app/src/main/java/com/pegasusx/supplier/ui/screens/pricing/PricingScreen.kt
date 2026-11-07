@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.pricing
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -16,13 +18,14 @@ import com.pegasusx.supplier.data.model.CatalogProductUpdateRequest
 import com.pegasusx.supplier.data.model.SupplierPromotion
 import com.pegasusx.supplier.data.model.SupplierPromotionUpsertRequest
 import com.pegasusx.supplier.data.remote.SupplierApi
-import com.pegasus.design.PegasusLoadingState
+import com.pegasus.design.ui.PegasusLoadingState
 import com.pegasusx.supplier.ui.components.SupplierOpsListCard
-import com.pegasus.design.PegasusStateKind
-import com.pegasus.design.PegasusStatePane
+import com.pegasus.design.ui.PegasusStateKind
+import com.pegasus.design.ui.PegasusStatePane
 import com.pegasusx.supplier.ui.components.formatMinorAmount
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
+import com.pegasusx.supplier.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -57,7 +60,7 @@ fun PricingScreen(api: SupplierApi, onBack: () -> Unit) {
                 title = { Text("Pricing") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                     }
                 },
             )
@@ -68,7 +71,7 @@ fun PricingScreen(api: SupplierApi, onBack: () -> Unit) {
             error != null && products.isEmpty() -> PegasusStatePane(
                 kind = PegasusStateKind.Error,
                 headline = "Pricing unavailable",
-                body = error!!,
+                body = error.orEmpty(),
                 modifier = Modifier.padding(padding),
                 actionLabel = "Retry",
                 onAction = { load() },
@@ -148,7 +151,7 @@ private fun ProductPricingDialog(
                 OutlinedTextField(
                     value = priceMajor,
                     onValueChange = { priceMajor = it },
-                    label = { Text("List price (${product.currency})") },
+                    label = { Text(stringResource(R.string.mobile_supplier_ui_list_price_currency, product.currency)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true,
                 )
@@ -175,7 +178,11 @@ private fun ProductPricingDialog(
                     scope.launch {
                         saving = true
                         error = null
-                        val priceMinor = priceMajor.replace(',', '.').toDoubleOrNull()?.let { (it * 100).toLong() }
+                        val clean = priceMajor.replace(',', '.')
+                        val parts = clean.split(".")
+                        val major = parts.getOrNull(0)?.toLongOrNull() ?: 0L
+                        val minor = parts.getOrNull(1)?.padEnd(2, '0')?.substring(0, 2)?.toLongOrNull() ?: 0L
+                        val priceMinor: Long? = if (major > 0 || minor > 0) (major * 100) + minor else null
                         if (priceMinor == null || priceMinor < 0) {
                             error = "Enter a valid list price."
                             saving = false
@@ -211,14 +218,15 @@ private fun ProductPricingDialog(
                                     scopeProductId = product.productId,
                                     retailerScope = "ALL",
                                 )
-                                val promoResp = if (activeSale != null) {
-                                    api.updatePromotion(activeSale!!.promotionId, request)
+                                val sale = activeSale
+                                val promoResp = if (sale != null) {
+                                    api.updatePromotion(sale.promotionId, request)
                                 } else {
                                     api.createPromotion(request)
                                 }
                                 if (!promoResp.isSuccessful) error("promotion_failed_${promoResp.code()}")
-                            } else if (activeSale != null) {
-                                api.deactivatePromotion(activeSale!!.promotionId)
+                            } else {
+                                activeSale?.let { api.deactivatePromotion(it.promotionId) }
                             }
                             onSaved()
                         } catch (e: Exception) {

@@ -12,11 +12,13 @@ fun buildPlannedRoutePolyline(orders: List<Order>, activeRouteId: String?): List
         .filter { order ->
             order.routeId == activeRouteId &&
                 order.state != OrderState.COMPLETED &&
-                order.state != OrderState.CANCELLED &&
-                order.latitude != null &&
-                order.longitude != null
+                order.state != OrderState.CANCELLED
         }
         .sortedBy { it.sequenceIndex }
-        .map { LatLng(it.latitude!!, it.longitude!!) }
+        .mapNotNull { order ->
+            val lat = order.latitude
+            val lng = order.longitude
+            if (lat != null && lng != null) LatLng(lat, lng) else null
+        }
         .toList()
 }

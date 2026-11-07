@@ -1,6 +1,8 @@
 package com.pegasus.payload.di
 
+import com.pegasus.design.CellPinInterceptor
 import com.pegasus.payload.BuildConfig
+import com.pegasus.payload.data.local.SecureStore
 import com.pegasus.payload.data.remote.AuthInterceptor
 import com.pegasus.payload.data.remote.TokenRefreshAuthenticator
 import com.pegasus.payload.data.remote.PayloadApi
@@ -32,14 +34,17 @@ object NetworkModule {
     fun provideOkHttp(
         authInterceptor: AuthInterceptor,
         tokenRefreshAuthenticator: TokenRefreshAuthenticator,
+        secureStore: SecureStore,
     ): OkHttpClient {
         val logging = HttpLoggingInterceptor().apply {
             level = if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.BASIC
             else HttpLoggingInterceptor.Level.NONE
         }
         return OkHttpClient.Builder()
+            .addInterceptor(CellPinInterceptor(BuildConfig.API_BASE_URL) { secureStore.token })
             .addInterceptor(authInterceptor)
             .authenticator(tokenRefreshAuthenticator)
+            .addInterceptor(com.pegasus.design.PegasusHttpResilienceInterceptor())
             .addInterceptor(logging)
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)

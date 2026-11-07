@@ -1,3 +1,4 @@
+import { homeCellFromJwt, pinApiBaseUrl, readCachedAuthSession } from '@pegasusx/api-core';
 import { clearStoredToken, getStoredToken, isTauri, storeToken } from "@/lib/bridge";
 
 const SUPPLIER_JWT_COOKIE = "supplier_jwt";
@@ -24,7 +25,7 @@ function usesApiProxy(base: string): boolean {
   return base === "/api" || base.endsWith("/api");
 }
 
-export function supplierApiBaseUrl(): string {
+function supplierBootstrapUrl(): string {
   if (typeof window !== "undefined") {
     if (isTauri()) {
       const { hostname, port, origin } = window.location;
@@ -37,6 +38,16 @@ export function supplierApiBaseUrl(): string {
     return "/api";
   }
   return "http://localhost:8180";
+}
+
+/** GS-C5: pin to JWT home_cell API URL. Local /api and localhost stay on bootstrap. */
+export function supplierApiBaseUrl(): string {
+  const token = typeof window !== "undefined" ? getSupplierToken() : "";
+  return pinApiBaseUrl({
+    bootstrap: supplierBootstrapUrl(),
+    homeCell: token ? homeCellFromJwt(token) : "",
+    sessionApiUrl: readCachedAuthSession()?.api_url,
+  });
 }
 
 export function readTokenFromCookie(): string {
@@ -55,9 +66,10 @@ function readRefreshFromCookie(): string {
 
 export function persistSession(token: string, refreshToken?: string) {
   if (typeof document !== "undefined") {
-    document.cookie = `${SUPPLIER_JWT_COOKIE}=${encodeURIComponent(token)}; path=/; max-age=86400; SameSite=Lax`;
+    const secureFlag = typeof location !== "undefined" && location.protocol === "https:" ? "; Secure" : "";
+    document.cookie = `${SUPPLIER_JWT_COOKIE}=${encodeURIComponent(token)}; path=/; max-age=86400; SameSite=Strict${secureFlag}`;
     if (refreshToken) {
-      document.cookie = `${SUPPLIER_REFRESH_COOKIE}=${encodeURIComponent(refreshToken)}; path=/; max-age=604800; SameSite=Lax`;
+      document.cookie = `${SUPPLIER_REFRESH_COOKIE}=${encodeURIComponent(refreshToken)}; path=/; max-age=604800; SameSite=Strict${secureFlag}`;
     }
     try {
       localStorage.setItem(SUPPLIER_JWT_STORAGE, token);
@@ -72,8 +84,9 @@ export function persistSession(token: string, refreshToken?: string) {
 
 export function clearSession() {
   if (typeof document !== "undefined") {
-    document.cookie = `${SUPPLIER_JWT_COOKIE}=; Max-Age=0; path=/`;
-    document.cookie = `${SUPPLIER_REFRESH_COOKIE}=; Max-Age=0; path=/`;
+    const secureFlag = typeof location !== "undefined" && location.protocol === "https:" ? "; Secure" : "";
+    document.cookie = `${SUPPLIER_JWT_COOKIE}=; Max-Age=0; path=/${secureFlag}`;
+    document.cookie = `${SUPPLIER_REFRESH_COOKIE}=; Max-Age=0; path=/${secureFlag}`;
     try {
       localStorage.removeItem(SUPPLIER_JWT_STORAGE);
     } catch {
@@ -152,6 +165,12 @@ export async function supplierFetch(path: string, init?: RequestInit): Promise<R
     "Content-Type": "application/json",
     ...(init?.headers as Record<string, string>),
   };
+  const method = (init?.method || "GET").toUpperCase();
+  if (["POST", "PUT", "PATCH", "DELETE"].includes(method)) {
+    if (!headers["Idempotency-Key"] && !headers["idempotency-key"] && !headers["X-Idempotency-Key"] && !headers["x-idempotency-key"]) {
+      headers["Idempotency-Key"] = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2);
+    }
+  }
   if (token) {
     headers.Authorization = `Bearer ${token}`;
   }

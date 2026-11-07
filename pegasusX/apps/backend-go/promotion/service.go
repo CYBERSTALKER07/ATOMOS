@@ -2,12 +2,14 @@ package promotion
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
 	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
@@ -51,12 +53,41 @@ func (s *Service) ActiveForSupplier(ctx context.Context, supplierID string) ([]P
 	if s.repo == nil {
 		return []Promotion{}, nil
 	}
+	if s.cache != nil && supplierID != "" {
+		raw, err := s.cache.GetOrLoad(ctx, "promotions:supplier:"+supplierID, 15*time.Second, func(ctx context.Context) ([]byte, error) {
+			items, err := s.repo.ListActiveBySupplier(ctx, supplierID, s.now())
+			if err != nil {
+				return nil, err
+			}
+			if items == nil {
+				items = []Promotion{}
+			}
+			return json.Marshal(items)
+		})
+		if err == nil && len(raw) > 0 {
+			var cached []Promotion
+			if uerr := json.Unmarshal(raw, &cached); uerr == nil {
+				return cached, nil
+			}
+		}
+	}
 	return s.repo.ListActiveBySupplier(ctx, supplierID, s.now())
 }
 
 // QuoteCheckout prices cart lines with server-authoritative promotions.
 func (s *Service) QuoteCheckout(ctx context.Context, supplierID, retailerID string, lines []LineInput) (QuoteResult, error) {
-	lines, err := s.enrichLines(ctx, supplierID, retailerID, lines)
+	pack, err := auth.CheckoutPackFromContext(ctx)
+	if err != nil {
+		return QuoteResult{}, err
+	}
+	for _, line := range lines {
+		if c := strings.TrimSpace(line.Currency); c != "" {
+			if _, err := auth.ResolveCheckoutCurrency(pack, c); err != nil {
+				return QuoteResult{}, err
+			}
+		}
+	}
+	lines, err = s.enrichLines(ctx, supplierID, retailerID, lines)
 	if err != nil {
 		return QuoteResult{}, err
 	}
@@ -64,7 +95,22 @@ func (s *Service) QuoteCheckout(ctx context.Context, supplierID, retailerID stri
 	if err != nil {
 		return QuoteResult{}, fmt.Errorf("load promotions: %w", err)
 	}
-	return ApplyQuote(s.now(), supplierID, retailerID, lines, promotions)
+	if s.repo != nil {
+		promotions, err = s.repo.FilterEligibleCampaignPromotions(ctx, retailerID, promotions)
+		if err != nil {
+			return QuoteResult{}, fmt.Errorf("filter campaign promotions: %w", err)
+		}
+	}
+	quote, err := ApplyQuote(s.now(), supplierID, retailerID, lines, promotions)
+	if err != nil {
+		return QuoteResult{}, err
+	}
+	quote.Currency = pack.CurrencyCode
+	quote.MarketCode = pack.Code
+	for i := range quote.Lines {
+		quote.Lines[i].Currency = pack.CurrencyCode
+	}
+	return quote, nil
 }
 
 // ResolveListPrice applies an active per-retailer override when present.
@@ -80,6 +126,15 @@ func (s *Service) ResolveListPrice(ctx context.Context, supplierID, retailerID, 
 		return price, true, nil
 	}
 	return listPrice, false, nil
+}
+
+// ResolveListPrices batches active per-retailer price override lookups across all productIDs
+// for a supplier in a single Spanner UNNEST query, eliminating N+1 queries on catalog loads.
+func (s *Service) ResolveListPrices(ctx context.Context, supplierID, retailerID string, productIDs []string) (map[string]int64, error) {
+	if s == nil || s.repo == nil || supplierID == "" || retailerID == "" || len(productIDs) == 0 {
+		return map[string]int64{}, nil
+	}
+	return s.repo.LookupActivePriceOverrides(ctx, supplierID, retailerID, productIDs, s.now())
 }
 
 func (s *Service) enrichLines(ctx context.Context, supplierID, retailerID string, lines []LineInput) ([]LineInput, error) {
@@ -190,8 +245,16 @@ func validatePromotion(p Promotion) error {
 	if strings.TrimSpace(p.Name) == "" {
 		return fmt.Errorf("name required")
 	}
-	if p.DiscountBps <= 0 || p.DiscountBps > maxDiscountBps {
-		return fmt.Errorf("discount_bps out of range")
+	if len(p.Tiers) == 0 {
+		return fmt.Errorf("at least one promotion tier required")
+	}
+	for i, tier := range p.Tiers {
+		if tier.DiscountBps <= 0 || tier.DiscountBps > maxDiscountBps {
+			return fmt.Errorf("tier %d discount_bps out of range", i)
+		}
+		if tier.MinQuantity < 0 {
+			return fmt.Errorf("tier %d min_quantity cannot be negative", i)
+		}
 	}
 	switch p.ScopeType {
 	case ScopeTypeProduct:

@@ -15,7 +15,7 @@ func TestGetDashboard_requiresSessionSupplier(t *testing.T) {
 	repo := &mockRepo{stats: DashboardStats{FiscalFailed: 1}}
 	h := NewHandler(NewService(repo, slog.Default()))
 
-	req := httptest.NewRequest(http.MethodGet, "/v1/compliance/dashboard?supplierId=sup-demo-1", nil)
+	req := httptest.NewRequest(http.MethodGet, "/v1/compliance/dashboard?supplierId=tenant-abc-123", nil)
 	rr := httptest.NewRecorder()
 	h.GetDashboard(rr, req)
 	if rr.Code != http.StatusUnauthorized {
@@ -32,7 +32,7 @@ func TestGetDashboard_usesJWTNotQuery(t *testing.T) {
 	}
 	h := NewHandler(NewService(repo, slog.Default()))
 
-	req := httptest.NewRequest(http.MethodGet, "/v1/compliance/dashboard?supplierId=sup-demo-1", nil)
+	req := httptest.NewRequest(http.MethodGet, "/v1/compliance/dashboard?supplierId=tenant-abc-123", nil)
 	req = req.WithContext(auth.WithClaims(context.Background(), auth.Claims{
 		Subject:    "admin-1",
 		Role:       auth.RoleAdmin,
@@ -51,7 +51,7 @@ func TestGetDashboard_usesJWTNotQuery(t *testing.T) {
 func TestExportCSV_requiresSessionSupplier(t *testing.T) {
 	repo := &mockRepo{}
 	h := NewHandler(NewService(repo, slog.Default()))
-	req := httptest.NewRequest(http.MethodGet, "/v1/compliance/export?supplierId=sup-demo-1", nil)
+	req := httptest.NewRequest(http.MethodGet, "/v1/compliance/export?supplierId=tenant-abc-123", nil)
 	rr := httptest.NewRecorder()
 	h.ExportCSV(rr, req)
 	if rr.Code != http.StatusUnauthorized {

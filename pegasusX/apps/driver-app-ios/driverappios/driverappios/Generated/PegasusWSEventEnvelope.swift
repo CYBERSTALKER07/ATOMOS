@@ -13,15 +13,17 @@ struct PegasusWSEventEnvelope {
     let decidedBy, decision, note, recommendationID: String?
     let status, supplierID, action, actorID: String?
     let actorRole, attemptID, confirmationStatus, currency: String?
-    let driverID, escalatedTo, fromDriverID, fromRouteID: String?
+    let customerProgressPercent: Int?
+    let customerStage, driverID, escalatedTo, fromDriverID: String?
+    let fromRouteID: String?
     let gpsLat, gpsLng: Double?
     let h3Cell: String?
     let lat: Double?
     let licensePlate: String?
     let lineItems: Any?
     let lng: Double?
-    let manifestID, negotiationID, orderID, orderSource: String?
-    let paymentMethod, previousStatus, proposalID: String?
+    let manifestID, message, negotiationID, orderID: String?
+    let orderSource, paymentMethod, previousStatus, proposalID: String?
     let proposedPriceMinor: Int?
     let reason, receivingWindowClose, receivingWindowOpen, requestedDeliveryDate: String?
     let resolution, response, retailerID, routeID: String?
@@ -29,17 +31,27 @@ struct PegasusWSEventEnvelope {
     let totalMinor: Int?
     let vehicleID: String?
     let version: Version?
-    let warehouseID, accountHolder, assignedWarehouseID, bankName: String?
-    let contactName, email, legalName: String?
+    let warehouseID, agingBucket: String?
+    let amountMinor, balanceMinor: Int?
+    let dueAt: String?
+    let dunningStep: Int?
+    let invoiceID, lastDunnedAt: String?
+    let principalMinor: Int?
+    let deadline, ehfID, accountHolder, assignedWarehouseID: String?
+    let bankName, contactName, email, legalName: String?
     let selectedGateways: [String]?
     let supplierRole, userID: String?
     let expectedMinor, overageMinor, receivedMinor, shortfallMinor: Int?
-    let traceID: String?
-    let amountMinor: Int?
+    let traceID, categoryID, iconKey, name: String?
+    let parentCategoryID: String?
+    let sortOrder: Int?
     let chargebackID, claimID, claimType: String?
     let photoUrls: [String]?
     let resolutionNote, settlementMode, source, commandID: String?
-    let sessionID: String?
+    let actor, campaignID: String?
+    let impactedLotCount, impactedOrderCount, impactedUnitsCount: Int?
+    let lotCode, lotID, productID, recallReason: String?
+    let severity, photoProofURL, signatureURL, sessionID: String?
     let baselineQty: Int?
     let baselineSource, blockedReason: String?
     let confidence: Double?
@@ -48,9 +60,12 @@ struct PegasusWSEventEnvelope {
     let highUnits: Int?
     let insightID: String?
     let lowUnits, networkNodes: Int?
-    let overrideID, polygonGeojson, productID, signalID: String?
-    let simulationID: String?
+    let overrideID, polygonGeojson, publishedBy, scenarioID: String?
+    let signalID, simulationID: String?
     let transferRecommendations, ttlSeconds: Int?
+    let countryCode, phone: String?
+    let orderCount: Int?
+    let orderIDS: [String]?
     let available: Bool?
     let homeNodeID, homeNodeType: String?
     let onShift: Bool?
@@ -59,17 +74,20 @@ struct PegasusWSEventEnvelope {
     let requestID, errorCode, errorMessage, fiscalQr: String?
     let fiscalReceiptID, provider, lockName, systemID: String?
     let gcsPath: String?
-    let suggestedMappings, attemptCount, depth: Int?
+    let suggestedMappings, committedUnits, coverageDays: Int?
+    let coverageStartDate, linkedTransferID, lockID: String?
+    let pendingConfirmationUnits, projectedUnits: Int?
+    let requestedBy: String?
+    let requestedUnits: Int?
+    let state, transferID, transferMode: String?
+    let attemptCount, depth: Int?
     let escalated: Bool?
-    let fromManifestID, fromVehicleID: String?
-    let orderCount: Int?
-    let state: String?
+    let fromManifestID, fromVehicleID, manifestDomain: String?
     let stopCount: Int?
     let toManifestID, toVehicleID: String?
     let totalVolumeVu: TotalVolumeVu?
     let transferCount: Int?
-    let transferID: String?
-    let driverIDS, manifestIDS, orderIDS: [String]?
+    let driverIDS, manifestIDS: [String]?
     let sharedRouteID, splitGroupID: String?
     let truckCount: Int?
     let conditionType: String?
@@ -77,32 +95,35 @@ struct PegasusWSEventEnvelope {
     let notes: String?
     let quantity: Int?
     let reportID, reporterID, reporterRole, sku: String?
-    let reasonCode, executionAction, executionMode, gateway: String?
-    let policySource, providerReference, transactionID, preOrderID: String?
-    let handlingClass: String?
-    let isHazardous, isPerishable, requiresColdChain: Bool?
+    let deliveredAt, disputeNote, proofPhotoURL, proofSignature: String?
+    let reasonCode: String?
+    let cardMinor, cashMinor: Int?
+    let executionAction, executionMode, gateway, policySource: String?
+    let providerReference, transactionID, batchID: String?
+    let netPayoutMinor: Int?
+    let railReference, preOrderID, barcode, handlingClass: String?
+    let isActive, isHazardous, isPerishable: Bool?
+    let previousPriceMinor, priceMinor: Int?
+    let requiresColdChain: Bool?
+    let stockQuantity: Int?
     let storageTempMaxC, storageTempMinC: Double?
-    let promotionID: String?
+    let unit, promotionID: String?
     let retailerIDS: [String]?
     let retailerScope: String?
     let creditLimitMinor, currentBalance, requestedAmount: Int?
     let delinquent: Bool?
-    let profileID, riskTier: String?
-    let priceMinor: Int?
-    let setBy, setByRole, countryCode, name: String?
-    let phone, assignedFactoryID: String?
+    let profileID, riskTier, setBy, setByRole: String?
+    let assignedFactoryID: String?
     let categories: [String]?
     let country: String?
     let isConfigured, isRegistered: Bool?
-    let fromWarehouse, toWarehouse: String?
-    let isActive: Bool?
-    let unavailableNote, unavailableReason: String?
-    let committedUnits, coverageDays: Int?
-    let coverageStartDate, linkedTransferID, lockID: String?
-    let pendingConfirmationUnits, projectedUnits: Int?
-    let requestedBy: String?
-    let requestedUnits: Int?
-    let transferMode: String?
+    let breachReason, breachedAt, cutoffAppliedAt: String?
+    let fillRateTargetBps: Int?
+    let guaranteedDeliveryDate: String?
+    let minOrderMinor: Int?
+    let promiseType: String?
+    let slaHours: Int?
+    let fromWarehouse, toWarehouse, unavailableNote, unavailableReason: String?
 }
 
 enum TotalVolumeVu {
@@ -115,20 +136,38 @@ enum TypeEnum: String {
     case aiRecommendationDecided
     case allocationFairShareApplied
     case allocationPolicyApplied
+    case arInvoiceAgingUpdated
+    case arInvoiceDunned
+    case arInvoiceOpened
+    case arInvoicePayment
+    case arInvoiceSettled
+    case buyerAcceptanceAccepted
+    case buyerAcceptanceExpired
+    case buyerAcceptancePending
+    case buyerAcceptanceRejected
     case cartSyncUpdated
     case cashOverage
     case cashShortfall
+    case categoryCreated
+    case categoryUpdated
     case claimFiled
     case claimResolved
+    case claimUnderReview
     case commandDispatched
     case commandReceived
     case commandSettled
+    case controlTowerPlaybookChanged
+    case controlTowerRunCreated
+    case controlTowerRunUpdated
     case creditDeliveryMarked
     case creditDeliveryResolved
     case creditLeave
     case deliveryDisputed
     case deliverySessionUpdated
     case demandBaselineUpdated
+    case demandSignal
+    case dispatchPlanned
+    case dispatchRequested
     case dispatchZoneOverride
     case driverAvailabilityChanged
     case driverCreated
@@ -136,7 +175,11 @@ enum TypeEnum: String {
     case driverReturnApproaching
     case factoryCreated
     case factoryLocationUpdated
+    case factorySlaBreach
+    case factoryStaffCreated
+    case factoryStaffPasswordSet
     case factorySupplyRequestUpdate
+    case fiscalCorrectiveRequested
     case fiscalReceiptFailed
     case fiscalReceiptRequested
     case fiscalReceiptSucceeded
@@ -144,14 +187,22 @@ enum TypeEnum: String {
     case freezeLockReleased
     case inventoryImportStatusUpdate
     case inventoryImportUploaded
+    case inventoryPolicyUpdated
+    case inventoryQuantityUpdated
     case inventorySyncComplete
     case logisticsExceptionReported
     case logisticsTelemetry
+    case lookAheadCompleted
+    case lotQuarantined
+    case lotRecallInitiated
+    case lotReleased
+    case loyaltyPointsEarned
     case manifestCancelled
     case manifestCompleted
     case manifestDispatched
     case manifestDlqEscalation
     case manifestDraftCreated
+    case manifestExceptionResolved
     case manifestLoadingStarted
     case manifestOrderException
     case manifestOrderInjected
@@ -160,27 +211,41 @@ enum TypeEnum: String {
     case missingItemsReported
     case negotiationProposed
     case negotiationResolved
+    case networkModeChanged
     case orderAllocated
     case orderAmended
     case orderAssigned
     case orderCapacityOverflow
     case orderConditionReported
+    case orderConflictReconciled
     case orderCreated
     case orderFinalized
     case orderForceCompleted
     case orderReassigned
     case orderStatusChanged
     case orderValidationFailed
+    case parentOrderCreated
+    case parentOrderUpdated
     case partialOffload
     case paymentCleared
     case paymentFailed
     case paymentRequired
+    case payoutBatchDispatched
+    case payoutBatchExported
+    case payoutBatchGenerated
+    case payoutBatchPaid
+    case payoutPolicyUpdated
     case planningAgentBroadcast
     case planningConfidenceDowngraded
     case planningForecastUpdated
     case planningMeioRecommendationV1
     case planningPromoSimulationReady
+    case planningScenarioPublishedV1
     case planningSignalIngestV1
+    case posSaleCompleted
+    case posSaleVoided
+    case posSessionClosed
+    case posSessionOpened
     case preOrderAutoAccepted
     case preOrderCancelled
     case preOrderConfirmation
@@ -191,20 +256,53 @@ enum TypeEnum: String {
     case preOrderEdited
     case preOrderNotified
     case preOrderNudge
+    case productCreated
+    case productDeactivated
     case productHandlingUpdated
+    case productPriceChanged
+    case productUpdated
     case promotionChanged
     case proximityUnlocked
+    case pullMatrixCompleted
+    case reassignHandshakeCompleted
+    case receivingVarianceReported
+    case refundFailed
+    case refundRequested
+    case refundSucceeded
     case replenishmentAutoApproved
     case replenishmentInsightCreated
+    case replenishmentPolicyUpdated
+    case retailerAssistSlaBreached
+    case retailerAssistTicketCancelled
+    case retailerAssistTicketClaimed
+    case retailerAssistTicketCompleted
+    case retailerAssistTicketOpened
+    case retailerAutoOrderUpdated
+    case retailerCapabilityPackChanged
+    case retailerClockIn
+    case retailerClockOut
     case retailerCreditLimitBreached
     case retailerCreditProfileChanged
+    case retailerLocationCreated
+    case retailerLocationUpdated
     case retailerPriceOverride
     case retailerRegistered
+    case retailerSectionCreated
+    case retailerSectionSkuMapped
+    case retailerSectionUpdated
     case retailerSegmentUpdated
+    case retailerSellThroughUpdated
+    case retailerShiftCashVariance
+    case retailerShiftClosed
+    case retailerShiftOpened
+    case retailerStaffCreated
+    case retailerStaffSectionAssigned
     case returnReceivedAtWarehouse
+    case returnScanReceived
     case reverseLogisticsRequired
     case routeCreated
     case routeReordered
+    case routeReplanned
     case servicePolicyUpdated
     case settlementRequired
     case shopClosed
@@ -216,26 +314,43 @@ enum TypeEnum: String {
     case skuClassUpdated
     case splitPaymentCreated
     case splitShipmentCreated
+    case storeStockAdjusted
+    case storeStockClaimHold
+    case storeStockCounted
+    case storeStockReceived
+    case storeStockTransferred
     case supplierBillingConfigured
     case supplierBillingUpdated
+    case supplierBroadcast
     case supplierCreated
+    case supplierCreditProgramChanged
+    case supplierCreditTermsChanged
     case supplierMemberAdded
     case supplierProfileUpdated
     case supplierReturnCreated
     case supplierReturnResolved
+    case supplierServicePromiseBreached
+    case supplierServicePromiseCreated
     case supplierUpdated
     case supplyRequestAccepted
     case supplyRequestUpdate
     case supplyTransferApproaching
+    case supplyTransferArrived
     case systemAppOutdated
+    case transferCreated
     case vehicleAvailabilityChanged
     case vehicleCreated
+    case warehouseBroadcast
     case warehouseCreated
     case warehouseDispatchLockChanged
     case warehouseLocationUpdated
     case warehouseSupplyRequestOpened
     case warehouseTransferCreated
     case warehouseTransferReceived
+    case wmsCycleApproved
+    case wmsPickConfirmed
+    case wmsPutaway
+    case wmsTemperatureBreach
 }
 
 enum Version {

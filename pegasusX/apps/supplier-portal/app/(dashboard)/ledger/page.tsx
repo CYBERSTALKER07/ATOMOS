@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback } from "react";
 import { PageChrome } from "@/components/PageChrome";
 import { PageSection } from "@/components/PageSection";
@@ -20,6 +21,7 @@ type PaymentLedgerResponse = {
 };
 
 export default function LedgerPage() {
+  const t = usePortalT();
   const {
     data,
     loading,
@@ -38,8 +40,8 @@ export default function LedgerPage() {
     <div className="min-h-full p-6 md:p-8" style={{ background: "var(--desk-canvas)" }}>
       <PageChrome
         icon="orders"
-        title="Payment Ledger"
-        description="View your durable finance ledger and payment movements."
+        title={t("supplier_portal.ledger.text.payment_ledger")}
+        description={t("supplier_portal.residual.text.view_your_durable_finance_ledger_and_payment_movements")}
         loading={loading}
         skeletonVariant="table"
         actions={
@@ -65,23 +67,23 @@ export default function LedgerPage() {
           </div>
         )}
 
-        <PageSection title="Ledger Entries" description="Recent financial transactions.">
+        <PageSection title={t("supplier_portal.ledger.text.ledger_entries")} description={t("supplier_portal.residual.text.recent_financial_transactions")}>
           <div className="bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-2xl shadow-[var(--shadow-sm)] overflow-hidden">
             {rows.length === 0 ? (
               <div className="p-12 text-center text-[var(--desk-text-tertiary)] flex flex-col items-center">
                 <Receipt size={48} className="opacity-20 mb-4" />
-                <p className="md-typescale-body-large">No ledger entries.</p>
-                <p className="md-typescale-body-small mt-1">Payment movements will appear here.</p>
+                <p className="md-typescale-body-large">{t("supplier_portal.ledger.text.no_ledger_entries")}</p>
+                <p className="md-typescale-body-small mt-1">{t("supplier_portal.ledger.text.payment_movements_will_appear_here")}</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="border-b border-[var(--desk-border)] bg-[var(--desk-surface-subtle)]">
-                      <th className="py-3 px-4 md-typescale-label-small uppercase text-[var(--desk-text-tertiary)] font-medium">Date</th>
-                      <th className="py-3 px-4 md-typescale-label-small uppercase text-[var(--desk-text-tertiary)] font-medium">Type</th>
-                      <th className="py-3 px-4 md-typescale-label-small uppercase text-[var(--desk-text-tertiary)] font-medium">Order ID</th>
-                      <th className="py-3 px-4 md-typescale-label-small uppercase text-[var(--desk-text-tertiary)] font-medium text-right">Amount</th>
+                      <th className="py-3 px-4 md-typescale-label-small uppercase text-[var(--desk-text-tertiary)] font-medium">{t("supplier_portal.ledger.text.date")}</th>
+                      <th className="py-3 px-4 md-typescale-label-small uppercase text-[var(--desk-text-tertiary)] font-medium">{t("supplier_portal.ledger.text.type")}</th>
+                      <th className="py-3 px-4 md-typescale-label-small uppercase text-[var(--desk-text-tertiary)] font-medium">{t("supplier_portal.admin.control_center.field.order_id")}</th>
+                      <th className="py-3 px-4 md-typescale-label-small uppercase text-[var(--desk-text-tertiary)] font-medium text-right">{t("supplier_portal.ledger.text.amount")}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[var(--desk-border)]">

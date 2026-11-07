@@ -21,6 +21,7 @@ import NegotiationBanner from '@/components/NegotiationBanner';
 import { resolveSupplierEntity } from '@/lib/api/entity-resolution';
 import { hasLocalOrderSearchMatch, scheduleOrderResolutionFallback } from './search-fallback';
 import { Button } from '@heroui/react';
+import { Check } from 'lucide-react';
 import {
   buildSupplierAutoDispatchIdempotencyKey,
   buildSupplierApproveCancelIdempotencyKey,
@@ -28,7 +29,7 @@ import {
   buildSupplierResolveCreditIdempotencyKey,
 } from '../_shared/idempotency';
 
-/* ─── Types ───────────────────────────────────────────────── */
+/* --- Types ------------------------------------------------- */
 
 interface Order {
   order_id: string;
@@ -118,7 +119,7 @@ function normalizeOrderListResponse(payload: unknown, pageSize: number): { items
   return { items: [], hasMore: false };
 }
 
-/* ─── Main Page ───────────────────────────────────────────── */
+/* --- Main Page --------------------------------------------- */
 
 export default function OrdersPage() {
   const token = useToken();
@@ -160,7 +161,7 @@ export default function OrdersPage() {
 
   const serverOffset = (page - 1) * pageSize;
 
-  /* ─── Data Fetching ─────────────────────────────────────── */
+  /* --- Data Fetching --------------------------------------- */
 
   const fetchOrders = useCallback(async () => {
     if (!token) return;
@@ -241,7 +242,7 @@ export default function OrdersPage() {
     }
   }, 30_000, [tab, showHistory, token, pageSize, serverOffset]);
 
-  // ── WebSocket: instant order state change notifications ──────────────────
+  // -- WebSocket: instant order state change notifications ------------------
   const fetchOrdersRef = useRef(fetchOrders);
   fetchOrdersRef.current = fetchOrders;
   useTelemetry(
@@ -253,7 +254,7 @@ export default function OrdersPage() {
     { enabled: !isTauri() && Boolean(token) },
   );
 
-  /* ─── Available Trucks ──────────────────────────────────── */
+  /* --- Available Trucks ------------------------------------ */
 
   const fetchTrucks = useCallback(async () => {
     if (!token) return;
@@ -284,7 +285,7 @@ export default function OrdersPage() {
     } catch { setTargetCapacity(null); }
   }, [token]);
 
-  /* ─── Vetting Actions ───────────────────────────────────── */
+  /* --- Vetting Actions ------------------------------------- */
 
   async function vetOrder(orderId: string, decision: 'APPROVED' | 'REJECTED', reason?: string) {
     setActionLoading(orderId);
@@ -323,7 +324,7 @@ export default function OrdersPage() {
     }
   }
 
-  /* ─── Approve Cancel ─────────────────────────────────────── */
+  /* --- Approve Cancel --------------------------------------- */
 
   async function approveCancel(orderId: string) {
     setActionLoading(orderId);
@@ -353,7 +354,7 @@ export default function OrdersPage() {
     }
   }
 
-  /* ─── Resolve Credit Delivery ────────────────────────────── */
+  /* --- Resolve Credit Delivery ------------------------------ */
 
   async function resolveCreditDelivery(orderId: string, decision: 'APPROVE' | 'DENY') {
     setActionLoading(orderId);
@@ -383,7 +384,7 @@ export default function OrdersPage() {
     }
   }
 
-  /* ─── Reassignment ──────────────────────────────────────── */
+  /* --- Reassignment ---------------------------------------- */
 
   function openReassign(orderIds: string[]) {
     setReassignOrderIds(orderIds);
@@ -437,7 +438,7 @@ export default function OrdersPage() {
     }
   }
 
-  /* ─── Selection helpers ─────────────────────────────────── */
+  /* --- Selection helpers ----------------------------------- */
 
   function toggleSelect(id: string) {
     setSelected(prev => {
@@ -606,7 +607,7 @@ export default function OrdersPage() {
     canPrev: page > 1,
   };
 
-  /* ─── Render guards ─────────────────────────────────────── */
+  /* --- Render guards --------------------------------------- */
 
   if (!token) {
     return (
@@ -618,7 +619,7 @@ export default function OrdersPage() {
     );
   }
 
-  /* ─── Tab content emptys ────────────────────────────────── */
+  /* --- Tab content emptys ---------------------------------- */
 
   const emptyMeta: Record<Tab | 'history', { headline: string; body: string }> = {
     active: { headline: 'No active orders', body: 'Pending, in-transit, and arrived orders appear here.' },
@@ -629,7 +630,7 @@ export default function OrdersPage() {
 
   return (
     <div className="min-h-full p-6 md:p-8 bg-background text-foreground">
-      {/* ── Page Header ── */}
+      {/* -- Page Header -- */}
       <header className="mb-6 flex items-start justify-between gap-4">
         <div>
           <h1 className="md-typescale-headline-medium">Orders</h1>
@@ -651,16 +652,16 @@ export default function OrdersPage() {
 
       <div className="md-divider mb-6" />
 
-      {/* ── Shop-Closed Escalation Banner ── */}
+      {/* -- Shop-Closed Escalation Banner -- */}
       <ShopClosedBanner />
 
-      {/* ── Early Complete Request Banner ── */}
+      {/* -- Early Complete Request Banner -- */}
       <EarlyCompleteBanner />
 
-      {/* ── Live Negotiation Banner ── */}
+      {/* -- Live Negotiation Banner -- */}
       <NegotiationBanner />
 
-      {/* ── Tab Bar + Filter Chips ── */}
+      {/* -- Tab Bar + Filter Chips -- */}
       <div className="flex items-center justify-between mb-3">
         <div className="md-tab-bar">
           {TAB_META.map(t => (
@@ -684,9 +685,12 @@ export default function OrdersPage() {
         </div>
       </div>
 
-      {/* ── Filter Chips Row ── */}
+      {/* -- Filter Chips Row -- */}
       <div className="flex flex-wrap items-center gap-2 mb-4">
+        <label htmlFor="orders-search-input" className="sr-only">Search order ID or retailer</label>
         <input
+          id="orders-search-input"
+          aria-label="Search order ID or retailer"
           type="text"
           value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}
@@ -718,7 +722,7 @@ export default function OrdersPage() {
         </button>
       </div>
 
-      {/* ── Bulk Action Bar ── */}
+      {/* -- Bulk Action Bar -- */}
       {selected.size > 0 && (
         <div
           className="mb-4 px-4 py-3 md-shape-md flex items-center justify-between bg-accent-soft text-accent-soft-foreground"
@@ -757,7 +761,7 @@ export default function OrdersPage() {
         </div>
       )}
 
-      {/* ── Data Table ── */}
+      {/* -- Data Table -- */}
       <div className="rounded-xl border border-border p-0 overflow-hidden">
         {loading ? (
           <div className="p-6 space-y-1">
@@ -781,10 +785,11 @@ export default function OrdersPage() {
                   <tr>
                     <th className="w-10">
                       <input
+                        id="orders-select-all"
+                        aria-label="Select all"
                         type="checkbox"
                         checked={selected.size === filteredOrders.length && filteredOrders.length > 0}
                         onChange={toggleSelectAll}
-                        aria-label="Select all"
                       />
                     </th>
                     <th>Order</th>
@@ -809,10 +814,11 @@ export default function OrdersPage() {
                     >
                       <td onClick={e => e.stopPropagation()}>
                         <input
+                          id={`select-order-${order.order_id}`}
+                          aria-label={`Select order ${order.order_id}`}
                           type="checkbox"
                           checked={selected.has(order.order_id)}
                           onChange={() => toggleSelect(order.order_id)}
-                          aria-label={`Select ${order.order_id}`}
                         />
                       </td>
                       <td className="font-mono md-typescale-body-small">{shortId(order.order_id)}</td>
@@ -860,7 +866,7 @@ export default function OrdersPage() {
         )}
       </div>
 
-      {/* ── Order Detail Drawer ── */}
+      {/* -- Order Detail Drawer -- */}
       {detailOrder && (
         <OrderDetailDrawer
           order={detailOrder}
@@ -869,7 +875,7 @@ export default function OrdersPage() {
         />
       )}
 
-      {/* ── Reassignment Modal ── */}
+      {/* -- Reassignment Modal -- */}
       <Dialog
         open={reassignOpen}
         onClose={() => setReassignOpen(false)}
@@ -949,7 +955,7 @@ export default function OrdersPage() {
     </div>
   );
 
-  /* ─── Actions column renderer ───────────────────────────── */
+  /* --- Actions column renderer ----------------------------- */
 
   function renderActions(order: Order) {
     const isActing = actionLoading === order.order_id;
@@ -959,7 +965,10 @@ export default function OrdersPage() {
       if (rejectingId === order.order_id) {
         return (
           <div className="flex items-center gap-2">
+            <label htmlFor={`reject-reason-${order.order_id}`} className="sr-only">Reject Reason</label>
             <input
+              id={`reject-reason-${order.order_id}`}
+              aria-label="Reject Reason"
               type="text"
               value={rejectReason}
               onChange={e => setRejectReason(e.target.value)}
@@ -1057,7 +1066,7 @@ export default function OrdersPage() {
   }
 }
 
-/* ─── Order Detail Drawer ─────────────────────────────────── */
+/* --- Order Detail Drawer ----------------------------------- */
 
 function OrderDetailDrawer({
   order,
@@ -1094,7 +1103,7 @@ function OrderDetailDrawer({
             </div>
           </div>
 
-          {/* ── Order Progress Tracker ── */}
+          {/* -- Order Progress Tracker -- */}
           {(() => {
             const stages = ["PENDING", "LOADED", "DISPATCHED", "IN_TRANSIT", "ARRIVED", "COMPLETED"] as const;
             const labels: Record<string, string> = {
@@ -1135,7 +1144,7 @@ function OrderDetailDrawer({
                                 boxShadow: current ? '0 0 0 2px var(--color-md-primary, #1a1a1a), 0 0 0 4px var(--color-md-surface, #fff)' : 'none',
                               }}
                             >
-                              {done && i < idx ? '✓' : i + 1}
+                              {done && i < idx ? <Check className="w-3.5 h-3.5" /> : i + 1}
                             </div>
                             <span className="md-typescale-label-small text-center" style={{ color: current ? 'var(--color-md-primary, #1a1a1a)' : done ? 'var(--color-md-on-surface, #1a1a1a)' : 'var(--color-md-outline, #999)', fontSize: '9px' }}>
                               {labels[s]}
@@ -1217,7 +1226,7 @@ function OrderDetailDrawer({
             <p className="md-typescale-body-small">{order.order_source}</p>
           </div>
 
-          {/* ── Order Events Timeline ── */}
+          {/* -- Order Events Timeline -- */}
           <div>
             <p className="md-typescale-label-small mb-2 text-muted">Activity Timeline</p>
             {eventsLoading ? (

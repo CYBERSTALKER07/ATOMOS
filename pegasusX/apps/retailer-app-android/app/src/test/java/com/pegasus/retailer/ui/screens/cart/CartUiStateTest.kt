@@ -48,19 +48,19 @@ class CartUiStateTest {
     fun subtotal_sumsItemTotals() {
         // 3 * 10_000 + 2 * 25_000 = 80_000
         val state = cartWith(product1 to (variant1 to 3), product2 to (variant2 to 2))
-        assertEquals(80_000.0, state.subtotal, 0.01)
+        assertEquals(80_000L, state.subtotal)
     }
 
     @Test
     fun shipping_freeAbove50k() {
         val state = cartWith(product2 to (variant2 to 3)) // 75_000
-        assertEquals(0.0, state.shipping, 0.01)
+        assertEquals(0L, state.shipping)
     }
 
     @Test
     fun shipping_chargedBelow50k() {
         val state = cartWith(product1 to (variant1 to 1)) // 10_000
-        assertEquals(15_000.0, state.shipping, 0.01)
+        assertEquals(15_000L, state.shipping)
     }
 
     @Test
@@ -68,7 +68,7 @@ class CartUiStateTest {
         val variantExact = Variant("ve", "5L", "Bulk", 1, "5000ml", 50_000.0)
         val prodExact = Product(id = "pe", name = "Exact", description = "", variants = listOf(variantExact))
         val state = cartWith(prodExact to (variantExact to 1)) // 50_000
-        assertEquals(15_000.0, state.shipping, 0.01) // > not >=
+        assertEquals(15_000L, state.shipping) // > not >=
     }
 
     @Test
@@ -79,26 +79,26 @@ class CartUiStateTest {
             quotedDiscountMinor = 30_000L,
             quotedSubtotalMinor = 600_000L,
         )
-        assertEquals(30_000.0, state.discount, 0.01)
+        assertEquals(30_000L, state.discount)
     }
 
     @Test
     fun discount_zeroWhenNoServerQuote() {
         val state = cartWith(product1 to (variant1 to 10)) // 100_000
-        assertEquals(0.0, state.discount, 0.01)
+        assertEquals(0L, state.discount)
     }
 
     @Test
     fun total_subtotalPlusShippingMinusDiscount() {
         // Subtotal 80_000, shipping free (>50k), no discount (<500k)
         val state = cartWith(product1 to (variant1 to 3), product2 to (variant2 to 2))
-        assertEquals(80_000.0, state.total, 0.01) // 80k + 0 - 0
+        assertEquals(80_000L, state.total) // 80k + 0 - 0
     }
 
     @Test
     fun total_withShippingAndNoDiscount() {
         val state = cartWith(product1 to (variant1 to 1)) // 10_000 + 15_000
-        assertEquals(25_000.0, state.total, 0.01)
+        assertEquals(25_000L, state.total)
     }
 
     @Test

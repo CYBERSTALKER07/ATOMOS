@@ -47,7 +47,7 @@ struct PreordersView: View {
                 )
             }
         }
-        .navigationTitle("Pre-orders")
+        .navigationTitle("portal.nav.preorders")
         .onAppear {
             Task { await load() }
         }
@@ -58,18 +58,18 @@ struct PreordersView: View {
                     Form {
                         DatePicker("Proposed delivery date", selection: $proposeDate, displayedComponents: .date)
                         Section("Reason for date change") {
-                            TextField("Reason", text: $reasonInput, axis: .vertical)
+                            TextField("supplier_portal.admin.control_center.field.reason", text: $reasonInput, axis: .vertical)
                                 .lineLimit(2...4)
                         }
                     }
-                    .navigationTitle("Propose date")
+                    .navigationTitle("mobile_warehouse.ui.propose_date")
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
                         ToolbarItem(placement: .cancellationAction) {
-                            Button("Cancel") { activeSheet = nil }
+                            Button("common.action.cancel") { activeSheet = nil }
                         }
                         ToolbarItem(placement: .confirmationAction) {
-                            Button("Send") { submitPropose(row) }
+                            Button("mobile_warehouse.ui.send") { submitPropose(row) }
                                 .disabled(acting || reasonInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                         }
                     }
@@ -79,18 +79,18 @@ struct PreordersView: View {
                 NavigationStack {
                     Form {
                         Section("Rejection reason") {
-                            TextField("Reason", text: $reasonInput, axis: .vertical)
+                            TextField("supplier_portal.admin.control_center.field.reason", text: $reasonInput, axis: .vertical)
                                 .lineLimit(2...4)
                         }
                     }
-                    .navigationTitle("Reject pre-order")
+                    .navigationTitle("mobile_warehouse.ui.reject_pre_order")
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
                         ToolbarItem(placement: .cancellationAction) {
-                            Button("Cancel") { activeSheet = nil }
+                            Button("common.action.cancel") { activeSheet = nil }
                         }
                         ToolbarItem(placement: .confirmationAction) {
-                            Button("Reject", role: .destructive) { submitReject(row) }
+                            Button("mobile_warehouse.ui.reject", role: .destructive) { submitReject(row) }
                                 .disabled(acting || reasonInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                         }
                     }
@@ -163,14 +163,25 @@ struct PreordersView: View {
         }
     }
 
+    private static let tashkentDayFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(secondsFromGMT: 5 * 3600)
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter
+    }()
+
+    private static let tashkentIsoFormatter: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withColonSeparatorInTimeZone]
+        formatter.timeZone = TimeZone(secondsFromGMT: 5 * 3600)
+        return formatter
+    }()
+
     private func initialProposeDate(for row: WarehousePreorderRow) -> Date {
         if let raw = row.requestedDeliveryDate?.prefix(10), !raw.isEmpty {
-            let formatter = DateFormatter()
-            formatter.calendar = Calendar(identifier: .gregorian)
-            formatter.locale = Locale(identifier: "en_US_POSIX")
-            formatter.timeZone = TimeZone(secondsFromGMT: 5 * 3600)
-            formatter.dateFormat = "yyyy-MM-dd"
-            if let parsed = formatter.date(from: String(raw)) {
+            if let parsed = Self.tashkentDayFormatter.date(from: String(raw)) {
                 return parsed
             }
         }
@@ -179,7 +190,7 @@ struct PreordersView: View {
 
     private func isoDeliveryDate(from date: Date) -> String {
         var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone(secondsFromGMT: 5 * 3600)!
+        calendar.timeZone = TimeZone(secondsFromGMT: 5 * 3600) ?? .current
         let day = calendar.dateComponents([.year, .month, .day], from: date)
         var noon = DateComponents()
         noon.year = day.year
@@ -190,9 +201,6 @@ struct PreordersView: View {
         noon.second = 0
         noon.timeZone = calendar.timeZone
         let normalized = calendar.date(from: noon) ?? date
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withColonSeparatorInTimeZone]
-        formatter.timeZone = calendar.timeZone
-        return formatter.string(from: normalized)
+        return Self.tashkentIsoFormatter.string(from: normalized)
     }
 }

@@ -33,14 +33,14 @@ struct StaffView: View {
                 }
             }
             .background(LabTheme.background)
-            .navigationTitle("Staff")
+            .navigationTitle("portal.nav.staff")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Refresh", systemImage: "arrow.clockwise", action: { load() })
+                    Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise", action: { load() })
                         .labelStyle(.iconOnly)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Add Staff", systemImage: "plus") { showCreate = true }
+                    Button("mobile_factory.ui.add_staff", systemImage: "plus") { showCreate = true }
                         .labelStyle(.iconOnly)
                 }
             }
@@ -54,13 +54,7 @@ struct StaffView: View {
                 realtimeClient.connect(
                     onStateChange: { _ in },
                     onEvent: { event in
-                        guard let eventType = event.eventType else { return }
-                        switch eventType {
-                        case .supplyRequestUpdate, .transferUpdate, .manifestUpdate:
-                            load()
-                        case .outboxFailed:
-                            break
-                        }
+                        if event.type.hasPrefix("TRANSFER_") || event.type.hasPrefix("MANIFEST_") || event.type.hasPrefix("WAREHOUSE_TRANSFER_") || event.type.hasPrefix("FACTORY_SUPPLY_") { load() }
                     }
                 )
             }
@@ -95,21 +89,21 @@ private struct CreateStaffSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                TextField("Name", text: $name)
-                TextField("Role", text: $role)
+                TextField("retailer_desktop.pos.text.name", text: $name)
+                TextField("warehouse_portal.staff.text.role", text: $role)
                 if let error {
                     Text(error)
                         .foregroundStyle(.red)
                         .font(.caption)
                 }
             }
-            .navigationTitle("Add Staff")
+            .navigationTitle("mobile_factory.ui.add_staff")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button("common.action.cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Create") { create() }
+                    Button("mobile_factory.ui.create") { create() }
                         .disabled(submitting || name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
@@ -180,6 +174,7 @@ struct SupplyRequestsView: View {
     @State private var viewMode = "TABLE"
     @State private var fulfillModal: (SupplyRequest, SupplyFulfillOptions)?
     @State private var transitioningID: String?
+    @State private var qcById: [String: String] = [:]
     @State private var refreshing = false
     @State private var staleMessage: String?
     @State private var lastSyncedAt: Date?
@@ -281,8 +276,12 @@ struct SupplyRequestsView: View {
                                 SupplyBoard(
                                     requests: filteredRequests,
                                     transitioningID: transitioningID,
+                                    qcById: qcById,
                                     onAction: { request, action in
                                         Task { await handleAction(request: request, action: action) }
+                                    },
+                                    onQC: { request, result in
+                                        Task { await handleQC(request: request, result: result) }
                                     }
                                 )
                             } else {
@@ -291,8 +290,12 @@ struct SupplyRequestsView: View {
                                     SupplyRequestCard(
                                         request: request,
                                         transitioning: transitioningID == request.id,
+                                        qcResult: qcById[request.id] ?? "",
                                         onAction: { action in
                                             Task { await handleAction(request: request, action: action) }
+                                        },
+                                        onQC: { result in
+                                            Task { await handleQC(request: request, result: result) }
                                         }
                                     )
                                     .staggeredAppear(index: index)
@@ -305,10 +308,10 @@ struct SupplyRequestsView: View {
                 }
             }
             .background(LabTheme.background)
-            .navigationTitle("Supply Requests")
+            .navigationTitle("portal.nav.supply_requests")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Refresh", systemImage: "arrow.clockwise") {
+                    Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") {
                         Task { await load(background: !requests.isEmpty) }
                     }
                     .labelStyle(.iconOnly)
@@ -334,7 +337,7 @@ struct SupplyRequestsView: View {
                         realtimeStatus = status
                     },
                     onEvent: { event in
-                        guard event.eventType == .supplyRequestUpdate else { return }
+                        guard event.type.hasPrefix("FACTORY_SUPPLY_") else { return }
                         if transitioningID == nil {
                             Task { await load(background: !requests.isEmpty) }
                         }
@@ -351,7 +354,7 @@ struct SupplyRequestsView: View {
                 NavigationStack {
                     Form {
                         Section("Fulfill decision") {
-                            Text("\(item.options.warehouseName) · \(item.options.transferMode)")
+                            Text(L10n.format("mobile_factory.ui.warehousename_transfermode", "\(item.options.warehouseName)", "\(item.options.transferMode)"))
                             Text(item.options.outcomeInternal)
                                 .font(.footnote)
                                 .foregroundStyle(.secondary)
@@ -359,18 +362,18 @@ struct SupplyRequestsView: View {
                                 .font(.footnote)
                                 .foregroundStyle(.secondary)
                             if let eta = item.options.linkedDriverETA {
-                                Text("Driver ETA: \(eta)")
+                                Text(L10n.format("mobile_factory.ui.driver_eta_eta_2", "\(eta)"))
                                     .font(.footnote)
                             }
                         }
                     }
-                    .navigationTitle("Confirm fulfill")
+                    .navigationTitle("factory_portal.supply_requests.text.confirm_fulfill")
                     .toolbar {
                         ToolbarItem(placement: .cancellationAction) {
-                            Button("Cancel") { fulfillModal = nil }
+                            Button("common.action.cancel") { fulfillModal = nil }
                         }
                         ToolbarItem(placement: .confirmationAction) {
-                            Button("Confirm") {
+                            Button("mobile_factory.ui.confirm") {
                                 let request = item.request
                                 fulfillModal = nil
                                 Task { await runTransition(request: request, action: "FULFILL") }
@@ -404,6 +407,18 @@ struct SupplyRequestsView: View {
     }
 
     @MainActor
+    private func handleQC(request: SupplyRequest, result: String) async {
+        transitioningID = request.id
+        defer { transitioningID = nil }
+        do {
+            _ = try await FactoryService.postSupplyRequestQC(id: request.id, result: result)
+            qcById[request.id] = result
+        } catch {
+            staleMessage = error.localizedDescription
+        }
+    }
+
+    @MainActor
     private func load(background: Bool = false) async {
         if background {
             refreshing = true
@@ -417,6 +432,13 @@ struct SupplyRequestsView: View {
             staleMessage = nil
             error = nil
             lastSyncedAt = Date()
+            var next: [String: String] = [:]
+            for request in requests {
+                if let qc = try? await FactoryService.supplyRequestQC(id: request.id) {
+                    next[request.id] = qc.result
+                }
+            }
+            qcById = next
         } catch {
             let message = error.localizedDescription
             if requests.isEmpty {
@@ -453,9 +475,9 @@ private struct SupplySummaryCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: LabTheme.spacingSM) {
-            Text("Warehouse demand queue")
+            Text("mobile_factory.ui.warehouse_demand_queue")
                 .font(.title2.bold())
-            Text("\(visible) requests in view, \(total) total across the factory queue.")
+            Text(L10n.format("mobile_factory.ui.visible_requests_in_view_total_total_across_the_factory_queue_3", "\(visible)", "\(total)"))
                 .font(.body)
                 .foregroundStyle(.secondary)
             FactoryRuntimeBanner(tone: runtimeTone, message: runtimeStatus)
@@ -519,7 +541,9 @@ private struct SupplyViewModeRow: View {
 private struct SupplyBoard: View {
     let requests: [SupplyRequest]
     let transitioningID: String?
+    let qcById: [String: String]
     let onAction: (SupplyRequest, String) -> Void
+    let onQC: (SupplyRequest, String) -> Void
 
     private let lanes = ["SUBMITTED", "ACKNOWLEDGED", "IN_PRODUCTION", "READY"]
 
@@ -537,11 +561,23 @@ private struct SupplyBoard: View {
                                 Text(request.priority.isEmpty ? "NORMAL" : request.priority)
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
+                                if let qc = qcById[request.id], !qc.isEmpty {
+                                    Text("QC \(qc)")
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                }
                                 ForEach(requestActions(for: request.state), id: \.action) { action in
                                     SupplyActionButton(action: action, transitioning: transitioningID == request.id) {
                                         onAction(request, action.action)
                                     }
                                 }
+                                HStack {
+                                    Button("PASS") { onQC(request, "PASS") }
+                                        .disabled(transitioningID == request.id)
+                                    Button("FAIL", role: .destructive) { onQC(request, "FAIL") }
+                                        .disabled(transitioningID == request.id)
+                                }
+                                .font(.caption)
                             }
                             .frame(width: 220, alignment: .leading)
                             .labCard()
@@ -556,7 +592,9 @@ private struct SupplyBoard: View {
 private struct SupplyRequestCard: View {
     let request: SupplyRequest
     let transitioning: Bool
+    let qcResult: String
     let onAction: (String) -> Void
+    let onQC: (String) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: LabTheme.spacingMD) {
@@ -564,7 +602,7 @@ private struct SupplyRequestCard: View {
                 VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
                     Text(requestLabel(request))
                         .font(.subheadline.bold())
-                    Text("Request \(request.id.prefix(8))")
+                    Text(L10n.format("mobile_factory.ui.request_prefix", "\(request.id.prefix(8))"))
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -572,13 +610,16 @@ private struct SupplyRequestCard: View {
                 VStack(alignment: .trailing, spacing: LabTheme.spacingXS) {
                     SupplyTag(text: request.state, emphasized: true)
                     SupplyTag(text: request.priority.isEmpty ? "NORMAL" : request.priority, emphasized: false)
+                    if slaBadgeVisible(request.slaStatus) {
+                        SupplyTag(text: (request.slaStatus ?? "").replacingOccurrences(of: "_", with: " "), emphasized: request.slaStatus == "BREACHED")
+                    }
                 }
             }
 
             HStack(spacing: LabTheme.spacingSM) {
                 SupplyMetric(label: "Volume", value: supplyVolumeLabel(request.totalVolumeVU))
                 SupplyMetric(label: "Created", value: supplyShortDate(request.createdAt))
-                SupplyMetric(label: "Delivery", value: supplyShortDate(request.requestedDeliveryDate))
+                SupplyMetric(label: "Delivery", value: supplyDeliveryWithSLA(request))
             }
 
             if !request.notes.isEmpty {
@@ -590,9 +631,21 @@ private struct SupplyRequestCard: View {
                     .background(LabTheme.secondaryBackground, in: RoundedRectangle(cornerRadius: LabTheme.radiusMD))
             }
 
+            if !qcResult.isEmpty {
+                Text("QC \(qcResult)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            HStack(spacing: LabTheme.spacingSM) {
+                Button("PASS") { onQC("PASS") }
+                    .disabled(transitioning)
+                Button("FAIL", role: .destructive) { onQC("FAIL") }
+                    .disabled(transitioning)
+            }
+
             let actions = requestActions(for: request.state)
             if actions.isEmpty {
-                Text("No manual action is available for the current state.")
+                Text("mobile_factory.ui.no_manual_action_is_available_for_the_current_state")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             } else {

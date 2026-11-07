@@ -4,7 +4,7 @@ import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { apiFetch } from '@/lib/auth';
 import Icon from '@/components/Icon';
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// -- Types ---------------------------------------------------------------------
 
 interface WarehouseRec {
   warehouse_id: string;
@@ -26,7 +26,7 @@ interface WarehouseAssignmentPanelProps {
   onChange: (ids: string[]) => void;
 }
 
-// ── Component ─────────────────────────────────────────────────────────────────
+// -- Component -----------------------------------------------------------------
 
 export default function WarehouseAssignmentPanel({
   factoryLat,

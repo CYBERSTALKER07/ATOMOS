@@ -10,12 +10,12 @@ struct EarlyCompleteView: View {
     var body: some View {
         Form {
             Section {
-                Text("Approve a driver request to finish the route before all stops are completed.")
+                Text("supplier_portal.residual.text.approve_a_driver_request_to_finish_the_route_before_all_stops_ar")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
             Section("Driver") {
-                TextField("Driver ID", text: $driverId)
+                TextField("supplier_portal.exceptions.early_complete.text.driver_id", text: $driverId)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
             }
@@ -32,7 +32,7 @@ struct EarlyCompleteView: View {
                 Section { Text(success).foregroundStyle(.green) }
             }
         }
-        .navigationTitle("Early route complete")
+        .navigationTitle("supplier_portal.exceptions.early_complete.text.early_route_complete")
         .onChange(of: realtimeHub.reconnectEpoch) { _, _ in
             if busy {
                 busy = false

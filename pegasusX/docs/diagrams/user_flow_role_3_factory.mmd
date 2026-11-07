@@ -1,0 +1,41 @@
+flowchart TD
+    subgraph Phase1["Phase 1: Factory Plant Setup & Equipment Pairing"]
+        F1["Register Factory Production Facility under Supplier Organization"] --> F2["Provision Production Floor Terminals & Industrial Handheld Scanners"]
+        F2 --> F3["Pair Packaging Line Scales, Thermal Label Printers & Environmental IoT Sensors"]
+        F3 --> F4["Onboard Production Line Supervisors, Machine Operators & QA Specialists"]
+        F4 --> F5["Synchronize Local Factory App with PegasusX Core Factory Service"]
+    end
+
+    subgraph Phase2["Phase 2: Work Order Ingestion & BOM Staging"]
+        F5 --> G1["Ingest Inbound Supply Requests from Supplier Central Hub"]
+        G1 --> G2["Explode Bill of Materials (BOM): Calculate Raw Ingredients & Packaging Needs"]
+        G2 --> G3["Scan Raw Material Lot Barcodes to Establish Full Upstream Lineage"]
+        G3 --> G4["Assign Production Schedule to Packaging Lines 1..N based on Throughput"]
+        G4 --> G5["Stage Raw Goods in Pre-Production Holding Area with Active Temperature Tracking"]
+    end
+
+    subgraph Phase3["Phase 3: Production Run & Automated SSCC Serialization"]
+        G5 --> H1["Initiate High-Speed Manufacturing & Packaging Run"]
+        H1 --> H2["Collect Machine IoT Telemetry: Runtime Speeds, Temperatures & Cycle Times"]
+        H2 --> H3["Aggregate Packaged Units into Cases: Print GS1-128 Case Barcodes"]
+        H3 --> H4["Stack Cases onto Standard Wooden Pallets on Automated Palletizer"]
+        H4 --> H5["Generate Unique SSCC-18 Pallet Identifiers & Print Weatherproof Labels"]
+    end
+
+    subgraph Phase4["Phase 4: QA Lab Clearance & Quarantine Gating"]
+        H5 --> J1["QA Laboratory Draws Random Sample from Palletized Batch"]
+        J1 --> J2["Execute Laboratory Testing: Seal Integrity, Weight Tolerances, Microbiology"]
+        J2 --> J3{"QA Lab Certification Passed?"}
+        J3 -- "Defect / Out-of-Spec" --> J4["Apply Red-Tag Quarantine Lock: Block Pallet in Cloud Spanner & WMS"]
+        J4 --> J5["Issue Batch Remediation Incident Ticket & Alert Brand Quality Director"]
+        J3 -- "Passed Inspection" --> J6["Digitally Sign Electronic Certificate of Analysis (CoA)"]
+        J6 --> K1["Release Finished Goods Pallets to Factory Outbound Bay"]
+    end
+
+    subgraph Phase5["Phase 5: Internal Transfer Staging & Line-Haul Dispatch"]
+        K1 --> K2["Generate Factory Internal Transfer Manifest for Central Warehouse DC"]
+        K2 --> K3["Scan SSCC-18 Pallets into Outbound Loading Bay Dock"]
+        K3 --> K4["Inspect Inbound Line-Haul Truck: Complete Yard Gate Clearance"]
+        K4 --> K5["Load Pallets, Apply Tamper-Evident High-Security Bolt Seal & Record Hash"]
+        K5 --> K6(["Pallets Dispatched to Regional Distribution Center"])
+    end

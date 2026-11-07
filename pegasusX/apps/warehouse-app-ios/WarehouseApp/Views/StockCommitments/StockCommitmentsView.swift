@@ -32,11 +32,11 @@ struct StockCommitmentsView: View {
                 }
             }
         }
-        .navigationTitle("Stock Commitments")
+        .navigationTitle("mobile_warehouse.ui.stock_commitments")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button("Refresh", systemImage: "arrow.clockwise") {
+                Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") {
                     Task { await load() }
                 }
                 .disabled(loading)

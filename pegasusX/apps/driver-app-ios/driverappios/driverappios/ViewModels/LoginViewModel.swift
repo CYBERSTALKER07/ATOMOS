@@ -40,6 +40,10 @@ final class LoginViewModel {
         otpCode = String(digits.prefix(6))
     }
 
+    func loginDemoDriver() {
+        TokenStore.shared.save(response: .mock)
+    }
+
     func sendOtp() async {
         let trimmed = phone.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {

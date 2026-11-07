@@ -1,5 +1,7 @@
 package com.pegasus.payload.ui.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.pegasus.payload.data.model.Manifest
+import com.pegasus.payload.R
 
 /**
  * Tactical KPI header row — mirrors iOS ManifestWorkflow volume/stops/zone cards.
@@ -29,9 +32,12 @@ fun ManifestKpiGrid(manifest: Manifest, modifier: Modifier = Modifier) {
             horizontalArrangement = Arrangement.spacedBy(PayloadSpacing.md),
             verticalAlignment = Alignment.Top,
         ) {
-            PayloadStatusChip(status = manifest.state)
+            PayloadProtocolStateCard(
+                state = manifest.state,
+                modifier = Modifier.weight(1f),
+            )
             PayloadKpiTile(
-                label = "PAYLOAD VOLUME",
+                label = stringResource(R.string.mobile_payload_ui_payload_volume),
                 value = "%.1f / %.1f VU".format(total, manifest.maxVolumeVu),
                 modifier = Modifier.weight(1f),
                 footer = {
@@ -49,20 +55,20 @@ fun ManifestKpiGrid(manifest: Manifest, modifier: Modifier = Modifier) {
             horizontalArrangement = Arrangement.spacedBy(PayloadSpacing.md),
         ) {
             PayloadKpiTile(
-                label = "TARGET STOPS",
+                label = stringResource(R.string.mobile_payload_ui_target_stops),
                 value = "${manifest.stopCount} UNITS",
                 modifier = Modifier.weight(1f),
             )
             if (manifest.regionCode.isNotBlank()) {
                 PayloadKpiTile(
-                    label = "DEPLOYMENT ZONE",
+                    label = stringResource(R.string.mobile_payload_ui_deployment_zone),
                     value = manifest.regionCode.uppercase(),
                     modifier = Modifier.weight(1f),
                 )
             }
         }
         Text(
-            "Manifest ${manifest.manifestId.take(8)}",
+            stringResource(R.string.mobile_payload_ui_manifest_take, manifest.manifestId.take(8)),
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

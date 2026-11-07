@@ -2,7 +2,7 @@
 # Usage:
 #   gcloud builds submit --config=cloudbuild.ai-worker.yaml \
 #     --substitutions=_TAG=ssmr-abc123,_REPO=pegasusx-ssmr-images \
-#     --project=pegasus-503013 .
+#     --project=pegasusx-prod-uz .
 substitutions:
   _TAG: ssmr
   _REGION: asia-south1

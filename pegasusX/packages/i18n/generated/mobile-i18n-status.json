@@ -1,0 +1,39 @@
+{
+  "status": "desktop_and_mobile_wired_draft_with_interpolations",
+  "locales": ["en", "ru", "uz"],
+  "catalog_keys": 4190,
+  "placeholder_syntax": "{name}",
+  "native_format": {
+    "android": "%n$s via generate.mjs namedToPositional",
+    "ios": "%n$@ via generate.mjs namedToPositional"
+  },
+  "mobile": {
+    "android_apps_res_wired": 6,
+    "ios_xcodegen_wired": 4,
+    "ios_lproj_synced": ["retailer-app-ios", "driver-app-ios"],
+    "interpolation": {
+      "ios_L10n_format_calls": 328,
+      "android_format_stringResource_calls": 369,
+      "helpers": ["packages/i18n/scripts/templates/L10n.swift → each iOS app"],
+      "residuals": {
+        "data_only_pure_values": 45,
+        "complex_embedded_ui_copy": 37,
+        "too_many_args": 2,
+        "note": "data_only = single raw value displays (IDs/counts) — intentionally not catalogued. complex_arg = nested UI literals / plurals needing ICU plurals or view composition."
+      }
+    },
+    "scripts": [
+      "packages/i18n/scripts/lib/placeholders.mjs",
+      "packages/i18n/scripts/extract-mobile-interpolations.mjs",
+      "packages/i18n/scripts/merge-mobile-interpolations.mjs",
+      "packages/i18n/scripts/wire-mobile-interpolations.mjs",
+      "packages/i18n/scripts/generate.mjs",
+      "packages/i18n/scripts/wire-mobile-resources.mjs"
+    ]
+  },
+  "non_claims": [
+    "Not certified human translation sign-off",
+    "Not ICU plural / stringsdict coverage for embedded yes/no / Active/Inactive / plural-s patterns",
+    "Draft ru/uz for many interpolation templates"
+  ]
+}

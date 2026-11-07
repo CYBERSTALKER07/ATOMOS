@@ -1,0 +1,2 @@
+product_id,warehouse_id,quantity_on_hand,reorder_threshold
+SSMR-SKU-1,ssmr-warehouse-1,82,9

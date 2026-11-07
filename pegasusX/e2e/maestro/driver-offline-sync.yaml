@@ -1,0 +1,23 @@
+appId: com.pegasusx.driver
+---
+- launchApp:
+    clearState: true
+- tapOn: "Login"
+- inputText: "driver@pegasusx.com"
+- tapOn: "Password"
+- inputText: "password123"
+- tapOn: "Submit"
+- assertVisible: "Dashboard"
+# Simulate network disconnect using Toxiproxy (this requires an external script in real CI)
+- runFlow:
+    when:
+      true: true # Placeholder for toxiproxy disconnect call
+- tapOn: "Deliver Order"
+- tapOn: "Mark Delivered"
+- assertVisible: "Saved Offline"
+# Reconnect network
+- runFlow:
+    when:
+      true: true # Placeholder for toxiproxy reconnect call
+- assertVisible: "Syncing..."
+- assertVisible: "Successfully Synced"

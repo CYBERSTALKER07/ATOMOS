@@ -6,6 +6,12 @@ private enum LoginMode {
 }
 
 struct LoginView: View {
+    private enum Field: Hashable {
+        case phone
+        case otp
+        case password
+    }
+
     @Environment(TokenStore.self) private var tokenStore
     @State private var mode: LoginMode = .otp
     @State private var phone = "+998"
@@ -14,13 +20,14 @@ struct LoginView: View {
     @State private var otpSent = false
     @State private var loading = false
     @State private var error: String?
+    @FocusState private var focusedField: Field?
 
     var body: some View {
         VStack(spacing: LabTheme.spacingXXL) {
             Spacer()
 
             VStack(spacing: LabTheme.spacingSM) {
-                Text("Pegasus Factory")
+                Text("mobile_factory.ui.pegasus_factory")
                     .font(.largeTitle.bold())
                 Text(mode == .otp
                      ? "Sign in with your registered phone number."
@@ -31,17 +38,21 @@ struct LoginView: View {
             }
 
             VStack(spacing: LabTheme.spacingLG) {
-                TextField("Phone", text: $phone)
+                TextField("common.field.phone", text: $phone)
                     .textContentType(.telephoneNumber)
                     .keyboardType(.phonePad)
                     .textFieldStyle(.roundedBorder)
+                    .focused($focusedField, equals: .phone)
+                    .submitLabel(mode == .passwordDev ? .next : .send)
                     .disabled(loading || (mode == .otp && otpSent))
 
                 if mode == .otp, otpSent {
-                    TextField("Verification Code", text: $otpCode)
+                    TextField("mobile_factory.ui.verification_code", text: $otpCode)
                         .textContentType(.oneTimeCode)
                         .keyboardType(.numberPad)
                         .textFieldStyle(.roundedBorder)
+                        .focused($focusedField, equals: .otp)
+                        .submitLabel(.go)
                         .disabled(loading)
                         .onChange(of: otpCode) { _, newValue in
                             let filtered = newValue.filter(\.isNumber)
@@ -53,6 +64,8 @@ struct LoginView: View {
                     SecureField("Password", text: $password)
                         .textContentType(.password)
                         .textFieldStyle(.roundedBorder)
+                        .focused($focusedField, equals: .password)
+                        .submitLabel(.go)
                         .disabled(loading)
                 }
             }
@@ -71,7 +84,7 @@ struct LoginView: View {
                         Button {
                             sendOtp()
                         } label: {
-                            Text("Send Code")
+                            Text("mobile_factory.ui.send_code")
                                 .frame(maxWidth: 360, minHeight: 44)
                         }
                         .buttonStyle(.borderedProminent)
@@ -81,17 +94,18 @@ struct LoginView: View {
                         Button {
                             verifyOtp()
                         } label: {
-                            Text("Sign In")
+                            Text("common.action.sign_in")
                                 .frame(maxWidth: 360, minHeight: 44)
                         }
                         .buttonStyle(.borderedProminent)
                         .tint(.primary)
                         .disabled(loading || otpCode.count < 6)
 
-                        Button("Resend code") {
+                        Button("mobile_factory.ui.resend_code") {
                             otpSent = false
                             otpCode = ""
                             FirebaseAuthHelper.shared.resetFlow()
+                            focusedField = .phone
                         }
                         .font(.caption)
                         .disabled(loading)
@@ -100,7 +114,7 @@ struct LoginView: View {
                     Button {
                         passwordLogin()
                     } label: {
-                        Text("Sign In")
+                        Text("common.action.sign_in")
                             .frame(maxWidth: 360, minHeight: 44)
                     }
                     .buttonStyle(.borderedProminent)
@@ -118,8 +132,33 @@ struct LoginView: View {
             Spacer()
         }
         .padding()
+        .defaultFocus($focusedField, .phone)
         .onAppear {
             FirebaseAuthHelper.shared.configure()
+            focusedField = .phone
+        }
+        .onChange(of: otpSent) { _, sent in
+            focusedField = sent ? .otp : .phone
+        }
+        .onSubmit {
+            switch focusedField {
+            case .phone:
+                if mode == .passwordDev {
+                    focusedField = .password
+                } else if !phone.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    sendOtp()
+                }
+            case .otp:
+                if otpCode.count == 6 {
+                    verifyOtp()
+                }
+            case .password:
+                if !phone.isEmpty && !password.isEmpty {
+                    passwordLogin()
+                }
+            case nil:
+                break
+            }
         }
         .overlay {
             if loading {
@@ -133,6 +172,7 @@ struct LoginView: View {
 
     private func storeAuth(_ auth: AuthResponse) {
         tokenStore.store(auth: auth)
+        Task { await PushNotificationManager.shared.uploadStoredTokenIfPossible() }
     }
 
     private func switchMode() {
@@ -142,6 +182,7 @@ struct LoginView: View {
         otpCode = ""
         password = ""
         FirebaseAuthHelper.shared.resetFlow()
+        focusedField = .phone
     }
 
     private func sendOtp() {

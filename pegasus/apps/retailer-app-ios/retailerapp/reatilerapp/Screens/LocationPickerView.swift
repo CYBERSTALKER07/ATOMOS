@@ -75,6 +75,7 @@ struct LocationPickerView: View {
                             .background(.ultraThinMaterial)
                             .clipShape(.circle)
                     }
+                    .accessibilityLabel("Close")
 
                     Spacer()
 
@@ -109,6 +110,7 @@ struct LocationPickerView: View {
                             .clipShape(.circle)
                             .shadow(color: .black.opacity(0.15), radius: 8, y: 4)
                     }
+                    .accessibilityLabel("Current location")
                     .padding(.trailing, 16)
                 }
                 .padding(.bottom, 160)

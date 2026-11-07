@@ -2,7 +2,6 @@ package warehouse
 
 import (
 	"encoding/json"
-	"io"
 	"net/http"
 	"strconv"
 
@@ -16,30 +15,39 @@ import (
 
 // HandleCreateWarehouse serves POST /v1/warehouses
 func (s *Service) HandleCreateWarehouse(w http.ResponseWriter, r *http.Request) {
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		web.JSONError(w, "invalid request body", http.StatusBadRequest)
+	if !s.requireMutationIdempotencyKey(w, r) {
+		return
+	}
+	body, ok := readMutationBody(w, r, 64*1024)
+	if !ok {
 		return
 	}
 	if auth.RejectBodyScopeOverrides(w, r, body) {
+		return
+	}
+	key, handled := s.guardMutationReplay(w, r, body)
+	if handled {
 		return
 	}
 
 	var req Warehouse
 	if err := json.Unmarshal(body, &req); err != nil {
 		web.JSONError(w, "invalid request body", http.StatusBadRequest)
+		s.releaseMutationReplay(r.Context(), key)
 		return
 	}
 
 	supplierID, ok := auth.ResolveSupplierID(r.Context())
 	if !ok || supplierID == "" {
 		web.JSONError(w, "missing supplier scope", http.StatusUnauthorized)
+		s.releaseMutationReplay(r.Context(), key)
 		return
 	}
 	req.SupplierID = supplierID
 
 	if req.Name == "" {
 		web.JSONError(w, "missing required fields: name", http.StatusBadRequest)
+		s.releaseMutationReplay(r.Context(), key)
 		return
 	}
 
@@ -54,6 +62,19 @@ func (s *Service) HandleCreateWarehouse(w http.ResponseWriter, r *http.Request) 
 	if req.DefaultOutOfStockPolicy == "" {
 		req.DefaultOutOfStockPolicy = "REJECT"
 	}
+	if err := stampWarehouseEntity(r.Context(), &req); err != nil {
+		if writeMarketLaw(w, err) {
+			s.releaseMutationReplay(r.Context(), key)
+			return
+		}
+		web.JSONError(w, err.Error(), http.StatusUnprocessableEntity)
+		s.releaseMutationReplay(r.Context(), key)
+		return
+	}
+	if s.rejectUnknownSupplierRegion(w, r.Context(), req.SupplierID, req.RegionID) {
+		s.releaseMutationReplay(r.Context(), key)
+		return
+	}
 
 	emit := func(buf outbox.TxnBuffer) error {
 		return outbox.EmitJSON(r.Context(), buf, events.AggregateWarehouse, req.WarehouseID, events.TopicMain, events.WarehouseEvent{
@@ -64,6 +85,7 @@ func (s *Service) HandleCreateWarehouse(w http.ResponseWriter, r *http.Request) 
 	}
 	if err := s.repo.CreateWarehouse(r.Context(), req, emit); err != nil {
 		web.JSONError(w, "failed to create warehouse: "+err.Error(), http.StatusInternalServerError)
+		s.releaseMutationReplay(r.Context(), key)
 		return
 	}
 
@@ -71,6 +93,8 @@ func (s *Service) HandleCreateWarehouse(w http.ResponseWriter, r *http.Request) 
 		s.cache.Invalidate(r.Context(), warehouseCacheKey(req.WarehouseID), warehousesListCacheKey(req.SupplierID))
 	}
 
+	respBytes, _ := json.Marshal(req)
+	s.storeMutationReplay(r.Context(), key, body, http.StatusCreated, respBytes)
 	web.JSONResponse(w, http.StatusCreated, req)
 }
 
@@ -82,9 +106,21 @@ func (s *Service) HandleGetWarehouse(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if _, ok := auth.FromContext(r.Context()); !ok {
+		web.JSONError(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	wh, err := s.repo.GetWarehouse(r.Context(), warehouseID)
 	if err != nil {
 		web.JSONError(w, "failed to get warehouse: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	allowed := auth.EntitySupplierAllowed(r.Context(), wh.SupplierID) ||
+		auth.HomeNodeMatches(r.Context(), warehouseID, auth.HomeNodeWarehouse)
+	if !allowed {
+		web.JSONError(w, "warehouse_not_found", http.StatusNotFound)
 		return
 	}
 
@@ -93,24 +129,31 @@ func (s *Service) HandleGetWarehouse(w http.ResponseWriter, r *http.Request) {
 
 // HandleUpdateWarehouse serves PUT /v1/warehouses/{warehouseId}
 func (s *Service) HandleUpdateWarehouse(w http.ResponseWriter, r *http.Request) {
+	if !s.requireMutationIdempotencyKey(w, r) {
+		return
+	}
 	warehouseID := chi.URLParam(r, "warehouseId")
 	if warehouseID == "" {
 		web.JSONError(w, "missing warehouseId", http.StatusBadRequest)
 		return
 	}
 
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		web.JSONError(w, "invalid request body", http.StatusBadRequest)
+	body, ok := readMutationBody(w, r, 64*1024)
+	if !ok {
 		return
 	}
 	if auth.RejectBodyScopeOverrides(w, r, body) {
+		return
+	}
+	key, handled := s.guardMutationReplay(w, r, body)
+	if handled {
 		return
 	}
 
 	var req Warehouse
 	if err := json.Unmarshal(body, &req); err != nil {
 		web.JSONError(w, "invalid request body", http.StatusBadRequest)
+		s.releaseMutationReplay(r.Context(), key)
 		return
 	}
 	req.WarehouseID = warehouseID
@@ -118,9 +161,23 @@ func (s *Service) HandleUpdateWarehouse(w http.ResponseWriter, r *http.Request) 
 	supplierID, ok := auth.ResolveSupplierID(r.Context())
 	if !ok || supplierID == "" {
 		web.JSONError(w, "missing supplier scope", http.StatusUnauthorized)
+		s.releaseMutationReplay(r.Context(), key)
 		return
 	}
 	req.SupplierID = supplierID
+	if err := stampWarehouseEntity(r.Context(), &req); err != nil {
+		if writeMarketLaw(w, err) {
+			s.releaseMutationReplay(r.Context(), key)
+			return
+		}
+		web.JSONError(w, err.Error(), http.StatusUnprocessableEntity)
+		s.releaseMutationReplay(r.Context(), key)
+		return
+	}
+	if s.rejectUnknownSupplierRegion(w, r.Context(), req.SupplierID, req.RegionID) {
+		s.releaseMutationReplay(r.Context(), key)
+		return
+	}
 
 	emit := func(buf outbox.TxnBuffer) error {
 		return outbox.EmitJSON(r.Context(), buf, events.AggregateWarehouse, req.WarehouseID, events.TopicMain, events.WarehouseEvent{
@@ -131,6 +188,7 @@ func (s *Service) HandleUpdateWarehouse(w http.ResponseWriter, r *http.Request) 
 	}
 	if err := s.repo.UpdateWarehouse(r.Context(), req, emit); err != nil {
 		web.JSONError(w, "failed to update warehouse: "+err.Error(), http.StatusInternalServerError)
+		s.releaseMutationReplay(r.Context(), key)
 		return
 	}
 
@@ -138,6 +196,8 @@ func (s *Service) HandleUpdateWarehouse(w http.ResponseWriter, r *http.Request) 
 		s.cache.Invalidate(r.Context(), warehouseCacheKey(req.WarehouseID), warehousesListCacheKey(req.SupplierID))
 	}
 
+	respBytes, _ := json.Marshal(req)
+	s.storeMutationReplay(r.Context(), key, body, http.StatusOK, respBytes)
 	web.JSONResponse(w, http.StatusOK, req)
 }
 

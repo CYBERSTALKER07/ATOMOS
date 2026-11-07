@@ -51,6 +51,48 @@ func TestSubscribeShedsOldestWhenRoomExceedsLimit(t *testing.T) {
 	}
 }
 
+func TestConnectionCountIsDistinctSockets(t *testing.T) {
+	t.Parallel()
+
+	hub := NewHubWithLimits("retailer", nil, nil, HubLimits{MaxPerRoom: 0, MaxTotal: 2})
+	conn := &reapTrackingConn{id: "same", sent: make(chan []byte, 1)}
+	hub.Subscribe("retailer:org", conn)
+	hub.Subscribe("supplier-promo:sup-1", conn)
+	if stats := hub.Stats(); stats.Connections != 1 || stats.Rooms != 2 {
+		t.Fatalf("stats=%+v want 1 socket in 2 rooms", stats)
+	}
+	if !hub.HasCapacity() {
+		t.Fatal("one socket must not consume two capacity slots")
+	}
+
+	hub.Subscribe("retailer:other", &reapTrackingConn{id: "other", sent: make(chan []byte, 1)})
+	if hub.HasCapacity() {
+		t.Fatal("second socket should fill MaxTotal")
+	}
+	unsub := hub.Subscribe("supplier-promo:sup-1", conn)
+	unsub()
+	if stats := hub.Stats(); stats.Connections != 2 {
+		t.Fatalf("leaving one room must keep the socket, stats=%+v", stats)
+	}
+}
+
+func TestDeadSendDropsSocketFromEveryRoom(t *testing.T) {
+	t.Parallel()
+
+	hub := NewHubWithLimits("retailer", nil, nil, HubLimits{MaxPerRoom: 0, MaxTotal: 1})
+	dead := newTestConnection("dead")
+	dead.fail = true
+	hub.Subscribe("room:a", dead)
+	hub.Subscribe("room:b", dead)
+	hub.Broadcast(context.Background(), "room:a", []byte("x"))
+	if stats := hub.Stats(); stats.Connections != 0 || stats.Rooms != 0 {
+		t.Fatalf("dead socket should leave every room, stats=%+v", stats)
+	}
+	if !hub.HasCapacity() {
+		t.Fatal("dropped socket must free capacity")
+	}
+}
+
 func TestHasCapacityRespectsMaxTotal(t *testing.T) {
 	t.Parallel()
 

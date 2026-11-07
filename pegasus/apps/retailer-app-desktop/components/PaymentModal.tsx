@@ -17,7 +17,7 @@ import { useWsEvent, type WsMessage } from "../lib/ws";
 import { apiFetch } from "../lib/auth";
 import type { CardCheckoutResponse, PendingPaymentSession, PendingPaymentsResponse } from "../lib/types";
 
-/* ── Types ── */
+/* -- Types -- */
 
 type PaymentEvent = Omit<PaymentRequiredEvent, "available_card_gateways"> & {
   available_card_gateways?: string[];
@@ -77,7 +77,7 @@ function wsMessageToPaymentEvent(msg: WsMessage): PaymentEvent {
   };
 }
 
-/* ── Component ── */
+/* -- Component -- */
 
 export default function PaymentModal() {
   const [event, setEvent] = useState<PaymentEvent | null>(null);
@@ -319,7 +319,9 @@ export default function PaymentModal() {
                   </div>
                 </div>
                 <button
+                  type="button"
                   onClick={dismiss}
+                  aria-label="Dismiss payment modal"
                   className="w-10 h-10 rounded-full hover:bg-[var(--desk-surface-subtle)] flex items-center justify-center transition-colors"
                 >
                   <X size={20} />

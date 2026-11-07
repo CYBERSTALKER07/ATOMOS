@@ -12,12 +12,12 @@ struct ExceptionsList: View {
             ForEach(rows) { row in
                 VStack(alignment: .leading, spacing: 6) {
                     Text(row.orderId).font(.headline)
-                    Text("\(row.kind) · \(row.status)").font(.subheadline)
+                    Text(L10n.format("mobile_supplier.ui.kind_status", "\(row.kind)", "\(row.status)")).font(.subheadline)
                     if let note = row.note, !note.isEmpty { Text(note).font(.caption) }
-                    if let manifestId = row.manifestId { Text("Manifest \(manifestId)").font(.caption) }
+                    if let manifestId = row.manifestId { Text(L10n.format("mobile_supplier.ui.manifest_manifestid_2", "\(manifestId)")).font(.caption) }
                     if resolvableKinds.contains(row.kind.uppercased()) {
                         let key = "\(row.kind):\(row.orderId)"
-                        Button("Resolve") {
+                        Button("mobile_supplier.ui.resolve") {
                             onResolve(row)
                         }
                         .buttonStyle(.borderedProminent)

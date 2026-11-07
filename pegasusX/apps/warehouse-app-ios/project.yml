@@ -19,6 +19,8 @@ settings:
     INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
     TARGETED_DEVICE_FAMILY: "1,2"
     INFOPLIST_KEY_NSCameraUsageDescription: "Scan product barcodes during inbound returns"
+    INFOPLIST_KEY_NSLocationWhenInUseUsageDescription: "Location is used to pin warehouse facilities, navigate orders, and verify geofences."
+    INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription: "Location is used to monitor dispatch, fleet coordinates, and warehouse operations."
     INFOPLIST_KEY_NSUserNotificationsUsageDescription: "Receive warehouse operations alerts"
 targets:
   WarehouseAppIOS:
@@ -30,6 +32,8 @@ targets:
         product: FirebaseAuth
       - package: Firebase
         product: FirebaseCore
+      - package: Firebase
+        product: FirebaseMessaging
     sources:
       - path: WarehouseApp
         excludes:
@@ -38,7 +42,15 @@ targets:
         includes:
           - EANBarcodeScannerView.swift
       - path: ../../packages/mobile-ios-design
+        excludes:
+          - CellApi.swift
+          - MarketPack.swift
+          - StatusStack.swift
     resources:
+      # pegasusx-i18n-generated
+      - path: ../../packages/i18n/generated/ios/en.lproj
+      - path: ../../packages/i18n/generated/ios/ru.lproj
+      - path: ../../packages/i18n/generated/ios/uz.lproj
       - path: WarehouseApp/Assets.xcassets
       - path: WarehouseApp/GoogleService-Info.plist
     info:
@@ -46,10 +58,20 @@ targets:
       properties:
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
+        UIBackgroundModes:
+          - remote-notification
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.pegasusx.warehouse
         INFOPLIST_FILE: WarehouseApp/Info.plist
+        CODE_SIGN_ENTITLEMENTS: WarehouseApp/WarehouseApp.entitlements
+  WarehouseAppTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: WarehouseAppTests
+    dependencies:
+      - target: WarehouseAppIOS
 packages:
   Firebase:
     url: https://github.com/firebase/firebase-ios-sdk

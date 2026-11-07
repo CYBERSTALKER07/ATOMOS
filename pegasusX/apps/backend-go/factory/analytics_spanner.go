@@ -24,7 +24,7 @@ func (s *Service) loadAnalyticsOverview(ctx context.Context) (analyticsOverview,
 		return analyticsOverview{}, fmt.Errorf("spanner unavailable")
 	}
 	factoryID := s.factoryNodeID
-	supplierID := s.supplierID
+	supplierID := s.resolveSupplierScope(ctx)
 	readCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 

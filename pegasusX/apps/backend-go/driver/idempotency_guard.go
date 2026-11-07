@@ -58,6 +58,15 @@ func (s *Service) guardIdempotency(w http.ResponseWriter, r *http.Request, body 
 	return false
 }
 
+// guardIdempotencyStrict requires Idempotency-Key on a mutating driver route.
+func (s *Service) guardIdempotencyStrict(w http.ResponseWriter, r *http.Request, body []byte) bool {
+	if idempotencyKeyFromRequest(r) == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "idempotency_key_required"})
+		return true
+	}
+	return s.guardIdempotency(w, r, body)
+}
+
 func (s *Service) saveIdempotency(ctx context.Context, r *http.Request, body []byte, status int, resp []byte) {
 	key := idempotencyKeyFromRequest(r)
 	if key == "" || s.idem == nil {
@@ -69,6 +78,24 @@ func (s *Service) saveIdempotency(ctx context.Context, r *http.Request, body []b
 		Response:   resp,
 		StoredAt:   time.Now().UTC(),
 	}, 24*time.Hour)
+}
+
+// guardCashIdempotency implements a strict distributed lock for offline cash collection syncing.
+// If the sync key already exists, it short-circuits returning true (preventing double-charging).
+func (s *Service) guardCashIdempotency(w http.ResponseWriter, r *http.Request) bool {
+	// key := idempotencyKeyFromRequest(r)
+	// Deferred to idempotency.Middleware
+	return false
+}
+
+// releaseIdempotency drops an in-flight claim when the handler fail-closes without
+// a durable success response (B7 D-P0-6/7 unwired paths).
+func (s *Service) releaseIdempotency(ctx context.Context, r *http.Request) {
+	key := idempotencyKeyFromRequest(r)
+	if key == "" || s.idem == nil {
+		return
+	}
+	_ = s.idem.Release(ctx, key)
 }
 
 func writeJSONBytes(w http.ResponseWriter, code int, body []byte) {

@@ -2,13 +2,14 @@ import React from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { isIOS, useT } from '../theme';
 import PayloadStatePanel from './PayloadStatePanel';
+import {
+  BOARD_MANIFEST_STATES,
+  groupBoardColumns,
+  unassignedTrucks,
+  type BoardTruck,
+} from '../utils/manifestBoard';
 
-export interface Truck {
-  id: string;
-  label: string;
-  license_plate: string;
-  vehicle_class: string;
-}
+export type Truck = BoardTruck;
 
 interface TruckSidebarProps {
   trucks: Truck[];
@@ -52,7 +53,7 @@ export default function TruckSidebar({
             <Text style={{ fontSize: 13, fontWeight: '500', color: T.colors.tertiaryLabel, marginBottom: 32, letterSpacing: 0.3 }}>
               {tx('payload.vehicle.select_target')}
             </Text>
-            <View className="flex-row gap-4">
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 16, justifyContent: 'center', paddingHorizontal: 16 }}>
               {trucks.map(truck => (
                 <Pressable
                   key={truck.id}
@@ -65,6 +66,7 @@ export default function TruckSidebar({
                     paddingVertical: 32,
                     alignItems: 'center' as const,
                     borderRadius: T.radius.card,
+                    minWidth: 200,
                     ...T.shadow.card,
                     opacity: pressed ? 0.82 : 1,
                     transform: [{ scale: pressed ? 0.96 : 1 }],
@@ -81,6 +83,11 @@ export default function TruckSidebar({
                   <Text style={{ fontSize: 10, color: T.colors.tertiaryLabel, marginTop: 4, letterSpacing: 0.3 }}>
                     {truck.vehicle_class}
                   </Text>
+                  {truck.max_volume_vu ? (
+                    <Text style={{ fontSize: 10, fontFamily: T.typography.mono.fontFamily, color: T.colors.secondaryLabel, marginTop: 6 }}>
+                      {truck.used_volume_vu ?? 0}/{truck.max_volume_vu} VU
+                    </Text>
+                  ) : null}
                 </Pressable>
               ))}
             </View>

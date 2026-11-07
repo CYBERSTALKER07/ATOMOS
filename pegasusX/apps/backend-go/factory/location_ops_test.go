@@ -70,6 +70,7 @@ func TestHandleFactoryLocationPatch_IdempotencyReplay(t *testing.T) {
 func TestHandleFactoryLocationPatch_InvalidJSON(t *testing.T) {
 	svc := &Service{idem: idempotency.NewInMemoryStore()}
 	req := httptest.NewRequest(http.MethodPatch, "/v1/factory/ops/location", bytes.NewReader([]byte(`{`)))
+	req.Header.Set("Idempotency-Key", "test-key-60")
 	req = req.WithContext(context.WithValue(req.Context(), auth.FactoryScopeKey, &auth.FactoryScope{FactoryID: "fac-1"}))
 	rr := httptest.NewRecorder()
 	svc.handleFactoryLocationPatch(rr, req)

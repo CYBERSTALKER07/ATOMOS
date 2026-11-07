@@ -9,4 +9,7 @@ const (
 
 	// H3DispatchResolution matches the ecosystem wire format (resolution 7).
 	H3DispatchResolution = 7
+
+	// MaxWaypointsPerManifest is the stop cap before SplitManifest names A/B chunks.
+	MaxWaypointsPerManifest = 25
 )

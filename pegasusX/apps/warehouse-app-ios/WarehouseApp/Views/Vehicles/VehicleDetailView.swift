@@ -18,11 +18,11 @@ struct VehicleDetailView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if let error, vehicle == nil {
                 ContentUnavailableView {
-                    Label("Error", systemImage: "exclamationmark.triangle")
+                    Label("mobile_warehouse.ui.error", systemImage: "exclamationmark.triangle")
                 } description: {
                     Text(error)
                 } actions: {
-                    Button("Retry") { load() }
+                    Button("common.action.retry") { load() }
                 }
             } else if let vehicle {
                 ScrollView {
@@ -30,7 +30,7 @@ struct VehicleDetailView: View {
                         VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
                             Text(vehicle.label.isEmpty ? vehicle.licensePlate : vehicle.label)
                                 .font(.title2.bold())
-                            Text("\(vehicle.licensePlate) · \(vehicle.vehicleClass) · \(vehicle.capacityVu) VU")
+                            Text(L10n.format("mobile_warehouse.ui.licenseplate_vehicleclass_capacityvu_vu", "\(vehicle.licensePlate)", "\(vehicle.vehicleClass)", "\(vehicle.capacityVu)"))
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                             Text(vehicle.isActive ? (vehicle.status.isEmpty ? "ACTIVE" : vehicle.status) : "UNAVAILABLE")
@@ -75,7 +75,7 @@ struct VehicleDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button("Refresh", systemImage: "arrow.clockwise") { load() }
+                Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") { load() }
             }
         }
         .task(id: vehicleId) { load() }
@@ -134,9 +134,9 @@ struct VehicleAvailabilityPanel: View {
         VStack(alignment: .leading, spacing: LabTheme.spacingMD) {
             HStack {
                 VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
-                    Text("Availability")
+                    Text("warehouse_portal.vehicle_availability_panel.text.availability")
                         .font(.headline)
-                    Text("Dispatch excludes unavailable trucks immediately.")
+                    Text("mobile_warehouse.ui.dispatch_excludes_unavailable_trucks_immediately")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -155,7 +155,7 @@ struct VehicleAvailabilityPanel: View {
             }
 
             if vehicle.isActive {
-                Text("Unavailable reason")
+                Text("warehouse_portal.vehicle_availability_panel.text.unavailable_reason")
                     .font(.caption.bold())
                     .foregroundStyle(.secondary)
                 Picker("Reason", selection: $selectedReason) {
@@ -166,11 +166,11 @@ struct VehicleAvailabilityPanel: View {
                 .pickerStyle(.menu)
 
                 if selectedReason == VehicleUnavailableReasonOption.other.rawValue {
-                    TextField("Custom reason", text: $customNote)
+                    TextField("warehouse_portal.dispatch.text.custom_reason", text: $customNote)
                         .textFieldStyle(.roundedBorder)
                 }
 
-                Button("Mark unavailable") {
+                Button("mobile_warehouse.ui.mark_unavailable") {
                     let note = selectedReason == VehicleUnavailableReasonOption.other.rawValue
                         ? customNote.trimmingCharacters(in: .whitespacesAndNewlines)
                         : nil
@@ -183,7 +183,7 @@ struct VehicleAvailabilityPanel: View {
                             && customNote.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 )
             } else {
-                Button("Restore truck") {
+                Button("mobile_warehouse.ui.restore_truck") {
                     onRestore()
                 }
                 .buttonStyle(.bordered)
@@ -209,7 +209,7 @@ struct FleetTruckDispatchCard: View {
                 VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
                     Text(vehicle.label.isEmpty ? vehicle.licensePlate : vehicle.label)
                         .font(.subheadline.bold())
-                    Text("\(vehicle.licensePlate) · \(vehicle.vehicleClass)")
+                    Text(L10n.format("mobile_warehouse.ui.licenseplate_vehicleclass", "\(vehicle.licensePlate)", "\(vehicle.vehicleClass)"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     if !vehicle.isActive {
@@ -235,11 +235,11 @@ struct FleetTruckDispatchCard: View {
                 .pickerStyle(.menu)
 
                 if selectedReason == VehicleUnavailableReasonOption.other.rawValue {
-                    TextField("Custom reason", text: $customNote)
+                    TextField("warehouse_portal.dispatch.text.custom_reason", text: $customNote)
                         .textFieldStyle(.roundedBorder)
                 }
 
-                Button("Mark unavailable", action: onMarkUnavailable)
+                Button("mobile_warehouse.ui.mark_unavailable", action: onMarkUnavailable)
                     .buttonStyle(.bordered)
                     .disabled(
                         mutating
@@ -247,7 +247,7 @@ struct FleetTruckDispatchCard: View {
                                 && customNote.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     )
             } else {
-                Button("Restore", action: onRestore)
+                Button("mobile_warehouse.ui.restore", action: onRestore)
                     .buttonStyle(.bordered)
                     .disabled(mutating)
             }

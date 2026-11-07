@@ -44,7 +44,7 @@ class CashCollectionUiStateTest {
         )
         assertTrue(state.completed)
         assertFalse(state.isCompleting)
-        assertEquals(45.0, state.distanceM!!, 0.001)
+        assertEquals(45.0, checkNotNull(state.distanceM), 0.001)
     }
 
     @Test
@@ -55,7 +55,7 @@ class CashCollectionUiStateTest {
         )
         assertFalse(state.locationAvailable)
         assertNotNull(state.error)
-        assertTrue(state.error!!.contains("GPS"))
+        assertTrue(state.error.orEmpty().contains("GPS"))
     }
 
     @Test

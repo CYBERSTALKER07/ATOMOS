@@ -1,12 +1,25 @@
 use crate::optimizer_core::{OptimizeCpsatRequest, OptimizeCpsatResponse, SolverStatus, Assignment};
 use crate::scaling;
-use log::{info, warn};
+use log::info;
 use std::time::{Instant, Duration};
 
-/// Solves factory slot assignment deterministically using a greedy heuristic.
+pub const DEFAULT_SOLVER_TIME_LIMIT_MS: u64 = 2_000;
+pub const MAX_SOLVER_TIME_LIMIT_MS: u64 = 60_000;
+pub const MIN_SOLVER_TIME_LIMIT_MS: u64 = 1;
+
+/// Solves factory slot assignment deterministically using a greedy + local-swap heuristic.
+///
+/// Honesty (G6.C / P2-2): this is **not** OR-Tools CP-SAT. The gRPC method name and
+/// `CP_SAT` solver type are legacy aliases; status is always `HEURISTIC` (or
+/// `INFEASIBLE`), never `OPTIMAL`. Prefer contract type `GREEDY_ASSIGN` for new producers.
 pub fn solve(req: OptimizeCpsatRequest) -> OptimizeCpsatResponse {
     let start_time = Instant::now();
-    let time_limit = Duration::from_millis(req.solver_time_limit_ms as u64);
+    let time_limit_ms = if req.solver_time_limit_ms <= 0 {
+        DEFAULT_SOLVER_TIME_LIMIT_MS
+    } else {
+        (req.solver_time_limit_ms as u64).clamp(MIN_SOLVER_TIME_LIMIT_MS, MAX_SOLVER_TIME_LIMIT_MS)
+    };
+    let time_limit = Duration::from_millis(time_limit_ms);
     
     let mut unassigned = Vec::new();
     let mut assignments = Vec::new();
@@ -130,10 +143,12 @@ pub fn solve(req: OptimizeCpsatRequest) -> OptimizeCpsatResponse {
         }
     }
 
-    let status = if unassigned.is_empty() {
-        SolverStatus::Optimal
+    let any_assigned = assignments.iter().any(|a| a.assigned);
+    let status = if !any_assigned && !req.manifest_requirements.is_empty() {
+        SolverStatus::Infeasible
     } else {
-        SolverStatus::Feasible
+        // Greedy factory slot assignment never proves optimality — HEURISTIC (P2-2).
+        SolverStatus::Heuristic
     };
 
     info!("CPSAT solved with status {:?}, unassigned: {}", status, unassigned.len());

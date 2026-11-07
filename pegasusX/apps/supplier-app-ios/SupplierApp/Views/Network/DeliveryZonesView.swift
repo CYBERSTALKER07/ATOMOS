@@ -18,7 +18,7 @@ struct DeliveryZonesView: View {
             }
         }
         .background(SupplierTheme.background)
-        .navigationTitle("Delivery zones")
+        .navigationTitle("supplier_portal.delivery_zones.text.delivery_zones")
         .task { await load() }
     }
 

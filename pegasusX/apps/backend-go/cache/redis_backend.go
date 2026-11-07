@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"net"
 	"sort"
 	"strings"
 	"sync"
@@ -12,6 +13,51 @@ import (
 
 	"github.com/redis/go-redis/v9"
 )
+
+type redisTelemetryHook struct{}
+
+func (redisTelemetryHook) DialHook(next redis.DialHook) redis.DialHook {
+	return func(ctx context.Context, network, addr string) (net.Conn, error) {
+		start := time.Now()
+		conn, err := next(ctx, network, addr)
+		RecordCommandDuration("dial", time.Since(start), err)
+		return conn, err
+	}
+}
+
+func (redisTelemetryHook) ProcessHook(next redis.ProcessHook) redis.ProcessHook {
+	return func(ctx context.Context, cmd redis.Cmder) error {
+		start := time.Now()
+		err := next(ctx, cmd)
+		if cmd != nil {
+			RecordCommandDuration(cmd.Name(), time.Since(start), err)
+		}
+		return err
+	}
+}
+
+func (redisTelemetryHook) ProcessPipelineHook(next redis.ProcessPipelineHook) redis.ProcessPipelineHook {
+	return func(ctx context.Context, cmds []redis.Cmder) error {
+		start := time.Now()
+		err := next(ctx, cmds)
+		RecordCommandDuration("pipeline", time.Since(start), err)
+		return err
+	}
+}
+
+// extractClusterSlotTag returns the hash tag substring inside {...} if present,
+// or the full key when untagged. Grouping multi-key operations by slot tag prevents
+// CROSSSLOT errors in Redis Cluster deployments (redis-clustering).
+func extractClusterSlotTag(key string) string {
+	start := strings.IndexByte(key, '{')
+	if start >= 0 {
+		end := strings.IndexByte(key[start+1:], '}')
+		if end > 0 {
+			return key[start+1 : start+1+end]
+		}
+	}
+	return key
+}
 
 // RedisBackend binds Cache Backend to a Redis client.
 type RedisBackend struct {
@@ -24,9 +70,11 @@ func NewRedisBackend(cfg RedisConfig) (*RedisBackend, error) {
 	if trimmed == "" {
 		return nil, fmt.Errorf("redis backend: addr required")
 	}
+	cfg.applyDefaults()
 
 	opts := &redis.Options{
 		Addr:            trimmed,
+		Username:        strings.TrimSpace(cfg.Username),
 		Password:        cfg.Password,
 		DB:              cfg.DB,
 		PoolSize:        cfg.PoolSize,
@@ -38,6 +86,9 @@ func NewRedisBackend(cfg RedisConfig) (*RedisBackend, error) {
 		MaxRetries:      cfg.MaxRetries,
 		MinRetryBackoff: cfg.MinRetryBackoff,
 		MaxRetryBackoff: cfg.MaxRetryBackoff,
+	}
+	if cfg.Protocol == 2 || cfg.Protocol == 3 {
+		opts.Protocol = cfg.Protocol
 	}
 
 	if cfg.TLSEnabled {
@@ -61,6 +112,7 @@ func NewRedisBackend(cfg RedisConfig) (*RedisBackend, error) {
 	}
 
 	client := redis.NewClient(opts)
+	client.AddHook(redisTelemetryHook{})
 	return &RedisBackend{client: client}, nil
 }
 
@@ -113,7 +165,92 @@ func (r *RedisBackend) Delete(ctx context.Context, keys ...string) error {
 	if r == nil || r.client == nil || len(keys) == 0 {
 		return nil
 	}
-	return r.client.Del(ctx, keys...).Err()
+	if len(keys) == 1 {
+		return r.client.Del(ctx, keys[0]).Err()
+	}
+	// Group by Redis Cluster hash tag so multi-key DEL never triggers CROSSSLOT.
+	groups := make(map[string][]string)
+	for _, k := range keys {
+		if strings.TrimSpace(k) == "" {
+			continue
+		}
+		tag := extractClusterSlotTag(k)
+		groups[tag] = append(groups[tag], k)
+	}
+	if len(groups) == 0 {
+		return nil
+	}
+	if len(groups) == 1 {
+		for _, grp := range groups {
+			return r.client.Del(ctx, grp...).Err()
+		}
+	}
+	_, err := r.client.Pipelined(ctx, func(pipe redis.Pipeliner) error {
+		for _, grp := range groups {
+			pipe.Del(ctx, grp...)
+		}
+		return nil
+	})
+	return err
+}
+
+// MGet fetches multiple keys in a single pipelined round-trip while avoiding CROSSSLOT errors.
+func (r *RedisBackend) MGet(ctx context.Context, keys ...string) (map[string][]byte, error) {
+	if r == nil || r.client == nil || len(keys) == 0 {
+		return map[string][]byte{}, nil
+	}
+	cmds := make(map[string]*redis.StringCmd, len(keys))
+	_, err := r.client.Pipelined(ctx, func(pipe redis.Pipeliner) error {
+		for _, k := range keys {
+			if strings.TrimSpace(k) == "" {
+				continue
+			}
+			cmds[k] = pipe.Get(ctx, k)
+		}
+		return nil
+	})
+	if err != nil && err != redis.Nil {
+		return nil, err
+	}
+	out := make(map[string][]byte, len(cmds))
+	for k, cmd := range cmds {
+		val, getErr := cmd.Bytes()
+		if getErr == nil {
+			out[k] = val
+		}
+	}
+	return out, nil
+}
+
+// PublishMany publishes multiple messages to a Pub/Sub channel in a single pipeline round-trip.
+func (r *RedisBackend) PublishMany(ctx context.Context, channel string, payloads ...[]byte) error {
+	if r == nil || r.client == nil || len(payloads) == 0 {
+		return nil
+	}
+	if len(payloads) == 1 {
+		return r.client.Publish(ctx, channel, payloads[0]).Err()
+	}
+	_, err := r.client.Pipelined(ctx, func(pipe redis.Pipeliner) error {
+		for _, p := range payloads {
+			pipe.Publish(ctx, channel, p)
+		}
+		return nil
+	})
+	return err
+}
+
+func (r *RedisBackend) IncrBy(ctx context.Context, key string, amount int64) (int64, error) {
+	if r == nil || r.client == nil {
+		return 0, nil
+	}
+	return r.client.IncrBy(ctx, key, amount).Result()
+}
+
+func (r *RedisBackend) DecrBy(ctx context.Context, key string, amount int64) (int64, error) {
+	if r == nil || r.client == nil {
+		return 0, nil
+	}
+	return r.client.DecrBy(ctx, key, amount).Result()
 }
 
 func (r *RedisBackend) Publish(ctx context.Context, channel string, payload []byte) error {
@@ -215,5 +352,165 @@ func (r *RedisBackend) Subscribe(ctx context.Context, channel string) (<-chan []
 
 // PoolStats returns the underlying Redis connection pool statistics.
 func (r *RedisBackend) PoolStats() *redis.PoolStats {
+	if r == nil || r.client == nil {
+		return nil
+	}
 	return r.client.PoolStats()
 }
+
+// ── Hash Support ─────────────────────────────────────────────────────────────
+
+func (r *RedisBackend) HGet(ctx context.Context, key, field string) ([]byte, bool, error) {
+	if r == nil || r.client == nil {
+		return nil, false, nil
+	}
+	val, err := r.client.HGet(ctx, key, field).Bytes()
+	if err == redis.Nil {
+		return nil, false, nil
+	}
+	if err != nil {
+		return nil, false, err
+	}
+	return val, true, nil
+}
+
+func (r *RedisBackend) HSet(ctx context.Context, key, field string, value []byte) error {
+	if r == nil || r.client == nil {
+		return nil
+	}
+	return r.client.HSet(ctx, key, field, value).Err()
+}
+
+func (r *RedisBackend) HGetAll(ctx context.Context, key string) (map[string][]byte, error) {
+	if r == nil || r.client == nil {
+		return nil, nil
+	}
+	res, err := r.client.HGetAll(ctx, key).Result()
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[string][]byte, len(res))
+	for k, v := range res {
+		out[k] = []byte(v)
+	}
+	return out, nil
+}
+
+func (r *RedisBackend) HDel(ctx context.Context, key string, fields ...string) error {
+	if r == nil || r.client == nil || len(fields) == 0 {
+		return nil
+	}
+	return r.client.HDel(ctx, key, fields...).Err()
+}
+
+// ── Set Support ──────────────────────────────────────────────────────────────
+
+func (r *RedisBackend) SAdd(ctx context.Context, key string, members ...string) error {
+	if r == nil || r.client == nil || len(members) == 0 {
+		return nil
+	}
+	args := make([]any, len(members))
+	for i, m := range members {
+		args[i] = m
+	}
+	return r.client.SAdd(ctx, key, args...).Err()
+}
+
+func (r *RedisBackend) SMembers(ctx context.Context, key string) ([]string, error) {
+	if r == nil || r.client == nil {
+		return nil, nil
+	}
+	return r.client.SMembers(ctx, key).Result()
+}
+
+func (r *RedisBackend) SRem(ctx context.Context, key string, members ...string) error {
+	if r == nil || r.client == nil || len(members) == 0 {
+		return nil
+	}
+	args := make([]any, len(members))
+	for i, m := range members {
+		args[i] = m
+	}
+	return r.client.SRem(ctx, key, args...).Err()
+}
+
+// ── Sorted Set Support ───────────────────────────────────────────────────────
+
+func (r *RedisBackend) ZAdd(ctx context.Context, key string, score float64, member string) error {
+	if r == nil || r.client == nil {
+		return nil
+	}
+	return r.client.ZAdd(ctx, key, redis.Z{Score: score, Member: member}).Err()
+}
+
+func (r *RedisBackend) ZRangeByScore(ctx context.Context, key string, min, max float64, offset, count int64) ([]string, error) {
+	if r == nil || r.client == nil {
+		return nil, nil
+	}
+	opt := &redis.ZRangeBy{
+		Min:    fmt.Sprintf("%f", min),
+		Max:    fmt.Sprintf("%f", max),
+		Offset: offset,
+		Count:  count,
+	}
+	return r.client.ZRangeByScore(ctx, key, opt).Result()
+}
+
+func (r *RedisBackend) ZRemRangeByScore(ctx context.Context, key string, min, max float64) (int64, error) {
+	if r == nil || r.client == nil {
+		return 0, nil
+	}
+	return r.client.ZRemRangeByScore(ctx, key, fmt.Sprintf("%f", min), fmt.Sprintf("%f", max)).Result()
+}
+
+func (r *RedisBackend) ZCard(ctx context.Context, key string) (int64, error) {
+	if r == nil || r.client == nil {
+		return 0, nil
+	}
+	return r.client.ZCard(ctx, key).Result()
+}
+
+// ── Scan Support ─────────────────────────────────────────────────────────────
+
+func (r *RedisBackend) Scan(ctx context.Context, cursor uint64, match string, count int64) ([]string, uint64, error) {
+	if r == nil || r.client == nil {
+		return nil, 0, nil
+	}
+	return r.client.Scan(ctx, cursor, match, count).Result()
+}
+
+func (r *RedisBackend) HScan(ctx context.Context, key string, cursor uint64, match string, count int64) ([]string, uint64, error) {
+	if r == nil || r.client == nil {
+		return nil, 0, nil
+	}
+	return r.client.HScan(ctx, key, cursor, match, count).Result()
+}
+
+// ── Pipelining Support (redis-connections) ───────────────────────────────────
+
+func (r *RedisBackend) Pipelined(ctx context.Context, fn func(pipe redis.Pipeliner) error) error {
+	if r == nil || r.client == nil {
+		return nil
+	}
+	_, err := r.client.Pipelined(ctx, fn)
+	return err
+}
+
+// ── Diagnostics & Triage (redis-observability) ────────────────────────────────
+
+func (r *RedisBackend) SlowLog(ctx context.Context, count int64) ([]redis.SlowLog, error) {
+	if r == nil || r.client == nil {
+		return nil, nil
+	}
+	return r.client.SlowLogGet(ctx, count).Result()
+}
+
+func (r *RedisBackend) ServerInfo(ctx context.Context, section ...string) (string, error) {
+	if r == nil || r.client == nil {
+		return "", nil
+	}
+	return r.client.Info(ctx, section...).Result()
+}
+
+var _ EnterpriseBackend = (*RedisBackend)(nil)
+

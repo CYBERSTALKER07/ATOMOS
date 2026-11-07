@@ -2,6 +2,7 @@ package catalog
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -9,8 +10,14 @@ import (
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/promotion"
+)
+
+const (
+	catalogCategoriesCacheTTL = 60 * time.Second
+	catalogProductsCacheTTL   = 30 * time.Second
 )
 
 // Service implements catalog business logic. Handlers call service; service
@@ -21,6 +28,34 @@ type Service struct {
 	log        *slog.Logger
 	promotions *promotion.Service
 	stock      *StockEnricher
+	globalHook ProductUpsertHook
+	idem       idempotency.Store
+}
+
+// ProductUpsertHook is invoked after successful product create/update (GlobalProducts).
+type ProductUpsertHook interface {
+	OnProductUpserted(ctx context.Context, productID, supplierID, name, barcode string, priceMinor int64, currency string, unitsPerPack int64) error
+}
+
+// SetGlobalProductHook wires the optional GlobalProducts linker.
+func (s *Service) SetGlobalProductHook(h ProductUpsertHook) {
+	s.globalHook = h
+}
+
+// SetIdempotencyStore wires the shared idempotency store used to honor Idempotency-Key.
+func (s *Service) SetIdempotencyStore(store idempotency.Store) {
+	if s == nil {
+		return
+	}
+	s.idem = store
+}
+
+// IdempotencyStore exposes the configured store.
+func (s *Service) IdempotencyStore() idempotency.Store {
+	if s == nil {
+		return nil
+	}
+	return s.idem
 }
 
 // NewService creates a catalog service with the given dependencies.
@@ -28,8 +63,26 @@ func NewService(repo Repository, c *cache.Cache, log *slog.Logger, promotions *p
 	return &Service{repo: repo, cache: c, log: log, promotions: promotions, stock: stock}
 }
 
-// ListCategories returns all categories for a supplier.
+// ListCategories returns all categories for a supplier, coalescing concurrent reads via singleflight cache.
 func (s *Service) ListCategories(ctx context.Context, supplierID string) ([]Category, error) {
+	if s.cache != nil && supplierID != "" {
+		raw, err := s.cache.GetOrLoad(ctx, "catalog:categories:"+supplierID, catalogCategoriesCacheTTL, func(ctx context.Context) ([]byte, error) {
+			cats, err := s.repo.ListCategories(ctx, supplierID)
+			if err != nil {
+				return nil, err
+			}
+			if cats == nil {
+				cats = []Category{}
+			}
+			return json.Marshal(cats)
+		})
+		if err == nil && len(raw) > 0 {
+			var cached []Category
+			if uerr := json.Unmarshal(raw, &cached); uerr == nil {
+				return cached, nil
+			}
+		}
+	}
 	cats, err := s.repo.ListCategories(ctx, supplierID)
 	if err != nil {
 		return nil, fmt.Errorf("list categories: %w", err)
@@ -45,9 +98,24 @@ func (s *Service) GetCategory(ctx context.Context, categoryID string) (*Category
 	return s.repo.GetCategory(ctx, categoryID)
 }
 
-// CreateCategory adds a new category and invalidates the cache.
+// CreateCategory adds a new category, emits CATEGORY_CREATED, and invalidates the cache.
 func (s *Service) CreateCategory(ctx context.Context, cat Category) error {
-	if err := s.repo.CreateCategory(ctx, cat); err != nil {
+	emit := func(txn outbox.TxnBuffer) error {
+		catEvt := events.CategoryEvent{
+			BaseEvent: events.BaseEvent{
+				Type:      events.EventCategoryCreated,
+				Timestamp: time.Now().UTC().Format(time.RFC3339Nano),
+			},
+			CategoryID:       cat.CategoryID,
+			SupplierID:       cat.SupplierID,
+			Name:             cat.Name,
+			ParentCategoryID: cat.ParentCategoryID,
+			IconKey:          cat.IconKey,
+			SortOrder:        cat.SortOrder,
+		}
+		return outbox.EmitJSON(ctx, txn, events.AggregateCategory, cat.CategoryID, events.TopicMain, catEvt)
+	}
+	if err := s.repo.CreateCategory(ctx, cat, emit); err != nil {
 		return err
 	}
 	if s.cache != nil {
@@ -68,7 +136,36 @@ type RetailerProduct struct {
 }
 
 // ListProducts returns products for a supplier, optionally filtered.
+// Active supplier catalogs are cached under "catalog:products:<supplierID>" with singleflight
+// request coalescing so thousands of concurrent retailers do not stampede Spanner.
 func (s *Service) ListProducts(ctx context.Context, supplierID, categoryID string, activeOnly bool) ([]Product, error) {
+	if activeOnly && s.cache != nil && supplierID != "" {
+		raw, err := s.cache.GetOrLoad(ctx, "catalog:products:"+supplierID, catalogProductsCacheTTL, func(ctx context.Context) ([]byte, error) {
+			allActive, err := s.repo.ListProducts(ctx, supplierID, "", true)
+			if err != nil {
+				return nil, err
+			}
+			if allActive == nil {
+				allActive = []Product{}
+			}
+			return json.Marshal(allActive)
+		})
+		if err == nil && len(raw) > 0 {
+			var allActive []Product
+			if uerr := json.Unmarshal(raw, &allActive); uerr == nil {
+				if categoryID == "" {
+					return allActive, nil
+				}
+				filtered := make([]Product, 0, len(allActive))
+				for _, p := range allActive {
+					if p.CategoryID == categoryID {
+						filtered = append(filtered, p)
+					}
+				}
+				return filtered, nil
+			}
+		}
+	}
 	products, err := s.repo.ListProducts(ctx, supplierID, categoryID, activeOnly)
 	if err != nil {
 		return nil, fmt.Errorf("list products: %w", err)
@@ -89,8 +186,8 @@ func (s *Service) ListProductsForRetailer(ctx context.Context, supplierID, retai
 }
 
 // ListProductsDiscovery returns active catalog rows across suppliers for retailer browse surfaces.
-func (s *Service) ListProductsDiscovery(ctx context.Context, retailerID, categoryID string, limit, offset int64) ([]RetailerProduct, error) {
-	products, err := s.repo.ListDiscoverableProducts(ctx, categoryID, limit, offset)
+func (s *Service) ListProductsDiscovery(ctx context.Context, retailerID, categoryID, marketCode string, limit, offset int64) ([]RetailerProduct, error) {
+	products, err := s.repo.ListDiscoverableProducts(ctx, categoryID, marketCode, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("list discoverable products: %w", err)
 	}
@@ -109,25 +206,38 @@ func (s *Service) enrichProductsForRetailer(ctx context.Context, retailerID stri
 
 	if s.promotions != nil && retailerID != "" {
 		promosBySupplier := make(map[string][]promotion.Promotion)
+		productIDsBySupplier := make(map[string][]string)
+		for _, p := range products {
+			if p.SupplierID != "" && p.ProductID != "" {
+				productIDsBySupplier[p.SupplierID] = append(productIDsBySupplier[p.SupplierID], p.ProductID)
+			}
+		}
+		overridesBySupplier := make(map[string]map[string]int64, len(productIDsBySupplier))
+		for sid, pids := range productIDsBySupplier {
+			promos, err := s.promotions.ActiveForSupplier(ctx, sid)
+			if err != nil {
+				return nil, fmt.Errorf("active promotions for supplier %s: %w", sid, err)
+			}
+			promosBySupplier[sid] = promos
+
+			overrides, err := s.promotions.ResolveListPrices(ctx, sid, retailerID, pids)
+			if err != nil {
+				return nil, fmt.Errorf("resolve retailer price overrides for supplier %s: %w", sid, err)
+			}
+			overridesBySupplier[sid] = overrides
+		}
+
 		now := s.promotions.Now()
 		for i, p := range products {
-			promos, ok := promosBySupplier[p.SupplierID]
-			if !ok {
-				var err error
-				promos, err = s.promotions.ActiveForSupplier(ctx, p.SupplierID)
-				if err != nil {
-					return nil, fmt.Errorf("active promotions for supplier %s: %w", p.SupplierID, err)
-				}
-				promosBySupplier[p.SupplierID] = promos
-			}
+			promos := promosBySupplier[p.SupplierID]
 			listPrice := p.PriceMinor
 			isOverride := false
-			resolved, overridden, err := s.promotions.ResolveListPrice(ctx, p.SupplierID, retailerID, p.ProductID, p.PriceMinor)
-			if err != nil {
-				return nil, fmt.Errorf("resolve retailer price override: %w", err)
+			if supOverrides, ok := overridesBySupplier[p.SupplierID]; ok {
+				if overridePrice, hasOverride := supOverrides[p.ProductID]; hasOverride && overridePrice > 0 {
+					listPrice = overridePrice
+					isOverride = true
+				}
 			}
-			listPrice = resolved
-			isOverride = overridden
 			var offer promotion.ProductOffer
 			if isOverride && listPrice < p.PriceMinor {
 				sale := listPrice
@@ -163,14 +273,55 @@ func (s *Service) enrichProductsForRetailer(ctx context.Context, retailerID stri
 	return out, nil
 }
 
-// GetProduct returns a single product.
+// GetProduct returns a single product, coalescing concurrent reads via singleflight cache.
 func (s *Service) GetProduct(ctx context.Context, productID string) (*Product, error) {
+	if s.cache != nil && productID != "" {
+		raw, err := s.cache.GetOrLoad(ctx, "catalog:product:"+productID, catalogProductsCacheTTL, func(ctx context.Context) ([]byte, error) {
+			p, err := s.repo.GetProduct(ctx, productID)
+			if err != nil {
+				return nil, err
+			}
+			return json.Marshal(p)
+		})
+		if err == nil && len(raw) > 0 {
+			var cached Product
+			if uerr := json.Unmarshal(raw, &cached); uerr == nil {
+				return &cached, nil
+			}
+		}
+	}
 	return s.repo.GetProduct(ctx, productID)
 }
 
-// CreateProduct adds a new product, emits PRODUCT_HANDLING_UPDATED, and invalidates the cache.
+// CreateProduct adds a new product, emits PRODUCT_CREATED and PRODUCT_HANDLING_UPDATED, and invalidates the cache.
 func (s *Service) CreateProduct(ctx context.Context, p Product) error {
 	emit := func(txn outbox.TxnBuffer) error {
+		createdEvt := events.ProductEvent{
+			BaseEvent: events.BaseEvent{
+				Type:      events.EventProductCreated,
+				Timestamp: time.Now().UTC().Format(time.RFC3339Nano),
+			},
+			ProductID:         p.ProductID,
+			SupplierID:        p.SupplierID,
+			HandlingClass:     string(p.HandlingClass),
+			RequiresColdChain: p.RequiresColdChain,
+			IsHazardous:       p.IsHazardous,
+			IsPerishable:      p.IsPerishable,
+			StorageTempMinC:   p.StorageTempMinC,
+			StorageTempMaxC:   p.StorageTempMaxC,
+			Name:              p.Name,
+			CategoryID:        p.CategoryID,
+			PriceMinor:        p.PriceMinor,
+			Currency:          p.Currency,
+			StockQuantity:     p.StockQuantity,
+			Unit:              p.Unit,
+			Barcode:           p.Barcode,
+			IsActive:          p.IsActive,
+			Version:           1,
+		}
+		if err := outbox.EmitJSON(ctx, txn, events.AggregateProduct, p.ProductID, events.TopicMain, createdEvt); err != nil {
+			return err
+		}
 		return outbox.EmitJSON(ctx, txn, events.AggregateProduct, p.ProductID, events.TopicMain, productHandlingEvent(p))
 	}
 	if err := s.repo.CreateProduct(ctx, p, emit); err != nil {
@@ -179,6 +330,7 @@ func (s *Service) CreateProduct(ctx context.Context, p Product) error {
 	if s.cache != nil {
 		s.cache.Invalidate(ctx, "catalog:products:"+p.SupplierID)
 	}
+	s.notifyGlobalHook(ctx, p)
 	return nil
 }
 
@@ -210,10 +362,62 @@ func (s *Service) ListCategorySuppliers(ctx context.Context, categoryID string) 
 	return suppliers, nil
 }
 
-// UpdateProduct modifies an existing product with optimistic concurrency and emits PRODUCT_HANDLING_UPDATED.
+// UpdateProduct modifies an existing product with optimistic concurrency and emits lifecycle outbox events.
 func (s *Service) UpdateProduct(ctx context.Context, p Product) error {
+	prev, _ := s.repo.GetProduct(ctx, p.ProductID)
+	var prevPrice int64
+	if prev != nil {
+		prevPrice = prev.PriceMinor
+	}
+
 	emit := func(txn outbox.TxnBuffer) error {
-		return outbox.EmitJSON(ctx, txn, events.AggregateProduct, p.ProductID, events.TopicMain, productHandlingEvent(p))
+		eventType := events.EventProductUpdated
+		if prev != nil && prev.PriceMinor != p.PriceMinor {
+			eventType = events.EventProductPriceChanged
+		}
+		evt := events.ProductEvent{
+			BaseEvent: events.BaseEvent{
+				Type:      eventType,
+				Timestamp: time.Now().UTC().Format(time.RFC3339Nano),
+			},
+			ProductID:          p.ProductID,
+			SupplierID:         p.SupplierID,
+			HandlingClass:      string(p.HandlingClass),
+			RequiresColdChain:  p.RequiresColdChain,
+			IsHazardous:        p.IsHazardous,
+			IsPerishable:       p.IsPerishable,
+			StorageTempMinC:    p.StorageTempMinC,
+			StorageTempMaxC:    p.StorageTempMaxC,
+			Name:               p.Name,
+			CategoryID:         p.CategoryID,
+			PriceMinor:         p.PriceMinor,
+			PreviousPriceMinor: prevPrice,
+			Currency:           p.Currency,
+			StockQuantity:      p.StockQuantity,
+			Unit:               p.Unit,
+			Barcode:            p.Barcode,
+			IsActive:           p.IsActive,
+			Version:            p.Version + 1,
+		}
+		if err := outbox.EmitJSON(ctx, txn, events.AggregateProduct, p.ProductID, events.TopicMain, evt); err != nil {
+			return err
+		}
+
+		if prev != nil && prev.IsActive && !p.IsActive {
+			deactEvt := evt
+			deactEvt.BaseEvent.Type = events.EventProductDeactivated
+			deactEvt.BaseEvent.Timestamp = time.Now().UTC().Format(time.RFC3339Nano)
+			if err := outbox.EmitJSON(ctx, txn, events.AggregateProduct, p.ProductID, events.TopicMain, deactEvt); err != nil {
+				return err
+			}
+		}
+
+		if prev == nil || prev.HandlingClass != p.HandlingClass || prev.RequiresColdChain != p.RequiresColdChain || prev.IsHazardous != p.IsHazardous || prev.IsPerishable != p.IsPerishable {
+			if err := outbox.EmitJSON(ctx, txn, events.AggregateProduct, p.ProductID, events.TopicMain, productHandlingEvent(p)); err != nil {
+				return err
+			}
+		}
+		return nil
 	}
 	if err := s.repo.UpdateProduct(ctx, p, emit); err != nil {
 		return err
@@ -224,7 +428,23 @@ func (s *Service) UpdateProduct(ctx context.Context, p Product) error {
 			"catalog:product:"+p.ProductID,
 		)
 	}
+	s.notifyGlobalHook(ctx, p)
 	return nil
+}
+
+func (s *Service) notifyGlobalHook(ctx context.Context, p Product) {
+	if s.globalHook == nil {
+		return
+	}
+	var pack int64
+	if p.UnitsPerPack != nil {
+		pack = *p.UnitsPerPack
+	}
+	if err := s.globalHook.OnProductUpserted(ctx, p.ProductID, p.SupplierID, p.Name, p.Barcode, p.PriceMinor, p.Currency, pack); err != nil {
+		if s.log != nil {
+			s.log.WarnContext(ctx, "global products hook failed", "product_id", p.ProductID, "err", err)
+		}
+	}
 }
 
 func productHandlingEvent(p Product) events.ProductEvent {

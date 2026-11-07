@@ -280,13 +280,26 @@ func isBenignDDLConflict(err error) bool {
 		return false
 	}
 	switch st.Code() {
-	case codes.AlreadyExists, codes.FailedPrecondition:
+	case codes.AlreadyExists:
 		return true
+	case codes.NotFound:
+		msg := strings.ToLower(st.Message())
+		return strings.Contains(msg, "index not found") ||
+			strings.Contains(msg, "table not found")
+	case codes.FailedPrecondition:
+		msg := strings.ToLower(st.Message())
+		return strings.Contains(msg, "already exists") ||
+			strings.Contains(msg, "duplicate name in schema") ||
+			strings.Contains(msg, "duplicate") ||
+			strings.Contains(msg, "index not found") ||
+			strings.Contains(msg, "table not found")
 	case codes.InvalidArgument:
 		msg := strings.ToLower(st.Message())
 		return strings.Contains(msg, "already exists") ||
 			strings.Contains(msg, "duplicate") ||
-			strings.Contains(msg, "already has a constraint")
+			strings.Contains(msg, "already has a constraint") ||
+			strings.Contains(msg, "index not found") ||
+			strings.Contains(msg, "table not found")
 	default:
 		return false
 	}

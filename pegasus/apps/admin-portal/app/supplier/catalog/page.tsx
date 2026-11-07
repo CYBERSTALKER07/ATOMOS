@@ -250,7 +250,7 @@ export default function CatalogDashboard() {
         ))}
       </div>
 
-      {/* ─── Category Filter Chips ─── */}
+      {/* --- Category Filter Chips --- */}
       {categoryOptions.length > 0 && (
         <div className="flex gap-2 mb-8 flex-wrap">
           <button
@@ -304,7 +304,7 @@ export default function CatalogDashboard() {
         <SupplierPromotionForm availableSkus={availableSkus} />
       </div>
 
-      {/* ─── Product Ledger ─── */}
+      {/* --- Product Ledger --- */}
       <div className="mt-10 rounded-2xl overflow-hidden" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
         <div className="px-6 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid var(--border)' }}>
           <h3 className="text-base font-light tracking-tight" style={{ color: 'var(--foreground)' }}>Active Product Ledger</h3>
@@ -440,7 +440,7 @@ export default function CatalogDashboard() {
         )}
       </div>
 
-      {/* ─── Edit Product Modal ─── */}
+      {/* --- Edit Product Modal --- */}
       {editProduct && (
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.5)' }}>
           <div className="w-full max-w-lg rounded-2xl p-6 m-4 max-h-[90vh] overflow-y-auto" style={{ background: 'var(--surface)', color: 'var(--foreground)' }}>
@@ -457,8 +457,10 @@ export default function CatalogDashboard() {
 
             <div className="space-y-4">
               <div>
-                <label className="text-[11px] font-medium block mb-1" style={{ color: 'var(--muted)' }}>Name</label>
+                <label htmlFor="catalog-edit-name" className="text-[11px] font-medium block mb-1" style={{ color: 'var(--muted)' }}>Name</label>
                 <input
+                  id="catalog-edit-name"
+                  aria-label="Name"
                   className="w-full p-3 rounded-lg text-sm"
                   style={{ background: 'var(--background)', border: '1px solid var(--border)', color: 'var(--foreground)' }}
                   value={(editForm.name as string) || ''}
@@ -476,8 +478,10 @@ export default function CatalogDashboard() {
                 />
               </div>
               <div>
-                <label className="text-[11px] font-medium block mb-1" style={{ color: 'var(--muted)' }}>Base Price (Amount)</label>
+                <label htmlFor="catalog-edit-base-price" className="text-[11px] font-medium block mb-1" style={{ color: 'var(--muted)' }}>Base Price (Amount)</label>
                 <input
+                  id="catalog-edit-base-price"
+                  aria-label="Base Price (Amount)"
                   type="number"
                   min={1}
                   className="w-full p-3 rounded-lg text-sm"
@@ -488,8 +492,12 @@ export default function CatalogDashboard() {
               </div>
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="text-[11px] font-medium block mb-1" style={{ color: 'var(--muted)' }}>MOQ</label>
-                  <input type="number" min={1}
+                  <label htmlFor="catalog-edit-moq" className="text-[11px] font-medium block mb-1" style={{ color: 'var(--muted)' }}>MOQ</label>
+                  <input
+                    id="catalog-edit-moq"
+                    aria-label="MOQ"
+                    type="number"
+                    min={1}
                     className="w-full p-3 rounded-lg text-sm"
                     style={{ background: 'var(--background)', border: '1px solid var(--border)', color: 'var(--foreground)' }}
                     value={(editForm.minimum_order_qty as number) || ''}
@@ -497,8 +505,12 @@ export default function CatalogDashboard() {
                   />
                 </div>
                 <div>
-                  <label className="text-[11px] font-medium block mb-1" style={{ color: 'var(--muted)' }}>Step</label>
-                  <input type="number" min={1}
+                  <label htmlFor="catalog-edit-step" className="text-[11px] font-medium block mb-1" style={{ color: 'var(--muted)' }}>Step</label>
+                  <input
+                    id="catalog-edit-step"
+                    aria-label="Step"
+                    type="number"
+                    min={1}
                     className="w-full p-3 rounded-lg text-sm"
                     style={{ background: 'var(--background)', border: '1px solid var(--border)', color: 'var(--foreground)' }}
                     value={(editForm.step_size as number) || ''}
@@ -506,8 +518,12 @@ export default function CatalogDashboard() {
                   />
                 </div>
                 <div>
-                  <label className="text-[11px] font-medium block mb-1" style={{ color: 'var(--muted)' }}>Units/Block</label>
-                  <input type="number" min={1}
+                  <label htmlFor="catalog-edit-units-per-block" className="text-[11px] font-medium block mb-1" style={{ color: 'var(--muted)' }}>Units/Block</label>
+                  <input
+                    id="catalog-edit-units-per-block"
+                    aria-label="Units/Block"
+                    type="number"
+                    min={1}
                     className="w-full p-3 rounded-lg text-sm"
                     style={{ background: 'var(--background)', border: '1px solid var(--border)', color: 'var(--foreground)' }}
                     value={(editForm.units_per_block as number) || ''}
@@ -518,7 +534,7 @@ export default function CatalogDashboard() {
 
               {/* Image Re-upload */}
               <div>
-                <label className="text-[11px] font-medium block mb-1" style={{ color: 'var(--muted)' }}>Product Image</label>
+                <label htmlFor="catalog-edit-image" className="text-[11px] font-medium block mb-1" style={{ color: 'var(--muted)' }}>Product Image</label>
                 <div className="flex items-center gap-3 mb-2">
                   {(editPreview || editProduct.image_url) && (
                     <Image
@@ -537,6 +553,8 @@ export default function CatalogDashboard() {
                   </span>
                 </div>
                 <input
+                  id="catalog-edit-image"
+                  aria-label="Product Image"
                   ref={editFileRef}
                   type="file"
                   accept="image/jpeg,image/png,image/webp"

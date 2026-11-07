@@ -8,11 +8,16 @@ struct TomorrowBoardView: View {
     @State private var loading = true
     @State private var error: String?
 
-    private var dateString: String {
+    private static let utcDateFormatter: DateFormatter = {
         let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.dateFormat = "yyyy-MM-dd"
         formatter.timeZone = TimeZone(secondsFromGMT: 0)
-        return formatter.string(from: date)
+        return formatter
+    }()
+
+    private var dateString: String {
+        Self.utcDateFormatter.string(from: date)
     }
 
     var body: some View {
@@ -32,7 +37,7 @@ struct TomorrowBoardView: View {
                     }
                     if preorders.isEmpty && deliverBefore.isEmpty {
                         Section {
-                            Text("No orders scheduled for this date.")
+                            Text("warehouse_portal.tomorrow_board.text.no_orders_scheduled_for_this_date")
                                 .foregroundStyle(.secondary)
                         }
                     }
@@ -53,7 +58,7 @@ struct TomorrowBoardView: View {
                 }
             }
         }
-        .navigationTitle("Tomorrow board")
+        .navigationTitle("portal.nav.tomorrow_board")
         .task { load() }
         .refreshable { load(silent: false) }
         .silentRealtimeRefresh(refreshEpoch: realtimeHub.refreshEpoch, reconnectEpoch: realtimeHub.reconnectEpoch) { silent in

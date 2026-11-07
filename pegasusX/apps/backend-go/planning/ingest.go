@@ -10,16 +10,18 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/kafkautil"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/segmentio/kafka-go"
 )
 
 // SignalIngestInput is the validated body for planning signal ingestion.
 type SignalIngestInput struct {
-	SignalID   string          `json:"signal_id"`
-	Source     string          `json:"source"`
-	WarehouseID string         `json:"warehouse_id,omitempty"`
-	RetailerID string          `json:"retailer_id,omitempty"`
-	Payload    json.RawMessage `json:"payload"`
+	SignalID    string          `json:"signal_id"`
+	Source      string          `json:"source"`
+	WarehouseID string          `json:"warehouse_id,omitempty"`
+	RetailerID  string          `json:"retailer_id,omitempty"`
+	Payload     json.RawMessage `json:"payload"`
 }
 
 // SignalIngestPublisher publishes planning ingest events to Kafka.
@@ -33,13 +35,32 @@ type kafkaSignalPublisher struct {
 
 // NewKafkaSignalPublisher builds a publisher for planning ingest topics.
 func NewKafkaSignalPublisher(brokers []string, topic string) SignalIngestPublisher {
+	return NewKafkaSignalPublisherWithAuth(brokers, topic, kafkautil.ClientAuth{})
+}
+
+// NewKafkaSignalPublisherWithAuth builds a publisher for planning ingest topics with SASL/TLS transport support.
+func NewKafkaSignalPublisherWithAuth(brokers []string, topic string, auth kafkautil.ClientAuth) SignalIngestPublisher {
 	if len(brokers) == 0 || topic == "" {
 		return nil
 	}
+	transport, _ := kafkautil.Transport(auth)
 	return &kafkaSignalPublisher{writer: &kafka.Writer{
-		Addr:     kafka.TCP(brokers...),
-		Topic:    topic,
-		Balancer: &kafka.LeastBytes{},
+		Addr:                   kafka.TCP(brokers...),
+		Topic:                  topic,
+		RequiredAcks:           kafka.RequireAll,
+		BatchTimeout:           250 * time.Millisecond,
+		BatchSize:              100,
+		BatchBytes:             1048576,
+		Compression:            kafka.Snappy,
+		WriteBackoffMin:        100 * time.Millisecond,
+		WriteBackoffMax:        1 * time.Second,
+		MaxAttempts:            3,
+		WriteTimeout:           10 * time.Second,
+		ReadTimeout:            10 * time.Second,
+		Balancer:               &kafka.Hash{},
+		Async:                  false,
+		AllowAutoTopicCreation: false,
+		Transport:              transport,
 	}}
 }
 
@@ -47,7 +68,27 @@ func (p *kafkaSignalPublisher) Publish(ctx context.Context, topic string, key, v
 	if p == nil || p.writer == nil {
 		return errors.New("publisher unavailable")
 	}
-	return p.writer.WriteMessages(ctx, kafka.Message{Key: key, Value: value, Time: time.Now().UTC()})
+	msg := kafka.Message{
+		Key:   key,
+		Value: value,
+		Time:  time.Now().UTC(),
+	}
+	var hdrs []kafka.Header
+	if traceID := outbox.TraceIDFromContext(ctx); traceID != "" {
+		hdrs = append(hdrs, kafka.Header{Key: "trace_id", Value: []byte(traceID)})
+	}
+	if traceParent := outbox.TraceParentFromContext(ctx); traceParent != "" {
+		hdrs = append(hdrs, kafka.Header{Key: "traceparent", Value: []byte(traceParent)})
+	}
+	hdrs = append(hdrs,
+		kafka.Header{Key: "type", Value: []byte(events.EventPlanningSignalIngest)},
+		kafka.Header{Key: "timestamp", Value: []byte(time.Now().UTC().Format(time.RFC3339Nano))},
+	)
+	msg.Headers = hdrs
+	start := time.Now()
+	err := p.writer.WriteMessages(ctx, msg)
+	outbox.RecordProducerPublish(topic, len(value), time.Since(start).Seconds(), err)
+	return err
 }
 
 // IngestSignal validates and publishes planning.signal.ingest.v1 without hot-path Spanner write.

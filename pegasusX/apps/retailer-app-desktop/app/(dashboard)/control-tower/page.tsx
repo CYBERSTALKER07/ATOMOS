@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRetailerSessionReconcile } from "../../../lib/use-retailer-session-reconcile";
@@ -37,6 +38,7 @@ function formatMoney(minor: number) {
 }
 
 export default function ControlTowerPage() {
+  const t = usePortalT();
   const [pulse, setPulse] = useState<Pulse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -48,7 +50,6 @@ export default function ControlTowerPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    setError(null);
     try {
       const res = await apiFetch("/v1/retailer/control-tower/pulse");
       if (!res.ok) {
@@ -56,9 +57,9 @@ export default function ControlTowerPage() {
         throw new Error((body as { error?: string }).error || `pulse_${res.status}`);
       }
       setPulse((await res.json()) as Pulse);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load pulse");
-      setPulse(null);
+      setError(null);
+    } catch {
+      setError("control_tower_pulse_failed");
     } finally {
       setLoading(false);
     }
@@ -70,36 +71,36 @@ export default function ControlTowerPage() {
 
   const tiles: Tile[] = pulse
     ? [
-        { label: "Open orders", value: pulse.open_orders, href: "/orders", icon: Package },
+        { label: t("retailer_desktop.residual.text.open_orders"), value: pulse.open_orders, href: "/orders", icon: Package },
         {
-          label: "Active fulfillment",
+          label: t("retailer_desktop.residual.text.active_fulfillment"),
           value: pulse.active_fulfillments,
           href: "/tracking",
           icon: Activity,
         },
-        { label: "Dock pending", value: pulse.dock_pending, href: "/dock", icon: Package },
+        { label: t("retailer_desktop.residual.text.dock_pending"), value: pulse.dock_pending, href: "/dock", icon: Package },
         {
-          label: "POS open sessions",
+          label: t("retailer_desktop.residual.text.pos_open_sessions"),
           value: pulse.pos_open_sessions,
           href: "/pos",
           icon: ShoppingCart,
         },
-        { label: "Open shifts", value: pulse.open_shifts, href: "/shifts", icon: Clock },
+        { label: t("retailer_desktop.residual.text.open_shifts"), value: pulse.open_shifts, href: "/shifts", icon: Clock },
         {
-          label: "Assist tickets",
+          label: t("retailer_desktop.residual.text.assist_tickets"),
           value: pulse.open_assist_tickets,
           href: "/assist",
           icon: HandHelping,
         },
-        { label: "Low stock bins", value: pulse.low_stock_sku_bins, href: "/stock", icon: Package },
+        { label: t("retailer_desktop.residual.text.low_stock_bins"), value: pulse.low_stock_sku_bins, href: "/stock", icon: Package },
         {
-          label: "Shift variances (closed)",
+          label: t("retailer_desktop.residual.text.shift_variances_closed"),
           value: pulse.shift_variances_7d,
           href: "/shifts",
           icon: Clock,
         },
         {
-          label: "Sales 7d",
+          label: t("retailer_desktop.residual.text.sales_7d"),
           value: formatMoney(pulse.sales_minor_7d),
           href: "/reports",
           icon: Activity,
@@ -111,8 +112,14 @@ export default function ControlTowerPage() {
     <div className="relative flex min-h-[calc(100vh-64px)] flex-col gap-6 overflow-hidden bg-[#0a0a0a] p-6 text-white">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Retailer ops pulse</h1>
-          <p className="text-sm text-gray-400">
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-2xl font-bold tracking-tight">{t("retailer_desktop.control_tower.text.retailer_ops_pulse")}</h1>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-xs font-semibold text-emerald-400">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              LIVE
+            </span>
+          </div>
+          <p className="mt-1 text-sm text-gray-400">
             Live counts from your shop — empty when quiet, never demo data.
           </p>
           {pulse && (
@@ -125,9 +132,10 @@ export default function ControlTowerPage() {
         <button
           type="button"
           onClick={() => void load()}
-          className="inline-flex items-center gap-2 rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm hover:bg-white/10"
+          disabled={loading}
+          className="inline-flex items-center gap-2 rounded-lg border border-white/15 bg-white/5 px-3.5 py-2 text-sm font-medium transition-all hover:border-white/30 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 active:scale-95 disabled:opacity-50"
         >
-          {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+          <Loader2 className={`h-4 w-4 ${loading ? "animate-spin text-emerald-400" : "text-gray-300"}`} />
           Refresh
         </button>
       </div>
@@ -140,15 +148,15 @@ export default function ControlTowerPage() {
 
       {loading && !pulse && (
         <div className="flex flex-1 items-center justify-center text-gray-400">
-          <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+          <Loader2 className="mr-2 h-5 w-5 animate-spin text-emerald-400" />
           Loading pulse…
         </div>
       )}
 
-      {pulse?.empty && !loading && (
+      {pulse?.empty && !loading && !error && (
         <div className="flex flex-1 flex-col items-center justify-center rounded-xl border border-dashed border-white/15 bg-white/[0.03] px-6 py-16 text-center">
           <Activity className="mb-4 h-10 w-10 text-emerald-400/80" />
-          <h2 className="text-lg font-semibold">No live ops signals yet</h2>
+          <h2 className="text-lg font-semibold">{t("retailer_desktop.control_tower.text.no_live_ops_signals_yet")}</h2>
           <p className="mt-2 max-w-md text-sm text-gray-400">
             Place wholesale orders, enable store stock or POS, open a shift, or create an assist
             ticket. This surface stays empty until real activity exists — it never shows mock
@@ -157,19 +165,19 @@ export default function ControlTowerPage() {
           <div className="mt-6 flex flex-wrap justify-center gap-2">
             <Link
               href="/orders"
-              className="rounded-lg border border-white/15 px-3 py-1.5 text-sm hover:bg-white/10"
+              className="rounded-lg border border-white/15 px-3 py-1.5 text-sm hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
             >
               Orders
             </Link>
             <Link
               href="/stock"
-              className="rounded-lg border border-white/15 px-3 py-1.5 text-sm hover:bg-white/10"
+              className="rounded-lg border border-white/15 px-3 py-1.5 text-sm hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
             >
               Store stock
             </Link>
             <Link
               href="/pos"
-              className="rounded-lg border border-white/15 px-3 py-1.5 text-sm hover:bg-white/10"
+              className="rounded-lg border border-white/15 px-3 py-1.5 text-sm hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
             >
               POS
             </Link>
@@ -178,20 +186,23 @@ export default function ControlTowerPage() {
       )}
 
       {pulse && !pulse.empty && (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
           {tiles.map((tile) => {
             const Icon = tile.icon;
             const inner = (
-              <div className="flex h-full flex-col rounded-xl border border-white/10 bg-white/[0.04] p-4 transition hover:border-emerald-500/40 hover:bg-white/[0.06]">
-                <div className="mb-3 flex items-center gap-2 text-xs uppercase tracking-wide text-gray-400">
-                  <Icon className="h-3.5 w-3.5 text-emerald-400" />
-                  {tile.label}
+              <div className="group flex h-full flex-col justify-between rounded-xl border border-white/10 bg-white/[0.03] p-4.5 backdrop-blur-sm transition-all duration-200 hover:border-emerald-500/40 hover:bg-white/[0.06] hover:shadow-[0_4px_20px_rgba(16,185,129,0.06)]">
+                <div className="mb-3 flex items-center justify-between text-xs font-medium uppercase tracking-wider text-gray-400 group-hover:text-gray-300">
+                  <div className="flex items-center gap-2">
+                    <Icon className="h-4 w-4 text-emerald-400 transition-transform group-hover:scale-110" />
+                    <span>{tile.label}</span>
+                  </div>
+                  <span className="text-[10px] text-gray-500 group-hover:text-gray-300 transition-colors">→</span>
                 </div>
-                <div className="text-2xl font-semibold tabular-nums">{tile.value}</div>
+                <div className="text-2xl font-semibold tracking-tight text-white tabular-nums">{tile.value}</div>
               </div>
             );
             return tile.href ? (
-              <Link key={tile.label} href={tile.href}>
+              <Link key={tile.label} href={tile.href} className="outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 rounded-xl">
                 {inner}
               </Link>
             ) : (

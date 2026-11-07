@@ -2,6 +2,7 @@ import SwiftUI
 import MapKit
 
 struct MapTopOverlay: View {
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Binding var phase: MapPhase
     @Binding var selectedMission: Mission?
     @Binding var isCameraLocked: Bool
@@ -95,7 +96,7 @@ struct MapTopOverlay: View {
                 }
             }
             .padding(.horizontal, LabTheme.s16)
-            .padding(.top, 60)
+            .padding(.top, horizontalSizeClass == .regular ? 20 : 54)
             .animation(Anim.snappy, value: phase)
             .animation(Anim.snappy, value: zoomFocus)
 

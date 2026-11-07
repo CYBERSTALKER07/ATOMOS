@@ -10,17 +10,18 @@ struct FleetLiveMapView: View {
     @State private var error: String?
     @State private var cameraPosition: MapCameraPosition = .region(
         MKCoordinateRegion(
-            center: CLLocationCoordinate2D(latitude: 41.2995, longitude: 69.2401),
+            center: CLLocationCoordinate2D(latitude: packMapCoordinate().lat, longitude: packMapCoordinate().lng),
             span: MKCoordinateSpan(latitudeDelta: 0.18, longitudeDelta: 0.18)
         )
     )
     @State private var animator = FleetDriverMarkerAnimator()
+    @State private var hasFittedInitialCamera = false
     @State private var publishAction = "REROUTE"
     @State private var publishStatus: String?
     @State private var publishing = false
     @State private var showPublishSheet = false
     @State private var mapRegion = MKCoordinateRegion(
-        center: CLLocationCoordinate2D(latitude: 41.2995, longitude: 69.2401),
+            center: CLLocationCoordinate2D(latitude: packMapCoordinate().lat, longitude: packMapCoordinate().lng),
         span: MKCoordinateSpan(latitudeDelta: 0.18, longitudeDelta: 0.18)
     )
 
@@ -41,10 +42,10 @@ struct FleetLiveMapView: View {
                 VStack(spacing: 0) {
                 if !zoneOverrides.isEmpty {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Active control-tower zones")
+                        Text("mobile_supplier.ui.active_control_tower_zones")
                             .font(.subheadline.bold())
                         ForEach(zoneOverrides.prefix(3)) { override in
-                            Text("\(override.action) · expires \(override.ttlExpiresAt.prefix(19))")
+                            Text(L10n.format("mobile_supplier.ui.action_expires_prefix", "\(override.action)", "\(override.ttlExpiresAt.prefix(19))"))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
@@ -97,7 +98,7 @@ struct FleetLiveMapView: View {
                     ResponsiveGridContentWrapper {
                         ForEach(exceptionCells) { cell in
                             VStack(alignment: .leading, spacing: 4) {
-                                Text("Cell \(cell.h3Cell.prefix(12))… · \(cell.severity)")
+                                Text(L10n.format("mobile_supplier.ui.cell_prefix_severity", "\(cell.h3Cell.prefix(12))", "\(cell.severity)"))
                                     .font(.subheadline.bold())
                                 Text("Total \(cell.counts["total", default: 0]) · shop closed \(cell.counts["shop_closed", default: 0])")
                                     .font(.caption)
@@ -109,10 +110,10 @@ struct FleetLiveMapView: View {
                 }
             }
         }
-        .navigationTitle("Live fleet")
+        .navigationTitle("portal.nav.live_fleet")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button("Publish zone", systemImage: "map") {
+                Button("mobile_supplier.ui.publish_zone", systemImage: "map") {
                     showPublishSheet = true
                 }
             }
@@ -131,7 +132,7 @@ struct FleetLiveMapView: View {
                             .foregroundStyle(.secondary)
                     }
                 }
-                .navigationTitle("Control tower")
+                .navigationTitle("supplier_portal.control_tower_command_panel.text.control_tower")
                 .toolbar {
                     ToolbarItem(placement: .confirmationAction) {
                         Button(publishing ? "Publishing…" : "Publish") {
@@ -140,7 +141,7 @@ struct FleetLiveMapView: View {
                         .disabled(publishing)
                     }
                     ToolbarItem(placement: .cancellationAction) {
-                        Button("Close") { showPublishSheet = false }
+                        Button("common.action.close") { showPublishSheet = false }
                     }
                 }
             }
@@ -179,16 +180,25 @@ struct FleetLiveMapView: View {
         error = nil
         defer { if !silent { loading = false } }
         do {
-            let response = try await SupplierOperationsService.fleetLiveMap()
+            async let fleetTask = SupplierOperationsService.fleetLiveMap()
+            async let exceptionsTask = SupplierOperationsService.exceptionMap()
+            async let overridesTask = SupplierOperationsService.controlTowerZoneOverrides()
+
+            let response = try await fleetTask
             routes = response.routes
             animator.updateTargets(routes)
-            if let map = try? await SupplierOperationsService.exceptionMap() {
+            if let map = try? await exceptionsTask {
                 exceptionCells = map.cells
             }
-            if let overrides = try? await SupplierOperationsService.controlTowerZoneOverrides() {
+            if let overrides = try? await overridesTask {
                 zoneOverrides = overrides
             }
-            fitCamera()
+            if !silent || !hasFittedInitialCamera {
+                fitCamera()
+                if !routes.isEmpty {
+                    hasFittedInitialCamera = true
+                }
+            }
         } catch {
             if !silent { self.error = error.localizedDescription }
         }
