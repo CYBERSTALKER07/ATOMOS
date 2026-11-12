@@ -1,8 +1,8 @@
 package com.pegasusx.warehouse.data.local
 
 import android.content.Context
-import com.pegasusx.mobilekit.offline.PrefsOfflineQueueStore
-import com.pegasusx.mobilekit.offline.QueuedMutation
+import com.pegasusx.warehouse.offline.PrefsOfflineQueueStore
+import com.pegasusx.warehouse.offline.QueuedMutation
 import java.util.UUID
 
 /** @deprecated Prefer [QueuedMutation]; kept as alias for call sites. */

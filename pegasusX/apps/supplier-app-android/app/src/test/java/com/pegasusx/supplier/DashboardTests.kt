@@ -1,10 +1,10 @@
 package com.pegasusx.supplier
 
-import com.pegasus.design.ui.ORDER_STATUS_FUNNEL
-import com.pegasus.design.ui.StatusStackMode
-import com.pegasus.design.network.formatPackMoney
-import com.pegasus.design.incrementOrderStatusCount
-import com.pegasus.design.statusStackModel
+import com.pegasusx.supplier.ui.design.ORDER_STATUS_FUNNEL
+import com.pegasusx.supplier.ui.design.StatusStackMode
+import com.pegasusx.supplier.ui.design.formatPackMoney
+import com.pegasusx.supplier.ui.design.incrementOrderStatusCount
+import com.pegasusx.supplier.ui.design.statusStackModel
 import com.pegasusx.supplier.data.model.SupplierDashboard
 import com.pegasusx.supplier.ui.viewmodel.OrderFilterTab
 import com.pegasusx.supplier.ui.viewmodel.resolveSupplierOrdersQuery

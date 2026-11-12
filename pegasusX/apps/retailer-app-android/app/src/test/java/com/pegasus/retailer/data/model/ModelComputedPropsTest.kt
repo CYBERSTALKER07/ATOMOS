@@ -12,8 +12,8 @@ class ModelComputedPropsTest {
 
     @Test
     fun product_defaultVariant_firstVariant() {
-        val v1 = Variant("v1", "1L", "Single", 1, "1000ml", 3.49)
-        val v2 = Variant("v2", "2L", "Twin", 2, "2000ml", 6.49)
+        val v1 = Variant("v1", "1L", "Single", 1, "1000ml", 349L)
+        val v2 = Variant("v2", "2L", "Twin", 2, "2000ml", 649L)
         val p = Product(id = "p1", name = "Milk", variants = listOf(v1, v2))
         assertEquals(v1, p.defaultVariant)
     }
@@ -26,14 +26,14 @@ class ModelComputedPropsTest {
 
     @Test
     fun product_displayPrice_fromVariant() {
-        val v = Variant("v1", "1L", "Single", 1, "1000ml", 3490.0)
+        val v = Variant("v1", "1L", "Single", 1, "1000ml", 3490L)
         val p = Product(id = "p1", name = "Test", variants = listOf(v))
         assertEquals("3,490", p.displayPrice)
     }
 
     @Test
     fun product_displayPrice_fromPrice_whenNoVariants() {
-        val p = Product(id = "p1", name = "Test", price = 5000)
+        val p = Product(id = "p1", name = "Test", price = 5000L)
         assertEquals("5,000", p.displayPrice)
     }
 
@@ -171,10 +171,58 @@ class ModelComputedPropsTest {
 
     @Test
     fun cartItem_totalPrice() {
-        val v = Variant("v1", "1L", "Single", 1, "1000ml", 10_000.0)
+        val v = Variant("v1", "1L", "Single", 1, "1000ml", 10_000L)
         val p = Product(id = "p1", name = "Milk", variants = listOf(v))
         val item = CartItem(id = "p1_v1", product = p, variant = v, quantity = 3)
         assertEquals(30_000L, item.totalPrice)
+    }
+
+    @Test
+    fun cartItem_totalPrice_64BitAboveIntMaxValue() {
+        val v = Variant("v-bulk", "Pallet", "Bulk", 1, "1000kg", 2_000_000_000L)
+        val p = Product(id = "p-bulk", name = "Bulk Sugar", price = 2_000_000_000L, variants = listOf(v))
+        val item = CartItem(id = "p-bulk_v-bulk", product = p, variant = v, quantity = 3)
+        assertEquals(6_000_000_000L, item.totalPrice)
+        assertEquals("2,000,000,000", p.displayPrice)
+        assertEquals("2,000,000,000", p.displayListPrice)
+    }
+
+    @Test
+    fun jsonMoneyLongSerializer_decodesIntegerDecimalAndPriceMinor() {
+        val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+        val vInt = json.decodeFromString<Variant>(
+            """{"id":"v1","size":"1L","pack":"Single","pack_count":1,"weight_per_unit":"1kg","price":3490}""",
+        )
+        assertEquals(3490L, vInt.price)
+
+        val vDecimal = json.decodeFromString<Variant>(
+            """{"id":"v2","size":"1L","pack":"Single","pack_count":1,"weight_per_unit":"1kg","price":3490.0}""",
+        )
+        assertEquals(3490L, vDecimal.price)
+
+        val vAlias = json.decodeFromString<Variant>(
+            """{"id":"v3","size":"1L","pack":"Single","pack_count":1,"weight_per_unit":"1kg","price_minor":5000000000}""",
+        )
+        assertEquals(5_000_000_000L, vAlias.price)
+
+        val pLarge = json.decodeFromString<Product>(
+            """{"id":"p1","name":"Industrial Pallet","price":5000000000}""",
+        )
+        assertEquals(5_000_000_000L, pLarge.price)
+    }
+
+    @Test
+    fun marketPack_moneyHelpers_pureLongWithoutFloatDrift() {
+        assertEquals("125", com.pegasusx.retailer.ui.design.formatMinorDecimal(12_500L, 2, null))
+        assertEquals("125.5", com.pegasusx.retailer.ui.design.formatMinorDecimal(12_550L, 2, null))
+        assertEquals("-0.05", com.pegasusx.retailer.ui.design.formatMinorDecimal(-5L, 2, null))
+        assertEquals("125.00", com.pegasusx.retailer.ui.design.formatTiyinFixed(12_500L))
+        assertEquals("-0.50", com.pegasusx.retailer.ui.design.formatTiyinFixed(-50L))
+        assertEquals(1999L, com.pegasusx.retailer.ui.design.parseMajorToMinor("19.99"))
+        assertEquals(1950L, com.pegasusx.retailer.ui.design.parseMajorToMinor("19,5"))
+        assertEquals(5_000_000_000L, com.pegasusx.retailer.ui.design.parseMajorToMinor("50000000.00"))
+        assertNull(com.pegasusx.retailer.ui.design.parseMajorToMinor("-10.00"))
+        assertNull(com.pegasusx.retailer.ui.design.parseMajorToMinor("10.999"))
     }
 
     // ── DemandForecast ──

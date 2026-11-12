@@ -13,8 +13,8 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.padding
-import com.pegasus.design.ui.PegasusStateKind
-import com.pegasus.design.ui.PegasusStatePane
+import com.pegasusx.supplier.ui.design.PegasusStateKind
+import com.pegasusx.supplier.ui.design.PegasusStatePane
 import com.pegasusx.supplier.R
 
 /**

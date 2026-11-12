@@ -165,10 +165,10 @@ object NetworkModule {
     @Singleton
     fun provideOkHttpClient(json: Json): OkHttpClient =
         OkHttpClient.Builder()
-            .addInterceptor(com.pegasus.design.CellPinInterceptor(BuildConfig.API_BASE_URL) { TokenHolder.token })
+            .addInterceptor(com.pegasusx.factory.ui.design.CellPinInterceptor(BuildConfig.API_BASE_URL) { TokenHolder.token })
             .addInterceptor(AuthInterceptor())
             .authenticator(TokenRefreshAuthenticator(json, BASE_URL))
-            .addInterceptor(com.pegasus.design.PegasusHttpResilienceInterceptor())
+            .addInterceptor(com.pegasusx.factory.ui.design.PegasusHttpResilienceInterceptor())
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)

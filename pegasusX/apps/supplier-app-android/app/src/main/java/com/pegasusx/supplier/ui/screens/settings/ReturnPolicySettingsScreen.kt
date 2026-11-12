@@ -36,9 +36,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
-import com.pegasus.design.ui.PegasusLoadingState
-import com.pegasus.design.ui.PegasusStateKind
-import com.pegasus.design.ui.PegasusStatePane
+import com.pegasusx.supplier.ui.design.PegasusLoadingState
+import com.pegasusx.supplier.ui.design.PegasusStateKind
+import com.pegasusx.supplier.ui.design.PegasusStatePane
 import com.pegasusx.supplier.data.model.SupplierReturnPolicy
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
 import com.pegasusx.supplier.ui.theme.PegasusSpacing

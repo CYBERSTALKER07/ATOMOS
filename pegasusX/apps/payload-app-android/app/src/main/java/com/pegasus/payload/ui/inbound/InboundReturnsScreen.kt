@@ -32,10 +32,10 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import com.pegasus.design.PegasusStatePane
-import com.pegasus.design.PegasusStateKind
-import com.pegasus.design.PegasusRuntimeBanner
-import com.pegasus.design.PegasusRuntimeTone
+import com.pegasus.payload.ui.design.PegasusStatePane
+import com.pegasus.payload.ui.design.PegasusStateKind
+import com.pegasus.payload.ui.design.PegasusRuntimeBanner
+import com.pegasus.payload.ui.design.PegasusRuntimeTone
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -96,9 +96,9 @@ fun InboundReturnsScreen(
     val scope = rememberCoroutineScope()
 
     fun parseRows(body: Map<String, Any>?): List<InboundRow> {
-        @Suppress("UNCHECKED_CAST")
-        val data = body?.get("data") as? List<Map<String, Any>> ?: return emptyList()
-        return data.mapNotNull { m ->
+        val data = body?.get("data") as? List<*> ?: return emptyList()
+        return data.mapNotNull { entry ->
+            val m = entry as? Map<*, *> ?: return@mapNotNull null
             val returnId = m["return_id"] as? String ?: return@mapNotNull null
             InboundRow(
                 returnId = returnId,
@@ -192,13 +192,13 @@ fun InboundReturnsScreen(
         },
     ) { innerPadding ->
         when {
-            loading -> com.pegasus.design.PegasusLoadingState(
+            loading -> com.pegasus.payload.ui.design.PegasusLoadingState(
                 title = stringResource(R.string.mobile_payload_ui_loading_inbound_queue),
                 body = "Fetching returns and exceptions awaiting gate entry.",
                 modifier = Modifier.fillMaxSize().padding(innerPadding)
             )
-            error != null -> com.pegasus.design.PegasusStatePane(
-                kind = com.pegasus.design.PegasusStateKind.Error,
+            error != null -> com.pegasus.payload.ui.design.PegasusStatePane(
+                kind = com.pegasus.payload.ui.design.PegasusStateKind.Error,
                 headline = "Failed to load",
                 body = error.orEmpty(),
                 modifier = Modifier.fillMaxSize().padding(innerPadding),

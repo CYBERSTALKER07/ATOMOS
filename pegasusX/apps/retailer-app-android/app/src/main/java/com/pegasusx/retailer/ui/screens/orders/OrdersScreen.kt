@@ -58,7 +58,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -84,14 +84,14 @@ import com.pegasusx.retailer.data.model.OrderStatus
 import com.pegasusx.retailer.ui.LocalCommandFilter
 import com.pegasusx.retailer.data.model.RetailerAIPrediction
 import com.pegasusx.retailer.ui.components.CountdownTimer
-import com.pegasus.design.PegasusStateKind
-import com.pegasus.design.PegasusStatePane
+import com.pegasusx.retailer.ui.design.PegasusStateKind
+import com.pegasusx.retailer.ui.design.PegasusStatePane
 import com.pegasusx.retailer.ui.components.ShimmerOrderList
 import com.pegasusx.retailer.ui.components.OrderDetailSheet
 import com.pegasusx.retailer.ui.components.OrderStatusBadge
 import com.pegasusx.retailer.ui.components.QROverlay
-import com.pegasus.design.PegasusRuntimeBanner
-import com.pegasus.design.PegasusRuntimeTone
+import com.pegasusx.retailer.ui.design.PegasusRuntimeBanner
+import com.pegasusx.retailer.ui.design.PegasusRuntimeTone
 import com.pegasusx.retailer.ui.components.statusColor
 import com.pegasusx.retailer.ui.theme.StatusGreen
 import com.pegasusx.retailer.ui.theme.StatusOrange
@@ -114,7 +114,7 @@ private enum class OrderTab(
 fun OrdersScreen(
     viewModel: OrdersViewModel = hiltViewModel(),
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val pagerState = rememberPagerState(pageCount = { 3 })
     val scope = rememberCoroutineScope()
     val commandFilter = LocalCommandFilter.current

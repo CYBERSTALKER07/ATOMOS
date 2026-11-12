@@ -1,10 +1,73 @@
 package com.pegasusx.retailer.data.model
 
+import java.math.BigDecimal
+import java.math.RoundingMode
 import java.text.NumberFormat
 import java.util.Locale
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.json.JsonDecoder
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNames
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonPrimitive
+
+internal fun parseJsonMoneyTokenToLong(element: JsonElement): Long? {
+    val primitive = element as? JsonPrimitive ?: return null
+    if (primitive is JsonNull) return null
+    val raw = primitive.content.trim()
+    if (raw.isEmpty()) return null
+    raw.toLongOrNull()?.let { return it }
+    return runCatching {
+        BigDecimal(raw).setScale(0, RoundingMode.HALF_UP).toLong()
+    }.getOrNull()
+}
+
+object JsonMoneyLongSerializer : KSerializer<Long> {
+    override val descriptor: SerialDescriptor =
+        PrimitiveSerialDescriptor("JsonMoneyLong", PrimitiveKind.LONG)
+
+    override fun deserialize(decoder: Decoder): Long {
+        if (decoder is JsonDecoder) {
+            return parseJsonMoneyTokenToLong(decoder.decodeJsonElement()) ?: 0L
+        }
+        return decoder.decodeLong()
+    }
+
+    override fun serialize(encoder: Encoder, value: Long) {
+        encoder.encodeLong(value)
+    }
+}
+
+object JsonNullableMoneyLongSerializer : KSerializer<Long?> {
+    override val descriptor: SerialDescriptor =
+        PrimitiveSerialDescriptor("JsonNullableMoneyLong", PrimitiveKind.LONG)
+
+    override fun deserialize(decoder: Decoder): Long? {
+        if (decoder is JsonDecoder) {
+            val element = decoder.decodeJsonElement()
+            if (element is JsonNull) return null
+            return parseJsonMoneyTokenToLong(element)
+        }
+        return decoder.decodeLong()
+    }
+
+    @OptIn(ExperimentalSerializationApi::class)
+    override fun serialize(encoder: Encoder, value: Long?) {
+        if (value == null) {
+            encoder.encodeNull()
+        } else {
+            encoder.encodeLong(value)
+        }
+    }
+}
 
 // ── RFC 7807 Problem Detail (mirrors backend errors.ProblemDetail) ──
 
@@ -176,6 +239,7 @@ enum class CustomerStage(val displayName: String, val progressPercent: Int) {
 
 // ── Variant (iOS: Variant) ──
 
+@OptIn(ExperimentalSerializationApi::class)
 @Serializable
 data class Variant(
     @SerialName("id") val id: String,
@@ -183,7 +247,10 @@ data class Variant(
     @SerialName("pack") val pack: String,
     @SerialName("pack_count") val packCount: Int,
     @SerialName("weight_per_unit") val weightPerUnit: String,
-    @SerialName("price") val price: Double = 0.0,
+    @SerialName("price")
+    @JsonNames("price_minor")
+    @Serializable(with = JsonMoneyLongSerializer::class)
+    val price: Long = 0L,
 )
 
 // ── Product (iOS: Product) ──
@@ -200,6 +267,7 @@ data class ProductOffer(
     @SerialName("promotion_ends_at") val promotionEndsAt: String? = null,
 )
 
+@OptIn(ExperimentalSerializationApi::class)
 @Serializable
 data class Product(
     @JsonNames("product_id", "id") val id: String,
@@ -215,7 +283,9 @@ data class Product(
     @JsonNames("category_name", "categoryName") val categoryName: String? = null,
     @JsonNames("sell_by_block", "sellByBlock") val sellByBlock: Boolean = false,
     @JsonNames("units_per_block", "unitsPerBlock") val unitsPerBlock: Int? = null,
-    @JsonNames("price", "price") val price: Int? = null,
+    @SerialName("price")
+    @Serializable(with = JsonNullableMoneyLongSerializer::class)
+    val price: Long? = null,
     @JsonNames("available_stock", "availableStock") val availableStock: Int? = null,
     @JsonNames("is_out_of_stock", "isOutOfStock") val isOutOfStockFlag: Boolean = false,
     @JsonNames("accepts_backorder", "acceptsBackorder") val acceptsBackorder: Boolean = false,
@@ -243,15 +313,15 @@ data class Product(
         get() {
             val listMinor = offer?.listPriceMinor?.takeIf { it > 0 }
                 ?: priceMinor?.takeIf { it > 0 }
-                ?: defaultVariant?.price?.toLong()?.takeIf { it > 0 }
-                ?: price?.toLong()?.takeIf { it > 0 }
+                ?: defaultVariant?.price?.takeIf { it > 0 }
+                ?: price?.takeIf { it > 0 }
             return listMinor?.let { "%,d".format(it) }
         }
 
     val displayPrice: String
         get() {
             offer?.salePriceMinor?.takeIf { it > 0 }?.let { return "%,d".format(it) }
-            defaultVariant?.let { return "%,d".format(it.price.toLong()) }
+            defaultVariant?.let { return "%,d".format(it.price) }
             price?.let { return "%,d".format(it) }
             priceMinor?.let { return "%,d".format(it) }
             return "—"
@@ -265,81 +335,6 @@ data class Product(
             sellByBlock && unitsPerBlock != null -> "$unitsPerBlock units / block"
             else -> null
         }
-
-    companion object {
-        val samples = listOf(
-            Product(
-                id = "prod-001", name = "Organic Whole Milk", description = "Farm-fresh organic whole milk",
-                variants = listOf(
-                    Variant("v-001a", "1L", "Single", 1, "1000ml", 3.49),
-                    Variant("v-001b", "2L", "Twin Pack", 2, "1000ml", 6.49),
-                ),
-            ),
-            Product(
-                id = "prod-002", name = "Sourdough Bread", description = "Artisan sourdough loaf, slow-fermented",
-                variants = listOf(
-                    Variant("v-002a", "400g", "Single", 1, "400g", 4.99),
-                    Variant("v-002b", "800g", "Large", 1, "800g", 8.49),
-                ),
-            ),
-            Product(
-                id = "prod-003", name = "Free-Range Eggs", description = "12ct large free-range eggs",
-                variants = listOf(
-                    Variant("v-003a", "12 ct", "Single", 1, "720g", 5.99),
-                    Variant("v-003b", "30 ct", "Tray", 1, "1800g", 12.99),
-                ),
-            ),
-            Product(
-                id = "prod-004", name = "Greek Yogurt", description = "Thick, strained full-fat Greek yogurt",
-                variants = listOf(
-                    Variant("v-004a", "500g", "Single", 1, "500g", 4.29),
-                    Variant("v-004b", "1kg", "Family", 1, "1000g", 7.99),
-                ),
-            ),
-            Product(
-                id = "prod-005", name = "Sparkling Water", description = "Natural mineral sparkling water",
-                variants = listOf(
-                    Variant("v-005a", "330ml", "Single", 1, "330ml", 1.49),
-                    Variant("v-005b", "500ml", "6-Pack", 6, "500ml", 7.99),
-                    Variant("v-005c", "1.5L", "4-Pack", 4, "1500ml", 9.99),
-                ),
-            ),
-            Product(
-                id = "prod-006", name = "Aged Cheddar", description = "12-month aged sharp cheddar",
-                variants = listOf(
-                    Variant("v-006a", "200g", "Block", 1, "200g", 5.49),
-                    Variant("v-006b", "500g", "Block", 1, "500g", 11.99),
-                ),
-            ),
-            Product(
-                id = "prod-007", name = "Fresh Chicken Breast", description = "Boneless, skinless chicken breast",
-                variants = listOf(
-                    Variant("v-007a", "500g", "Single", 1, "500g", 7.99),
-                    Variant("v-007b", "1kg", "Value Pack", 1, "1000g", 14.49),
-                ),
-            ),
-            Product(
-                id = "prod-008", name = "Organic Bananas", description = "Fair-trade organic bananas",
-                variants = listOf(
-                    Variant("v-008a", "1kg", "Bunch", 1, "1000g", 2.99),
-                ),
-            ),
-            Product(
-                id = "prod-009", name = "Extra Virgin Olive Oil", description = "Cold-pressed extra virgin",
-                variants = listOf(
-                    Variant("v-009a", "500ml", "Bottle", 1, "500ml", 9.99),
-                    Variant("v-009b", "1L", "Bottle", 1, "1000ml", 17.49),
-                ),
-            ),
-            Product(
-                id = "prod-010", name = "Dark Chocolate 85%", description = "Single-origin dark chocolate bar",
-                variants = listOf(
-                    Variant("v-010a", "100g", "Bar", 1, "100g", 3.99),
-                    Variant("v-010b", "100g", "3-Pack", 3, "100g", 10.49),
-                ),
-            ),
-        )
-    }
 }
 
 // ── Category (iOS: ProductCategory) ──
@@ -351,20 +346,7 @@ data class ProductCategory(
     @SerialName("icon") val icon: String,
     @JsonNames("product_count", "productCount") val productCount: Int? = null,
     @JsonNames("supplier_count", "supplierCount") val supplierCount: Int? = null,
-) {
-    companion object {
-        val samples = listOf(
-            ProductCategory("cat-dairy", "Dairy & Eggs", "dairy", 12),
-            ProductCategory("cat-bakery", "Bakery", "bakery", 8),
-            ProductCategory("cat-produce", "Fresh Produce", "produce", 24),
-            ProductCategory("cat-meat", "Meat & Poultry", "meat", 15),
-            ProductCategory("cat-beverages", "Beverages", "beverages", 18),
-            ProductCategory("cat-snacks", "Snacks & Confectionery", "snacks", 20),
-            ProductCategory("cat-frozen", "Frozen Foods", "frozen", 10),
-            ProductCategory("cat-condiments", "Condiments & Sauces", "condiments", 14),
-        )
-    }
-}
+)
 
 // ── Supplier (iOS: Supplier) ──
 
@@ -466,7 +448,7 @@ data class Order(
 fun formatRetailerAmount(amount: Long, currency: String): String {
     val formatter = NumberFormat.getIntegerInstance(Locale.US)
     val formatted = formatter.format(amount).replace(',', ' ')
-    val normalizedCurrency = currency.ifBlank { com.pegasus.design.packCurrency(com.pegasus.design.MarketPackStore.pack) }
+    val normalizedCurrency = currency.ifBlank { com.pegasusx.retailer.ui.design.packCurrency(com.pegasusx.retailer.ui.design.MarketPackStore.pack) }
     return "$formatted $normalizedCurrency"
 }
 
@@ -552,11 +534,15 @@ data class RetailerAIPrediction(
         get() = requestedDeliveryDate.take(10).ifBlank { orderId }
     val formattedTotal: String
         get() {
-            val units = totalMinor / 100.0
+            val formatted = com.pegasusx.retailer.ui.design.formatMinorDecimal(
+                minor = totalMinor,
+                decimalPlaces = 2,
+                groupSeparator = null,
+            )
             return if (currency.isNotBlank()) {
-                "${units.toLong()} $currency"
+                "$formatted $currency"
             } else {
-                units.toLong().toString()
+                formatted
             }
         }
 }
@@ -656,7 +642,7 @@ data class CartItem(
     val variant: Variant,
     var quantity: Int,
 ) {
-    val totalPrice: Long get() = (quantity * variant.price).toLong()
+    val totalPrice: Long get() = quantity.toLong() * variant.price
 }
 
 // ── User ──

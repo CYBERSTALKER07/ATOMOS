@@ -89,12 +89,12 @@ fun AnalyticsScreen(
                     item(span = { GridItemSpan(maxLineSpan) }) {
                         Row(horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md), modifier = Modifier.fillMaxWidth()) {
                             KpiCard("Total Orders", d.totalOrders.toString(), Modifier.weight(1f))
-                            KpiCard("Revenue", "${fmt.format(d.totalRevenue)} ${com.pegasus.design.network.sessionPackCurrency()}", Modifier.weight(1f))
+                            KpiCard("Revenue", "${fmt.format(d.totalRevenue)} ${com.pegasusx.warehouse.ui.design.sessionPackCurrency()}", Modifier.weight(1f))
                         }
                     }
                     item {
                         Row(horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md), modifier = Modifier.fillMaxWidth()) {
-                            KpiCard("Avg Order", "${fmt.format(d.avgOrderValue.roundToLong())} ${com.pegasus.design.network.sessionPackCurrency()}", Modifier.weight(1f))
+                            KpiCard("Avg Order", "${fmt.format(d.avgOrderValue)} ${com.pegasusx.warehouse.ui.design.sessionPackCurrency()}", Modifier.weight(1f))
                             KpiCard("Utilization", "${d.fleetUtilizationPct.roundToLong()}%", Modifier.weight(1f))
                         }
                     }

@@ -60,8 +60,8 @@ class PayloadRepository @Inject constructor(
         PayloadIdempotencyKeys.key(action, entityId)
 
     /** Parallel refetch of authoritative payload snapshots after WS reconnect. */
-    suspend fun reconcileSession(baseUrl: String) {
-        val token = secureStore.token ?: return
+    suspend fun reconcileSession(baseUrl: String) = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        val token = secureStore.token ?: return@withContext
         val endpoints = listOf(
             "/v1/payloader/trucks",
             "/v1/payloader/manifests",
@@ -296,11 +296,11 @@ class PayloadRepository @Inject constructor(
     /**
      * Drain the persisted offline queue. Returns (sent, kept) pair.
      */
-    suspend fun flushQueue(baseUrl: String): Pair<Int, Int> {
+    suspend fun flushQueue(baseUrl: String): Pair<Int, Int> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         val current = queuedActionDao.getAll()
-        if (current.isEmpty()) return 0 to 0
-        val token = secureStore.token ?: return 0 to current.size
-        
+        if (current.isEmpty()) return@withContext 0 to 0
+        val token = secureStore.token ?: return@withContext 0 to current.size
+
         var sent = 0
         var remaining = 0
         for (action in current) {
@@ -311,7 +311,7 @@ class PayloadRepository @Inject constructor(
                 .header("Idempotency-Key", action.id)
                 .method(action.method, action.bodyJson?.toRequestBody("application/json".toMediaType()) ?: okhttp3.internal.EMPTY_REQUEST)
                 .build()
-                
+
             val outcome = runCatching {
                 okHttp.newCall(req).execute().use { response ->
                     val status = response.code
@@ -322,7 +322,7 @@ class PayloadRepository @Inject constructor(
                     }
                 }
             }.getOrElse { QueueReplayOutcome.Retry }
-            
+
             when (outcome) {
                 QueueReplayOutcome.Sent, QueueReplayOutcome.Drop -> {
                     queuedActionDao.deleteById(action.id)
@@ -333,7 +333,7 @@ class PayloadRepository @Inject constructor(
                 }
             }
         }
-        return sent to remaining
+        sent to remaining
     }
 
     private enum class QueueReplayOutcome { Sent, Retry, Drop }

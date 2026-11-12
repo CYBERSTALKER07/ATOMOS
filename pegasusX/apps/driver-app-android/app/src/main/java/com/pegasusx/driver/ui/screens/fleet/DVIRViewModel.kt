@@ -3,8 +3,8 @@ package com.pegasusx.driver.ui.screens.fleet
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pegasusx.driver.data.remote.DriverApi
-import com.pegasusx.mobilekit.foundry.DVIRChecklist8Point
-import com.pegasusx.mobilekit.foundry.FleetDVIRInspection
+import com.pegasusx.driver.data.foundry.DVIRChecklist8Point
+import com.pegasusx.driver.data.foundry.FleetDVIRInspection
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,8 +18,6 @@ data class DVIRUiState(
     val vehicleId: String = "vh-isuzu-01",
     val driverId: String = "driver-uz-09",
     val odometerKm: Long = 125400L,
-    val requiresColdChain: Boolean = false,
-    val reeferTempCelsius: Double = 4.0,
     val checklist: DVIRChecklist8Point = DVIRChecklist8Point(),
     val isSubmitting: Boolean = false,
     val isRedTagged: Boolean = false,
@@ -50,14 +48,6 @@ class DVIRViewModel @Inject constructor(
         _uiState.update { it.copy(odometerKm = km) }
     }
 
-    fun updateRequiresColdChain(required: Boolean) {
-        _uiState.update { it.copy(requiresColdChain = required) }
-    }
-
-    fun updateReeferTempCelsius(temp: Double) {
-        _uiState.update { it.copy(reeferTempCelsius = temp) }
-    }
-
     fun updateChecklist(transform: (DVIRChecklist8Point) -> DVIRChecklist8Point) {
         _uiState.update { it.copy(checklist = transform(it.checklist)) }
     }
@@ -75,20 +65,17 @@ class DVIRViewModel @Inject constructor(
         if (!cl.wipersAndFluidsOk) failedPoints.add("wipers_and_fluids")
         if (!cl.emergencyKitAndExtinguisherOk) failedPoints.add("emergency_kit_and_extinguisher")
         if (!cl.cargoBoxSanitationOk) failedPoints.add("cargo_box_sanitation")
-        if (state.requiresColdChain && !cl.reeferTempCalibratedOk) failedPoints.add("reefer_temp_calibrated")
 
         val criticalDefect = failedPoints.isNotEmpty()
         val inspection = FleetDVIRInspection(
             supplierId = state.supplierId,
             vehicleId = state.vehicleId,
             driverId = state.driverId,
-            requiresColdChain = state.requiresColdChain,
             checklist = state.checklist,
             failedPoints = failedPoints,
             criticalDefectFound = criticalDefect,
             redTagApplied = criticalDefect,
             odometerKm = state.odometerKm,
-            reeferTempCelsius = state.reeferTempCelsius,
         )
 
         viewModelScope.launch {

@@ -76,7 +76,7 @@ fun TomorrowBoardScreen(
     ) { innerPadding ->
         if (loading) {
             Box(Modifier.padding(innerPadding)) {
-                com.pegasus.design.ui.PegasusLoadingState(
+                com.pegasusx.warehouse.ui.design.PegasusLoadingState(
                     title = stringResource(R.string.mobile_warehouse_ui_loading_board),
                     body = "Fetching operations for $date",
                 )
@@ -103,8 +103,8 @@ fun TomorrowBoardScreen(
             }
             if (error != null) {
                 item(span = { GridItemSpan(maxLineSpan) }) { 
-                    com.pegasus.design.ui.PegasusStatePane(
-                        kind = com.pegasus.design.ui.PegasusStateKind.Error,
+                    com.pegasusx.warehouse.ui.design.PegasusStatePane(
+                        kind = com.pegasusx.warehouse.ui.design.PegasusStateKind.Error,
                         headline = "Failed to load board",
                         body = error.orEmpty(),
                         actionLabel = "Retry",
@@ -114,8 +114,8 @@ fun TomorrowBoardScreen(
             }
             if (rows.isEmpty() && error == null) {
                 item(span = { GridItemSpan(maxLineSpan) }) { 
-                    com.pegasus.design.ui.PegasusStatePane(
-                        kind = com.pegasus.design.ui.PegasusStateKind.Empty,
+                    com.pegasusx.warehouse.ui.design.PegasusStatePane(
+                        kind = com.pegasusx.warehouse.ui.design.PegasusStateKind.Empty,
                         headline = "No operations",
                         body = "No orders scheduled for this date."
                     )

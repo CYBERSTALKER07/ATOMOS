@@ -18,10 +18,10 @@ import com.pegasusx.warehouse.data.model.CreateWarehouseSupplyRequestRequest
 import com.pegasusx.warehouse.data.model.WarehouseSupplyRequest
 import com.pegasusx.warehouse.util.WarehouseIdempotencyKeys
 import com.pegasusx.warehouse.data.remote.WarehouseApi
-import com.pegasus.design.ui.PegasusLoadingState
+import com.pegasusx.warehouse.ui.design.PegasusLoadingState
 import com.pegasusx.warehouse.ui.components.WarehouseOpsListCard
-import com.pegasus.design.ui.PegasusStateKind
-import com.pegasus.design.ui.PegasusStatePane
+import com.pegasusx.warehouse.ui.design.PegasusStateKind
+import com.pegasusx.warehouse.ui.design.PegasusStatePane
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 import com.pegasusx.warehouse.R
@@ -80,8 +80,9 @@ fun SupplyRequestsScreen(
                     showCreate = false
                     load()
                 }
-            } catch (_: Exception) {
+            } catch (e: Exception) {
                 // Errors surface on next refresh; dialog stays open for retry.
+            if (e is kotlinx.coroutines.CancellationException) throw e
             }
         }
     }

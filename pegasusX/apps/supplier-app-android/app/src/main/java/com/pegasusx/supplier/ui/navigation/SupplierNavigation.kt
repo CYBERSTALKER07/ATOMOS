@@ -275,8 +275,9 @@ fun SupplierNavigation(
                     clientPolicyForce = state.force
                     pendingManifest = state.manifest
                 }
-            } catch (_: Exception) {
+            } catch (e: Exception) {
                 // Policy fetch is optional on local/dev stacks.
+            if (e is kotlinx.coroutines.CancellationException) throw e
             }
         }
     }

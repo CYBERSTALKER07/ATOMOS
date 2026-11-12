@@ -31,7 +31,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -51,7 +51,7 @@ fun FleetDVIRScreen(
     onNavigateToGate: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
-    val state by viewModel.uiState.collectAsState()
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
     val scrollState = rememberScrollState()
 
     Column(
@@ -193,26 +193,6 @@ fun FleetDVIRScreen(
                         modifier = Modifier.weight(1f),
                         singleLine = true,
                     )
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Cold Chain")
-                        Spacer(Modifier.width(8.dp))
-                        Switch(
-                            checked = state.requiresColdChain,
-                            onCheckedChange = { viewModel.updateRequiresColdChain(it) },
-                        )
-                    }
-                }
-                if (state.requiresColdChain) {
-                    OutlinedTextField(
-                        value = state.reeferTempCelsius.toString(),
-                        onValueChange = {
-                            val parsed = it.toDoubleOrNull()
-                            if (parsed != null) viewModel.updateReeferTempCelsius(parsed)
-                        },
-                        label = { Text("Reefer Temp (°C)") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                    )
                 }
             }
         }
@@ -275,15 +255,6 @@ fun FleetDVIRScreen(
                         viewModel.updateChecklist { it.copy(cargoBoxSanitationOk = ok) }
                     },
                 )
-                if (state.requiresColdChain) {
-                    DVIRCheckRow(
-                        label = "8. Reefer Temperature Calibration",
-                        checked = state.checklist.reeferTempCalibratedOk,
-                        onCheckedChange = { ok ->
-                            viewModel.updateChecklist { it.copy(reeferTempCalibratedOk = ok) }
-                        },
-                    )
-                }
             }
         }
 

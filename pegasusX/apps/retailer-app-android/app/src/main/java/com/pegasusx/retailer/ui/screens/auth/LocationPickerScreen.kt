@@ -63,7 +63,7 @@ import kotlinx.coroutines.tasks.await
 import com.pegasusx.retailer.R
 
 private fun packStartPosition(): LatLng {
-    val c = com.pegasus.design.sessionMapCenter()
+    val c = com.pegasusx.retailer.ui.design.sessionMapCenter()
     return LatLng(c?.lat ?: 0.0, c?.lng ?: 0.0)
 }
 

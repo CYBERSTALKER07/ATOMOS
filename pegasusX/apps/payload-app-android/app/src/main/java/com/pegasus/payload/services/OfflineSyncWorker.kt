@@ -7,7 +7,7 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.pegasus.payload.data.local.QueuedActionDao
 import com.pegasus.payload.data.remote.PayloadApi
-import com.pegasusx.mobilekit.offline.OfflineHttpSemantics
+import com.pegasus.payload.offline.OfflineHttpSemantics
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import okhttp3.MediaType.Companion.toMediaTypeOrNull

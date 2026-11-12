@@ -32,17 +32,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import com.pegasus.design.network.RealtimeRefreshEffect
-import com.pegasus.design.network.showFullScreenLoading
+import com.pegasusx.supplier.ui.design.RealtimeRefreshEffect
+import com.pegasusx.supplier.ui.design.showFullScreenLoading
 import com.pegasusx.supplier.data.model.PromoSimulateInput
 import com.pegasusx.supplier.data.model.PromoSimulateResult
 import com.pegasusx.supplier.data.model.SupplierPromotion
 import com.pegasusx.supplier.data.model.SupplierPromotionUpsertRequest
 import com.pegasusx.supplier.data.remote.SupplierApi
 import com.pegasusx.supplier.data.remote.SupplierRealtimeSignals
-import com.pegasus.design.ui.PegasusLoadingState
-import com.pegasus.design.ui.PegasusStateKind
-import com.pegasus.design.ui.PegasusStatePane
+import com.pegasusx.supplier.ui.design.PegasusLoadingState
+import com.pegasusx.supplier.ui.design.PegasusStateKind
+import com.pegasusx.supplier.ui.design.PegasusStatePane
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 import com.pegasusx.supplier.R
@@ -123,12 +123,27 @@ fun PromotionsScreen(api: SupplierApi, realtimeSignals: SupplierRealtimeSignals)
                             supportingContent = {
                                 val sim = simResults[promo.promotionId]
                                 Column {
-                                    Text(stringResource(R.string.mobile_supplier_ui_n_0_scopetype_retailerscope, promo.discountBps / 100.0, promo.scopeType, promo.retailerScope) +
-                                            if (promo.isActive) "" else " · inactive",
+                                    val discountLabel = com.pegasusx.supplier.ui.design.formatMinorDecimal(
+                                        minor = promo.discountBps,
+                                        decimalPlaces = 2,
+                                        groupSeparator = null,
+                                    )
+                                    Text(
+                                        stringResource(
+                                            R.string.mobile_supplier_ui_n_0_scopetype_retailerscope,
+                                            discountLabel,
+                                            promo.scopeType,
+                                            promo.retailerScope,
+                                        ) + if (promo.isActive) "" else " · inactive",
                                     )
                                     sim?.let {
                                         Text(
-                                            stringResource(R.string.mobile_supplier_ui_p_l_sandbox_projectedvolume_units_margin_n_0_margindeltapct, it.projectedVolume, it.projectedMarginMinor / 100.0, it.marginDeltaPct),
+                                            stringResource(
+                                                R.string.mobile_supplier_ui_p_l_sandbox_projectedvolume_units_margin_n_0_margindeltapct,
+                                                it.projectedVolume,
+                                                com.pegasusx.supplier.ui.design.formatTiyinFixed(it.projectedMarginMinor),
+                                                it.marginDeltaPct,
+                                            ),
                                             style = MaterialTheme.typography.bodySmall,
                                         )
                                     }
@@ -142,10 +157,18 @@ fun PromotionsScreen(api: SupplierApi, realtimeSignals: SupplierRealtimeSignals)
                                             scope.launch {
                                                 simulatingId = promo.promotionId
                                                 runCatching {
+                                                    @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+                                                    val discountPctLiteral = kotlinx.serialization.json.JsonUnquotedLiteral(
+                                                        com.pegasusx.supplier.ui.design.formatMinorDecimal(
+                                                            minor = promo.discountBps,
+                                                            decimalPlaces = 2,
+                                                            groupSeparator = null,
+                                                        ),
+                                                    )
                                                     api.simulatePromotionPandL(
                                                         PromoSimulateInput(
                                                             promotionId = promo.promotionId,
-                                                            discountPct = promo.discountBps / 100.0,
+                                                            discountPct = discountPctLiteral,
                                                             expectedUnits = 500,
                                                             avgUnitMarginMinor = 1000,
                                                         ),

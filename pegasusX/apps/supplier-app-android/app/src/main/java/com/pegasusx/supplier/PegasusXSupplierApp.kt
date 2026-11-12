@@ -4,6 +4,7 @@ import android.app.Application
 import com.pegasusx.supplier.data.push.DeviceTokenRegistrar
 import com.pegasusx.supplier.data.remote.SupplierApi
 import com.pegasusx.supplier.data.remote.TokenHolder
+import com.pegasusx.supplier.network.NetworkLifecycleEngine
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
 
@@ -14,6 +15,7 @@ class PegasusXSupplierApp : Application() {
     override fun onCreate() {
         super.onCreate()
         TokenHolder.init(this)
+        NetworkLifecycleEngine.shared.initialize(this)
         DeviceTokenRegistrar.uploadBestEffort(api)
     }
 }

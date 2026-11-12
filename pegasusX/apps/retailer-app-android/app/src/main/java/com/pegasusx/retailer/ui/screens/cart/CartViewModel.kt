@@ -184,7 +184,7 @@ init {
             .joinToString("|") { item ->
                 val skuId = if (item.variant.id.isNotBlank()) item.variant.id else item.product.id
                 val supplierId = item.product.supplierId.orEmpty()
-                "$skuId:$supplierId:${item.quantity}:${item.variant.price.toInt()}"
+                "$skuId:$supplierId:${item.quantity}:${item.variant.price}"
             }
     }
 
@@ -194,7 +194,13 @@ init {
 
     private fun JsonObject.longField(name: String): Long {
         val primitive = this[name]?.jsonPrimitive ?: return 0L
-        return primitive.longOrNull ?: primitive.contentOrNull?.toLongOrNull() ?: 0L
+        return primitive.longOrNull
+            ?: primitive.contentOrNull?.trim()?.let { raw ->
+                raw.toLongOrNull() ?: runCatching {
+                    java.math.BigDecimal(raw).setScale(0, java.math.RoundingMode.HALF_UP).toLong()
+                }.getOrNull()
+            }
+            ?: 0L
     }
 
     private fun mapServerCart(items: List<JsonObject>): List<CartItem> {
@@ -215,11 +221,11 @@ init {
 
             val existing = existingBySku[skuId]
             if (existing != null) {
-                val variant = existing.variant.copy(price = unitPrice.toDouble())
+                val variant = existing.variant.copy(price = unitPrice)
                 val product = existing.product.copy(
                     variants = listOf(variant),
                     supplierId = existing.product.supplierId ?: supplierId,
-                    price = unitPrice.toInt(),
+                    price = unitPrice,
                 )
                 return@mapNotNull CartItem(
                     id = "${product.id}_${variant.id}",
@@ -235,14 +241,14 @@ init {
                 pack = "Per unit",
                 packCount = 1,
                 weightPerUnit = "1 unit",
-                price = unitPrice.toDouble(),
+                price = unitPrice,
             )
             val fallbackProduct = Product(
                 id = skuId,
                 name = "Item",
                 variants = listOf(fallbackVariant),
                 supplierId = supplierId,
-                price = unitPrice.toInt(),
+                price = unitPrice,
             )
             CartItem(
                 id = "${fallbackProduct.id}_${fallbackVariant.id}",
@@ -334,7 +340,7 @@ init {
                         "sku_id" to skuId,
                         "supplier_id" to supplierId,
                         "quantity" to item.quantity,
-                        "unit_price" to item.variant.price.toLong(),
+                        "unit_price" to item.variant.price,
                         "currency" to sessionPackCurrency(),
                     )
                 }
@@ -595,7 +601,7 @@ init {
                             CheckoutQuoteLine(
                                 productId = skuId,
                                 quantity = item.quantity.toLong(),
-                                unitPriceMinor = item.variant.price.toLong(),
+                                unitPriceMinor = item.variant.price,
                                 currency = sessionPackCurrency(),
                             )
                         },
@@ -610,7 +616,8 @@ init {
                     quotedDiscountMinor = discountMinor,
                 )
             }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
             _uiState.update { it.copy(quotedDiscountMinor = null, quotedSubtotalMinor = null) }
         }
     }
@@ -702,7 +709,7 @@ init {
             CheckoutLineItem(
                 skuId = cartItem.variant.id.ifBlank { cartItem.product.id },
                 quantity = cartItem.quantity,
-                unitPrice = cartItem.variant.price.toLong(),
+                unitPrice = cartItem.variant.price,
             )
         }
         val requestedDeliveryDate = state.deliveryDate?.let { date ->
@@ -946,5 +953,6 @@ init {
         cartSyncDebounceJob?.cancel()
         cartSyncEventsJob?.cancel()
         quoteDebounceJob?.cancel()
+        previewDebounceJob?.cancel()
     }
 }

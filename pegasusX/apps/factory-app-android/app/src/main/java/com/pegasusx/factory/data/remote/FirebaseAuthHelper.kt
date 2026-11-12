@@ -112,7 +112,8 @@ object FirebaseAuthHelper {
         resetFlow()
         try {
             FirebaseAuth.getInstance().signOut()
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+        if (e is kotlinx.coroutines.CancellationException) throw e
         }
     }
 }

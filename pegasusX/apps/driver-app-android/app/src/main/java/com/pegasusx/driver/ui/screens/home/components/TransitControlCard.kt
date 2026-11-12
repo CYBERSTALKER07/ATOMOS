@@ -184,7 +184,7 @@ fun ReturningToWarehouseCard(
     val lab = LocalPegasusColors.current
     val context = LocalContext.current
     // Dynamic warehouse coords from backend (fallback to Tashkent depot)
-    val packCenter = com.pegasus.design.sessionMapCenter()
+    val packCenter = com.pegasusx.driver.ui.design.sessionMapCenter()
     val depotLat = TokenHolder.warehouseLat.takeIf { it != 0.0 } ?: (packCenter?.lat ?: 0.0)
     val depotLng = TokenHolder.warehouseLng.takeIf { it != 0.0 } ?: (packCenter?.lng ?: 0.0)
     val warehouseLabel = TokenHolder.warehouseName ?: "Warehouse"

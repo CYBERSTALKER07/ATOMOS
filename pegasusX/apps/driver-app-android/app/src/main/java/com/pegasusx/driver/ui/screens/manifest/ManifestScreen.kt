@@ -32,7 +32,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -87,7 +87,7 @@ fun ManifestScreen(
     onOrderClick: (Order) -> Unit = {},
     onRequestEarlyComplete: (reason: String, note: String) -> Unit = { _, _ -> }
 ) {
-    val state by viewModel.state.collectAsState()
+    val state by viewModel.state.collectAsStateWithLifecycle()
     val lab = LocalPegasusColors.current
     var loadingMode by remember { mutableStateOf(false) }
     var showEarlyCompleteDialog by remember { mutableStateOf(false) }

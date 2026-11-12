@@ -36,9 +36,18 @@ import java.text.NumberFormat
 import java.util.Locale
 
 fun formatMinorAmount(minor: Long, currency: String, locale: Locale = Locale.getDefault()): String {
-    val fmt = NumberFormat.getInstance(locale)
-    val major = minor / 100.0
-    return if (currency.isBlank()) fmt.format(major) else "${fmt.format(major)} $currency"
+    val intFmt = NumberFormat.getIntegerInstance(locale)
+    val sign = if (minor < 0L) "-" else ""
+    val whole = kotlin.math.abs(minor / 100L)
+    val rem = kotlin.math.abs(minor % 100L)
+    val frac = if (rem == 0L) {
+        ""
+    } else {
+        val sep = java.text.DecimalFormatSymbols.getInstance(locale).decimalSeparator
+        "$sep${rem.toString().padStart(2, '0').trimEnd('0')}"
+    }
+    val formatted = "$sign${intFmt.format(whole)}$frac"
+    return if (currency.isBlank()) formatted else "$formatted $currency"
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

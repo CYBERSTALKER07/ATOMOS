@@ -14,10 +14,10 @@ import androidx.compose.ui.Modifier
 import com.pegasusx.factory.data.model.Transfer
 import com.pegasusx.factory.data.remote.FactoryApi
 import com.pegasusx.factory.data.remote.FactoryRealtimeEventType
-import com.pegasus.design.PegasusLoadingState
+import com.pegasusx.factory.ui.design.PegasusLoadingState
 import com.pegasusx.factory.ui.components.FactoryMetricTile
-import com.pegasus.design.PegasusStateKind
-import com.pegasus.design.PegasusStatePane
+import com.pegasusx.factory.ui.design.PegasusStateKind
+import com.pegasusx.factory.ui.design.PegasusStatePane
 import com.pegasusx.factory.ui.components.FactoryStatusChip
 import com.pegasusx.factory.ui.realtime.FactoryRealtimeReloadEffect
 import com.pegasusx.factory.ui.screens.transfer.components.TransferFilters

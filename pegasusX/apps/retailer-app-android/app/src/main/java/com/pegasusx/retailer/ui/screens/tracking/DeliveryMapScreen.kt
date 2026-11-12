@@ -53,7 +53,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -87,11 +87,11 @@ import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
 import com.pegasusx.retailer.data.model.TrackingOrder
 import com.pegasusx.retailer.ui.components.RetailerListCard
-import com.pegasus.design.PegasusLoadingState
-import com.pegasus.design.PegasusRuntimeBanner
-import com.pegasus.design.PegasusRuntimeTone
-import com.pegasus.design.PegasusStateKind
-import com.pegasus.design.PegasusStatePane
+import com.pegasusx.retailer.ui.design.PegasusLoadingState
+import com.pegasusx.retailer.ui.design.PegasusRuntimeBanner
+import com.pegasusx.retailer.ui.design.PegasusRuntimeTone
+import com.pegasusx.retailer.ui.design.PegasusStateKind
+import com.pegasusx.retailer.ui.design.PegasusStatePane
 import com.pegasusx.retailer.ui.screens.tracking.components.OrderInfoCard
 import com.pegasusx.retailer.ui.screens.tracking.components.RecentReceiptsStrip
 import com.pegasusx.retailer.ui.screens.tracking.components.FiscalReceiptQROverlay
@@ -107,7 +107,7 @@ fun DeliveryMapScreen(
     embedded: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
-    val uiState by viewModel.state.collectAsState()
+    val uiState by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
@@ -131,7 +131,7 @@ fun DeliveryMapScreen(
     val visibleOrders = uiState.visibleOrders
     var selectedOrder by remember { mutableStateOf<TrackingOrder?>(null) }
 
-    val packCenter = com.pegasus.design.sessionMapCenter()
+    val packCenter = com.pegasusx.retailer.ui.design.sessionMapCenter()
     val defaultPosition = LatLng(packCenter?.lat ?: 0.0, packCenter?.lng ?: 0.0)
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(defaultPosition, 12f)

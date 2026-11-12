@@ -34,7 +34,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 
 import androidx.compose.ui.Alignment
@@ -45,10 +45,10 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.pegasusx.retailer.data.model.ProductCategory
 import com.pegasusx.retailer.ui.components.ProductCard
-import com.pegasus.design.PegasusLoadingState
+import com.pegasusx.retailer.ui.design.PegasusLoadingState
 import com.pegasusx.retailer.ui.components.RetailerSectionHeader
-import com.pegasus.design.PegasusStateKind
-import com.pegasus.design.PegasusStatePane
+import com.pegasusx.retailer.ui.design.PegasusStateKind
+import com.pegasusx.retailer.ui.design.PegasusStatePane
 import com.pegasusx.retailer.ui.theme.PegasusSpacing
 import com.pegasusx.retailer.ui.theme.PillShape
 import com.pegasusx.retailer.R
@@ -61,7 +61,7 @@ fun CatalogScreen(
     onNavigateToSuppliers: () -> Unit = {},
     viewModel: CatalogViewModel = hiltViewModel(),
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val isSearching = uiState.searchQuery.length >= 2
     val buyFilters = listOf("Categories", "All products", "Suppliers")
 

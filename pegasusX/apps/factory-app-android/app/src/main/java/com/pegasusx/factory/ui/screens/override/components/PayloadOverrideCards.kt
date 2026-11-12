@@ -18,8 +18,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import com.pegasus.design.PegasusRuntimeBanner
-import com.pegasus.design.PegasusRuntimeTone
+import com.pegasusx.factory.ui.design.PegasusRuntimeBanner
+import com.pegasusx.factory.ui.design.PegasusRuntimeTone
 import com.pegasusx.factory.data.model.Manifest
 import com.pegasusx.factory.data.model.ManifestTransfer
 import com.pegasusx.factory.ui.theme.PegasusSpacing

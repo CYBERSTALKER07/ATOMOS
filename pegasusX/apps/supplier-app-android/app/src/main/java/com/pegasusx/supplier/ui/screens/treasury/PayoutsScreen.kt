@@ -30,9 +30,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import com.pegasus.design.ui.PegasusLoadingState
-import com.pegasus.design.ui.PegasusStateKind
-import com.pegasus.design.ui.PegasusStatePane
+import com.pegasusx.supplier.ui.design.PegasusLoadingState
+import com.pegasusx.supplier.ui.design.PegasusStateKind
+import com.pegasusx.supplier.ui.design.PegasusStatePane
 import com.pegasusx.supplier.data.model.PayoutBatch
 import com.pegasusx.supplier.data.model.PayoutBatchGenerateRequest
 import com.pegasusx.supplier.data.model.PayoutRailInfo

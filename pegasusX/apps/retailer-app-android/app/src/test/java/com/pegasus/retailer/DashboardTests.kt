@@ -1,7 +1,7 @@
 package com.pegasus.retailer
 
-import com.pegasus.design.ORDER_STATUS_FUNNEL
-import com.pegasus.design.statusStackModel
+import com.pegasusx.retailer.ui.design.ORDER_STATUS_FUNNEL
+import com.pegasusx.retailer.ui.design.statusStackModel
 import com.pegasusx.retailer.data.model.ControlTowerPulse
 import com.pegasusx.retailer.ui.retailerOrderMatchesCommand
 import com.pegasusx.retailer.data.model.RetailerDetailedAnalytics

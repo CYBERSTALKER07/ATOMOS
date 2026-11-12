@@ -1,7 +1,7 @@
 package com.pegasusx.warehouse.ui.theme
 
 import androidx.compose.runtime.Composable
-import com.pegasus.design.ui.PegasusMonochromeTheme
+import com.pegasusx.warehouse.ui.design.PegasusMonochromeTheme
 
 @Composable
 fun PegasusWarehouseTheme(

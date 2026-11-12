@@ -4,7 +4,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
-import com.pegasus.design.canonicalizeOrderStatus
+import com.pegasusx.retailer.ui.design.canonicalizeOrderStatus
 import com.pegasusx.retailer.data.model.Order
 
 class CommandFilterState {

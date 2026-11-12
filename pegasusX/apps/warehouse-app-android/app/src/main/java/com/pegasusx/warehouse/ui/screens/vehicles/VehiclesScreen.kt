@@ -18,11 +18,11 @@ import com.pegasusx.warehouse.data.remote.WarehouseApi
 import com.pegasusx.warehouse.data.remote.WarehouseRealtimeSignals
 import com.pegasusx.warehouse.ui.realtime.WAREHOUSE_RECONNECT_RECOVERY_HINT
 import com.pegasusx.warehouse.ui.realtime.WarehouseReconnectRecoveryEffect
-import com.pegasus.design.ui.PegasusLoadingState
-import com.pegasus.design.ui.PegasusStateKind
-import com.pegasus.design.ui.PegasusStatePane
+import com.pegasusx.warehouse.ui.design.PegasusLoadingState
+import com.pegasusx.warehouse.ui.design.PegasusStateKind
+import com.pegasusx.warehouse.ui.design.PegasusStatePane
 import com.pegasusx.warehouse.ui.components.WarehouseStatusChip
-import com.pegasus.design.network.showFullScreenLoading
+import com.pegasusx.warehouse.ui.design.showFullScreenLoading
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import com.pegasusx.warehouse.util.WarehouseIdempotencyKeys
 import kotlinx.coroutines.launch

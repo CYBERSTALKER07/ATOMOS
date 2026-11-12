@@ -51,9 +51,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
-import com.pegasus.design.PegasusCollapsibleRail
-import com.pegasus.design.PegasusRailGroup
-import com.pegasus.design.PegasusRailItem
+import com.pegasusx.driver.ui.design.PegasusCollapsibleRail
+import com.pegasusx.driver.ui.design.PegasusRailGroup
+import com.pegasusx.driver.ui.design.PegasusRailItem
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import com.pegasusx.driver.ui.theme.MotionTokens
 

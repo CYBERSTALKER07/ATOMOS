@@ -13,8 +13,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.pegasusx.warehouse.data.model.InventoryItem
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
-import com.pegasus.design.ui.PegasusStateKind
-import com.pegasus.design.ui.PegasusStatePane
+import com.pegasusx.warehouse.ui.design.PegasusStateKind
+import com.pegasusx.warehouse.ui.design.PegasusStatePane
 import com.pegasusx.warehouse.ui.screens.inventory.InventoryPolicyPicker
 import com.pegasusx.warehouse.R
 

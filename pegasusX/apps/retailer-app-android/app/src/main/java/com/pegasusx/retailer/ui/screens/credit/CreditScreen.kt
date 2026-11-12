@@ -151,7 +151,10 @@ fun CreditScreen(
                     Card(modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             Text(r.supplierId, style = MaterialTheme.typography.labelMedium)
-                            Text("Limit ${r.limitMinor / 100.0} · Balance ${r.balanceMinor / 100.0}")
+                            Text(
+                                "Limit ${com.pegasusx.retailer.ui.design.formatTiyinFixed(r.limitMinor)} · " +
+                                    "Balance ${com.pegasusx.retailer.ui.design.formatTiyinFixed(r.balanceMinor)}",
+                            )
                             Text("Terms ${r.termsDays}d${if (r.onHold) " · ON HOLD" else ""}")
                         }
                     }
@@ -168,7 +171,7 @@ fun CreditScreen(
                         Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             Text(inv.invoiceId, style = MaterialTheme.typography.labelMedium)
                             Text("${inv.supplierId} · ${inv.status}")
-                            Text("Balance ${inv.balanceMinor / 100.0} · Due ${inv.dueAt}")
+                            Text("Balance ${com.pegasusx.retailer.ui.design.formatTiyinFixed(inv.balanceMinor)} · Due ${inv.dueAt}")
                         }
                     }
                 }

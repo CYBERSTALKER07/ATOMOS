@@ -412,18 +412,15 @@ interface DriverApi {
     // ── Role 9: Fleet, DVIR & Mid-Route Rescue ──
 
     @POST("/v1/foundry/fleet/dvir")
-    suspend fun submitDVIR(@Body req: com.pegasusx.mobilekit.foundry.FleetDVIRInspection): Response<com.pegasusx.mobilekit.foundry.FleetDVIRInspection>
+    suspend fun submitDVIR(@Body req: com.pegasusx.driver.data.foundry.FleetDVIRInspection): Response<com.pegasusx.driver.data.foundry.FleetDVIRInspection>
 
     @GET("/v1/foundry/fleet/vehicles/{vehicleID}/dispatch-check")
-    suspend fun checkVehicleDispatch(@Path("vehicleID") vehicleID: String): Response<com.pegasusx.mobilekit.foundry.DispatchCheckResponse>
+    suspend fun checkVehicleDispatch(@Path("vehicleID") vehicleID: String): Response<com.pegasusx.driver.data.foundry.DispatchCheckResponse>
 
     @POST("/v1/foundry/fleet/gate-events")
-    suspend fun recordGateEvent(@Body req: com.pegasusx.mobilekit.foundry.YardGateCheckEvent): Response<com.pegasusx.mobilekit.foundry.YardGateCheckEvent>
+    suspend fun recordGateEvent(@Body req: com.pegasusx.driver.data.foundry.YardGateCheckEvent): Response<com.pegasusx.driver.data.foundry.YardGateCheckEvent>
 
     @POST("/v1/foundry/fleet/mid-route-rescue")
-    suspend fun executeMidRouteRescue(@Body req: com.pegasusx.mobilekit.foundry.MidRouteRescueRequest): Response<com.pegasusx.mobilekit.foundry.MidRouteRescueResult>
-
-    @POST("/v1/foundry/fleet/predictive-reefer")
-    suspend fun checkPredictiveReefer(@Body req: com.pegasusx.mobilekit.foundry.PredictiveReeferRequest): Response<com.pegasusx.mobilekit.foundry.PredictiveReeferResponse>
+    suspend fun executeMidRouteRescue(@Body req: com.pegasusx.driver.data.foundry.MidRouteRescueRequest): Response<com.pegasusx.driver.data.foundry.MidRouteRescueResult>
 }
 

@@ -27,17 +27,17 @@ import com.pegasusx.factory.service.EnterpriseUpdateConfig
 import com.pegasusx.factory.ui.components.ClientPolicyBanner
 import com.pegasusx.factory.ui.components.FactoryKpiBadge
 import com.pegasusx.factory.ui.components.FactoryKpiTile
-import com.pegasus.design.FACTORY_DRIVER_DUTY
-import com.pegasus.design.FACTORY_TRANSFER_STATES
-import com.pegasus.design.FACTORY_VEHICLE_STATES
-import com.pegasus.design.MANIFEST_STATES
-import com.pegasus.design.PegasusLoadingState
-import com.pegasus.design.SourceChip
-import com.pegasus.design.StatusStack
+import com.pegasusx.factory.ui.design.FACTORY_DRIVER_DUTY
+import com.pegasusx.factory.ui.design.FACTORY_TRANSFER_STATES
+import com.pegasusx.factory.ui.design.FACTORY_VEHICLE_STATES
+import com.pegasusx.factory.ui.design.MANIFEST_STATES
+import com.pegasusx.factory.ui.design.PegasusLoadingState
+import com.pegasusx.factory.ui.design.SourceChip
+import com.pegasusx.factory.ui.design.StatusStack
 import com.pegasusx.factory.ui.components.FactoryMetricTile
 import com.pegasusx.factory.ui.components.FactorySectionTitle
-import com.pegasus.design.PegasusStateKind
-import com.pegasus.design.PegasusStatePane
+import com.pegasusx.factory.ui.design.PegasusStateKind
+import com.pegasusx.factory.ui.design.PegasusStatePane
 import com.pegasusx.factory.ui.navigation.FactoryRoutes
 import com.pegasusx.factory.ui.realtime.FactoryRealtimeReloadEffect
 import com.pegasusx.factory.ui.theme.PegasusSpacing
@@ -46,9 +46,9 @@ import com.pegasusx.factory.ui.screens.dashboard.components.WorkflowLaunchCard
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import com.pegasusx.factory.R
-import com.pegasus.design.MarketPack
-import com.pegasus.design.MarketPackBinder
-import com.pegasus.design.PackBanner
+import com.pegasusx.factory.ui.design.MarketPack
+import com.pegasusx.factory.ui.design.MarketPackBinder
+import com.pegasusx.factory.ui.design.PackBanner
 import com.pegasusx.factory.data.remote.TokenHolder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -112,8 +112,9 @@ fun DashboardScreen(
                     clientPolicyForce = state.force
                     pendingManifest = state.manifest
                 }
-            } catch (_: Exception) {
+            } catch (e: Exception) {
                 // Policy fetch is optional on local/dev stacks.
+            if (e is kotlinx.coroutines.CancellationException) throw e
             }
         }
     }

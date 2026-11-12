@@ -2,8 +2,8 @@ package com.pegasusx.retailer.ui.screens.cart
 
 import androidx.compose.ui.res.stringResource
 
-import com.pegasus.design.PegasusStateKind
-import com.pegasus.design.PegasusStatePane
+import com.pegasusx.retailer.ui.design.PegasusStateKind
+import com.pegasusx.retailer.ui.design.PegasusStatePane
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.itemsIndexed
 
@@ -60,7 +60,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -89,7 +89,7 @@ import com.pegasusx.retailer.R
 fun CartScreen(
     viewModel: CartViewModel = hiltViewModel(),
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     var showSupplierClosedDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
@@ -386,7 +386,7 @@ private fun CartItemCard(
                 }
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    "%,.0f each".format(item.variant.price),
+                    "%,d each".format(item.variant.price),
                     style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
                 )

@@ -611,7 +611,7 @@ interface SupplierApi {
     @GET("v1/payment/reconciliation/mismatches")
     suspend fun getPaymentReconciliationMismatches(
         @Query("group_limit") groupLimit: Int = 200,
-        @Query("mismatch_threshold_minor") mismatchThresholdMinor: Int = 1,
+        @Query("mismatch_threshold_minor") mismatchThresholdMinor: Long = 1L,
     ): Response<ReconciliationMismatchResponse>
 
     @POST("v1/supplier/replenishment/trigger")
@@ -711,18 +711,18 @@ interface SupplierApi {
     // ── Foundry Triad & Fleet Routes ──
 
     @POST("/v1/foundry/ontology/search-around")
-    suspend fun searchAround(@Body req: com.pegasusx.mobilekit.foundry.SearchAroundRequest): Response<com.pegasusx.mobilekit.foundry.SearchAroundResponse>
+    suspend fun searchAround(@Body req: com.pegasusx.supplier.data.foundry.SearchAroundRequest): Response<com.pegasusx.supplier.data.foundry.SearchAroundResponse>
 
     @POST("/v1/foundry/ontology/lot-recall")
-    suspend fun triggerLotRecall(@Body req: com.pegasusx.mobilekit.foundry.LotRecallRequest): Response<com.pegasusx.mobilekit.foundry.RecallBlastRadiusReport>
+    suspend fun triggerLotRecall(@Body req: com.pegasusx.supplier.data.foundry.LotRecallRequest): Response<com.pegasusx.supplier.data.foundry.RecallBlastRadiusReport>
 
     @POST("/v1/foundry/kinetic/actions/execute")
-    suspend fun executeAction(@Body req: com.pegasusx.mobilekit.foundry.ActionExecutionRequest): Response<com.pegasusx.mobilekit.foundry.ActionExecutionRecord>
+    suspend fun executeAction(@Body req: com.pegasusx.supplier.data.foundry.ActionExecutionRequest): Response<com.pegasusx.supplier.data.foundry.ActionExecutionRecord>
 
     @POST("/v1/foundry/scenarios/{scenarioID}/patches")
     suspend fun applyScenarioPatch(
         @Path("scenarioID") scenarioID: String,
-        @Body req: com.pegasusx.mobilekit.foundry.ScenarioPatchRequest,
+        @Body req: com.pegasusx.supplier.data.foundry.ScenarioPatchRequest,
     ): Response<Map<String, kotlinx.serialization.json.JsonElement>>
 
     @GET("/v1/foundry/scenarios/{scenarioID}/resolve/{cellID}/{objectType}/{objectID}")
@@ -731,24 +731,21 @@ interface SupplierApi {
         @Path("cellID") cellID: String,
         @Path("objectType") objectType: String,
         @Path("objectID") objectID: String,
-    ): Response<com.pegasusx.mobilekit.foundry.OntologyObjectDto>
+    ): Response<com.pegasusx.supplier.data.foundry.OntologyObjectDto>
 
     @POST("/v1/foundry/scenarios/{scenarioID}/commit")
-    suspend fun commitScenario(@Path("scenarioID") scenarioID: String): Response<com.pegasusx.mobilekit.foundry.ScenarioCommitResult>
+    suspend fun commitScenario(@Path("scenarioID") scenarioID: String): Response<com.pegasusx.supplier.data.foundry.ScenarioCommitResult>
 
     @POST("/v1/foundry/fleet/dvir")
-    suspend fun submitDVIR(@Body req: com.pegasusx.mobilekit.foundry.FleetDVIRInspection): Response<com.pegasusx.mobilekit.foundry.FleetDVIRInspection>
+    suspend fun submitDVIR(@Body req: com.pegasusx.supplier.data.foundry.FleetDVIRInspection): Response<com.pegasusx.supplier.data.foundry.FleetDVIRInspection>
 
     @POST("/v1/foundry/fleet/gate-events")
-    suspend fun recordGateEvent(@Body req: com.pegasusx.mobilekit.foundry.YardGateCheckEvent): Response<com.pegasusx.mobilekit.foundry.YardGateCheckEvent>
+    suspend fun recordGateEvent(@Body req: com.pegasusx.supplier.data.foundry.YardGateCheckEvent): Response<com.pegasusx.supplier.data.foundry.YardGateCheckEvent>
 
     @POST("/v1/foundry/fleet/mid-route-rescue")
-    suspend fun executeMidRouteRescue(@Body req: com.pegasusx.mobilekit.foundry.MidRouteRescueRequest): Response<com.pegasusx.mobilekit.foundry.MidRouteRescueResult>
-
-    @POST("/v1/foundry/fleet/predictive-reefer")
-    suspend fun checkPredictiveReefer(@Body req: com.pegasusx.mobilekit.foundry.PredictiveReeferRequest): Response<com.pegasusx.mobilekit.foundry.PredictiveReeferResponse>
+    suspend fun executeMidRouteRescue(@Body req: com.pegasusx.supplier.data.foundry.MidRouteRescueRequest): Response<com.pegasusx.supplier.data.foundry.MidRouteRescueResult>
 
     @GET("/v1/foundry/fleet/vehicles/{vehicleID}/dispatch-check")
-    suspend fun checkVehicleDispatch(@Path("vehicleID") vehicleID: String): Response<com.pegasusx.mobilekit.foundry.DispatchCheckResponse>
+    suspend fun checkVehicleDispatch(@Path("vehicleID") vehicleID: String): Response<com.pegasusx.supplier.data.foundry.DispatchCheckResponse>
 }
 

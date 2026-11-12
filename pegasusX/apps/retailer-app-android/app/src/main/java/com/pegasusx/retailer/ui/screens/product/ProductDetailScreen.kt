@@ -47,7 +47,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -76,7 +76,7 @@ fun ProductDetailScreen(
     onAddToCart: ((Product, Variant) -> Unit)? = null,
     viewModel: ProductDetailViewModel = hiltViewModel(),
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
@@ -127,7 +127,7 @@ fun ProductDetailScreen(
                                 pack = "Single",
                                 packCount = 1,
                                 weightPerUnit = "",
-                                price = (product.price ?: 0).toDouble(),
+                                price = product.price ?: product.priceMinor ?: 0L,
                             )
                             onAddToCart(product, variant)
                             scope.launch { snackbarHostState.showSnackbar("${product.name} added to cart") }
@@ -399,7 +399,7 @@ private fun VariantRow(
                         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
                         maxLines = 1,
                     )
-                    Text(stringResource(R.string.mobile_retailer_ui_pack_packcount_weightperunit_format, variant.packCount, variant.weightPerUnit, "%,d".format(variant.price.toLong())),
+                    Text(stringResource(R.string.mobile_retailer_ui_pack_packcount_weightperunit_format, variant.packCount, variant.weightPerUnit, "%,d".format(variant.price)),
                         style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f),
                     )

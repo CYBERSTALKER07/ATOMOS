@@ -79,12 +79,14 @@ fun ReportsScreen(
                 val top = s.getAsJsonArray("top_skus")
                 if (top != null && top.size > 0) {
                     val first = top[0].asJsonObject
-                    topLine = "${first.get("sku")?.asString} · ${first.get("sales_minor")?.asLong?.div(100.0)}"
+                    val firstSalesMinor = first.get("sales_minor")?.asLong ?: 0L
+                    topLine = "${first.get("sku")?.asString} · ${com.pegasusx.retailer.ui.design.formatTiyinFixed(firstSalesMinor)}"
                 }
                 summaryReady = true
                 loadError = null
                 banner = "REPORTS_PRO enabled on first view"
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
                 loadError = "reports_failed"
             }
         }
@@ -148,7 +150,12 @@ fun ReportsScreen(
                     Card {
                         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text("Last 7 days", style = MaterialTheme.typography.titleMedium)
-                            Text(stringResource(R.string.mobile_retailer_ui_sales_n_0, salesMinor / 100.0))
+                            Text(
+                                stringResource(
+                                    R.string.mobile_retailer_ui_sales_n_0,
+                                    com.pegasusx.retailer.ui.design.formatTiyinFixed(salesMinor),
+                                ),
+                            )
                             Text(stringResource(R.string.mobile_retailer_ui_sale_count_salecount_2, saleCount))
                             Text(stringResource(R.string.mobile_retailer_ui_on_hand_skus_onhand_2, onHand))
                             Text(stringResource(R.string.mobile_retailer_ui_low_stock_bins_lowstock_2, lowStock))

@@ -2,14 +2,14 @@ package com.pegasusx.warehouse.ui.screens.cashier
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.pegasusx.mobilekit.foundry.AMLCheckRequest
-import com.pegasusx.mobilekit.foundry.AMLCheckResponse
-import com.pegasusx.mobilekit.foundry.BlindCountRequest
-import com.pegasusx.mobilekit.foundry.CITHandoverRequest
-import com.pegasusx.mobilekit.foundry.CashierSessionView
-import com.pegasusx.mobilekit.foundry.DepotVaultLedgerEntry
-import com.pegasusx.mobilekit.foundry.RRNTenderReclassificationRequest
-import com.pegasusx.mobilekit.foundry.StartCashierSessionRequest
+import com.pegasusx.warehouse.data.foundry.AMLCheckRequest
+import com.pegasusx.warehouse.data.foundry.AMLCheckResponse
+import com.pegasusx.warehouse.data.foundry.BlindCountRequest
+import com.pegasusx.warehouse.data.foundry.CITHandoverRequest
+import com.pegasusx.warehouse.data.foundry.CashierSessionView
+import com.pegasusx.warehouse.data.foundry.DepotVaultLedgerEntry
+import com.pegasusx.warehouse.data.foundry.RRNTenderReclassificationRequest
+import com.pegasusx.warehouse.data.foundry.StartCashierSessionRequest
 import com.pegasusx.warehouse.data.remote.WarehouseApi
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow

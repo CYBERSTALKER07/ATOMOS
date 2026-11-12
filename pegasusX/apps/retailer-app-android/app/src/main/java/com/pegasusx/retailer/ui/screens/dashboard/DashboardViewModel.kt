@@ -4,9 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pegasusx.retailer.data.api.PegasusApi
 import com.pegasusx.retailer.data.api.RetailerWebSocket
-import com.pegasus.design.MarketPack
-import com.pegasus.design.MarketPackBinder
-import com.pegasus.design.PulseHonesty
+import com.pegasusx.retailer.ui.design.MarketPack
+import com.pegasusx.retailer.ui.design.MarketPackBinder
+import com.pegasusx.retailer.ui.design.PulseHonesty
 import com.pegasusx.retailer.BuildConfig
 import com.pegasusx.retailer.data.local.TokenManager
 import com.pegasusx.retailer.data.model.ControlTowerPulse
@@ -95,7 +95,10 @@ class DashboardViewModel @Inject constructor(
     fun refresh() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, pulseLoading = true, pulseError = null, error = null) }
-            val pack = MarketPackBinder.fetch(BuildConfig.BASE_URL, tokenManager.getPreferredToken().orEmpty())?.pack
+            val token = tokenManager.getPreferredToken().orEmpty()
+            val pack = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                MarketPackBinder.fetch(BuildConfig.BASE_URL, token)?.pack
+            }
             _uiState.update { it.copy(pack = pack) }
 
             var nextIssue: DashboardLoadIssue? = null

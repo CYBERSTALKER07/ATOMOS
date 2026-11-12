@@ -50,9 +50,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.pegasus.payload.data.model.Truck
 import com.pegasus.payload.data.model.SealCompletedManifestResult
-import com.pegasus.design.PegasusStatePane
-import com.pegasus.design.PegasusStateKind
-import com.pegasus.design.PegasusLoadingState
+import com.pegasus.payload.ui.design.PegasusStatePane
+import com.pegasus.payload.ui.design.PegasusStateKind
+import com.pegasus.payload.ui.design.PegasusLoadingState
 import com.pegasus.payload.R
 
 @Composable

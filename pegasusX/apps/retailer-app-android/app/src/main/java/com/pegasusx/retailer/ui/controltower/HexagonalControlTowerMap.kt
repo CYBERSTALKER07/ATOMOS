@@ -74,7 +74,7 @@ fun HexagonalControlTowerMap(
 ) {
     val h3 = remember { H3Core.newInstance() }
 
-    val packCenter = com.pegasus.design.sessionMapCenter()
+    val packCenter = com.pegasusx.retailer.ui.design.sessionMapCenter()
     val centerLatLng = LatLng(packCenter?.lat ?: 0.0, packCenter?.lng ?: 0.0)
 
     val cameraPositionState = rememberCameraPositionState {

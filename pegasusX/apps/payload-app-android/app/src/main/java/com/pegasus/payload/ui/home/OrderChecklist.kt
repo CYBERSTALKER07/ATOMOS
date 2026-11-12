@@ -25,8 +25,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import com.pegasus.design.PegasusStateKind
-import com.pegasus.design.PegasusStatePane
+import com.pegasus.payload.ui.design.PegasusStateKind
+import com.pegasus.payload.ui.design.PegasusStatePane
 import com.pegasus.payload.data.model.LiveOrder
 import com.pegasus.payload.ui.components.PayloadSectionTitle
 import com.pegasus.payload.ui.components.PayloadSpacing
@@ -51,7 +51,7 @@ fun OrderChecklist(
     onScanProduct: () -> Unit,
 ) {
     if (loading) {
-        com.pegasus.design.PegasusLoadingState(
+        com.pegasus.payload.ui.design.PegasusLoadingState(
             title = stringResource(R.string.mobile_payload_ui_fetching_manifest),
             body = "Loading the checklist items assigned to this vehicle.",
             modifier = Modifier.fillMaxWidth().heightIn(min = 160.dp),

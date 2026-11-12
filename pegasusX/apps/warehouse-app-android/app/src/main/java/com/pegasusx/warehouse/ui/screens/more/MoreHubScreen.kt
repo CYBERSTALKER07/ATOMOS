@@ -60,7 +60,6 @@ private val operations = listOf(
     MoreDestination("Yard gate control", "Role 9 ALPR & bolt-seal verification", Icons.Default.LocalShipping, WarehouseRoutes.YARD_GATE),
     MoreDestination("Retailers", "CRM", Icons.Default.Store, WarehouseRoutes.CRM),
     MoreDestination("Returns", "Inbound + credit-note reverse", Icons.AutoMirrored.Filled.Undo, WarehouseRoutes.RETURNS),
-    MoreDestination("Cold chain", "Manifest temp readings + ingest", Icons.Default.Thermostat, WarehouseRoutes.COLD_CHAIN),
     MoreDestination("Labor capacity", "Zone capacity + driver availability", Icons.Default.Groups, WarehouseRoutes.LABOR_CAPACITY),
     MoreDestination("Exceptions", "Manifest / delay / lock triage", Icons.Default.Warning, WarehouseRoutes.EXCEPTIONS),
     MoreDestination("Control tower", "Scored exceptions", Icons.Default.Hub, WarehouseRoutes.CONTROL_TOWER),

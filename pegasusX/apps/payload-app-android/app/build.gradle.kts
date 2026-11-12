@@ -28,6 +28,7 @@ val backendGoDir = rootProject.file("../../apps/backend-go")
 val generatedWsModelFile = rootProject.file(
     "app/src/main/java/com/pegasus/payload/generated/contracts/PegasusWSEventEnvelope.kt"
 )
+val wsCodegenEnabled = localProps.getProperty("payload.ws.codegen", "false") == "true"
 
 fun assertCommandAvailable(command: String) {
     val process = ProcessBuilder("sh", "-c", "command -v \"$command\" >/dev/null 2>&1").start()
@@ -54,6 +55,7 @@ val generateEventSchema by tasks.registering(Exec::class) {
         "-schema-out",
         contractsSchemaFile.absolutePath,
         "-pretty=true",
+        "-strict=true",
     )
     outputs.file(contractsSchemaFile)
 }
@@ -90,8 +92,10 @@ val generateWsEventModels by tasks.registering(Exec::class) {
     )
 }
 
-tasks.named("preBuild") {
-    dependsOn(generateWsEventModels)
+if (wsCodegenEnabled) {
+    tasks.named("preBuild") {
+        dependsOn(generateWsEventModels)
+    }
 }
 
 android {
@@ -173,8 +177,6 @@ android {
 dependencies {
     val composeBom = platform("androidx.compose:compose-bom:2024.12.01")
     implementation(composeBom)
-    implementation(project(":mobile-design"))
-    implementation(project(":mobile-kit"))
 
     // Compose
     implementation("androidx.compose.ui:ui")

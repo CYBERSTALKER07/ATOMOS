@@ -13,11 +13,11 @@ import androidx.compose.ui.Modifier
 import com.pegasusx.supplier.data.model.KnowledgeGraphNode
 import com.pegasusx.supplier.data.model.SupplierKnowledgeGraph
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
-import com.pegasus.design.ui.PegasusLoadingState
+import com.pegasusx.supplier.ui.design.PegasusLoadingState
 import com.pegasusx.supplier.ui.components.SupplierOpsListCard
 import com.pegasusx.supplier.ui.components.SupplierSectionTitle
-import com.pegasus.design.ui.PegasusStateKind
-import com.pegasus.design.ui.PegasusStatePane
+import com.pegasusx.supplier.ui.design.PegasusStateKind
+import com.pegasusx.supplier.ui.design.PegasusStatePane
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 import com.pegasusx.supplier.R

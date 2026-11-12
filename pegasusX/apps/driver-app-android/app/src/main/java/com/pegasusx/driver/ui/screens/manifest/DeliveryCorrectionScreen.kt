@@ -64,7 +64,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -110,8 +110,8 @@ fun DeliveryCorrectionScreen(
     onComplete: () -> Unit,
     viewModel: CorrectionViewModel = hiltViewModel()
 ) {
-    val state by viewModel.state.collectAsState()
-    val editingIndex by viewModel.editingIndex.collectAsState()
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    val editingIndex by viewModel.editingIndex.collectAsStateWithLifecycle()
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val scope = rememberCoroutineScope()
     var showConfirmDialog by remember { mutableStateOf(false) }

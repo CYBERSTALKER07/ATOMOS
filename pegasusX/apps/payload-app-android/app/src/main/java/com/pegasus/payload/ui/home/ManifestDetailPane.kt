@@ -35,8 +35,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.background
-import com.pegasus.design.PegasusStatePane
-import com.pegasus.design.PegasusStateKind
+import com.pegasus.payload.ui.design.PegasusStatePane
+import com.pegasus.payload.ui.design.PegasusStateKind
 import com.pegasus.payload.data.model.Truck
 import com.pegasus.payload.ui.components.ExplainStatusBanner
 import com.pegasus.payload.ui.components.ManifestKpiGrid
@@ -109,8 +109,8 @@ fun ManifestDetailPane(
             }
 
             state.barcodeScanMessage?.let { msg ->
-                com.pegasus.design.PegasusRuntimeBanner(
-                    tone = if (msg.contains("error", ignoreCase = true) || msg.contains("failed", ignoreCase = true) || msg.contains("not", ignoreCase = true)) com.pegasus.design.PegasusRuntimeTone.Warning else com.pegasus.design.PegasusRuntimeTone.Live,
+                com.pegasus.payload.ui.design.PegasusRuntimeBanner(
+                    tone = if (msg.contains("error", ignoreCase = true) || msg.contains("failed", ignoreCase = true) || msg.contains("not", ignoreCase = true)) com.pegasus.payload.ui.design.PegasusRuntimeTone.Warning else com.pegasus.payload.ui.design.PegasusRuntimeTone.Live,
                     message = msg,
                     onRetry = null,
                 )
@@ -126,7 +126,7 @@ fun ManifestDetailPane(
             }
 
             when {
-                state.loadingManifest -> com.pegasus.design.PegasusLoadingState(
+                state.loadingManifest -> com.pegasus.payload.ui.design.PegasusLoadingState(
                     title = stringResource(R.string.mobile_payload_ui_loading_manifest),
                     body = "Syncing orders and volume for this vehicle.",
                 )

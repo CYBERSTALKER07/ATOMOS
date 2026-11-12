@@ -123,8 +123,9 @@ class ProfileViewModel @Inject constructor(
                 if (!summary.isNullOrBlank()) {
                     _uiState.update { it.copy(pricingRulesSummary = summary) }
                 }
-            } catch (_: Exception) {
+            } catch (e: Exception) {
                 // Pricing rules are read-only and optional on partial stacks.
+            if (e is kotlinx.coroutines.CancellationException) throw e
             }
 
             try {
@@ -162,8 +163,9 @@ class ProfileViewModel @Inject constructor(
                         )
                     }
                 }
-            } catch (_: Exception) {
+            } catch (e: Exception) {
                 // Client policy is best-effort on app launch.
+            if (e is kotlinx.coroutines.CancellationException) throw e
             }
 
             _uiState.update {

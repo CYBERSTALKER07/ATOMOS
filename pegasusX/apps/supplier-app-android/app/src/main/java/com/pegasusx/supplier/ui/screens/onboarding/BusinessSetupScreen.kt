@@ -13,8 +13,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.pegasus.design.ui.PegasusRuntimeBanner
-import com.pegasus.design.ui.PegasusRuntimeTone
+import com.pegasusx.supplier.ui.design.PegasusRuntimeBanner
+import com.pegasusx.supplier.ui.design.PegasusRuntimeTone
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import com.pegasusx.supplier.ui.viewmodel.OnboardingViewModel
 import com.pegasusx.supplier.R

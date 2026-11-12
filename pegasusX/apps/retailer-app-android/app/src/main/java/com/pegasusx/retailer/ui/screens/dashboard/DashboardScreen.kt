@@ -10,10 +10,10 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 
 import androidx.compose.foundation.lazy.grid.GridCells
-import com.pegasus.design.ORDER_STATUS_FUNNEL
-import com.pegasus.design.PackBanner
-import com.pegasus.design.SourceChip
-import com.pegasus.design.StatusStack
+import com.pegasusx.retailer.ui.design.ORDER_STATUS_FUNNEL
+import com.pegasusx.retailer.ui.design.PackBanner
+import com.pegasusx.retailer.ui.design.SourceChip
+import com.pegasusx.retailer.ui.design.StatusStack
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -59,7 +59,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -82,8 +82,8 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.pegasusx.retailer.data.model.Product
 import com.pegasusx.retailer.ui.components.RetailerMetricTile
-import com.pegasus.design.PegasusRuntimeBanner
-import com.pegasus.design.PegasusRuntimeTone
+import com.pegasusx.retailer.ui.design.PegasusRuntimeBanner
+import com.pegasusx.retailer.ui.design.PegasusRuntimeTone
 import com.pegasusx.retailer.ui.components.RetailerSectionHeader
 import com.pegasusx.retailer.ui.screens.dashboard.components.DashboardOverviewCard
 import com.pegasusx.retailer.ui.components.PulseStrip
@@ -117,7 +117,7 @@ fun DashboardScreen(
     onOpenControlTower: () -> Unit = {},
     onQuickReorder: (Product) -> Unit = {},
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var selectedRange by rememberSaveable { mutableIntStateOf(0) }
 
     Scaffold(

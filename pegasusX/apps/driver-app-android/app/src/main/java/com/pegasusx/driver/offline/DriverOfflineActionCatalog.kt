@@ -1,7 +1,7 @@
 package com.pegasusx.driver.offline
 
-import com.pegasusx.mobilekit.offline.OfflineEndpointCatalog
-import com.pegasusx.mobilekit.offline.OfflineHttpSemantics
+import com.pegasusx.driver.offline.OfflineEndpointCatalog
+import com.pegasusx.driver.offline.OfflineHttpSemantics
 
 /**
  * Offline-eligible driver mutations and flush priority (lower = earlier).

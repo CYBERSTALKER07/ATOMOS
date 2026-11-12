@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import com.pegasusx.retailer.data.auth.FirebaseAuthHelper
+import com.pegasusx.retailer.network.NetworkLifecycleEngine
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
 
@@ -15,6 +16,7 @@ class PegasusXRetailerApp : Application(), Configuration.Provider {
     override fun onCreate() {
         super.onCreate()
         FirebaseAuthHelper.init(this)
+        NetworkLifecycleEngine.shared.initialize(this)
     }
 
     override val workManagerConfiguration: Configuration

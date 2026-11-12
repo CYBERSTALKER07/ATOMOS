@@ -68,34 +68,33 @@ fun HqScreen(
     var summaryReady by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        scope.launch {
-            try {
-                val s = viewModel.api.getHqSummary(day).asJsonObject
-                val net = s["net_minor"]?.asLong ?: 0L
-                val locsCount = s["location_count"]?.asInt ?: 0
-                val skus = s["sku_count"]?.asInt ?: 0
-                summaryLine = "$day · $locsCount locations · $skus SKUs · net ${net / 100.0}"
-                val locJson = viewModel.api.getHqSalesByLocation(day).asJsonObject
-                val arr = locJson.getAsJsonArray("items")
-                locs = buildList {
-                    if (arr != null) {
-                        for (el in arr) {
-                            val o = el.jsonObject
-                            add(
-                                HqLocRow(
-                                    locationId = o["location_id"]?.asString ?: "—",
-                                    netMinor = o["net_minor"]?.asLong ?: 0L,
-                                    qtySold = o["qty_sold"]?.asInt ?: 0,
-                                ),
-                            )
-                        }
+        try {
+            val s = viewModel.api.getHqSummary(day).asJsonObject
+            val net = s["net_minor"]?.asLong ?: 0L
+            val locsCount = s["location_count"]?.asInt ?: 0
+            val skus = s["sku_count"]?.asInt ?: 0
+            summaryLine = "$day · $locsCount locations · $skus SKUs · net ${com.pegasusx.retailer.ui.design.formatTiyinFixed(net)}"
+            val locJson = viewModel.api.getHqSalesByLocation(day).asJsonObject
+            val arr = locJson.getAsJsonArray("items")
+            locs = buildList {
+                if (arr != null) {
+                    for (el in arr) {
+                        val o = el.jsonObject
+                        add(
+                            HqLocRow(
+                                locationId = o["location_id"]?.asString ?: "—",
+                                netMinor = o["net_minor"]?.asLong ?: 0L,
+                                qtySold = o["qty_sold"]?.asInt ?: 0,
+                            ),
+                        )
                     }
                 }
-                loadError = null
-                summaryReady = true
-            } catch (_: Exception) {
-                loadError = "hq_failed"
             }
+            loadError = null
+            summaryReady = true
+        } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
+            loadError = "hq_failed"
         }
     }
 
@@ -137,7 +136,7 @@ fun HqScreen(
                         Card(modifier = Modifier.fillMaxWidth()) {
                             Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Text(row.locationId, style = MaterialTheme.typography.labelMedium)
-                                Text("Qty ${row.qtySold} · Net ${row.netMinor / 100.0}")
+                                Text("Qty ${row.qtySold} · Net ${com.pegasusx.retailer.ui.design.formatTiyinFixed(row.netMinor)}")
                             }
                         }
                     }

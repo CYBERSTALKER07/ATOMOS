@@ -35,7 +35,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -120,7 +120,7 @@ fun MapScreen(
 ) {
     val lab = LocalPegasusColors.current
     val context = LocalContext.current
-    val uiState by viewModel.state.collectAsState()
+    val uiState by viewModel.state.collectAsStateWithLifecycle()
     var showRescueSheet by remember { mutableStateOf(false) }
 
     if (showRescueSheet) {
@@ -167,7 +167,7 @@ fun MapScreen(
         }
     }
 
-    val packCenter = com.pegasus.design.sessionMapCenter()
+    val packCenter = com.pegasusx.driver.ui.design.sessionMapCenter()
     val defaultPosition = LatLng(packCenter?.lat ?: 0.0, packCenter?.lng ?: 0.0)
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(defaultPosition, 12f)
@@ -181,8 +181,8 @@ fun MapScreen(
     val locationFlow = remember(hasLocationPermission) {
         if (hasLocationPermission) locationFlow(context) else emptyFlow()
     }
-    val currentLocation by locationFlow.collectAsState(initial = null)
-    val trailPoints by LocationTrail.points.collectAsState()
+    val currentLocation by locationFlow.collectAsStateWithLifecycle(initialValue = null)
+    val trailPoints by LocationTrail.points.collectAsStateWithLifecycle()
 
     LaunchedEffect(currentLocation) {
         currentLocation?.let { locationInterpolator.onGps(it) }
@@ -195,9 +195,9 @@ fun MapScreen(
         }
     }
 
-    val displayPosition by locationInterpolator.position.collectAsState()
-    val displayBearing by locationInterpolator.bearing.collectAsState()
-    val displaySpeed by locationInterpolator.speedMps.collectAsState()
+    val displayPosition by locationInterpolator.position.collectAsStateWithLifecycle()
+    val displayBearing by locationInterpolator.bearing.collectAsStateWithLifecycle()
+    val displaySpeed by locationInterpolator.speedMps.collectAsStateWithLifecycle()
 
     LaunchedEffect(displayPosition, uiState.routeSteps, uiState.routeGeometry, mapPhase, activeOrder?.routeId) {
         val position = displayPosition ?: return@LaunchedEffect

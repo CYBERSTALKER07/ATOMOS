@@ -359,6 +359,33 @@ data class ManifestListResponse(
 )
 
 // ── Analytics ──
+object JsonMoneyLongSerializer : kotlinx.serialization.KSerializer<Long> {
+    override val descriptor: kotlinx.serialization.descriptors.SerialDescriptor =
+        kotlinx.serialization.descriptors.PrimitiveSerialDescriptor(
+            "WarehouseJsonMoneyLong",
+            kotlinx.serialization.descriptors.PrimitiveKind.LONG,
+        )
+
+    override fun deserialize(decoder: kotlinx.serialization.encoding.Decoder): Long {
+        if (decoder is kotlinx.serialization.json.JsonDecoder) {
+            val element = decoder.decodeJsonElement()
+            val primitive = element as? kotlinx.serialization.json.JsonPrimitive ?: return 0L
+            if (primitive is kotlinx.serialization.json.JsonNull) return 0L
+            val raw = primitive.content.trim()
+            if (raw.isEmpty()) return 0L
+            raw.toLongOrNull()?.let { return it }
+            return runCatching {
+                java.math.BigDecimal(raw).setScale(0, java.math.RoundingMode.HALF_UP).toLong()
+            }.getOrDefault(0L)
+        }
+        return decoder.decodeLong()
+    }
+
+    override fun serialize(encoder: kotlinx.serialization.encoding.Encoder, value: Long) {
+        encoder.encodeLong(value)
+    }
+}
+
 @Serializable
 data class AnalyticsData(
     val period: String = "",
@@ -366,7 +393,9 @@ data class AnalyticsData(
     @SerialName("total_orders") val totalOrders: Long = 0,
     @SerialName("completed_orders") val completedOrders: Long = 0,
     @SerialName("cancelled_orders") val cancelledOrders: Long = 0,
-    @SerialName("avg_order_value") val avgOrderValue: Double = 0.0,
+    @SerialName("avg_order_value")
+    @Serializable(with = JsonMoneyLongSerializer::class)
+    val avgOrderValue: Long = 0L,
     @SerialName("fleet_utilization") val fleetUtilization: FleetUtilization = FleetUtilization(),
     @SerialName("fleet_utilization_pct") val fleetUtilizationPctLegacy: Double = 0.0,
     @SerialName("import_freshness") val importFreshness: ImportFreshness = ImportFreshness(),
@@ -1110,33 +1139,6 @@ data class CycleCountCreateRequest(
 @Serializable
 data class CycleCountSubmitRequest(
     @SerialName("counted_qty") val countedQty: Long,
-)
-
-// ── Cold chain (WMS temperature readings) ──
-@Serializable
-data class TemperatureReading(
-    @SerialName("reading_id") val readingId: String = "",
-    @SerialName("manifest_id") val manifestId: String = "",
-    @SerialName("sensor_id") val sensorId: String? = null,
-    @SerialName("recorded_at") val recordedAt: String = "",
-    @SerialName("temp_c") val tempC: Double = 0.0,
-    @SerialName("min_c") val minC: Double? = null,
-    @SerialName("max_c") val maxC: Double? = null,
-    val excursion: Boolean = false,
-)
-
-@Serializable
-data class TemperatureReadingListResponse(
-    val readings: List<TemperatureReading> = emptyList(),
-)
-
-@Serializable
-data class TemperatureReadingIngestRequest(
-    @SerialName("manifest_id") val manifestId: String,
-    @SerialName("temp_c") val tempC: Double,
-    @SerialName("sensor_id") val sensorId: String? = null,
-    @SerialName("min_c") val minC: Double? = null,
-    @SerialName("max_c") val maxC: Double? = null,
 )
 
 // ── Labor capacity (camelCase API) ──

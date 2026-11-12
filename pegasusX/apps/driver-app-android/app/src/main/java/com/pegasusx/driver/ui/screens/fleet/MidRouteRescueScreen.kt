@@ -39,9 +39,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.pegasusx.driver.ui.theme.PegasusSpacing
 import com.pegasusx.driver.data.remote.DriverApi
-import com.pegasusx.mobilekit.foundry.MidRouteRescueRequest
-import com.pegasusx.mobilekit.foundry.MidRouteRescueResult
-import com.pegasusx.mobilekit.foundry.RescueToteItem
+import com.pegasusx.driver.data.foundry.MidRouteRescueRequest
+import com.pegasusx.driver.data.foundry.MidRouteRescueResult
+import com.pegasusx.driver.data.foundry.RescueToteItem
 import kotlinx.coroutines.launch
 
 @Composable

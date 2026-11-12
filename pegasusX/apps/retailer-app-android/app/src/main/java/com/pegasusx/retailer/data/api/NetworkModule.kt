@@ -46,7 +46,7 @@ object NetworkModule {
             .readTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
             .pingInterval(25, TimeUnit.SECONDS)
-            .addInterceptor(com.pegasus.design.CellPinInterceptor(BuildConfig.BASE_URL) { tokenManager.getPreferredToken() })
+            .addInterceptor(com.pegasusx.retailer.ui.design.CellPinInterceptor(BuildConfig.BASE_URL) { tokenManager.getPreferredToken() })
             .addInterceptor { chain ->
                 val token = tokenManager.getPreferredToken()
                 val request = chain.request().newBuilder()
@@ -56,7 +56,7 @@ object NetworkModule {
                 chain.proceed(request)
             }
             .authenticator(TokenRefreshAuthenticator(tokenManager, json))
-            .addInterceptor(com.pegasus.design.PegasusHttpResilienceInterceptor())
+            .addInterceptor(com.pegasusx.retailer.ui.design.PegasusHttpResilienceInterceptor())
             .addInterceptor(ProblemDetailInterceptor(json))
             .addInterceptor(HttpLoggingInterceptor().apply {
                 level = if (BuildConfig.DEBUG) {
@@ -157,25 +157,25 @@ private class ProblemDetailInterceptor(private val json: Json) : okhttp3.Interce
         val response = chain.proceed(chain.request())
         if (response.code == 429) {
             val bodyStr = response.peekBody(8192).string()
-            try {
-                val jsonElement = json.parseToJsonElement(bodyStr).jsonObject
-                if (jsonElement["error"]?.jsonPrimitive?.content == "rate_limit_exceeded") {
-                    throw ProblemDetailException(
-                        ProblemDetail(
-                            type = "about:blank",
-                            title = "Too Many Requests",
-                            status = 429,
-                            detail = "Too many requests. Please try again later.",
-                            instance = null,
-                            code = "rate_limit_exceeded",
-                            // UI layer maps this key to mobile_retailer_ui_too_many_requests for display.
-                            messageKey = "mobile_retailer_ui_too_many_requests",
-                            retryable = true,
-                            action = null
-                        )
-                    )
-                }
-            } catch (_: Exception) {}
+            val isRateLimited = runCatching {
+                json.parseToJsonElement(bodyStr).jsonObject["error"]?.jsonPrimitive?.content == "rate_limit_exceeded"
+            }.getOrDefault(false)
+            if (isRateLimited) {
+                throw ProblemDetailException(
+                    ProblemDetail(
+                        type = "about:blank",
+                        title = "Too Many Requests",
+                        status = 429,
+                        detail = "Too many requests. Please try again later.",
+                        instance = null,
+                        code = "rate_limit_exceeded",
+                        // UI layer maps this key to mobile_retailer_ui_too_many_requests for display.
+                        messageKey = "mobile_retailer_ui_too_many_requests",
+                        retryable = true,
+                        action = null,
+                    ),
+                )
+            }
         }
         val contentType = response.header("Content-Type") ?: return response
         if (!contentType.contains("application/problem+json")) return response

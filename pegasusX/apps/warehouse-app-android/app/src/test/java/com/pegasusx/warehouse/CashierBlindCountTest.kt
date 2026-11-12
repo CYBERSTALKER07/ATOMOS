@@ -1,12 +1,12 @@
 package com.pegasusx.warehouse
 
-import com.pegasusx.mobilekit.foundry.AMLCheckRequest
-import com.pegasusx.mobilekit.foundry.AMLCheckResponse
-import com.pegasusx.mobilekit.foundry.CITHandoverRequest
-import com.pegasusx.mobilekit.foundry.CashierSessionView
-import com.pegasusx.mobilekit.foundry.DepotVaultLedgerEntry
-import com.pegasusx.mobilekit.foundry.RRNTenderReclassificationRequest
-import com.pegasusx.mobilekit.foundry.YardGateCheckEvent
+import com.pegasusx.warehouse.data.foundry.AMLCheckRequest
+import com.pegasusx.warehouse.data.foundry.AMLCheckResponse
+import com.pegasusx.warehouse.data.foundry.CITHandoverRequest
+import com.pegasusx.warehouse.data.foundry.CashierSessionView
+import com.pegasusx.warehouse.data.foundry.DepotVaultLedgerEntry
+import com.pegasusx.warehouse.data.foundry.RRNTenderReclassificationRequest
+import com.pegasusx.warehouse.data.foundry.YardGateCheckEvent
 import com.pegasusx.warehouse.ui.screens.cashier.CashierUiState
 import com.pegasusx.warehouse.ui.screens.cashier.DenominationEntry
 import org.junit.Assert.assertEquals

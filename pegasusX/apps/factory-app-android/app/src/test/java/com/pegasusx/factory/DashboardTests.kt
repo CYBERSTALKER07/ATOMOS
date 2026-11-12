@@ -1,8 +1,8 @@
 package com.pegasusx.factory
 
-import com.pegasus.design.FACTORY_TRANSFER_STATES
-import com.pegasus.design.MANIFEST_STATES
-import com.pegasus.design.statusStackModel
+import com.pegasusx.factory.ui.design.FACTORY_TRANSFER_STATES
+import com.pegasusx.factory.ui.design.MANIFEST_STATES
+import com.pegasusx.factory.ui.design.statusStackModel
 import com.pegasusx.factory.data.model.DashboardStats
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals

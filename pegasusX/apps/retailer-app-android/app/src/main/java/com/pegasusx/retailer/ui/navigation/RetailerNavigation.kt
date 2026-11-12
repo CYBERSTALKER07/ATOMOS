@@ -23,7 +23,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -98,9 +98,9 @@ fun RetailerNavigation(
     navigationViewModel: NavigationViewModel = hiltViewModel(),
 ) {
     val navController = rememberNavController()
-    val navState by navigationViewModel.uiState.collectAsState()
+    val navState by navigationViewModel.uiState.collectAsStateWithLifecycle()
     val cartViewModel: CartViewModel = hiltViewModel()
-    val cartState by cartViewModel.uiState.collectAsState()
+    val cartState by cartViewModel.uiState.collectAsStateWithLifecycle()
     var currentTab by rememberSaveable { mutableStateOf(PegasusTab.HOME) }
     val cartBadge = cartState.totalItems
 

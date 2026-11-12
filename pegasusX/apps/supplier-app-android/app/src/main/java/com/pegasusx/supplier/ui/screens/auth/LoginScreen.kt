@@ -24,8 +24,8 @@ import com.pegasusx.supplier.data.model.LoginRequest
 import com.pegasusx.supplier.data.push.DeviceTokenRegistrar
 import com.pegasusx.supplier.data.remote.SupplierApi
 import com.pegasusx.supplier.data.remote.TokenHolder
-import com.pegasus.design.ui.PegasusRuntimeBanner
-import com.pegasus.design.ui.PegasusRuntimeTone
+import com.pegasusx.supplier.ui.design.PegasusRuntimeBanner
+import com.pegasusx.supplier.ui.design.PegasusRuntimeTone
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 import com.pegasusx.supplier.R
@@ -150,20 +150,6 @@ fun LoginScreen(
                 }
             }
             Spacer(Modifier.height(PegasusSpacing.md))
-            OutlinedButton(
-                onClick = {
-                    TokenHolder.token = "mock-supplier-jwt-dev"
-                    TokenHolder.refreshToken = "mock-refresh-dev"
-                    TokenHolder.supplierId = "sup-tashkent-001"
-                    TokenHolder.isConfigured = true
-                    onLoginSuccess()
-                },
-                enabled = !loading,
-                modifier = Modifier.fillMaxWidth().height(48.dp),
-            ) {
-                Text("BYPASS / ENTER DEMO SUPPLIER")
-            }
-            Spacer(Modifier.height(PegasusSpacing.sm))
             TextButton(onClick = onRegister, modifier = Modifier.fillMaxWidth()) {
                 Text("Create supplier account")
             }

@@ -53,10 +53,6 @@ class LoginViewModel @Inject constructor(
         }
     }
 
-    fun bypassLogin() {
-        authRepository.bypassLogin()
-    }
-
     fun onPinChange(value: String) {
         if (value.length <= 8 && value.all { it.isDigit() }) {
             _state.value = _state.value.copy(pin = value, error = null)

@@ -13,7 +13,11 @@ import com.pegasusx.retailer.R
 
 @Composable
 fun StatsRow(orderCount: Int, totalSpent: Long) {
-    val spentDisplay = if (totalSpent >= 1000) "$${String.format("%.1f", totalSpent / 1000.0)}k" else "$$totalSpent"
+    val spentDisplay = when {
+        totalSpent >= 1_000_000L -> "${totalSpent / 1_000_000L}.${(totalSpent % 1_000_000L) / 100_000L}M"
+        totalSpent >= 1_000L -> "${totalSpent / 1_000L}.${(totalSpent % 1_000L) / 100L}k"
+        else -> "$totalSpent"
+    }
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),

@@ -233,8 +233,9 @@ class AuthViewModel @Inject constructor(
                             idempotencyKey = RetailerIdempotencyKeys.setup(userId),
                         )
                     }
-                } catch (_: Exception) {
+                } catch (e: Exception) {
                     // Registration already captured core profile; setup is additive best-effort.
+                if (e is kotlinx.coroutines.CancellationException) throw e
                 }
             } catch (e: Exception) {
                 val issue = resolveLoadIssue(e)
@@ -255,18 +256,6 @@ class AuthViewModel @Inject constructor(
 
     fun clearError() {
         _uiState.value = _uiState.value.copy(error = null, loadIssue = null)
-    }
-
-    fun bypassLogin() {
-        tokenManager.saveToken("mock-retailer-jwt-dev")
-        tokenManager.saveUserId("usr-retailer-001")
-        tokenManager.saveUserName("Tashkent Market (Demo Retailer)")
-        _uiState.value = _uiState.value.copy(
-            isLoading = false,
-            isAuthenticated = true,
-            error = null,
-            loadIssue = null,
-        )
     }
 
     private fun resolveLoadIssue(error: Exception): AuthLoadIssue {

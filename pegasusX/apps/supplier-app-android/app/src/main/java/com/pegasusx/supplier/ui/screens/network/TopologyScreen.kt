@@ -37,9 +37,9 @@ import com.pegasusx.supplier.data.model.SupplierTopologyResponse
 import com.pegasusx.supplier.data.model.SupplierTopologyUpdateRequest
 import com.pegasusx.supplier.data.model.SupplierTopologyWarehouseInput
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
-import com.pegasus.design.ui.PegasusLoadingState
-import com.pegasus.design.ui.PegasusStateKind
-import com.pegasus.design.ui.PegasusStatePane
+import com.pegasusx.supplier.ui.design.PegasusLoadingState
+import com.pegasusx.supplier.ui.design.PegasusStateKind
+import com.pegasusx.supplier.ui.design.PegasusStatePane
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 import com.pegasusx.supplier.R
@@ -246,8 +246,8 @@ fun TopologyScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
                                 key = "new-wh-${System.currentTimeMillis()}",
                                 warehouseId = null,
                                 name = "Warehouse ${warehouseDrafts.size + 1}",
-                                lat = com.pegasus.design.network.sessionMapCenter()?.lat?.toString() ?: "",
-                                lng = com.pegasus.design.network.sessionMapCenter()?.lng?.toString() ?: "",
+                                lat = com.pegasusx.supplier.ui.design.sessionMapCenter()?.lat?.toString() ?: "",
+                                lng = com.pegasusx.supplier.ui.design.sessionMapCenter()?.lng?.toString() ?: "",
                                 coverageRadiusKm = "50",
                                 isActive = true,
                                 isOnShift = true,
@@ -282,8 +282,8 @@ fun TopologyScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
                                 key = "new-fc-${System.currentTimeMillis()}",
                                 factoryId = null,
                                 name = "Factory ${factoryDrafts.size + 1}",
-                                lat = com.pegasus.design.network.sessionMapCenter()?.lat?.toString() ?: "",
-                                lng = com.pegasus.design.network.sessionMapCenter()?.lng?.toString() ?: "",
+                                lat = com.pegasusx.supplier.ui.design.sessionMapCenter()?.lat?.toString() ?: "",
+                                lng = com.pegasusx.supplier.ui.design.sessionMapCenter()?.lng?.toString() ?: "",
                                 isActive = true,
                             ),
                         )

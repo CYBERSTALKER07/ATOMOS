@@ -1,6 +1,6 @@
 package com.pegasus.payload.di
 
-import com.pegasus.design.CellPinInterceptor
+import com.pegasus.payload.ui.design.CellPinInterceptor
 import com.pegasus.payload.BuildConfig
 import com.pegasus.payload.data.local.SecureStore
 import com.pegasus.payload.data.remote.AuthInterceptor
@@ -44,7 +44,7 @@ object NetworkModule {
             .addInterceptor(CellPinInterceptor(BuildConfig.API_BASE_URL) { secureStore.token })
             .addInterceptor(authInterceptor)
             .authenticator(tokenRefreshAuthenticator)
-            .addInterceptor(com.pegasus.design.PegasusHttpResilienceInterceptor())
+            .addInterceptor(com.pegasus.payload.ui.design.PegasusHttpResilienceInterceptor())
             .addInterceptor(logging)
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)

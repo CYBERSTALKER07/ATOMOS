@@ -65,7 +65,7 @@ private fun LaneCard(lane: SupplierSupplyLaneRow) {
                 Text("%.0f%%".format(lane.utilizationPct), style = MaterialTheme.typography.bodySmall, color = tint)
             }
             LinearProgressIndicator(
-                progress = { (min(100.0, maxOf(0.0, lane.utilizationPct)) / 100.0).toFloat() },
+                progress = { (lane.utilizationPct.toFloat() * 0.01f).coerceIn(0f, 1f) },
                 modifier = Modifier.fillMaxWidth(),
                 color = tint,
             )

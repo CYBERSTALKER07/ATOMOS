@@ -6,9 +6,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import com.pegasus.design.PegasusCollapsibleRail
-import com.pegasus.design.PegasusRailGroup
-import com.pegasus.design.PegasusRailItem
+import com.pegasusx.factory.ui.design.PegasusCollapsibleRail
+import com.pegasusx.factory.ui.design.PegasusRailGroup
+import com.pegasusx.factory.ui.design.PegasusRailItem
 import com.pegasusx.factory.ui.navigation.FactorySection
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier

@@ -212,9 +212,21 @@ fun ShiftsScreen(
             items(shifts) { row ->
                 Card {
                     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(stringResource(R.string.mobile_retailer_ui_status_float_n_0, row.status, row.openingFloatMinor / 100.0))
+                        Text(
+                            stringResource(
+                                R.string.mobile_retailer_ui_status_float_n_0,
+                                row.status,
+                                com.pegasusx.retailer.ui.design.formatTiyinFixed(row.openingFloatMinor),
+                            ),
+                        )
                         row.varianceMinor?.let {
-                            Text(stringResource(R.string.mobile_retailer_ui_variance_n_0, it / 100.0), style = MaterialTheme.typography.bodySmall)
+                            Text(
+                                stringResource(
+                                    R.string.mobile_retailer_ui_variance_n_0,
+                                    com.pegasusx.retailer.ui.design.formatTiyinFixed(it),
+                                ),
+                                style = MaterialTheme.typography.bodySmall,
+                            )
                         }
                         if (row.status == "OPEN") {
                             OutlinedButton(enabled = !busy, onClick = {
@@ -228,7 +240,11 @@ fun ShiftsScreen(
                                             ),
                                         ).asJsonObject
                                         val v = closed.get("variance_minor")?.takeIf { !it.isJsonNull }?.asLong
-                                        banner = "Shift closed" + if (v != null) " · variance ${v / 100.0}" else ""
+                                        banner = "Shift closed" + if (v != null) {
+                                            " · variance ${com.pegasusx.retailer.ui.design.formatTiyinFixed(v)}"
+                                        } else {
+                                            ""
+                                        }
                                         refresh()
                                     } catch (e: Exception) {
                                         banner = e.message

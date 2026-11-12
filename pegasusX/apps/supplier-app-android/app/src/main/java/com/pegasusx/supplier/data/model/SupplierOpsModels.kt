@@ -978,7 +978,7 @@ data class PlanningScenarioResult(
 @Serializable
 data class PromoSimulateInput(
     @SerialName("promotion_id") val promotionId: String? = null,
-    @SerialName("discount_pct") val discountPct: Double? = null,
+    @SerialName("discount_pct") val discountPct: kotlinx.serialization.json.JsonElement? = null,
     @SerialName("expected_units") val expectedUnits: Long? = null,
     @SerialName("avg_unit_margin_minor") val avgUnitMarginMinor: Long? = null,
 )

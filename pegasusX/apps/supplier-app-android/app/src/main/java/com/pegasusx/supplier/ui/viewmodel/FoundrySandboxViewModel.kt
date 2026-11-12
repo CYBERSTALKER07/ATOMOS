@@ -2,12 +2,12 @@ package com.pegasusx.supplier.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.pegasusx.mobilekit.foundry.ActionExecutionRequest
-import com.pegasusx.mobilekit.foundry.LotRecallRequest
-import com.pegasusx.mobilekit.foundry.RecallBlastRadiusReport
-import com.pegasusx.mobilekit.foundry.ScenarioCommitResult
-import com.pegasusx.mobilekit.foundry.ScenarioPatchRequest
-import com.pegasusx.mobilekit.foundry.ScenarioWatermarkConflict
+import com.pegasusx.supplier.data.foundry.ActionExecutionRequest
+import com.pegasusx.supplier.data.foundry.LotRecallRequest
+import com.pegasusx.supplier.data.foundry.RecallBlastRadiusReport
+import com.pegasusx.supplier.data.foundry.ScenarioCommitResult
+import com.pegasusx.supplier.data.foundry.ScenarioPatchRequest
+import com.pegasusx.supplier.data.foundry.ScenarioWatermarkConflict
 import com.pegasusx.supplier.data.remote.SupplierApi
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow

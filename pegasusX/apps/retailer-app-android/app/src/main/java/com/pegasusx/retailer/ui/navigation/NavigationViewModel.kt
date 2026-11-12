@@ -179,8 +179,9 @@ class NavigationViewModel @Inject constructor(
             try {
                 val page = api.getNotifications(limit = 1, offset = 0)
                 _uiState.update { it.copy(unreadNotificationCount = page.unreadCount) }
-            } catch (_: Exception) {
+            } catch (e: Exception) {
                 // Badge is best-effort; inbox screen loads full feed.
+            if (e is kotlinx.coroutines.CancellationException) throw e
             }
         }
     }
@@ -220,8 +221,9 @@ class NavigationViewModel @Inject constructor(
                         clientPolicyForce = state.force,
                     )
                 }
-            } catch (_: Exception) {
+            } catch (e: Exception) {
                 // Policy fetch is optional on local/dev stacks.
+            if (e is kotlinx.coroutines.CancellationException) throw e
             }
         }
     }

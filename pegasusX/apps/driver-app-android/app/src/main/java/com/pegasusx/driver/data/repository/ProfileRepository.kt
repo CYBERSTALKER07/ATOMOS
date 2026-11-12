@@ -30,8 +30,9 @@ class ProfileRepository @Inject constructor(
                     val profile = api.getProfile()
                     applyIfChanged(profile)
                     emit(profile)
-                } catch (_: Exception) {
+                } catch (e: Exception) {
                     // Silently ignore — next tick retries in 60s
+                if (e is kotlinx.coroutines.CancellationException) throw e
                 }
             }
             delay(POLL_INTERVAL_MS)

@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.scanner
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+
 import android.media.AudioManager
 import android.media.ToneGenerator
 import android.os.Build
@@ -24,9 +26,9 @@ fun BarcodeScannerScreen(
     viewModel: ScannerViewModel = hiltViewModel(),
     onNavigateBack: () -> Unit
 ) {
-    val state by viewModel.state.collectAsState()
-    val scannedBins by viewModel.scannedBinIds.collectAsState(initial = emptyList())
-    val errorMessage by viewModel.errorMessage.collectAsState()
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    val scannedBins by viewModel.scannedBinIds.collectAsStateWithLifecycle(initialValue = emptyList())
+    val errorMessage by viewModel.errorMessage.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     val toneGen = remember { ToneGenerator(AudioManager.STREAM_MUSIC, 100) }
@@ -90,8 +92,8 @@ fun BarcodeScannerScreen(
                     }
                 }
                 ScannerState.ERROR -> {
-                    com.pegasus.design.ui.PegasusStatePane(
-                        kind = com.pegasus.design.ui.PegasusStateKind.Error,
+                    com.pegasusx.warehouse.ui.design.PegasusStatePane(
+                        kind = com.pegasusx.warehouse.ui.design.PegasusStateKind.Error,
                         headline = "Scanner Error",
                         body = errorMessage ?: "Unknown error",
                         actionLabel = "Try Again",

@@ -28,7 +28,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -44,10 +44,10 @@ fun SyncQueueScreen(
     onBack: (() -> Unit)? = null,
     viewModel: SyncQueueViewModel = hiltViewModel(),
 ) {
-    val pending by viewModel.pending.collectAsState()
-    val dead by viewModel.dead.collectAsState()
-    val flushing by viewModel.flushing.collectAsState()
-    val status by viewModel.statusMessage.collectAsState()
+    val pending by viewModel.pending.collectAsStateWithLifecycle()
+    val dead by viewModel.dead.collectAsStateWithLifecycle()
+    val flushing by viewModel.flushing.collectAsStateWithLifecycle()
+    val status by viewModel.statusMessage.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {

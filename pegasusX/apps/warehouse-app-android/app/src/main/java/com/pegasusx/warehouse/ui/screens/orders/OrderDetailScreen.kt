@@ -330,7 +330,7 @@ fun OrderDetailScreen(
                             modifier = Modifier.fillMaxWidth(),
                         ) {
                             SummaryCard("State", current.state, Modifier.weight(1f))
-                            SummaryCard("Total", "${fmt.format(current.totalUzs)} ${com.pegasus.design.network.sessionPackCurrency()}", Modifier.weight(1f))
+                            SummaryCard("Total", "${fmt.format(current.totalUzs)} ${com.pegasusx.warehouse.ui.design.sessionPackCurrency()}", Modifier.weight(1f))
                         }
                     }
                     item(span = { GridItemSpan(maxLineSpan) }) {

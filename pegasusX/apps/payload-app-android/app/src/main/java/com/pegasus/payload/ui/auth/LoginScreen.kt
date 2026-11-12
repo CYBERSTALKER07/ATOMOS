@@ -32,8 +32,8 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.pegasus.design.PegasusStatePane
-import com.pegasus.design.PegasusStateKind
+import com.pegasus.payload.ui.design.PegasusStatePane
+import com.pegasus.payload.ui.design.PegasusStateKind
 import com.pegasus.payload.R
 
 /**
@@ -164,15 +164,6 @@ fun LoginScreen(viewModel: LoginViewModel = hiltViewModel()) {
                         }
                     }
 
-                    OutlinedButton(
-                        onClick = viewModel::bypassLogin,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(52.dp),
-                    ) {
-                        Text("BYPASS / ENTER DEMO TERMINAL", style = MaterialTheme.typography.titleMedium)
-                    }
-
                     TextButton(
                         onClick = {
                             viewModel.setMode(
@@ -191,7 +182,7 @@ fun LoginScreen(viewModel: LoginViewModel = hiltViewModel()) {
                 Surface(modifier = Modifier.fillMaxSize(), color = androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.4f)) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Surface(shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surface, modifier = Modifier.padding(32.dp)) {
-                            com.pegasus.design.PegasusLoadingState(title = stringResource(R.string.mobile_payload_ui_authenticating), body = "Verifying credentials with dispatch.", modifier = Modifier.padding(32.dp))
+                            com.pegasus.payload.ui.design.PegasusLoadingState(title = stringResource(R.string.mobile_payload_ui_authenticating), body = "Verifying credentials with dispatch.", modifier = Modifier.padding(32.dp))
                         }
                     }
                 }

@@ -86,7 +86,9 @@ object FirebaseAuthHelper {
         resetPhoneFlow()
         try {
             FirebaseAuth.getInstance().signOut()
-        } catch (_: Exception) { }
+        } catch (e: Exception) {
+            android.util.Log.w("FirebaseAuthHelper", "Firebase signOut ignored: ${e.message}")
+        }
     }
 
     @Volatile

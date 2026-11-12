@@ -42,10 +42,10 @@ import com.pegasusx.warehouse.ui.components.DispatchPreviewMapLibre
 import com.pegasusx.warehouse.ui.components.DispatchDriverList
 import com.pegasusx.warehouse.ui.components.FleetLiveMapSection
 import com.pegasusx.warehouse.ui.components.HandoffTimelineSection
-import com.pegasus.design.ui.PegasusLoadingState
-import com.pegasus.design.ui.PegasusStateKind
-import com.pegasus.design.ui.PegasusStatePane
-import com.pegasus.design.ui.PulseHonesty
+import com.pegasusx.warehouse.ui.design.PegasusLoadingState
+import com.pegasusx.warehouse.ui.design.PegasusStateKind
+import com.pegasusx.warehouse.ui.design.PegasusStatePane
+import com.pegasusx.warehouse.ui.design.PulseHonesty
 import com.pegasusx.warehouse.ui.components.WarehouseStatusChip
 import com.pegasusx.warehouse.data.remote.WarehouseRealtimeStatus
 import com.pegasusx.warehouse.ui.realtime.WAREHOUSE_RECONNECT_RECOVERY_HINT

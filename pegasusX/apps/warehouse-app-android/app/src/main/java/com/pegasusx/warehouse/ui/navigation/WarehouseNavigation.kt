@@ -20,6 +20,7 @@ import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -47,13 +48,13 @@ import com.pegasusx.warehouse.data.remote.WarehouseOperationsRepository
 import com.pegasusx.warehouse.data.remote.WarehouseRealtimeSignals
 import com.pegasusx.warehouse.service.AutoUpdater
 import com.pegasusx.warehouse.service.EnterpriseUpdateConfig
+import com.pegasusx.warehouse.network.NetworkLifecycleEngine
 import com.pegasusx.warehouse.ui.components.ClientPolicyBanner
 import com.pegasusx.warehouse.ui.components.WarehouseBottomBar
 import com.pegasusx.warehouse.ui.components.WarehouseNavigationDrawer
 import com.pegasusx.warehouse.ui.screens.analytics.AnalyticsScreen
 import com.pegasusx.warehouse.ui.screens.auth.LoginScreen
 import com.pegasusx.warehouse.ui.screens.claims.ClaimsScreen
-import com.pegasusx.warehouse.ui.screens.coldchain.ColdChainScreen
 import com.pegasusx.warehouse.ui.screens.crm.CRMScreen
 import com.pegasusx.warehouse.ui.screens.dashboard.DashboardScreen
 import com.pegasusx.warehouse.ui.screens.dispatch.DispatchScreen
@@ -116,7 +117,6 @@ object WarehouseRoutes {
     const val ANALYTICS = "analytics"
     const val CRM = "crm"
     const val RETURNS = "returns"
-    const val COLD_CHAIN = "cold_chain"
     const val LABOR_CAPACITY = "labor_capacity"
     const val EXCEPTIONS = "exceptions"
     const val CLAIMS = "claims"
@@ -175,7 +175,9 @@ fun WarehouseNavigation(
     }
     val lifecycleOwner = LocalLifecycleOwner.current
     val context = LocalContext.current
-    var networkAvailable by remember { mutableStateOf(true) }
+    val isOnline by NetworkLifecycleEngine.shared.isOnline.collectAsStateWithLifecycle()
+    val syncEpoch by NetworkLifecycleEngine.shared.syncEpoch.collectAsStateWithLifecycle()
+    val networkAvailable = isOnline
     var clientPolicyMessage by remember { mutableStateOf<String?>(null) }
     var clientPolicyForce by remember { mutableStateOf(false) }
     var pendingManifest by remember { mutableStateOf<AutoUpdater.Manifest?>(null) }
@@ -211,8 +213,9 @@ fun WarehouseNavigation(
                     clientPolicyForce = state.force
                     pendingManifest = state.manifest
                 }
-            } catch (_: Exception) {
+            } catch (e: Exception) {
                 // Policy fetch is optional on local/dev stacks.
+            if (e is kotlinx.coroutines.CancellationException) throw e
             }
         }
     }
@@ -236,31 +239,6 @@ fun WarehouseNavigation(
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
-        }
-    }
-
-    DisposableEffect(context) {
-        val mainHandler = Handler(Looper.getMainLooper())
-        val connectivityManager = context.getSystemService(ConnectivityManager::class.java)
-        val request = NetworkRequest.Builder()
-            .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-            .build()
-        val callback = object : ConnectivityManager.NetworkCallback() {
-            override fun onAvailable(network: Network) {
-                mainHandler.post {
-                    if (!networkAvailable) { /* per-screen refresh */ }
-                    networkAvailable = true
-                }
-            }
-
-            override fun onLost(network: Network) {
-                mainHandler.post { networkAvailable = false }
-            }
-        }
-
-        runCatching { connectivityManager?.registerNetworkCallback(request, callback) }
-        onDispose {
-            runCatching { connectivityManager?.unregisterNetworkCallback(callback) }
         }
     }
 
@@ -436,9 +414,6 @@ fun WarehouseNavigation(
 
                 composable(WarehouseRoutes.RETURNS) {
                     ReturnsScreen(api = api, onBack = backFor(WarehouseRoutes.RETURNS))
-                }
-                composable(WarehouseRoutes.COLD_CHAIN) {
-                    ColdChainScreen(api = api, onBack = backFor(WarehouseRoutes.COLD_CHAIN))
                 }
                 composable(WarehouseRoutes.LABOR_CAPACITY) {
                     LaborCapacityScreen(api = api, onBack = backFor(WarehouseRoutes.LABOR_CAPACITY))

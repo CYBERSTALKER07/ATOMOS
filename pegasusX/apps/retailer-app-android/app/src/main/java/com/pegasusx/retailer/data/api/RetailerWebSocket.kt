@@ -150,8 +150,9 @@ class RetailerWebSocket @Inject constructor(
                         lastEventId = msg.eventId
                     }
                     _events.tryEmit(msg)
-                } catch (_: Exception) {
+                } catch (e: Exception) {
                     // ignore malformed messages
+                if (e is kotlinx.coroutines.CancellationException) throw e
                 }
             }
 

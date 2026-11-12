@@ -49,7 +49,7 @@ object NetworkModule {
         .readTimeout(30, TimeUnit.SECONDS)
         .writeTimeout(15, TimeUnit.SECONDS)
         .pingInterval(30, TimeUnit.SECONDS) // WebSocket keepalive
-        .addInterceptor(com.pegasus.design.CellPinInterceptor(BuildConfig.API_BASE_URL) {
+        .addInterceptor(com.pegasusx.driver.ui.design.CellPinInterceptor(BuildConfig.API_BASE_URL) {
             TokenHolder.token
         })
         .addInterceptor { chain ->
@@ -60,7 +60,7 @@ object NetworkModule {
                 .build()
             chain.proceed(request)
         }
-        .addInterceptor(com.pegasus.design.PegasusHttpResilienceInterceptor())
+        .addInterceptor(com.pegasusx.driver.ui.design.PegasusHttpResilienceInterceptor())
         .authenticator(TokenRefreshAuthenticator(json))
         .addInterceptor(ProblemDetailInterceptor(json))
         .addInterceptor(

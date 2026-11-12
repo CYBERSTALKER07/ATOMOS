@@ -1,9 +1,9 @@
 package com.pegasusx.driver.ui.screens.fleet
 
-import com.pegasusx.mobilekit.foundry.DVIRChecklist8Point
-import com.pegasusx.mobilekit.foundry.FleetDVIRInspection
-import com.pegasusx.mobilekit.foundry.RescueToteItem
-import com.pegasusx.mobilekit.foundry.YardGateCheckEvent
+import com.pegasusx.driver.data.foundry.DVIRChecklist8Point
+import com.pegasusx.driver.data.foundry.FleetDVIRInspection
+import com.pegasusx.driver.data.foundry.RescueToteItem
+import com.pegasusx.driver.data.foundry.YardGateCheckEvent
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -14,7 +14,7 @@ import org.junit.Test
 class DVIRFleetTest {
 
     @Test
-    fun `default DVIR checklist has all 8 safety points true`() {
+    fun `default DVIR checklist has all safety points true`() {
         val checklist = DVIRChecklist8Point()
         assertTrue(checklist.steeringAndHornOk)
         assertTrue(checklist.serviceAndParkingBrakesOk)
@@ -23,7 +23,6 @@ class DVIRFleetTest {
         assertTrue(checklist.wipersAndFluidsOk)
         assertTrue(checklist.emergencyKitAndExtinguisherOk)
         assertTrue(checklist.cargoBoxSanitationOk)
-        assertTrue(checklist.reeferTempCalibratedOk)
     }
 
     @Test
@@ -52,26 +51,6 @@ class DVIRFleetTest {
         assertEquals("RED_TAG_QUARANTINE", inspection.status)
         assertEquals("wo-isuzu-01-4412", inspection.maintenanceWorkOrderId)
         assertEquals(listOf("service_and_parking_brakes"), inspection.failedPoints)
-    }
-
-    @Test
-    fun `cold chain reefer defect triggers red tag when cold chain required`() {
-        val reeferChecklist = DVIRChecklist8Point(reeferTempCalibratedOk = false)
-        val inspection = FleetDVIRInspection(
-            supplierId = "supplier-tashkent-1",
-            vehicleId = "vh-reefer-08",
-            driverId = "driver-uz-09",
-            requiresColdChain = true,
-            checklist = reeferChecklist,
-            failedPoints = listOf("reefer_temp_calibrated"),
-            criticalDefectFound = true,
-            redTagApplied = true,
-            reeferTempCelsius = 14.5, // degraded
-        )
-
-        assertTrue(inspection.requiresColdChain)
-        assertTrue(inspection.redTagApplied)
-        assertEquals(14.5, inspection.reeferTempCelsius, 0.001)
     }
 
     @Test

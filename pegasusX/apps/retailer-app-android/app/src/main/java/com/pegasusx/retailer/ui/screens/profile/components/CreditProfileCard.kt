@@ -19,7 +19,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -41,7 +41,7 @@ import com.pegasusx.retailer.R
 fun CreditProfileCard(
     viewModel: CreditProfileViewModel = hiltViewModel(),
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     CreditProfileCardContent(uiState = uiState)
 }
 
@@ -122,12 +122,14 @@ fun CreditProfileCardContent(
 @Composable
 private fun CreditProfileMetrics(profile: CreditProfile) {
     val formatter = NumberFormat.getIntegerInstance(Locale.US)
-    val util = if (profile.creditLimitMinor > 0) {
-        String.format(
-            Locale.US,
-            "%.1f",
-            (profile.currentBalanceMinor * 100.0) / profile.creditLimitMinor,
-        )
+    val util = if (profile.creditLimitMinor > 0L) {
+        val tenths = java.math.BigInteger.valueOf(profile.currentBalanceMinor)
+            .multiply(java.math.BigInteger.valueOf(1000L))
+            .divide(java.math.BigInteger.valueOf(profile.creditLimitMinor))
+            .toLong()
+        val sign = if (tenths < 0L) "-" else ""
+        val absTenths = kotlin.math.abs(tenths)
+        "$sign${absTenths / 10L}.${absTenths % 10L}"
     } else {
         "0.0"
     }

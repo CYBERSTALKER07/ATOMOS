@@ -272,7 +272,7 @@ fun OrderDetailSheetContent(
                         )
                     }
                     Text(
-                        String.format("$%.2f", item.totalPrice),
+                        com.pegasusx.retailer.data.model.formatRetailerAmount(item.totalPrice, order.currency),
                         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                     )
                 }
@@ -288,8 +288,6 @@ fun OrderDetailSheetContent(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 PriceRow("Subtotal", order.displayTotal)
-                Spacer(modifier = Modifier.height(6.dp))
-                PriceRow("Logistics Fee", "$2.50")
                 Spacer(modifier = Modifier.height(10.dp))
                 HorizontalDivider(
                     thickness = 0.5.dp,
@@ -306,7 +304,7 @@ fun OrderDetailSheetContent(
                         fontWeight = FontWeight.Bold,
                     )
                     Text(
-                        String.format("$%.2f", order.totalAmount + 2.50),
+                        order.displayTotal,
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
                     )

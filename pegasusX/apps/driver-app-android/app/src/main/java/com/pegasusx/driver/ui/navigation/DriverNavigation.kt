@@ -24,7 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -61,6 +61,7 @@ import com.pegasusx.driver.services.TelemetrySyncScheduler
 import com.pegasusx.driver.service.AutoUpdater
 import com.pegasusx.driver.service.EnterpriseUpdateConfig
 import com.pegasusx.driver.data.remote.TokenHolder
+import com.pegasusx.driver.network.NetworkLifecycleEngine
 import com.pegasusx.driver.ui.components.ClientPolicyBanner
 import com.pegasusx.driver.ui.screens.auth.LoginScreen
 import com.pegasusx.driver.ui.screens.home.HomeScreen
@@ -140,8 +141,10 @@ fun DriverNavigation(
     val startDest = if (TokenHolder.token != null) DriverRoutes.MAIN else DriverRoutes.LOGIN
     val lifecycleOwner = LocalLifecycleOwner.current
     val context = LocalContext.current
-    val outdatedState by driverWebSocket.outdatedState.collectAsState()
-    var networkAvailable by remember { mutableStateOf(true) }
+    val outdatedState by driverWebSocket.outdatedState.collectAsStateWithLifecycle()
+    val isOnline by NetworkLifecycleEngine.shared.isOnline.collectAsStateWithLifecycle()
+    val syncEpoch by NetworkLifecycleEngine.shared.syncEpoch.collectAsStateWithLifecycle()
+    val networkAvailable = isOnline
     var clientPolicyMessage by remember { mutableStateOf<String?>(null) }
     var clientPolicyForce by remember { mutableStateOf(false) }
     var pendingManifest by remember { mutableStateOf<AutoUpdater.Manifest?>(null) }
@@ -166,8 +169,9 @@ fun DriverNavigation(
                 clientPolicyMessage = state.message
                 clientPolicyForce = state.force
                 pendingManifest = state.manifest
-            } catch (_: Exception) {
+            } catch (e: Exception) {
                 // Policy fetch is optional on local/dev stacks.
+            if (e is kotlinx.coroutines.CancellationException) throw e
             }
         }
     }
@@ -202,33 +206,12 @@ fun DriverNavigation(
         }
     }
 
-    DisposableEffect(context) {
-        val mainHandler = Handler(Looper.getMainLooper())
-        val connectivityManager = context.getSystemService(ConnectivityManager::class.java)
-        val request = NetworkRequest.Builder()
-            .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-            .build()
-        val callback = object : ConnectivityManager.NetworkCallback() {
-            override fun onAvailable(network: Network) {
-                mainHandler.post {
-                    if (!networkAvailable) {
-                        OfflineSyncScheduler.enqueue(context)
-                        driverWebSocket.resetAndReconnect()
-                        telemetrySocket.resetAndReconnect()
-                        TelemetrySyncScheduler.enqueue(context)
-                    }
-                    networkAvailable = true
-                }
-            }
-
-            override fun onLost(network: Network) {
-                mainHandler.post { networkAvailable = false }
-            }
-        }
-
-        runCatching { connectivityManager?.registerNetworkCallback(request, callback) }
-        onDispose {
-            runCatching { connectivityManager?.unregisterNetworkCallback(callback) }
+    LaunchedEffect(syncEpoch) {
+        if (syncEpoch > 0 && isOnline) {
+            OfflineSyncScheduler.enqueue(context)
+            driverWebSocket.resetAndReconnect()
+            telemetrySocket.resetAndReconnect()
+            TelemetrySyncScheduler.enqueue(context)
         }
     }
 
@@ -286,7 +269,7 @@ fun DriverNavigation(
 
         composable(DriverRoutes.MAIN) {
             val manifestViewModel: ManifestViewModel = hiltViewModel()
-            val manifestState by manifestViewModel.state.collectAsState()
+            val manifestState by manifestViewModel.state.collectAsStateWithLifecycle()
             val activeRideOrder = manifestState.orders.firstOrNull { order ->
                 order.state != OrderState.COMPLETED &&
                     order.state != OrderState.CANCELLED &&
@@ -294,7 +277,7 @@ fun DriverNavigation(
                     order.longitude != null
             }
             val pendingVm: PendingSyncCountViewModel = hiltViewModel()
-            val pendingCount by pendingVm.pendingCount.collectAsState()
+            val pendingCount by pendingVm.pendingCount.collectAsStateWithLifecycle()
             MainTabView(
                 requestedTab = handoffTabRequest,
                 onRequestedTabConsumed = { handoffTabRequest = null },

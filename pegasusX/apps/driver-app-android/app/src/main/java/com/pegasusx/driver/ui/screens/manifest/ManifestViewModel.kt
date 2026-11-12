@@ -122,11 +122,17 @@ class ManifestViewModel @Inject constructor(
             try {
                 val earnings = api.getEarnings()
                 _state.update { it.copy(earnings = earnings) }
-            } catch (_: Exception) { }
+            } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
+                android.util.Log.w("ManifestViewModel", "Failed to load earnings: ${e.message}")
+            }
             try {
                 val history = api.getHistory()
                 _state.update { it.copy(historyRows = history.rows) }
-            } catch (_: Exception) { }
+            } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
+                android.util.Log.w("ManifestViewModel", "Failed to load history: ${e.message}")
+            }
         }
     }
 
@@ -392,6 +398,7 @@ class ManifestViewModel @Inject constructor(
                     }
                 } catch (e: Exception) {
                     // If gate check fails, allow depart (graceful degradation)
+                if (e is kotlinx.coroutines.CancellationException) throw e
                 }
             }
             try {
@@ -414,8 +421,9 @@ class ManifestViewModel @Inject constructor(
                         cashBagFrozen = snap.cashBagFrozen || snap.openFiscalCount > 0,
                     )
                 }
-            } catch (_: Exception) {
+            } catch (e: Exception) {
                 // non-fatal — return-complete still enforces server-side
+            if (e is kotlinx.coroutines.CancellationException) throw e
             }
         }
     }

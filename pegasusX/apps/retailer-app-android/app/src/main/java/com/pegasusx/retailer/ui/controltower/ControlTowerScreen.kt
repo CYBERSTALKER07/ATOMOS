@@ -40,7 +40,7 @@ import javax.inject.Inject
 import com.pegasusx.retailer.R
 import com.pegasusx.retailer.data.json.*
 import com.pegasusx.retailer.ui.components.PegasusTab
-import com.pegasus.design.PulseHonesty
+import com.pegasusx.retailer.ui.design.PulseHonesty
 
 data class PulseTile(val label: String, val value: String, val route: String)
 

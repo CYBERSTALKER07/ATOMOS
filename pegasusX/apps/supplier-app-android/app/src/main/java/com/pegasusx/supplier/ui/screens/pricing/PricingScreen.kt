@@ -18,10 +18,10 @@ import com.pegasusx.supplier.data.model.CatalogProductUpdateRequest
 import com.pegasusx.supplier.data.model.SupplierPromotion
 import com.pegasusx.supplier.data.model.SupplierPromotionUpsertRequest
 import com.pegasusx.supplier.data.remote.SupplierApi
-import com.pegasus.design.ui.PegasusLoadingState
+import com.pegasusx.supplier.ui.design.PegasusLoadingState
 import com.pegasusx.supplier.ui.components.SupplierOpsListCard
-import com.pegasus.design.ui.PegasusStateKind
-import com.pegasus.design.ui.PegasusStatePane
+import com.pegasusx.supplier.ui.design.PegasusStateKind
+import com.pegasusx.supplier.ui.design.PegasusStatePane
 import com.pegasusx.supplier.ui.components.formatMinorAmount
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
@@ -120,7 +120,7 @@ private fun ProductPricingDialog(
     onSaved: () -> Unit,
 ) {
     var priceMajor by remember(product.productId) {
-        mutableStateOf(String.format("%.2f", product.priceMinor / 100.0))
+        mutableStateOf(com.pegasusx.supplier.ui.design.formatTiyinFixed(product.priceMinor))
     }
     var saleEnabled by remember { mutableStateOf(false) }
     var saleDiscountBps by remember { mutableStateOf("") }
@@ -178,12 +178,8 @@ private fun ProductPricingDialog(
                     scope.launch {
                         saving = true
                         error = null
-                        val clean = priceMajor.replace(',', '.')
-                        val parts = clean.split(".")
-                        val major = parts.getOrNull(0)?.toLongOrNull() ?: 0L
-                        val minor = parts.getOrNull(1)?.padEnd(2, '0')?.substring(0, 2)?.toLongOrNull() ?: 0L
-                        val priceMinor: Long? = if (major > 0 || minor > 0) (major * 100) + minor else null
-                        if (priceMinor == null || priceMinor < 0) {
+                        val priceMinor = com.pegasusx.supplier.ui.design.parseMajorToMinor(priceMajor)
+                        if (priceMinor == null || priceMinor <= 0L) {
                             error = "Enter a valid list price."
                             saving = false
                             return@launch

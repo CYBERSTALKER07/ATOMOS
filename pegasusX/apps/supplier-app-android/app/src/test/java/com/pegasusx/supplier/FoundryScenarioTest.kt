@@ -1,15 +1,15 @@
 package com.pegasusx.supplier
 
-import com.pegasusx.mobilekit.foundry.ActionExecutionRecord
-import com.pegasusx.mobilekit.foundry.ActionExecutionRequest
-import com.pegasusx.mobilekit.foundry.LotRecallRequest
-import com.pegasusx.mobilekit.foundry.OntologyObjectDto
-import com.pegasusx.mobilekit.foundry.RecallBlastRadiusReport
-import com.pegasusx.mobilekit.foundry.ScenarioCommitResult
-import com.pegasusx.mobilekit.foundry.ScenarioPatchRequest
-import com.pegasusx.mobilekit.foundry.ScenarioWatermarkConflict
-import com.pegasusx.mobilekit.foundry.SearchAroundRequest
-import com.pegasusx.mobilekit.foundry.SearchAroundResponse
+import com.pegasusx.supplier.data.foundry.ActionExecutionRecord
+import com.pegasusx.supplier.data.foundry.ActionExecutionRequest
+import com.pegasusx.supplier.data.foundry.LotRecallRequest
+import com.pegasusx.supplier.data.foundry.OntologyObjectDto
+import com.pegasusx.supplier.data.foundry.RecallBlastRadiusReport
+import com.pegasusx.supplier.data.foundry.ScenarioCommitResult
+import com.pegasusx.supplier.data.foundry.ScenarioPatchRequest
+import com.pegasusx.supplier.data.foundry.ScenarioWatermarkConflict
+import com.pegasusx.supplier.data.foundry.SearchAroundRequest
+import com.pegasusx.supplier.data.foundry.SearchAroundResponse
 import com.pegasusx.supplier.ui.viewmodel.FoundrySandboxUiState
 import com.pegasusx.supplier.ui.viewmodel.ScenarioPatchSummary
 import kotlinx.serialization.json.JsonPrimitive

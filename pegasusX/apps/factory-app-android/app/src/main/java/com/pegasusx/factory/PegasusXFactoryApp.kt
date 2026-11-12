@@ -5,6 +5,7 @@ import com.pegasusx.factory.data.push.DeviceTokenRegistrar
 import com.pegasusx.factory.data.remote.FactoryApi
 import com.pegasusx.factory.data.remote.FirebaseAuthHelper
 import com.pegasusx.factory.data.remote.TokenHolder
+import com.pegasusx.factory.network.NetworkLifecycleEngine
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
 
@@ -16,6 +17,7 @@ class PegasusXFactoryApp : Application() {
         super.onCreate()
         TokenHolder.init(this)
         FirebaseAuthHelper.init(this)
+        NetworkLifecycleEngine.shared.initialize(this)
         DeviceTokenRegistrar.uploadBestEffort(api)
     }
 }

@@ -35,7 +35,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.pegasusx.driver.ui.theme.PegasusSpacing
 import com.pegasusx.driver.data.remote.DriverApi
-import com.pegasusx.mobilekit.foundry.YardGateCheckEvent
+import com.pegasusx.driver.data.foundry.YardGateCheckEvent
 import kotlinx.coroutines.launch
 
 @Composable

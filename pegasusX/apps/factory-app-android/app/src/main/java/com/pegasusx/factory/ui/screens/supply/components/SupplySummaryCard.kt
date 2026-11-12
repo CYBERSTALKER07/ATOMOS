@@ -12,8 +12,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import com.pegasus.design.PegasusRuntimeBanner
-import com.pegasus.design.PegasusRuntimeTone
+import com.pegasusx.factory.ui.design.PegasusRuntimeBanner
+import com.pegasusx.factory.ui.design.PegasusRuntimeTone
 import com.pegasusx.factory.ui.theme.PegasusSpacing
 import com.pegasusx.factory.R
 

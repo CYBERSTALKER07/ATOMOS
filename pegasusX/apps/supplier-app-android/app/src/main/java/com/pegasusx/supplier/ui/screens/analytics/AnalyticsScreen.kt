@@ -20,15 +20,15 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
-import com.pegasus.design.network.RealtimeRefreshEffect
-import com.pegasus.design.network.showFullScreenLoading
+import com.pegasusx.supplier.ui.design.RealtimeRefreshEffect
+import com.pegasusx.supplier.ui.design.showFullScreenLoading
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
 import com.pegasusx.supplier.data.remote.SupplierRealtimeSignals
 import com.pegasusx.supplier.ui.components.SupplierKpiTile
-import com.pegasus.design.ui.PegasusLoadingState
+import com.pegasusx.supplier.ui.design.PegasusLoadingState
 import com.pegasusx.supplier.ui.components.SupplierSectionTitle
-import com.pegasus.design.ui.PegasusStateKind
-import com.pegasus.design.ui.PegasusStatePane
+import com.pegasusx.supplier.ui.design.PegasusStateKind
+import com.pegasusx.supplier.ui.design.PegasusStatePane
 import com.pegasusx.supplier.ui.screens.planning.ForecastConfidenceView
 import com.pegasusx.supplier.util.formatForecastUpdatedAt
 import com.pegasusx.supplier.util.forecastConfidenceFromDemand
@@ -70,12 +70,9 @@ fun AnalyticsScreen(
     var demandGeneratedAt by remember { mutableStateOf<String?>(null) }
     var demandConfidence by remember { mutableStateOf<com.pegasusx.supplier.data.model.ForecastConfidence?>(null) }
     val scope = rememberCoroutineScope()
-    val fmt = remember { NumberFormat.getInstance(Locale.getDefault()) }
 
-    fun formatMinor(minor: Long, currency: String): String {
-        val major = minor / 100.0
-        return "${fmt.format(major)} $currency"
-    }
+    fun formatMinor(minor: Long, currency: String): String =
+        com.pegasusx.supplier.ui.components.formatMinorAmount(minor, currency)
 
     fun load(silent: Boolean = false) {
         scope.launch {

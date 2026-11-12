@@ -115,8 +115,8 @@ import com.pegasus.payload.ui.components.PulseStrip
 import com.pegasus.payload.ui.components.PayloadSectionTitle
 import com.pegasus.payload.ui.components.PayloadSpacing
 import com.pegasus.payload.ui.components.PayloadStatusChip
-import com.pegasus.design.PegasusStatePane
-import com.pegasus.design.PegasusStateKind
+import com.pegasus.payload.ui.design.PegasusStatePane
+import com.pegasus.payload.ui.design.PegasusStateKind
 import com.pegasus.payload.R
 
 /**
@@ -221,7 +221,7 @@ fun HomeScreen(
                 title = {
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text("Pegasus Payload Terminal")
-                        com.pegasus.design.PackBanner(state.pack)
+                        com.pegasus.payload.ui.design.PackBanner(state.pack)
                         PayloadConnectionStatus(online = state.online, queued = state.queuedActions)
                     }
                 },
@@ -449,8 +449,8 @@ private fun ManifestDetailPane(
             }
 
             state.barcodeScanMessage?.let { msg ->
-                com.pegasus.design.PegasusRuntimeBanner(
-                    tone = if (msg.contains("error", ignoreCase = true) || msg.contains("failed", ignoreCase = true) || msg.contains("not", ignoreCase = true)) com.pegasus.design.PegasusRuntimeTone.Warning else com.pegasus.design.PegasusRuntimeTone.Live,
+                com.pegasus.payload.ui.design.PegasusRuntimeBanner(
+                    tone = if (msg.contains("error", ignoreCase = true) || msg.contains("failed", ignoreCase = true) || msg.contains("not", ignoreCase = true)) com.pegasus.payload.ui.design.PegasusRuntimeTone.Warning else com.pegasus.payload.ui.design.PegasusRuntimeTone.Live,
                     message = msg,
                     onRetry = null,
                 )
@@ -466,7 +466,7 @@ private fun ManifestDetailPane(
             }
 
             when {
-                state.loadingManifest -> com.pegasus.design.PegasusLoadingState(
+                state.loadingManifest -> com.pegasus.payload.ui.design.PegasusLoadingState(
                     title = stringResource(R.string.mobile_payload_ui_loading_manifest),
                     body = "Syncing orders and volume for this vehicle.",
                 )
@@ -918,7 +918,7 @@ private fun ReDispatchDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (loading) {
-                    com.pegasus.design.PegasusLoadingState(
+                    com.pegasus.payload.ui.design.PegasusLoadingState(
                         title = stringResource(R.string.mobile_payload_ui_loading_recommendations),
                         body = "Finding nearby drivers to re-dispatch this order.",
                         modifier = Modifier.fillMaxWidth().padding(32.dp)

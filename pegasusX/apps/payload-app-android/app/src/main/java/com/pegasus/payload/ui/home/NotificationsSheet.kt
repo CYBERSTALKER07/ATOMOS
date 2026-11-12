@@ -15,8 +15,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import com.pegasus.payload.data.model.NotificationItem
 import com.pegasus.payload.ui.components.HandoffInboxCard
-import com.pegasus.design.PegasusStatePane
-import com.pegasus.design.PegasusStateKind
+import com.pegasus.payload.ui.design.PegasusStatePane
+import com.pegasus.payload.ui.design.PegasusStateKind
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

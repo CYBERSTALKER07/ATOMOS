@@ -71,10 +71,7 @@ class PosViewModel @Inject constructor(
 ) : ViewModel()
 
 private fun Context.isOnline(): Boolean {
-    val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return true
-    val net = cm.activeNetwork ?: return false
-    val caps = cm.getNetworkCapabilities(net) ?: return false
-    return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+    return com.pegasusx.retailer.network.NetworkLifecycleEngine.shared.isOnline.value
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -345,11 +342,7 @@ fun PosScreen(
                             OutlinedTextField(value = qty, onValueChange = { qty = it }, label = { Text("Qty") }, modifier = Modifier.fillMaxWidth())
                             OutlinedTextField(value = priceMajor, onValueChange = { priceMajor = it }, label = { Text("Price (major)") }, modifier = Modifier.fillMaxWidth())
                             Button(onClick = {
-                                val clean = priceMajor.replace(',', '.')
-                                val parts = clean.split(".")
-                                val major = parts.getOrNull(0)?.toLongOrNull() ?: 0L
-                                val minor = parts.getOrNull(1)?.padEnd(2, '0')?.substring(0, 2)?.toLongOrNull() ?: 0L
-                                val unit = (major * 100) + minor
+                                val unit = com.pegasusx.retailer.ui.design.parseMajorToMinor(priceMajor) ?: 0L
                                 val q = qty.toLongOrNull() ?: 1L
                                 if (sku.isBlank()) return@Button
                                 val existing = cart.indexOfFirst { it.sku == sku.trim() }
@@ -368,12 +361,18 @@ fun PosScreen(
                     Card {
                         Row(Modifier.padding(14.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text(stringResource(R.string.mobile_retailer_ui_sku_qty, line.sku, line.qty))
-                            Text("${line.qty * line.unitPriceMinor / 100.0}")
+                            Text(com.pegasusx.retailer.ui.design.formatTiyinFixed(line.qty * line.unitPriceMinor))
                         }
                     }
                 }
                 item {
-                    Text(stringResource(R.string.mobile_retailer_ui_total_n_0, totalMinor / 100.0), style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        stringResource(
+                            R.string.mobile_retailer_ui_total_n_0,
+                            com.pegasusx.retailer.ui.design.formatTiyinFixed(totalMinor),
+                        ),
+                        style = MaterialTheme.typography.titleLarge,
+                    )
                     if (holdsEnabled && online) {
                         OutlinedTextField(
                             value = holdNote,

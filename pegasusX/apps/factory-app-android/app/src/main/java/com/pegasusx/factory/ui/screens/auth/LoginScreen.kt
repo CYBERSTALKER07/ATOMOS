@@ -51,8 +51,8 @@ import com.pegasusx.factory.data.push.DeviceTokenRegistrar
 import com.pegasusx.factory.data.remote.FactoryApi
 import com.pegasusx.factory.data.remote.FirebaseAuthHelper
 import com.pegasusx.factory.data.remote.TokenHolder
-import com.pegasus.design.PegasusRuntimeBanner
-import com.pegasus.design.PegasusRuntimeTone
+import com.pegasusx.factory.ui.design.PegasusRuntimeBanner
+import com.pegasusx.factory.ui.design.PegasusRuntimeTone
 import com.pegasusx.factory.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 import com.pegasusx.factory.R
@@ -373,21 +373,6 @@ fun LoginScreen(
                         }
                     }
                 }
-            }
-
-            Spacer(Modifier.height(PegasusSpacing.sm))
-
-            OutlinedButton(
-                onClick = {
-                    TokenHolder.token = "mock-factory-jwt-dev"
-                    TokenHolder.refreshToken = "mock-refresh-dev"
-                    TokenHolder.factoryId = "fac-tashkent-001"
-                    onLoginSuccess()
-                },
-                enabled = !loading,
-                modifier = Modifier.fillMaxWidth().height(48.dp),
-            ) {
-                Text("BYPASS / ENTER DEMO FACTORY")
             }
 
             Spacer(Modifier.height(PegasusSpacing.sm))

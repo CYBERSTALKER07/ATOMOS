@@ -32,7 +32,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.pegasus.design.ui.PegasusSpacing
+import com.pegasusx.driver.ui.design.PegasusSpacing
 import com.pegasusx.driver.R
 import com.pegasusx.driver.data.model.Order
 import com.pegasusx.driver.data.model.OrderState
@@ -210,8 +210,9 @@ private fun formatETA(order: Order): String? {
                 val localFmt = SimpleDateFormat("HH:mm", Locale.getDefault())
                 parts.add("ETA ${localFmt.format(date)}")
             }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
             // Fall through to duration display
+        if (e is kotlinx.coroutines.CancellationException) throw e
         }
     }
 

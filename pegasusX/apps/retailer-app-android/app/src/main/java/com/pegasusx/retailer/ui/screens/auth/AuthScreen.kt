@@ -44,7 +44,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -82,7 +82,7 @@ fun AuthScreen(
     viewModel: AuthViewModel = hiltViewModel(),
     onAuthenticated: () -> Unit,
 ) {
-    val state by viewModel.uiState.collectAsState()
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
     var isLoginMode by rememberSaveable { mutableStateOf(true) }
     var useOtpLogin by rememberSaveable { mutableStateOf(true) }
     var otpCode by rememberSaveable { mutableStateOf("") }
@@ -191,8 +191,8 @@ fun AuthScreen(
 
     if (showMapPicker) {
         LocationPickerScreen(
-            initialLat = if (latitude != 0.0) latitude else (com.pegasus.design.sessionMapCenter()?.lat ?: 0.0),
-            initialLng = if (longitude != 0.0) longitude else (com.pegasus.design.sessionMapCenter()?.lng ?: 0.0),
+            initialLat = if (latitude != 0.0) latitude else (com.pegasusx.retailer.ui.design.sessionMapCenter()?.lat ?: 0.0),
+            initialLng = if (longitude != 0.0) longitude else (com.pegasusx.retailer.ui.design.sessionMapCenter()?.lng ?: 0.0),
             resolveAddress = { lat, lng -> viewModel.resolveAddress(lat, lng) },
             onConfirm = { picked ->
                 latitude = picked.latitude
@@ -570,23 +570,6 @@ fun AuthScreen(
                         fontWeight = FontWeight.Bold,
                     )
                 }
-            }
-
-            Spacer(Modifier.height(10.dp))
-
-            OutlinedButton(
-                onClick = { viewModel.bypassLogin() },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(48.dp),
-                shape = PillShape,
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Black),
-            ) {
-                Text(
-                    text = "BYPASS / ENTER DEMO RETAILER",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold,
-                )
             }
 
             Spacer(Modifier.height(16.dp))

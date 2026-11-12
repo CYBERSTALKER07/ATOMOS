@@ -21,7 +21,7 @@ import com.pegasus.payload.ui.navigation.HandoffPathResolver
 import com.pegasus.payload.data.model.Truck
 import com.pegasus.payload.data.remote.PayloadApi
 import com.pegasus.payload.data.repository.PayloadRepository
-import com.pegasus.design.PulseHonesty
+import com.pegasus.payload.ui.design.PulseHonesty
 import com.pegasus.payload.services.PayloadWebSocket
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -108,7 +108,7 @@ data class HomeUiState(
     val pulseError: String? = null,
     val error: String? = null,
     val errorExplain: StatusExplain? = null,
-    val pack: com.pegasus.design.MarketPack? = null,
+    val pack: com.pegasus.payload.ui.design.MarketPack? = null,
 )
 
 @HiltViewModel
@@ -139,10 +139,13 @@ class HomeViewModel @Inject constructor(
         bootstrapPhase6()
         observeNotificationBus()
         viewModelScope.launch {
-            val pack = com.pegasus.design.MarketPackBinder.fetch(
-                BuildConfig.API_BASE_URL,
-                secureStore.token.orEmpty(),
-            )?.pack
+            val token = secureStore.token.orEmpty()
+            val pack = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                com.pegasus.payload.ui.design.MarketPackBinder.fetch(
+                    BuildConfig.API_BASE_URL,
+                    token,
+                )?.pack
+            }
             _state.update { it.copy(pack = pack) }
         }
     }

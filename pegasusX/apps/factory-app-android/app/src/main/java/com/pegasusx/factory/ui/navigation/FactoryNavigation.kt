@@ -19,6 +19,7 @@ import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -31,6 +32,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.pegasusx.factory.network.NetworkLifecycleEngine
 import com.pegasusx.factory.ui.components.FactoryBottomBar
 import com.pegasusx.factory.ui.components.FactoryNavigationDrawer
 import com.pegasusx.factory.ui.screens.more.FactoryMoreHubScreen
@@ -112,7 +114,9 @@ fun FactoryNavigation(
         else -> FactoryRoutes.DASHBOARD
     }
     val context = LocalContext.current
-    var networkAvailable by remember { mutableStateOf(true) }
+    val isOnline by NetworkLifecycleEngine.shared.isOnline.collectAsStateWithLifecycle()
+    val syncEpoch by NetworkLifecycleEngine.shared.syncEpoch.collectAsStateWithLifecycle()
+    val networkAvailable = isOnline
     val useDrawer = windowSizeClass.widthSizeClass != WindowWidthSizeClass.Compact
     var isRailExpanded by remember { mutableStateOf(true) }
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -153,31 +157,6 @@ fun FactoryNavigation(
         TokenHolder.clear()
         navController.navigate(FactoryRoutes.LOGIN) {
             popUpTo(0) { inclusive = true }
-        }
-    }
-
-    DisposableEffect(context) {
-        val mainHandler = Handler(Looper.getMainLooper())
-        val connectivityManager = context.getSystemService(ConnectivityManager::class.java)
-        val request = NetworkRequest.Builder()
-            .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-            .build()
-        val callback = object : ConnectivityManager.NetworkCallback() {
-            override fun onAvailable(network: Network) {
-                mainHandler.post {
-                    if (!networkAvailable) { /* per-screen refresh */ }
-                    networkAvailable = true
-                }
-            }
-
-            override fun onLost(network: Network) {
-                mainHandler.post { networkAvailable = false }
-            }
-        }
-
-        runCatching { connectivityManager?.registerNetworkCallback(request, callback) }
-        onDispose {
-            runCatching { connectivityManager?.unregisterNetworkCallback(callback) }
         }
     }
 

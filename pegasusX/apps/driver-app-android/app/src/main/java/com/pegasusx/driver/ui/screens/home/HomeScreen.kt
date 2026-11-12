@@ -44,7 +44,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -101,10 +101,10 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 import com.pegasusx.driver.R
-import com.pegasus.design.MarketPack
-import com.pegasus.design.MarketPackBinder
-import com.pegasus.design.PackBanner
-import com.pegasus.design.PulseHonesty
+import com.pegasusx.driver.ui.design.MarketPack
+import com.pegasusx.driver.ui.design.MarketPackBinder
+import com.pegasusx.driver.ui.design.PackBanner
+import com.pegasusx.driver.ui.components.PulseHonesty
 import com.pegasusx.driver.BuildConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -123,7 +123,7 @@ fun HomeScreen(
     onStopClick: (Order) -> Unit = {},
     pendingCount: Int = 0,
 ) {
-    val state by viewModel.state.collectAsState()
+    val state by viewModel.state.collectAsStateWithLifecycle()
     val lab = LocalPegasusColors.current
     var returnLines by remember { mutableStateOf<List<com.pegasusx.driver.data.model.ReturnGoodsLine>>(emptyList()) }
     var returnUnits by remember { mutableStateOf(0L) }
@@ -177,7 +177,11 @@ fun HomeScreen(
             val resp = api.getReturnGoods()
             returnLines = resp.items
             returnUnits = resp.totalUnits
-        } catch (_: Exception) { }
+        } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
+            returnLines = emptyList()
+            returnUnits = 0
+        }
     }
 
     if (state.isLoading) {

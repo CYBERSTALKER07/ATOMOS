@@ -43,7 +43,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -55,8 +55,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pegasusx.retailer.data.model.TrackingOrder
 import com.pegasusx.retailer.ui.components.PegasusEmptyState
-import com.pegasus.design.PegasusRuntimeBanner
-import com.pegasus.design.PegasusRuntimeTone
+import com.pegasusx.retailer.ui.design.PegasusRuntimeBanner
+import com.pegasusx.retailer.ui.design.PegasusRuntimeTone
 import com.pegasusx.retailer.ui.components.TrackingQROverlay
 import com.pegasusx.retailer.ui.theme.PillShape
 import com.pegasusx.retailer.ui.theme.SoftSquircleShape
@@ -80,7 +80,7 @@ fun DockScreen(
     viewModel: DockViewModel,
     modifier: Modifier = Modifier,
 ) {
-    val uiState by viewModel.state.collectAsState()
+    val uiState by viewModel.state.collectAsStateWithLifecycle()
 
     TrackingQROverlay(
         visible = uiState.activeQrOrder != null,

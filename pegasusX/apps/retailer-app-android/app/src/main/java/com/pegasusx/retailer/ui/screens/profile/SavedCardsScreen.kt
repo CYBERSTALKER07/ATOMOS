@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.screens.profile
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -29,7 +31,7 @@ fun SavedCardsScreen(
     onReturnToDeliveryPayment: (() -> Unit)? = null,
     viewModel: SavedCardsViewModel = hiltViewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var showAddDialog by remember { mutableStateOf(false) }
 
     Scaffold(

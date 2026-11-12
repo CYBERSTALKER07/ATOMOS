@@ -34,8 +34,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.pegasus.design.PegasusStateKind
-import com.pegasus.design.PegasusStatePane
+import com.pegasus.payload.ui.design.PegasusStateKind
+import com.pegasus.payload.ui.design.PegasusStatePane
 import com.pegasus.payload.data.model.ManifestExceptionRow
 import com.pegasus.payload.ui.components.PayloadSpacing
 import com.pegasus.payload.ui.components.PayloadStatusChip
@@ -87,7 +87,7 @@ fun ManifestExceptionsSheet(
             
             HorizontalDivider()
             when {
-                loading && items.isEmpty() -> com.pegasus.design.PegasusLoadingState(
+                loading && items.isEmpty() -> com.pegasus.payload.ui.design.PegasusLoadingState(
                     title = stringResource(R.string.mobile_payload_ui_loading_exceptions),
                     body = "Fetching overflow, damaged, and manual removals.",
                     modifier = Modifier.fillMaxWidth().heightIn(min = 200.dp),

@@ -1,7 +1,7 @@
 package com.pegasusx.retailer.data.model
 
-import com.pegasus.design.MarketPackStore
-import com.pegasus.design.packCurrency
+import com.pegasusx.retailer.ui.design.MarketPackStore
+import com.pegasusx.retailer.ui.design.packCurrency
 
 private val FOREIGN_RAILS = setOf("STRIPE", "ADYEN", "AIRWALLEX")
 
