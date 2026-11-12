@@ -20,19 +20,16 @@ import { supplierWarehouseOps } from '@/lib/supplier-warehouse-ops';
 import { SUPPLIER_ORDERS_REFRESH_EVENTS } from '@/lib/supplier-ws-events';
 import { useSupplierSessionReconcile } from '@/lib/use-supplier-session-reconcile';
 import { useSupplierWsRefresh } from '@/lib/use-supplier-ws-refresh';
+import { formatMinorUnits } from '@/lib/money';
 
 const supplierApi = createSupplierApi();
 
 function formatMoney(minor: number, currency: string) {
-  try {
-    return new Intl.NumberFormat(undefined, {
-      style: 'currency',
-      currency,
-      maximumFractionDigits: 2,
-    }).format(minor / 100);
-  } catch {
-    return `${minor} ${currency}`;
-  }
+  return formatMinorUnits(minor, {
+    currency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 }
 
 export default function SupplierOrderDetailPage() {

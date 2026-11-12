@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Download, Loader2 } from "lucide-react";
 import { PageChrome } from "@/components/PageChrome";
 import { apiFetch } from "@/lib/auth";
+import { formatMinorUnits } from "@/lib/money";
 
 type Summary = {
   sales_minor?: number;
@@ -18,7 +19,7 @@ type Summary = {
 type SalesItem = { key: string; sales_minor: number; sale_count: number; units: number };
 
 function formatMoney(minor: number) {
-  return (minor / 100).toLocaleString(undefined, {
+  return formatMinorUnits(minor, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });

@@ -46,8 +46,14 @@ type PaymentState =
   | "success"
   | "error";
 
+import { formatMinorUnits } from "../lib/money";
+
 function formatAmount(amount: number): string {
-  return (amount / 100).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 }).replace(/,/g, " ");
+  return formatMinorUnits(amount, {
+    groupSeparator: " ",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  });
 }
 
 function toFiniteNumber(value: unknown, fallback: number): number {

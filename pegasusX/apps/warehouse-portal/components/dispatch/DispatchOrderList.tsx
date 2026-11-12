@@ -3,7 +3,7 @@
 import { usePortalT } from "@/lib/i18n";
 import { useRouter } from 'next/navigation';
 import type { WarehouseDispatchOrder } from '@pegasusx/types';
-import { VirtualScrollList } from '@pegasusx/ui-kit/desktop';
+import { VirtualScrollList } from '@/components/ui';
 import { PageSection } from '@/components/PageSection';
 import EmptyState from '@/components/EmptyState';
 import { OrderOpsCard } from '@/components/orders';

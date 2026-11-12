@@ -338,6 +338,7 @@ export default function SupplyRequestsPage() {
     }
 
     let successCount = 0;
+    let lastBatchError: string | null = null;
     for (const request of validRequests) {
       try {
         const body: Record<string, unknown> = { action };
@@ -349,10 +350,18 @@ export default function SupplyRequestsPage() {
           body: JSON.stringify(body),
         });
         if (res.ok) successCount++;
-      } catch {}
+        else lastBatchError = `HTTP ${res.status}`;
+      } catch (err: unknown) {
+        lastBatchError = err instanceof Error ? err.message : 'Request failed';
+      }
     }
-    
-    toast(`Batch completed: ${successCount}/${validRequests.length} succeeded`, successCount > 0 ? 'success' : 'error');
+
+    toast(
+      lastBatchError && successCount === 0
+        ? `Batch failed (${lastBatchError}): 0/${validRequests.length} succeeded`
+        : `Batch completed: ${successCount}/${validRequests.length} succeeded`,
+      successCount > 0 ? 'success' : 'error',
+    );
     setSelectedIds(new Set());
     setBatchTransitioning(null);
     await fetchRequests({ background: true, silent: true });

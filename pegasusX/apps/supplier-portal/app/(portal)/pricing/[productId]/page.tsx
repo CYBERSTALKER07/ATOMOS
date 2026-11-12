@@ -12,6 +12,11 @@ import {
   supplierPromotionUpdateKey,
 } from "@pegasusx/api-core";
 import { PageChrome } from '@/components/PageChrome';
+import {
+  applyDiscountBpsMinor,
+  formatMinorFixed,
+  parseMajorToMinor,
+} from "@/lib/money";
 
 export default function ProductPricingPage() {
   const t = usePortalT();
@@ -39,7 +44,7 @@ export default function ProductPricingPage() {
         if (!productRes.ok) throw new Error(`product_failed_${productRes.status}`);
         const loaded = (await productRes.json()) as CatalogProduct;
         setProduct(loaded);
-        setPriceMajor((loaded.price_minor / 100).toFixed(2));
+        setPriceMajor(formatMinorFixed(loaded.price_minor));
 
         if (promoRes.ok) {
           const body = (await promoRes.json()) as { promotions?: SupplierPromotion[] };
@@ -59,14 +64,14 @@ export default function ProductPricingPage() {
 
   const save = async () => {
     if (!product) return;
-    const parsed = Number.parseFloat(priceMajor.replace(",", "."));
-    if (!Number.isFinite(parsed) || parsed < 0) {
+    const priceMinor = parseMajorToMinor(priceMajor);
+    if (priceMinor === null || priceMinor < 0) {
       setError(t("supplier_portal.residual.text.enter_a_valid_list_price"));
       return;
     }
     if (saleEnabled) {
       const bps = Number.parseInt(saleDiscountBps, 10);
-      if (!Number.isFinite(bps) || bps <= 0) {
+      if (!Number.isFinite(bps) || bps <= 0 || bps > 10000) {
         setError(t("supplier_portal.residual.text.sale_discount_must_be_greater_than_zero"));
         return;
       }
@@ -76,13 +81,16 @@ export default function ProductPricingPage() {
 
   const commitSave = async () => {
     if (!product) return;
-    const parsed = Number.parseFloat(priceMajor.replace(",", "."));
-    
+    const priceMinor = parseMajorToMinor(priceMajor);
+    if (priceMinor === null || priceMinor < 0) {
+      setError(t("supplier_portal.residual.text.enter_a_valid_list_price"));
+      return;
+    }
+
     setSaving(true);
     setShowPreview(false);
     setError(null);
     try {
-      const priceMinor = Math.round(parsed * 100);
       const updateRes = await supplierFetch(`/v1/catalog/products/${encodeURIComponent(product.product_id)}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -102,7 +110,7 @@ export default function ProductPricingPage() {
 
       if (saleEnabled) {
         const bps = Number.parseInt(saleDiscountBps, 10);
-        if (!Number.isFinite(bps) || bps <= 0) throw new Error("Sale discount must be greater than zero.");
+        if (!Number.isFinite(bps) || bps <= 0 || bps > 10000) throw new Error("Sale discount must be between 1 and 10000 bps.");
         const promoBody = {
           name: `Sale · ${product.name}`,
           description: "Product sale pricing",
@@ -165,7 +173,7 @@ export default function ProductPricingPage() {
         <div className="md-card p-6 space-y-6 max-w-xl">
           <label className="block space-y-1">
             <span className="md-typescale-label-medium">List price ({product.currency})</span>
-            <input id="list-price-product-curren-input-3" aria-label="List price ({product.currency})" className="md-input w-full" value={priceMajor} onChange={(e) => setPriceMajor(e.target.value)} />
+            <input id="list-price-product-curren-input-3" aria-label={`List price (${product.currency})`} className="md-input w-full" value={priceMajor} onChange={(e) => setPriceMajor(e.target.value)} />
           </label>
           <label className="flex items-center gap-3">
             <input id="page-checkbox-2" aria-label="Select Page option" type="checkbox" checked={saleEnabled} onChange={(e) => setSaleEnabled(e.target.checked)} />
@@ -195,14 +203,15 @@ export default function ProductPricingPage() {
               {(() => {
                 const oldList = product.price_minor;
                 const discountBps = activeSale ? (activeSale.discount_bps ?? activeSale.tiers?.[0]?.discount_bps ?? 0) : 0;
-                const oldSale = activeSale ? oldList * (1 - discountBps / 10000) : oldList;
+                const oldSale = activeSale ? applyDiscountBpsMinor(oldList, discountBps) : oldList;
                 
-                const parsedList = Number.parseFloat(priceMajor.replace(",", "."));
-                const newList = Math.round(parsedList * 100);
+                const newList = parseMajorToMinor(priceMajor) ?? oldList;
                 const parsedBps = Number.parseInt(saleDiscountBps, 10);
-                const newSale = saleEnabled && Number.isFinite(parsedBps) ? newList * (1 - parsedBps / 10000) : newList;
+                const newSale = saleEnabled && Number.isFinite(parsedBps)
+                  ? applyDiscountBpsMinor(newList, parsedBps)
+                  : newList;
                 
-                const formatMinor = (m: number) => (m / 100).toFixed(2) + " " + product.currency;
+                const formatMinor = (m: number) => formatMinorFixed(m, { currency: product.currency });
                 
                 return (
                   <div className="space-y-4">

@@ -6,7 +6,7 @@ import { ApiError } from "@pegasusx/api-core";
 import { createSupplierApi } from "@/lib/api";
 import { sessionSupplierId } from "@/lib/supplier-scope";
 import type { ForecastAccuracyDailyRow } from "@pegasusx/types";
-import { SourceChip } from "@pegasusx/ui-kit/portal";
+import { SourceChip } from "@/components/ui";
 
 const api = createSupplierApi();
 

@@ -15,6 +15,7 @@ import { useNotifications } from '@/lib/useNotifications';
 import { usePortalT } from '@/lib/i18n';
 import { ALL_NAV_ITEMS, NAV, navSectionIsActive } from '@/lib/nav';
 import { motion, useReducedMotion } from 'framer-motion';
+import { DesktopKeyboardCheatsheet } from './ui/DesktopKeyboardCheatsheet';
 const BARE_ROUTES = ['/auth/', '/setup/'];
 
 function isActiveRoute(pathname: string, href: string): boolean {
@@ -206,6 +207,7 @@ export default function FactoryShell({ children }: { children: React.ReactNode }
   const notificationsEnabled = !isBare && isConfigured;
   const [collapsed, setCollapsed] = useState(false);
   const [factoryName, setFactoryName] = useState('Factory Portal');
+  const [cheatsheetOpen, setCheatsheetOpen] = useState(false);
   const [refreshEpoch, setRefreshEpoch] = useState(0);
   const [notifOpen, setNotifOpen] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
@@ -269,6 +271,26 @@ export default function FactoryShell({ children }: { children: React.ReactNode }
     };
   }, [loadFactoryProfile]);
 
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (
+        (e.key === '?' && !e.metaKey && !e.ctrlKey) ||
+        ((e.metaKey || e.ctrlKey) && e.key === '/')
+      ) {
+        const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
+        if (tag !== 'input' && tag !== 'textarea') {
+          e.preventDefault();
+          setCheatsheetOpen((prev) => !prev);
+        }
+      }
+      if (e.key === 'Escape') {
+        setCheatsheetOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
   const isBareRoute = BARE_ROUTES.some((route) => pathname.startsWith(route));
   if (isBareRoute) return <>{children}</>;
 
@@ -298,8 +320,8 @@ export default function FactoryShell({ children }: { children: React.ReactNode }
       {/* Main content */}
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Top bar */}
-        <header className="desk-topbar shrink-0">
-          <div className="desk-topbar-left">
+        <header className="desk-topbar shrink-0" data-tauri-drag-region>
+          <div className="desk-topbar-left" data-tauri-no-drag>
             <nav className="desk-breadcrumb" aria-label={t("factory_portal.factory_shell.text.breadcrumb")}>
               <span className="desk-breadcrumb-sep">{currentSection}</span>
               <span className="desk-breadcrumb-sep">/</span>
@@ -307,12 +329,32 @@ export default function FactoryShell({ children }: { children: React.ReactNode }
             </nav>
           </div>
 
-          <div className="desk-topbar-right">
+          <div className="desk-topbar-right" data-tauri-no-drag>
+            {/* Native Desktop Telemetry Pill */}
+            <div className="hidden xl:inline-flex items-center gap-2 px-2.5 py-1 rounded-full border border-neutral-800 bg-neutral-900/80 text-[11px] font-mono text-neutral-300">
+              <span className="flex items-center gap-1 text-emerald-400">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                SPK-UZ: 15ms
+              </span>
+              <span className="text-neutral-700">|</span>
+              <span className="text-cyan-400">SQLITE OK</span>
+            </div>
+
             <SessionPackChip />
             <div className="desk-live-indicator hidden lg:inline-flex">
               <span className="desk-live-dot" />
               Factory network live
             </div>
+
+            <button
+              type="button"
+              className="desk-icon-btn hidden sm:flex active-press"
+              onClick={() => setCheatsheetOpen(true)}
+              title="Keyboard shortcuts (?)"
+              aria-label="Keyboard shortcuts"
+            >
+              <Icon name="keyboard" size={18} />
+            </button>
 
             <div className="relative" ref={notifRef}>
               <button
@@ -344,6 +386,11 @@ export default function FactoryShell({ children }: { children: React.ReactNode }
           <div className="min-h-full">{children}</div>
         </main>
       </div>
+
+      <DesktopKeyboardCheatsheet
+        open={cheatsheetOpen}
+        onClose={() => setCheatsheetOpen(false)}
+      />
     </div>
   );
 }

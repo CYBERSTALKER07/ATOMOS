@@ -4,8 +4,8 @@ import { usePortalT } from "@/lib/i18n";
 import type { ReactNode } from "react";
 import Icon from "./Icon";
 import EmptyState from "./EmptyState";
-import { PageSkeleton } from "@pegasusx/ui-kit/desktop";
-import { PageChrome as KitPageChrome } from "@pegasusx/ui-kit/portal";
+import { PageSkeleton } from "@/components/ui/PageSkeletons";
+import { PageChrome as KitPageChrome } from "@/components/ui/PageChrome";
 
 type EmptyVariant =
   | "no-data"

@@ -67,8 +67,8 @@ describe("Cashier Vault Denomination Counter & Zero-Trust Invariant (UA-1, CG-11
 });
 
 describe("Multi-Tender AML Exposure & Uncapped Ceiling Policy", () => {
-  const DYNAMIC_CEILING_MINOR = 2_500_000_000;
-  const UNCAPPED_CEILING_MINOR = 0;
+  const DYNAMIC_CEILING_MINOR: number = 2_500_000_000;
+  const UNCAPPED_CEILING_MINOR: number = 0;
 
   it("permits cash intake when within configured ceiling", () => {
     const currentExposureMinor = 1_000_000_000; // 10M UZS
@@ -92,7 +92,7 @@ describe("Multi-Tender AML Exposure & Uncapped Ceiling Policy", () => {
   });
 });
 
-describe("DVIR 8-Point Safety Inspection Logic (UA-8)", () => {
+describe("DVIR Safety Inspection Logic (UA-8)", () => {
   it("flags critical defects if brakes or steering fail", () => {
     const checklist = {
       steering_and_horn_ok: false,
@@ -102,14 +102,13 @@ describe("DVIR 8-Point Safety Inspection Logic (UA-8)", () => {
       wipers_and_fluids_ok: true,
       emergency_kit_and_extinguisher_ok: true,
       cargo_box_sanitation_ok: true,
-      reefer_temp_calibrated_ok: true,
     };
 
     const hasCriticalDefect = !checklist.steering_and_horn_ok || !checklist.service_and_parking_brakes_ok;
     expect(hasCriticalDefect).toBe(true);
   });
 
-  it("passes inspection when all 8 points are verified", () => {
+  it("passes inspection when all points are verified", () => {
     const checklist = {
       steering_and_horn_ok: true,
       service_and_parking_brakes_ok: true,
@@ -118,7 +117,6 @@ describe("DVIR 8-Point Safety Inspection Logic (UA-8)", () => {
       wipers_and_fluids_ok: true,
       emergency_kit_and_extinguisher_ok: true,
       cargo_box_sanitation_ok: true,
-      reefer_temp_calibrated_ok: true,
     };
 
     const allPassed = Object.values(checklist).every(Boolean);

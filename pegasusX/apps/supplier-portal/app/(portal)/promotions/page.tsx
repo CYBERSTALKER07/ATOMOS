@@ -17,6 +17,7 @@ import type {
   SupplierPromotionUpsertRequest,
 } from "@pegasusx/types";
 import { PageChrome } from "@/components/PageChrome";
+import { formatBpsPercent } from "@/lib/money";
 
 const api = createSupplierApi();
 
@@ -88,7 +89,7 @@ export default function PromotionsPage() {
       const result = await api.simulatePromotionPandL(
         {
           promotion_id: promo.promotion_id,
-          discount_pct: discountBps / 100,
+          discount_pct: Number(formatBpsPercent(discountBps, 2)),
           expected_units: 500,
           avg_unit_margin_minor: 1000,
         },
@@ -398,7 +399,7 @@ export default function PromotionsPage() {
                   <div>
                     <div className="md-typescale-title-small font-semibold">{promo.name}</div>
                     <div className="md-typescale-body-small text-[var(--color-md-outline)]">
-                      {(((promo.discount_bps ?? promo.tiers?.[0]?.discount_bps ?? 0) / 100)).toFixed(2)}% · {promo.scope_type}
+                      {formatBpsPercent(promo.discount_bps ?? promo.tiers?.[0]?.discount_bps ?? 0, 2)}% · {promo.scope_type}
                       {promo.is_active ? "" : " · inactive"}
                     </div>
                   </div>

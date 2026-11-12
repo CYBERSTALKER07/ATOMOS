@@ -3,7 +3,7 @@
 import { AnimatePresence } from "framer-motion";
 import { PackageOpen, ArrowUpRight } from "lucide-react";
 import { Chip } from "@heroui/react";
-import { VirtualScrollList } from "@pegasusx/ui-kit/desktop";
+import { VirtualScrollList } from "@/components/ui/VirtualScrollList";
 import EmptyState from "../EmptyState";
 import { ListRowSkeleton } from "../Skeleton";
 import type { Order } from "../../lib/types";

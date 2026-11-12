@@ -2,7 +2,7 @@
 
 import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { PulseTimeline } from '@pegasusx/pulse-ui';
+import { PulseTimeline } from '@/components/ui';
 import type { PulseEvent } from '@pegasusx/types';
 import { apiFetch } from '@/lib/auth';
 import { warehouseApi } from '@/lib/warehouse-api';

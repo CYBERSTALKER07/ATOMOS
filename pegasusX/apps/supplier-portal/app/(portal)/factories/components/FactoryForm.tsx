@@ -2,7 +2,7 @@
 
 import { usePortalT } from "@/lib/i18n";
 import { useState } from "react";
-import { AUTH_COUNTRIES } from "@pegasusx/ui-kit/auth";
+import { AUTH_COUNTRIES } from "@/components/ui";
 import { LocationPicker, type LocationValue } from "@/components/LocationPicker";
 import { sessionMapCenter } from "@pegasusx/api-core";
 

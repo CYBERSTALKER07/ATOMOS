@@ -3,8 +3,7 @@
 import { usePortalT } from "@/lib/i18n";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { AuthLoginCard } from "@pegasusx/ui-kit/auth";
-import { dialCodeForCountry } from "@pegasusx/ui-kit/auth";
+import { AuthLoginCard, dialCodeForCountry } from "@/components/ui";
 import { createSupplierApi } from "@/lib/api";
 import { persistSession } from "@/lib/auth";
 import { discoverOIDC } from "@/lib/oidc";
@@ -64,11 +63,6 @@ export default function SupplierLoginPage() {
     }
   }
 
-  function handleDemoBypass() {
-    persistSession("mock-supplier-jwt-dev", "mock-refresh-dev");
-    router.replace("/dashboard");
-  }
-
   async function handleIdP(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -116,15 +110,6 @@ export default function SupplierLoginPage() {
       onVerifyOtp={handleVerifyOtp}
       onBack={() => setStep("phone")}
     />
-    <div className="mx-auto mt-4 max-w-md px-4">
-      <button
-        type="button"
-        onClick={handleDemoBypass}
-        className="w-full rounded-md border border-[var(--desk-border)] bg-[var(--desk-surface)] py-2.5 text-sm font-semibold tracking-wide text-[var(--desk-text-primary)] hover:bg-[var(--desk-hover)] transition-colors shadow-sm"
-      >
-        BYPASS / ENTER DEMO SUPPLIER
-      </button>
-    </div>
     <form className="mx-auto mt-6 max-w-md space-y-2 px-4" onSubmit={handleIdP}>
       <p className="text-center text-sm text-[var(--desk-text-secondary)]">Or sign in with your company IdP</p>
       <input

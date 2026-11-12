@@ -5,6 +5,12 @@ import type { CashierSessionView, DepotVaultLedgerEntry } from "@pegasusx/types"
 import { foundryApi } from "@/lib/foundry-api";
 import { useAdminToken } from "@/lib/session";
 import { CopyableId } from "@/components/ui/CopyableId";
+import {
+  formatGroupedInteger,
+  formatMinorUnits,
+  majorIntToMinor,
+  majorIntToMinorBigInt,
+} from "@/lib/money";
 
 const UZS_DENOMINATIONS = [200000, 100000, 50000, 20000, 10000, 5000, 2000, 1000] as const;
 
@@ -51,7 +57,7 @@ export default function CashierVaultPage() {
   const totalCountedUZS = UZS_DENOMINATIONS.reduce((acc, denom) => {
     return acc + denom * (counts[denom] || 0);
   }, 0);
-  const totalCountedMinor = totalCountedUZS * 100;
+  const totalCountedMinor = majorIntToMinor(totalCountedUZS);
 
   const handleStartSession = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -105,7 +111,7 @@ export default function CashierVaultPage() {
       } else if (res.status === "TOLERANCE_VARIANCE") {
         setSuccessMsg(`Session cleared under TOLERANCE_VARIANCE. Variance recorded in Spanner audit.`);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       // Check for structured recount required conflict (UA-1)
       const msg = err instanceof Error ? err.message : "Blind count failed";
       if (msg.includes("recount") || msg.includes("RECOUNT_REQUIRED")) {
@@ -134,7 +140,7 @@ export default function CashierVaultPage() {
         session_ids: session ? [session.session_id] : ["session_manual_drop"],
         courier_badge_id: citCourierBadge.trim(),
         cit_seal_barcode: citSealBarcode.trim(),
-        amount_minor: citAmountUZS * 100,
+        amount_minor: majorIntToMinor(citAmountUZS),
       });
       setCitReceipt(res);
       setSuccessMsg(`CIT Armored Car Outflow booked to Spanner Vault Ledger! Entry ID: ${res.vault_entry_id}`);
@@ -396,7 +402,7 @@ export default function CashierVaultPage() {
                     onChange={(e) => setToleranceMinor(Number(e.target.value))}
                     className="w-48 rounded border px-2.5 py-1 text-xs font-mono mt-1"
                   />
-                  <span className="text-[11px] text-gray-500 ml-2">({(toleranceMinor / 100).toLocaleString()} UZS)</span>
+                  <span className="text-[11px] text-gray-500 ml-2">({formatMinorUnits(toleranceMinor, { minimumFractionDigits: 0, maximumFractionDigits: 2 })} UZS)</span>
                 </div>
 
                 <button
@@ -495,7 +501,7 @@ export default function CashierVaultPage() {
                 required
                 className="w-full rounded border px-3 py-1.5 text-xs font-bold text-gray-900"
               />
-              <p className="text-[11px] text-gray-500 mt-0.5">= {(citAmountUZS * 100).toLocaleString()} tiyins</p>
+              <p className="text-[11px] text-gray-500 mt-0.5">= {formatGroupedInteger(majorIntToMinorBigInt(citAmountUZS))} tiyins</p>
             </div>
 
             <button
@@ -515,8 +521,8 @@ export default function CashierVaultPage() {
               </div>
               <div className="text-xs text-gray-600 space-y-1">
                 <div>Type: <span className="font-semibold">{citReceipt.entry_type}</span></div>
-                <div>Amount: <span className="font-mono font-bold text-rose-600">-{(citReceipt.amount_minor / 100).toLocaleString()} UZS</span></div>
-                <div>Safe Running Balance: <span className="font-mono font-bold text-emerald-700">{(citReceipt.running_balance_minor / 100).toLocaleString()} UZS</span></div>
+                <div>Amount: <span className="font-mono font-bold text-rose-600">-{formatMinorUnits(citReceipt.amount_minor, { minimumFractionDigits: 0, maximumFractionDigits: 2 })} UZS</span></div>
+                <div>Safe Running Balance: <span className="font-mono font-bold text-emerald-700">{formatMinorUnits(citReceipt.running_balance_minor, { minimumFractionDigits: 0, maximumFractionDigits: 2 })} UZS</span></div>
               </div>
             </div>
           )}

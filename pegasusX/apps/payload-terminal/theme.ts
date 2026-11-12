@@ -6,8 +6,10 @@ export const isIOS = Platform.OS === 'ios';
 const iOSLight = {
   colors: {
     background: '#F2F2F7',
+    secondaryBackground: '#FFFFFF',
     cardBackground: '#FFFFFF',
     accent: '#6750A4',
+    tint: '#6750A4',
     label: '#000000',
     secondaryLabel: '#3C3C43',
     tertiaryLabel: '#8E8E93',
@@ -17,6 +19,7 @@ const iOSLight = {
     fillTertiary: 'rgba(120,120,128,0.12)',
     destructive: '#FF3B30',
     success: '#34C759',
+    warning: '#F59E0B',
     sidebarBackground: '#1C1C1E',
     sidebarLabel: '#FFFFFF',
     sidebarSecondary: 'rgba(235,235,245,0.3)',
@@ -28,6 +31,7 @@ const iOSLight = {
     card: 13,
     button: 12,
     checkbox: 6,
+    input: 8,
   },
   shadow: {
     card: {
@@ -49,8 +53,10 @@ const iOSLight = {
 const androidLight = {
   colors: {
     background: '#FEF7FF',
+    secondaryBackground: '#F7F2FA',
     cardBackground: '#F7F2FA',
     accent: '#6750A4',
+    tint: '#6750A4',
     label: '#1D1B20',
     secondaryLabel: '#49454F',
     tertiaryLabel: '#79747E',
@@ -60,6 +66,7 @@ const androidLight = {
     fillTertiary: '#F3EDF7',
     destructive: '#B3261E',
     success: '#006D3B',
+    warning: '#F59E0B',
     sidebarBackground: '#1D1B20',
     sidebarLabel: '#E6E0E9',
     sidebarSecondary: 'rgba(230,225,229,0.38)',
@@ -78,6 +85,7 @@ const androidLight = {
     card: 12,
     button: 100,
     checkbox: 4,
+    input: 8,
   },
   shadow: {
     card: {
@@ -97,8 +105,10 @@ const iOSDark = {
   ...iOSLight,
   colors: {
     background: '#000000',
+    secondaryBackground: '#1C1C1E',
     cardBackground: '#1C1C1E',
     accent: '#D0BCFF',
+    tint: '#D0BCFF',
     label: '#FFFFFF',
     secondaryLabel: 'rgba(235,235,245,0.6)',
     tertiaryLabel: 'rgba(235,235,245,0.3)',
@@ -108,6 +118,7 @@ const iOSDark = {
     fillTertiary: 'rgba(120,120,128,0.24)',
     destructive: '#FF6961',
     success: '#30D158',
+    warning: '#F59E0B',
     sidebarBackground: '#000000',
     sidebarLabel: '#FFFFFF',
     sidebarSecondary: 'rgba(235,235,245,0.3)',
@@ -122,8 +133,10 @@ const androidDark = {
   ...androidLight,
   colors: {
     background: '#141218',
+    secondaryBackground: '#1D1B20',
     cardBackground: '#1D1B20',
     accent: '#D0BCFF',
+    tint: '#D0BCFF',
     label: '#E6E0E9',
     secondaryLabel: '#CAC4D0',
     tertiaryLabel: '#938F99',
@@ -133,6 +146,7 @@ const androidDark = {
     fillTertiary: '#211F26',
     destructive: '#F2B8B5',
     success: '#86D993',
+    warning: '#F59E0B',
     sidebarBackground: '#0F0D13',
     sidebarLabel: '#E6E0E9',
     sidebarSecondary: 'rgba(230,224,233,0.38)',

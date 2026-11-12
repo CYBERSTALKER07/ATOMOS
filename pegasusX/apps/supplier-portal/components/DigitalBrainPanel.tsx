@@ -10,7 +10,7 @@ import type {
   TwinOpsRouteView,
 } from "@pegasusx/types";
 import { brainForecastLine, forecastConfidenceFromDemand, isForecastBlocked } from "@pegasusx/types";
-import { SourceChip } from "@pegasusx/ui-kit/portal";
+import { SourceChip } from "@/components/ui";
 import { ForecastConfidenceCard } from "@/components/ForecastConfidenceCard";
 import SignalIngestOpsPanel from "@/components/SignalIngestOpsPanel";
 import { ForecastAccuracyPanel } from "@/components/settings/planning";

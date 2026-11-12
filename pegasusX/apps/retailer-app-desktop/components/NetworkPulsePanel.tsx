@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { PulseTimeline } from "@pegasusx/pulse-ui";
+import { PulseTimeline } from "@/components/ui/PulseTimeline";
 import type { PulseEvent } from "@pegasusx/types";
 import { apiFetch } from "../lib/auth";
 

@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import { TIYIN_PER_UZS, STATUTORY_AML_CASH_CEILING_MINOR, type AMLCheckResponse, type CashierSessionView } from '@pegasusx/types';
+import { STATUTORY_AML_CASH_CEILING_MINOR, type AMLCheckResponse, type CashierSessionView } from '@pegasusx/types';
 import { foundryApi } from '@/lib/foundry-api';
+import { majorIntToMinor, minorToWholeTrunc } from '@/lib/money';
 
 export default function CashierVaultMonitor({ token }: { token: string }) {
   // AML Exposure Check State
@@ -35,7 +36,7 @@ export default function CashierVaultMonitor({ token }: { token: string }) {
         legal_entity_tin: tin.trim(),
         supplier_id: supplierId.trim(),
         calendar_date: calendarDate,
-        cash_minor: cashAmountUZS * TIYIN_PER_UZS,
+        cash_minor: majorIntToMinor(cashAmountUZS),
       });
       setAmlResult(res);
     } catch (err) {
@@ -57,7 +58,7 @@ export default function CashierVaultMonitor({ token }: { token: string }) {
         driver_id: driverId,
         route_id: 'route_101',
         bag_seal_barcode: bagSeal,
-        expected_cash_minor: expectedUZS * TIYIN_PER_UZS,
+        expected_cash_minor: majorIntToMinor(expectedUZS),
       });
       setSession(s);
     } catch (err) {
@@ -86,7 +87,7 @@ export default function CashierVaultMonitor({ token }: { token: string }) {
     }
   };
 
-  const ceilingUZS = Math.floor(STATUTORY_AML_CASH_CEILING_MINOR / TIYIN_PER_UZS);
+  const ceilingUZS = minorToWholeTrunc(STATUTORY_AML_CASH_CEILING_MINOR);
 
   return (
     <div className="space-y-6">
@@ -148,7 +149,7 @@ export default function CashierVaultMonitor({ token }: { token: string }) {
             <div className="flex justify-between font-semibold">
               <span>TIN: {amlResult.legal_entity_tin}</span>
               <span className="font-mono">
-                Accumulated: {Math.floor(amlResult.accumulated_cash_minor / TIYIN_PER_UZS).toLocaleString()} UZS (Uncapped)
+                Accumulated: {minorToWholeTrunc(amlResult.accumulated_cash_minor).toLocaleString()} UZS (Uncapped)
               </span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
@@ -229,13 +230,13 @@ export default function CashierVaultMonitor({ token }: { token: string }) {
             <div className="grid grid-cols-3 gap-3 font-mono">
               <div>
                 <span className="text-gray-500 block">Counted:</span>
-                <span className="font-bold">{Math.floor((session.counted_cash_minor || 0) / TIYIN_PER_UZS).toLocaleString()} UZS</span>
+                <span className="font-bold">{minorToWholeTrunc(session.counted_cash_minor || 0).toLocaleString()} UZS</span>
               </div>
               <div>
                 <span className="text-gray-500 block">Expected:</span>
                 <span>
                   {session.expected_cash_minor !== undefined && session.expected_cash_minor !== null
-                    ? `${Math.floor(session.expected_cash_minor / TIYIN_PER_UZS).toLocaleString()} UZS`
+                    ? `${minorToWholeTrunc(session.expected_cash_minor).toLocaleString()} UZS`
                     : '🔒 MASKED (BLIND)'}
                 </span>
               </div>
@@ -243,7 +244,7 @@ export default function CashierVaultMonitor({ token }: { token: string }) {
                 <span className="text-gray-500 block">Variance:</span>
                 <span>
                   {session.variance_minor !== undefined && session.variance_minor !== null
-                    ? `${Math.floor(session.variance_minor / TIYIN_PER_UZS).toLocaleString()} UZS`
+                    ? `${minorToWholeTrunc(session.variance_minor).toLocaleString()} UZS`
                     : '🔒 MASKED'}
                 </span>
               </div>

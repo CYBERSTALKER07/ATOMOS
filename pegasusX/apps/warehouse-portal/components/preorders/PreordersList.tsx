@@ -6,6 +6,7 @@ import type { RetailerOrderLifecycleResponse } from '@pegasusx/types';
 import EmptyState from '@/components/EmptyState';
 import { OrderOpsCard } from '@/components/orders';
 import { moneyCurrency } from '@pegasusx/api-core';
+import { minorToWholeRound } from '@/lib/money';
 
 export interface PreordersListProps {
   loading: boolean;
@@ -59,7 +60,7 @@ export function PreordersList({
           orderId={row.order_id}
           retailerName={row.order_source || 'Manual pre-order'}
           state={row.status}
-          amountLabel={`${fmt(Math.round((row.total_minor ?? 0) / 100))} ${moneyCurrency(row.currency)}`.trim()}
+          amountLabel={`${fmt(minorToWholeRound(row.total_minor ?? 0))} ${moneyCurrency(row.currency)}`.trim()}
           meta={
             row.requested_delivery_date
               ? `Requested ${new Date(row.requested_delivery_date).toLocaleDateString()}`

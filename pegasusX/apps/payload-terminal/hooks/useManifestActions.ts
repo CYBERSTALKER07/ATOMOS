@@ -358,27 +358,32 @@ export function useManifestActions({
       if (sealData.dispatch_code) {
         setDispatchCodes(prev => ({ ...prev, [selectedOrderId]: sealData.dispatch_code }));
       }
-      // Enter 60-second double-check countdown (Edge 33)
+      // Enter 60-second double-check countdown (Edge 33) using monotonic elapsed clock
       setPostSealOrderId(selectedOrderId);
       setPostSealCountdown(60);
       if (countdownRef.current) clearInterval(countdownRef.current);
+      const monotonicNow = () =>
+        typeof performance !== 'undefined' && typeof performance.now === 'function'
+          ? performance.now()
+          : Date.now();
+      const startedAtMs = monotonicNow();
       countdownRef.current = setInterval(() => {
-        setPostSealCountdown(prev => {
-          if (prev <= 1) {
-            if (countdownRef.current) clearInterval(countdownRef.current);
-            countdownRef.current = null;
-            // Advance to next order or allSealed after countdown
-            const remainingOrders = orders.filter(o => !next.has(o.order_id));
-            if (remainingOrders.length > 0) {
-              setSelectedOrderId(remainingOrders[0].order_id);
-            } else {
-              setAllSealed(true);
-            }
-            setPostSealOrderId(null);
-            return 0;
+        const elapsedSec = Math.floor(Math.max(0, monotonicNow() - startedAtMs) / 1000);
+        const remainingSec = Math.max(0, 60 - elapsedSec);
+        if (remainingSec <= 0) {
+          if (countdownRef.current) clearInterval(countdownRef.current);
+          countdownRef.current = null;
+          const remainingOrders = orders.filter(o => !next.has(o.order_id));
+          if (remainingOrders.length > 0) {
+            setSelectedOrderId(remainingOrders[0].order_id);
+          } else {
+            setAllSealed(true);
           }
-          return prev - 1;
-        });
+          setPostSealOrderId(null);
+          setPostSealCountdown(0);
+          return;
+        }
+        setPostSealCountdown(remainingSec);
       }, 1000);
     } catch (e: unknown) {
       if (e instanceof ApiExplainError) {

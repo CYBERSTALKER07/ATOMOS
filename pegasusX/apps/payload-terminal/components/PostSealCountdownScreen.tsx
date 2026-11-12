@@ -25,7 +25,7 @@ export default function PostSealCountdownScreen({
   toast: ReactNode;
 }) {
   return (
-    <View style={{ flex: 1, backgroundColor: (T.colors as any)?.warning ?? '#F59E0B', alignItems: 'center', justifyContent: 'center', padding: 48 }}>
+    <View style={{ flex: 1, backgroundColor: T.colors.warning, alignItems: 'center', justifyContent: 'center', padding: 48 }}>
       <MaterialIcons name="verified-user" size={64} color="rgba(255,255,255,0.9)" style={{ marginBottom: 24 }} />
       <Text style={{ fontSize: 28, fontWeight: '700', color: '#FFFFFF', textAlign: 'center', letterSpacing: isIOS ? -0.4 : 0.5, marginBottom: 8 }}>
         {isIOS ? 'Double-Check' : 'DOUBLE-CHECK'}

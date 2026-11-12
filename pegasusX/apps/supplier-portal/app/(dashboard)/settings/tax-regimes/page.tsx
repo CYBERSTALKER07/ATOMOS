@@ -4,6 +4,7 @@ import { usePortalT } from "@/lib/i18n";
 import { useState } from "react";
 import { PageChrome } from "@/components/PageChrome";
 import { PageSection } from "@/components/PageSection";
+import { formatBpsPercent } from "@/lib/money";
 import { useLiveData } from "@/lib/hooks";
 import { supplierFetch } from "@/lib/auth";
 import { sessionPackCurrency } from "@pegasusx/api-core";
@@ -231,7 +232,7 @@ export default function TaxRegimesPage() {
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     <span className="font-semibold text-[var(--desk-text-primary)] text-lg">
-                      {(regime.vat_rate_bps / 100).toFixed(2)}% VAT
+                      {formatBpsPercent(regime.vat_rate_bps, 2)}% VAT
                     </span>
                     {i === 0 && !regime.effective_to ? (
                       <span className="px-2 py-0.5 rounded-full bg-green-500/10 text-green-500 text-xs font-medium border border-green-500/20">

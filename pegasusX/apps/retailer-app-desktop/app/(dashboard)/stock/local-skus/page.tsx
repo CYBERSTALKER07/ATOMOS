@@ -7,6 +7,7 @@ import { Loader2, Plus, RefreshCw } from "lucide-react";
 import { PageChrome } from "@/components/PageChrome";
 import { apiFetch } from "@/lib/auth";
 import { moneyCurrency, sessionPackCurrency } from "@/lib/payment-catalog";
+import { parseMinorUnitsInt } from "@/lib/money";
 
 type LocalSKU = {
   local_sku_id: string;
@@ -61,7 +62,7 @@ export default function LocalSKUsPage() {
         body: JSON.stringify({
           name: n,
           barcode: barcode.trim() || undefined,
-          default_price_minor: Number(price) || 0,
+          default_price_minor: parseMinorUnitsInt(price) ?? 0,
           currency: sessionPackCurrency(),
         }),
       });
@@ -80,13 +81,17 @@ export default function LocalSKUsPage() {
   };
 
   const toggleActive = async (row: LocalSKU) => {
-    const id = encodeURIComponent(row.local_sku_id);
-    const res = await apiFetch(`/v1/retailer/local-skus/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ is_active: !row.is_active }),
-    });
-    if (res.ok) await load();
+    try {
+      const id = encodeURIComponent(row.local_sku_id);
+      const res = await apiFetch(`/v1/retailer/local-skus/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_active: !row.is_active }),
+      });
+      if (res.ok) await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "local_skus_failed");
+    }
   };
 
   return (
@@ -106,6 +111,7 @@ export default function LocalSKUsPage() {
           </Link>
           <button
             type="button"
+            aria-label="Refresh local SKUs"
             onClick={() => void load()}
             className="portal-btn portal-btn--ghost h-10 px-4 rounded-xl"
           >

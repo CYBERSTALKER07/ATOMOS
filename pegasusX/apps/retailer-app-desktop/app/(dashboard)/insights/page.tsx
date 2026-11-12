@@ -25,6 +25,7 @@ import {
   aiPredictionTitle,
   formatMinorAmount,
 } from "../../../lib/types";
+import { minorToWholeTrunc } from "../../../lib/money";
 
 type LoadIssue = "restricted" | "offline" | "error";
 
@@ -280,7 +281,7 @@ export default function InsightsPage() {
         <SpendAnalytics
           spendTrend={detailedSeries.map((row) => ({
             day: row.created_at?.slice(0, 10) || row.order_id,
-            spend: (row.total_minor ?? 0) / 100,
+            spend: minorToWholeTrunc(row.total_minor ?? 0),
           }))}
           categorySpend={
             Array.isArray(detailedAnalytics?.by_category)
@@ -296,7 +297,7 @@ export default function InsightsPage() {
                       typeof r.value === "number"
                         ? r.value
                         : typeof r.total_minor === "number"
-                          ? r.total_minor / 100
+                          ? minorToWholeTrunc(r.total_minor)
                           : NaN;
                     if (!name || Number.isNaN(value)) return null;
                     return { name, value };

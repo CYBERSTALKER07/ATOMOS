@@ -23,6 +23,8 @@ type Pulse = {
   empty: boolean;
 };
 
+import { formatMinorUnits } from "@/lib/money";
+
 type Tile = {
   label: string;
   value: string | number;
@@ -31,7 +33,7 @@ type Tile = {
 };
 
 function formatMoney(minor: number) {
-  return (minor / 100).toLocaleString(undefined, {
+  return formatMinorUnits(minor, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });

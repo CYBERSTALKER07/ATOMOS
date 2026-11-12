@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
-import { duration, easing, reducedMotionTransition } from "@pegasusx/motion-tokens";
+import { duration, easing, reducedMotionTransition } from "@/components/ui/motion";
 import { ReactNode } from "react";
 import { usePathname } from "next/navigation";
 

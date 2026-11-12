@@ -5,6 +5,7 @@ import type { AMLCheckResponse } from "@pegasusx/types";
 import { foundryApi } from "@/lib/foundry-api";
 import { useAdminToken } from "@/lib/session";
 import { CopyableId } from "@/components/ui/CopyableId";
+import { formatMinorUnits, majorIntToMinor } from "@/lib/money";
 
 // Uncapped Multi-Tender Policy: dynamic exposure tracking without artificial settlement caps.
 
@@ -21,7 +22,7 @@ export default function AMLSurveillancePage() {
   const [result, setResult] = useState<AMLCheckResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const attemptedCashMinor = attemptedCashUZS * 100;
+  const attemptedCashMinor = majorIntToMinor(attemptedCashUZS);
 
   const handleCheck = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -187,7 +188,7 @@ export default function AMLSurveillancePage() {
                 <div className="flex items-center justify-between text-xs font-medium text-gray-700">
                   <span>Accumulated Daily Cash Exposure</span>
                   <span className="font-mono font-bold">
-                    {(newExposureMinor / 100).toLocaleString()} UZS
+                    {formatMinorUnits(newExposureMinor, { minimumFractionDigits: 0, maximumFractionDigits: 2 })} UZS
                   </span>
                 </div>
                 <div className="h-3 w-full rounded-full bg-gray-200 overflow-hidden">
@@ -207,7 +208,7 @@ export default function AMLSurveillancePage() {
                 <div className="rounded-lg border bg-gray-50 p-3">
                   <div className="text-[10px] uppercase font-bold text-gray-500">Accumulated Exposure Today</div>
                   <div className="text-base font-extrabold text-gray-900 mt-0.5">
-                    {(currentExposureMinor / 100).toLocaleString()} UZS
+                    {formatMinorUnits(currentExposureMinor, { minimumFractionDigits: 0, maximumFractionDigits: 2 })} UZS
                   </div>
                 </div>
 

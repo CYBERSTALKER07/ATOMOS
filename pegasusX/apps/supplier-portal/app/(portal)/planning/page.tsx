@@ -4,7 +4,7 @@ import { Suspense, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { planBrainTabFromQuery, type PlanBrainTab } from "@pegasusx/types";
-import { PlanBrainTabs } from "@pegasusx/ui-kit/portal";
+import { PlanBrainTabs } from "@/components/ui";
 import { PageChrome } from "@/components/PageChrome";
 import PlanningBrainPanel from "@/components/PlanningBrainPanel";
 import DigitalBrainPanel from "@/components/DigitalBrainPanel";

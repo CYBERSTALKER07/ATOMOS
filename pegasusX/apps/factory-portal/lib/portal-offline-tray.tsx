@@ -1,6 +1,7 @@
 "use client";
 
-import { DesktopOfflineTray, useDesktopConnectivity } from "@pegasusx/ui-kit/desktop";
+import { DesktopOfflineTray } from "@/components/ui/DesktopOfflineTray";
+import { useDesktopConnectivity } from "@/components/ui/use-desktop-connectivity";
 import { isTauri } from "@pegasusx/desktop-bridge";
 
 export function PortalOfflineTray() {

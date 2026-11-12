@@ -18,8 +18,6 @@ import type {
   DepotVaultLedgerEntry,
   FleetDVIRInspection,
   YardGateCheckEvent,
-  PredictiveReeferRequest,
-  PredictiveReeferResponse,
   DispatchCheckResponse,
   MidRouteRescueRequest,
   MidRouteRescueResult,
@@ -142,9 +140,6 @@ export const foundryApi = {
 
   midRouteRescue: (token: string, body: MidRouteRescueRequest) =>
     req<MidRouteRescueResult>(token, "POST", "/v1/foundry/fleet/mid-route-rescue", body),
-
-  predictiveReefer: (token: string, body: PredictiveReeferRequest) =>
-    req<PredictiveReeferResponse>(token, "POST", "/v1/foundry/fleet/predictive-reefer", body),
 
   dispatchCheck: (token: string, vehicleId: string) =>
     req<DispatchCheckResponse>(

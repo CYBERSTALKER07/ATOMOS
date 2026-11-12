@@ -2,12 +2,14 @@
 
 import { usePortalT } from "@/lib/i18n";
 import React, { useEffect, useState } from "react";
-import { HexagonalControlTowerMap } from "@pegasusx/ui-maps";
-import { LiveEKGNetworkGraph, type NetworkNode, type NetworkLink } from "@pegasusx/ui-charts";
+import {
+  HexagonalControlTowerMap,
+  LiveEKGNetworkGraph,
+  type NetworkNode,
+  type NetworkLink,
+  GlassmorphismPanel,
+} from "@/components/ui";
 import { useControlTowerTelemetry } from "./use-control-tower-telemetry";
-import { GlassmorphismPanel,
-  
-} from "@pegasusx/ui-kit/control-tower";
 import {
   LineChart,
   Line,

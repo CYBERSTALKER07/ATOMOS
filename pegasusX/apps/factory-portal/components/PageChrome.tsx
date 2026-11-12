@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import Icon from "./Icon";
 import EmptyState from "./EmptyState";
 import { PageSkeleton } from "./Skeleton";
-import { PageChrome as KitPageChrome } from "@pegasusx/ui-kit/portal";
+import { PageChrome as KitPageChrome } from "@/components/ui/PageChrome";
 
 type PageChromeProps = {
   title: string;

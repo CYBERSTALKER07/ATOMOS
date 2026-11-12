@@ -1,5 +1,3 @@
-import type React from 'react';
-
 declare module '@expo/vector-icons' {
     export interface MaterialIconsProps {
         name: string;
@@ -7,5 +5,7 @@ declare module '@expo/vector-icons' {
         color?: string;
         style?: Record<string, unknown> | Array<Record<string, unknown>>;
     }
-    export const MaterialIcons: React.ComponentType<MaterialIconsProps>;
+    export const MaterialIcons: import('react').ComponentType<MaterialIconsProps> & {
+        glyphMap: Record<string, number>;
+    };
 }

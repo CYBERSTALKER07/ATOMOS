@@ -4,6 +4,21 @@ import React, { useEffect, useState, useMemo } from "react";
 import { api, type BillingInvoice, type BillingFeeSchedule } from "@/lib/api";
 import { useAdminToken } from "@/lib/session";
 import { CopyableId } from "@/components/ui/CopyableId";
+import {
+  applyBpsFee,
+  formatBpsPercent,
+  formatMinorUnits,
+  formatRatioPercentTenths,
+} from "@/lib/money";
+
+function formatMillionsUzs(amountUZS: number, fractionDigits: 1 | 2): string {
+  const hundredthsOfMillion = BigInt(Math.trunc(amountUZS)) / BigInt(10000);
+  return formatMinorUnits(hundredthsOfMillion, {
+    groupSeparator: "",
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
+  });
+}
 
 type PerspectiveMode = "OVERALL" | "SUPPLIER" | "WAREHOUSE" | "RETAILER";
 
@@ -84,16 +99,19 @@ export default function FinOpsBillingPage() {
   }, []);
 
   const platformTakeRateUZS = useMemo(() => {
-    if (schedules.length > 0 && schedules[0].GmvBps) {
-      return (totalGMVUZS * schedules[0].GmvBps) / 10000;
-    }
-    return (totalGMVUZS * 0.05); // 500 bps default dynamic fee
+    const firstSchedule = schedules[0] as (BillingFeeSchedule & { GmvBps?: number }) | undefined;
+    const bps = firstSchedule?.gmv_bps ?? firstSchedule?.GmvBps ?? 500;
+    return applyBpsFee(totalGMVUZS, bps);
   }, [totalGMVUZS, schedules]);
 
-  const soliqVatUZS = (totalGMVUZS * 0.12); // Dynamic 12% Soliq VAT
-  const logisticsAllocationUZS = (totalGMVUZS * 0.025);
+  const soliqVatUZS = applyBpsFee(totalGMVUZS, 1200); // Dynamic 12% Soliq VAT (1200 bps)
+  const logisticsAllocationUZS = applyBpsFee(totalGMVUZS, 250);
   const netSupplierPayoutUZS = totalGMVUZS - platformTakeRateUZS - soliqVatUZS - logisticsAllocationUZS;
   const cloudInfraCostUZS = 24500000; // Cloud Spanner, K8s, Redis, Kafka compute cost
+  const supplierSharePct = formatRatioPercentTenths(netSupplierPayoutUZS, totalGMVUZS || 1);
+  const vatSharePct = formatRatioPercentTenths(soliqVatUZS, totalGMVUZS || 1);
+  const takeSharePct = formatRatioPercentTenths(platformTakeRateUZS, totalGMVUZS || 1);
+  const fleetSharePct = formatRatioPercentTenths(logisticsAllocationUZS, totalGMVUZS || 1);
 
   const activeSupplier = DEMO_SUPPLIERS.find((s) => s.id === selectedSupplierId) || DEMO_SUPPLIERS[0];
   const activeWarehouse = DEMO_WAREHOUSES.find((w) => w.id === selectedWarehouseId) || DEMO_WAREHOUSES[0];
@@ -227,7 +245,7 @@ export default function FinOpsBillingPage() {
             <div className="rounded-xl border bg-white p-4 shadow-sm">
               <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500">Gross Invoiced GMV</span>
               <div className="text-xl font-extrabold text-gray-900 mt-1">
-                {(totalGMVUZS / 1000000).toFixed(1)}M <span className="text-xs font-medium text-gray-500">UZS</span>
+                {formatMillionsUzs(totalGMVUZS, 1)}M <span className="text-xs font-medium text-gray-500">UZS</span>
               </div>
               <div className="text-[11px] text-emerald-600 mt-1 font-semibold">
                 ↑ 14.8% vs last 30 days
@@ -237,7 +255,7 @@ export default function FinOpsBillingPage() {
             <div className="rounded-xl border bg-white p-4 shadow-sm">
               <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500">Platform Take Rate</span>
               <div className="text-xl font-extrabold text-indigo-700 mt-1">
-                {(platformTakeRateUZS / 1000000).toFixed(2)}M <span className="text-xs font-medium text-gray-500">UZS</span>
+                {formatMillionsUzs(platformTakeRateUZS, 2)}M <span className="text-xs font-medium text-gray-500">UZS</span>
               </div>
               <div className="text-[11px] text-gray-500 mt-1">
                 Effective blended: <span className="font-semibold text-gray-700">5.20% (520 bps)</span>
@@ -247,7 +265,7 @@ export default function FinOpsBillingPage() {
             <div className="rounded-xl border bg-white p-4 shadow-sm">
               <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500">Soliq 12% VAT Accrued</span>
               <div className="text-xl font-extrabold text-gray-900 mt-1">
-                {(soliqVatUZS / 1000000).toFixed(1)}M <span className="text-xs font-medium text-gray-500">UZS</span>
+                {formatMillionsUzs(soliqVatUZS, 1)}M <span className="text-xs font-medium text-gray-500">UZS</span>
               </div>
               <div className="text-[11px] text-gray-500 mt-1">
                 100% electronic factura registered
@@ -257,7 +275,7 @@ export default function FinOpsBillingPage() {
             <div className="rounded-xl border bg-white p-4 shadow-sm">
               <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500">Cloud FinOps Cost</span>
               <div className="text-xl font-extrabold text-emerald-700 mt-1">
-                {(cloudInfraCostUZS / 1000000).toFixed(2)}M <span className="text-xs font-medium text-gray-500">UZS</span>
+                {formatMillionsUzs(cloudInfraCostUZS, 2)}M <span className="text-xs font-medium text-gray-500">UZS</span>
               </div>
               <div className="text-[11px] text-emerald-700 font-semibold mt-1">
                 Cost-to-Serve: 1.72% of GMV
@@ -284,17 +302,17 @@ export default function FinOpsBillingPage() {
             {/* Visual Waterfall Stack */}
             <div className="space-y-3">
               <div className="h-6 w-full rounded-lg bg-gray-100 overflow-hidden flex shadow-inner">
-                <div style={{ width: `${Math.max(5, (netSupplierPayoutUZS / (totalGMVUZS || 1)) * 100).toFixed(1)}%` }} className="bg-indigo-600 h-full flex items-center justify-center text-[10px] font-bold text-white tracking-wider" title={`Supplier Net Settlement: ${((netSupplierPayoutUZS / (totalGMVUZS || 1)) * 100).toFixed(1)}%`}>
-                  Supplier ({((netSupplierPayoutUZS / (totalGMVUZS || 1)) * 100).toFixed(1)}%)
+                <div style={{ width: `${supplierSharePct}%` }} className="bg-indigo-600 h-full flex items-center justify-center text-[10px] font-bold text-white tracking-wider" title={`Supplier Net Settlement: ${supplierSharePct}%`}>
+                  Supplier ({supplierSharePct}%)
                 </div>
-                <div style={{ width: `${Math.max(5, (soliqVatUZS / (totalGMVUZS || 1)) * 100).toFixed(1)}%` }} className="bg-amber-500 h-full flex items-center justify-center text-[10px] font-bold text-white tracking-wider" title={`Soliq VAT: ${((soliqVatUZS / (totalGMVUZS || 1)) * 100).toFixed(1)}%`}>
-                  VAT ({((soliqVatUZS / (totalGMVUZS || 1)) * 100).toFixed(1)}%)
+                <div style={{ width: `${vatSharePct}%` }} className="bg-amber-500 h-full flex items-center justify-center text-[10px] font-bold text-white tracking-wider" title={`Soliq VAT: ${vatSharePct}%`}>
+                  VAT ({vatSharePct}%)
                 </div>
-                <div style={{ width: `${Math.max(5, (platformTakeRateUZS / (totalGMVUZS || 1)) * 100).toFixed(1)}%` }} className="bg-emerald-500 h-full flex items-center justify-center text-[10px] font-bold text-white tracking-wider" title={`Platform Take Rate: ${((platformTakeRateUZS / (totalGMVUZS || 1)) * 100).toFixed(1)}%`}>
-                  Take ({((platformTakeRateUZS / (totalGMVUZS || 1)) * 100).toFixed(1)}%)
+                <div style={{ width: `${takeSharePct}%` }} className="bg-emerald-500 h-full flex items-center justify-center text-[10px] font-bold text-white tracking-wider" title={`Platform Take Rate: ${takeSharePct}%`}>
+                  Take ({takeSharePct}%)
                 </div>
-                <div style={{ width: `${Math.max(5, (logisticsAllocationUZS / (totalGMVUZS || 1)) * 100).toFixed(1)}%` }} className="bg-purple-500 h-full flex items-center justify-center text-[10px] font-bold text-white tracking-wider" title={`Logistics & Fleet: ${((logisticsAllocationUZS / (totalGMVUZS || 1)) * 100).toFixed(1)}%`}>
-                  Fleet ({((logisticsAllocationUZS / (totalGMVUZS || 1)) * 100).toFixed(1)}%)
+                <div style={{ width: `${fleetSharePct}%` }} className="bg-purple-500 h-full flex items-center justify-center text-[10px] font-bold text-white tracking-wider" title={`Logistics & Fleet: ${fleetSharePct}%`}>
+                  Fleet ({fleetSharePct}%)
                 </div>
               </div>
 
@@ -339,7 +357,7 @@ export default function FinOpsBillingPage() {
                     Fleet Logistics Allocation
                   </div>
                   <div className="text-base font-extrabold text-gray-900 mt-1">
-                    {(totalGMVUZS * 0.025).toLocaleString()} UZS
+                    {logisticsAllocationUZS.toLocaleString()} UZS
                   </div>
                   <div className="text-[11px] text-gray-500">Carrier per-drop & fuel surcharge</div>
                 </div>
@@ -364,7 +382,7 @@ export default function FinOpsBillingPage() {
                 <span className="rounded bg-indigo-100 px-2 py-0.5 text-xs font-bold text-indigo-800">
                   Tier: {activeSupplier.tier}
                 </span>
-                <div className="text-xs text-gray-500 mt-1">Platform Fee: {activeSupplier.feeBps} bps ({(activeSupplier.feeBps / 100).toFixed(2)}%)</div>
+                <div className="text-xs text-gray-500 mt-1">Platform Fee: {activeSupplier.feeBps} bps ({formatBpsPercent(activeSupplier.feeBps, 2)}%)</div>
               </div>
             </div>
 
@@ -379,14 +397,14 @@ export default function FinOpsBillingPage() {
               <div className="rounded-lg border bg-gray-50 p-4">
                 <div className="text-xs font-medium text-gray-500">Platform Invoiced Fees</div>
                 <div className="text-lg font-extrabold text-indigo-700 mt-1">
-                  {((activeSupplier.gmvUZS * activeSupplier.feeBps) / 10000).toLocaleString()} UZS
+                  {applyBpsFee(activeSupplier.gmvUZS, activeSupplier.feeBps).toLocaleString()} UZS
                 </div>
               </div>
 
               <div className="rounded-lg border bg-gray-50 p-4">
                 <div className="text-xs font-medium text-gray-500">Unsettled Escrow Balance</div>
                 <div className="text-lg font-extrabold text-amber-700 mt-1">
-                  {(activeSupplier.unpaidMinor / 100).toLocaleString()} UZS
+                  {formatMinorUnits(activeSupplier.unpaidMinor, { minimumFractionDigits: 0, maximumFractionDigits: 2 })} UZS
                 </div>
                 <div className="text-[10px] text-gray-400 mt-0.5">Holding in rolling damage reserve</div>
               </div>
@@ -541,8 +559,8 @@ export default function FinOpsBillingPage() {
                         {inv.status}
                       </span>
                     </td>
-                    <td className="px-4 py-2 font-mono font-semibold">{(inv.principal_minor / 100).toLocaleString()} UZS</td>
-                    <td className="px-4 py-2 font-mono text-rose-600 font-bold">{(inv.balance_minor / 100).toLocaleString()} UZS</td>
+                    <td className="px-4 py-2 font-mono font-semibold">{formatMinorUnits(inv.principal_minor, { minimumFractionDigits: 0, maximumFractionDigits: 2 })} UZS</td>
+                    <td className="px-4 py-2 font-mono text-rose-600 font-bold">{formatMinorUnits(inv.balance_minor, { minimumFractionDigits: 0, maximumFractionDigits: 2 })} UZS</td>
                   </tr>
                 ))}
               </tbody>

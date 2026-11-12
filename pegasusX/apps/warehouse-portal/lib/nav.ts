@@ -31,7 +31,6 @@ export const NAV: NavSection[] = [
       { href: "/bins", icon: "inventory", labelKey: "portal.nav.bins_lots" },
       { href: "/pick-waves", icon: "inventory", labelKey: "portal.nav.pick_waves" },
       { href: "/cycle-counts", icon: "inventory", labelKey: "portal.nav.cycle_counts" },
-      { href: "/cold-chain", icon: "warning", labelKey: "portal.nav.cold_chain" },
       { href: "/stock-commitments", icon: "inventory", labelKey: "portal.nav.stock_commitments" },
       { href: "/products", icon: "catalog", labelKey: "portal.nav.products" },
       { href: "/replenishment", icon: "forecast", labelKey: "portal.nav.replenishment" },

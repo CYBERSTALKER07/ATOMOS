@@ -127,17 +127,6 @@ export function usePayloaderAuth({
     resetPhoneOtpFlow();
   };
 
-  const handleDemoBypass = async () => {
-    await completeLogin({
-      token: 'mock-payload-jwt-dev',
-      refresh_token: 'mock-payload-refresh-dev',
-      name: 'Sardor Karimov (Demo Payloader)',
-      supplier_id: 'sup-tashkent-01',
-      warehouse_id: 'wh-tashkent-central',
-      warehouse_name: 'Tashkent Central Depot',
-    });
-  };
-
   return {
     token,
     setToken,
@@ -162,6 +151,5 @@ export function usePayloaderAuth({
     handleVerifyOtp,
     handleLogout,
     handleToggleLoginMode,
-    handleDemoBypass,
   };
 }

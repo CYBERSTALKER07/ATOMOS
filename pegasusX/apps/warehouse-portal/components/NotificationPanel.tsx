@@ -3,7 +3,7 @@
 import { useRef, useEffect } from 'react';
 import { Notification } from '@/lib/useNotifications';
 import { motion, AnimatePresence } from 'framer-motion';
-import { HandoffCard } from '@pegasusx/explain-ui';
+import { HandoffCard } from '@/components/ui';
 import Icon from './Icon';
 
 interface NotificationPanelProps {

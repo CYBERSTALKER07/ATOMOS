@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ORDER_STATUS_FUNNEL, type RetailerControlTowerPulse } from "@pegasusx/types";
-import { SourceChip, StatusStack } from "@pegasusx/ui-kit/portal";
+import { SourceChip, StatusStack } from "@/components/ui";
 import { LoyaltyCard } from "../LoyaltyCard";
 import { moneyCurrency } from "../../lib/payment-catalog";
 

@@ -159,7 +159,6 @@ export default function App() {
         onVerifyOtp={auth.handleVerifyOtp}
         onLoginPin={auth.handleLoginPin}
         onToggleLoginMode={auth.handleToggleLoginMode}
-        onDemoBypass={auth.handleDemoBypass}
         policyBanner={renderClientPolicyBanner()}
         toast={renderUiToast()}
       />

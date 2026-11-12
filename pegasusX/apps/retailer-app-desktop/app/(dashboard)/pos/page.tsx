@@ -75,11 +75,18 @@ type ServerHold = {
   expires_at?: string;
 };
 
+import {
+  formatMinorUnits,
+  parseMajorToMinor,
+  parseMinorUnitsInt,
+} from "@/lib/money";
+
 function formatMoney(minor: number, currency?: string) {
-  return `${(minor / 100).toLocaleString(undefined, {
+  return formatMinorUnits(minor, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  })} ${moneyCurrency(currency)}`;
+    currency: moneyCurrency(currency),
+  });
 }
 
 export default function POSPage() {
@@ -355,11 +362,11 @@ export default function POSPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Idempotency-Key": `open-${registerId}-${Date.now()}`,
+          "Idempotency-Key": `open-${registerId}-${crypto.randomUUID()}`,
         },
         body: JSON.stringify({
           register_id: registerId,
-          opening_float_minor: Number(floatMinor) || 0,
+          opening_float_minor: parseMinorUnitsInt(floatMinor) ?? 0,
           currency: sessionPackCurrency(),
         }),
       });
@@ -398,7 +405,7 @@ export default function POSPage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            closing_cash_minor: Number(closingCash) || 0,
+            closing_cash_minor: parseMinorUnitsInt(closingCash) ?? 0,
           }),
         },
       );
@@ -418,9 +425,9 @@ export default function POSPage() {
   };
 
   const addLine = () => {
-    const unit = Math.round(Number(price) * 100);
-    const q = Math.max(1, Number(qty) || 1);
-    if (!sku.trim() || unit < 0) return;
+    const unit = parseMajorToMinor(price);
+    const q = Math.max(1, Number.parseInt(qty, 10) || 1);
+    if (!sku.trim() || unit === null || unit < 0) return;
     setCart((c) => {
       const i = c.findIndex((l) => l.sku === sku.trim());
       if (i >= 0) {

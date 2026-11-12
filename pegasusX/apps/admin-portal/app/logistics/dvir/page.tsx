@@ -14,10 +14,8 @@ export default function DVIRFleetPage() {
   const [vehicleId, setVehicleId] = useState("veh_isuzu_01");
   const [driverId, setDriverId] = useState("drv_tashkent_404");
   const [odometerKm, setOdometerKm] = useState(145200);
-  const [requiresColdChain, setRequiresColdChain] = useState(true);
-  const [reeferTemp, setReeferTemp] = useState(3.5);
 
-  // 8-Point Checklist State
+  // Checklist State
   const [checklist, setChecklist] = useState({
     steering_and_horn_ok: true,
     service_and_parking_brakes_ok: true,
@@ -26,7 +24,6 @@ export default function DVIRFleetPage() {
     wipers_and_fluids_ok: true,
     emergency_kit_and_extinguisher_ok: true,
     cargo_box_sanitation_ok: true,
-    reefer_temp_calibrated_ok: true,
   });
 
   const [loading, setLoading] = useState(false);
@@ -55,8 +52,6 @@ export default function DVIRFleetPage() {
         inspection_type: "PRE_TRIP",
         checklist,
         odometer_km: odometerKm,
-        reefer_temp_celsius: requiresColdChain ? reeferTemp : 0,
-        requires_cold_chain: requiresColdChain,
       });
       setInspectionResult(res);
       if (res.status === "RED_TAG_QUARANTINE") {
@@ -79,7 +74,7 @@ export default function DVIRFleetPage() {
     try {
       const res = await foundryApi.dispatchCheck(token, vehicleId.trim());
       setDispatchStatus(res);
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Dispatch check failed");
     } finally {
       setLoading(false);
@@ -94,7 +89,6 @@ export default function DVIRFleetPage() {
     { key: "wipers_and_fluids_ok", label: "Wipers, Blades & Washer Fluid", desc: "Clear wipe pattern, windshield fluid topped up", critical: false },
     { key: "emergency_kit_and_extinguisher_ok", label: "Emergency Kit & Fire Extinguisher", desc: "Fire extinguisher charged, high-vis vests and triangle present", critical: true },
     { key: "cargo_box_sanitation_ok", label: "Cargo Box Sanitation & Odor", desc: "Clean cargo interior, free from chemicals or biological contamination", critical: false },
-    { key: "reefer_temp_calibrated_ok", label: "Reefer Thermal Calibration (Cold-Chain)", desc: "Reefer unit holds setpoint within +/- 0.5C tolerance", critical: true },
   ];
 
   return (
@@ -201,16 +195,6 @@ export default function DVIRFleetPage() {
                   value={odometerKm}
                   onChange={(e) => setOdometerKm(Number(e.target.value))}
                   required
-                  className="w-full rounded border px-2.5 py-1.5 text-xs font-mono"
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] font-medium text-gray-600 mb-1">Reefer Temp (°C)</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  value={reeferTemp}
-                  onChange={(e) => setReeferTemp(Number(e.target.value))}
                   className="w-full rounded border px-2.5 py-1.5 text-xs font-mono"
                 />
               </div>

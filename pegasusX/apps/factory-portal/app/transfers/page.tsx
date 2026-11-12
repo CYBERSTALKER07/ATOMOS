@@ -4,7 +4,7 @@ import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { ExplainStatusBanner, explainFromApiError } from '@pegasusx/explain-ui';
+import { ExplainStatusBanner, explainFromApiError } from '@/components/ui/ExplainStatusBanner';
 import { FACTORY_TRANSFER_STATES, type StatusExplain } from '@pegasusx/types';
 import { apiFetch, parseFactoryLiveEvent, subscribeFactoryWS } from '@/lib/auth';
 import { useFactorySessionReconcile } from '@/lib/use-factory-session-reconcile';

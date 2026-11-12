@@ -80,8 +80,14 @@ function getBrowserStorage(): Storage | null {
   return window.localStorage;
 }
 
+import { formatMinorUnits } from "@/lib/money";
+
 function formatAmount(amount: number): string {
-  return (amount / 100).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 }).replace(/,/g, " ");
+  return formatMinorUnits(amount, {
+    groupSeparator: " ",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  });
 }
 
 function buildDeliveryQrPayload(order: TrackingOrder): string {

@@ -4,6 +4,7 @@ import { usePortalT } from "@/lib/i18n";
 import { useEffect, useState } from "react";
 import { CreditCard, Loader2, AlertTriangle } from "lucide-react";
 import { apiFetch } from "../lib/auth";
+import { formatRatioPercentTenths } from "../lib/money";
 
 type CreditProfile = {
   retailer_id: string;
@@ -91,7 +92,7 @@ export function CreditProfileCard({ className = "" }: { className?: string }) {
 
   const util =
     profile.credit_limit_minor > 0
-      ? ((profile.current_balance_minor * 100) / profile.credit_limit_minor).toFixed(1)
+      ? formatRatioPercentTenths(profile.current_balance_minor, profile.credit_limit_minor)
       : "0.0";
   const frozen = profile.status === "FROZEN" || profile.status === "BLACKLISTED";
 

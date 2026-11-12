@@ -3,7 +3,7 @@
 import { usePortalT } from "@/lib/i18n";
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { VirtualScrollList } from '@pegasusx/ui-kit/desktop';
+import { VirtualScrollList } from '@/components/ui';
 import type { SupplierOrder } from '@pegasusx/types';
 import { ApiError } from '@pegasusx/api-core';
 import { orderActionFlags } from '@/lib/order-actions';
@@ -12,6 +12,7 @@ import { canAdminOrderOps } from '@/lib/admin-scope';
 import { OrderActionDialog, OrderOpsCard, ReDispatchDialog, ProposeDelayDialog } from '@/components/orders';
 import { useToast } from '@/components/Toast';
 import EmptyState from '@/components/EmptyState';
+import { formatMinorUnits } from '@/lib/money';
 
 export type OrderFilter = 'ACTIVE' | 'SCHEDULED' | 'COMPLETED' | 'CANCELLED';
 
@@ -23,15 +24,11 @@ const filterLabels: Record<OrderFilter, string> = {
 };
 
 function formatMoney(order: SupplierOrder) {
-  try {
-    return new Intl.NumberFormat(undefined, {
-      style: 'currency',
-      currency: order.currency,
-      maximumFractionDigits: 2,
-    }).format(order.total_minor / 100);
-  } catch {
-    return `${order.total_minor} ${order.currency}`;
-  }
+  return formatMinorUnits(order.total_minor, {
+    currency: order.currency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 }
 
 function formatTimestamp(value: string) {

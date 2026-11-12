@@ -2,7 +2,7 @@
 
 import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from "react";
-import { DemandSourceChips } from "@pegasusx/ui-kit/portal";
+import { DemandSourceChips } from "@/components/ui/DemandSourceChips";
 import { Loader2 } from "lucide-react";
 import { apiFetch } from "@/lib/auth";
 

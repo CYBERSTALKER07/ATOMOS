@@ -22,7 +22,6 @@ export default function LoginScreen({
   onVerifyOtp,
   onLoginPin,
   onToggleLoginMode,
-  onDemoBypass,
   policyBanner,
   toast,
 }: {
@@ -41,7 +40,6 @@ export default function LoginScreen({
   onVerifyOtp: () => void;
   onLoginPin: () => void;
   onToggleLoginMode: () => void;
-  onDemoBypass?: () => void;
   policyBanner: ReactNode;
   toast: ReactNode;
 }) {
@@ -220,29 +218,6 @@ export default function LoginScreen({
           {loginMode === 'otp' ? (isIOS ? 'Use PIN (dev)' : 'USE PIN (DEV)') : (isIOS ? 'Use phone OTP' : 'USE PHONE OTP')}
         </Text>
       </Pressable>
-      {onDemoBypass ? (
-        <Pressable
-          onPress={onDemoBypass}
-          style={({ pressed }) => ({
-            width: 320,
-            paddingVertical: 14,
-            alignItems: 'center' as const,
-            backgroundColor: 'rgba(255, 149, 0, 0.15)',
-            borderRadius: T.radius.button,
-            opacity: pressed ? 0.82 : 1,
-            marginTop: 12,
-          })}
-        >
-          <Text style={{
-            fontWeight: '700',
-            fontSize: 13,
-            letterSpacing: 0.5,
-            color: '#FF9500',
-          }}>
-            BYPASS / ENTER DEMO TERMINAL
-          </Text>
-        </Pressable>
-      ) : null}
       {toast}
       </View>
     </View>

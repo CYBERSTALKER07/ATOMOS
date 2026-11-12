@@ -3,8 +3,7 @@
 import { usePortalT } from "@/lib/i18n";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { AuthLoginCard } from "@pegasusx/ui-kit/auth";
-import { dialCodeForCountry } from "@pegasusx/ui-kit/auth";
+import { AuthLoginCard, dialCodeForCountry } from "@/components/ui";
 import { persistSession, factoryApiBaseUrl } from "@/lib/auth";
 import { resetPhoneOtpFlow, sendPhoneOtp, verifyPhoneOtp } from "@/lib/firebase";
 
@@ -77,13 +76,7 @@ export default function FactoryLoginPage() {
     }
   }
 
-  function handleDemoBypass() {
-    persistSession("mock-factory-jwt-dev", "mock-refresh-dev");
-    router.replace("/");
-  }
-
   return (
-    <>
     <AuthLoginCard
       title={t("factory_portal.auth.login.text.factory_sign_in")}
       subtitle={
@@ -110,15 +103,5 @@ export default function FactoryLoginPage() {
         setStep("phone");
       }}
     />
-    <div className="mx-auto mt-4 max-w-md px-4">
-      <button
-        type="button"
-        onClick={handleDemoBypass}
-        className="w-full rounded-md border border-[var(--desk-border)] bg-[var(--desk-surface)] py-2.5 text-sm font-semibold tracking-wide text-[var(--desk-text-primary)] hover:bg-[var(--desk-hover)] transition-colors shadow-sm"
-      >
-        BYPASS / ENTER DEMO FACTORY
-      </button>
-    </div>
-    </>
   );
 }

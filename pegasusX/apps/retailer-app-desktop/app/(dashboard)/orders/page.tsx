@@ -29,7 +29,7 @@ import CountUp from "../../../components/CountUp";
 import MiniSparkline from "../../../components/MiniSparkline";
 import EmptyState from "../../../components/EmptyState";
 import { PageSection } from "../../../components/PageSection";
-import { VirtualScrollList } from "@pegasusx/ui-kit/desktop";
+import { VirtualScrollList } from "@/components/ui/VirtualScrollList";
 import { ListRowSkeleton } from "../../../components/Skeleton";
 import { useLiveData } from "../../../lib/hooks";
 import { apiFetch } from "../../../lib/auth";

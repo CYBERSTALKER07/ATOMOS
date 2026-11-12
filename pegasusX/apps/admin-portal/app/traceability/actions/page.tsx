@@ -104,7 +104,7 @@ export default function KineticActionsPage() {
     setIdempotencyKey(`idem_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`);
   };
 
-  const updateParam = (key: string, val: any) => {
+  const updateParam = (key: string, val: unknown) => {
     setParams((prev) => ({ ...prev, [key]: val }));
   };
 

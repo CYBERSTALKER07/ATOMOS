@@ -2,14 +2,14 @@
 
 import { usePortalT } from "@/lib/i18n";
 import React, { useState, useEffect, useMemo } from "react";
-import { HexagonalControlTowerMap } from "@pegasusx/ui-maps";
-import { LiveEKGNetworkGraph, type NetworkNode, type NetworkLink } from "@pegasusx/ui-charts";
+import {
+  HexagonalControlTowerMap,
+  LiveEKGNetworkGraph,
+  type NetworkNode,
+  type NetworkLink,
+  GlassmorphismPanel,
+} from "@/components/ui";
 import { useControlTowerTelemetry } from "./use-control-tower-telemetry";
-import { GlassmorphismPanel,
-  
-  
-  
-} from "@pegasusx/ui-kit/control-tower";
 import {
   LineChart,
   Line,
@@ -27,7 +27,6 @@ import { decodeJwtPayload, useToken } from "@/lib/auth";
 
 
 
-// Removed Mock Data
 const generateH3Data = () => {
   return [];
 };

@@ -12,7 +12,7 @@ import type {
   SupplierTopologyUpdateRequest,
   SupplierTopologyWarehouse,
 } from "@pegasusx/types";
-import { AUTH_COUNTRIES } from "@pegasusx/ui-kit/auth";
+import { AUTH_COUNTRIES } from "@/components/ui";
 import { sessionMapCenter } from "@pegasusx/api-core";
 import { CoverageCityChips } from "@/components/CoverageCityChips";
 import { createSupplierApi } from "@/lib/api";

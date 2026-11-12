@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { supplierFetch } from "@/lib/auth";
 import StatusBadge from "@/components/StatusBadge";
 import { PageChrome } from "@/components/PageChrome";
+import { formatBpsPercent, formatRatioPercentTenths } from "@/lib/money";
 
 type CreditProfile = {
   retailer_id: string;
@@ -144,9 +145,9 @@ export default function CreditCollectionsPage() {
               profiles.map((p) => {
                 const util =
                   p.utilization_bps != null
-                    ? (p.utilization_bps / 100).toFixed(1)
+                    ? formatBpsPercent(p.utilization_bps, 1)
                     : p.credit_limit_minor > 0
-                      ? ((p.current_balance_minor * 100) / p.credit_limit_minor).toFixed(1)
+                      ? formatRatioPercentTenths(p.current_balance_minor, p.credit_limit_minor)
                       : "0.0";
                 const busy = busyId === p.retailer_id;
                 return (

@@ -7,6 +7,7 @@ import { SkeletonList } from './SkeletonPulse';
 import { useState } from 'react';
 import { authFetch } from '../authSession';
 import { API_BASE } from '../api';
+import { formatMinorUnits, minorToWholeTrunc, parseMajorToMinor } from '../utils/money';
 
 export type ManifestExceptionItem = {
   exception_id: string;
@@ -31,6 +32,9 @@ type ExceptionsSheetProps = {
 export default function ExceptionsSheet({ visible, onClose, onRefresh, loading, exceptions, theme: T, activeManifestId }: ExceptionsSheetProps) {
   const [damagedItemId, setDamagedItemId] = useState('');
   const [damagedOrderId, setDamagedOrderId] = useState('');
+  const [damagedDeductionMajor, setDamagedDeductionMajor] = useState('50.00');
+
+  const parsedDeductionMinor = parseMajorToMinor(damagedDeductionMajor) ?? 5000;
 
   const reportDamage = async () => {
     if (!activeManifestId || !damagedItemId || !damagedOrderId) {
@@ -45,7 +49,8 @@ export default function ExceptionsSheet({ visible, onClose, onRefresh, loading, 
           manifest_id: activeManifestId,
           order_id: damagedOrderId,
           item_id: damagedItemId,
-          price_deduction: 50 // Example default deduction
+          price_deduction_minor: parsedDeductionMinor,
+          price_deduction: minorToWholeTrunc(parsedDeductionMinor),
         })
       });
       if (res.ok) {
@@ -56,7 +61,7 @@ export default function ExceptionsSheet({ visible, onClose, onRefresh, loading, 
       } else {
         Alert.alert('Error', 'Failed to report damage.');
       }
-    } catch (e) {
+    } catch {
       Alert.alert('Error', 'Network error.');
     }
   };
@@ -69,17 +74,19 @@ export default function ExceptionsSheet({ visible, onClose, onRefresh, loading, 
             <Text style={{ flex: 1, fontWeight: '700', fontSize: 15, color: T.colors.sidebarLabel, letterSpacing: 0.3 }}>
               {isIOS ? 'Manifest exceptions' : 'MANIFEST EXCEPTIONS'}
             </Text>
-            <Pressable onPress={onRefresh} style={{ marginRight: 12 }}>
+            <Pressable onPress={onRefresh} style={{ marginRight: 12 }} accessibilityRole="button" accessibilityLabel="Refresh manifest exceptions">
               <MaterialIcons name="refresh" size={20} color={T.colors.accent} />
             </Pressable>
-            <Pressable onPress={onClose}>
+            <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="Close manifest exceptions">
               <MaterialIcons name="close" size={20} color={T.colors.sidebarSecondary} />
             </Pressable>
           </View>
           
           {/* Report Damage Section */}
           <View style={{ padding: 16, backgroundColor: '#FEE2E2', borderBottomWidth: 1, borderBottomColor: '#FCA5A5' }}>
-            <Text style={{ color: '#991B1B', fontWeight: 'bold', marginBottom: 8 }}>Report Dock Damage</Text>
+            <Text style={{ color: '#991B1B', fontWeight: 'bold', marginBottom: 8 }}>
+              Report Dock Damage ({formatMinorUnits(parsedDeductionMinor)} UZS)
+            </Text>
             <TextInput
               placeholder="Order ID"
               value={damagedOrderId}
@@ -90,6 +97,13 @@ export default function ExceptionsSheet({ visible, onClose, onRefresh, loading, 
               placeholder="Item ID"
               value={damagedItemId}
               onChangeText={setDamagedItemId}
+              style={{ backgroundColor: 'white', padding: 8, borderRadius: 4, marginBottom: 8 }}
+            />
+            <TextInput
+              placeholder="Price Deduction (UZS)"
+              value={damagedDeductionMajor}
+              onChangeText={setDamagedDeductionMajor}
+              keyboardType="decimal-pad"
               style={{ backgroundColor: 'white', padding: 8, borderRadius: 4, marginBottom: 8 }}
             />
             <Pressable 

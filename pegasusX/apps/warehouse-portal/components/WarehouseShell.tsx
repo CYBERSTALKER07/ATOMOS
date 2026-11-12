@@ -16,6 +16,7 @@ import { SessionPackChip } from './SessionPackChip';
 import { usePortalT } from '@/lib/i18n';
 import { ALL_NAV_ITEMS, NAV, navSectionIsActive } from '@/lib/nav';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
+import { DesktopKeyboardCheatsheet } from './ui/DesktopKeyboardCheatsheet';
 
 const BARE_ROUTES = ["/auth/", "/setup/"];
 
@@ -253,6 +254,7 @@ export default function WarehouseShell({ children }: { children: React.ReactNode
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const searchRef = useRef<HTMLInputElement>(null);
+  const [cheatsheetOpen, setCheatsheetOpen] = useState(false);
 
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -318,9 +320,20 @@ export default function WarehouseShell({ children }: { children: React.ReactNode
         setSearchOpen(s => !s);
         setTimeout(() => searchRef.current?.focus(), 100);
       }
+      if (
+        (e.key === '?' && !e.metaKey && !e.ctrlKey) ||
+        ((e.metaKey || e.ctrlKey) && e.key === '/')
+      ) {
+        const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
+        if (tag !== 'input' && tag !== 'textarea') {
+          e.preventDefault();
+          setCheatsheetOpen(prev => !prev);
+        }
+      }
       if (e.key === 'Escape') {
         setSearchOpen(false);
         setSearchQuery('');
+        setCheatsheetOpen(false);
       }
     };
     document.addEventListener('keydown', handler);
@@ -390,8 +403,8 @@ export default function WarehouseShell({ children }: { children: React.ReactNode
       </AnimatePresence>
 
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
-        <header className="desk-topbar shrink-0">
-          <div className="desk-topbar-left">
+        <header className="desk-topbar shrink-0" data-tauri-drag-region>
+          <div className="desk-topbar-left" data-tauri-no-drag>
             <button
               className="desk-icon-btn md:hidden"
               onClick={() => setMobileOpen(true)}
@@ -418,7 +431,17 @@ export default function WarehouseShell({ children }: { children: React.ReactNode
             </span>
           </div>
 
-          <div className="desk-topbar-right">
+          <div className="desk-topbar-right" data-tauri-no-drag>
+            {/* Native Desktop Telemetry Pill */}
+            <div className="hidden xl:inline-flex items-center gap-2 px-2.5 py-1 rounded-full border border-neutral-800 bg-neutral-900/80 text-[11px] font-mono text-neutral-300">
+              <span className="flex items-center gap-1 text-emerald-400">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                SPK-UZ: 14ms
+              </span>
+              <span className="text-neutral-700">|</span>
+              <span className="text-cyan-400">SQLITE OK</span>
+            </div>
+
             <SessionPackChip />
             <button
               className="desk-topbar-search hidden md:flex"
@@ -428,6 +451,16 @@ export default function WarehouseShell({ children }: { children: React.ReactNode
               <Icon name="search" size={16} />
               <span style={{ flex: 1, textAlign: 'left' }}>{t("portal.chrome.search")}</span>
               <kbd className="desk-sidebar-search-kbd">⌘K</kbd>
+            </button>
+
+            <button
+              type="button"
+              className="desk-icon-btn hidden sm:flex"
+              onClick={() => setCheatsheetOpen(true)}
+              title="Keyboard Shortcuts (?)"
+              aria-label="Keyboard Shortcuts"
+            >
+              <Icon name="keyboard" size={18} />
             </button>
 
             <button
@@ -595,6 +628,11 @@ export default function WarehouseShell({ children }: { children: React.ReactNode
           </AnimatePresence>
         </main>
       </div>
+
+      <DesktopKeyboardCheatsheet
+        open={cheatsheetOpen}
+        onClose={() => setCheatsheetOpen(false)}
+      />
     </>
   );
 }

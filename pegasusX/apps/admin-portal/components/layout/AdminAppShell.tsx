@@ -7,14 +7,36 @@ import { AdminHeader } from "./AdminHeader";
 import { useAdminToken } from "@/lib/session";
 import { useAdminWS } from "@/lib/ws-provider";
 import { api } from "@/lib/api";
+import { DesktopKeyboardCheatsheet } from "@/components/ui/DesktopKeyboardCheatsheet";
 
 export function AdminAppShell({ children }: { children: ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [cheatsheetOpen, setCheatsheetOpen] = useState(false);
   const { token } = useAdminToken();
   const { refreshKey } = useAdminWS();
 
   const [pendingFlagsCount, setPendingFlagsCount] = useState<number | undefined>();
   const [dlqCount, setDlqCount] = useState<number | undefined>();
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (
+        (e.key === "?" && !e.metaKey && !e.ctrlKey) ||
+        ((e.metaKey || e.ctrlKey) && e.key === "/")
+      ) {
+        const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
+        if (tag !== "input" && tag !== "textarea") {
+          e.preventDefault();
+          setCheatsheetOpen((prev) => !prev);
+        }
+      }
+      if (e.key === "Escape") {
+        setCheatsheetOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
 
   useEffect(() => {
     if (!token) return;
@@ -52,12 +74,20 @@ export function AdminAppShell({ children }: { children: ReactNode }) {
           dlqCount={dlqCount}
         />
         <div className="flex flex-1 flex-col overflow-hidden">
-          <AdminHeader onOpenSidebar={() => setSidebarOpen(true)} />
+          <AdminHeader
+            onOpenSidebar={() => setSidebarOpen(true)}
+            onOpenCheatsheet={() => setCheatsheetOpen(true)}
+          />
           <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
             <div className="mx-auto max-w-7xl">{children}</div>
           </main>
         </div>
       </div>
+
+      <DesktopKeyboardCheatsheet
+        open={cheatsheetOpen}
+        onClose={() => setCheatsheetOpen(false)}
+      />
     </AdminAuthGate>
   );
 }

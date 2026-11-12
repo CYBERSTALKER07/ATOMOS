@@ -1,6 +1,6 @@
 @import "tailwindcss";
-@import "@pegasusx/ui-kit/styles/desktop-foundation.css";
-@import "@pegasusx/ui-kit/styles/portal-ui.css";
+@import "./styles/desktop-foundation.css";
+@import "./styles/portal-ui.css";
 
 :root {
   color-scheme: light;

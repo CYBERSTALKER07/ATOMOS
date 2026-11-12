@@ -16,6 +16,7 @@ import { SessionPackChip } from './SessionPackChip';
 import { usePortalT } from '@/lib/i18n';
 import { ALL_NAV_ITEMS, NAV, navSectionIsActive } from '@/lib/nav';
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import { DesktopKeyboardCheatsheet } from './ui/DesktopKeyboardCheatsheet';
 
 const BARE_ROUTES = ["/auth/", "/setup/"];
 
@@ -249,6 +250,7 @@ function SupplierAppChrome({ children }: { children: React.ReactNode }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const searchRef = useRef<HTMLInputElement>(null);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
 
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -300,14 +302,26 @@ function SupplierAppChrome({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      const activeTag = (e.target as HTMLElement)?.tagName;
+      const isInput = activeTag === 'INPUT' || activeTag === 'TEXTAREA' || (e.target as HTMLElement)?.isContentEditable;
+
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
         setSearchOpen(s => !s);
         setTimeout(() => searchRef.current?.focus(), 100);
       }
+      if (!isInput && e.key === '?') {
+        e.preventDefault();
+        setShortcutsOpen(s => !s);
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === '/') {
+        e.preventDefault();
+        setShortcutsOpen(s => !s);
+      }
       if (e.key === 'Escape') {
         setSearchOpen(false);
         setSearchQuery('');
+        setShortcutsOpen(false);
       }
     };
     document.addEventListener('keydown', handler);
@@ -375,8 +389,8 @@ function SupplierAppChrome({ children }: { children: React.ReactNode }) {
       </AnimatePresence>
 
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
-        <header className="desk-topbar shrink-0">
-          <div className="desk-topbar-left">
+        <header className="desk-topbar shrink-0 select-none" data-tauri-drag-region>
+          <div className="desk-topbar-left" data-tauri-drag-region>
             <button
               className="desk-icon-btn md:hidden"
               onClick={() => setMobileOpen(true)}
@@ -385,7 +399,7 @@ function SupplierAppChrome({ children }: { children: React.ReactNode }) {
               <Icon name="menu" />
             </button>
 
-            <nav className="desk-breadcrumb hidden md:flex" aria-label={t("supplier_portal.supplier_shell.text.breadcrumb")}>
+            <nav className="desk-breadcrumb hidden md:flex" aria-label={t("supplier_portal.supplier_shell.text.breadcrumb")} data-tauri-drag-region>
               {breadcrumbs.map((crumb, i) => (
                 <span key={crumb.href} className="flex items-center gap-2 min-w-0">
                   {i > 0 && <span className="desk-breadcrumb-sep">/</span>}
@@ -403,7 +417,7 @@ function SupplierAppChrome({ children }: { children: React.ReactNode }) {
             </span>
           </div>
 
-          <div className="desk-topbar-right">
+          <div className="desk-topbar-right" data-tauri-no-drag>
             <SessionPackChip />
             <button
               className="desk-topbar-search hidden md:flex"
@@ -416,6 +430,15 @@ function SupplierAppChrome({ children }: { children: React.ReactNode }) {
             </button>
 
             <button
+              className="desk-icon-btn hidden md:flex"
+              onClick={() => setShortcutsOpen(true)}
+              title="Keyboard Shortcuts (?)"
+              aria-label="Keyboard Shortcuts"
+            >
+              <Icon name="keyboard" size={18} />
+            </button>
+
+            <button
               className="desk-icon-btn md:hidden"
               onClick={() => { setSearchOpen(true); setTimeout(() => searchRef.current?.focus(), 100); }}
               aria-label={t("supplier_portal.supplier_shell.text.search")}
@@ -423,9 +446,14 @@ function SupplierAppChrome({ children }: { children: React.ReactNode }) {
               <Icon name="search" />
             </button>
 
-            <div className="desk-live-indicator hidden lg:inline-flex">
-              <span className="desk-live-dot" />
-              Live
+            {/* Desktop Health & Telemetry Strip */}
+            <div className="hidden xl:inline-flex items-center gap-2 rounded-full border border-neutral-800 bg-neutral-950/80 px-2.5 py-1 font-mono text-[11px] text-neutral-300">
+              <span className="flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span>SPK-UZ: 16ms</span>
+              </span>
+              <span className="text-neutral-700">|</span>
+              <span className="text-neutral-400">WS OK</span>
             </div>
 
             <div className="relative" ref={notifRef}>
@@ -568,6 +596,7 @@ function SupplierAppChrome({ children }: { children: React.ReactNode }) {
           </AnimatePresence>
         </main>
       </div>
+      <DesktopKeyboardCheatsheet open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
     </>
   );
 }

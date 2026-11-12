@@ -338,7 +338,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const addToCart = (product: AddToCartProduct | Product, quantity = 1) => {
     const meta = stockMetaFromProduct(product as Product);
-    const cappedQty = clampCartQuantity(meta, quantity, previewOrderableQuantities, previewStockPolicyReject);
+    const cappedQty = clampCartQuantity(
+      { ...meta, product_id: product.id } as StockAwareProduct & { product_id: string },
+      quantity,
+      previewOrderableQuantities,
+      previewStockPolicyReject,
+    );
+    if (cappedQty <= 0) return;
     setItems((prev) => {
       const existing = prev.find((i) => i.product_id === product.id);
       if (existing) {
@@ -392,12 +398,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setPreviewStockPolicyReject(preview.default_out_of_stock_policy !== "ACCEPT_BACKORDER");
     setCheckoutPolicyToken(preview.checkout_policy_token ?? null);
     setItems((prev) =>
-      prev.map((item) => {
-        if (preview.default_out_of_stock_policy === "ACCEPT_BACKORDER" || item.accepts_backorder) return item;
-        const cap = caps[item.product_id];
-        if (cap == null || item.quantity <= cap) return item;
-        return { ...item, quantity: cap };
-      }),
+      prev
+        .map((item) => {
+          if (preview.default_out_of_stock_policy === "ACCEPT_BACKORDER" || item.accepts_backorder) return item;
+          const cap = caps[item.product_id];
+          if (cap == null || item.quantity <= cap) return item;
+          return { ...item, quantity: cap };
+        })
+        .filter((item) => item.quantity > 0),
     );
   }, []);
 

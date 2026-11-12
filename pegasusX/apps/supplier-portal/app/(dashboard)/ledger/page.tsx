@@ -4,6 +4,7 @@ import { usePortalT } from "@/lib/i18n";
 import { useCallback } from "react";
 import { PageChrome } from "@/components/PageChrome";
 import { PageSection } from "@/components/PageSection";
+import { formatMinorFixed } from "@/lib/money";
 import { useLiveData } from "@/lib/hooks";
 import { RefreshCw, Receipt } from "lucide-react";
 
@@ -100,7 +101,7 @@ export default function LedgerPage() {
                         </td>
                         <td className="py-3 px-4 text-right">
                           <span className={`md-typescale-body-medium font-medium ${row.amount_minor < 0 ? "text-[var(--desk-danger)]" : "text-[var(--desk-success)]"}`}>
-                            {row.amount_minor > 0 ? "+" : ""}{(row.amount_minor / 100).toFixed(2)} {row.currency}
+                            {formatMinorFixed(row.amount_minor, { signDisplay: "always", currency: row.currency })}
                           </span>
                         </td>
                       </tr>

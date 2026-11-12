@@ -7,17 +7,14 @@ import type { CatalogProduct } from "@pegasusx/types";
 import { supplierFetch } from "@/lib/auth";
 import { PageChrome } from "@/components/PageChrome";
 import { DataList, DataListRow } from "@/components/portal";
+import { formatMinorUnits } from "@/lib/money";
 
 function formatPrice(product: CatalogProduct) {
-  try {
-    return new Intl.NumberFormat(undefined, {
-      style: "currency",
-      currency: product.currency,
-      maximumFractionDigits: 2,
-    }).format(product.price_minor / 100);
-  } catch {
-    return `${product.price_minor} ${product.currency}`;
-  }
+  return formatMinorUnits(product.price_minor, {
+    currency: product.currency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 }
 
 export default function PricingPage() {

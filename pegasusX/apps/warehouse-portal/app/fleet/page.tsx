@@ -3,11 +3,11 @@
 import React, { useState } from 'react';
 import { FleetDVIRScreen } from '@/components/fleet/FleetDVIRScreen';
 import { YardGateCheckScreen } from '@/components/fleet/YardGateCheckScreen';
-import { PredictiveReeferCard } from '@/components/fleet/PredictiveReeferCard';
 import { MidRouteRescueModal } from '@/components/fleet/MidRouteRescueModal';
+import { Truck, ClipboardCheck, ArrowRightLeft, ShieldAlert } from 'lucide-react';
 
 export default function FleetPage() {
-  const [activeTab, setActiveTab] = useState<'dvir' | 'gate' | 'reefer'>('dvir');
+  const [activeTab, setActiveTab] = useState<'dvir' | 'gate'>('dvir');
   const [isRescueOpen, setIsRescueOpen] = useState(false);
 
   return (
@@ -15,12 +15,12 @@ export default function FleetPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-100 flex items-center gap-2">
-            <span>🚛</span>
+          <h1 className="text-2xl font-bold text-neutral-100 flex items-center gap-2">
+            <Truck className="text-blue-400" size={24} />
             <span>Role 9: Fleet, Yard & Maintenance Operations</span>
           </h1>
-          <p className="text-sm text-slate-400 mt-1">
-            Pre-trip 8-point DVIR inspection, Red-Tag Grounding Gate, ALPR yard security check-in/out, predictive reefer maintenance, and mid-route breakdown rescues.
+          <p className="text-xs text-neutral-400 mt-1">
+            Pre-trip 8-point DVIR inspection, Red-Tag Grounding Gate, ALPR yard security check-in/out, and mid-route breakdown rescues.
           </p>
         </div>
 
@@ -30,44 +30,35 @@ export default function FleetPage() {
             onClick={() => setIsRescueOpen(true)}
             className="px-4 py-2 rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-500 text-white shadow transition-all flex items-center gap-1.5"
           >
-            <span>🚨</span>
+            <ArrowRightLeft size={14} />
             <span>Mid-Route Rescue Console</span>
           </button>
 
           {/* Tab selector */}
-          <div className="flex items-center gap-1 p-1 bg-slate-900 rounded-xl border border-slate-800">
+          <div className="flex items-center gap-1 p-1 bg-neutral-900/90 rounded-xl border border-neutral-800">
             <button
               type="button"
               onClick={() => setActiveTab('dvir')}
-              className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all ${
+              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold transition-all ${
                 activeTab === 'dvir'
                   ? 'bg-blue-600 text-white shadow'
-                  : 'text-slate-400 hover:text-slate-200'
+                  : 'text-neutral-400 hover:text-neutral-200'
               }`}
             >
-              8-Point DVIR
+              <ClipboardCheck size={14} />
+              <span>8-Point DVIR</span>
             </button>
             <button
               type="button"
               onClick={() => setActiveTab('gate')}
-              className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all ${
+              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold transition-all ${
                 activeTab === 'gate'
                   ? 'bg-blue-600 text-white shadow'
-                  : 'text-slate-400 hover:text-slate-200'
+                  : 'text-neutral-400 hover:text-neutral-200'
               }`}
             >
-              Yard Gate ALPR
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('reefer')}
-              className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all ${
-                activeTab === 'reefer'
-                  ? 'bg-blue-600 text-white shadow'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              Predictive Reefer
+              <Truck size={14} />
+              <span>Yard Gate ALPR</span>
             </button>
           </div>
         </div>
@@ -76,7 +67,6 @@ export default function FleetPage() {
       {/* Main Tab Panels */}
       {activeTab === 'dvir' && <FleetDVIRScreen />}
       {activeTab === 'gate' && <YardGateCheckScreen />}
-      {activeTab === 'reefer' && <PredictiveReeferCard />}
 
       {/* Mid-Route Breakdown Rescue Modal */}
       <MidRouteRescueModal

@@ -2,8 +2,9 @@
 
 import React, { useState } from 'react';
 import { PageChrome } from '@/components/PageChrome';
-import { TIYIN_PER_UZS, STATUTORY_AML_CASH_CEILING_MINOR, type AMLCheckResponse } from '@pegasusx/types';
+import { STATUTORY_AML_CASH_CEILING_MINOR, type AMLCheckResponse } from '@pegasusx/types';
 import { foundrySupplierApi } from '@/lib/foundry-api';
+import { majorIntToMinor, minorToWholeTrunc, ratioPercentInt } from '@/lib/money';
 
 export default function SupplierAMLExposurePage() {
   const [tin, setTin] = useState('301234567');
@@ -15,7 +16,7 @@ export default function SupplierAMLExposurePage() {
   const [result, setResult] = useState<AMLCheckResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const ceilingUZS = Math.floor(STATUTORY_AML_CASH_CEILING_MINOR / TIYIN_PER_UZS);
+  const ceilingUZS = minorToWholeTrunc(STATUTORY_AML_CASH_CEILING_MINOR);
 
   const handleCheck = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,7 +32,7 @@ export default function SupplierAMLExposurePage() {
         legal_entity_tin: tin.trim(),
         supplier_id: supplierId.trim(),
         calendar_date: calendarDate,
-        cash_minor: cashUZS * TIYIN_PER_UZS,
+        cash_minor: majorIntToMinor(cashUZS),
       });
       setResult(res);
     } catch (err) {
@@ -41,8 +42,10 @@ export default function SupplierAMLExposurePage() {
     }
   };
 
-  const accumulatedUZS = result ? Math.floor(result.accumulated_cash_minor / TIYIN_PER_UZS) : 0;
-  const percentage = Math.min(100, Math.round((accumulatedUZS / ceilingUZS) * 100));
+  const accumulatedUZS = result ? minorToWholeTrunc(result.accumulated_cash_minor) : 0;
+  const percentage = result
+    ? ratioPercentInt(result.accumulated_cash_minor, STATUTORY_AML_CASH_CEILING_MINOR)
+    : 0;
   const isCeilingBreached = result ? result.accumulated_cash_minor >= STATUTORY_AML_CASH_CEILING_MINOR : false;
   const isAmberWarning = percentage >= 80 && !isCeilingBreached;
 

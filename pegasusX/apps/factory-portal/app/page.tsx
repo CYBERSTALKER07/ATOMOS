@@ -21,7 +21,7 @@ import {
   type FactoryDashboardException,
 } from '@pegasusx/types';
 import { shouldRefetchDashboardRollup } from '@pegasusx/ws-refresh-contract';
-import { HealthStrip, SourceChip, StatusStack } from '@pegasusx/ui-kit/portal';
+import { HealthStrip, SourceChip, StatusStack } from '@/components/ui';
 import { apiFetch, parseFactoryLiveEvent, subscribeFactoryWS } from '@/lib/auth';
 import { useFactorySessionReconcile } from '@/lib/use-factory-session-reconcile';
 import EmptyState from '@/components/EmptyState';

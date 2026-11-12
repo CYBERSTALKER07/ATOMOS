@@ -27,6 +27,8 @@ type LocItem = {
   currency: string;
 };
 
+import { formatMinorUnits } from "@/lib/money";
+
 type SkuItem = {
   sku_id: string;
   qty_sold: number;
@@ -36,7 +38,7 @@ type SkuItem = {
 };
 
 function formatMoney(minor: number) {
-  return (minor / 100).toLocaleString(undefined, {
+  return formatMinorUnits(minor, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });

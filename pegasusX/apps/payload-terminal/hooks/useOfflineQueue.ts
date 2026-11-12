@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import * as SecureStore from 'expo-secure-store';
 
 import { authFetch } from '../authSession';
@@ -21,34 +21,52 @@ export function useOfflineQueue({
   showToast: ShowToast;
 }) {
   const [offlineQueue, setOfflineQueue] = useState<QueuedAction[]>([]);
+  const isFlushingRef = useRef(false);
 
   // ── Phase C: Offline Queue Flush ──────────────────────────────────────
   const flushOfflineQueue = async () => {
-    if (offlineQueue.length === 0 || !token) return;
-    const remaining: QueuedAction[] = [];
-    for (const action of offlineQueue) {
-      try {
-        const res = await authFetch(action.endpoint, {
-          method: action.method,
-          headers: {
-            'Content-Type': 'application/json',
-            'Idempotency-Key': action.id,
-          },
-          body: action.body,
-        });
-        if (res.ok || res.status === 409) continue;
-        if (res.status === 401 || res.status === 403 || res.status === 408 || res.status === 429 || res.status >= 500) {
-          remaining.push(action); // retryable
+    if (offlineQueue.length === 0 || !token || isFlushingRef.current) return;
+    isFlushingRef.current = true;
+    try {
+      const remaining: QueuedAction[] = [];
+      let succeededCount = 0;
+      let droppedCount = 0;
+
+      for (const action of offlineQueue) {
+        try {
+          const res = await authFetch(action.endpoint, {
+            method: action.method,
+            headers: {
+              'Content-Type': 'application/json',
+              'Idempotency-Key': action.id,
+            },
+            body: action.body,
+          });
+          if (res.ok || res.status === 409) {
+            succeededCount++;
+            continue;
+          }
+          if (res.status === 401 || res.status === 403 || res.status === 408 || res.status === 429 || res.status >= 500) {
+            remaining.push(action); // retryable
+          } else {
+            // Non-retryable 4xx (like 400 or 404) are dropped so poison-pill entries cannot block queue drain.
+            droppedCount++;
+          }
+        } catch {
+          remaining.push(action);
         }
-        // Non-retryable 4xx (like 400 or 404) are dropped so poison-pill entries cannot block queue drain.
-      } catch {
-        remaining.push(action);
       }
-    }
-    setOfflineQueue(remaining);
-    await SecureStore.setItemAsync('offline_queue', JSON.stringify(remaining));
-    if (remaining.length === 0 && offlineQueue.length > 0) {
-      showToast(tx('payload.alert.sync_complete_title'), `${offlineQueue.length} queued actions synced.`, 'success', 3200);
+
+      setOfflineQueue(remaining);
+      await SecureStore.setItemAsync('offline_queue', JSON.stringify(remaining));
+
+      if (succeededCount > 0) {
+        showToast(tx('payload.alert.sync_complete_title'), `${succeededCount} queued action(s) synced.`, 'success', 3200);
+      } else if (droppedCount > 0 && remaining.length === 0) {
+        showToast(tx('payload.alert.sync_failed_title'), `${droppedCount} invalid action(s) could not be processed.`, 'error', 4000);
+      }
+    } finally {
+      isFlushingRef.current = false;
     }
   };
 

@@ -24,6 +24,7 @@ import {
   Store,
   CreditCard,
   Users,
+  Keyboard,
   type LucideIcon,
 } from "lucide-react";
 
@@ -56,6 +57,7 @@ const iconMap: Record<string, LucideIcon> = {
   error: CircleAlert,
   verified: CircleCheck,
   arrow_forward: ChevronRight,
+  keyboard: Keyboard,
 };
 
 export default function Icon({

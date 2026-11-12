@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api, type FlagEval, type FlagOverride } from "@/lib/api";
-import { PortalField, PortalInput, PortalSelect, FormAlert } from "@pegasusx/ui-kit/portal";
+import { PortalField, PortalInput, PortalSelect, FormAlert } from "./ui/PortalPrimitives";
 
 // Mirrors featureflags.MoneyAffectingFlags on the backend.
 const MONEY_FLAGS = [

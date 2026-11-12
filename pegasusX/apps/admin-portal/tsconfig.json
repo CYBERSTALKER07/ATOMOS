@@ -16,9 +16,7 @@
     "plugins": [{ "name": "next" }],
     "paths": {
       "@/*": ["./*"],
-      "@pegasusx/types": ["../../packages/types/index.ts"],
-      "@pegasusx/ui-kit": ["../../packages/ui-kit/src/index.ts"],
-      "@pegasusx/ui-kit/*": ["../../packages/ui-kit/src/*"]
+      "@pegasusx/types": ["../../packages/types/index.ts"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],

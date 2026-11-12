@@ -53,6 +53,7 @@ import {
   UserPlus,
   Sparkles,
   Network,
+  Keyboard,
   type LucideIcon,
 } from "lucide-react";
 
@@ -114,6 +115,7 @@ const iconMap: Record<string, LucideIcon> = {
   ai: Sparkles,
   topology: Network,
   operations: AlertTriangle,
+  keyboard: Keyboard,
 };
 
 export default function Icon({

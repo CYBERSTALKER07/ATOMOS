@@ -1,6 +1,6 @@
 'use client';
 
-import { GenericFleetLiveMap } from '@pegasusx/ui-maps';
+import { GenericFleetLiveMap } from '@/components/ui';
 import type { ComponentProps } from 'react';
 
 export default function FleetLiveMap(props: ComponentProps<typeof GenericFleetLiveMap>) {

@@ -44,73 +44,89 @@ export async function removePendingPosSale(id: string): Promise<void> {
   await cacheRemove(id);
 }
 
+let isFlushingPosSales = false;
+
 export async function flushPendingPosSales(): Promise<{
   flushed: number;
   failed: number;
   remaining: number;
 }> {
-  const queue = await listPendingPosSales();
-  const active = queue.filter(
-    (q) => q.status === "PENDING" || q.status === "FAILED" || q.status === "SYNCING",
-  );
-  if (active.length === 0) {
+  if (isFlushingPosSales) {
     return { flushed: 0, failed: 0, remaining: 0 };
   }
+  isFlushingPosSales = true;
+  try {
+    const queue = await listPendingPosSales();
+    const active = queue.filter(
+      (q) => q.status === "PENDING" || q.status === "FAILED",
+    );
+    if (active.length === 0) {
+      return { flushed: 0, failed: 0, remaining: 0 };
+    }
 
-  let flushed = 0;
-  let failed = 0;
+    let flushed = 0;
+    let failed = 0;
 
-  for (const entry of active) {
-    await cacheUpdate(entry.id, { status: "SYNCING", lastError: undefined });
-    try {
-      const res = await apiFetch("/v1/retailer/pos/sales", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Idempotency-Key": entry.idempotencyKey,
-        },
-        body: entry.payloadJson,
-      });
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        const code =
-          typeof (body as { error?: string }).error === "string"
-            ? (body as { error: string }).error
-            : `sale_failed_${res.status}`;
-        // Permanent session closed — keep FAILED, don't spin forever
+    for (const entry of active) {
+      await cacheUpdate(entry.id, { status: "SYNCING", lastError: undefined });
+      try {
+        const res = await apiFetch("/v1/retailer/pos/sales", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Idempotency-Key": entry.idempotencyKey,
+          },
+          body: entry.payloadJson,
+        });
+        if (res.status === 409) {
+          // Idempotency conflict means the sale was already accepted by the server.
+          await cacheRemove(entry.id);
+          flushed += 1;
+          continue;
+        }
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          const code =
+            typeof (body as { error?: string }).error === "string"
+              ? (body as { error: string }).error
+              : `sale_failed_${res.status}`;
+          // Permanent session closed — keep FAILED, don't spin forever
+          await cacheUpdate(entry.id, {
+            status: "FAILED",
+            retryCount: entry.retryCount + 1,
+            lastError: code,
+          });
+          failed += 1;
+          continue;
+        }
+        const sale = body as { sale_id?: string; receipt_number?: string };
+        await cacheUpdate(entry.id, {
+          status: "SYNCED",
+          serverSaleId: sale.sale_id,
+          serverReceiptNumber: sale.receipt_number,
+          lastError: undefined,
+        });
+        // Drop synced rows to keep queue lean
+        await cacheRemove(entry.id);
+        flushed += 1;
+      } catch (error) {
+        failed += 1;
         await cacheUpdate(entry.id, {
           status: "FAILED",
           retryCount: entry.retryCount + 1,
-          lastError: code,
+          lastError: error instanceof Error ? error.message : "Replay failed",
         });
-        failed += 1;
-        continue;
-      }
-      const sale = body as { sale_id?: string; receipt_number?: string };
-      await cacheUpdate(entry.id, {
-        status: "SYNCED",
-        serverSaleId: sale.sale_id,
-        serverReceiptNumber: sale.receipt_number,
-        lastError: undefined,
-      });
-      // Drop synced rows to keep queue lean
-      await cacheRemove(entry.id);
-      flushed += 1;
-    } catch (error) {
-      failed += 1;
-      await cacheUpdate(entry.id, {
-        status: "FAILED",
-        retryCount: entry.retryCount + 1,
-        lastError: error instanceof Error ? error.message : "Replay failed",
-      });
-      if (!isRetryablePosSyncError(error)) {
-        // keep for operator visibility
+        if (!isRetryablePosSyncError(error)) {
+          // keep for operator visibility
+        }
       }
     }
-  }
 
-  const remaining = countActivePendingPosSales(await listPendingPosSales());
-  return { flushed, failed, remaining };
+    const remaining = countActivePendingPosSales(await listPendingPosSales());
+    return { flushed, failed, remaining };
+  } finally {
+    isFlushingPosSales = false;
+  }
 }
 
 export function newClientSaleId(): string {

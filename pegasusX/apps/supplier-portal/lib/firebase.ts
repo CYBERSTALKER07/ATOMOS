@@ -2,7 +2,7 @@ import {
   resetEmulatorPhoneOtpFlow,
   sendPhoneOtpViaEmulator,
   verifyPhoneOtpViaEmulator,
-} from "@pegasusx/ui-kit/auth";
+} from "@/components/ui";
 import { initializeApp, getApps, getApp } from "firebase/app";
 import {
   getAuth,

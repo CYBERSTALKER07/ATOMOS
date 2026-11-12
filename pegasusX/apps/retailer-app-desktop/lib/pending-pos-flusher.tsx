@@ -13,13 +13,16 @@ export function PendingPosFlusher() {
       });
     };
 
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") run();
+    };
+
     run();
     window.addEventListener("online", run);
-    document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible") run();
-    });
+    document.addEventListener("visibilitychange", handleVisibility);
     return () => {
       window.removeEventListener("online", run);
+      document.removeEventListener("visibilitychange", handleVisibility);
     };
   }, []);
 

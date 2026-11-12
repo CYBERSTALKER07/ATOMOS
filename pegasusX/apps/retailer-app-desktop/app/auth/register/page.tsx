@@ -8,9 +8,9 @@ import {
   AuthRegisterIdentityStep,
   AuthRegisterVerificationStep,
   AuthRegisterProfileStep,
-} from "@pegasusx/ui-kit/auth";
-import { dialCodeForCountry } from "@pegasusx/ui-kit/auth";
-import { FormAlert } from "@pegasusx/ui-kit/portal";
+  dialCodeForCountry,
+  FormAlert,
+} from "@/components/ui";
 import { storeToken } from "@/lib/bridge";
 import { sessionMapCenter } from "@pegasusx/api-core";
 import { resetPhoneOtpFlow, sendPhoneOtp, verifyPhoneOtp } from "@/lib/firebase";

@@ -15,7 +15,6 @@ const PRESERVED = [
   "/bins",
   "/pick-waves",
   "/cycle-counts",
-  "/cold-chain",
   "/stock-commitments",
   "/products",
   "/supply-requests",

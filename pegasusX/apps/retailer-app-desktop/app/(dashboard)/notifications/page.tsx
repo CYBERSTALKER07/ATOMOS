@@ -4,7 +4,7 @@ import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { AlertTriangle, CheckCheck, RefreshCw, WifiOff } from "lucide-react";
-import { HandoffCard } from "@pegasusx/explain-ui";
+import { HandoffCard } from "@/components/ui/HandoffCard";
 import { useRouter } from "next/navigation";
 import { PageChrome } from "@/components/PageChrome";
 import EmptyState from "../../../components/EmptyState";

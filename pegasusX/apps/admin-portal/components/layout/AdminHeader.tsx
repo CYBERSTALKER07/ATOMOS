@@ -3,8 +3,15 @@
 import React, { useState } from "react";
 import { useAdminWS } from "@/lib/ws-provider";
 import { useAdminToken } from "@/lib/session";
+import { Keyboard } from "lucide-react";
 
-export function AdminHeader({ onOpenSidebar }: { onOpenSidebar: () => void }) {
+export function AdminHeader({
+  onOpenSidebar,
+  onOpenCheatsheet,
+}: {
+  onOpenSidebar: () => void;
+  onOpenCheatsheet?: () => void;
+}) {
   const { status, lastHeartbeat, lastEventTime, reconnect } = useAdminWS();
   const { logout } = useAdminToken();
   const [showWsPopover, setShowWsPopover] = useState(false);
@@ -40,8 +47,11 @@ export function AdminHeader({ onOpenSidebar }: { onOpenSidebar: () => void }) {
   const badge = statusBadge();
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-white/90 px-4 backdrop-blur sm:px-6">
-      <div className="flex items-center gap-3">
+    <header
+      className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-white/90 px-4 backdrop-blur sm:px-6 select-none"
+      data-tauri-drag-region
+    >
+      <div className="flex items-center gap-3" data-tauri-no-drag>
         <button
           type="button"
           onClick={onOpenSidebar}
@@ -57,7 +67,30 @@ export function AdminHeader({ onOpenSidebar }: { onOpenSidebar: () => void }) {
         </span>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3" data-tauri-no-drag>
+        {/* Native Desktop Telemetry Pill */}
+        <div className="hidden xl:inline-flex items-center gap-2 px-2.5 py-1 rounded-full border border-gray-200 bg-gray-100 text-[11px] font-mono text-gray-700">
+          <span className="flex items-center gap-1 text-emerald-600 font-semibold">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            SPK-UZ: 8ms
+          </span>
+          <span className="text-gray-300">|</span>
+          <span className="text-cyan-600 font-semibold">SQLITE OK</span>
+        </div>
+
+        {/* Keyboard Shortcuts Trigger Button */}
+        {onOpenCheatsheet && (
+          <button
+            type="button"
+            onClick={onOpenCheatsheet}
+            className="hidden sm:inline-flex items-center justify-center h-8 w-8 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-100 transition-colors"
+            title="Keyboard Shortcuts (?)"
+            aria-label="Keyboard Shortcuts"
+          >
+            <Keyboard size={16} />
+          </button>
+        )}
+
         {/* Interactive WebSocket Telemetry Popover (UA-14) */}
         <div className="relative">
           <button

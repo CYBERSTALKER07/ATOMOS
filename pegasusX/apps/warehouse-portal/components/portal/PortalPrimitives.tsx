@@ -14,7 +14,7 @@ import {
   DataListRow as KitDataListRow,
   HubCard as KitHubCard,
   FormAlert as KitFormAlert,
-} from "@pegasusx/ui-kit/portal";
+} from "@/components/ui/PortalPrimitives";
 
 export { KitPortalField as PortalField, KitPortalInput as PortalInput, KitPortalSelect as PortalSelect };
 export const DataList = KitDataList;

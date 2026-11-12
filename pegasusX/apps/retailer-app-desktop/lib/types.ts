@@ -217,14 +217,19 @@ export function aiPredictionTitle(item: RetailerAIPrediction): string {
   return item.order_id;
 }
 
+import { formatMinorUnits } from "./money";
+
 export function aiPredictionQty(item: RetailerAIPrediction): number {
   return (item.line_items ?? []).reduce((sum, line) => sum + (line.quantity ?? 0), 0);
 }
 
 export function formatMinorAmount(minor: number, currency?: string): string {
-  const units = (minor ?? 0) / 100;
-  const code = (currency ?? "").trim();
-  return code ? `${units.toLocaleString()} ${code}` : units.toLocaleString();
+  return formatMinorUnits(minor ?? 0, {
+    groupSeparator: ",",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+    currency: (currency ?? "").trim() || undefined,
+  });
 }
 
 /* ── Auto-Order Settings ── */

@@ -26,6 +26,7 @@ import { OrgSwitcher } from "./OrgSwitcher";
 import LanguageSwitcher from "./LanguageSwitcher";
 import { usePortalT } from "@/lib/i18n";
 import { NAV, navSectionIsActive, type NavSection } from "@/lib/nav";
+import { DesktopKeyboardCheatsheet } from "./ui/DesktopKeyboardCheatsheet";
 
 type RetailerIdentity = { name: string; company: string; initials: string };
 
@@ -414,6 +415,7 @@ function RetailerShellInner({
   const { unreadCount } = useRetailerNotifications();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [cheatsheetOpen, setCheatsheetOpen] = useState(false);
   const [identity, setIdentity] = useState<RetailerIdentity>(DEFAULT_IDENTITY);
   const [permissions, setPermissions] = useState<string[] | null>(null);
   const [capabilities, setCapabilities] = useState<string[] | null>(null);
@@ -431,6 +433,31 @@ function RetailerShellInner({
   useEffect(() => {
     setMobileOpen(false);
   }, [pathname]);
+
+  /* Desktop hotkeys: Cmd+K (search), ? (cheatsheet), Esc (dismiss) */
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        router.push("/catalog");
+      }
+      if (
+        (e.key === "?" && !e.metaKey && !e.ctrlKey) ||
+        ((e.metaKey || e.ctrlKey) && e.key === "/")
+      ) {
+        const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
+        if (tag !== "input" && tag !== "textarea") {
+          e.preventDefault();
+          setCheatsheetOpen((prev) => !prev);
+        }
+      }
+      if (e.key === "Escape") {
+        setCheatsheetOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [router]);
   useEffect(() => {
     const profile = getRetailerProfile();
     if (!profile) {
@@ -593,13 +620,14 @@ function RetailerShellInner({
         {/* Top App Bar */}
         <header
           className="desk-topbar shrink-0"
+          data-tauri-drag-region
           style={{
             background: "var(--desk-surface)",
             borderBottom: "1px solid var(--desk-border)",
             height: "var(--desk-topbar-height)",
           }}
         >
-          <div className="desk-topbar-left px-6">
+          <div className="desk-topbar-left px-6" data-tauri-no-drag>
             <button
               className="desk-icon-btn md:hidden -ml-2 active-press"
               onClick={() => setMobileOpen(true)}
@@ -661,7 +689,17 @@ function RetailerShellInner({
             </span>
           </div>
 
-          <div className="desk-topbar-right px-6 gap-4">
+          <div className="desk-topbar-right px-6 gap-3" data-tauri-no-drag>
+            {/* Native Desktop Telemetry Pill */}
+            <div className="hidden xl:inline-flex items-center gap-2 px-2.5 py-1 rounded-full border border-neutral-800 bg-neutral-900/80 text-[11px] font-mono text-neutral-300">
+              <span className="flex items-center gap-1 text-emerald-400">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                SPK-UZ: 12ms
+              </span>
+              <span className="text-neutral-700">|</span>
+              <span className="text-cyan-400">SQLITE OK</span>
+            </div>
+
             <SessionPackChip />
             {/* Live indicator */}
             <div
@@ -689,6 +727,18 @@ function RetailerShellInner({
               />
               {isConnected ? "LIVE FEED" : "OFFLINE"}
             </div>
+
+            {/* Keyboard shortcuts cheatsheet button */}
+            <button
+              type="button"
+              className="desk-icon-btn hidden sm:flex active-press"
+              onClick={() => setCheatsheetOpen(true)}
+              title="Keyboard shortcuts (?)"
+              aria-label="Keyboard shortcuts"
+              style={{ color: "var(--desk-text-secondary)" }}
+            >
+              <Icon name="keyboard" size={18} />
+            </button>
 
             {/* Search */}
             <button
@@ -803,6 +853,11 @@ function RetailerShellInner({
           <div className="absolute inset-0">{children}</div>
         </main>
       </div>
+
+      <DesktopKeyboardCheatsheet
+        open={cheatsheetOpen}
+        onClose={() => setCheatsheetOpen(false)}
+      />
     </div>
   );
 }

@@ -4,7 +4,7 @@ import { usePortalT } from "@/lib/i18n";
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { ExplainStatusBanner, explainFromApiError } from '@pegasusx/explain-ui';
+import { ExplainStatusBanner, explainFromApiError } from '@/components/ui/ExplainStatusBanner';
 import type { StatusExplain } from '@pegasusx/types';
 import { apiFetch, parseFactoryLiveEvent, subscribeFactoryWS } from '@/lib/auth';
 import { useToast } from '@/components/Toast';

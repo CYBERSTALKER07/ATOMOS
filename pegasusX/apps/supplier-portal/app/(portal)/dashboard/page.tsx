@@ -14,7 +14,7 @@ import { useDashboardData } from "./use-dashboard-data";
 import { useDashboardHistory } from "./use-dashboard-history";
 import { formatPackMoney, readCachedAuthSession } from "@pegasusx/api-core";
 import { MANIFEST_STATES, ORDER_STATUS_FUNNEL, guardHistorySeries } from "@pegasusx/types";
-import { HealthStrip, KpiStat, RangeToggle, SourceChip, StatusStack } from "@pegasusx/ui-kit/portal";
+import { HealthStrip, KpiStat, RangeToggle, SourceChip, StatusStack } from "@/components/ui";
 
 export default function DashboardPage() {
   const t = usePortalT();

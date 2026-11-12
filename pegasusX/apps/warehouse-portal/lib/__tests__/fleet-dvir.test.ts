@@ -3,11 +3,10 @@ import type {
   FleetDVIRInspection,
   DVIRChecklist8Point,
   YardGateCheckEvent,
-  PredictiveReeferResponse,
 } from '@pegasusx/types';
 
-describe('Role 9 Fleet DVIR Walkaround, Yard Gate & Reefer Gates', () => {
-  it('enforces 8-point walkaround checklist integrity and Red-Tag Grounding Gate', () => {
+describe('Role 9 Fleet DVIR Walkaround & Yard Gate Gates', () => {
+  it('enforces walkaround checklist integrity and Red-Tag Grounding Gate', () => {
     const cleanChecklist: DVIRChecklist8Point = {
       steering_and_horn_ok: true,
       service_and_parking_brakes_ok: true,
@@ -16,20 +15,17 @@ describe('Role 9 Fleet DVIR Walkaround, Yard Gate & Reefer Gates', () => {
       wipers_and_fluids_ok: true,
       emergency_kit_and_extinguisher_ok: true,
       cargo_box_sanitation_ok: true,
-      reefer_temp_calibrated_ok: true,
     };
 
-    // Case 1: All 8 points pass -> DISPATCH_AUTHORIZED
+    // Case 1: All points pass -> DISPATCH_AUTHORIZED
     const passInspection: FleetDVIRInspection = {
       cell_id: 'cell-uz',
       supplier_id: 'supp-central',
       vehicle_id: 'TRUCK-001',
       driver_id: 'DRV-100',
       inspection_type: 'PRE_TRIP',
-      requires_cold_chain: true,
       checklist: cleanChecklist,
       odometer_km: 125000,
-      reefer_temp_celsius: -18.5,
       red_tag_applied: false,
       status: 'DISPATCH_AUTHORIZED',
     };
@@ -45,12 +41,10 @@ describe('Role 9 Fleet DVIR Walkaround, Yard Gate & Reefer Gates', () => {
       vehicle_id: 'TRUCK-002',
       driver_id: 'DRV-101',
       inspection_type: 'PRE_TRIP',
-      requires_cold_chain: true,
       checklist: { ...cleanChecklist, service_and_parking_brakes_ok: false },
       failed_points: ['service_and_parking_brakes_ok'],
       critical_defect_found: true,
       odometer_km: 130000,
-      reefer_temp_celsius: -18.0,
       red_tag_applied: true,
       maintenance_work_order_id: 'WO-BRAKES-202610-01',
       status: 'RED_TAG_QUARANTINE',
@@ -104,27 +98,5 @@ describe('Role 9 Fleet DVIR Walkaround, Yard Gate & Reefer Gates', () => {
     const missingRes = validateGateDeparture(missingSealOutbound);
     expect(missingRes.authorized).toBe(false);
     expect(missingRes.reason).toContain('Missing mandatory');
-  });
-
-  it('evaluates predictive reefer cooling curve against pre-failure hold thresholds', () => {
-    const evaluateReeferTelemetry = (
-      coolingRate: number,
-      minRequiredRate: number,
-      vehicleId: string,
-    ): PredictiveReeferResponse => {
-      const hold = coolingRate < minRequiredRate;
-      return {
-        vehicle_id: vehicleId,
-        pre_failure_maintenance_hold: hold,
-      };
-    };
-
-    // Healthy reefer: cooling at 0.75 deg/min, required min is 0.40 deg/min
-    const healthy = evaluateReeferTelemetry(0.75, 0.40, 'REEFER-01');
-    expect(healthy.pre_failure_maintenance_hold).toBe(false);
-
-    // Failing reefer compressor: cooling at 0.20 deg/min, required min is 0.40 deg/min
-    const failing = evaluateReeferTelemetry(0.20, 0.40, 'REEFER-02');
-    expect(failing.pre_failure_maintenance_hold).toBe(true);
   });
 });

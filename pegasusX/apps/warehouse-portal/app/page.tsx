@@ -28,7 +28,7 @@ import NetworkPulsePanel from '@/components/NetworkPulsePanel';
 import { PageSection } from '@/components/PageSection';
 import { PageChrome } from '@/components/PageChrome';
 import { KpiStatCard, KpiStatGrid } from '@/components/KpiStatCard';
-import { SourceChip, StatusStack } from '@pegasusx/ui-kit/portal';
+import { SourceChip, StatusStack } from '@/components/ui';
 import { usePortalT } from '@/lib/i18n';
 
 interface DashboardData {

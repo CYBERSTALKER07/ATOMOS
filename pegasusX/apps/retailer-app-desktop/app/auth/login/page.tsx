@@ -3,8 +3,7 @@
 import { usePortalT } from "@/lib/i18n";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { AuthLoginCard } from "@pegasusx/ui-kit/auth";
-import { dialCodeForCountry } from "@pegasusx/ui-kit/auth";
+import { AuthLoginCard, dialCodeForCountry } from "@/components/ui";
 import { resetPhoneOtpFlow, sendPhoneOtp, verifyPhoneOtp } from "@/lib/firebase";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8180";
@@ -92,24 +91,7 @@ export default function RetailerLoginPage() {
     }
   }
 
-  async function handleDemoBypass() {
-    const { applyFullAuthResponse } = await import("@/lib/multi-org-auth");
-    await applyFullAuthResponse({
-      token: "mock-retailer-jwt-dev",
-      refresh_token: "mock-refresh-dev",
-      retailer_id: "ret-tashkent-001",
-      user: {
-        id: "usr-retailer-001",
-        name: "Tashkent Market (Demo Retailer)",
-      },
-      is_configured: true,
-      memberships: [],
-    }, { clearScoped: false });
-    router.replace("/dashboard");
-  }
-
   return (
-    <>
     <AuthLoginCard
       title={t("retailer_desktop.auth.login.text.retailer_sign_in")}
       subtitle={
@@ -136,15 +118,5 @@ export default function RetailerLoginPage() {
         setStep("phone");
       }}
     />
-    <div className="mx-auto mt-4 max-w-md px-4">
-      <button
-        type="button"
-        onClick={handleDemoBypass}
-        className="w-full rounded-md border border-[var(--desk-border)] bg-[var(--desk-surface)] py-2.5 text-sm font-semibold tracking-wide text-[var(--desk-text-primary)] hover:bg-[var(--desk-hover)] transition-colors shadow-sm"
-      >
-        BYPASS / ENTER DEMO RETAILER
-      </button>
-    </div>
-    </>
   );
 }

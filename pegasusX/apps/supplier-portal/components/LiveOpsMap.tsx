@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { TwinOpsRouteView, TwinVehicleInventoryRow } from "@pegasusx/types";
 import MapGL, { Layer, NavigationControl, Source } from "react-map-gl/maplibre";
 import maplibregl from "maplibre-gl";
-import { useMapLibreTeardown } from "@pegasusx/ui-maps";
+import { useMapLibreTeardown } from "@/components/ui";
 import { createSupplierApi } from "@/lib/api";
 import { mapInitialViewState, readCachedAuthSession } from "@pegasusx/api-core";
 

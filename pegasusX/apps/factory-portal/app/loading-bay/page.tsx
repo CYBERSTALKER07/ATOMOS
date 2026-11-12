@@ -2,7 +2,7 @@
 
 import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ExplainStatusBanner, explainFromApiError } from '@pegasusx/explain-ui';
+import { ExplainStatusBanner, explainFromApiError } from '@/components/ui/ExplainStatusBanner';
 import type { StatusExplain } from '@pegasusx/types';
 import { factoryBatchDispatchKey } from '@pegasusx/api-core';
 import { apiFetch, parseFactoryLiveEvent, subscribeFactoryWS } from '@/lib/auth';

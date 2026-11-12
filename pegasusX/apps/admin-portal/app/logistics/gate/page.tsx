@@ -47,7 +47,7 @@ export default function YardGatePage() {
         assigned_bay_slot: baySlot,
       });
       setEventHistory((prev) => [res, ...prev]);
-    } catch (err: any) {
+    } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Gate event failed";
       // Inspect for red-tag gate grounding (UA-8)
       if (msg.includes("grounded") || msg.includes("RED_TAG") || msg.includes("red-tagged")) {

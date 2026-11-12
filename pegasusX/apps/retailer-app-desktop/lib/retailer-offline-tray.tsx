@@ -5,7 +5,7 @@ import {
   DesktopOfflineTray,
   useDesktopConnectivity,
   type DesktopQueuedAction,
-} from "@pegasusx/ui-kit/desktop";
+} from "@/components/ui";
 import { isTauri } from "@pegasusx/desktop-bridge";
 import { flushPendingCheckouts, listPendingCheckouts } from "./pending-checkout";
 

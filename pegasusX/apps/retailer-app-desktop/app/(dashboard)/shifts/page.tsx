@@ -6,6 +6,7 @@ import { Loader2, Clock, AlertTriangle } from "lucide-react";
 import { PageChrome } from "@/components/PageChrome";
 import { apiFetch } from "@/lib/auth";
 import { moneyCurrency, sessionPackCurrency } from "@/lib/payment-catalog";
+import { formatMinorUnits, parseMinorUnitsInt } from "@/lib/money";
 
 type TimeEntry = {
   entry_id: string;
@@ -33,10 +34,11 @@ type Shift = {
 };
 
 function formatMoney(minor: number, currency?: string) {
-  return `${(minor / 100).toLocaleString(undefined, {
+  return formatMinorUnits(minor, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  })} ${moneyCurrency(currency)}`;
+    currency: moneyCurrency(currency),
+  });
 }
 
 export default function ShiftsPage() {
@@ -140,11 +142,11 @@ export default function ShiftsPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Idempotency-Key": `shift-${Date.now()}`,
+          "Idempotency-Key": `shift-${crypto.randomUUID()}`,
         },
         body: JSON.stringify({
           register_id: registerId || undefined,
-          opening_float_minor: Number(floatMinor) || 0,
+          opening_float_minor: parseMinorUnitsInt(floatMinor) ?? 0,
           currency: sessionPackCurrency(),
         }),
       });
@@ -169,7 +171,7 @@ export default function ShiftsPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          closing_cash_minor: Number(closingCash) || 0,
+          closing_cash_minor: parseMinorUnitsInt(closingCash) ?? 0,
         }),
       });
       const json = await res.json().catch(() => ({}));

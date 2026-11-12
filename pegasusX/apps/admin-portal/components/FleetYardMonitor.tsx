@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import type { FleetDVIRInspection, YardGateCheckEvent, PredictiveReeferResponse, DispatchCheckResponse } from '@pegasusx/types';
+import type { FleetDVIRInspection, YardGateCheckEvent, DispatchCheckResponse } from '@pegasusx/types';
 import { foundryApi } from '@/lib/foundry-api';
 
 export default function FleetYardMonitor({ token }: { token: string }) {
@@ -19,11 +19,7 @@ export default function FleetYardMonitor({ token }: { token: string }) {
   const [gateSubmitting, setGateSubmitting] = useState(false);
   const [gateEvent, setGateEvent] = useState<YardGateCheckEvent | null>(null);
 
-  // Reefer & Dispatch Check
-  const [coolingRate, setCoolingRate] = useState(0.24);
-  const [reeferEvaluating, setReeferEvaluating] = useState(false);
-  const [reeferResult, setReeferResult] = useState<PredictiveReeferResponse | null>(null);
-
+  // Dispatch Check
   const [dispatchChecking, setDispatchChecking] = useState(false);
   const [dispatchResult, setDispatchResult] = useState<DispatchCheckResponse | null>(null);
 
@@ -41,7 +37,6 @@ export default function FleetYardMonitor({ token }: { token: string }) {
         vehicle_id: vehicleId.trim(),
         driver_id: driverId.trim(),
         inspection_type: 'PRE_TRIP',
-        requires_cold_chain: true,
         checklist: {
           steering_and_horn_ok: !failCheck, // If failCheck, steering fails!
           service_and_parking_brakes_ok: true,
@@ -50,10 +45,8 @@ export default function FleetYardMonitor({ token }: { token: string }) {
           wipers_and_fluids_ok: true,
           emergency_kit_and_extinguisher_ok: true,
           cargo_box_sanitation_ok: true,
-          reefer_temp_calibrated_ok: true,
         },
         odometer_km: 52100,
-        reefer_temp_celsius: 4.0,
       });
       setDvirResult(res);
     } catch (err) {
@@ -83,24 +76,6 @@ export default function FleetYardMonitor({ token }: { token: string }) {
       setError(err instanceof Error ? err.message : 'Gate event failed');
     } finally {
       setGateSubmitting(false);
-    }
-  };
-
-  // Evaluate Reefer
-  const handleReeferCheck = async () => {
-    setError(null);
-    setReeferEvaluating(true);
-    try {
-      const res = await foundryApi.predictiveReefer(token, {
-        vehicle_id: vehicleId.trim(),
-        cooling_rate_deg_per_min: coolingRate,
-        min_required_rate_deg_per_min: 0.30,
-      });
-      setReeferResult(res);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Predictive reefer evaluation failed');
-    } finally {
-      setReeferEvaluating(false);
     }
   };
 
@@ -280,55 +255,6 @@ export default function FleetYardMonitor({ token }: { token: string }) {
             </span>
             <span className="font-bold text-indigo-700">Bay: {gateEvent.assigned_bay_slot}</span>
             <span>Seal: {gateEvent.bolt_seal_barcode || 'None'}</span>
-          </div>
-        )}
-      </div>
-
-      {/* Predictive Reefer Telemetry */}
-      <div className="rounded-xl border bg-white p-5 shadow-sm space-y-4">
-        <div>
-          <h3 className="text-base font-semibold text-gray-900">
-            Predictive Reefer Maintenance Hold Monitor
-          </h3>
-          <p className="text-xs text-gray-500 mt-0.5">
-            Evaluates cooling rate degradation before spoiled freight can be staged.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <input
-            type="number"
-            step="0.01"
-            value={coolingRate}
-            onChange={(e) => setCoolingRate(parseFloat(e.target.value || '0'))}
-            className="rounded border px-3 py-1.5 text-xs font-mono w-32"
-          />
-          <span className="text-xs text-gray-500">Observed cooling rate (°C/min)</span>
-
-          <button
-            type="button"
-            onClick={handleReeferCheck}
-            disabled={reeferEvaluating}
-            className="rounded bg-cyan-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-cyan-700 disabled:opacity-50"
-          >
-            {reeferEvaluating ? 'Evaluating...' : 'Evaluate Cooling Health'}
-          </button>
-        </div>
-
-        {reeferResult && (
-          <div
-            className={`p-3 rounded border text-xs flex justify-between items-center font-mono ${
-              reeferResult.pre_failure_maintenance_hold
-                ? 'bg-amber-50 border-amber-300 text-amber-900 font-bold'
-                : 'bg-emerald-50 border-emerald-300 text-emerald-900'
-            }`}
-          >
-            <span>Vehicle: {reeferResult.vehicle_id}</span>
-            <span>
-              {reeferResult.pre_failure_maintenance_hold
-                ? '⚠️ PRE_FAILURE_MAINTENANCE_HOLD APPLIED (Cooling curve degraded)'
-                : '✅ REEFER HEALTHY (Cooling rate satisfies SLA)'}
-            </span>
           </div>
         )}
       </div>

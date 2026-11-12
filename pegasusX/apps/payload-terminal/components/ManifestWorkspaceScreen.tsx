@@ -654,7 +654,7 @@ export default function ManifestWorkspaceScreen({
                   fontSize: 14,
                   color: T.colors.label,
                   backgroundColor: T.colors.fillTertiary,
-                  borderRadius: (T.radius as any).input || 8,
+                  borderRadius: T.radius.input,
                   paddingHorizontal: 16,
                   paddingVertical: 12,
                   borderWidth: 1,

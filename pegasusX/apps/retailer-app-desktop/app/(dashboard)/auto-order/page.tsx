@@ -13,7 +13,7 @@ import {
   ShoppingCart,
   Check,
 } from "lucide-react";
-import { DemandSourceChips } from "@pegasusx/ui-kit/portal";
+import { DemandSourceChips } from "@/components/ui/DemandSourceChips";
 import { AutoOrderRules } from "@/components/auto-order/AutoOrderRules";
 import { PageChrome } from "@/components/PageChrome";
 import { useLiveData } from "@/lib/hooks";

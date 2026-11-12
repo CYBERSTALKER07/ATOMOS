@@ -23,20 +23,17 @@ import type {
   SupplierDemandSummaryResponse,
 } from "@pegasusx/types";
 import { PageChrome } from "@/components/PageChrome";
+import { formatMinorUnits } from "@/lib/money";
 // RevenueHeatmap unmounted — no H3 revenue density SoT yet
 
 const api = createSupplierApi();
 
 function formatMoney(minor: number, currency: string) {
-  try {
-    return new Intl.NumberFormat(undefined, {
-      style: "currency",
-      currency,
-      maximumFractionDigits: 0,
-    }).format(minor / 100);
-  } catch {
-    return `${minor} ${currency}`;
-  }
+  return formatMinorUnits(minor, {
+    currency,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  });
 }
 
 export default function AnalyticsPage() {

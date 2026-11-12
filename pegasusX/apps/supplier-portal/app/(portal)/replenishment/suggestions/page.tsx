@@ -6,7 +6,7 @@ import type { Route } from "next";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createSupplierApi } from "@/lib/api";
 import type { ReorderSuggestionRow } from "@pegasusx/types";
-import { DemandSourceChips } from "@pegasusx/ui-kit/portal";
+import { DemandSourceChips } from "@/components/ui";
 import { PageChrome } from "@/components/PageChrome";
 
 const api = createSupplierApi();

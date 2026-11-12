@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import React from "react";
 import { ORDER_STATUS_FUNNEL, emptyOrderStatusCounts, incrementOrderStatusCount } from "@pegasusx/types";
-import { KpiStat, StatusStack, StatusStackPreview } from "@pegasusx/ui-kit/portal";
+import { KpiStat, StatusStack, StatusStackPreview } from "@/components/ui";
 
 const liveCounts = {
   ...emptyOrderStatusCounts(),

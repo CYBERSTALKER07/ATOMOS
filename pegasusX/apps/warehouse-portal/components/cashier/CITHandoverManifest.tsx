@@ -1,8 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import { TIYIN_PER_UZS, type DepotVaultLedgerEntry } from '@pegasusx/types';
+import { type DepotVaultLedgerEntry } from '@pegasusx/types';
 import { foundryWarehouseApi } from '@/lib/foundry-api';
+import { formatGroupedInteger, majorIntToMinor, majorIntToMinorBigInt, minorToWholeTrunc } from '@/lib/money';
+import { Shield, CheckCircle2, Barcode, Printer, AlertCircle } from 'lucide-react';
 
 interface CITHandoverManifestProps {
   depotId?: string;
@@ -10,15 +12,22 @@ interface CITHandoverManifestProps {
   onHandoverComplete?: (entry: DepotVaultLedgerEntry) => void;
 }
 
+const CARRIER_PRESETS = [
+  { name: 'Inkassatsiya Xizmati DUK (Central Bank Armored Division)', badgePrefix: 'INK-UZ-' },
+  { name: 'NBU Security Logistics Fleet', badgePrefix: 'NBU-CIT-' },
+  { name: 'Trastbank Armored Carrier Service', badgePrefix: 'TB-CIT-' },
+];
+
 export function CITHandoverManifest({
   depotId = 'depot_tashkent_central',
   supplierId = 'sup_samarkand_dairy',
   onHandoverComplete,
 }: CITHandoverManifestProps) {
-  const [courierBadgeId, setCourierBadgeId] = useState('');
-  const [citSealBarcode, setCitSealBarcode] = useState('');
-  const [handoverUZS, setHandoverUZS] = useState<number>(0);
-  const [sessionIdsInput, setSessionIdsInput] = useState('');
+  const [courierBadgeId, setCourierBadgeId] = useState('INK-UZ-77821');
+  const [citSealBarcode, setCitSealBarcode] = useState('CIT-SEAL-889900');
+  const [handoverUZS, setHandoverUZS] = useState<number>(15000000);
+  const [sessionIdsInput, setSessionIdsInput] = useState('sess_101, sess_102');
+  const [selectedCarrier, setSelectedCarrier] = useState(CARRIER_PRESETS[0].name);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [completedEntry, setCompletedEntry] = useState<DepotVaultLedgerEntry | null>(null);
@@ -28,9 +37,9 @@ export function CITHandoverManifest({
     setError(null);
     setCompletedEntry(null);
 
-    const amountMinor = Math.floor(handoverUZS * TIYIN_PER_UZS);
+    const amountMinor = majorIntToMinor(handoverUZS);
     if (amountMinor <= 0) {
-      setError('Handover cash amount must be greater than 0');
+      setError('Handover cash amount must be greater than 0 tiyin');
       return;
     }
     if (!courierBadgeId.trim()) {
@@ -67,21 +76,53 @@ export function CITHandoverManifest({
   };
 
   return (
-    <div className="bg-[var(--color-md-surface-card,#1e293b)] p-6 rounded-2xl border border-slate-700/60 shadow-xl space-y-5">
-      <div>
-        <h3 className="text-lg font-bold text-slate-100 flex items-center gap-2">
-          <span>🛡️</span>
-          <span>CIT Armored Courier Handover Manifest (Inkassatsiya)</span>
-        </h3>
-        <p className="text-xs text-slate-400 mt-1">
-          Consolidate balanced depot cashier safe balances for physical armored pickup.
-        </p>
+    <div className="rounded-2xl border border-neutral-800 bg-neutral-900/90 p-6 shadow-xl space-y-5 backdrop-blur-sm">
+      <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-neutral-800">
+        <div>
+          <div className="flex items-center gap-2">
+            <Shield size={20} className="text-amber-400" />
+            <h3 className="text-base font-bold text-neutral-100 tracking-wide uppercase">
+              CIT Armored Courier Handover Manifest (Inkassatsiya)
+            </h3>
+          </div>
+          <p className="text-xs text-neutral-400 mt-0.5">
+            Consolidate cleared depot cashier safe balances for physical armored carrier pickup and vault debit.
+          </p>
+        </div>
+
+        <span className="px-3 py-1 rounded-full text-xs font-mono font-semibold bg-amber-500/10 text-amber-300 border border-amber-500/30">
+          Dual-Custody Vault Outflow
+        </span>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Carrier preset selection */}
+        <div>
+          <label className="block text-[11px] font-semibold text-neutral-400 uppercase tracking-wider mb-1">
+            Armored Courier Service Provider
+          </label>
+          <select
+            value={selectedCarrier}
+            onChange={(e) => {
+              setSelectedCarrier(e.target.value);
+              const found = CARRIER_PRESETS.find(c => c.name === e.target.value);
+              if (found) {
+                setCourierBadgeId(`${found.badgePrefix}${Math.floor(10000 + Math.random() * 90000)}`);
+              }
+            }}
+            className="w-full bg-neutral-950 border border-neutral-750 rounded-xl px-3 py-2 text-xs font-mono text-neutral-100 focus:outline-none focus:border-amber-500"
+          >
+            {CARRIER_PRESETS.map((c) => (
+              <option key={c.name} value={c.name}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
+            <label className="block text-[11px] font-semibold text-neutral-400 uppercase tracking-wider mb-1">
               Armored Courier Badge ID
             </label>
             <input
@@ -90,61 +131,69 @@ export function CITHandoverManifest({
               value={courierBadgeId}
               onChange={(e) => setCourierBadgeId(e.target.value)}
               placeholder="e.g. INK-77821"
-              className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm font-mono text-slate-100 focus:outline-none focus:border-emerald-500"
+              className="w-full bg-neutral-950 border border-neutral-750 rounded-xl px-3 py-2 text-xs font-mono text-neutral-100 focus:outline-none focus:border-amber-500"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
+            <label className="block text-[11px] font-semibold text-neutral-400 uppercase tracking-wider mb-1">
               CIT Armored Bag Seal Barcode
             </label>
-            <input
-              type="text"
-              required
-              value={citSealBarcode}
-              onChange={(e) => setCitSealBarcode(e.target.value)}
-              placeholder="e.g. CIT-SEAL-889900"
-              className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm font-mono text-slate-100 focus:outline-none focus:border-emerald-500"
-            />
+            <div className="relative">
+              <input
+                type="text"
+                required
+                value={citSealBarcode}
+                onChange={(e) => setCitSealBarcode(e.target.value)}
+                placeholder="e.g. CIT-SEAL-889900"
+                className="w-full bg-neutral-950 border border-neutral-750 rounded-xl px-3 py-2 text-xs font-mono text-neutral-100 focus:outline-none focus:border-amber-500 pr-10"
+              />
+              <Barcode size={18} className="absolute right-3 top-2 text-neutral-500" />
+            </div>
           </div>
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
-            Handover Amount (UZS)
+          <label className="block text-[11px] font-semibold text-neutral-400 uppercase tracking-wider mb-1">
+            Handover Cash Amount (UZS)
           </label>
           <div className="relative">
             <input
-              type="number"
-              min="1"
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
               required
               value={handoverUZS === 0 ? '' : handoverUZS}
-              onChange={(e) => setHandoverUZS(Math.max(0, parseInt(e.target.value || '0', 10) || 0))}
+              onChange={(e) => {
+                const s = e.target.value.replace(/\D/g, '');
+                setHandoverUZS(Math.max(0, parseInt(s || '0', 10) || 0));
+              }}
               placeholder="e.g. 15000000"
-              className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm font-mono text-slate-100 focus:outline-none focus:border-emerald-500"
+              className="w-full bg-neutral-950 border border-neutral-750 rounded-xl px-3 py-2 text-xs font-mono text-neutral-100 focus:outline-none focus:border-amber-500"
             />
-            <span className="absolute right-3 top-2.5 text-xs text-slate-400 font-mono">
-              = {(handoverUZS * TIYIN_PER_UZS).toLocaleString()} Tiyin
+            <span className="absolute right-3 top-2 text-[11px] text-neutral-500 font-mono">
+              = {formatGroupedInteger(majorIntToMinorBigInt(handoverUZS))} Tiyin
             </span>
           </div>
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
-            Associated Session IDs (comma-separated, optional)
+          <label className="block text-[11px] font-semibold text-neutral-400 uppercase tracking-wider mb-1">
+            Associated Turn-In Sessions (Comma-separated)
           </label>
           <input
             type="text"
             value={sessionIdsInput}
             onChange={(e) => setSessionIdsInput(e.target.value)}
             placeholder="sess_101, sess_102"
-            className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs font-mono text-slate-100 focus:outline-none focus:border-emerald-500"
+            className="w-full bg-neutral-950 border border-neutral-750 rounded-xl px-3 py-2 text-xs font-mono text-neutral-100 focus:outline-none focus:border-amber-500"
           />
         </div>
 
         {error && (
-          <div className="p-3 bg-red-950/50 border border-red-700 rounded-xl text-xs text-red-200">
-            {error}
+          <div className="p-3 bg-rose-950/60 border border-rose-800 rounded-xl text-xs text-rose-200 flex items-center gap-2">
+            <AlertCircle size={15} className="shrink-0 text-rose-400" />
+            <span>{error}</span>
           </div>
         )}
 
@@ -152,44 +201,54 @@ export function CITHandoverManifest({
           <button
             type="submit"
             disabled={submitting}
-            className="px-6 py-2.5 rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-500 text-white disabled:opacity-50 transition-all shadow-md flex items-center gap-2"
+            className="px-6 py-2.5 rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-500 text-white disabled:opacity-40 transition-all shadow flex items-center gap-2"
           >
-            {submitting ? 'Executing Armored Handover...' : 'Generate CIT Handover & Deduct Vault'}
+            {submitting ? 'Executing Armored Handover...' : 'Generate CIT Handover & Deduct Vault Safe'}
           </button>
         </div>
       </form>
 
       {/* Completed Handover Receipt */}
       {completedEntry && (
-        <div className="mt-4 p-4 rounded-xl bg-slate-900 border border-emerald-500/50 space-y-3">
-          <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+        <div className="mt-5 p-4 rounded-xl bg-neutral-950 border border-emerald-500/50 space-y-3">
+          <div className="flex items-center justify-between pb-2 border-b border-neutral-800">
             <span className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
-              <span>✅</span>
+              <CheckCircle2 size={16} />
               <span>CIT Armored Outflow Ledger Entry Created</span>
             </span>
-            <span className="text-[11px] font-mono text-slate-400">{completedEntry.vault_entry_id}</span>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-mono text-neutral-400">{completedEntry.vault_entry_id}</span>
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="flex items-center gap-1 px-2 py-0.5 rounded bg-neutral-900 border border-neutral-800 text-[10px] text-neutral-300 hover:text-white"
+              >
+                <Printer size={11} />
+                <span>Print</span>
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
             <div>
-              <span className="text-slate-400 block">Outflow Amount:</span>
-              <span className="font-mono font-bold text-slate-100">
-                {Math.abs(Math.floor(completedEntry.amount_minor / TIYIN_PER_UZS)).toLocaleString()} UZS
+              <span className="text-neutral-500 block font-mono text-[10px] uppercase">Outflow Amount:</span>
+              <span className="font-mono font-bold text-neutral-100">
+                {Math.abs(minorToWholeTrunc(completedEntry.amount_minor)).toLocaleString()} UZS
               </span>
             </div>
             <div>
-              <span className="text-slate-400 block">Remaining Safe Balance:</span>
+              <span className="text-neutral-500 block font-mono text-[10px] uppercase">Remaining Safe Balance:</span>
               <span className="font-mono font-bold text-emerald-400">
-                {Math.floor(completedEntry.running_balance_minor / TIYIN_PER_UZS).toLocaleString()} UZS
+                {minorToWholeTrunc(completedEntry.running_balance_minor).toLocaleString()} UZS
               </span>
             </div>
             <div>
-              <span className="text-slate-400 block">Courier Badge:</span>
-              <span className="font-mono text-slate-200">{completedEntry.courier_badge_id}</span>
+              <span className="text-neutral-500 block font-mono text-[10px] uppercase">Courier Badge:</span>
+              <span className="font-mono text-neutral-200">{completedEntry.courier_badge_id}</span>
             </div>
             <div>
-              <span className="text-slate-400 block">Bag Seal:</span>
-              <span className="font-mono text-slate-200">{completedEntry.seal_barcode}</span>
+              <span className="text-neutral-500 block font-mono text-[10px] uppercase">Bag Seal Barcode:</span>
+              <span className="font-mono text-neutral-200">{completedEntry.seal_barcode}</span>
             </div>
           </div>
         </div>
