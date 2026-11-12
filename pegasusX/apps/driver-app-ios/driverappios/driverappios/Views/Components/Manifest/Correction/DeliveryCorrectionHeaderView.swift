@@ -32,28 +32,28 @@ struct DeliveryCorrectionHeaderView: View {
             }
 
             Text("mobile_driver.ui.delivery_correction")
-                .font(.system(size: 22, weight: .bold))
+                .font(.system(.title2, weight: .bold))
                 .foregroundStyle(LabTheme.fg)
 
             Text(orderId)
-                .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                .font(.system(.footnote, design: .monospaced, weight: .semibold))
                 .foregroundStyle(LabTheme.fgSecondary)
 
             if isPartial {
                 VStack(alignment: .leading, spacing: 12) {
                     Text("mobile_driver.ui.partial_order_split")
-                        .font(.system(size: 16, weight: .bold))
+                        .font(.system(.callout, weight: .bold))
                         .foregroundStyle(LabTheme.fg)
                     
                     Text("mobile_driver.ui.this_order_is_split_across_multiple_trucks_press_start_transit_w")
-                        .font(.system(size: 14))
+                        .font(.system(.subheadline))
                         .foregroundStyle(LabTheme.fgSecondary)
                     
                     Button {
                         showStartTransitAlert = true
                     } label: {
                         Text("mobile_driver.ui.start_transit_2")
-                            .font(.system(size: 15, weight: .bold))
+                            .font(.system(.subheadline, weight: .bold))
                             .foregroundStyle(.white)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 12)

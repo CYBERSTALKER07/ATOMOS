@@ -38,9 +38,9 @@ enum EnterpriseUpdateConfig {
 
     static let policyRole = "DRIVER"
 
-    static let defaultManifestURL = URL(
+    static let defaultManifestURL: URL = URL(
         string: "https://storage.googleapis.com/pegasusx-ssmr-app-updates/ios/driver/updater.json"
-    )!
+    ) ?? URL(fileURLWithPath: "/")
 
     /// App Store listing URL for production builds.
     static var storeListingURL: URL? {

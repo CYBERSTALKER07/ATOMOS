@@ -10,22 +10,23 @@ struct PayloadSectionHeader: View {
         HStack(alignment: .firstTextBaseline) {
             VStack(alignment: .leading, spacing: TermTheme.s4) {
                 Text(title.uppercased())
-                    .font(.system(size: 12, weight: .black, design: .monospaced))
+                    .font(.system(.caption, design: .monospaced, weight: .black))
                     .foregroundStyle(TermTheme.secondary)
                 if let subtitle, !subtitle.isEmpty {
                     Text(subtitle)
-                        .font(.system(size: 11, weight: .medium, design: .monospaced))
+                        .font(.system(.caption, design: .monospaced, weight: .medium))
                         .foregroundStyle(TermTheme.tertiary)
                 }
             }
             Spacer()
             if let trailing, !trailing.isEmpty {
                 Text(trailing.uppercased())
-                    .font(.system(size: 12, weight: .black, design: .monospaced))
+                    .font(.system(.caption, design: .monospaced, weight: .black))
                     .foregroundStyle(trailingTint)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -39,15 +40,16 @@ struct PayloadStatusBadge: View {
     }
 
     var body: some View {
+        let displayText = text.replacingOccurrences(of: "_", with: " ").uppercased()
         Group {
             if large {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("PROTOCOL_STATE")
-                        .font(.system(size: 10, weight: .black, design: .monospaced))
+                        .font(.system(.caption2, design: .monospaced, weight: .black))
                         .foregroundStyle(TermTheme.tertiary)
                         .tracking(1.4)
-                    Text(text.replacingOccurrences(of: "_", with: " ").uppercased())
-                        .font(.system(size: 24, weight: .black, design: .monospaced))
+                    Text(displayText)
+                        .font(.system(.title2, design: .monospaced, weight: .black))
                         .foregroundStyle(resolvedTint)
                         .tracking(2.0)
                 }
@@ -56,13 +58,15 @@ struct PayloadStatusBadge: View {
                 .tacticalCard()
             } else {
                 VStack(alignment: .leading, spacing: TermTheme.s4) {
-                    Text(text.replacingOccurrences(of: "_", with: " ").uppercased())
-                        .font(.system(size: 12, weight: .black, design: .monospaced))
+                    Text(displayText)
+                        .font(.system(.caption, design: .monospaced, weight: .black))
                         .foregroundStyle(resolvedTint)
                 }
                 .padding(TermTheme.s12)
                 .background(resolvedTint.opacity(0.12), in: RoundedRectangle(cornerRadius: TermTheme.radiusSM, style: .continuous))
             }
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Protocol state: \(displayText)")
     }
 }

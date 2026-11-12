@@ -20,16 +20,18 @@ struct DriverLoadingView: View {
 
             VStack(spacing: LabTheme.s8) {
                 Text(title.uppercased())
-                    .font(.system(size: 14, weight: .black, design: .monospaced))
+                    .font(.system(.subheadline, design: .monospaced, weight: .black))
                     .foregroundStyle(LabTheme.fg)
                 Text(message)
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.system(.footnote, weight: .medium))
                     .foregroundStyle(LabTheme.fgSecondary)
                     .multilineTextAlignment(.center)
             }
         }
         .frame(maxWidth: .infinity, minHeight: 180)
         .padding(LabTheme.s24)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(title). \(message)")
         .onAppear {
             withAnimation(Anim.breathe) {
                 animating = true
@@ -51,29 +53,10 @@ struct DriverErrorView: View {
                 message: message
             )
             Button("RETRY", action: retry)
-                .font(.system(size: 14, weight: .black, design: .monospaced))
+                .font(.system(.subheadline, design: .monospaced, weight: .black))
+                .frame(minWidth: 44, minHeight: 44)
                 .buttonStyle(.pressable)
         }
-        .frame(maxWidth: .infinity, minHeight: 180)
-        .padding(LabTheme.s24)
-    }
-}
-
-struct DriverEmptyView: View {
-    let icon: String
-    let title: String
-    let message: String
-    var actionTitle: String? = nil
-    var action: (() -> Void)? = nil
-
-    var body: some View {
-        DriverStateCard(
-            icon: icon,
-            title: title,
-            message: message,
-            actionTitle: actionTitle,
-            action: action
-        )
         .frame(maxWidth: .infinity, minHeight: 180)
         .padding(LabTheme.s24)
     }

@@ -11,24 +11,28 @@ struct TruckSidebar: View {
                 if isExpanded || horizontalSizeClass == .compact {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("MANIFEST BOARD")
-                            .font(.system(size: 13, weight: .bold, design: .monospaced))
+                            .font(.system(.footnote, design: .monospaced, weight: .bold))
                             .foregroundStyle(TermTheme.secondary)
                         Text("DRAFT · LOADING · SEALED · DISPATCHED")
-                            .font(.system(size: 9, weight: .bold, design: .monospaced))
+                            .font(.system(.caption2, design: .monospaced, weight: .bold))
                             .foregroundStyle(TermTheme.tertiary)
                     }
+                    .accessibilityElement(children: .combine)
                 }
                 Spacer(minLength: 0)
                 if horizontalSizeClass == .regular {
                     Button {
+                        PegasusHaptics.selection()
                         withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
                             isExpanded.toggle()
                         }
                     } label: {
                         Image(systemName: "sidebar.left")
                             .foregroundStyle(TermTheme.secondary)
+                            .frame(minWidth: 44, minHeight: 44)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel(isExpanded ? "Collapse vehicle sidebar" : "Expand vehicle sidebar")
                 }
             }
             .padding(.horizontal, (isExpanded || horizontalSizeClass == .compact) ? 16 : 12)
@@ -72,8 +76,12 @@ struct TruckSidebar: View {
                             title: "BATCH FINALIZE",
                             subtitle: "\(viewModel.batchReadyManifestIds.count) trucks ready to seal"
                         )
-                        Button(viewModel.batchSealing ? "Finalizing…" : "Seal all trucks") {
+                        Button {
+                            PegasusHaptics.heavy()
                             Task { await viewModel.finalizeBatchSeal() }
+                        } label: {
+                            Text(viewModel.batchSealing ? "Finalizing…" : "Seal all trucks")
+                                .frame(maxWidth: .infinity, minHeight: 44)
                         }
                         .buttonStyle(.borderedProminent)
                         .disabled(viewModel.batchSealing)
@@ -91,10 +99,7 @@ struct TruckSidebar: View {
                     .padding(.vertical, 4)
                 }
             }
-            List(selection: Binding(
-                get: { viewModel.selectedTruckId },
-                set: { id in if let id { Task { await viewModel.selectTruck(id) } } }
-            )) {
+            List(selection: $viewModel.sidebarSelectionId) {
                 ForEach(ManifestBoard.group(viewModel.trucks), id: \.state) { column in
                     Section(column.trucks.isEmpty ? "\(column.state) · empty" : "\(column.state) · \(column.trucks.count)") {
                         if column.trucks.isEmpty {
@@ -122,6 +127,12 @@ struct TruckSidebar: View {
                     }
                 }
             }
+            .scrollDismissesKeyboard(.interactively)
+            .onChange(of: viewModel.sidebarSelectionId) { _, nextId in
+                guard let nextId, nextId != viewModel.selectedTruckId else { return }
+                PegasusHaptics.selection()
+                Task { await viewModel.selectTruck(nextId) }
+            }
             .refreshable { await viewModel.refreshTrucks() }
         }
     }
@@ -132,17 +143,20 @@ struct TruckSidebar: View {
                 ForEach(viewModel.trucks) { truck in
                     let selected = viewModel.selectedTruckId == truck.id
                     Button {
+                        PegasusHaptics.selection()
                         Task { await viewModel.selectTruck(truck.id) }
                     } label: {
                         Image(systemName: "truck.box.fill")
-                            .font(.system(size: 20, weight: selected ? .bold : .regular))
+                            .font(.system(.title3, weight: selected ? .bold : .regular))
                             .foregroundStyle(selected ? TermTheme.accent : TermTheme.secondary)
-                            .frame(width: 44, height: 44)
+                            .frame(minWidth: 44, minHeight: 44)
                             .background(
                                 RoundedRectangle(cornerRadius: 10, style: .continuous)
                                     .fill(selected ? TermTheme.accent.opacity(0.12) : Color.clear)
                             )
                     }
+                    .accessibilityLabel("Select truck \(truck.label ?? truck.licensePlate ?? truck.id)")
+                    .accessibilityAddTraits(selected ? [.isSelected] : [])
                     .buttonStyle(.plain)
                 }
             }
@@ -160,23 +174,26 @@ struct TruckRow: View {
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
                     .fill(TermTheme.accent.opacity(0.06))
                     .frame(width: 48, height: 48)
-                
+
                 Image(systemName: "truck.box.fill")
-                    .font(.system(size: 20, weight: .bold))
+                    .font(.system(.title3, weight: .bold))
                     .foregroundStyle(TermTheme.accent)
             }
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(displayLabel.uppercased())
-                    .font(.system(size: 16, weight: .black, design: .monospaced))
+                    .font(.system(.callout, design: .monospaced, weight: .black))
                     .foregroundStyle(TermTheme.accent)
-                
+
                 Text(subtitle.uppercased())
-                    .font(.system(size: 11, weight: .bold, design: .monospaced))
+                    .font(.system(.caption, design: .monospaced, weight: .bold))
                     .foregroundStyle(TermTheme.secondary)
             }
         }
+        .frame(minHeight: 48)
         .padding(.vertical, 8)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(displayLabel), \(subtitle)")
     }
 
     private var displayLabel: String {

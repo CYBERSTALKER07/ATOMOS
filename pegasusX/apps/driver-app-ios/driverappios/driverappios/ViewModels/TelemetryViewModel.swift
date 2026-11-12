@@ -6,6 +6,7 @@
 import CoreLocation
 import Network
 import SwiftUI
+import Observation
 
 @Observable
 @MainActor
@@ -18,8 +19,7 @@ final class TelemetryViewModel {
 
     private let service: TelemetryServiceProtocol
     private let driverId: String
-    private let monitor = NWPathMonitor()
-    private let monitorQueue = DispatchQueue(label: "telemetry.network.monitor")
+    private var isTrackingNetwork = false
     private var lastSentLocation: CLLocationCoordinate2D?
 
     // MARK: - Init
@@ -48,26 +48,31 @@ final class TelemetryViewModel {
             return
         }
         await service.connect(url: url)
-        syncLiveFlags()
+        syncLiveFlags(networkSatisfied: NetworkLifecycleEngine.shared.isOnline)
 
-        // Start network monitoring for auto-sync
-        monitor.pathUpdateHandler = { [weak self] path in
-            guard let self else { return }
+        isTrackingNetwork = true
+        trackNetworkState()
+    }
+
+    private func trackNetworkState() {
+        guard isTrackingNetwork else { return }
+        withObservationTracking {
+            let online = NetworkLifecycleEngine.shared.isOnline
+            self.syncLiveFlags(networkSatisfied: online)
+        } onChange: {
             Task { @MainActor [weak self] in
-                guard let self else { return }
-                self.syncLiveFlags(networkSatisfied: path.status == .satisfied)
-                // Flush queued offline deliveries when connectivity restores
-                if path.status == .satisfied {
+                guard let self, self.isTrackingNetwork else { return }
+                if NetworkLifecycleEngine.shared.isOnline {
                     await FleetServiceLive.shared.flushOfflineQueue()
                 }
+                self.trackNetworkState()
             }
         }
-        monitor.start(queue: monitorQueue)
     }
 
     func stop() {
+        isTrackingNetwork = false
         service.disconnect()
-        monitor.cancel()
         isLive = false
         isCommandSocketLive = false
     }

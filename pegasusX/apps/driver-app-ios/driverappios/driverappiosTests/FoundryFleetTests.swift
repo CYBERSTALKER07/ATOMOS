@@ -7,6 +7,7 @@ import Testing
 import Foundation
 @testable import driverappios
 
+@MainActor
 struct FoundryFleetTests {
 
     @Test func dvirChecklist_allPassHasNoCriticalDefect() {
@@ -16,15 +17,12 @@ struct FoundryFleetTests {
         #expect(vm.isRedTagQuarantined == false)
     }
 
-    @Test func dvirChecklist_brakeAndReeferFailuresTriggerCriticalDefects() {
+    @Test func dvirChecklist_brakeFailureTriggersCriticalDefect() {
         let vm = FleetDVIRViewModel()
-        vm.requiresColdChain = true
         vm.toggleBrakes()
-        vm.toggleReeferCalibration()
 
         #expect(vm.hasCriticalDefect == true)
         #expect(vm.failedPoints.contains("service_and_parking_brakes") == true)
-        #expect(vm.failedPoints.contains("reefer_temp_calibrated") == true)
     }
 
     @Test func midRouteRescue_splitsDriverLiabilityAndQuarantinesSpoiledTotes() throws {

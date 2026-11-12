@@ -1,6 +1,5 @@
 import Foundation
 import SwiftData
-import PegasusKit
 
 @Model
 final class QueuedDriverAction {

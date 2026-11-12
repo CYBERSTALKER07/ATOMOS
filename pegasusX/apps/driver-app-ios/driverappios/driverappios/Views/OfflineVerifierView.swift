@@ -22,6 +22,7 @@ struct OfflineVerifierView: View {
                 .padding(.horizontal, LabTheme.s16)
                 .padding(.bottom, 40)
             }
+            .scrollDismissesKeyboard(.interactively)
             .background(LabTheme.bg)
             .navigationBarTitleDisplayMode(.inline)
         }
@@ -35,11 +36,11 @@ struct OfflineVerifierView: View {
     private var headerView: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text("mobile_driver.ui.offline_verification_terminal")
-                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                .font(.system(.caption2, design: .monospaced, weight: .bold))
                 .foregroundStyle(LabTheme.fgTertiary)
 
             Text("mobile_driver.ui.hash_manifest_protocol")
-                .font(.system(size: 20, weight: .bold))
+                .font(.system(.title3, weight: .bold))
                 .foregroundStyle(LabTheme.fg)
         }
         .padding(.top, LabTheme.s24)
@@ -79,7 +80,7 @@ struct OfflineVerifierView: View {
     private var idleCard: some View {
         VStack(spacing: 16) {
             Image(systemName: "shield.lefthalf.filled")
-                .font(.system(size: 40))
+                .font(.system(.largeTitle))
                 .foregroundStyle(LabTheme.fg)
 
             Text("mobile_driver.ui.offline_cryptographic_verification_allows_delivery_confirmation_")
@@ -179,11 +180,11 @@ struct OfflineVerifierView: View {
     private func verifiedCard(_ orderId: String) -> some View {
         VStack(spacing: 14) {
             Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 48))
+                .font(.system(.largeTitle))
                 .foregroundStyle(LabTheme.success)
 
             Text("mobile_driver.ui.verified")
-                .font(.system(size: 28, weight: .bold))
+                .font(.system(.title, weight: .bold))
                 .foregroundStyle(LabTheme.success)
 
             Text(orderId)
@@ -210,7 +211,7 @@ struct OfflineVerifierView: View {
     private func fraudCard(_ reason: String) -> some View {
         VStack(spacing: 14) {
             Image(systemName: "exclamationmark.triangle.fill")
-                .font(.system(size: 48))
+                .font(.system(.largeTitle))
                 .foregroundStyle(LabTheme.destructive)
 
             Text("mobile_driver.ui.fraud_detected")
@@ -237,7 +238,7 @@ struct OfflineVerifierView: View {
     private func errorCard(_ reason: String) -> some View {
         VStack(spacing: 14) {
             Image(systemName: "xmark.octagon.fill")
-                .font(.system(size: 48))
+                .font(.system(.largeTitle))
                 .foregroundStyle(LabTheme.destructive)
 
             Text("mobile_driver.ui.system_error")
@@ -276,7 +277,7 @@ struct OfflineVerifierView: View {
     private func monoButton(_ title: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(title)
-                .font(.system(size: 15, weight: .bold))
+                .font(.system(.subheadline, weight: .bold))
                 .foregroundStyle(LabTheme.buttonFg)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)
@@ -288,7 +289,7 @@ struct OfflineVerifierView: View {
     private func destructiveButton(_ title: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(title)
-                .font(.system(size: 15, weight: .bold))
+                .font(.system(.subheadline, weight: .bold))
                 .foregroundStyle(.white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)

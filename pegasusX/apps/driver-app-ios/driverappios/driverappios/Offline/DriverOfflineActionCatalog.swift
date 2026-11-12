@@ -1,5 +1,4 @@
 import Foundation
-import PegasusKit
 
 enum DriverOfflineActionStatus: String {
     case pending = "PENDING"

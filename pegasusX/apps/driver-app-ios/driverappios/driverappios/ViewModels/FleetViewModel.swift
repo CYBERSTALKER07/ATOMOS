@@ -4,7 +4,6 @@
 //
 
 import CoreLocation
-import Combine
 import SwiftUI
 
 @Observable
@@ -164,12 +163,12 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
         if let fetchedEarnings = try? await earningsTask {
             earnings = fetchedEarnings
         } else {
-            earnings = DriverEarningsResponse.sample
+            earnings = nil
         }
         if let fetchedHistory = try? await historyTask {
             historyRows = fetchedHistory.rows
         } else {
-            historyRows = DriverHistoryResponse.samples
+            historyRows = []
         }
     }
 
@@ -225,21 +224,8 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
                 )
             }
         } catch {
-            // Resilient fallback for offline / mock testing: provide sample missions
-            orders = Order.samples
-            missions = orders.map { order in
-                Mission(
-                    order_id: order.id,
-                    state: order.state.rawValue,
-                    target_lat: order.latitude,
-                    target_lng: order.longitude,
-                    amount: order.totalAmount,
-                    gateway: order.paymentGateway ?? "CASH",
-                    estimated_arrival_at: order.estimatedArrivalAt,
-                    route_id: order.routeId,
-                    sequence_index: order.sequenceIndex
-                )
-            }
+            orders = []
+            missions = []
         }
 
         deriveTruckStatus()
@@ -446,6 +432,7 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
                 gateExplain = nil
             } catch {
                 // Graceful degradation — allow depart if gate check fails
+                print("[FleetViewModel] manifest gate check soft-failed: \(error.localizedDescription)")
             }
         }
 
@@ -663,7 +650,9 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
                 if let idx = orders.firstIndex(where: { $0.id == updated.id }) {
                     orders[idx] = updated
                 }
-            } catch { }
+            } catch {
+                print("[FleetViewModel] legacyStartTransit order=\(order.id) failed: \(error.localizedDescription)")
+            }
         }
         isTelemetryLive = true
         deriveTruckStatus()

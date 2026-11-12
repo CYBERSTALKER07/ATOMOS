@@ -12,22 +12,23 @@ struct DriverSectionHeader: View {
         HStack(alignment: .firstTextBaseline) {
             VStack(alignment: .leading, spacing: LabTheme.s4) {
                 Text(title.uppercased())
-                    .font(.system(size: 12, weight: .black, design: .monospaced))
+                    .font(.system(.caption, design: .monospaced, weight: .black))
                     .foregroundStyle(LabTheme.fgSecondary)
                 if let subtitle, !subtitle.isEmpty {
                     Text(subtitle)
-                        .font(.system(size: 11, weight: .medium, design: .monospaced))
+                        .font(.system(.caption2, design: .monospaced, weight: .medium))
                         .foregroundStyle(LabTheme.fgTertiary)
                 }
             }
             Spacer()
             if let trailing, !trailing.isEmpty {
                 Text(trailing.uppercased())
-                    .font(.system(size: 11, weight: .black, design: .monospaced))
+                    .font(.system(.caption2, design: .monospaced, weight: .black))
                     .foregroundStyle(trailingTint)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -44,42 +45,12 @@ struct DriverStatusBadge: View {
 
     var body: some View {
         Text(text.replacingOccurrences(of: "_", with: " ").uppercased())
-            .font(.system(size: large ? 11 : 9, weight: .black, design: .monospaced))
+            .font(.system(large ? .caption : .caption2, design: .monospaced, weight: .black))
             .foregroundStyle(resolvedTint)
             .padding(.horizontal, large ? 12 : 8)
             .padding(.vertical, large ? 6 : 4)
             .background(resolvedTint.opacity(0.14), in: Capsule())
             .overlay(Capsule().stroke(resolvedTint.opacity(0.2), lineWidth: 0.5))
-    }
-}
-
-// MARK: - KPI tile
-
-struct KpiTile: View {
-    let label: String
-    let value: String
-    var icon: String? = nil
-    var tint: Color = LabTheme.fg
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: LabTheme.s8) {
-            if let icon {
-                Image(systemName: icon)
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(LabTheme.fgTertiary)
-            }
-            Text(label.uppercased())
-                .font(.system(size: 10, weight: .black, design: .monospaced))
-                .foregroundStyle(LabTheme.fgTertiary)
-            Text(value)
-                .font(.system(size: value.count > 10 ? 14 : 18, weight: .bold, design: .monospaced))
-                .foregroundStyle(tint)
-                .minimumScaleFactor(0.7)
-                .lineLimit(1)
-        }
-        .padding(LabTheme.s16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .labCard()
     }
 }
 

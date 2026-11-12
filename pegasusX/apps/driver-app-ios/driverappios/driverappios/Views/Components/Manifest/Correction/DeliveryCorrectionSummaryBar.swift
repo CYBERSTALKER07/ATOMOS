@@ -14,7 +14,7 @@ struct DeliveryCorrectionSummaryBar: View {
                         vm.evidencePhotoURL.isEmpty ? "Add damage photo" : "Photo ready — change",
                         systemImage: "camera.fill"
                     )
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.system(.footnote, weight: .semibold))
                     .foregroundStyle(LabTheme.fg)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 10)
@@ -83,7 +83,7 @@ struct DeliveryCorrectionSummaryBar: View {
                 Text(vm.hasRejections
                      ? "Submit Amendment (\(vm.rejectedCount) rejected)"
                      : "All Items Delivered")
-                    .font(.system(size: 15, weight: .bold))
+                    .font(.system(.subheadline, weight: .bold))
                     .foregroundStyle(vm.hasRejections ? .white : LabTheme.fgTertiary)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)

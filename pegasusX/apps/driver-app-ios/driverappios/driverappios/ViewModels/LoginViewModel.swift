@@ -31,17 +31,17 @@ final class LoginViewModel {
     }
 
     func setPin(_ value: String) {
-        let digits = value.filter { $0.isNumber }
-        pin = String(digits.prefix(6))
+        let sanitized = String(value.filter { $0.isNumber }.prefix(6))
+        if pin != sanitized {
+            pin = sanitized
+        }
     }
 
     func setOtp(_ value: String) {
-        let digits = value.filter { $0.isNumber }
-        otpCode = String(digits.prefix(6))
-    }
-
-    func loginDemoDriver() {
-        TokenStore.shared.save(response: .mock)
+        let sanitized = String(value.filter { $0.isNumber }.prefix(6))
+        if otpCode != sanitized {
+            otpCode = sanitized
+        }
     }
 
     func sendOtp() async {

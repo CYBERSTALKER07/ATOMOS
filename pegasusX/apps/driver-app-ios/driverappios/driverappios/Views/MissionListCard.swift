@@ -60,14 +60,14 @@ struct MissionListCard: View {
                         .frame(width: 44, height: 44)
 
                     Image(systemName: "shippingbox.fill")
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.system(.callout, weight: .semibold))
                         .foregroundStyle(LabTheme.fg)
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 6) {
                         Text(L10n.format("mobile_driver.ui.ord_uppercased", "\(mission.order_id.suffix(4).uppercased())"))
-                            .font(.system(size: 14, weight: .black, design: .monospaced))
+                            .font(.system(.subheadline, design: .monospaced, weight: .black))
                             .foregroundStyle(LabTheme.fg)
 
                         DriverStatusBadge(text: "ACTIVE", tint: LabTheme.live)
@@ -78,7 +78,7 @@ struct MissionListCard: View {
                         Text("—")
                         Text(mission.amount.formattedAmount)
                     }
-                    .font(.system(size: 12, weight: .bold, design: .monospaced)) // Bold mono
+                    .font(.system(.caption, design: .monospaced, weight: .bold)) // Bold mono
                     .foregroundStyle(LabTheme.fgSecondary)
 
                     distanceLabel(for: mission)
@@ -87,7 +87,7 @@ struct MissionListCard: View {
                 Spacer()
 
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 11, weight: .bold))
+                    .font(.system(.caption2, weight: .bold))
                     .foregroundStyle(LabTheme.fgTertiary)
             }
             .padding(LabTheme.s16)
@@ -112,12 +112,12 @@ struct MissionListCard: View {
                     .frame(width: 5, height: 5)
 
                 Text(formattedDistance(dist))
-                    .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                    .font(.system(.caption2, design: .monospaced, weight: .semibold))
                     .foregroundStyle(inRange ? LabTheme.success : LabTheme.fgTertiary)
 
                 if inRange {
                     Text("mobile_driver.ui.in_range")
-                        .font(.system(size: 11, weight: .medium))
+                        .font(.system(.caption2, weight: .medium))
                         .foregroundStyle(LabTheme.success)
                 }
             }

@@ -25,9 +25,9 @@ enum EnterpriseUpdateConfig {
 
     static let policyRole = "DRIVER"
 
-    static let defaultManifestURL = URL(
+    static let defaultManifestURL: URL = URL(
         string: "https://storage.googleapis.com/pegasusx-ssmr-app-updates/ios/driver/updater.json"
-    )!
+    ) ?? URL(fileURLWithPath: "/")
 
     static var storeListingURL: URL? {
         if let s = Bundle.main.object(forInfoDictionaryKey: "PXAppStoreURL") as? String,

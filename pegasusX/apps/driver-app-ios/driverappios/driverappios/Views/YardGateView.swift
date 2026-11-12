@@ -7,21 +7,7 @@ import SwiftUI
 
 struct YardGateView: View {
 
-    @State private var depotId: String = "depot-tashkent-south"
-    @State private var supplierId: String = "supplier-tashkent-1"
-    @State private var vehicleId: String = "vh-isuzu-01"
-    @State private var licensePlate: String = "01 777 AAA"
-    @State private var direction: String = "GATE_OUT"
-    @State private var vehiclePurpose: String = "OUTBOUND_ROUTE"
-    @State private var boltSealBarcode: String = "SEAL-UZ-44912"
-    @State private var sealIntact: Bool = true
-    @State private var assignedBaySlot: String = "OUTBOUND_LOADING"
-
-    @State private var isSubmitting: Bool = false
-    @State private var recordedEvent: YardGateCheckEvent? = nil
-    @State private var statusMessage: String? = nil
-    @State private var errorMessage: String? = nil
-
+    @State private var vm = YardGateViewModel()
     let onBack: () -> Void
 
     var body: some View {
@@ -30,32 +16,35 @@ struct YardGateView: View {
                 VStack(alignment: .leading, spacing: 20) {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Yard Gate Check-In/Out")
-                            .font(.system(size: 24, weight: .bold))
+                            .font(.system(.title2, weight: .bold))
                         Text("ALPR Vehicle & Bolt Seal Security Verification")
-                            .font(.system(size: 14))
+                            .font(.system(.subheadline))
                             .foregroundStyle(LabTheme.fgSecondary)
                     }
                     .padding(.top, 12)
 
                     // Gate Direction Picker
-                    Picker("Direction", selection: $direction) {
+                    Picker("Direction", selection: $vm.direction) {
                         Text("Gate Out (Departure)").tag("GATE_OUT")
                         Text("Gate In (Arrival)").tag("GATE_IN")
                     }
                     .pickerStyle(.segmented)
+                    .onChange(of: vm.direction) { _, _ in
+                        vm.updateBaySlot()
+                    }
 
                     // Vehicle & Plate Card
                     VStack(alignment: .leading, spacing: 14) {
                         Text("ALPR Optical Recognition")
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(.system(.subheadline, weight: .semibold))
                             .foregroundStyle(LabTheme.fgSecondary)
 
                         HStack {
                             Text("License Plate:")
-                                .font(.system(size: 14))
+                                .font(.system(.subheadline))
                             Spacer()
-                            Text(licensePlate)
-                                .font(.system(size: 16, weight: .heavy, design: .monospaced))
+                            Text(vm.licensePlate)
+                                .font(.system(.callout, design: .monospaced, weight: .heavy))
                                 .padding(.horizontal, 10)
                                 .padding(.vertical, 4)
                                 .background(Color.yellow.opacity(0.2))
@@ -64,142 +53,119 @@ struct YardGateView: View {
 
                         HStack {
                             Text("Vehicle Unit ID:")
-                                .font(.system(size: 14))
+                                .font(.system(.subheadline))
                             Spacer()
-                            Text(vehicleId)
-                                .font(.system(size: 14, weight: .bold, design: .monospaced))
+                            Text(vm.vehicleId)
+                                .font(.system(.subheadline, design: .monospaced, weight: .bold))
                         }
 
                         HStack {
                             Text("Purpose:")
-                                .font(.system(size: 14))
+                                .font(.system(.subheadline))
                             Spacer()
-                            Text(vehiclePurpose)
-                                .font(.system(size: 13, weight: .bold))
+                            Text(vm.vehiclePurpose)
+                                .font(.system(.footnote, weight: .bold))
                                 .foregroundStyle(Color.blue)
                         }
                     }
                     .padding(16)
                     .background(LabTheme.card)
                     .clipShape(RoundedRectangle(cornerRadius: 16))
+                    .accessibilityElement(children: .combine)
 
                     // Bolt Seal Card
                     VStack(alignment: .leading, spacing: 14) {
                         Text("Tamper-Evident Bolt Seal")
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(.system(.subheadline, weight: .semibold))
                             .foregroundStyle(LabTheme.fgSecondary)
 
                         VStack(alignment: .leading, spacing: 4) {
                             Text("Seal Barcode:")
-                                .font(.system(size: 12))
+                                .font(.system(.caption))
                                 .foregroundStyle(LabTheme.fgSecondary)
-                            TextField("Enter or scan seal barcode", text: $boltSealBarcode)
+                            TextField("Enter or scan seal barcode", text: $vm.boltSealBarcode)
                                 .textFieldStyle(.roundedBorder)
-                                .font(.system(size: 14, design: .monospaced))
+                                .font(.system(.subheadline, design: .monospaced))
                         }
 
-                        Toggle("Physical Bolt Seal Intact", isOn: $sealIntact)
+                        Toggle("Physical Bolt Seal Intact", isOn: $vm.sealIntact)
                             .tint(.green)
-                            .onChange(of: sealIntact) { _, intact in
-                                assignedBaySlot = intact ? (direction == "GATE_OUT" ? "OUTBOUND_LOADING" : "BAY_3_INSPECTION") : "SECURITY_QUARANTINE_BAY"
+                            .onChange(of: vm.sealIntact) { _, _ in
+                                vm.updateBaySlot()
                             }
 
                         HStack {
                             Text("Assigned Bay Slot:")
-                                .font(.system(size: 14))
+                                .font(.system(.subheadline))
                             Spacer()
-                            Text(assignedBaySlot)
-                                .font(.system(size: 14, weight: .heavy, design: .monospaced))
-                                .foregroundStyle(sealIntact ? Color.primary : Color.red)
+                            Text(vm.assignedBaySlot)
+                                .font(.system(.subheadline, design: .monospaced, weight: .heavy))
+                                .foregroundStyle(vm.sealIntact ? Color.primary : Color.red)
                         }
 
-                        if !sealIntact {
+                        if !vm.sealIntact {
                             Text("CRITICAL: Broken or mismatched seal triggers automatic quarantine bay redirection.")
-                                .font(.system(size: 12, weight: .semibold))
+                                .font(.system(.caption, weight: .semibold))
                                 .foregroundStyle(Color.red)
                         }
                     }
                     .padding(16)
                     .background(LabTheme.card)
                     .clipShape(RoundedRectangle(cornerRadius: 16))
+                    .accessibilityElement(children: .combine)
 
-                    if let msg = statusMessage {
+                    if let msg = vm.statusMessage {
                         Text(msg)
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(.system(.subheadline, weight: .semibold))
                             .foregroundStyle(Color.green)
                             .padding(12)
                     }
 
-                    if let err = errorMessage {
+                    if let err = vm.errorMessage {
                         Text(err)
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(.system(.subheadline, weight: .semibold))
                             .foregroundStyle(Color.red)
                             .padding(12)
                     }
 
                     Button {
                         Task {
-                            await submitGateCheck()
+                            await vm.submitGateCheck()
                         }
                     } label: {
                         HStack {
-                            if isSubmitting {
+                            if vm.isSubmitting {
                                 ProgressView().tint(.white)
                                 Spacer().frame(width: 8)
                             }
-                            Text(sealIntact ? "Authorize Gate Passage" : "Quarantine & Alert Yard Marshall")
-                                .font(.system(size: 16, weight: .bold))
+                            Text(vm.sealIntact ? "Authorize Gate Passage" : "Quarantine & Alert Yard Marshall")
+                                .font(.system(.callout, weight: .bold))
                         }
                         .frame(maxWidth: .infinity)
                         .frame(height: 52)
-                        .background(sealIntact ? Color.blue : Color.red)
+                        .background(vm.sealIntact ? Color.blue : Color.red)
                         .foregroundStyle(.white)
                         .clipShape(RoundedRectangle(cornerRadius: 14))
                     }
-                    .disabled(isSubmitting)
+                    .disabled(vm.isSubmitting)
 
                     Spacer(minLength: 40)
                 }
                 .padding(.horizontal, 20)
             }
+            .scrollDismissesKeyboard(.interactively)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button(action: onBack) {
                         Image(systemName: "chevron.left")
-                            .font(.system(size: 16, weight: .semibold))
+                            .font(.system(.callout, weight: .semibold))
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
                     }
+                    .accessibilityLabel("Back")
                 }
             }
-        }
-    }
-
-    @MainActor
-    private func submitGateCheck() async {
-        isSubmitting = true
-        errorMessage = nil
-        statusMessage = nil
-
-        let event = YardGateCheckEvent(
-            depotId: depotId,
-            supplierId: supplierId,
-            vehicleId: vehicleId,
-            licensePlate: licensePlate,
-            direction: direction,
-            vehiclePurpose: vehiclePurpose,
-            boltSealBarcode: boltSealBarcode,
-            sealIntact: sealIntact,
-            assignedBaySlot: assignedBaySlot
-        )
-
-        do {
-            let res = try await APIClient.shared.recordGateEvent(event: event)
-            isSubmitting = false
-            recordedEvent = res
-            statusMessage = "Gate Event Logged: \(direction) for \(licensePlate) -> Bay: \(assignedBaySlot)"
-        } catch {
-            isSubmitting = false
-            errorMessage = error.localizedDescription
         }
     }
 }

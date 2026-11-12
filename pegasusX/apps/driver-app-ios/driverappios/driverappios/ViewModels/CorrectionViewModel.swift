@@ -4,6 +4,7 @@
 //
 
 import CoreLocation
+import PhotosUI
 import SwiftUI
 import UIKit
 
@@ -64,6 +65,16 @@ final class CorrectionViewModel {
     }
 
     // MARK: - Actions
+
+    func handlePickedPhoto(_ item: PhotosPickerItem?, orderId: String) async {
+        guard let item else { return }
+        guard let data = try? await item.loadTransferable(type: Data.self),
+              let image = UIImage(data: data) else {
+            submitError = "Could not read photo."
+            return
+        }
+        await uploadEvidence(image: image, orderId: orderId)
+    }
 
     func uploadEvidence(image: UIImage, orderId: String) async {
         isUploadingPhoto = true

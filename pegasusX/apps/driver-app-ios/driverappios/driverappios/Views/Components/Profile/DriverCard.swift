@@ -13,17 +13,17 @@ struct DriverCard: View {
                         .frame(width: 52, height: 52)
 
                     Text(String(vm.driverName.prefix(1)))
-                        .font(.system(size: 22, weight: .bold))
+                        .font(.system(.title2, weight: .bold))
                         .foregroundStyle(LabTheme.buttonFg)
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(vm.driverName)
-                        .font(.system(size: 17, weight: .bold))
+                        .font(.system(.body, weight: .bold))
                         .foregroundStyle(LabTheme.fg)
 
                     Text(vm.driverId)
-                        .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                        .font(.system(.caption, design: .monospaced, weight: .semibold))
                         .foregroundStyle(LabTheme.fgSecondary)
                 }
 
@@ -56,15 +56,15 @@ struct InfoTile: View {
     var body: some View {
         VStack(spacing: 6) {
             Image(systemName: icon)
-                .font(.system(size: 14))
+                .font(.system(.subheadline))
                 .foregroundStyle(LabTheme.fgSecondary)
 
             Text(value)
-                .font(.system(size: 14, weight: .bold, design: .monospaced))
+                .font(.system(.subheadline, design: .monospaced, weight: .bold))
                 .foregroundStyle(LabTheme.fg)
 
             Text(label)
-                .font(.system(size: 10, weight: .medium))
+                .font(.system(.caption2, weight: .medium))
                 .foregroundStyle(LabTheme.fgTertiary)
         }
         .frame(maxWidth: .infinity)

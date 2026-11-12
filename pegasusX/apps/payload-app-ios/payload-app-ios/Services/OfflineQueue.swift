@@ -84,9 +84,9 @@ final class OfflineQueue {
     let container: ModelContainer
     let context: ModelContext
 
-    private init() {
+    init(inMemory: Bool = false) {
         do {
-            let config = ModelConfiguration(isStoredInMemoryOnly: false)
+            let config = ModelConfiguration(isStoredInMemoryOnly: inMemory)
             container = try ModelContainer(for: QueuedActionModel.self, configurations: config)
             context = container.mainContext
         } catch {

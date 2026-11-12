@@ -11,7 +11,6 @@ import SwiftUI
 import UIKit
 
 struct OffloadReviewView: View {
-
     let response: ValidateQRResponse
     let scannedToken: String
     let driverId: String
@@ -22,61 +21,52 @@ struct OffloadReviewView: View {
     var onCreditDelivery: ((String, String, String, String?, String?) -> Void)?
     var onReportMissing: ((String) -> Void)?
 
-    @State private var rejectedQty: [String: Int] = [:]
-    @State private var rejectionReasons: [String: RejectionReason] = [:]
-    @State private var customReasons: [String: String] = [:]
-    @State private var isSubmitting = false
-    @State private var errorMessage: String?
+    @State private var vm: OffloadReviewViewModel
     @State private var driverSocketState = DriverSocketState.shared
-    @State private var pickedPhoto: PhotosPickerItem?
-    @State private var previewImage: UIImage?
-    @State private var evidencePhotoURL = ""
-    @State private var evidencePhotoLocalPath = ""
-    @State private var signatureURL = ""
-    @State private var signatureLocalPath = ""
-    @State private var isUploadingPhoto = false
 
-    private let fleetService: FleetServiceProtocol = FleetServiceLive.shared
-
-    private var hasRejections: Bool {
-        rejectedQty.values.contains { $0 > 0 }
-    }
-
-    private var needsPhotoProof: Bool {
-        response.items.contains { item in
-            let rejected = rejectedQty[item.id] ?? 0
-            guard rejected > 0 else { return false }
-            let reason = selectedReason(for: item)
-            return reason == .DAMAGED || reason == .WRONG_ITEM
-        }
-    }
-
-    private func selectedReason(for item: OrderLineItem) -> RejectionReason {
-        rejectionReasons[item.id] ?? .DAMAGED
-    }
-
-    private func reasonLabel(for reason: RejectionReason) -> String {
-        reason.rawValue.replacingOccurrences(of: "_", with: " ").capitalized
+    init(
+        response: ValidateQRResponse,
+        scannedToken: String,
+        driverId: String,
+        onConfirm: @escaping (ConfirmOffloadResponse) -> Void,
+        onCancel: @escaping () -> Void,
+        onShopClosed: ((String) -> Void)? = nil,
+        onCreditDelivery: ((String, String, String, String?, String?) -> Void)? = nil,
+        onReportMissing: ((String) -> Void)? = nil
+    ) {
+        self.response = response
+        self.scannedToken = scannedToken
+        self.driverId = driverId
+        self.onConfirm = onConfirm
+        self.onCancel = onCancel
+        self.onShopClosed = onShopClosed
+        self.onCreditDelivery = onCreditDelivery
+        self.onReportMissing = onReportMissing
+        self._vm = State(initialValue: OffloadReviewViewModel(response: response, scannedToken: scannedToken))
     }
 
     var body: some View {
+        @Bindable var vm = vm
         VStack(spacing: 0) {
             // MARK: - Header
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("mobile_driver.ui.offload_review")
-                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .font(.system(.caption2, design: .monospaced, weight: .bold))
                         .foregroundStyle(LabTheme.fgTertiary)
                     Text(response.orderId)
-                        .font(.system(size: 22, weight: .bold, design: .monospaced))
+                        .font(.system(.title2, design: .monospaced, weight: .bold))
                         .foregroundStyle(LabTheme.fg)
                 }
                 Spacer()
-                Button { onCancel() } label: {
+                Button {
+                    Haptics.light()
+                    onCancel()
+                } label: {
                     Image(systemName: "xmark")
-                        .font(.system(size: 11, weight: .bold))
+                        .font(.system(.caption, weight: .bold))
                         .foregroundStyle(LabTheme.fgSecondary)
-                        .frame(width: 28, height: 28)
+                        .frame(width: 44, height: 44)
                         .background(LabTheme.fg.opacity(0.06), in: Circle())
                 }
                 .accessibilityLabel("Close")
@@ -95,130 +85,36 @@ struct OffloadReviewView: View {
             ScrollView {
                 VStack(spacing: 8) {
                     ForEach(response.items) { item in
-                        let rejected = rejectedQty[item.id] ?? 0
-                        let fullyRejected = rejected == item.quantity
-                        let partiallyRejected = rejected > 0 && rejected < item.quantity
-                        VStack(alignment: .leading, spacing: 10) {
-                            HStack {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(item.productName)
-                                        .font(.system(size: 14, weight: .medium))
-                                        .foregroundStyle(fullyRejected ? LabTheme.fgTertiary : LabTheme.fg)
-                                        .strikethrough(fullyRejected)
-                                    Text(L10n.format("mobile_driver.ui.quantity_formattedamount", "\(item.quantity)", "\(item.unitPrice.formattedAmount)"))
-                                        .font(.system(size: 12, design: .monospaced))
-                                        .foregroundStyle(LabTheme.fgTertiary)
-                                }
-                                Spacer()
-
-                                HStack(spacing: 6) {
-                                    Button {
-                                        if (rejectedQty[item.id] ?? 0) > 0 {
-                                            let nextRejected = (rejectedQty[item.id] ?? 0) - 1
-                                            rejectedQty[item.id] = nextRejected
-                                            if nextRejected == 0 {
-                                                rejectionReasons.removeValue(forKey: item.id)
-                                                customReasons.removeValue(forKey: item.id)
-                                            }
-                                        }
-                                    } label: {
-                                        Image(systemName: "minus.circle.fill")
-                                            .font(.system(size: 20))
-                                            .foregroundStyle((rejectedQty[item.id] ?? 0) > 0 ? LabTheme.destructive : LabTheme.fgTertiary)
-                                    }
-                                    Text("\(rejected)")
-                                        .font(.system(size: 14, weight: .bold, design: .monospaced))
-                                        .foregroundStyle(
-                                            fullyRejected ? LabTheme.destructive :
-                                            partiallyRejected ? Color.orange :
-                                            LabTheme.success
-                                        )
-                                        .frame(minWidth: 22, alignment: .center)
-                                    Button {
-                                        if (rejectedQty[item.id] ?? 0) < item.quantity {
-                                            rejectedQty[item.id] = (rejectedQty[item.id] ?? 0) + 1
-                                            if rejectionReasons[item.id] == nil {
-                                                rejectionReasons[item.id] = .DAMAGED
-                                            }
-                                        }
-                                    } label: {
-                                        Image(systemName: "plus.circle.fill")
-                                            .font(.system(size: 20))
-                                            .foregroundStyle((rejectedQty[item.id] ?? 0) < item.quantity ? LabTheme.destructive : LabTheme.fgTertiary)
-                                    }
-                                }
-                            }
-
-                            if rejected > 0 {
-                                HStack {
-                                    Spacer()
-                                    Menu {
-                                        ForEach(RejectionReason.allCases, id: \.self) { reason in
-                                            Button {
-                                                rejectionReasons[item.id] = reason
-                                            } label: {
-                                                if selectedReason(for: item) == reason {
-                                                    Label(reasonLabel(for: reason), systemImage: "checkmark")
-                                                } else {
-                                                    Text(reasonLabel(for: reason))
-                                                }
-                                            }
-                                        }
-                                    } label: {
-                                        HStack(spacing: 6) {
-                                            Image(systemName: "exclamationmark.circle")
-                                            Text(reasonLabel(for: selectedReason(for: item)))
-                                            Image(systemName: "chevron.down")
-                                                .font(.system(size: 11, weight: .bold))
-                                        }
-                                        .font(.system(size: 12, weight: .semibold))
-                                        .foregroundStyle(LabTheme.fg)
-                                        .padding(.horizontal, 10)
-                                        .padding(.vertical, 8)
-                                        .background(LabTheme.fg.opacity(0.06), in: Capsule())
-                                    }
-                                }
-                                if selectedReason(for: item) == .OTHER {
-                                    TextField("mobile_driver.ui.describe_the_issue", text: Binding(
-                                        get: { customReasons[item.id] ?? "" },
-                                        set: { customReasons[item.id] = $0 }
-                                    ), axis: .vertical)
-                                    .lineLimit(2...4)
-                                    .textFieldStyle(.roundedBorder)
-                                    .padding(.leading, 0)
-                                }
-                            }
-                        }
-                        .padding(.horizontal, LabTheme.s24)
-                        .padding(.vertical, LabTheme.s8)
+                        OffloadLineItemRow(item: item, vm: vm)
                     }
                 }
             }
+            .scrollDismissesKeyboard(.interactively)
 
             // MARK: - PoD / damage photo proof
             VStack(alignment: .leading, spacing: 8) {
                 Text("mobile_driver.ui.proof_of_delivery_photo")
-                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                    .font(.system(.caption2, design: .monospaced, weight: .bold))
                     .foregroundStyle(LabTheme.fgTertiary)
-                PhotosPicker(selection: $pickedPhoto, matching: .images) {
+                PhotosPicker(selection: $vm.pickedPhoto, matching: .images) {
                     Label(
-                        evidencePhotoURL.isEmpty ? "Take or choose photo" : "Photo ready — change",
+                        vm.evidencePhotoURL.isEmpty ? "Take or choose photo" : "Photo ready — change",
                         systemImage: "camera.fill"
                     )
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.system(.subheadline, weight: .semibold))
                     .foregroundStyle(LabTheme.fg)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .padding(.vertical, 6)
                     .background(LabTheme.fg.opacity(0.06), in: .rect(cornerRadius: LabTheme.buttonRadius))
                 }
-                .onChange(of: pickedPhoto) { _, item in
-                    Task { await uploadPickedPhoto(item) }
+                .onChange(of: vm.pickedPhoto) { _, item in
+                    Task { await vm.uploadPickedPhoto(item) }
                 }
-                if isUploadingPhoto {
+                if vm.isUploadingPhoto {
                     ProgressView("Uploading proof…")
                         .tint(LabTheme.fg)
                 }
-                if let previewImage {
+                if let previewImage = vm.previewImage {
                     Image(uiImage: previewImage)
                         .resizable()
                         .scaledToFit()
@@ -229,9 +125,9 @@ struct OffloadReviewView: View {
                     .font(.caption2)
                     .foregroundStyle(LabTheme.fgTertiary)
                 SignaturePadView { data in
-                    Task { await saveSignature(data) }
+                    Task { await vm.saveSignature(data) }
                 }
-                if !signatureURL.isEmpty || !signatureLocalPath.isEmpty {
+                if !vm.signatureURL.isEmpty || !vm.signatureLocalPath.isEmpty {
                     Text("Signature ready")
                         .font(.caption2)
                         .foregroundStyle(LabTheme.success)
@@ -241,9 +137,9 @@ struct OffloadReviewView: View {
             .padding(.bottom, LabTheme.s12)
 
             // MARK: - Error
-            if let error = errorMessage {
+            if let error = vm.errorMessage {
                 Text(error)
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.system(.footnote, weight: .medium))
                     .foregroundStyle(LabTheme.destructive)
                     .padding(.horizontal, LabTheme.s24)
                     .padding(.bottom, LabTheme.s8)
@@ -251,175 +147,138 @@ struct OffloadReviewView: View {
 
             OffloadActionFooter(
                 orderId: response.orderId,
-                hasRejections: hasRejections,
-                isSubmitting: isSubmitting || isUploadingPhoto,
+                hasRejections: vm.hasRejections,
+                isSubmitting: vm.isSubmitting || vm.isUploadingPhoto,
                 onShopClosed: onShopClosed,
                 onCreditDelivery: { orderId in
-                    let hasPhoto = !evidencePhotoURL.isEmpty || !evidencePhotoLocalPath.isEmpty
-                    let hasSig = !signatureURL.isEmpty || !signatureLocalPath.isEmpty
-                    guard hasPhoto else {
-                        errorMessage = "PoD photo required for credit leave — take a photo of the handoff first."
-                        return
-                    }
-                    guard hasSig else {
-                        errorMessage = "Signature required for credit leave — sign the pad and tap Save."
-                        return
-                    }
+                    guard let proof = vm.validateCreditLeave() else { return }
                     onCreditDelivery?(
                         orderId,
-                        evidencePhotoURL,
-                        signatureURL,
-                        evidencePhotoLocalPath.isEmpty ? nil : evidencePhotoLocalPath,
-                        signatureLocalPath.isEmpty ? nil : signatureLocalPath
+                        proof.photoURL,
+                        proof.signatureURL,
+                        proof.photoLocal,
+                        proof.sigLocal
                     )
                 },
                 onReportMissing: onReportMissing,
-                onConfirm: { confirmOffload() }
+                onConfirm: {
+                    Task {
+                        if let result = await vm.confirmOffload() {
+                            onConfirm(result)
+                        }
+                    }
+                }
             )
         }
         .background(LabTheme.bg)
         .onChange(of: driverSocketState.reconnectEpoch) { _, _ in
-            Task {
-                let hadInFlight = isSubmitting
-                await DriverReconnectRecovery.recoverInFlight(wasInFlight: hadInFlight)
-                if hadInFlight {
-                    isSubmitting = false
-                    errorMessage = DriverReconnectRecovery.hint
-                }
-            }
+            Task { await vm.handleReconnect() }
         }
     }
+}
 
-    private func uploadPickedPhoto(_ item: PhotosPickerItem?) async {
-        guard let item else { return }
-        isUploadingPhoto = true
-        errorMessage = nil
-        defer { isUploadingPhoto = false }
-        do {
-            guard let data = try await item.loadTransferable(type: Data.self),
-                  let image = UIImage(data: data) else {
-                errorMessage = "Could not read photo."
-                return
-            }
-            previewImage = image
-            if let jpeg = image.jpegData(compressionQuality: 0.82) {
-                evidencePhotoLocalPath = (try? MediaUploadService.savePodJPEG(jpeg, prefix: "photo")) ?? ""
-            }
-            do {
-                evidencePhotoURL = try await MediaUploadService.uploadJPEG(
-                    image: image,
-                    purpose: "credit_proof",
-                    orderId: response.orderId
-                )
-            } catch {
-                // Keep local path for offline credit flush.
-                evidencePhotoURL = ""
-                if evidencePhotoLocalPath.isEmpty {
-                    errorMessage = "Photo upload failed: \(error.localizedDescription)"
-                }
-            }
-        } catch {
-            evidencePhotoURL = ""
-            errorMessage = "Photo upload failed: \(error.localizedDescription)"
-        }
-    }
+private struct OffloadLineItemRow: View {
+    let item: OrderLineItem
+    @Bindable var vm: OffloadReviewViewModel
+    @State private var customReasonText: String = ""
 
-    private func saveSignature(_ data: Data) async {
-        errorMessage = nil
-        signatureLocalPath = (try? MediaUploadService.savePodJPEG(data, prefix: "sig")) ?? ""
-        do {
-            signatureURL = try await MediaUploadService.uploadJPEGData(
-                data,
-                purpose: "credit_proof",
-                orderId: response.orderId
-            )
-        } catch {
-            signatureURL = ""
-            if signatureLocalPath.isEmpty {
-                errorMessage = "Signature upload failed: \(error.localizedDescription)"
-            }
-        }
-    }
+    var body: some View {
+        let rejected = vm.rejectedQty[item.id] ?? 0
+        let fullyRejected = rejected == item.quantity
+        let partiallyRejected = rejected > 0 && rejected < item.quantity
 
-    private func confirmOffload() {
-        isSubmitting = true
-        errorMessage = nil
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(item.productName)
+                        .font(.system(.subheadline, weight: .medium))
+                        .foregroundStyle(fullyRejected ? LabTheme.fgTertiary : LabTheme.fg)
+                        .strikethrough(fullyRejected)
+                    Text(L10n.format("mobile_driver.ui.quantity_formattedamount", "\(item.quantity)", "\(item.unitPrice.formattedAmount)"))
+                        .font(.system(.caption, design: .monospaced))
+                        .foregroundStyle(LabTheme.fgTertiary)
+                }
+                Spacer()
 
-        Task {
-            let hasRejections = rejectedQty.values.contains { $0 > 0 }
-            if hasRejections {
-                let missingOther = response.items.first { item in
-                    let rejected = rejectedQty[item.id] ?? 0
-                    return rejected > 0 && selectedReason(for: item) == .OTHER && (customReasons[item.id] ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                }
-                if let missingOther {
-                    isSubmitting = false
-                    errorMessage = "Describe the issue for \(missingOther.productName)"
-                    return
-                }
-                if needsPhotoProof && evidencePhotoURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    isSubmitting = false
-                    errorMessage = "Photo required for damaged or wrong-item rejections."
-                    return
-                }
+                HStack(spacing: 4) {
+                    Button {
+                        vm.decrementRejection(for: item)
+                    } label: {
+                        Image(systemName: "minus.circle.fill")
+                            .font(.system(.title3))
+                            .foregroundStyle(rejected > 0 ? LabTheme.destructive : LabTheme.fgTertiary)
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .accessibilityLabel("Decrease rejected quantity for \(item.productName)")
 
-                // Route OS&D through exception-report so claims + photo_url are enforced.
-                let missingItems: [MissingItemRequest] = response.items.compactMap { item in
-                    let rejected = rejectedQty[item.id] ?? 0
-                    guard rejected > 0 else { return nil }
-                    let reason = selectedReason(for: item)
-                    let needsLinePhoto = reason == .DAMAGED || reason == .WRONG_ITEM
-                    return MissingItemRequest(
-                        skuId: item.productId,
-                        missingQty: rejected,
-                        reason: reason.rawValue,
-                        photoURL: needsLinePhoto ? evidencePhotoURL : nil
-                    )
-                }
-                do {
-                    _ = try await APIClient.shared.reportMissingItems(
-                        orderId: response.orderId,
-                        missingItems: missingItems,
-                        photoURL: evidencePhotoURL.isEmpty ? nil : evidencePhotoURL
-                    )
-                } catch {
-                    isSubmitting = false
-                    errorMessage = "Exception report failed: \(error.localizedDescription)"
-                    return
+                    Text("\(rejected)")
+                        .font(.system(.subheadline, design: .monospaced, weight: .bold))
+                        .foregroundStyle(
+                            fullyRejected ? LabTheme.destructive :
+                            partiallyRejected ? Color.orange :
+                            LabTheme.success
+                        )
+                        .frame(minWidth: 24, alignment: .center)
+
+                    Button {
+                        vm.incrementRejection(for: item)
+                    } label: {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.system(.title3))
+                            .foregroundStyle(rejected < item.quantity ? LabTheme.destructive : LabTheme.fgTertiary)
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .accessibilityLabel("Increase rejected quantity for \(item.productName)")
                 }
             }
 
-            // Canonical ARRIVED → AWAITING_PAYMENT via scan-qr (validate-qr already done).
-            do {
-                let adjustedAmount = response.items.reduce(0) { partial, item in
-                    let rejected = rejectedQty[item.id] ?? 0
-                    let accepted = max(0, item.quantity - rejected)
-                    return partial + (item.unitPrice * accepted)
+            if rejected > 0 {
+                HStack {
+                    Spacer()
+                    Menu {
+                        ForEach(RejectionReason.allCases, id: \.self) { reason in
+                            Button {
+                                vm.setReason(reason, for: item.id)
+                            } label: {
+                                if vm.selectedReason(for: item) == reason {
+                                    Label(vm.reasonLabel(for: reason), systemImage: "checkmark")
+                                } else {
+                                    Text(vm.reasonLabel(for: reason))
+                                }
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "exclamationmark.circle")
+                            Text(vm.reasonLabel(for: vm.selectedReason(for: item)))
+                            Image(systemName: "chevron.down")
+                                .font(.system(.caption2, weight: .bold))
+                        }
+                        .font(.system(.caption, weight: .semibold))
+                        .foregroundStyle(LabTheme.fg)
+                        .padding(.horizontal, 12)
+                        .frame(minHeight: 44)
+                        .background(LabTheme.fg.opacity(0.06), in: Capsule())
+                    }
+                    .accessibilityLabel("Rejection reason for \(item.productName)")
                 }
-                let result: ConfirmOffloadResponse
-                if !scannedToken.isEmpty {
-                    let scan = try await fleetService.scanDeliveryQR(
-                        orderId: response.orderId,
-                        qrToken: scannedToken
-                    )
-                    result = ConfirmOffloadResponse(
-                        orderId: scan.orderId.isEmpty ? response.orderId : scan.orderId,
-                        state: scan.state,
-                        paymentMethod: "",
-                        amount: adjustedAmount,
-                        invoiceId: nil,
-                        retailerId: "",
-                        message: "Collect payment"
-                    )
-                } else {
-                    result = try await fleetService.confirmOffload(orderId: response.orderId)
+
+                if vm.selectedReason(for: item) == .OTHER {
+                    TextField("mobile_driver.ui.describe_the_issue", text: $customReasonText, axis: .vertical)
+                        .lineLimit(2...4)
+                        .textFieldStyle(.roundedBorder)
+                        .onAppear {
+                            customReasonText = vm.customReasons[item.id] ?? ""
+                        }
+                        .onChange(of: customReasonText) { _, newValue in
+                            vm.setCustomReason(newValue, for: item.id)
+                        }
                 }
-                isSubmitting = false
-                onConfirm(result)
-            } catch {
-                isSubmitting = false
-                errorMessage = error.localizedDescription
             }
         }
+        .padding(.horizontal, LabTheme.s24)
+        .padding(.vertical, LabTheme.s8)
     }
 }

@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct RescueAcceptanceDialog: View {
     let targetDriverId: String
@@ -10,51 +11,62 @@ struct RescueAcceptanceDialog: View {
     var body: some View {
         VStack(spacing: 20) {
             Image(systemName: "lifepreserver.fill")
-                .font(.system(size: 48))
-                .foregroundColor(.orange)
-            
+                .font(.largeTitle.weight(.bold))
+                .foregroundStyle(.orange)
+                .accessibilityHidden(true)
+
             Text("URGENT RESCUE REQUEST")
                 .font(.title3)
                 .bold()
-                .foregroundColor(.red)
-            
+                .foregroundStyle(.red)
+
             VStack(spacing: 8) {
                 Text("Driver \(targetDriverId.prefix(8)) is stalled at:")
                     .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                 Text(location)
                     .font(.headline)
                 Text("They have \(ordersToRescue) orders at risk.")
                     .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
             .multilineTextAlignment(.center)
-            
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Urgent rescue request. Driver \(targetDriverId.prefix(8)) stalled at \(location) with \(ordersToRescue) orders at risk.")
+
             HStack(spacing: 16) {
-                Button(action: onDecline) {
+                Button {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    onDecline()
+                } label: {
                     Text("DECLINE")
                         .font(.headline)
-                        .foregroundColor(.gray)
-                        .frame(maxWidth: .infinity)
-                        .padding()
+                        .foregroundStyle(.gray)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .padding(.vertical, 8)
                         .background(Color.gray.opacity(0.2))
-                        .cornerRadius(8)
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                 }
-                
-                Button(action: onAccept) {
+                .accessibilityLabel("Decline rescue request")
+
+                Button {
+                    UINotificationFeedbackGenerator().notificationOccurred(.success)
+                    onAccept()
+                } label: {
                     Text("ACCEPT RESCUE")
                         .font(.headline)
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding()
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .padding(.vertical, 8)
                         .background(Color.orange)
-                        .cornerRadius(8)
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                 }
+                .accessibilityLabel("Accept rescue request")
             }
         }
         .padding(24)
         .background(Color.white)
-        .cornerRadius(16)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .shadow(radius: 10)
         .padding(24)
     }

@@ -5,7 +5,7 @@ import UIKit
 enum AutoUpdater {
     private static let defaultManifestURL = URL(
         string: "https://storage.googleapis.com/pegasusx-ssmr-app-updates/ios/payload/updater.json"
-    )!
+    ) ?? URL(fileURLWithPath: "/")
 
     static func checkForUpdates(updateURL: String? = nil) {
         if !EnterpriseUpdateConfig.enableCdnOta {
@@ -32,7 +32,7 @@ enum AutoUpdater {
                     await MainActor.run { promptInstall(manifestURL: manifestURL) }
                 }
             } catch {
-                // Best-effort
+                print("[AutoUpdater] update check skipped: \(error.localizedDescription)")
             }
         }
     }

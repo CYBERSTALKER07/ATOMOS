@@ -46,7 +46,15 @@ targets:
           mkdir -p "$SRCROOT/payload-app-ios/Generated"
           cd "$BACKEND_DIR"
           go run ./cmd/gen-contracts -source events -mode json-schema -schema-out "$SCHEMA_PATH" -pretty=true -strict=true
-          quicktype --lang swift --src-lang schema --src "$SCHEMA_PATH" --top-level PegasusWSEventEnvelope --out "$OUTPUT_PATH"
+          # Stream quicktype -> perl -> declared output. In-place edits (perl -i / sed -i)
+          # need a sibling temp file, which ENABLE_USER_SCRIPT_SANDBOXING denies silently.
+          quicktype --lang swift --src-lang schema --src "$SCHEMA_PATH" --top-level PegasusWSEventEnvelope \
+            | perl -pe 's/let key = JSONCodingKey\(stringValue: key\)!/guard let key = JSONCodingKey(stringValue: key) else { continue }/g' \
+            > "$OUTPUT_PATH"
+          if grep -n 'JSONCodingKey(stringValue: key)!' "$OUTPUT_PATH"; then
+            echo "error: generated contract still contains a force-unwrap; update the post-processing rule." >&2
+            exit 1
+          fi
         outputFiles:
           - "$(SRCROOT)/payload-app-ios/Generated/PegasusWSEventEnvelope.swift"
     sources:
@@ -56,7 +64,6 @@ targets:
       - path: ../../packages/mobile-ios-barcode
         includes:
           - EANBarcodeScannerView.swift
-      - path: ../../packages/mobile-ios-design
     resources:
       # pegasusx-i18n-generated
       - path: ../../packages/i18n/generated/ios/en.lproj

@@ -23,7 +23,7 @@ final class ManifestBoardTests: XCTestCase {
     func testAttachDoesNotInventDraftFromCompleted() {
         let trucks = [Truck.fixture(id: "veh-1"), Truck.fixture(id: "veh-2")]
         let manifests = [
-            Manifest(manifestId: "m1", vehicleId: "veh-1", state: "SEALED", totalVolumeVu: 8, maxVolumeVu: 40, stopCount: 2),
+            Manifest(manifestId: "m1", vehicleId: "veh-1", state: "SEALED", usedVolumeVu: 8, maxVolumeVu: 40, stopCount: 2),
             Manifest(manifestId: "m2", vehicleId: "veh-2", state: "COMPLETED"),
         ]
         let attached = ManifestBoard.attach(trucks: trucks, manifests: manifests)

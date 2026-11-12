@@ -24,18 +24,18 @@ struct PulseStrip: View {
     var body: some View {
         if loading && events.isEmpty && (error ?? "").isEmpty {
             Text("mobile_driver.ui.loading_network_pulse")
-                .font(.system(size: 12, weight: .medium))
+                .font(.system(.caption, weight: .medium))
                 .foregroundStyle(LabTheme.fgTertiary)
                 .padding(.vertical, LabTheme.s8)
         } else if let error, !error.isEmpty {
             Text(error)
-                .font(.system(size: 12, weight: .medium))
+                .font(.system(.caption, weight: .medium))
                 .foregroundStyle(LabTheme.destructive)
                 .padding(.vertical, LabTheme.s8)
         } else if !events.isEmpty {
             VStack(alignment: .leading, spacing: LabTheme.s8) {
                 Text("factory_portal.app.text.network_pulse")
-                    .font(.system(size: 11, weight: .bold, design: .monospaced))
+                    .font(.system(.caption2, design: .monospaced, weight: .bold))
                     .foregroundStyle(LabTheme.fgTertiary)
                     .tracking(1.1)
 
@@ -44,23 +44,24 @@ struct PulseStrip: View {
                         ForEach(events.prefix(12)) { event in
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(event.title)
-                                    .font(.system(size: 13, weight: .semibold))
+                                    .font(.system(.footnote, weight: .semibold))
                                     .foregroundStyle(LabTheme.fg)
                                     .lineLimit(2)
                                 if let body = event.description, !body.isEmpty {
                                     Text(body)
-                                        .font(.system(size: 11, weight: .medium))
+                                        .font(.system(.caption2, weight: .medium))
                                         .foregroundStyle(LabTheme.fgSecondary)
                                         .lineLimit(2)
                                 }
                                 Text(formatTimestamp(event.occurredAt))
-                                    .font(.system(size: 10, weight: .medium, design: .monospaced))
+                                    .font(.system(.caption2, design: .monospaced, weight: .medium))
                                     .foregroundStyle(LabTheme.fgTertiary)
                             }
                             .padding(.horizontal, 12)
                             .padding(.vertical, 10)
                             .frame(minWidth: 180, maxWidth: 240, alignment: .leading)
-                            .background(LabTheme.fg.opacity(0.06), in: RoundedRectangle(cornerRadius: 12))
+                            .background(LabTheme.fg.opacity(0.06), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            .accessibilityElement(children: .combine)
                         }
                     }
                 }
@@ -91,59 +92,23 @@ struct ExplainStatusBanner: View {
         if let title, !title.isEmpty {
             VStack(alignment: .leading, spacing: 6) {
                 Text(title)
-                    .font(.system(size: 13, weight: .bold))
+                    .font(.system(.footnote, weight: .bold))
                 if let summary, !summary.isEmpty {
                     Text(summary)
-                        .font(.system(size: 12, weight: .medium))
+                        .font(.system(.caption, weight: .medium))
                 }
                 if let steps = explain?.nextSteps, !steps.isEmpty {
                     ForEach(steps, id: \.self) { step in
                         Text(L10n.format("mobile_driver.ui.step", "\(step)"))
-                            .font(.system(size: 11, weight: .medium))
+                            .font(.system(.caption2, weight: .medium))
                     }
                 }
             }
             .foregroundStyle(.white)
             .padding(LabTheme.s16)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(LabTheme.destructive, in: RoundedRectangle(cornerRadius: LabTheme.buttonRadius))
+            .background(LabTheme.destructive, in: RoundedRectangle(cornerRadius: LabTheme.buttonRadius, style: .continuous))
+            .accessibilityElement(children: .combine)
         }
-    }
-}
-
-struct HandoffInboxCard: View {
-    let metadata: HandoffCardMetadata
-    var onAction: ((String) -> Void)? = nil
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(metadata.title)
-                .font(.system(size: 13, weight: .semibold))
-            if let subtitle = metadata.subtitle, !subtitle.isEmpty {
-                Text(subtitle)
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(LabTheme.fgSecondary)
-            }
-            if let fields = metadata.fields {
-                ForEach(fields.sorted(by: { $0.key < $1.key }), id: \.key) { key, value in
-                    Text(L10n.format("mobile_driver.ui.replacingoccurrences_value", "\(key.replacingOccurrences(of: "_", with: " "))", "\(value)"))
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(LabTheme.fgSecondary)
-                }
-            }
-            if let link = metadata.primaryLink, !link.isEmpty {
-                Button {
-                    onAction?(link)
-                } label: {
-                    Text(metadata.primaryCta ?? "Open")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundStyle(LabTheme.transit)
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(10)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(LabTheme.fg.opacity(0.06), in: RoundedRectangle(cornerRadius: 10))
     }
 }

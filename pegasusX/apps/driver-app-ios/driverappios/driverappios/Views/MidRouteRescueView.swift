@@ -7,48 +7,8 @@ import SwiftUI
 
 struct MidRouteRescueView: View {
 
-    @State private var originalRouteId: String = "route-tashkent-042"
-    @State private var brokenVehicleId: String = "vh-isuzu-01"
-    @State private var originalDriverId: String = "driver-uz-09"
-    @State private var rescueVehicleId: String = "vh-isuzu-04"
-    @State private var rescueDriverId: String = "driver-uz-12"
-    @State private var lastCompletedStopSeq: Int64 = 2
-    @State private var newRescueBoltSeal: String = "SEAL-RESCUE-8812"
-
-    @State private var totes: [RescueToteItem] = [
-        RescueToteItem(toteId: "tote-01", stopSequence: 1, isColdChain: false, expectedCashMinor: 50000000),
-        RescueToteItem(toteId: "tote-02", stopSequence: 2, isColdChain: false, expectedCashMinor: 75000000),
-        RescueToteItem(toteId: "tote-03", stopSequence: 3, isColdChain: true, expectedCashMinor: 120000000, thermalExcursionMinutes: 45, maxAllowedExcursionMins: 30),
-        RescueToteItem(toteId: "tote-04", stopSequence: 4, isColdChain: false, expectedCashMinor: 60000000),
-        RescueToteItem(toteId: "tote-05", stopSequence: 5, isColdChain: true, expectedCashMinor: 90000000, thermalExcursionMinutes: 10, maxAllowedExcursionMins: 30),
-    ]
-
-    @State private var isExecuting: Bool = false
-    @State private var rescueResult: MidRouteRescueResult? = nil
-    @State private var statusMessage: String? = nil
-    @State private var errorMessage: String? = nil
-
+    @State private var vm = MidRouteRescueViewModel()
     let onBack: () -> Void
-
-    var originalDriverLiability: Int64 {
-        totes.filter { $0.stopSequence <= lastCompletedStopSeq }.reduce(0) { $0 + $1.expectedCashMinor }
-    }
-
-    var remainingTotes: [RescueToteItem] {
-        totes.filter { $0.stopSequence > lastCompletedStopSeq }
-    }
-
-    var spoiledTotes: [RescueToteItem] {
-        remainingTotes.filter { $0.isColdChain && $0.thermalExcursionMinutes > $0.maxAllowedExcursionMins }
-    }
-
-    var transferredTotes: [RescueToteItem] {
-        remainingTotes.filter { !($0.isColdChain && $0.thermalExcursionMinutes > $0.maxAllowedExcursionMins) }
-    }
-
-    var rescueDriverLiability: Int64 {
-        transferredTotes.reduce(0) { $0 + $1.expectedCashMinor }
-    }
 
     var body: some View {
         NavigationStack {
@@ -56,48 +16,48 @@ struct MidRouteRescueView: View {
                 VStack(alignment: .leading, spacing: 20) {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Mid-Route Rescue Handoff")
-                            .font(.system(size: 24, weight: .bold))
+                            .font(.system(.title2, weight: .bold))
                         Text("Breakdown Cargo & Cash Liability Transfer Protocol")
-                            .font(.system(size: 14))
+                            .font(.system(.subheadline))
                             .foregroundStyle(LabTheme.fgSecondary)
                     }
                     .padding(.top, 12)
 
                     // Liability Boundary Summary Card
                     VStack(alignment: .leading, spacing: 14) {
-                        Text("Cash Liability Boundary (Stop K = \(lastCompletedStopSeq))")
-                            .font(.system(size: 15, weight: .bold))
+                        Text("Cash Liability Boundary (Stop K = \(vm.lastCompletedStopSeq))")
+                            .font(.system(.subheadline, weight: .bold))
 
                         HStack {
                             VStack(alignment: .leading) {
                                 Text("Original Driver Liability")
-                                    .font(.system(size: 12))
+                                    .font(.system(.caption))
                                     .foregroundStyle(LabTheme.fgSecondary)
-                                Text("\(originalDriverLiability / 100) UZS")
-                                    .font(.system(size: 16, weight: .bold))
+                                Text("\(vm.originalDriverLiability / 100) UZS")
+                                    .font(.system(.callout, weight: .bold))
                                     .foregroundStyle(Color.blue)
                             }
                             Spacer()
                             VStack(alignment: .trailing) {
                                 Text("Rescue Driver Liability")
-                                    .font(.system(size: 12))
+                                    .font(.system(.caption))
                                     .foregroundStyle(LabTheme.fgSecondary)
-                                Text("\(rescueDriverLiability / 100) UZS")
-                                    .font(.system(size: 16, weight: .bold))
+                                Text("\(vm.rescueDriverLiability / 100) UZS")
+                                    .font(.system(.callout, weight: .bold))
                                     .foregroundStyle(Color.green)
                             }
                         }
 
-                        if !spoiledTotes.isEmpty {
+                        if !vm.spoiledTotes.isEmpty {
                             HStack {
                                 Image(systemName: "thermometer.snowflake")
                                     .foregroundStyle(Color.red)
                                 Text("Thermal Excursion Quarantined:")
-                                    .font(.system(size: 12, weight: .semibold))
+                                    .font(.system(.caption, weight: .semibold))
                                     .foregroundStyle(Color.red)
                                 Spacer()
-                                Text("\(spoiledTotes.count) totes spoiled")
-                                    .font(.system(size: 12, weight: .bold))
+                                Text("\(vm.spoiledTotes.count) totes spoiled")
+                                    .font(.system(.caption, weight: .bold))
                                     .foregroundStyle(Color.red)
                             }
                             .padding(10)
@@ -108,65 +68,67 @@ struct MidRouteRescueView: View {
                     .padding(16)
                     .background(LabTheme.card)
                     .clipShape(RoundedRectangle(cornerRadius: 16))
+                    .accessibilityElement(children: .combine)
 
                     // Vehicle & Seal Inputs
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Handoff Telemetry")
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(.system(.subheadline, weight: .semibold))
                             .foregroundStyle(LabTheme.fgSecondary)
 
                         HStack {
                             Text("Broken Vehicle:")
-                                .font(.system(size: 14))
+                                .font(.system(.subheadline))
                             Spacer()
-                            Text(brokenVehicleId)
-                                .font(.system(size: 14, weight: .bold, design: .monospaced))
+                            Text(vm.brokenVehicleId)
+                                .font(.system(.subheadline, design: .monospaced, weight: .bold))
                         }
 
                         HStack {
                             Text("Rescue Vehicle:")
-                                .font(.system(size: 14))
+                                .font(.system(.subheadline))
                             Spacer()
-                            Text(rescueVehicleId)
-                                .font(.system(size: 14, weight: .bold, design: .monospaced))
+                            Text(vm.rescueVehicleId)
+                                .font(.system(.subheadline, design: .monospaced, weight: .bold))
                         }
 
                         VStack(alignment: .leading, spacing: 4) {
                             Text("New Rescue Bolt Seal Barcode:")
-                                .font(.system(size: 12))
+                                .font(.system(.caption))
                                 .foregroundStyle(LabTheme.fgSecondary)
-                            TextField("Enter or scan seal barcode", text: $newRescueBoltSeal)
+                            TextField("Enter or scan seal barcode", text: $vm.newRescueBoltSeal)
                                 .textFieldStyle(.roundedBorder)
-                                .font(.system(size: 14, design: .monospaced))
+                                .font(.system(.subheadline, design: .monospaced))
                         }
                     }
                     .padding(16)
                     .background(LabTheme.card)
                     .clipShape(RoundedRectangle(cornerRadius: 16))
+                    .accessibilityElement(children: .combine)
 
                     // Totes List
                     VStack(alignment: .leading, spacing: 10) {
                         Text("Cargo Totes Handoff List")
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(.system(.subheadline, weight: .semibold))
                             .foregroundStyle(LabTheme.fgSecondary)
 
-                        ForEach(totes) { tote in
-                            let isCompleted = tote.stopSequence <= lastCompletedStopSeq
+                        ForEach(vm.totes) { tote in
+                            let isCompleted = tote.stopSequence <= vm.lastCompletedStopSeq
                             let isSpoiled = tote.isColdChain && tote.thermalExcursionMinutes > tote.maxAllowedExcursionMins
 
                             HStack {
                                 VStack(alignment: .leading, spacing: 2) {
                                     HStack {
                                         Text(tote.toteId)
-                                            .font(.system(size: 14, weight: .bold, design: .monospaced))
+                                            .font(.system(.subheadline, design: .monospaced, weight: .bold))
                                         if tote.isColdChain {
                                             Image(systemName: "snowflake")
-                                                .font(.system(size: 12))
+                                                .font(.system(.caption))
                                                 .foregroundStyle(Color.blue)
                                         }
                                     }
                                     Text("Stop #\(tote.stopSequence) · \(tote.expectedCashMinor / 100) UZS")
-                                        .font(.system(size: 12))
+                                        .font(.system(.caption))
                                         .foregroundStyle(LabTheme.fgSecondary)
                                 }
 
@@ -174,7 +136,7 @@ struct MidRouteRescueView: View {
 
                                 if isCompleted {
                                     Text("DELIVERED (STOP ≤ K)")
-                                        .font(.system(size: 10, weight: .bold))
+                                        .font(.system(.caption2, weight: .bold))
                                         .foregroundStyle(Color.blue)
                                         .padding(.horizontal, 6)
                                         .padding(.vertical, 3)
@@ -182,7 +144,7 @@ struct MidRouteRescueView: View {
                                         .clipShape(Capsule())
                                 } else if isSpoiled {
                                     Text("SPOILED (EXCURSION)")
-                                        .font(.system(size: 10, weight: .bold))
+                                        .font(.system(.caption2, weight: .bold))
                                         .foregroundStyle(Color.red)
                                         .padding(.horizontal, 6)
                                         .padding(.vertical, 3)
@@ -190,7 +152,7 @@ struct MidRouteRescueView: View {
                                         .clipShape(Capsule())
                                 } else {
                                     Text("TRANSFERRED")
-                                        .font(.system(size: 10, weight: .bold))
+                                        .font(.system(.caption2, weight: .bold))
                                         .foregroundStyle(Color.green)
                                         .padding(.horizontal, 6)
                                         .padding(.vertical, 3)
@@ -201,35 +163,36 @@ struct MidRouteRescueView: View {
                             .padding(12)
                             .background(LabTheme.card)
                             .clipShape(RoundedRectangle(cornerRadius: 12))
+                            .accessibilityElement(children: .combine)
                         }
                     }
 
-                    if let msg = statusMessage {
+                    if let msg = vm.statusMessage {
                         Text(msg)
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(.system(.subheadline, weight: .semibold))
                             .foregroundStyle(Color.green)
                             .padding(12)
                     }
 
-                    if let err = errorMessage {
+                    if let err = vm.errorMessage {
                         Text(err)
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(.system(.subheadline, weight: .semibold))
                             .foregroundStyle(Color.red)
                             .padding(12)
                     }
 
                     Button {
                         Task {
-                            await executeRescue()
+                            await vm.executeRescue()
                         }
                     } label: {
                         HStack {
-                            if isExecuting {
+                            if vm.isExecuting {
                                 ProgressView().tint(.white)
                                 Spacer().frame(width: 8)
                             }
                             Text("Confirm Cargo & Liability Transfer")
-                                .font(.system(size: 16, weight: .bold))
+                                .font(.system(.callout, weight: .bold))
                         }
                         .frame(maxWidth: .infinity)
                         .frame(height: 52)
@@ -237,51 +200,25 @@ struct MidRouteRescueView: View {
                         .foregroundStyle(.white)
                         .clipShape(RoundedRectangle(cornerRadius: 14))
                     }
-                    .disabled(isExecuting)
+                    .disabled(vm.isExecuting)
 
                     Spacer(minLength: 40)
                 }
                 .padding(.horizontal, 20)
             }
+            .scrollDismissesKeyboard(.interactively)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button(action: onBack) {
                         Image(systemName: "chevron.left")
-                            .font(.system(size: 16, weight: .semibold))
+                            .font(.system(.callout, weight: .semibold))
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
                     }
+                    .accessibilityLabel("Back")
                 }
             }
-        }
-    }
-
-    @MainActor
-    private func executeRescue() async {
-        isExecuting = true
-        errorMessage = nil
-        statusMessage = nil
-
-        let req = MidRouteRescueRequest(
-            cellId: "cell-uz",
-            supplierId: "supplier-tashkent-1",
-            originalRouteId: originalRouteId,
-            brokenVehicleId: brokenVehicleId,
-            originalDriverId: originalDriverId,
-            rescueVehicleId: rescueVehicleId,
-            rescueDriverId: rescueDriverId,
-            lastCompletedStopSeq: lastCompletedStopSeq,
-            newRescueBoltSeal: newRescueBoltSeal,
-            totes: totes
-        )
-
-        do {
-            let res = try await APIClient.shared.executeMidRouteRescue(request: req)
-            isExecuting = false
-            rescueResult = res
-            statusMessage = "Rescue Route \(res.rescueRouteId) Created! Transferred \(res.transferredToteIds.count) totes. Liability sealed."
-        } catch {
-            isExecuting = false
-            errorMessage = error.localizedDescription
         }
     }
 }

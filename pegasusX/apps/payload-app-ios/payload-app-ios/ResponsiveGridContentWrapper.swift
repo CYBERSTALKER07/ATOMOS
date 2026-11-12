@@ -11,10 +11,11 @@ struct ResponsiveGridContentWrapper<Content: View>: View {
                     content()
                         .padding()
                         .background(Color(UIColor.secondarySystemGroupedBackground))
-                        .cornerRadius(10)
+                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 }
                 .padding()
             }
+            .scrollDismissesKeyboard(.interactively)
             .background(Color(UIColor.systemGroupedBackground))
         } else {
             List {

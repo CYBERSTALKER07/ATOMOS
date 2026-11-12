@@ -18,9 +18,9 @@ struct OffloadActionFooter: View {
                 } label: {
                     HStack(spacing: 8) {
                         Image(systemName: "door.left.hand.closed")
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(.system(.subheadline, weight: .semibold))
                         Text("mobile_driver.ui.shop_closed_no_answer")
-                            .font(.system(size: 15, weight: .bold))
+                            .font(.system(.subheadline, weight: .bold))
                     }
                     .foregroundStyle(Color.orange)
                     .frame(maxWidth: .infinity)
@@ -43,9 +43,9 @@ struct OffloadActionFooter: View {
                 } label: {
                     HStack(spacing: 8) {
                         Image(systemName: "creditcard.fill")
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(.system(.subheadline, weight: .semibold))
                         Text("mobile_driver.ui.deliver_on_credit")
-                            .font(.system(size: 15, weight: .bold))
+                            .font(.system(.subheadline, weight: .bold))
                     }
                     .foregroundStyle(.blue)
                     .frame(maxWidth: .infinity)
@@ -68,9 +68,9 @@ struct OffloadActionFooter: View {
                 } label: {
                     HStack(spacing: 8) {
                         Image(systemName: "exclamationmark.triangle.fill")
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(.system(.subheadline, weight: .semibold))
                         Text("mobile_driver.ui.report_missing_items")
-                            .font(.system(size: 15, weight: .bold))
+                            .font(.system(.subheadline, weight: .bold))
                     }
                     .foregroundStyle(LabTheme.destructive)
                     .frame(maxWidth: .infinity)
@@ -95,7 +95,7 @@ struct OffloadActionFooter: View {
                         ProgressView().tint(LabTheme.buttonFg)
                     }
                     Text("mobile_driver.ui.confirm_offload")
-                        .font(.system(size: 15, weight: .bold))
+                        .font(.system(.subheadline, weight: .bold))
                 }
                 .foregroundStyle(LabTheme.buttonFg)
                 .frame(maxWidth: .infinity)

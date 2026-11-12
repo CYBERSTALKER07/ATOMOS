@@ -30,7 +30,19 @@ struct PegasusWSEventEnvelope: Codable {
     let totalMinor: Int?
     let vehicleID: String?
     let version: Version?
-    let warehouseID, agingBucket: String?
+    let warehouseID: String?
+    let baselineQty: Int?
+    let baselineSource, blockedReason: String?
+    let confidence: Double?
+    let confidencePct: Int?
+    let factoryID: String?
+    let highUnits: Int?
+    let insightID: String?
+    let lowUnits, networkNodes: Int?
+    let overrideID, polygonGeojson, productID, publishedBy: String?
+    let scenarioID, signalID, simulationID: String?
+    let transferRecommendations, ttlSeconds: Int?
+    let agingBucket: String?
     let amountMinor, balanceMinor: Int?
     let dueAt: String?
     let dunningStep: Int?
@@ -49,20 +61,9 @@ struct PegasusWSEventEnvelope: Codable {
     let resolutionNote, settlementMode, source, commandID: String?
     let actor, campaignID: String?
     let impactedLotCount, impactedOrderCount, impactedUnitsCount: Int?
-    let lotCode, lotID, productID, recallReason: String?
-    let severity, photoProofURL, signatureURL, sessionID: String?
-    let baselineQty: Int?
-    let baselineSource, blockedReason: String?
-    let confidence: Double?
-    let confidencePct: Int?
-    let factoryID: String?
-    let highUnits: Int?
-    let insightID: String?
-    let lowUnits, networkNodes: Int?
-    let overrideID, polygonGeojson, publishedBy, scenarioID: String?
-    let signalID, simulationID: String?
-    let transferRecommendations, ttlSeconds: Int?
-    let countryCode, phone: String?
+    let lotCode, lotID, recallReason, severity: String?
+    let photoProofURL, signatureURL, sessionID, countryCode: String?
+    let phone: String?
     let orderCount: Int?
     let orderIDS: [String]?
     let available: Bool?
@@ -102,10 +103,7 @@ struct PegasusWSEventEnvelope: Codable {
     let netPayoutMinor: Int?
     let railReference, preOrderID, barcode, handlingClass: String?
     let isActive, isHazardous, isPerishable: Bool?
-    let previousPriceMinor, priceMinor: Int?
-    let requiresColdChain: Bool?
-    let stockQuantity: Int?
-    let storageTempMaxC, storageTempMinC: Double?
+    let previousPriceMinor, priceMinor, stockQuantity: Int?
     let unit, promotionID: String?
     let retailerIDS: [String]?
     let retailerScope: String?
@@ -174,6 +172,25 @@ struct PegasusWSEventEnvelope: Codable {
         case vehicleID = "vehicle_id"
         case version
         case warehouseID = "warehouse_id"
+        case baselineQty = "baseline_qty"
+        case baselineSource = "baseline_source"
+        case blockedReason = "blocked_reason"
+        case confidence
+        case confidencePct = "confidence_pct"
+        case factoryID = "factory_id"
+        case highUnits = "high_units"
+        case insightID = "insight_id"
+        case lowUnits = "low_units"
+        case networkNodes = "network_nodes"
+        case overrideID = "override_id"
+        case polygonGeojson = "polygon_geojson"
+        case productID = "product_id"
+        case publishedBy = "published_by"
+        case scenarioID = "scenario_id"
+        case signalID = "signal_id"
+        case simulationID = "simulation_id"
+        case transferRecommendations = "transfer_recommendations"
+        case ttlSeconds = "ttl_seconds"
         case agingBucket = "aging_bucket"
         case amountMinor = "amount_minor"
         case balanceMinor = "balance_minor"
@@ -218,30 +235,11 @@ struct PegasusWSEventEnvelope: Codable {
         case impactedUnitsCount = "impacted_units_count"
         case lotCode = "lot_code"
         case lotID = "lot_id"
-        case productID = "product_id"
         case recallReason = "recall_reason"
         case severity
         case photoProofURL = "photo_proof_url"
         case signatureURL = "signature_url"
         case sessionID = "session_id"
-        case baselineQty = "baseline_qty"
-        case baselineSource = "baseline_source"
-        case blockedReason = "blocked_reason"
-        case confidence
-        case confidencePct = "confidence_pct"
-        case factoryID = "factory_id"
-        case highUnits = "high_units"
-        case insightID = "insight_id"
-        case lowUnits = "low_units"
-        case networkNodes = "network_nodes"
-        case overrideID = "override_id"
-        case polygonGeojson = "polygon_geojson"
-        case publishedBy = "published_by"
-        case scenarioID = "scenario_id"
-        case signalID = "signal_id"
-        case simulationID = "simulation_id"
-        case transferRecommendations = "transfer_recommendations"
-        case ttlSeconds = "ttl_seconds"
         case countryCode = "country_code"
         case phone
         case orderCount = "order_count"
@@ -320,10 +318,7 @@ struct PegasusWSEventEnvelope: Codable {
         case isPerishable = "is_perishable"
         case previousPriceMinor = "previous_price_minor"
         case priceMinor = "price_minor"
-        case requiresColdChain = "requires_cold_chain"
         case stockQuantity = "stock_quantity"
-        case storageTempMaxC = "storage_temp_max_c"
-        case storageTempMinC = "storage_temp_min_c"
         case unit
         case promotionID = "promotion_id"
         case retailerIDS = "retailer_ids"
@@ -425,6 +420,25 @@ extension PegasusWSEventEnvelope {
         vehicleID: String?? = nil,
         version: Version?? = nil,
         warehouseID: String?? = nil,
+        baselineQty: Int?? = nil,
+        baselineSource: String?? = nil,
+        blockedReason: String?? = nil,
+        confidence: Double?? = nil,
+        confidencePct: Int?? = nil,
+        factoryID: String?? = nil,
+        highUnits: Int?? = nil,
+        insightID: String?? = nil,
+        lowUnits: Int?? = nil,
+        networkNodes: Int?? = nil,
+        overrideID: String?? = nil,
+        polygonGeojson: String?? = nil,
+        productID: String?? = nil,
+        publishedBy: String?? = nil,
+        scenarioID: String?? = nil,
+        signalID: String?? = nil,
+        simulationID: String?? = nil,
+        transferRecommendations: Int?? = nil,
+        ttlSeconds: Int?? = nil,
         agingBucket: String?? = nil,
         amountMinor: Int?? = nil,
         balanceMinor: Int?? = nil,
@@ -469,30 +483,11 @@ extension PegasusWSEventEnvelope {
         impactedUnitsCount: Int?? = nil,
         lotCode: String?? = nil,
         lotID: String?? = nil,
-        productID: String?? = nil,
         recallReason: String?? = nil,
         severity: String?? = nil,
         photoProofURL: String?? = nil,
         signatureURL: String?? = nil,
         sessionID: String?? = nil,
-        baselineQty: Int?? = nil,
-        baselineSource: String?? = nil,
-        blockedReason: String?? = nil,
-        confidence: Double?? = nil,
-        confidencePct: Int?? = nil,
-        factoryID: String?? = nil,
-        highUnits: Int?? = nil,
-        insightID: String?? = nil,
-        lowUnits: Int?? = nil,
-        networkNodes: Int?? = nil,
-        overrideID: String?? = nil,
-        polygonGeojson: String?? = nil,
-        publishedBy: String?? = nil,
-        scenarioID: String?? = nil,
-        signalID: String?? = nil,
-        simulationID: String?? = nil,
-        transferRecommendations: Int?? = nil,
-        ttlSeconds: Int?? = nil,
         countryCode: String?? = nil,
         phone: String?? = nil,
         orderCount: Int?? = nil,
@@ -573,10 +568,7 @@ extension PegasusWSEventEnvelope {
         isPerishable: Bool?? = nil,
         previousPriceMinor: Int?? = nil,
         priceMinor: Int?? = nil,
-        requiresColdChain: Bool?? = nil,
         stockQuantity: Int?? = nil,
-        storageTempMaxC: Double?? = nil,
-        storageTempMinC: Double?? = nil,
         unit: String?? = nil,
         promotionID: String?? = nil,
         retailerIDS: [String]?? = nil,
@@ -659,6 +651,25 @@ extension PegasusWSEventEnvelope {
             vehicleID: vehicleID ?? self.vehicleID,
             version: version ?? self.version,
             warehouseID: warehouseID ?? self.warehouseID,
+            baselineQty: baselineQty ?? self.baselineQty,
+            baselineSource: baselineSource ?? self.baselineSource,
+            blockedReason: blockedReason ?? self.blockedReason,
+            confidence: confidence ?? self.confidence,
+            confidencePct: confidencePct ?? self.confidencePct,
+            factoryID: factoryID ?? self.factoryID,
+            highUnits: highUnits ?? self.highUnits,
+            insightID: insightID ?? self.insightID,
+            lowUnits: lowUnits ?? self.lowUnits,
+            networkNodes: networkNodes ?? self.networkNodes,
+            overrideID: overrideID ?? self.overrideID,
+            polygonGeojson: polygonGeojson ?? self.polygonGeojson,
+            productID: productID ?? self.productID,
+            publishedBy: publishedBy ?? self.publishedBy,
+            scenarioID: scenarioID ?? self.scenarioID,
+            signalID: signalID ?? self.signalID,
+            simulationID: simulationID ?? self.simulationID,
+            transferRecommendations: transferRecommendations ?? self.transferRecommendations,
+            ttlSeconds: ttlSeconds ?? self.ttlSeconds,
             agingBucket: agingBucket ?? self.agingBucket,
             amountMinor: amountMinor ?? self.amountMinor,
             balanceMinor: balanceMinor ?? self.balanceMinor,
@@ -703,30 +714,11 @@ extension PegasusWSEventEnvelope {
             impactedUnitsCount: impactedUnitsCount ?? self.impactedUnitsCount,
             lotCode: lotCode ?? self.lotCode,
             lotID: lotID ?? self.lotID,
-            productID: productID ?? self.productID,
             recallReason: recallReason ?? self.recallReason,
             severity: severity ?? self.severity,
             photoProofURL: photoProofURL ?? self.photoProofURL,
             signatureURL: signatureURL ?? self.signatureURL,
             sessionID: sessionID ?? self.sessionID,
-            baselineQty: baselineQty ?? self.baselineQty,
-            baselineSource: baselineSource ?? self.baselineSource,
-            blockedReason: blockedReason ?? self.blockedReason,
-            confidence: confidence ?? self.confidence,
-            confidencePct: confidencePct ?? self.confidencePct,
-            factoryID: factoryID ?? self.factoryID,
-            highUnits: highUnits ?? self.highUnits,
-            insightID: insightID ?? self.insightID,
-            lowUnits: lowUnits ?? self.lowUnits,
-            networkNodes: networkNodes ?? self.networkNodes,
-            overrideID: overrideID ?? self.overrideID,
-            polygonGeojson: polygonGeojson ?? self.polygonGeojson,
-            publishedBy: publishedBy ?? self.publishedBy,
-            scenarioID: scenarioID ?? self.scenarioID,
-            signalID: signalID ?? self.signalID,
-            simulationID: simulationID ?? self.simulationID,
-            transferRecommendations: transferRecommendations ?? self.transferRecommendations,
-            ttlSeconds: ttlSeconds ?? self.ttlSeconds,
             countryCode: countryCode ?? self.countryCode,
             phone: phone ?? self.phone,
             orderCount: orderCount ?? self.orderCount,
@@ -807,10 +799,7 @@ extension PegasusWSEventEnvelope {
             isPerishable: isPerishable ?? self.isPerishable,
             previousPriceMinor: previousPriceMinor ?? self.previousPriceMinor,
             priceMinor: priceMinor ?? self.priceMinor,
-            requiresColdChain: requiresColdChain ?? self.requiresColdChain,
             stockQuantity: stockQuantity ?? self.stockQuantity,
-            storageTempMaxC: storageTempMaxC ?? self.storageTempMaxC,
-            storageTempMinC: storageTempMinC ?? self.storageTempMinC,
             unit: unit ?? self.unit,
             promotionID: promotionID ?? self.promotionID,
             retailerIDS: retailerIDS ?? self.retailerIDS,
@@ -1104,7 +1093,7 @@ class JSONAny: Codable {
 
     static func encode(to container: inout KeyedEncodingContainer<JSONCodingKey>, dictionary: [String: Any]) throws {
             for (key, value) in dictionary {
-                    let key = JSONCodingKey(stringValue: key)!
+                    guard let key = JSONCodingKey(stringValue: key) else { continue }
                     if let value = value as? Bool {
                             try container.encode(value, forKey: key)
                     } else if let value = value as? Int64 {

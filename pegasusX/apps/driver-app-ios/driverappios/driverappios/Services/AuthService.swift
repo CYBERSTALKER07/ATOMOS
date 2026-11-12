@@ -314,6 +314,28 @@ final class DriverSocketState {
         let state: String?
         let rescueId: String?
         let brokenDriverId: String?
+
+        init(
+            type: String,
+            orderId: String? = nil,
+            response: String? = nil,
+            bypassToken: String? = nil,
+            attemptId: String? = nil,
+            status: String? = nil,
+            state: String? = nil,
+            rescueId: String? = nil,
+            brokenDriverId: String? = nil
+        ) {
+            self.type = type
+            self.orderId = orderId
+            self.response = response
+            self.bypassToken = bypassToken
+            self.attemptId = attemptId
+            self.status = status
+            self.state = state
+            self.rescueId = rescueId
+            self.brokenDriverId = brokenDriverId
+        }
     }
 
     private struct DriverEnvelope: Decodable {
@@ -620,31 +642,6 @@ struct AuthResponse: Codable {
         case factoryLat = "factory_lat"
         case factoryLng = "factory_lng"
     }
-
-    static let mock = AuthResponse(
-        token: "mock-driver-jwt-token-dev",
-        userId: "drv-tashkent-001",
-        driverId: "drv-tashkent-001",
-        name: "Temur Alimov (Demo Driver)",
-        vehicleType: "Isuzu NPR 4t",
-        licensePlate: "01 777 AAA",
-        supplierId: "sup-tashkent-01",
-        vehicleId: "veh-tashkent-001",
-        vehicleClass: "MEDIUM_TRUCK",
-        maxVolumeVU: 18.5,
-        firebaseToken: nil,
-        warehouseId: "wh-tashkent-central",
-        warehouseName: "Tashkent Central Hub",
-        warehouseLat: 41.2995,
-        warehouseLng: 69.2401,
-        homeNodeType: "WAREHOUSE",
-        homeNodeId: "wh-tashkent-central",
-        driverMode: "DISTRIBUTION",
-        factoryId: "fac-tashkent-01",
-        factoryName: "Chilonzor Beverage Plant",
-        factoryLat: 41.2721,
-        factoryLng: 69.2045
-    )
 }
 
 // MARK: - Driver Profile (polling response)
@@ -696,29 +693,4 @@ struct DriverProfileResponse: Codable {
         case factoryLat = "factory_lat"
         case factoryLng = "factory_lng"
     }
-
-    static let mock = AuthResponse(
-        token: "mock-driver-jwt-token-dev",
-        userId: "drv-tashkent-001",
-        driverId: "drv-tashkent-001",
-        name: "Temur Alimov (Demo Driver)",
-        vehicleType: "Isuzu NPR 4t",
-        licensePlate: "01 777 AAA",
-        supplierId: "sup-tashkent-01",
-        vehicleId: "veh-tashkent-001",
-        vehicleClass: "MEDIUM_TRUCK",
-        maxVolumeVU: 18.5,
-        firebaseToken: nil,
-        warehouseId: "wh-tashkent-central",
-        warehouseName: "Tashkent Central Hub",
-        warehouseLat: 41.2995,
-        warehouseLng: 69.2401,
-        homeNodeType: "WAREHOUSE",
-        homeNodeId: "wh-tashkent-central",
-        driverMode: "DISTRIBUTION",
-        factoryId: "fac-tashkent-01",
-        factoryName: "Chilonzor Beverage Plant",
-        factoryLat: 41.2721,
-        factoryLng: 69.2045
-    )
 }

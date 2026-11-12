@@ -4,12 +4,13 @@ struct OnlineDot: View {
     let online: Bool
     let queued: Int
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var pulseScale: CGFloat = 1
 
     var body: some View {
         HStack(spacing: TermTheme.s8) {
             ZStack {
-                if online {
+                if online && !reduceMotion {
                     Circle()
                         .fill(TermTheme.live.opacity(0.35))
                         .frame(width: 14, height: 14)
@@ -24,14 +25,15 @@ struct OnlineDot: View {
                     .frame(width: 8, height: 8)
             }
             Text(statusLabel)
-                .font(.system(size: 12, weight: .bold, design: .monospaced))
+                .font(.system(.caption, design: .monospaced, weight: .bold))
                 .foregroundStyle(TermTheme.secondary)
         }
+        .frame(minHeight: 44)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)
-        .onAppear { if online { pulseScale = 1.6 } }
+        .onAppear { if online && !reduceMotion { pulseScale = 1.6 } }
         .onChange(of: online) { _, isOnline in
-            pulseScale = isOnline ? 1.6 : 1
+            pulseScale = (isOnline && !reduceMotion) ? 1.6 : 1
         }
     }
 

@@ -6,7 +6,7 @@ struct StatsSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("portal.nav.earnings")
-                .font(.system(size: 17, weight: .bold))
+                .font(.system(.body, weight: .bold))
                 .foregroundStyle(LabTheme.fg)
                 .padding(.horizontal, LabTheme.s8)
 
@@ -36,17 +36,17 @@ struct StatCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Image(systemName: icon)
-                .font(.system(size: 14))
+                .font(.system(.subheadline))
                 .foregroundStyle(LabTheme.fgSecondary)
 
             Text(value)
-                .font(.system(size: 15, weight: .bold, design: .monospaced))
+                .font(.system(.subheadline, design: .monospaced, weight: .bold))
                 .foregroundStyle(LabTheme.fg)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
 
             Text(title)
-                .font(.system(size: 11, weight: .medium))
+                .font(.system(.caption2, weight: .medium))
                 .foregroundStyle(LabTheme.fgTertiary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)

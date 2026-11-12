@@ -116,7 +116,6 @@
 				DR11FB000000000000000002 /* FirebaseAuth */,
 				DR11FB000000000000000003 /* FirebaseCore */,
 				DR11FB000000000000000004 /* FirebaseMessaging */,
-				DR11PK000000000000000002 /* PegasusKit */,
 			);
 			productName = driverappios;
 			productReference = 2E5380412F6B10CF00C3D5C6 /* driverappios.app */;
@@ -205,7 +204,6 @@
 			preferredProjectObjectVersion = 77;
 			packageReferences = (
 				DR11FB000000000000000001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
-				DR11PK000000000000000001 /* XCLocalSwiftPackageReference "mobile-ios-kit" */,
 			);
 			productRefGroup = 2E5380422F6B10CF00C3D5C6 /* Products */;
 			projectDirPath = "";
@@ -285,7 +283,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -euo pipefail\nexport PATH=\"/opt/homebrew/bin:/usr/local/bin:/usr/local/go/bin:$PATH\"\nREPO_ROOT=\"$SRCROOT/../../..\"\nBACKEND_DIR=\"$REPO_ROOT/apps/backend-go\"\nSCHEMA_PATH=\"$REPO_ROOT/contracts/events.schema.json\"\nOUTPUT_PATH=\"$SRCROOT/driverappios/Generated/PegasusWSEventEnvelope.swift\"\n\nif ! command -v quicktype >/dev/null 2>&1; then\n  echo \"error: quicktype not found. Install quicktype and ensure it is on PATH.\" >&2\n  exit 1\nfi\n\nmkdir -p \"$SRCROOT/driverappios/Generated\"\ncd \"$BACKEND_DIR\"\ngo run ./cmd/gen-contracts -source events -mode json-schema -schema-out \"$SCHEMA_PATH\" -pretty=true\nquicktype --lang swift --src-lang schema --src \"$SCHEMA_PATH\" --top-level PegasusWSEventEnvelope --just-types --out \"$OUTPUT_PATH\"\n";
+			shellScript = "set -euo pipefail\nexport PATH=\"/opt/homebrew/bin:/usr/local/bin:/usr/local/go/bin:$PATH\"\nREPO_ROOT=\"$SRCROOT/../../..\"\nBACKEND_DIR=\"$REPO_ROOT/apps/backend-go\"\nSCHEMA_PATH=\"$REPO_ROOT/contracts/events.schema.json\"\nOUTPUT_PATH=\"$SRCROOT/driverappios/Generated/PegasusWSEventEnvelope.swift\"\n\nif ! command -v quicktype >/dev/null 2>&1; then\n  echo \"error: quicktype not found. Install quicktype and ensure it is on PATH.\" >&2\n  exit 1\nfi\n\nmkdir -p \"$SRCROOT/driverappios/Generated\"\ncd \"$BACKEND_DIR\"\ngo run ./cmd/gen-contracts -source events -mode json-schema -schema-out \"$SCHEMA_PATH\" -pretty=true -strict=true\nquicktype --lang swift --src-lang schema --src \"$SCHEMA_PATH\" --top-level PegasusWSEventEnvelope --just-types --out \"$OUTPUT_PATH\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -302,12 +300,6 @@
 		};
 /* End PBXTargetDependency section */
 
-/* Begin XCLocalSwiftPackageReference section */
-		DR11PK000000000000000001 /* XCLocalSwiftPackageReference "mobile-ios-kit" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = ../../../packages/mobile-ios-kit;
-		};
-/* End XCLocalSwiftPackageReference section */
 
 /* Begin XCRemoteSwiftPackageReference section */
 		DR11FB000000000000000001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
@@ -335,11 +327,6 @@
 			isa = XCSwiftPackageProductDependency;
 			package = DR11FB000000000000000001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseMessaging;
-		};
-		DR11PK000000000000000002 /* PegasusKit */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = DR11PK000000000000000001 /* XCLocalSwiftPackageReference "mobile-ios-kit" */;
-			productName = PegasusKit;
 		};
 /* End XCSwiftPackageProductDependency section */
 

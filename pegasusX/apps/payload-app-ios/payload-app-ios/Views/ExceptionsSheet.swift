@@ -2,32 +2,43 @@ import SwiftUI
 
 struct ManifestExceptionsSheet: View {
     @Bindable var viewModel: HomeViewModel
+    @State private var exceptionsViewModel = ExceptionsViewModel()
 
     var body: some View {
         NavigationStack {
             VStack {
-                // --- Parity: Report Dock Damage ---
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Report Dock Damage")
                         .font(.headline)
-                        .foregroundColor(Color(red: 0.6, green: 0.1, blue: 0.1))
-                    
-                    Button(action: { /* Wire ViewModel logic */ }) {
+                        .foregroundStyle(Color(red: 0.6, green: 0.1, blue: 0.1))
+
+                    Button(action: {
+                        if let selectedOrder = viewModel.selectedOrderId,
+                           let manifestId = viewModel.manifest?.manifestId {
+                            PegasusHaptics.warning()
+                            Task {
+                                await viewModel.reportException(orderId: selectedOrder, reason: "DAMAGED")
+                                await exceptionsViewModel.reportDockDamage(orderId: selectedOrder, manifestId: manifestId)
+                            }
+                        }
+                    }) {
                         Text("MARK DAMAGED")
                             .font(.headline)
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity, minHeight: 44)
                             .padding()
                             .background(Color.red)
-                            .cornerRadius(8)
+                            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                     }
+                    .buttonStyle(.tactical)
+                    .disabled(viewModel.selectedOrderId == nil)
+                    .accessibilityLabel("Mark selected order as dock damaged")
                 }
                 .padding()
                 .background(Color(red: 1.0, green: 0.9, blue: 0.9))
-                .cornerRadius(12)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 .padding(.horizontal)
                 .padding(.top, 8)
-                // ----------------------------------
 
                 Group {
                     if viewModel.loadingExceptions && viewModel.manifestExceptions.isEmpty {
@@ -42,43 +53,57 @@ struct ManifestExceptionsSheet: View {
                             message: "Overflow, damaged, and manual removals appear here.",
                             compact: false
                         )
-                } else {
-                    ScrollView {
-                        VStack(spacing: 16) {
-                            ForEach(viewModel.manifestExceptions) { row in
-                                VStack(alignment: .leading, spacing: TermTheme.s8) {
-                                    HStack(spacing: TermTheme.s8) {
-                                        PayloadStatusBadge(text: row.reason)
-                                        if row.escalated {
-                                            PayloadStatusBadge(text: "ESCALATED", tint: TermTheme.alert)
+                    } else {
+                        ScrollView {
+                            VStack(spacing: 16) {
+                                ForEach(viewModel.manifestExceptions) { row in
+                                    VStack(alignment: .leading, spacing: TermTheme.s8) {
+                                        HStack(spacing: TermTheme.s8) {
+                                            PayloadStatusBadge(text: row.reason)
+                                            if row.escalated {
+                                                PayloadStatusBadge(text: "ESCALATED", tint: TermTheme.alert)
+                                            }
                                         }
+                                        Text(L10n.format("mobile_payload.ui.order_prefix_manifest_prefix_2", "\(row.orderId.prefix(8))", "\(row.manifestId.prefix(8))"))
+                                            .font(.system(.footnote, design: .monospaced, weight: .medium))
+                                            .foregroundStyle(TermTheme.secondary)
+                                        Text(L10n.format("mobile_payload.ui.attempts_attemptcount", "\(row.attemptCount)"))
+                                            .font(.system(.caption, design: .monospaced, weight: .bold))
+                                            .foregroundStyle(TermTheme.tertiary)
                                     }
-                                    Text(L10n.format("mobile_payload.ui.order_prefix_manifest_prefix_2", "\(row.orderId.prefix(8))", "\(row.manifestId.prefix(8))"))
-                                        .font(.system(size: 13, weight: .medium, design: .monospaced))
-                                        .foregroundStyle(TermTheme.secondary)
-                                    Text(L10n.format("mobile_payload.ui.attempts_attemptcount", "\(row.attemptCount)"))
-                                        .font(.system(size: 11, weight: .bold, design: .monospaced))
-                                        .foregroundStyle(TermTheme.tertiary)
+                                    .padding(.vertical, TermTheme.s4)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .accessibilityElement(children: .combine)
+                                    .accessibilityLabel("\(row.reason) exception on order \(row.orderId.prefix(8)), attempts: \(row.attemptCount)\(row.escalated ? ", escalated" : "")")
                                 }
-                                .padding(.vertical, TermTheme.s4)
                             }
+                            .padding()
                         }
-                        .padding()
+                        .scrollDismissesKeyboard(.interactively)
                     }
                 }
             }
-            } // Close VStack
             .navigationTitle("mobile_payload.ui.manifest_exceptions")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("common.action.close") { viewModel.toggleExceptionsPanel() }
+                    Button("common.action.close") {
+                        PegasusHaptics.light()
+                        viewModel.toggleExceptionsPanel()
+                    }
+                    .frame(minWidth: 44, minHeight: 44)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
-                        Task { await viewModel.loadManifestExceptions() }
+                        PegasusHaptics.light()
+                        Task {
+                            await viewModel.loadManifestExceptions()
+                            await exceptionsViewModel.loadExceptions()
+                        }
                     } label: {
                         Image(systemName: "arrow.clockwise")
+                            .frame(minWidth: 44, minHeight: 44)
                     }
+                    .accessibilityLabel("Refresh exceptions")
                 }
             }
         }

@@ -6,12 +6,12 @@ struct ManifestKpiGrid: View {
 
     private var progress: Double {
         let cap = max(manifest.maxVolumeVu ?? 0, 0.001)
-        let total = manifest.totalVolumeVu ?? 0
-        return min(max(total / cap, 0), 1)
+        let used = manifest.usedVolumeVu ?? 0
+        return min(max(used / cap, 0), 1)
     }
 
     private var volumeLabel: String {
-        String(format: "%.1f / %.1f VU", manifest.totalVolumeVu ?? 0, manifest.maxVolumeVu ?? 0)
+        String(format: "%.1f / %.1f VU", manifest.usedVolumeVu ?? 0, manifest.maxVolumeVu ?? 0)
     }
 
     var body: some View {
@@ -39,7 +39,7 @@ struct ManifestKpiGrid: View {
             }
 
             Text(L10n.format("mobile_payload.ui.manifest_prefix", "\(manifest.manifestId.prefix(8))"))
-                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                .font(.system(.caption, design: .monospaced, weight: .bold))
                 .foregroundStyle(TermTheme.tertiary)
         }
     }

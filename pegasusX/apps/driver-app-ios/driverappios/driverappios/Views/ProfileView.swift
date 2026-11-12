@@ -10,13 +10,7 @@ import SwiftData
 struct ProfileView: View {
     @Environment(\.modelContext) private var modelContext
     @Bindable var vm: FleetViewModel
-    @State private var showOfflineVerifier = false
-    @State private var showSyncQueue = false
-    @State private var showEndSession = false
-    @State private var showFleetDVIR = false
-    @State private var showMidRouteRescue = false
-    @State private var showYardGate = false
-    @State private var pendingCount = 0
+    @State private var profileVM = ProfileViewModel()
 
     var body: some View {
         ScrollView {
@@ -29,13 +23,13 @@ struct ProfileView: View {
 
                 // MARK: - Quick Actions
                 QuickActions(
-                    onOfflineVerifier: { showOfflineVerifier = true },
-                    onSyncQueue: { showSyncQueue = true },
-                    onEndSession: { showEndSession = true },
-                    onFleetDVIR: { showFleetDVIR = true },
-                    onMidRouteRescue: { showMidRouteRescue = true },
-                    onYardGate: { showYardGate = true },
-                    pendingCount: pendingCount
+                    onOfflineVerifier: { profileVM.showOfflineVerifier = true },
+                    onSyncQueue: { profileVM.showSyncQueue = true },
+                    onEndSession: { profileVM.showEndSession = true },
+                    onFleetDVIR: { profileVM.showFleetDVIR = true },
+                    onMidRouteRescue: { profileVM.showMidRouteRescue = true },
+                    onYardGate: { profileVM.showYardGate = true },
+                    pendingCount: profileVM.pendingCount
                 )
 
                 // MARK: - Ride History
@@ -48,44 +42,44 @@ struct ProfileView: View {
             .padding(.bottom, 20)
             .labReadableWidth()
         }
+        .scrollDismissesKeyboard(.interactively)
         .background(LabTheme.bg)
-        .sheet(isPresented: $showFleetDVIR) {
-            FleetDVIRView(onBack: { showFleetDVIR = false })
+        .sheet(isPresented: $profileVM.showFleetDVIR) {
+            FleetDVIRView(onBack: { profileVM.showFleetDVIR = false })
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
         }
-        .sheet(isPresented: $showMidRouteRescue) {
-            MidRouteRescueView(onBack: { showMidRouteRescue = false })
+        .sheet(isPresented: $profileVM.showMidRouteRescue) {
+            MidRouteRescueView(onBack: { profileVM.showMidRouteRescue = false })
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
         }
-        .sheet(isPresented: $showYardGate) {
-            YardGateView(onBack: { showYardGate = false })
+        .sheet(isPresented: $profileVM.showYardGate) {
+            YardGateView(onBack: { profileVM.showYardGate = false })
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
         }
-        .sheet(isPresented: $showOfflineVerifier) {
+        .sheet(isPresented: $profileVM.showOfflineVerifier) {
             OfflineVerifierView(modelContext: modelContext)
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
         }
-        .sheet(isPresented: $showSyncQueue) {
+        .sheet(isPresented: $profileVM.showSyncQueue) {
             SyncQueueView()
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
         }
-        .sheet(isPresented: $showEndSession) {
+        .sheet(isPresented: $profileVM.showEndSession) {
             EndSessionView(vm: vm)
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.hidden)
         }
         .task {
-            DriverOfflineQueue.shared.attach(container: modelContext.container)
-            pendingCount = DriverOfflineQueue.shared.pendingCount()
+            profileVM.attach(container: modelContext.container)
             await vm.loadEarningsAndHistory()
         }
-        .onChange(of: showSyncQueue) { _, open in
-            if !open { pendingCount = DriverOfflineQueue.shared.pendingCount() }
+        .onChange(of: profileVM.showSyncQueue) { _, open in
+            if !open { profileVM.refreshPendingCount() }
         }
     }
 }

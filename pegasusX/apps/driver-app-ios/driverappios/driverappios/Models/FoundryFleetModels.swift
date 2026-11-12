@@ -13,7 +13,6 @@ public struct DVIRChecklist8Point: Codable, Sendable, Equatable {
     public var wipersAndFluidsOk: Bool
     public var emergencyKitAndExtinguisherOk: Bool
     public var cargoBoxSanitationOk: Bool
-    public var reeferTempCalibratedOk: Bool
 
     public init(
         steeringAndHornOk: Bool = true,
@@ -22,8 +21,7 @@ public struct DVIRChecklist8Point: Codable, Sendable, Equatable {
         lightsAndHazardsOk: Bool = true,
         wipersAndFluidsOk: Bool = true,
         emergencyKitAndExtinguisherOk: Bool = true,
-        cargoBoxSanitationOk: Bool = true,
-        reeferTempCalibratedOk: Bool = true
+        cargoBoxSanitationOk: Bool = true
     ) {
         self.steeringAndHornOk = steeringAndHornOk
         self.serviceAndParkingBrakesOk = serviceAndParkingBrakesOk
@@ -32,7 +30,6 @@ public struct DVIRChecklist8Point: Codable, Sendable, Equatable {
         self.wipersAndFluidsOk = wipersAndFluidsOk
         self.emergencyKitAndExtinguisherOk = emergencyKitAndExtinguisherOk
         self.cargoBoxSanitationOk = cargoBoxSanitationOk
-        self.reeferTempCalibratedOk = reeferTempCalibratedOk
     }
 
     enum CodingKeys: String, CodingKey {
@@ -43,7 +40,6 @@ public struct DVIRChecklist8Point: Codable, Sendable, Equatable {
         case wipersAndFluidsOk = "wipers_and_fluids_ok"
         case emergencyKitAndExtinguisherOk = "emergency_kit_and_extinguisher_ok"
         case cargoBoxSanitationOk = "cargo_box_sanitation_ok"
-        case reeferTempCalibratedOk = "reefer_temp_calibrated_ok"
     }
 }
 
@@ -54,8 +50,6 @@ public struct FleetDVIRInspection: Codable, Sendable, Identifiable {
     public let vehicleId: String
     public let driverId: String
     public let odometerKm: Int64
-    public let requiresColdChain: Bool
-    public let reeferTempCelsius: Double?
     public let checklist: DVIRChecklist8Point
     public let failedPoints: [String]
     public let criticalDefectFound: Bool
@@ -70,8 +64,6 @@ public struct FleetDVIRInspection: Codable, Sendable, Identifiable {
         vehicleId: String,
         driverId: String,
         odometerKm: Int64 = 0,
-        requiresColdChain: Bool = false,
-        reeferTempCelsius: Double? = nil,
         checklist: DVIRChecklist8Point = DVIRChecklist8Point(),
         failedPoints: [String] = [],
         criticalDefectFound: Bool = false,
@@ -85,8 +77,6 @@ public struct FleetDVIRInspection: Codable, Sendable, Identifiable {
         self.vehicleId = vehicleId
         self.driverId = driverId
         self.odometerKm = odometerKm
-        self.requiresColdChain = requiresColdChain
-        self.reeferTempCelsius = reeferTempCelsius
         self.checklist = checklist
         self.failedPoints = failedPoints
         self.criticalDefectFound = criticalDefectFound
@@ -102,8 +92,6 @@ public struct FleetDVIRInspection: Codable, Sendable, Identifiable {
         case vehicleId = "vehicle_id"
         case driverId = "driver_id"
         case odometerKm = "odometer_km"
-        case requiresColdChain = "requires_cold_chain"
-        case reeferTempCelsius = "reefer_temp_celsius"
         case checklist
         case failedPoints = "failed_points"
         case criticalDefectFound = "critical_defect_found"
@@ -269,46 +257,6 @@ public struct MidRouteRescueResult: Codable, Sendable {
         case transferredToteIds = "transferred_tote_ids"
         case quarantinedSpoiledToteIds = "quarantined_spoiled_tote_ids"
         case newRescueBoltSeal = "new_rescue_bolt_seal"
-    }
-}
-
-public struct PredictiveReeferRequest: Codable, Sendable {
-    public let telemetryDeviceId: String
-    public let currentAmbientCelsius: Double
-    public let compressorCurrentAmps: Double
-    public let cargoTempCelsius: Double
-
-    public init(
-        telemetryDeviceId: String,
-        currentAmbientCelsius: Double,
-        compressorCurrentAmps: Double,
-        cargoTempCelsius: Double
-    ) {
-        self.telemetryDeviceId = telemetryDeviceId
-        self.currentAmbientCelsius = currentAmbientCelsius
-        self.compressorCurrentAmps = compressorCurrentAmps
-        self.cargoTempCelsius = cargoTempCelsius
-    }
-
-    enum CodingKeys: String, CodingKey {
-        case telemetryDeviceId = "telemetry_device_id"
-        case currentAmbientCelsius = "current_ambient_celsius"
-        case compressorCurrentAmps = "compressor_current_amps"
-        case cargoTempCelsius = "cargo_temp_celsius"
-    }
-}
-
-public struct PredictiveReeferResponse: Codable, Sendable {
-    public let riskScore: Double
-    public let isFailurePredicted: Bool
-    public let estimatedTimeToCriticalFailureMinutes: Int
-    public let recommendations: [String]
-
-    enum CodingKeys: String, CodingKey {
-        case riskScore = "risk_score"
-        case isFailurePredicted = "is_failure_predicted"
-        case estimatedTimeToCriticalFailureMinutes = "estimated_time_to_critical_failure_minutes"
-        case recommendations
     }
 }
 

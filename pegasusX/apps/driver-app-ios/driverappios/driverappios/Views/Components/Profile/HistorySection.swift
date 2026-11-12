@@ -7,13 +7,13 @@ struct HistorySection: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text("mobile_driver.ui.ride_history")
-                    .font(.system(size: 17, weight: .bold))
+                    .font(.system(.body, weight: .bold))
                     .foregroundStyle(LabTheme.fg)
 
                 Spacer()
 
                 Text(L10n.format("mobile_driver.ui.count_rides", "\(vm.historyRows.count)"))
-                    .font(.system(size: 12, weight: .medium, design: .monospaced))
+                    .font(.system(.caption, design: .monospaced, weight: .medium))
                     .foregroundStyle(LabTheme.fgTertiary)
             }
             .padding(.horizontal, LabTheme.s8)
@@ -21,7 +21,7 @@ struct HistorySection: View {
             if vm.historyRows.isEmpty {
                 VStack(spacing: 10) {
                     Image(systemName: "clock.arrow.circlepath")
-                        .font(.system(size: 24))
+                        .font(.system(.title2))
                         .foregroundStyle(LabTheme.fgTertiary)
 
                     Text("mobile_driver.ui.no_completed_rides_yet")
@@ -52,17 +52,17 @@ struct HistoryRow: View {
                     .frame(width: 36, height: 36)
 
                 Image(systemName: "checkmark")
-                    .font(.system(size: 13, weight: .bold))
+                    .font(.system(.footnote, weight: .bold))
                     .foregroundStyle(LabTheme.success)
             }
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(row.orderId)
-                    .font(.system(size: 13, weight: .bold, design: .monospaced))
+                    .font(.system(.footnote, design: .monospaced, weight: .bold))
                     .foregroundStyle(LabTheme.fg)
 
                 Text("\(row.status.isEmpty ? "COMPLETED" : row.status) · \(Int(row.totalMinor).formattedAmount)")
-                    .font(.system(size: 11, weight: .medium))
+                    .font(.system(.caption2, weight: .medium))
                     .foregroundStyle(LabTheme.fgSecondary)
             }
 

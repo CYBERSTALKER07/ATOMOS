@@ -7,11 +7,11 @@ struct OffloadSummaryCard: View {
     var body: some View {
         HStack {
             Text(retailerName)
-                .font(.system(size: 15, weight: .semibold))
+                .font(.system(.subheadline, weight: .semibold))
                 .foregroundStyle(LabTheme.fg)
             Spacer()
             Text(totalAmount.formattedAmount)
-                .font(.system(size: 15, weight: .bold, design: .monospaced))
+                .font(.system(.subheadline, design: .monospaced, weight: .bold))
                 .foregroundStyle(LabTheme.fg)
         }
         .padding(.horizontal, LabTheme.s24)

@@ -27,7 +27,7 @@ enum EnterpriseUpdateConfig {
 
     static let defaultManifestURL = URL(
         string: "https://storage.googleapis.com/pegasusx-ssmr-app-updates/ios/payload/updater.json"
-    )!
+    ) ?? URL(fileURLWithPath: "/")
 
     static var storeListingURL: URL? {
         if let s = Bundle.main.object(forInfoDictionaryKey: "PXAppStoreURL") as? String,

@@ -56,29 +56,32 @@ struct ActionRow: View {
         Button(action: action) {
             HStack(spacing: 14) {
                 Image(systemName: icon)
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.system(.subheadline, weight: .semibold))
                     .foregroundStyle(destructive ? LabTheme.destructive : LabTheme.fg)
                     .frame(width: 36, height: 36)
                     .background((destructive ? LabTheme.destructive : LabTheme.fg).opacity(0.06), in: .rect(cornerRadius: 10))
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(.system(.subheadline, weight: .semibold))
                         .foregroundStyle(destructive ? LabTheme.destructive : LabTheme.fg)
                     Text(subtitle)
-                        .font(.system(size: 12, weight: .medium))
+                        .font(.system(.caption, weight: .medium))
                         .foregroundStyle(LabTheme.fgSecondary)
                 }
 
                 Spacer()
 
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 11, weight: .bold))
+                    .font(.system(.caption2, weight: .bold))
                     .foregroundStyle(LabTheme.fgTertiary)
             }
             .padding(LabTheme.s16)
+            .frame(minHeight: 44)
             .labCard()
         }
         .buttonStyle(.pressable)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(title), \(subtitle)")
     }
 }

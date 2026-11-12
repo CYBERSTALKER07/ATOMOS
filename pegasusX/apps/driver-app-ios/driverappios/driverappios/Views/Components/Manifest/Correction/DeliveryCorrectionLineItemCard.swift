@@ -17,19 +17,19 @@ struct DeliveryCorrectionLineItemCard: View {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(item.sku_id)
-                        .font(.system(size: 15, weight: .bold))
+                        .font(.system(.subheadline, weight: .bold))
                         .strikethrough(isRejected)
                         .foregroundStyle(isRejected ? LabTheme.destructive : LabTheme.fg)
 
                     Text(L10n.format("mobile_driver.ui.quantity_formattedamount", "\(item.quantity)", "\(item.unit_price.formattedAmount)"))
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.system(.footnote, weight: .medium))
                         .foregroundStyle(LabTheme.fgSecondary)
                 }
 
                 Spacer()
 
                 Text(isRejected ? "Rejected" : "Delivered")
-                    .font(.system(size: 11, weight: .bold))
+                    .font(.system(.caption2, weight: .bold))
                     .foregroundStyle(.white)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
@@ -49,7 +49,7 @@ struct DeliveryCorrectionLineItemCard: View {
                     .foregroundStyle(LabTheme.fgTertiary)
                 Spacer()
                 Text(item.lineTotal.formattedAmount)
-                    .font(.system(size: 14, weight: .bold))
+                    .font(.system(.subheadline, weight: .bold))
                     .strikethrough(isRejected)
                     .foregroundStyle(isRejected ? LabTheme.destructive.opacity(0.6) : LabTheme.fg)
             }
@@ -76,9 +76,9 @@ struct DeliveryCorrectionLineItemCard: View {
                         HStack(spacing: 6) {
                             Text(reasonLabel(for: currentReason))
                             Image(systemName: "chevron.down")
-                                .font(.system(size: 11, weight: .bold))
+                                .font(.system(.caption2, weight: .bold))
                         }
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.system(.caption, weight: .semibold))
                         .foregroundStyle(LabTheme.fg)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 8)

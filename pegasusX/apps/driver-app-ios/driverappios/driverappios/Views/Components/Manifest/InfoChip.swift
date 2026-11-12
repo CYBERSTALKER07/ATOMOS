@@ -7,9 +7,9 @@ struct InfoChip: View {
     var body: some View {
         HStack(spacing: 6) {
             Image(systemName: icon)
-                .font(.system(size: 10, weight: .semibold))
+                .font(.system(.caption2, weight: .semibold))
             Text(text)
-                .font(.system(size: 12, weight: .medium))
+                .font(.system(.caption, weight: .medium))
         }
         .foregroundStyle(LabTheme.fgSecondary)
         .padding(.horizontal, 10)

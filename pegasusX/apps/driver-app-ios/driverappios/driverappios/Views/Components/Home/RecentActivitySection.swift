@@ -27,27 +27,27 @@ struct RecentActivitySection: View {
                                     .fill(LabTheme.success.opacity(0.12))
                                     .frame(width: 32, height: 32)
                                 Image(systemName: "checkmark")
-                                    .font(.system(size: 11, weight: .bold))
+                                    .font(.system(.caption2, weight: .bold))
                                     .foregroundStyle(LabTheme.success)
                             }
 
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(mission.order_id)
-                                    .font(.system(size: 12, weight: .bold, design: .monospaced))
+                                    .font(.system(.caption, design: .monospaced, weight: .bold))
                                     .foregroundStyle(LabTheme.fg)
                                 Text(mission.amount.formattedAmount)
-                                    .font(.system(size: 11, weight: .medium))
+                                    .font(.system(.caption2, weight: .medium))
                                     .foregroundStyle(LabTheme.fgSecondary)
                             }
 
                             Spacer()
 
                             Text(mission.gateway)
-                                .font(.system(size: 10, weight: .bold))
+                                .font(.system(.caption2, weight: .bold))
                                 .foregroundStyle(LabTheme.fgTertiary)
 
                             Image(systemName: "chevron.right")
-                                .font(.system(size: 11, weight: .semibold))
+                                .font(.system(.caption2, weight: .semibold))
                                 .foregroundStyle(LabTheme.fgTertiary)
                         }
                         .padding(LabTheme.s12)

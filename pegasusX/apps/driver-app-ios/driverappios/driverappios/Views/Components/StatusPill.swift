@@ -12,7 +12,7 @@ struct StatusPill: View {
 
     var body: some View {
         Text(label)
-            .font(.system(size: 10, weight: .bold, design: .monospaced))
+            .font(.system(.caption2, design: .monospaced, weight: .bold))
             .foregroundStyle(color)
             .padding(.horizontal, 10)
             .padding(.vertical, 5)

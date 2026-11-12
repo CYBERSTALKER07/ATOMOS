@@ -14,12 +14,14 @@ struct InboundReturnsList: View {
             }
             .padding(TermTheme.s16)
         }
+        .scrollDismissesKeyboard(.interactively)
     }
 
     private func inboundCard(_ row: InboundReturnRow, selectable: Bool) -> some View {
         let isSelected = selected.contains(row.returnId)
         return Button {
             guard selectable else { return }
+            PegasusHaptics.selection()
             if isSelected { selected.remove(row.returnId) }
             else { selected.insert(row.returnId) }
         } label: {
@@ -39,15 +41,18 @@ struct InboundReturnsList: View {
                         .foregroundStyle(TermTheme.secondary)
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
             .padding(TermTheme.s16)
             .background(isSelected ? TermTheme.accent.opacity(0.12) : TermTheme.card)
             .overlay(
-                RoundedRectangle(cornerRadius: 12)
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
                     .stroke(isSelected ? TermTheme.accent : TermTheme.separator, lineWidth: 1)
             )
-            .clipShape(.rect(cornerRadius: 12))
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(row.productName), from \(row.driverName.isEmpty ? "Driver" : row.driverName), reason: \(row.reason), \(row.receivedQty) of \(row.expectedQty) items")
+        .accessibilityAddTraits(isSelected ? [.isSelected] : [])
         .buttonStyle(.plain)
     }
 }

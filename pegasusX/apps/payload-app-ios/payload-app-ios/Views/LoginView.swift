@@ -12,100 +12,110 @@ struct LoginView: View {
     private enum Field: Hashable { case phone, otp, pin }
 
     var body: some View {
+        @Bindable var vm = viewModel
         ZStack {
             TermTheme.bg.ignoresSafeArea()
             ScrollView {
                 VStack(spacing: TermTheme.s24) {
                     Image(systemName: "box.truck.fill")
-                        .font(.system(size: 48))
+                        .font(.system(.largeTitle))
+                        .imageScale(.large)
                         .foregroundStyle(TermTheme.accent)
                         .padding(.top, TermTheme.s32)
+                        .accessibilityHidden(true)
 
                     VStack(spacing: TermTheme.s8) {
-                        Text(viewModel.mode == .otp ? "PAYLOAD_AUTH" : "DEV_AUTH")
-                            .font(.system(size: 24, weight: .black, design: .monospaced))
+                        Text(vm.mode == .otp ? "PAYLOAD_AUTH" : "DEV_AUTH")
+                            .font(.system(.title2, design: .monospaced, weight: .black))
                             .foregroundStyle(TermTheme.accent)
-                        Text(viewModel.mode == .otp
+                        Text(vm.mode == .otp
                              ? "Sign in with warehouse phone OTP."
                              : "Dev login with phone and PIN.")
-                            .font(.system(size: 13, weight: .medium, design: .monospaced))
+                            .font(.system(.footnote, design: .monospaced, weight: .medium))
                             .foregroundStyle(TermTheme.secondary)
                             .multilineTextAlignment(.center)
                     }
+                    .accessibilityElement(children: .combine)
                     .padding(.bottom, TermTheme.s8)
 
                     VStack(alignment: .leading, spacing: TermTheme.s16) {
                         VStack(alignment: .leading, spacing: TermTheme.s8) {
                             Text("PHONE")
-                                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                                .font(.system(.caption2, design: .monospaced, weight: .bold))
                                 .foregroundStyle(TermTheme.tertiary)
-                            TextField("mobile_payload.ui.998", text: $viewModel.phone)
+                            TextField("mobile_payload.ui.998", text: $vm.phone)
                                 .keyboardType(.phonePad)
                                 .textContentType(.telephoneNumber)
                                 .focused($focus, equals: .phone)
-                                .font(.system(size: 18, weight: .bold, design: .monospaced))
+                                .font(.system(.headline, design: .monospaced, weight: .bold))
                                 .padding(TermTheme.s16)
+                                .frame(minHeight: 44)
                                 .background(TermTheme.card)
                                 .clipShape(RoundedRectangle(cornerRadius: TermTheme.radiusSM, style: .continuous))
                                 .overlay {
                                     RoundedRectangle(cornerRadius: TermTheme.radiusSM, style: .continuous)
                                         .stroke(TermTheme.separator.opacity(0.12), lineWidth: 1)
                                 }
-                                .disabled(viewModel.loading || (viewModel.mode == .otp && viewModel.otpSent))
+                                .disabled(vm.loading || (vm.mode == .otp && vm.otpSent))
+                                .accessibilityLabel("Phone number")
                         }
 
-                        if viewModel.mode == .otp, viewModel.otpSent {
+                        if vm.mode == .otp, vm.otpSent {
                             VStack(alignment: .leading, spacing: TermTheme.s8) {
                                 Text("mobile_payload.ui.verification_code")
-                                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                                    .font(.system(.caption2, design: .monospaced, weight: .bold))
                                     .foregroundStyle(TermTheme.tertiary)
-                                TextField("000000", text: Binding(
-                                    get: { viewModel.otpCode },
-                                    set: { viewModel.setOtp($0) }
-                                ))
-                                .keyboardType(.numberPad)
-                                .textContentType(.oneTimeCode)
-                                .focused($focus, equals: .otp)
-                                .font(.system(size: 24, weight: .black, design: .monospaced))
-                                .padding(TermTheme.s16)
-                                .background(TermTheme.card)
-                                .clipShape(RoundedRectangle(cornerRadius: TermTheme.radiusSM, style: .continuous))
-                                .overlay {
-                                    RoundedRectangle(cornerRadius: TermTheme.radiusSM, style: .continuous)
-                                        .stroke(TermTheme.separator.opacity(0.12), lineWidth: 1)
-                                }
-                                .disabled(viewModel.loading)
+                                TextField("000000", text: $vm.otpCode)
+                                    .onChange(of: vm.otpCode) { _, next in
+                                        vm.setOtp(next)
+                                    }
+                                    .keyboardType(.numberPad)
+                                    .textContentType(.oneTimeCode)
+                                    .focused($focus, equals: .otp)
+                                    .font(.system(.title2, design: .monospaced, weight: .black))
+                                    .padding(TermTheme.s16)
+                                    .frame(minHeight: 44)
+                                    .background(TermTheme.card)
+                                    .clipShape(RoundedRectangle(cornerRadius: TermTheme.radiusSM, style: .continuous))
+                                    .overlay {
+                                        RoundedRectangle(cornerRadius: TermTheme.radiusSM, style: .continuous)
+                                            .stroke(TermTheme.separator.opacity(0.12), lineWidth: 1)
+                                    }
+                                    .disabled(vm.loading)
+                                    .accessibilityLabel("Six digit verification code")
                             }
                         }
 
-                        if viewModel.mode == .pinDev {
+                        if vm.mode == .pinDev {
                             VStack(alignment: .leading, spacing: TermTheme.s8) {
                                 Text("PIN")
-                                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                                    .font(.system(.caption2, design: .monospaced, weight: .bold))
                                     .foregroundStyle(TermTheme.tertiary)
-                                SecureField("••••••", text: Binding(
-                                    get: { viewModel.pin },
-                                    set: { viewModel.setPin($0) }
-                                ))
-                                .keyboardType(.numberPad)
-                                .textContentType(.password)
-                                .focused($focus, equals: .pin)
-                                .font(.system(size: 24, weight: .black, design: .monospaced))
-                                .padding(TermTheme.s16)
-                                .background(TermTheme.card)
-                                .clipShape(RoundedRectangle(cornerRadius: TermTheme.radiusSM, style: .continuous))
-                                .overlay {
-                                    RoundedRectangle(cornerRadius: TermTheme.radiusSM, style: .continuous)
-                                        .stroke(TermTheme.separator.opacity(0.12), lineWidth: 1)
-                                }
-                                .disabled(viewModel.loading)
+                                SecureField("••••••", text: $vm.pin)
+                                    .onChange(of: vm.pin) { _, next in
+                                        vm.setPin(next)
+                                    }
+                                    .keyboardType(.numberPad)
+                                    .textContentType(.password)
+                                    .focused($focus, equals: .pin)
+                                    .font(.system(.title2, design: .monospaced, weight: .black))
+                                    .padding(TermTheme.s16)
+                                    .frame(minHeight: 44)
+                                    .background(TermTheme.card)
+                                    .clipShape(RoundedRectangle(cornerRadius: TermTheme.radiusSM, style: .continuous))
+                                    .overlay {
+                                        RoundedRectangle(cornerRadius: TermTheme.radiusSM, style: .continuous)
+                                            .stroke(TermTheme.separator.opacity(0.12), lineWidth: 1)
+                                    }
+                                    .disabled(vm.loading)
+                                    .accessibilityLabel("Security PIN")
                             }
                         }
                     }
                     .padding(TermTheme.s20)
                     .tacticalCard()
 
-                    if let error = viewModel.error {
+                    if let error = vm.error {
                         PayloadStateView(
                             variant: .warning,
                             title: "LOGIN_FAILED",
@@ -115,63 +125,70 @@ struct LoginView: View {
                         )
                     }
 
-                    if viewModel.mode == .otp {
-                        if !viewModel.otpSent {
+                    if vm.mode == .otp {
+                        if !vm.otpSent {
                             Button {
-                                Task { await viewModel.sendOtp() }
+                                PegasusHaptics.medium()
+                                Task { await vm.sendOtp() }
                             } label: {
                                 primaryButtonLabel("SEND CODE")
                             }
-                            .disabled(viewModel.loading || viewModel.phone.trimmingCharacters(in: .whitespaces).isEmpty)
+                            .disabled(vm.loading || vm.phone.trimmingCharacters(in: .whitespaces).isEmpty)
                             .buttonStyle(.tactical)
                         } else {
                             Button {
-                                Task { await viewModel.verifyOtp() }
+                                PegasusHaptics.medium()
+                                Task { await vm.verifyOtp() }
                             } label: {
                                 primaryButtonLabel("VERIFY & SIGN IN")
                             }
-                            .disabled(viewModel.loading || viewModel.otpCode.count < 6)
+                            .disabled(vm.loading || vm.otpCode.count < 6)
                             .buttonStyle(.tactical)
 
                             Button {
-                                Task { await viewModel.sendOtp() }
+                                PegasusHaptics.light()
+                                Task { await vm.sendOtp() }
                             } label: {
                                 Text("mobile_payload.ui.resend_code")
-                                    .font(.system(size: 13, weight: .bold, design: .monospaced))
+                                    .font(.system(.footnote, design: .monospaced, weight: .bold))
                                     .frame(maxWidth: .infinity, minHeight: 44)
                             }
-                            .disabled(viewModel.loading)
+                            .disabled(vm.loading)
                             .buttonStyle(.tactical)
                         }
                     } else {
                         Button {
-                            Task { await viewModel.submitPin() }
+                            PegasusHaptics.medium()
+                            Task { await vm.submitPin() }
                         } label: {
                             primaryButtonLabel("SIGN IN WITH PIN")
                         }
-                        .disabled(viewModel.loading || !viewModel.canSubmitPin)
+                        .disabled(vm.loading || !vm.canSubmitPin)
                         .buttonStyle(.tactical)
                     }
 
                     Button {
-                        viewModel.setMode(viewModel.mode == .otp ? .pinDev : .otp)
+                        PegasusHaptics.selection()
+                        vm.setMode(vm.mode == .otp ? .pinDev : .otp)
                         focus = .phone
                     } label: {
-                        Text(viewModel.mode == .otp ? "USE PIN (DEV)" : "USE PHONE OTP")
-                            .font(.system(size: 12, weight: .bold, design: .monospaced))
+                        Text(vm.mode == .otp ? "USE PIN (DEV)" : "USE PHONE OTP")
+                            .font(.system(.caption, design: .monospaced, weight: .bold))
                             .foregroundStyle(TermTheme.secondary)
+                            .frame(minWidth: 44, minHeight: 44)
                     }
-                    .disabled(viewModel.loading)
+                    .disabled(vm.loading)
                 }
                 .padding(TermTheme.s32)
                 .frame(maxWidth: 480)
                 .frame(maxWidth: .infinity, alignment: .center)
             }
             .scrollIndicators(.hidden)
+            .scrollDismissesKeyboard(.interactively)
         }
         .defaultFocus($focus, .phone)
         .overlay {
-            if viewModel.loading {
+            if vm.loading {
                 Color.black.opacity(0.4).ignoresSafeArea()
                 PayloadLoadingView(title: "AUTHENTICATING", message: "Verifying credentials with dispatch.")
                     .background(TermTheme.card)
@@ -183,24 +200,24 @@ struct LoginView: View {
             FirebaseAuthHelper.shared.configure()
             focus = .phone
         }
-        .onChange(of: viewModel.otpSent) { _, sent in
+        .onChange(of: vm.otpSent) { _, sent in
             focus = sent ? .otp : .phone
         }
         .onSubmit {
             switch focus {
             case .phone:
-                if viewModel.mode == .pinDev {
+                if vm.mode == .pinDev {
                     focus = .pin
-                } else if !viewModel.phone.trimmingCharacters(in: .whitespaces).isEmpty {
-                    Task { await viewModel.sendOtp() }
+                } else if !vm.phone.trimmingCharacters(in: .whitespaces).isEmpty {
+                    Task { await vm.sendOtp() }
                 }
             case .otp:
-                if viewModel.otpCode.count == 6 {
-                    Task { await viewModel.verifyOtp() }
+                if vm.otpCode.count == 6 {
+                    Task { await vm.verifyOtp() }
                 }
             case .pin:
-                if viewModel.canSubmitPin {
-                    Task { await viewModel.submitPin() }
+                if vm.canSubmitPin {
+                    Task { await vm.submitPin() }
                 }
             case nil:
                 break
@@ -213,18 +230,12 @@ struct LoginView: View {
         HStack(spacing: TermTheme.s12) {
             Image(systemName: "lock.shield.fill")
             Text(title)
-                .font(.system(size: 16, weight: .black, design: .monospaced))
+                .font(.system(.callout, design: .monospaced, weight: .black))
         }
         .frame(maxWidth: .infinity, minHeight: 52)
         .background(TermTheme.accent)
         .foregroundStyle(TermTheme.card)
         .clipShape(RoundedRectangle(cornerRadius: TermTheme.radiusSM, style: .continuous))
-    }
-}
-
-private extension LoginViewModel {
-    var canSubmitPin: Bool {
-        !phone.trimmingCharacters(in: .whitespaces).isEmpty && pin.count >= 6
     }
 }
 

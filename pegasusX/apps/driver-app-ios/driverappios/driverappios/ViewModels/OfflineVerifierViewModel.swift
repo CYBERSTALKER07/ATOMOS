@@ -213,6 +213,7 @@ final class OfflineVerifierViewModel {
             store.deleteSynced(orderIds: result.processed)
         } catch {
             // Sync failed — deliveries remain in queue for next attempt
+            print("[OfflineVerifierViewModel] batch upload deferred: \(error.localizedDescription)")
         }
     }
 }

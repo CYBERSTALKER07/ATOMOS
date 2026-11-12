@@ -15,24 +15,24 @@ struct TransitControlCard: View {
                         .frame(width: 8, height: 8)
                         .modifier(PulseModifier())
                     Text("mobile_driver.ui.returning_to_warehouse")
-                        .font(.system(size: 11, weight: .heavy, design: .monospaced))
+                        .font(.system(.caption2, design: .monospaced, weight: .heavy))
                         .foregroundStyle(LabTheme.warning)
                     Spacer()
                 }
 
                 Text("mobile_driver.ui.all_deliveries_completed_head_back_to_depot")
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.system(.caption, weight: .medium))
                     .foregroundStyle(LabTheme.fgTertiary)
                     .frame(maxWidth: .infinity, alignment: .leading)
 
                 if vm.returnGoodsTotalUnits > 0 {
                     Text(L10n.format("mobile_driver.ui.returngoodstotalunits_item_s_to_return_on_truck", "\(vm.returnGoodsTotalUnits)"))
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.system(.caption, weight: .semibold))
                         .foregroundStyle(LabTheme.warning)
                         .frame(maxWidth: .infinity, alignment: .leading)
                     ForEach(vm.returnGoodsLines.prefix(5)) { line in
                         Text(L10n.format("mobile_driver.ui.productname_quantity", "\(line.productName)", "\(line.quantity)"))
-                            .font(.system(size: 11, weight: .medium))
+                            .font(.system(.caption2, weight: .medium))
                             .foregroundStyle(LabTheme.fgSecondary)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
@@ -41,7 +41,7 @@ struct TransitControlCard: View {
                 if vm.showCashReconSheet || vm.deliveryEdgeMessage?.localizedCaseInsensitiveContains("cash reconciliation") == true {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("mobile_driver.ui.cash_reconciliation")
-                            .font(.system(size: 12, weight: .semibold))
+                            .font(.system(.caption, weight: .semibold))
                         TextField("mobile_driver.ui.declared_cash_minor", text: Bindable(vm).declaredCashText)
                             .textFieldStyle(.roundedBorder)
                         Button("mobile_driver.ui.submit_reconciliation") {
@@ -58,9 +58,9 @@ struct TransitControlCard: View {
                     } label: {
                         HStack(spacing: 8) {
                             Image(systemName: "arrow.triangle.turn.up.right.diamond.fill")
-                                .font(.system(size: 14, weight: .semibold))
+                                .font(.system(.subheadline, weight: .semibold))
                             Text("mobile_driver.ui.navigate_to_warehouse")
-                                .font(.system(size: 13, weight: .heavy, design: .monospaced))
+                                .font(.system(.footnote, design: .monospaced, weight: .heavy))
                         }
                         .foregroundStyle(LabTheme.bg)
                         .frame(maxWidth: .infinity)
@@ -75,9 +75,9 @@ struct TransitControlCard: View {
                     } label: {
                         HStack(spacing: 8) {
                             Image(systemName: "house.fill")
-                                .font(.system(size: 14, weight: .semibold))
+                                .font(.system(.subheadline, weight: .semibold))
                             Text("mobile_driver.ui.arrived_at_warehouse")
-                                .font(.system(size: 13, weight: .heavy, design: .monospaced))
+                                .font(.system(.footnote, design: .monospaced, weight: .heavy))
                         }
                         .foregroundStyle(LabTheme.fg)
                         .frame(maxWidth: .infinity)
@@ -95,16 +95,16 @@ struct TransitControlCard: View {
                         .frame(width: 8, height: 8)
                         .modifier(PulseModifier())
                     Text("mobile_driver.ui.in_transit")
-                        .font(.system(size: 11, weight: .heavy, design: .monospaced))
+                        .font(.system(.caption2, design: .monospaced, weight: .heavy))
                         .foregroundStyle(LabTheme.live)
                     Spacer()
                     Text(L10n.format("mobile_driver.ui.count_deliveries", "\(vm.inTransitOrders.count)"))
-                        .font(.system(size: 12, weight: .medium))
+                        .font(.system(.caption, weight: .medium))
                         .foregroundStyle(LabTheme.fgTertiary)
                 }
 
                 Text("mobile_driver.ui.telemetry_active_drive_safely")
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.system(.caption, weight: .medium))
                     .foregroundStyle(LabTheme.fgTertiary)
                     .frame(maxWidth: .infinity, alignment: .leading)
             } else if !vm.loadedOrders.isEmpty {
@@ -112,10 +112,10 @@ struct TransitControlCard: View {
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("mobile_driver.ui.ready_to_depart")
-                            .font(.system(size: 11, weight: .heavy, design: .monospaced))
+                            .font(.system(.caption2, design: .monospaced, weight: .heavy))
                             .foregroundStyle(LabTheme.fg)
                         Text(L10n.format("mobile_driver.ui.count_orders_loaded", "\(vm.loadedOrders.count)"))
-                            .font(.system(size: 13, weight: .medium))
+                            .font(.system(.footnote, weight: .medium))
                             .foregroundStyle(LabTheme.fgTertiary)
                     }
                     Spacer()
@@ -126,9 +126,9 @@ struct TransitControlCard: View {
                 } label: {
                     HStack(spacing: 8) {
                         Image(systemName: "truck.box.fill")
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(.system(.subheadline, weight: .semibold))
                         Text("mobile_driver.ui.start_transit")
-                            .font(.system(size: 13, weight: .heavy, design: .monospaced))
+                            .font(.system(.footnote, design: .monospaced, weight: .heavy))
                     }
                     .foregroundStyle(LabTheme.bg)
                     .frame(maxWidth: .infinity)
@@ -141,10 +141,10 @@ struct TransitControlCard: View {
                 // No orders loaded
                 HStack(spacing: 10) {
                     Image(systemName: "tray")
-                        .font(.system(size: 14))
+                        .font(.system(.subheadline))
                         .foregroundStyle(LabTheme.fgTertiary)
                     Text("mobile_driver.ui.no_orders_loaded_yet")
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.system(.footnote, weight: .medium))
                         .foregroundStyle(LabTheme.fgTertiary)
                     Spacer()
                 }

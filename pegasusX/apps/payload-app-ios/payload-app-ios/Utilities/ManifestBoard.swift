@@ -26,7 +26,7 @@ enum ManifestBoard {
             guard let match else { return truck }
             return truck.withBoard(
                 status: canonicalState(match.state),
-                used: match.totalVolumeVu,
+                used: match.usedVolumeVu,
                 max: match.maxVolumeVu,
                 stops: match.stopCount
             )

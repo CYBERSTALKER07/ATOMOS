@@ -7,14 +7,13 @@ import Foundation
 import SwiftUI
 
 @Observable
+@MainActor
 final class FleetDVIRViewModel {
 
     var supplierId: String = "supplier-tashkent-1"
     var vehicleId: String = "vh-isuzu-01"
     var driverId: String = "driver-uz-09"
     var odometerKm: Int64 = 125400
-    var requiresColdChain: Bool = true
-    var reeferTempCelsius: Double = 3.5
 
     var checklist = DVIRChecklist8Point()
 
@@ -59,10 +58,6 @@ final class FleetDVIRViewModel {
         checklist.cargoBoxSanitationOk.toggle()
     }
 
-    func toggleReeferCalibration() {
-        checklist.reeferTempCalibratedOk.toggle()
-    }
-
     var failedPoints: [String] {
         var list: [String] = []
         if !checklist.steeringAndHornOk { list.append("steering_and_horn") }
@@ -72,7 +67,6 @@ final class FleetDVIRViewModel {
         if !checklist.wipersAndFluidsOk { list.append("wipers_and_fluids") }
         if !checklist.emergencyKitAndExtinguisherOk { list.append("emergency_kit_and_extinguisher") }
         if !checklist.cargoBoxSanitationOk { list.append("cargo_box_sanitation") }
-        if requiresColdChain && !checklist.reeferTempCalibratedOk { list.append("reefer_temp_calibrated") }
         return list
     }
 
@@ -96,8 +90,6 @@ final class FleetDVIRViewModel {
             vehicleId: vehicleId,
             driverId: driverId,
             odometerKm: odometerKm,
-            requiresColdChain: requiresColdChain,
-            reeferTempCelsius: requiresColdChain ? reeferTempCelsius : nil,
             checklist: checklist,
             failedPoints: defects,
             criticalDefectFound: defectFound,

@@ -11,238 +11,206 @@ import SwiftUI
 import UIKit
 
 struct ShopClosedWaitingView: View {
-
     let orderId: String
     let driverId: String
     let onResolved: () -> Void
     let onCancel: () -> Void
 
-    @State private var reported = false
-    @State private var isReporting = false
-    @State private var reportError: String?
-    @State private var retailerResponse: String?
-    @State private var bypassToken: String?
-    @State private var bypassInput = ""
-    @State private var isSubmittingBypass = false
-    @State private var bypassError: String?
-    @State private var isEscalated = false
-    @State private var countdown: Int = 180
-    @State private var timer: Timer?
+    @State private var vm: ShopClosedWaitingViewModel
     @State private var driverSocketState = DriverSocketState.shared
-    @State private var pickedPhoto: PhotosPickerItem?
-    @State private var photoURL = ""
-    @State private var photoLocalPath = ""
-    @State private var isUploadingPhoto = false
+
+    init(
+        orderId: String,
+        driverId: String,
+        onResolved: @escaping () -> Void,
+        onCancel: @escaping () -> Void
+    ) {
+        self.orderId = orderId
+        self.driverId = driverId
+        self.onResolved = onResolved
+        self.onCancel = onCancel
+        self._vm = State(initialValue: ShopClosedWaitingViewModel(orderId: orderId, driverId: driverId))
+    }
 
     var body: some View {
-        VStack(spacing: 0) {
-            Spacer()
+        @Bindable var vm = vm
+        ScrollView {
+            VStack(spacing: 0) {
+                Spacer(minLength: 48)
 
-            Image(systemName: statusIcon)
-                .font(.system(size: 64))
-                .foregroundStyle(statusColor)
-                .padding(.bottom, LabTheme.s16)
+                Image(systemName: vm.statusIcon)
+                    .font(.system(.largeTitle, weight: .bold))
+                    .foregroundStyle(vm.statusColor)
+                    .padding(.bottom, LabTheme.s16)
+                    .accessibilityHidden(true)
 
-            Text(statusTitle)
-                .font(.system(size: 24, weight: .bold))
-                .foregroundStyle(LabTheme.fg)
-                .padding(.bottom, LabTheme.s8)
+                Text(vm.statusTitle)
+                    .font(.system(.title2, weight: .bold))
+                    .foregroundStyle(LabTheme.fg)
+                    .padding(.bottom, LabTheme.s8)
 
-            Text(orderId)
-                .font(.system(size: 15, weight: .semibold, design: .monospaced))
-                .foregroundStyle(LabTheme.fgSecondary)
-                .padding(.bottom, LabTheme.s16)
+                Text(orderId)
+                    .font(.system(.subheadline, design: .monospaced, weight: .semibold))
+                    .foregroundStyle(LabTheme.fgSecondary)
+                    .padding(.bottom, LabTheme.s16)
 
-            if !reported {
-                VStack(spacing: 12) {
-                    Text("Photograph the closed storefront, then report.")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(LabTheme.fgSecondary)
+                if !vm.reported {
+                    VStack(spacing: 12) {
+                        Text("Photograph the closed storefront, then report.")
+                            .font(.system(.subheadline, weight: .medium))
+                            .foregroundStyle(LabTheme.fgSecondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, LabTheme.s24)
+
+                        PhotosPicker(selection: $vm.pickedPhoto, matching: .images) {
+                            Label(
+                                !vm.hasPhoto ? "Take / choose photo" : "Photo ready — change",
+                                systemImage: "camera.fill"
+                            )
+                            .font(.system(.subheadline, weight: .semibold))
+                            .foregroundStyle(LabTheme.fg)
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                            .padding(.vertical, 6)
+                            .background(LabTheme.fg.opacity(0.06), in: .rect(cornerRadius: LabTheme.buttonRadius))
+                        }
+                        .disabled(vm.isUploadingPhoto || vm.isReporting)
+                        .onChange(of: vm.pickedPhoto) { _, item in
+                            Task { await vm.uploadPickedPhoto(item) }
+                        }
+
+                        if vm.isUploadingPhoto {
+                            ProgressView("Uploading photo…")
+                        }
+
+                        Button {
+                            Task { await vm.reportShopClosed() }
+                        } label: {
+                            HStack {
+                                if vm.isReporting { ProgressView().tint(LabTheme.buttonFg) }
+                                Text("Report shop closed")
+                                    .font(.system(.subheadline, weight: .bold))
+                            }
+                            .foregroundStyle(LabTheme.buttonFg)
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                            .padding(.vertical, 8)
+                            .background(LabTheme.fg, in: .rect(cornerRadius: LabTheme.buttonRadius))
+                        }
+                        .disabled(vm.isReporting || vm.isUploadingPhoto || !vm.hasPhoto)
+                        .padding(.horizontal, LabTheme.s24)
+                    }
+                } else if vm.isReporting {
+                    ProgressView()
+                        .scaleEffect(1.2)
+                        .padding(.bottom, LabTheme.s8)
+                    Text("mobile_driver.ui.reporting_shop_closed")
+                        .font(.system(.footnote, weight: .medium))
+                        .foregroundStyle(LabTheme.fgTertiary)
+                } else if let response = vm.retailerResponse {
+                    retailerResponseView(response)
+                } else if vm.isEscalated {
+                    Text("mobile_driver.ui.escalated_to_supplier_awaiting_resolution")
+                        .font(.system(.subheadline, weight: .medium))
+                        .foregroundStyle(LabTheme.warning)
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, LabTheme.s24)
+                } else {
+                    Text(vm.countdownFormatted)
+                        .font(.system(.largeTitle, design: .monospaced, weight: .bold))
+                        .foregroundStyle(vm.countdown <= 30 ? LabTheme.destructive : LabTheme.fg)
+                        .padding(.bottom, LabTheme.s8)
 
-                    PhotosPicker(selection: $pickedPhoto, matching: .images) {
-                        Label(
-                            photoURL.isEmpty && photoLocalPath.isEmpty
-                                ? "Take / choose photo"
-                                : "Photo ready — change",
-                            systemImage: "camera.fill"
-                        )
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(LabTheme.fg)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(LabTheme.fg.opacity(0.06), in: .rect(cornerRadius: LabTheme.buttonRadius))
-                    }
-                    .disabled(isUploadingPhoto || isReporting)
-                    .onChange(of: pickedPhoto) { _, item in
-                        Task { await uploadPickedPhoto(item) }
-                    }
-
-                    if isUploadingPhoto {
-                        ProgressView("Uploading photo…")
-                    }
-
-                    Button {
-                        Task { await reportShopClosed() }
-                    } label: {
-                        HStack {
-                            if isReporting { ProgressView().tint(LabTheme.buttonFg) }
-                            Text("Report shop closed")
-                                .font(.system(size: 15, weight: .bold))
-                        }
-                        .foregroundStyle(LabTheme.buttonFg)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(LabTheme.fg, in: .rect(cornerRadius: LabTheme.buttonRadius))
-                    }
-                    .disabled(isReporting || isUploadingPhoto || (photoURL.isEmpty && photoLocalPath.isEmpty))
-                    .padding(.horizontal, LabTheme.s24)
+                    Text("mobile_driver.ui.waiting_for_retailer_response")
+                        .font(.system(.footnote, weight: .medium))
+                        .foregroundStyle(LabTheme.fgTertiary)
                 }
-            } else if isReporting {
-                ProgressView()
-                    .scaleEffect(1.2)
-                    .padding(.bottom, LabTheme.s8)
-                Text("mobile_driver.ui.reporting_shop_closed")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(LabTheme.fgTertiary)
-            } else if let response = retailerResponse {
-                retailerResponseView(response)
-            } else if isEscalated {
-                Text("mobile_driver.ui.escalated_to_supplier_awaiting_resolution")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(LabTheme.warning)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, LabTheme.s24)
-            } else {
-                Text(countdownFormatted)
-                    .font(.system(size: 48, weight: .bold, design: .monospaced))
-                    .foregroundStyle(countdown <= 30 ? LabTheme.destructive : LabTheme.fg)
-                    .padding(.bottom, LabTheme.s8)
 
-                Text("mobile_driver.ui.waiting_for_retailer_response")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(LabTheme.fgTertiary)
-            }
+                if let token = vm.bypassToken {
+                    VStack(spacing: 12) {
+                        Divider().padding(.horizontal, LabTheme.s24)
 
-            if let token = bypassToken {
-                VStack(spacing: 12) {
-                    Divider().padding(.horizontal, LabTheme.s24)
+                        Text("mobile_driver.ui.bypass_token_issued")
+                            .font(.system(.footnote, weight: .bold))
+                            .foregroundStyle(LabTheme.success)
 
-                    Text("mobile_driver.ui.bypass_token_issued")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(LabTheme.success)
+                        Text(token)
+                            .font(.system(.title, design: .monospaced, weight: .bold))
+                            .foregroundStyle(LabTheme.fg)
+                            .tracking(8)
 
-                    Text(token)
-                        .font(.system(size: 32, weight: .bold, design: .monospaced))
-                        .foregroundStyle(LabTheme.fg)
-                        .tracking(8)
+                        TextField("mobile_driver.ui.enter_token", text: $vm.bypassInput)
+                            .font(.system(.headline, design: .monospaced, weight: .semibold))
+                            .multilineTextAlignment(.center)
+                            .keyboardType(.numberPad)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(maxWidth: 200)
 
-                    TextField("mobile_driver.ui.enter_token", text: $bypassInput)
-                        .font(.system(size: 18, weight: .semibold, design: .monospaced))
-                        .multilineTextAlignment(.center)
-                        .keyboardType(.numberPad)
-                        .textFieldStyle(.roundedBorder)
-                        .frame(maxWidth: 200)
+                        if let err = vm.bypassError {
+                            Text(err)
+                                .font(.system(.caption, weight: .medium))
+                                .foregroundStyle(LabTheme.destructive)
+                        }
 
-                    if let err = bypassError {
-                        Text(err)
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(LabTheme.destructive)
-                    }
-
-                    Button {
-                        submitBypass()
-                    } label: {
-                        HStack(spacing: 8) {
-                            if isSubmittingBypass {
-                                ProgressView().tint(LabTheme.buttonFg)
+                        Button {
+                            Task {
+                                if await vm.submitBypass() {
+                                    onResolved()
+                                }
                             }
-                            Text("mobile_driver.ui.confirm_bypass")
-                                .font(.system(size: 15, weight: .bold))
+                        } label: {
+                            HStack(spacing: 8) {
+                                if vm.isSubmittingBypass {
+                                    ProgressView().tint(LabTheme.buttonFg)
+                                }
+                                Text("mobile_driver.ui.confirm_bypass")
+                                    .font(.system(.subheadline, weight: .bold))
+                            }
+                            .foregroundStyle(LabTheme.buttonFg)
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                            .padding(.vertical, 8)
+                            .background(LabTheme.fg, in: .rect(cornerRadius: LabTheme.buttonRadius))
                         }
-                        .foregroundStyle(LabTheme.buttonFg)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(LabTheme.fg, in: .rect(cornerRadius: LabTheme.buttonRadius))
+                        .disabled(vm.bypassInput.count != 6 || vm.isSubmittingBypass)
+                        .padding(.horizontal, LabTheme.s24)
                     }
-                    .disabled(bypassInput.count != 6 || isSubmittingBypass)
-                    .padding(.horizontal, LabTheme.s24)
+                    .padding(.top, LabTheme.s16)
                 }
-                .padding(.top, LabTheme.s16)
-            }
 
-            Spacer()
+                Spacer(minLength: 48)
 
-            if let error = reportError {
-                Text(error)
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(LabTheme.destructive)
-                    .padding(.horizontal, LabTheme.s24)
-                    .padding(.bottom, LabTheme.s8)
-            }
+                if let error = vm.reportError {
+                    Text(error)
+                        .font(.system(.footnote, weight: .medium))
+                        .foregroundStyle(LabTheme.destructive)
+                        .padding(.horizontal, LabTheme.s24)
+                        .padding(.bottom, LabTheme.s8)
+                }
 
-            Button {
-                onCancel()
-            } label: {
-                Text("common.action.back")
-                    .font(.system(size: 15, weight: .bold))
-                    .foregroundStyle(LabTheme.fgSecondary)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(LabTheme.fg.opacity(0.08), in: .rect(cornerRadius: LabTheme.buttonRadius))
+                Button {
+                    Haptics.light()
+                    onCancel()
+                } label: {
+                    Text("common.action.back")
+                        .font(.system(.subheadline, weight: .bold))
+                        .foregroundStyle(LabTheme.fgSecondary)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .padding(.vertical, 8)
+                        .background(LabTheme.fg.opacity(0.08), in: .rect(cornerRadius: LabTheme.buttonRadius))
+                }
+                .padding(.horizontal, LabTheme.s24)
+                .padding(.bottom, LabTheme.s24)
             }
-            .padding(.horizontal, LabTheme.s24)
-            .padding(.bottom, LabTheme.s24)
         }
+        .scrollDismissesKeyboard(.interactively)
         .background(LabTheme.bg)
         .task(id: driverSocketState.eventSequence) {
-            handleDriverSocketEvent(driverSocketState.lastEvent)
+            vm.handleDriverSocketEvent(driverSocketState.lastEvent)
         }
         .onDisappear {
-            timer?.invalidate()
+            vm.stopCountdown()
         }
         .onChange(of: driverSocketState.reconnectEpoch) { _, _ in
-            Task {
-                let hadInFlight = isReporting || isSubmittingBypass
-                await DriverReconnectRecovery.recoverInFlight(wasInFlight: hadInFlight)
-                if hadInFlight {
-                    isReporting = false
-                    isSubmittingBypass = false
-                    reportError = DriverReconnectRecovery.hint
-                }
-            }
+            Task { await vm.handleReconnect() }
         }
-    }
-
-    private var statusIcon: String {
-        if !reported { return "camera.fill" }
-        if isReporting { return "clock.fill" }
-        if retailerResponse != nil { return "bubble.left.fill" }
-        if isEscalated { return "exclamationmark.triangle.fill" }
-        if bypassToken != nil { return "key.fill" }
-        return "door.left.hand.closed"
-    }
-
-    private var statusColor: Color {
-        if retailerResponse != nil { return LabTheme.success }
-        if isEscalated { return LabTheme.warning }
-        if countdown <= 30 { return LabTheme.destructive }
-        return Color.orange
-    }
-
-    private var statusTitle: String {
-        if !reported { return "Shop Closed" }
-        if isReporting { return "Reporting..." }
-        if retailerResponse != nil { return "Retailer Responded" }
-        if isEscalated { return "Escalated" }
-        return "Shop Closed"
-    }
-
-    private var countdownFormatted: String {
-        let m = countdown / 60
-        let s = countdown % 60
-        return String(format: "%d:%02d", m, s)
     }
 
     @ViewBuilder
@@ -257,149 +225,15 @@ struct ShopClosedWaitingView: View {
 
         VStack(spacing: 8) {
             Image(systemName: icon)
-                .font(.system(size: 28))
+                .font(.system(.title))
                 .foregroundStyle(LabTheme.fg)
             Text(label)
-                .font(.system(size: 15, weight: .medium))
+                .font(.system(.subheadline, weight: .medium))
                 .foregroundStyle(LabTheme.fg)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, LabTheme.s24)
         }
         .padding(.vertical, LabTheme.s16)
-    }
-
-    private func uploadPickedPhoto(_ item: PhotosPickerItem?) async {
-        guard let item else { return }
-        isUploadingPhoto = true
-        reportError = nil
-        defer { isUploadingPhoto = false }
-        do {
-            guard let data = try await item.loadTransferable(type: Data.self),
-                  let image = UIImage(data: data),
-                  let jpeg = image.jpegData(compressionQuality: 0.82) else {
-                reportError = "Could not read photo."
-                return
-            }
-            photoLocalPath = (try? MediaUploadService.savePodJPEG(jpeg, prefix: "shop-closed")) ?? ""
-            do {
-                photoURL = try await MediaUploadService.uploadJPEG(
-                    image: image,
-                    purpose: "credit_proof",
-                    orderId: orderId
-                )
-            } catch {
-                photoURL = ""
-                if photoLocalPath.isEmpty {
-                    reportError = "Photo upload failed: \(error.localizedDescription)"
-                }
-            }
-        } catch {
-            reportError = "Photo upload failed: \(error.localizedDescription)"
-        }
-    }
-
-    private func reportShopClosed() async {
-        guard !photoURL.isEmpty || !photoLocalPath.isEmpty else {
-            reportError = "Photo required before reporting shop closed."
-            return
-        }
-        isReporting = true
-        reportError = nil
-        let ts = DriverOfflineActionCatalog.nowIso()
-        do {
-            if photoURL.isEmpty {
-                throw URLError(.notConnectedToInternet)
-            }
-            _ = try await APIClient.shared.reportShopClosed(
-                orderId: orderId,
-                photoURL: photoURL,
-                clientTimestamp: ts
-            )
-            reported = true
-            isReporting = false
-            if let notice = DriverSocketState.shared.outdatedNotice {
-                reportError = notice.message
-                return
-            }
-            startCountdown()
-        } catch {
-            if DriverOfflineActionCatalog.isNetworkEnqueueable(error) || photoURL.isEmpty {
-                var body: [String: Any] = [
-                    "order_id": orderId,
-                    "reason": "CLOSED",
-                    "client_timestamp": ts,
-                ]
-                if !photoURL.isEmpty {
-                    body["photo_url"] = photoURL
-                } else if !photoLocalPath.isEmpty {
-                    body["photo_local_path"] = photoLocalPath
-                }
-                DriverOfflineQueue.shared.enqueueJSONObject(
-                    endpoint: DriverOfflineActionCatalog.shopClosed,
-                    body: body,
-                    idempotencyKey: DriverIdempotency.reportShopClosed(orderId: orderId),
-                    orderId: orderId,
-                    clientTimestampIso: ts
-                )
-                reported = true
-                isReporting = false
-                reportError = "Offline — shop-closed queued for sync"
-                startCountdown()
-            } else {
-                isReporting = false
-                reportError = "Failed to report: \(error.localizedDescription)"
-            }
-        }
-    }
-
-    private func submitBypass() {
-        isSubmittingBypass = true
-        bypassError = nil
-        Task {
-            do {
-                _ = try await APIClient.shared.bypassOffload(orderId: orderId, token: bypassInput)
-                Haptics.success()
-                onResolved()
-            } catch {
-                isSubmittingBypass = false
-                bypassError = error.localizedDescription
-            }
-        }
-    }
-
-    private func startCountdown() {
-        timer?.invalidate()
-        timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
-            if countdown > 0 {
-                countdown -= 1
-            } else {
-                timer?.invalidate()
-            }
-        }
-    }
-
-    private func handleDriverSocketEvent(_ event: DriverSocketState.DriverEvent?) {
-        if let notice = DriverSocketState.shared.outdatedNotice {
-            reportError = notice.message
-            Haptics.warning()
-            return
-        }
-
-        guard let event else { return }
-        guard event.orderId == orderId else { return }
-
-        switch event.type {
-        case "SHOP_CLOSED_RESPONSE":
-            retailerResponse = event.response
-            Haptics.medium()
-        case "BYPASS_TOKEN_ISSUED":
-            bypassToken = event.bypassToken
-            Haptics.medium()
-        case "SHOP_CLOSED_ESCALATED":
-            isEscalated = true
-            Haptics.warning()
-        default:
-            break
-        }
+        .accessibilityElement(children: .combine)
     }
 }

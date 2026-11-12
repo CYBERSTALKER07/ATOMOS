@@ -20,10 +20,10 @@ struct KpiTile: View {
     var body: some View {
         VStack(alignment: .leading, spacing: TermTheme.s8) {
             Text(label.uppercased())
-                .font(.system(size: 10, weight: .black, design: .monospaced))
+                .font(.system(.caption2, design: .monospaced, weight: .black))
                 .foregroundStyle(TermTheme.tertiary)
             Text(value)
-                .font(.system(size: value.count > 14 ? 14 : 16, weight: .bold, design: .monospaced))
+                .font(.system(value.count > 14 ? .subheadline : .callout, design: .monospaced, weight: .bold))
                 .foregroundStyle(TermTheme.accent)
                 .minimumScaleFactor(0.8)
                 .lineLimit(2)
@@ -32,5 +32,7 @@ struct KpiTile: View {
         .padding(TermTheme.s20)
         .frame(maxWidth: .infinity, alignment: .leading)
         .tacticalCard()
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(label): \(value)")
     }
 }

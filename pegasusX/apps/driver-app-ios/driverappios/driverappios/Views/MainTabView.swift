@@ -34,8 +34,8 @@ struct MainTabView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var selectedTab: AppTab = .home
     @State private var vm = FleetViewModel()
-    @State private var pathMonitor: NWPathMonitor?
-    @State private var wasOffline = false
+    private var network = NetworkLifecycleEngine.shared
+    private var wasOffline: Bool { !network.isOnline }
 
     var body: some View {
         Group {
@@ -50,31 +50,11 @@ struct MainTabView: View {
                 Task { await vm.loadMissions(silent: true) }
             }
         }
-        .onAppear {
-            guard pathMonitor == nil else { return }
-            let monitor = NWPathMonitor()
-            let queue = DispatchQueue(label: "com.pegasus.driver.main-tab.network")
-            monitor.pathUpdateHandler = { path in
-                DispatchQueue.main.async {
-                    if path.status == .satisfied {
-                        if wasOffline {
-                            Task {
-                                await FleetServiceLive.shared.flushOfflineQueue()
-                                await vm.loadMissions(silent: true)
-                            }
-                        }
-                        wasOffline = false
-                    } else {
-                        wasOffline = true
-                    }
-                }
+        .onChange(of: network.syncEpoch) { _, _ in
+            Task {
+                await FleetServiceLive.shared.flushOfflineQueue()
+                await vm.loadMissions(silent: true)
             }
-            monitor.start(queue: queue)
-            pathMonitor = monitor
-        }
-        .onDisappear {
-            pathMonitor?.cancel()
-            pathMonitor = nil
         }
         .alert("Rescue Proposed", isPresented: $vm.showRescueProposalAlert) {
             Button("mobile_driver.ui.accept_rescue", role: .none) {
@@ -151,13 +131,13 @@ struct MainTabView: View {
                 // Tactical Driver Badge
                 VStack(spacing: 6) {
                     Image(systemName: "steeringwheel")
-                        .font(.system(size: 20, weight: .bold))
+                        .font(.system(.title3, weight: .bold))
                         .foregroundStyle(LabTheme.buttonFg)
                         .frame(width: 44, height: 44)
                         .background(LabTheme.fg, in: Circle())
 
                     Text("DRIVER")
-                        .font(.system(size: 9, weight: .black, design: .monospaced))
+                        .font(.system(.caption2, design: .monospaced, weight: .black))
                         .foregroundStyle(LabTheme.fgTertiary)
                 }
                 .padding(.top, 24)
@@ -175,9 +155,9 @@ struct MainTabView: View {
                         } label: {
                             VStack(spacing: 4) {
                                 Image(systemName: tab.icon)
-                                    .font(.system(size: 18, weight: selectedTab == tab ? .bold : .regular))
+                                    .font(.system(.title3, weight: selectedTab == tab ? .bold : .regular))
                                 Text(tab.label)
-                                    .font(.system(size: 10, weight: selectedTab == tab ? .bold : .medium))
+                                    .font(.system(.caption2, weight: selectedTab == tab ? .bold : .medium))
                             }
                             .foregroundStyle(selectedTab == tab ? LabTheme.fg : LabTheme.fgTertiary)
                             .frame(width: 64, height: 56)
@@ -198,7 +178,7 @@ struct MainTabView: View {
                         .fill(wasOffline ? LabTheme.destructive : LabTheme.success)
                         .frame(width: 8, height: 8)
                     Text(wasOffline ? "OFFLINE" : "LIVE")
-                        .font(.system(size: 8, weight: .black, design: .monospaced))
+                        .font(.system(.caption2, design: .monospaced, weight: .black))
                         .foregroundStyle(LabTheme.fgTertiary)
                 }
                 .padding(.bottom, 24)

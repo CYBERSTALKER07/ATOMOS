@@ -42,16 +42,16 @@ struct LoginResponse: Decodable {
     let firebaseToken: String?
 
     init(
-        token: String = "mock-payload-jwt-dev",
-        refreshToken: String? = "mock-payload-refresh-dev",
-        workerId: String = "wrk-payload-001",
-        supplierId: String = "sup-tashkent-01",
-        role: String = "PAYLOAD_OPERATOR",
-        name: String = "Sardor Karimov (Payload Demo)",
-        warehouseId: String = "wh-tashkent-central",
-        warehouseName: String = "Tashkent Central Depot",
-        warehouseLat: Double = 41.2995,
-        warehouseLng: Double = 69.2401,
+        token: String,
+        refreshToken: String?,
+        workerId: String,
+        supplierId: String,
+        role: String,
+        name: String,
+        warehouseId: String,
+        warehouseName: String,
+        warehouseLat: Double = 0.0,
+        warehouseLng: Double = 0.0,
         firebaseToken: String? = nil
     ) {
         self.token = token
@@ -66,8 +66,6 @@ struct LoginResponse: Decodable {
         self.warehouseLng = warehouseLng
         self.firebaseToken = firebaseToken
     }
-
-    static let mock = LoginResponse()
 }
 
 struct RefreshTokenRequest: Encodable {
@@ -158,6 +156,11 @@ struct LiveOrderItem: Decodable, Identifiable {
     let unitPrice: Int64?
     let status: String?
     var id: String { lineItemId }
+
+    /// Minor units (Tiyin) total for line item with strict zero floating-point arithmetic.
+    var totalTiyin: Int64 {
+        Int64(quantity) * (unitPrice ?? 0)
+    }
 }
 
 struct LiveOrder: Decodable, Identifiable {
@@ -170,6 +173,28 @@ struct LiveOrder: Decodable, Identifiable {
     let warehouseId: String?
     let items: [LiveOrderItem]?
     var id: String { orderId }
+
+    /// Minor units (Tiyin) total calculated strictly with Int64 integer arithmetic.
+    var calculatedTotalTiyin: Int64 {
+        items?.reduce(Int64(0)) { $0 + $1.totalTiyin } ?? (amount ?? 0)
+    }
+}
+
+/// Zero floating-point financial arithmetic formatting for minor units (Tiyin/cents).
+public enum CurrencyFormat {
+    public static func formatTiyin(_ tiyin: Int64, currency: String = "UZS") -> String {
+        let whole = tiyin / 100
+        let fraction = abs(tiyin % 100)
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.groupingSeparator = " "
+        let formattedWhole = formatter.string(from: NSNumber(value: whole)) ?? "\(whole)"
+        if fraction == 0 {
+            return "\(formattedWhole) \(currency)"
+        } else {
+            return String(format: "%@.%02lld %@", formattedWhole, fraction, currency)
+        }
+    }
 }
 
 struct Manifest: Decodable, Identifiable {
@@ -178,7 +203,7 @@ struct Manifest: Decodable, Identifiable {
     let vehicleId: String?
     let driverId: String?
     let state: String   // DRAFT | LOADING | SEALED | DISPATCHED | COMPLETED
-    let totalVolumeVu: Double?
+    let usedVolumeVu: Double?
     let maxVolumeVu: Double?
     let stopCount: Int?
     let regionCode: String?
@@ -198,7 +223,7 @@ struct Manifest: Decodable, Identifiable {
         case vehicleId = "vehicle_id"
         case driverId = "driver_id"
         case state
-        case totalVolumeVu = "total_volume_vu"
+        case usedVolumeVu = "total_volume_vu"
         case maxVolumeVu = "max_volume_vu"
         case stopCount = "stop_count"
         case regionCode = "region_code"
@@ -226,7 +251,7 @@ extension Manifest {
         vehicleId: String? = nil,
         truckId: String? = nil,
         state: String,
-        totalVolumeVu: Double? = nil,
+        usedVolumeVu: Double? = nil,
         maxVolumeVu: Double? = nil,
         stopCount: Int? = nil,
         createdAt: String? = nil
@@ -236,7 +261,7 @@ extension Manifest {
         self.vehicleId = vehicleId
         self.driverId = nil
         self.state = state
-        self.totalVolumeVu = totalVolumeVu
+        self.usedVolumeVu = usedVolumeVu
         self.maxVolumeVu = maxVolumeVu
         self.stopCount = stopCount
         self.regionCode = nil

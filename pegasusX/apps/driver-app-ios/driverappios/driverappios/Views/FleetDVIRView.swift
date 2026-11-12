@@ -18,10 +18,10 @@ struct FleetDVIRView: View {
                         // Header info
                         VStack(alignment: .leading, spacing: 6) {
                             Text("Pre-Trip DVIR Walkaround")
-                                .font(.system(size: 24, weight: .bold))
+                                .font(.system(.title2, weight: .bold))
                                 .foregroundStyle(LabTheme.fg)
                             Text("8-Point Mandatory Safety Inspection before Route Dispatch")
-                                .font(.system(size: 14))
+                                .font(.system(.subheadline))
                                 .foregroundStyle(LabTheme.fgSecondary)
                         }
                         .padding(.top, 12)
@@ -31,14 +31,14 @@ struct FleetDVIRView: View {
                             VStack(alignment: .leading, spacing: 12) {
                                 HStack(spacing: 12) {
                                     Image(systemName: "exclamationmark.octagon.fill")
-                                        .font(.system(size: 28))
+                                        .font(.system(.title))
                                         .foregroundStyle(.white)
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text("RED-TAG GROUNDING ENFORCED")
-                                            .font(.system(size: 16, weight: .bold))
+                                            .font(.system(.callout, weight: .bold))
                                             .foregroundStyle(.white)
                                         Text("Vehicle Quarantine Active (HTTP 409 Gate)")
-                                            .font(.system(size: 12))
+                                            .font(.system(.caption))
                                             .foregroundStyle(.white.opacity(0.85))
                                     }
                                 }
@@ -47,23 +47,23 @@ struct FleetDVIRView: View {
 
                                 if let reason = vm.redTagReason {
                                     Text(reason)
-                                        .font(.system(size: 13, weight: .medium))
+                                        .font(.system(.footnote, weight: .medium))
                                         .foregroundStyle(.white)
                                 }
 
                                 if let wo = vm.workOrderId {
                                     HStack {
                                         Text("Maintenance WO:")
-                                            .font(.system(size: 12))
+                                            .font(.system(.caption))
                                             .foregroundStyle(.white.opacity(0.8))
                                         Text(wo)
-                                            .font(.system(size: 12, weight: .bold, design: .monospaced))
+                                            .font(.system(.caption, design: .monospaced, weight: .bold))
                                             .foregroundStyle(.white)
                                     }
                                 }
 
                                 Text("Driver route pairing uncoupled. Vehicle dispatch is physically locked.")
-                                    .font(.system(size: 11, weight: .semibold))
+                                    .font(.system(.caption2, weight: .semibold))
                                     .foregroundStyle(.white.opacity(0.9))
                             }
                             .padding(16)
@@ -74,47 +74,25 @@ struct FleetDVIRView: View {
                         // Vehicle Details Card
                         VStack(alignment: .leading, spacing: 12) {
                             Text("Vehicle Metadata")
-                                .font(.system(size: 14, weight: .semibold))
+                                .font(.system(.subheadline, weight: .semibold))
                                 .foregroundStyle(LabTheme.fgSecondary)
 
                             HStack {
                                 Text("Vehicle ID:")
-                                    .font(.system(size: 14))
+                                    .font(.system(.subheadline))
                                     .foregroundStyle(LabTheme.fgSecondary)
                                 Spacer()
                                 Text(vm.vehicleId)
-                                    .font(.system(size: 14, weight: .bold, design: .monospaced))
+                                    .font(.system(.subheadline, design: .monospaced, weight: .bold))
                             }
 
                             HStack {
                                 Text("Odometer:")
-                                    .font(.system(size: 14))
+                                    .font(.system(.subheadline))
                                     .foregroundStyle(LabTheme.fgSecondary)
                                 Spacer()
                                 Text("\(vm.odometerKm) km")
-                                    .font(.system(size: 14, weight: .bold))
-                            }
-
-                            HStack {
-                                Text("Cold Chain Required:")
-                                    .font(.system(size: 14))
-                                    .foregroundStyle(LabTheme.fgSecondary)
-                                Spacer()
-                                Text(vm.requiresColdChain ? "YES" : "NO")
-                                    .font(.system(size: 13, weight: .bold))
-                                    .foregroundStyle(vm.requiresColdChain ? Color.blue : LabTheme.fgSecondary)
-                            }
-
-                            if vm.requiresColdChain {
-                                HStack {
-                                    Text("Reefer Temperature:")
-                                        .font(.system(size: 14))
-                                        .foregroundStyle(LabTheme.fgSecondary)
-                                    Spacer()
-                                    Text(String(format: "%.1f °C", vm.reeferTempCelsius))
-                                        .font(.system(size: 14, weight: .bold, design: .monospaced))
-                                        .foregroundStyle(vm.reeferTempCelsius <= 4.0 ? Color.green : Color.orange)
-                                }
+                                    .font(.system(.subheadline, weight: .bold))
                             }
                         }
                         .padding(16)
@@ -124,7 +102,7 @@ struct FleetDVIRView: View {
                         // 8-Point Checklist Cards
                         VStack(alignment: .leading, spacing: 10) {
                             Text("8-Point Walkaround Checklist")
-                                .font(.system(size: 14, weight: .semibold))
+                                .font(.system(.subheadline, weight: .semibold))
                                 .foregroundStyle(LabTheme.fgSecondary)
 
                             ChecklistRow(
@@ -182,29 +160,19 @@ struct FleetDVIRView: View {
                                 isOk: vm.checklist.cargoBoxSanitationOk,
                                 onToggle: vm.toggleCargoSanitation
                             )
-
-                            if vm.requiresColdChain {
-                                ChecklistRow(
-                                    number: 8,
-                                    title: "Reefer Temperature Calibrated",
-                                    description: "Telemetry sensor matches thermometer (±0.5°C tolerance)",
-                                    isOk: vm.checklist.reeferTempCalibratedOk,
-                                    onToggle: vm.toggleReeferCalibration
-                                )
-                            }
                         }
 
                         // Success / Error messages
                         if let success = vm.successMessage {
                             Text(success)
-                                .font(.system(size: 14, weight: .semibold))
+                                .font(.system(.subheadline, weight: .semibold))
                                 .foregroundStyle(Color.green)
                                 .padding(12)
                         }
 
                         if let err = vm.errorMessage {
                             Text(err)
-                                .font(.system(size: 14, weight: .semibold))
+                                .font(.system(.subheadline, weight: .semibold))
                                 .foregroundStyle(Color.red)
                                 .padding(12)
                         }
@@ -213,6 +181,7 @@ struct FleetDVIRView: View {
                     }
                     .padding(.horizontal, 20)
                 }
+                .scrollDismissesKeyboard(.interactively)
 
                 // Bottom Action Button
                 VStack {
@@ -234,7 +203,7 @@ struct FleetDVIRView: View {
                                 Spacer().frame(width: 8)
                             }
                             Text(vm.hasCriticalDefect ? "Report Defect & Red-Tag Ground" : "Certify Walkaround & Dispatch")
-                                .font(.system(size: 16, weight: .bold))
+                                .font(.system(.callout, weight: .bold))
                         }
                         .frame(maxWidth: .infinity)
                         .frame(height: 52)
@@ -256,7 +225,7 @@ struct FleetDVIRView: View {
                 ToolbarItem(placement: .topBarLeading) {
                     Button(action: onBack) {
                         Image(systemName: "chevron.left")
-                            .font(.system(size: 16, weight: .semibold))
+                            .font(.system(.callout, weight: .semibold))
                     }
                 }
             }
@@ -278,23 +247,23 @@ private struct ChecklistRow: View {
         }) {
             HStack(alignment: .top, spacing: 14) {
                 Image(systemName: isOk ? "checkmark.circle.fill" : "xmark.octagon.fill")
-                    .font(.system(size: 24))
+                    .font(.system(.title2))
                     .foregroundStyle(isOk ? Color.green : Color.red)
                     .contentTransition(.symbolEffect(.replace))
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text("\(number). \(title)")
-                        .font(.system(size: 15, weight: .bold))
+                        .font(.system(.subheadline, weight: .bold))
                         .foregroundStyle(LabTheme.fg)
                     Text(description)
-                        .font(.system(size: 12))
+                        .font(.system(.caption))
                         .foregroundStyle(LabTheme.fgSecondary)
                 }
 
                 Spacer()
 
                 Text(isOk ? "PASS" : "DEFECT")
-                    .font(.system(size: 11, weight: .heavy, design: .monospaced))
+                    .font(.system(.caption2, design: .monospaced, weight: .heavy))
                     .foregroundStyle(isOk ? Color.green : Color.red)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)

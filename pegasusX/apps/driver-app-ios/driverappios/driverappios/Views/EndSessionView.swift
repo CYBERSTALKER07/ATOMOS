@@ -67,10 +67,10 @@ struct EndSessionView: View {
                 // Title
                 VStack(alignment: .leading, spacing: 4) {
                     Text("mobile_driver.ui.end_session")
-                        .font(.system(size: 24, weight: .bold))
+                        .font(.system(.title2, weight: .bold))
                         .foregroundStyle(LabTheme.fg)
                     Text("mobile_driver.ui.go_offline_and_end_your_driving_session")
-                        .font(.system(size: 14, weight: .medium))
+                        .font(.system(.subheadline, weight: .medium))
                         .foregroundStyle(LabTheme.fgSecondary)
                 }
 
@@ -78,10 +78,10 @@ struct EndSessionView: View {
                 if vm.hasActiveOrders {
                     HStack(spacing: 10) {
                         Image(systemName: "exclamationmark.triangle.fill")
-                            .font(.system(size: 14))
+                            .font(.system(.subheadline))
                             .foregroundStyle(LabTheme.destructive)
                         Text("mobile_driver.ui.complete_or_return_active_orders_before_ending_your_session")
-                            .font(.system(size: 13, weight: .medium))
+                            .font(.system(.footnote, weight: .medium))
                             .foregroundStyle(LabTheme.destructive)
                     }
                     .padding(12)
@@ -90,7 +90,7 @@ struct EndSessionView: View {
 
                 // Reason label
                 Text("REASON")
-                    .font(.system(size: 10, weight: .heavy, design: .monospaced))
+                    .font(.system(.caption2, design: .monospaced, weight: .heavy))
                     .foregroundStyle(LabTheme.fgTertiary)
                     .tracking(1)
 
@@ -116,7 +116,7 @@ struct EndSessionView: View {
                 // Error
                 if let error = vm.endSessionError {
                     Text(error)
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.system(.footnote, weight: .medium))
                         .foregroundStyle(LabTheme.destructive)
                 }
 
@@ -135,7 +135,7 @@ struct EndSessionView: View {
                                 .tint(LabTheme.buttonFg)
                         } else {
                             Text("mobile_driver.ui.end_session")
-                                .font(.system(size: 15, weight: .bold))
+                                .font(.system(.subheadline, weight: .bold))
                                 .foregroundStyle(canConfirm ? LabTheme.buttonFg : LabTheme.fgTertiary)
                         }
                         Spacer()
@@ -161,12 +161,12 @@ struct EndSessionView: View {
         } label: {
             HStack(spacing: 14) {
                 Image(systemName: reason.icon)
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.system(.callout, weight: .semibold))
                     .foregroundStyle(selectedReason == reason ? LabTheme.fg : LabTheme.fgSecondary)
                     .frame(width: 20)
 
                 Text(reason.label)
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.system(.callout, weight: .semibold))
                     .foregroundStyle(selectedReason == reason ? LabTheme.fg : LabTheme.fgSecondary)
 
                 Spacer()

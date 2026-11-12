@@ -8,7 +8,6 @@ import SwiftUI
 import UIKit
 
 struct DeliveryCorrectionView: View {
-
     let orderId: String
     let driverId: String
     var isPartial: Bool = false
@@ -46,9 +45,8 @@ struct DeliveryCorrectionView: View {
                     // MARK: - Line Items
                     ScrollView {
                         VStack(alignment: .leading, spacing: 0) {
-                            // Section header
                             Text("mobile_driver.ui.manifest_items")
-                                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                                .font(.system(.caption2, design: .monospaced, weight: .bold))
                                 .foregroundStyle(LabTheme.fgTertiary)
                                 .padding(.horizontal, LabTheme.s16)
                                 .padding(.bottom, 12)
@@ -65,8 +63,9 @@ struct DeliveryCorrectionView: View {
                                 .staggeredAppear(index: index)
                             }
                         }
-                        .padding(.bottom, 200) // Space for summary overlay
+                        .padding(.bottom, 200)
                     }
+                    .scrollDismissesKeyboard(.interactively)
                 }
             }
 
@@ -84,18 +83,12 @@ struct DeliveryCorrectionView: View {
             await vm.loadLineItems(orderId: orderId)
         }
         .onChange(of: pickedPhoto) { _, item in
-            guard let item else { return }
             Task {
-                guard let data = try? await item.loadTransferable(type: Data.self),
-                      let image = UIImage(data: data) else {
-                    vm.submitError = "Could not read photo."
-                    return
-                }
-                await vm.uploadEvidence(image: image, orderId: orderId)
+                await vm.handlePickedPhoto(item, orderId: orderId)
             }
         }
         .alert("Start Transit?", isPresented: $showStartTransitAlert) {
-            Button("common.action.cancel", role: .cancel) { }
+            Button("common.action.cancel", role: .cancel) {}
             Button("mobile_driver.ui.confirm") {
                 Task {
                     let success = await vm.startTransitForPartialOrder(orderId: orderId)
@@ -106,7 +99,7 @@ struct DeliveryCorrectionView: View {
             Text("mobile_driver.ui.notify_the_other_driver_that_you_are_heading_to_this_route")
         }
         .alert("Confirm Amendment", isPresented: $showConfirmAlert) {
-            Button("common.action.cancel", role: .cancel) { }
+            Button("common.action.cancel", role: .cancel) {}
             Button("warehouse_portal.cycle_counts.text.submit", role: .destructive) {
                 Task {
                     let success = await vm.submitAmendment(orderId: orderId, driverId: driverId)
@@ -117,8 +110,6 @@ struct DeliveryCorrectionView: View {
             Text(L10n.format("mobile_driver.ui.rejectedcount_item_s_rejected_refund_formattedamount_proceed", "\(vm.rejectedCount)", "\(vm.refundDelta.formattedAmount)"))
         }
     }
-
-
 }
 
 #Preview {

@@ -28,7 +28,7 @@ struct MapTopOverlay: View {
                     }
                 } label: {
                     Image(systemName: phase == .previewingOrder ? "chevron.left" : "xmark")
-                        .font(.system(size: 13, weight: .bold))
+                        .font(.system(.footnote, weight: .bold))
                         .foregroundStyle(LabTheme.fg)
                         .frame(width: 38, height: 38)
                         .background(.ultraThinMaterial, in: Circle())
@@ -59,7 +59,7 @@ struct MapTopOverlay: View {
                             }
                         } label: {
                             Image(systemName: isCameraLocked ? "location.north.line.fill" : "location.fill")
-                                .font(.system(size: 13, weight: .bold))
+                                .font(.system(.footnote, weight: .bold))
                                 .padding(12)
                                 .background(isCameraLocked ? AnyShapeStyle(LabTheme.fg) : AnyShapeStyle(.ultraThinMaterial))
                                 .foregroundStyle(isCameraLocked ? LabTheme.buttonFg : LabTheme.fg)
@@ -74,9 +74,9 @@ struct MapTopOverlay: View {
                         } label: {
                             HStack(spacing: 4) {
                                 Image(systemName: zoomFocus.icon)
-                                    .font(.system(size: 10, weight: .bold))
+                                    .font(.system(.caption2, weight: .bold))
                                 Text(zoomFocus.label)
-                                    .font(.system(size: 10, weight: .bold))
+                                    .font(.system(.caption2, weight: .bold))
                             }
                             .foregroundStyle(LabTheme.fg)
                             .padding(.horizontal, 11)

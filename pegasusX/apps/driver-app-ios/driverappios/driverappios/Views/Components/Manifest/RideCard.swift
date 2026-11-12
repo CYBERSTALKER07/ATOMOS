@@ -16,7 +16,7 @@ struct RideCard: View {
                 // Loading sequence badge
                 if let label = loadSeqLabel {
                     Text(label)
-                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .font(.system(.caption2, design: .monospaced, weight: .bold))
                         .foregroundStyle(LabTheme.buttonFg)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 4)
@@ -26,7 +26,7 @@ struct RideCard: View {
                 // Top row: order id + status
                 HStack {
                     Text(mission.order_id)
-                        .font(.system(size: 15, weight: .bold, design: .monospaced))
+                        .font(.system(.subheadline, design: .monospaced, weight: .bold))
                         .foregroundStyle(LabTheme.fg)
                     
                     Spacer()
@@ -43,11 +43,11 @@ struct RideCard: View {
                 // Coordinates
                 VStack(alignment: .leading, spacing: 6) {
                     Text("mobile_driver.ui.delivery_target")
-                        .font(.system(size: 9, weight: .bold, design: .monospaced))
+                        .font(.system(.caption2, design: .monospaced, weight: .bold))
                         .foregroundStyle(LabTheme.fgTertiary)
                     
                     Text(String(format: "%.4f, %.4f", mission.target_lat, mission.target_lng))
-                        .font(.system(size: 14, weight: .semibold, design: .monospaced))
+                        .font(.system(.subheadline, design: .monospaced, weight: .semibold))
                         .foregroundStyle(LabTheme.fg)
                 }
                 
@@ -56,7 +56,7 @@ struct RideCard: View {
                     DistanceInfo(mission: mission, location: location)
                     Spacer()
                     Image(systemName: "arrow.right")
-                        .font(.system(size: 12, weight: .bold))
+                        .font(.system(.caption, weight: .bold))
                         .foregroundStyle(LabTheme.fg)
                         .padding(8)
                         .background(LabTheme.fg.opacity(0.08), in: Circle())
@@ -71,6 +71,8 @@ struct RideCard: View {
             .labCard()
         }
         .buttonStyle(.pressable)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Ride \(mission.order_id), status \(mission.state), amount \(mission.amount.formattedAmount)")
         .staggeredAppear(index: index)
     }
 }

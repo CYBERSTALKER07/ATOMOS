@@ -31,11 +31,11 @@ struct QuickActionsSection: View {
         Button(action: action) {
             VStack(spacing: 8) {
                 Image(systemName: icon)
-                    .font(.system(size: 18, weight: .medium))
+                    .font(.system(.title3, weight: .medium))
                     .foregroundStyle(tint)
 
                 Text(label)
-                    .font(.system(size: 10, weight: .semibold))
+                    .font(.system(.caption2, weight: .semibold))
                     .foregroundStyle(LabTheme.fgSecondary)
                     .multilineTextAlignment(.center)
                     .lineLimit(2)
