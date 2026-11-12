@@ -14,7 +14,7 @@ services:
     networks:
       - pegasusx-codegraph-net
     healthcheck:
-      test: ["CMD-SHELL", "echo 'RETURN 1;' | mgconsole || exit 0"]
+      test: ["CMD-SHELL", "echo 'RETURN 1;' | mgconsole >/dev/null 2>&1 || exit 1"]
       interval: 5s
       timeout: 3s
       retries: 5

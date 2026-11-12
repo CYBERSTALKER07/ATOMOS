@@ -49,13 +49,16 @@ resource "google_project_service" "cell" {
 }
 
 output "project_id" {
-  value = google_project.cell.project_id
+  description = "The provisioned Google Cloud project ID for the EU cell."
+  value       = google_project.cell.project_id
 }
 
 output "cell_id" {
-  value = var.cell_id
+  description = "The logical cell identifier for this project."
+  value       = var.cell_id
 }
 
 output "region" {
-  value = var.region
+  description = "The enforced primary GCP region for this cell."
+  value       = var.region
 }

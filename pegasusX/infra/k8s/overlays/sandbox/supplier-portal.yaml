@@ -1,12 +1,13 @@
-# SSMR supplier-portal (static Next export + nginx)
+# Sandbox supplier-portal (static Next export + nginx)
 # Image built via cloudbuild.supplier-portal.yaml from apps/supplier-portal/out
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: supplier-portal
-  namespace: pegasusx-ssmr
+  namespace: pegasusx-sandbox
   labels:
     app: supplier-portal
+    app.kubernetes.io/part-of: pegasusx
 spec:
   replicas: 1
   selector:
@@ -16,13 +17,38 @@ spec:
     metadata:
       labels:
         app: supplier-portal
+        app.kubernetes.io/part-of: pegasusx
+        cost-center: platform-engineering
+        workload-tier: web-portal
     spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 15
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        fsGroup: 101
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: supplier-portal
           image: asia-south1-docker.pkg.dev/pegasus-503013/pegasusx-ssmr-images/supplier-portal:ssmr-supplier-portal-flywheel-a1fafaa0
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
           ports:
             - containerPort: 8080
               name: http
+          volumeMounts:
+            - name: nginx-cache
+              mountPath: /var/cache/nginx
+            - name: nginx-run
+              mountPath: /var/run
+            - name: tmp
+              mountPath: /tmp
           readinessProbe:
             httpGet:
               path: /healthz
@@ -42,14 +68,22 @@ spec:
             limits:
               cpu: 200m
               memory: 128Mi
+      volumes:
+        - name: nginx-cache
+          emptyDir: {}
+        - name: nginx-run
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: supplier-portal
-  namespace: pegasusx-ssmr
+  namespace: pegasusx-sandbox
   labels:
     app: supplier-portal
+    app.kubernetes.io/part-of: pegasusx
 spec:
   selector:
     app: supplier-portal

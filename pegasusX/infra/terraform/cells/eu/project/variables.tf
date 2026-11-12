@@ -11,13 +11,15 @@ variable "project_name" {
 }
 
 variable "cell_id" {
-  type    = string
-  default = "eu"
+  description = "Logical cell identifier applied to EU project labels."
+  type        = string
+  default     = "eu"
 }
 
 variable "region" {
-  type    = string
-  default = "europe-west1"
+  description = "Primary GCP region enforced for the EU cell project."
+  type        = string
+  default     = "europe-west1"
 }
 
 variable "org_id" {

@@ -15,9 +15,9 @@ variable "region" {
 }
 
 variable "location" {
-  description = "The multi-region or regional location for multi-region GCS buckets."
+  description = "Optional GCS bucket location override. Defaults to var.region when empty so regional CMEK KMS keys and cell data residency remain co-located."
   type        = string
-  default     = "EU"
+  default     = ""
 }
 
 variable "environment" {

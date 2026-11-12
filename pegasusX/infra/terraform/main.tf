@@ -125,6 +125,7 @@ module "storage_security" {
 
   project_id              = var.project_id
   region                  = var.region
+  location                = var.region
   environment             = var.environment
   media_bucket_name       = var.media_bucket_name
   updates_bucket_name     = var.updates_bucket_name
@@ -177,14 +178,15 @@ module "compute" {
 module "monitoring" {
   source = "./modules/monitoring"
 
-  project_id            = var.project_id
-  environment           = var.environment
-  alert_email_endpoints = var.alert_email_endpoints
-  slack_webhook_url     = var.slack_webhook_url
-  api_hostname          = var.api_hostname
-  billing_account_id    = var.billing_account_id
-  monthly_budget_usd    = var.monthly_budget_usd
-  labels                = merge(local.base_finops_labels, { tier = "monitoring" })
+  project_id                  = var.project_id
+  environment                 = var.environment
+  alert_email_endpoints       = var.alert_email_endpoints
+  alert_notification_channels = var.alert_notification_channels
+  slack_webhook_url           = var.slack_webhook_url
+  api_hostname                = var.api_hostname
+  billing_account_id          = var.billing_account_id
+  monthly_budget_usd          = var.monthly_budget_usd
+  labels                      = merge(local.base_finops_labels, { tier = "monitoring" })
 
   depends_on = [
     google_project_service.apis

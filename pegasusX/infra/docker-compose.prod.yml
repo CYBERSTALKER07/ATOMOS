@@ -10,13 +10,17 @@ services:
     image: redis:7-alpine
     container_name: pegasusx-prod-redis
     restart: always
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD must be set in production}
     command: >
       redis-server
       --appendonly yes
       --appendfsync everysec
-      --maxmemory 1024mb
+      --maxmemory 512mb
       --maxmemory-policy volatile-lru
-      --requirepass ${REDIS_PASSWORD:-pegasusx_prod_redis_secret}
+      --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD must be set in production}
       --activedefrag yes
       --slowlog-log-slower-than 10000
       --slowlog-max-len 256
@@ -28,7 +32,7 @@ services:
     networks:
       - internal-data
     healthcheck:
-      test: ["CMD-SHELL", "redis-cli -a $${REDIS_PASSWORD:-pegasusx_prod_redis_secret} ping | grep PONG"]
+      test: ["CMD-SHELL", "REDISCLI_AUTH=\"$$REDIS_PASSWORD\" redis-cli ping | grep -q PONG"]
       interval: 10s
       timeout: 3s
       retries: 5
@@ -129,8 +133,10 @@ services:
       dockerfile: Dockerfile
     container_name: pegasusx-prod-optimizer
     restart: always
+    security_opt:
+      - no-new-privileges:true
     environment:
-      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dev-internal-key}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:?INTERNAL_API_KEY must be set in production}
       OPTIMIZER_HTTP_PORT: "8082"
       OPTIMIZER_SOFT_TIMEOUT_SEC: "5"
     networks:
@@ -161,6 +167,8 @@ services:
       dockerfile: apps/backend-go/Dockerfile
     container_name: pegasusx-prod-backend
     restart: always
+    security_opt:
+      - no-new-privileges:true
     depends_on:
       redis:
         condition: service_healthy
@@ -175,10 +183,10 @@ services:
       SPANNER_DATABASE: ${SPANNER_DATABASE:-pegasusx-db}
       SPANNER_EMULATOR_HOST: ""
       REDIS_ADDR: redis:6379
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-pegasusx_prod_redis_secret}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD must be set in production}
       KAFKA_BROKERS: kafka:29092
       OPTIMIZER_BASE_URL: http://optimizer-core:8082
-      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dev-internal-key}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:?INTERNAL_API_KEY must be set in production}
       PEGASUSX_ENV: production
       HANDOFF_LEGACY_ORDER_ID_FALLBACK: "false"
       LOG_LEVEL: info
@@ -214,6 +222,8 @@ services:
       dockerfile: apps/ai-worker/Dockerfile
     container_name: pegasusx-prod-ai-worker
     restart: always
+    security_opt:
+      - no-new-privileges:true
     depends_on:
       redis:
         condition: service_healthy
@@ -230,9 +240,9 @@ services:
       SPANNER_DATABASE: ${SPANNER_DATABASE:-pegasusx-db}
       SPANNER_EMULATOR_HOST: ""
       REDIS_ADDR: redis:6379
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-pegasusx_prod_redis_secret}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD must be set in production}
       KAFKA_BROKERS: kafka:29092
-      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dev-internal-key}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:?INTERNAL_API_KEY must be set in production}
       PEGASUSX_ENV: production
     networks:
       - internal-services
@@ -263,11 +273,16 @@ services:
       dockerfile: apps/handoff-service/Dockerfile
     container_name: pegasusx-prod-handoff
     restart: always
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     environment:
       HTTP_PORT: "8082"
       PEGASUSX_ENV: production
       HANDOFF_LEGACY_ORDER_ID_FALLBACK: "false"
-      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dev-internal-key}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:?INTERNAL_API_KEY must be set in production}
     ports:
       - "8082:8082"
     networks:

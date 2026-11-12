@@ -1,6 +1,9 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
+sortOptions:
+  order: fifo
+
 namespace: pegasusx-ssmr
 
 resources:
@@ -10,13 +13,13 @@ resources:
   - frontendconfig.yaml
   - managed-certificate.yaml
   - ingress.yaml
+  - ../../planning_forecast_cronjob.yaml
+  - ../../planning_accuracy_cronjob.yaml
+  - ../../planning_training_export_cronjob.yaml
   # §8.5 — OR-Tools sidecar manifests (patched to replicas 1 below; prod stays 0 until AR)
   - ../../optimizer-core/configmap.yaml
   - ../../optimizer-core/deployment.yaml
   - ../../optimizer-core/service.yaml
-  - ../../planning_forecast_cronjob.yaml
-  - ../../planning_accuracy_cronjob.yaml
-  - ../../planning_training_export_cronjob.yaml
 
 # REST Service BackendConfig/NEG annotations are applied live with kubectl
 # (Service is owned by the Step 9 deploy, not this overlay).
@@ -37,6 +40,9 @@ images:
   # Remap local tag to SSMR Artifact Registry path (ops publishes real digest/tag).
   - name: pegasusx-optimizer-core
     newName: asia-south1-docker.pkg.dev/pegasus-503013/pegasusx-ssmr-images/optimizer-core
+    newTag: ssmr
+  - name: us-central1-docker.pkg.dev/pegasusx-production/pegasusx/backend-go
+    newName: asia-south1-docker.pkg.dev/pegasus-503013/pegasusx-ssmr-images/backend-go
     newTag: ssmr
 
 labels:

@@ -1,0 +1,12 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: backend-go-worker
+  labels:
+    app: backend-go-worker
+    app.kubernetes.io/part-of: pegasusx
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: backend-go-worker

@@ -1,6 +1,9 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
+sortOptions:
+  order: fifo
+
 namespace: pegasusx-staging
 
 resources:
@@ -79,6 +82,37 @@ patches:
       - op: replace
         path: /spec/minAvailable
         value: 0
+  - target:
+      kind: HorizontalPodAutoscaler
+      name: backend-go
+    patch: |-
+      - op: replace
+        path: /spec/minReplicas
+        value: 1
+      - op: replace
+        path: /spec/maxReplicas
+        value: 2
+  - target:
+      kind: HorizontalPodAutoscaler
+      name: ai-worker
+    patch: |-
+      - op: replace
+        path: /spec/minReplicas
+        value: 1
+      - op: replace
+        path: /spec/maxReplicas
+        value: 2
+  - target:
+      kind: HorizontalPodAutoscaler
+      name: optimizer-core
+    patch: |-
+      - op: replace
+        path: /spec/minReplicas
+        value: 1
+      - op: replace
+        path: /spec/maxReplicas
+        value: 2
+  - path: backend-go-externalsecret-patch.yaml
 
 configMapGenerator:
   - name: backend-go-config

@@ -22,7 +22,7 @@ resource "google_monitoring_notification_channel" "email_channel" {
 
 # 1.2 Webhook Notification Channel (Slack / PagerDuty)
 resource "google_monitoring_notification_channel" "webhook_channel" {
-  count        = var.slack_webhook_url != "" ? 1 : 0
+  count        = nonsensitive(var.slack_webhook_url != "") ? 1 : 0
   display_name = "PegasusX Slack Incident Alerts (${var.environment})"
   type         = "webhook_tokenauth"
   project      = var.project_id
@@ -35,10 +35,13 @@ resource "google_monitoring_notification_channel" "webhook_channel" {
 }
 
 locals {
-  notification_channels = compact([
-    length(google_monitoring_notification_channel.email_channel) > 0 ? google_monitoring_notification_channel.email_channel[0].name : "",
-    length(google_monitoring_notification_channel.webhook_channel) > 0 ? google_monitoring_notification_channel.webhook_channel[0].name : ""
-  ])
+  notification_channels = distinct(concat(
+    var.alert_notification_channels,
+    compact([
+      length(google_monitoring_notification_channel.email_channel) > 0 ? google_monitoring_notification_channel.email_channel[0].name : "",
+      length(google_monitoring_notification_channel.webhook_channel) > 0 ? google_monitoring_notification_channel.webhook_channel[0].name : ""
+    ])
+  ))
 }
 
 # 2. Production Alert Policies (12 Mission-Critical Rules)

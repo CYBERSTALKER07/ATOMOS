@@ -273,6 +273,7 @@ variable "slack_webhook_url" {
   description = "Optional Slack webhook URL for real-time alert notifications."
   type        = string
   default     = ""
+  sensitive   = true
 }
 
 variable "api_hostname" {

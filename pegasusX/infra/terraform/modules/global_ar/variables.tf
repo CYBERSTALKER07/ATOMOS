@@ -1,5 +1,6 @@
 variable "project_id" {
-  type = string
+  description = "Google Cloud project ID hosting the shared multi-region Artifact Registry."
+  type        = string
 }
 
 variable "location" {
@@ -9,6 +10,7 @@ variable "location" {
 }
 
 variable "repository_id" {
-  type    = string
-  default = "pegasusx"
+  description = "Artifact Registry Docker repository identifier."
+  type        = string
+  default     = "pegasusx"
 }

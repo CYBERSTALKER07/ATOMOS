@@ -46,17 +46,21 @@ module "ar" {
 }
 
 output "project_id" {
-  value = var.project_id
+  description = "The global control-plane Google Cloud project ID."
+  value       = var.project_id
 }
 
 output "dns_zone" {
-  value = module.dns.zone_name
+  description = "The global Cloud DNS managed zone name."
+  value       = module.dns.zone_name
 }
 
 output "dns_records" {
-  value = module.dns.record_names
+  description = "Per-cell public API DNS record names registered in the global zone."
+  value       = module.dns.record_names
 }
 
 output "artifact_registry_url" {
-  value = module.ar.url
+  description = "Shared multi-region Artifact Registry Docker repository URL."
+  value       = module.ar.url
 }

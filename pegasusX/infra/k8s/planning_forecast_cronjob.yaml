@@ -5,12 +5,14 @@ metadata:
   namespace: pegasusx
 spec:
   schedule: "0 2 * * *" # Daily 02:00 UTC — before training-export (02:30) and accuracy (03:00)
+  startingDeadlineSeconds: 600
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 7
   failedJobsHistoryLimit: 3
   jobTemplate:
     spec:
       backoffLimit: 2
+      activeDeadlineSeconds: 3600
       ttlSecondsAfterFinished: 3600
       template:
         metadata:
@@ -23,6 +25,15 @@ spec:
           serviceAccountName: backend-go
           automountServiceAccountToken: false
           priorityClassName: pegasusx-batch-spot
+          terminationGracePeriodSeconds: 30
+          restartPolicy: OnFailure
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+            fsGroup: 10001
+            seccompProfile:
+              type: RuntimeDefault
           tolerations:
             - key: "cloud.google.com/gke-spot"
               operator: "Equal"
@@ -39,25 +50,36 @@ spec:
                         values:
                           - "true"
           containers:
-          - name: planning-forecast
-            image: us-central1-docker.pkg.dev/pegasusx-production/pegasusx/backend-go:latest
-            command:
-            - "/usr/local/bin/planning-forecast"
-            args:
-            - "-days"
-            - "90"
-            - "-mode"
-            - "forecast"
-            envFrom:
-            - secretRef:
-                name: backend-go-secrets
-            - configMapRef:
-                name: backend-go-config
-            resources:
-              requests:
-                cpu: "250m"
-                memory: "512Mi"
-              limits:
-                cpu: "1000m"
-                memory: "1Gi"
-          restartPolicy: OnFailure
+            - name: planning-forecast
+              image: us-central1-docker.pkg.dev/pegasusx-production/pegasusx/backend-go:latest
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop:
+                    - ALL
+              command:
+                - "/usr/local/bin/planning-forecast"
+              args:
+                - "-days"
+                - "90"
+                - "-mode"
+                - "forecast"
+              envFrom:
+                - secretRef:
+                    name: backend-go-secrets
+                - configMapRef:
+                    name: backend-go-config
+              volumeMounts:
+                - name: tmp
+                  mountPath: /tmp
+              resources:
+                requests:
+                  cpu: "250m"
+                  memory: "512Mi"
+                limits:
+                  cpu: "1000m"
+                  memory: "1Gi"
+          volumes:
+            - name: tmp
+              emptyDir: {}

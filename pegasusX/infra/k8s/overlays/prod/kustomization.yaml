@@ -1,22 +1,30 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
+sortOptions:
+  order: fifo
+
 resources:
   - ../../base
   - ../../external-secrets/backend-go-externalsecret.yaml
+  - ../../ai-worker/configmap.yaml
+  - ../../ai-worker/deployment.yaml
+  - ../../ai-worker/service.yaml
+  - ../../ai-worker/pdb.yaml
+  - ../../ai-worker/hpa.yaml
   - ../../planning_training_export_cronjob.yaml
   - ../../planning_forecast_cronjob.yaml
   - ../../planning_accuracy_cronjob.yaml
   - ../../predictive_push_cronjob.yaml
-  - ../../ai-worker/configmap.yaml
-  - ../../ai-worker/deployment.yaml
-  - ../../ai-worker/service.yaml
   - ../../optimizer-core/configmap.yaml
   - ../../optimizer-core/deployment.yaml
   - ../../optimizer-core/service.yaml
+  - ../../optimizer-core/pdb.yaml
+  - ../../optimizer-core/hpa.yaml
   - ../../osrm/pvc.yaml
   - ../../osrm/deployment.yaml
   - ../../osrm/service.yaml
+  - ../../osrm/pdb.yaml
   - managed-certificate.yaml
 
 # Digest-pinned images from asia-south1 Artifact Registry (pegasusx-prod-uz).

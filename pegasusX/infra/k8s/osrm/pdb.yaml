@@ -1,0 +1,12 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: osrm
+  labels:
+    app: osrm
+    app.kubernetes.io/part-of: pegasusx
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: osrm

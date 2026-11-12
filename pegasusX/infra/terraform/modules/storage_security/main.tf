@@ -3,12 +3,16 @@
  * GCS Buckets, Cloud Armor WAF Policies, Secret Manager Secrets, and Workload Identity IAM.
  */
 
+locals {
+  effective_bucket_location = trimspace(var.location) != "" ? trimspace(var.location) : var.region
+}
+
 # 1. Google Cloud Storage Buckets
 
 # 1.1 Media & Cryptographic Evidence Dossiers Bucket (POD, Damage Photos, Signed Contracts)
 resource "google_storage_bucket" "media" {
   name                        = var.media_bucket_name
-  location                    = var.location
+  location                    = local.effective_bucket_location
   project                     = var.project_id
   storage_class               = "STANDARD"
   uniform_bucket_level_access = true
@@ -95,7 +99,7 @@ resource "google_storage_bucket" "media" {
 # 1.2 App Updates & Distribution Bucket (OTA Mobile APKs, Tauri Desktop Installers)
 resource "google_storage_bucket" "updates" {
   name                        = var.updates_bucket_name
-  location                    = var.location
+  location                    = local.effective_bucket_location
   project                     = var.project_id
   storage_class               = "STANDARD"
   uniform_bucket_level_access = true
@@ -184,7 +188,16 @@ resource "google_storage_bucket" "imports_exports" {
     }
   }
 
+  # Enterprise CMEK Encryption (Customer-Managed Encryption Key)
+  encryption {
+    default_kms_key_name = google_kms_crypto_key.storage_key.id
+  }
+
   labels = var.labels
+
+  depends_on = [
+    google_kms_crypto_key_iam_member.gcs_kms_user
+  ]
 }
 
 # 1.4 Terraform Remote State Storage Bucket
@@ -209,7 +222,16 @@ resource "google_storage_bucket" "tf_state" {
     }
   }
 
+  # Enterprise CMEK Encryption (Customer-Managed Encryption Key)
+  encryption {
+    default_kms_key_name = google_kms_crypto_key.storage_key.id
+  }
+
   labels = var.labels
+
+  depends_on = [
+    google_kms_crypto_key_iam_member.gcs_kms_user
+  ]
 }
 
 # 2. Cloud Armor Enterprise WAF Security Policy (OWASP Top 10 + Rate Limiting)
@@ -468,6 +490,13 @@ resource "google_service_account_iam_member" "workload_identity_binding_backend_
 
 # 4.3 Assign Project-Level IAM Roles to Service Accounts (Filtered when cell_scoped_iam = true)
 locals {
+  cell_scoped_roles = toset([
+    "roles/spanner.databaseUser",
+    "roles/secretmanager.secretAccessor",
+    "roles/storage.objectAdmin",
+    "roles/storage.objectViewer"
+  ])
+
   sa_role_pairs = flatten([
     for sa_name, sa_cfg in local.service_accounts : [
       for role in sa_cfg.roles : {
@@ -475,9 +504,20 @@ locals {
         role    = role
         key     = "${sa_name}-${role}"
       }
-      if !var.cell_scoped_iam || (role != "roles/spanner.databaseUser" && role != "roles/secretmanager.secretAccessor")
+      if !var.cell_scoped_iam || !contains(local.cell_scoped_roles, role)
     ]
   ])
+
+  backend_go_scoped_buckets = var.cell_scoped_iam ? {
+    media           = google_storage_bucket.media.name
+    imports_exports = google_storage_bucket.imports_exports.name
+    updates         = google_storage_bucket.updates.name
+  } : {}
+
+  ai_worker_scoped_buckets = var.cell_scoped_iam ? {
+    media           = google_storage_bucket.media.name
+    imports_exports = google_storage_bucket.imports_exports.name
+  } : {}
 }
 
 resource "google_project_iam_member" "sa_project_roles" {
@@ -487,7 +527,7 @@ resource "google_project_iam_member" "sa_project_roles" {
   member   = "serviceAccount:${google_service_account.workload_sa[each.value.sa_name].email}"
 }
 
-# 4.4 Cell-Scoped Database & Secret IAM Bindings (Enforced when cell_scoped_iam = true)
+# 4.4 Cell-Scoped Database, Bucket & Secret IAM Bindings (Enforced when cell_scoped_iam = true)
 resource "google_spanner_database_iam_member" "workload_spanner_db" {
   for_each = var.cell_scoped_iam ? local.service_accounts : {}
   project  = var.project_id
@@ -503,6 +543,20 @@ resource "google_secret_manager_secret_iam_member" "backend_secret_accessor" {
   secret_id = google_secret_manager_secret.app_secrets[each.key].secret_id
   role      = "roles/secretmanager.secretAccessor"
   member    = "serviceAccount:${google_service_account.workload_sa["backend-go-sa"].email}"
+}
+
+resource "google_storage_bucket_iam_member" "backend_go_bucket_admin" {
+  for_each = local.backend_go_scoped_buckets
+  bucket   = each.value
+  role     = "roles/storage.objectAdmin"
+  member   = "serviceAccount:${google_service_account.workload_sa["backend-go-sa"].email}"
+}
+
+resource "google_storage_bucket_iam_member" "ai_worker_bucket_viewer" {
+  for_each = local.ai_worker_scoped_buckets
+  bucket   = each.value
+  role     = "roles/storage.objectViewer"
+  member   = "serviceAccount:${google_service_account.workload_sa["ai-worker-sa"].email}"
 }
 
 # 5. Customer-Managed Encryption Keys (CMEK) via Google Cloud KMS

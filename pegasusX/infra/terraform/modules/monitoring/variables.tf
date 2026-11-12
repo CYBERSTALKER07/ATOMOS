@@ -20,10 +20,17 @@ variable "alert_email_endpoints" {
   default     = ["sre-alerts@pegasusx.io"]
 }
 
+variable "alert_notification_channels" {
+  description = "Optional list of pre-existing Cloud Monitoring notification channel IDs."
+  type        = list(string)
+  default     = []
+}
+
 variable "slack_webhook_url" {
   description = "Optional Slack incoming webhook URL for incident notifications."
   type        = string
   default     = ""
+  sensitive   = true
 }
 
 variable "api_hostname" {

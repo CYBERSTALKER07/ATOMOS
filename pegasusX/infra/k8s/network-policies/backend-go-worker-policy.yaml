@@ -32,7 +32,7 @@ spec:
           port: 53
         - protocol: TCP
           port: 53
-    # 2. Allow call to optimizer-core on port 8082
+    # 2. Allow call to optimizer-core on port 8082 and OSRM routing engine on port 5000
     - to:
         - podSelector:
             matchLabels:
@@ -40,20 +40,31 @@ spec:
       ports:
         - protocol: TCP
           port: 8082
-    # 3. Allow Redis Memorystore
+    - to:
+        - podSelector:
+            matchLabels:
+              app: osrm
+      ports:
+        - protocol: TCP
+          port: 5000
+    # 3. Allow Redis Memorystore (6379 plaintext / 6378 TLS)
     - ports:
         - protocol: TCP
           port: 6379
+        - protocol: TCP
+          port: 6378
     # 4. Allow Managed Apache Kafka
     - ports:
         - protocol: TCP
           port: 9092
         - protocol: TCP
           port: 29092
-    # 5. Allow Google Cloud APIs (Cloud Spanner, GCS, Cloud KMS, Firebase, Partner Webhooks) via HTTPS
+    # 5. Allow Google Cloud APIs (Cloud Spanner, GCS, Cloud KMS, Firebase, Partner Webhooks/SFTP)
     - ports:
         - protocol: TCP
           port: 443
+        - protocol: TCP
+          port: 22
         - protocol: TCP
           port: 9010
         - protocol: TCP

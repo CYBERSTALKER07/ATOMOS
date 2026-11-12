@@ -53,79 +53,98 @@ variable "topics" {
       partition_count    = 12
       replication_factor = 3
       configs = {
-        "cleanup.policy" = "delete"
-        "retention.ms"   = "604800000" # 7 days
+        "cleanup.policy"      = "delete"
+        "min.insync.replicas" = "2"
+        "retention.ms"        = "604800000" # 7 days
       }
     }
     "pegasusx-orders" = {
       partition_count    = 12
       replication_factor = 3
       configs = {
-        "cleanup.policy" = "delete"
-        "retention.ms"   = "604800000" # 7 days
+        "cleanup.policy"      = "delete"
+        "min.insync.replicas" = "2"
+        "retention.ms"        = "604800000" # 7 days
       }
     }
     "pegasusx-dispatch" = {
       partition_count    = 6
       replication_factor = 3
       configs = {
-        "cleanup.policy" = "delete"
-        "retention.ms"   = "604800000" # 7 days
+        "cleanup.policy"      = "delete"
+        "min.insync.replicas" = "2"
+        "retention.ms"        = "604800000" # 7 days
       }
     }
     "pegasusx-realtime" = {
       partition_count    = 12
       replication_factor = 3
       configs = {
-        "cleanup.policy" = "delete"
-        "retention.ms"   = "86400000" # 1 day
+        "cleanup.policy"      = "delete"
+        "min.insync.replicas" = "2"
+        "retention.ms"        = "86400000" # 1 day
+      }
+    }
+    "pegasusx-webhooks" = {
+      partition_count    = 6
+      replication_factor = 3
+      configs = {
+        "cleanup.policy"      = "delete"
+        "min.insync.replicas" = "2"
+        "retention.ms"        = "604800000" # 7 days
       }
     }
     "pegasusx-demand" = {
       partition_count    = 6
       replication_factor = 3
       configs = {
-        "cleanup.policy" = "delete"
-        "retention.ms"   = "604800000" # 7 days
+        "cleanup.policy"      = "delete"
+        "min.insync.replicas" = "2"
+        "retention.ms"        = "604800000" # 7 days
       }
     }
     "logistics.exceptions.v1" = {
       partition_count    = 6
       replication_factor = 3
       configs = {
-        "cleanup.policy" = "delete"
-        "retention.ms"   = "2592000000" # 30 days
+        "cleanup.policy"      = "delete"
+        "min.insync.replicas" = "2"
+        "retention.ms"        = "2592000000" # 30 days
       }
     }
     "logistics.telemetry.v1" = {
       partition_count    = 6
       replication_factor = 3
       configs = {
-        "cleanup.policy" = "delete"
-        "retention.ms"   = "86400000" # 1 day (Optimized for FinOps disk savings)
+        "cleanup.policy"      = "delete"
+        "min.insync.replicas" = "2"
+        "retention.ms"        = "86400000" # 1 day (Optimized for FinOps disk savings)
       }
     }
     "pegasusx-freeze-locks" = {
       partition_count    = 6
       replication_factor = 3
       configs = {
-        "cleanup.policy" = "compact"
+        "cleanup.policy"      = "compact"
+        "min.insync.replicas" = "2"
       }
     }
     "pegasusx-inventory-import" = {
       partition_count    = 6
       replication_factor = 3
       configs = {
-        "cleanup.policy" = "delete"
-        "retention.ms"   = "259200000" # 3 days
+        "cleanup.policy"      = "delete"
+        "min.insync.replicas" = "2"
+        "retention.ms"        = "259200000" # 3 days
       }
     }
     "pegasusx-main-dlq" = {
       partition_count    = 6
       replication_factor = 3
       configs = {
-        "cleanup.policy" = "delete"
-        "retention.ms"   = "1209600000" # 14 days
+        "cleanup.policy"      = "delete"
+        "min.insync.replicas" = "2"
+        "retention.ms"        = "1209600000" # 14 days
       }
     }
   }

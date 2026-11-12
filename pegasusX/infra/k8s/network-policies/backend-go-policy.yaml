@@ -26,6 +26,9 @@ spec:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: monitoring
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: gke-gmp-system
       ports:
         - protocol: TCP
           port: 8080
@@ -40,7 +43,7 @@ spec:
           port: 53
         - protocol: TCP
           port: 53
-    # 2. Allow call to optimizer-core on port 8082
+    # 2. Allow call to optimizer-core on port 8082 and OSRM routing engine on port 5000
     - to:
         - podSelector:
             matchLabels:
@@ -48,10 +51,19 @@ spec:
       ports:
         - protocol: TCP
           port: 8082
-    # 3. Allow Redis in cluster or external
+    - to:
+        - podSelector:
+            matchLabels:
+              app: osrm
+      ports:
+        - protocol: TCP
+          port: 5000
+    # 3. Allow Redis in cluster or GCP Memorystore (6379 plaintext / 6378 TLS)
     - ports:
         - protocol: TCP
           port: 6379
+        - protocol: TCP
+          port: 6378
     # 4. Allow Kafka in cluster or external
     - ports:
         - protocol: TCP

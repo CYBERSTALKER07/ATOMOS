@@ -15,11 +15,14 @@ spec:
     - Ingress
     - Egress
   ingress:
-    # 1. Strictly allow requests from backend-go and ai-worker pods on port 8082
+    # 1. Strictly allow requests from backend-go, backend-go-worker, and ai-worker pods on port 8082
     - from:
         - podSelector:
             matchLabels:
               app: backend-go
+        - podSelector:
+            matchLabels:
+              app: backend-go-worker
         - podSelector:
             matchLabels:
               app: ai-worker

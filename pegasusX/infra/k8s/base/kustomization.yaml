@@ -16,6 +16,7 @@ resources:
   - ../backend-go/migrate-job.yaml
   - ../backend-go-worker/deployment.yaml
   - ../backend-go-worker/service.yaml
+  - ../backend-go-worker/pdb.yaml
   - ../ingress/backendconfig.yaml
   - ../ingress/ingress.yaml
   - ../monitoring/podmonitoring.yaml
@@ -25,6 +26,8 @@ resources:
   - ../network-policies/backend-go-worker-policy.yaml
   - ../network-policies/optimizer-core-policy.yaml
   - ../network-policies/ai-worker-policy.yaml
+  - ../network-policies/osrm-policy.yaml
+  - ../network-policies/batch-cron-policy.yaml
 
 labels:
   - pairs:

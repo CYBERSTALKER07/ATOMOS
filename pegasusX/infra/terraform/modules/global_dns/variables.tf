@@ -1,10 +1,12 @@
 variable "project_id" {
-  type = string
+  description = "Google Cloud project ID hosting the global Cloud DNS managed zone."
+  type        = string
 }
 
 variable "zone_name" {
-  type    = string
-  default = "pegasusx-app"
+  description = "Resource name of the public Cloud DNS managed zone."
+  type        = string
+  default     = "pegasusx-app"
 }
 
 variable "dns_name" {
