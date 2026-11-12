@@ -75,12 +75,29 @@ export interface FleetDispatchFilter {
 
 export * from "../forecast-confidence";
 
-export type SupplierSettingsResponse = any;
-export type RecommendReassignRequest = any;
+export type SupplierSettingsResponse = Record<string, unknown>;
+export interface RecommendReassignRequest {
+  order_id: string;
+  [key: string]: unknown;
+}
 export type RecommendReassignResponse = { candidates?: ReassignmentCandidate[] };
-export type ApplyReassignRequest = any;
-export type StatusResponse = any;
-export type ReassignmentCandidate = any;
+export interface ApplyReassignRequest {
+  order_id: string;
+  new_driver_id: string;
+  reassign_type?: "COMPLETE" | "PARTIAL" | string;
+  [key: string]: unknown;
+}
+export interface StatusResponse {
+  status?: string;
+  [key: string]: unknown;
+}
+export interface ReassignmentCandidate {
+  driver_id: string;
+  name?: string;
+  vehicle_id?: string;
+  eta_seconds?: number;
+  [key: string]: unknown;
+}
 
 /** Partner Integration Layer (Gate 3 / §8.9) */
 export type PartnerTenantType = "RETAILER" | "SUPPLIER";

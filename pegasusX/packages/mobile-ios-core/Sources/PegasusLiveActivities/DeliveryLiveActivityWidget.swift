@@ -24,15 +24,15 @@ public struct DeliveryLiveActivityWidget: Widget {
                 DynamicIslandExpandedRegion(.leading) {
                     HStack(spacing: 6) {
                         Image(systemName: context.attributes.isDriverPerspective ? "location.north.line.fill" : "shippingbox.fill")
-                            .font(.system(size: 16, weight: .bold))
+                            .font(.headline.bold())
                             .foregroundStyle(Color.blue)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(context.attributes.isDriverPerspective ? formatDistance(context.state.remainingDistanceMeters) : context.attributes.supplierName)
-                                .font(.system(size: 13, weight: .bold, design: .rounded))
+                                .font(.system(.footnote, design: .rounded, weight: .bold))
                                 .foregroundStyle(.white)
                                 .lineLimit(1)
                             Text(context.state.status)
-                                .font(.system(size: 10, weight: .medium))
+                                .font(.caption2.weight(.medium))
                                 .foregroundStyle(.white.opacity(0.7))
                         }
                     }
@@ -43,15 +43,15 @@ public struct DeliveryLiveActivityWidget: Widget {
                     VStack(alignment: .trailing, spacing: 2) {
                         HStack(spacing: 4) {
                             Image(systemName: "clock.fill")
-                                .font(.system(size: 11))
+                                .font(.caption2)
                             Text("\(context.state.etaMinutes) min")
-                                .font(.system(size: 14, weight: .bold, design: .monospaced))
+                                .font(.system(.subheadline, design: .monospaced, weight: .bold))
                         }
                         .foregroundStyle(Color.green)
 
                         if let token = context.state.deliveryToken, !token.isEmpty {
                             Text("PIN: \(token)")
-                                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                                .font(.system(.caption2, design: .monospaced, weight: .bold))
                                 .foregroundStyle(Color.yellow)
                         }
                     }
@@ -60,7 +60,7 @@ public struct DeliveryLiveActivityWidget: Widget {
 
                 DynamicIslandExpandedRegion(.center) {
                     Text(context.attributes.isDriverPerspective ? context.state.nextInstruction : "Approaching \(context.attributes.destinationName)")
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(.footnote.weight(.semibold))
                         .foregroundStyle(.white)
                         .lineLimit(1)
                 }
@@ -73,11 +73,11 @@ public struct DeliveryLiveActivityWidget: Widget {
                             Text(context.attributes.isDriverPerspective
                                 ? "Step \(context.state.currentStepIndex)/\(max(context.state.totalSteps, 1))"
                                 : "\(context.attributes.totalItemCount) items")
-                                .font(.system(size: 10))
+                                .font(.caption2)
                                 .foregroundStyle(.white.opacity(0.6))
                             Spacer()
                             Text(context.attributes.orderId)
-                                .font(.system(size: 10, design: .monospaced))
+                                .font(.system(.caption2, design: .monospaced))
                                 .foregroundStyle(.white.opacity(0.6))
                         }
                     }
@@ -86,15 +86,15 @@ public struct DeliveryLiveActivityWidget: Widget {
                 }
             } compactLeading: {
                 Image(systemName: context.attributes.isDriverPerspective ? "location.fill" : "truck.box.fill")
-                    .font(.system(size: 12, weight: .bold))
+                    .font(.caption.bold())
                     .foregroundStyle(Color.blue)
             } compactTrailing: {
                 Text("\(context.state.etaMinutes)m")
-                    .font(.system(size: 12, weight: .bold, design: .monospaced))
+                    .font(.system(.caption, design: .monospaced, weight: .bold))
                     .foregroundStyle(Color.green)
             } minimal: {
                 Image(systemName: context.attributes.isDriverPerspective ? "location.fill" : "shippingbox.fill")
-                    .font(.system(size: 11))
+                    .font(.caption2)
                     .foregroundStyle(Color.blue)
             }
         }
@@ -119,12 +119,12 @@ private struct LockScreenLiveActivityView: View {
                         .fill(Color.green)
                         .frame(width: 8, height: 8)
                     Text(context.attributes.isDriverPerspective ? "LIVE ROUTE NAVIGATION" : "INBOUND DELIVERY")
-                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                        .font(.system(.caption2, design: .rounded, weight: .bold))
                         .foregroundStyle(.white.opacity(0.8))
                 }
                 Spacer()
                 Text("\(context.state.etaMinutes) MIN ETA")
-                    .font(.system(size: 12, weight: .bold, design: .monospaced))
+                    .font(.system(.caption, design: .monospaced, weight: .bold))
                     .padding(.horizontal, 8)
                     .padding(.vertical, 3)
                     .background(Color.green.opacity(0.2), in: Capsule())
@@ -133,17 +133,17 @@ private struct LockScreenLiveActivityView: View {
 
             HStack(alignment: .center, spacing: 12) {
                 Image(systemName: context.attributes.isDriverPerspective ? "arrow.triangle.turn.up.right.diamond.fill" : "truck.box.fill")
-                    .font(.system(size: 26))
+                    .font(.title)
                     .foregroundStyle(Color.blue)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(context.attributes.isDriverPerspective ? context.state.nextInstruction : context.attributes.supplierName)
-                        .font(.system(size: 15, weight: .bold))
+                        .font(.subheadline.bold())
                         .foregroundStyle(Color.white)
                         .lineLimit(2)
 
                     Text(context.attributes.isDriverPerspective ? "Distance: \(Int(context.state.remainingDistanceMeters))m" : "To: \(context.attributes.destinationName)")
-                        .font(.system(size: 12))
+                        .font(.caption)
                         .foregroundStyle(Color.white.opacity(0.7))
                 }
                 Spacer()
@@ -151,10 +151,10 @@ private struct LockScreenLiveActivityView: View {
                 if let token = context.state.deliveryToken, !token.isEmpty {
                     VStack(spacing: 2) {
                         Text("VERIFY PIN")
-                            .font(.system(size: 9, weight: .bold))
+                            .font(.caption2.bold())
                             .foregroundStyle(Color.white.opacity(0.6))
                         Text(token)
-                            .font(.system(size: 16, weight: .bold, design: .monospaced))
+                            .font(.system(.headline, design: .monospaced, weight: .bold))
                             .foregroundStyle(Color.yellow)
                     }
                     .padding(.horizontal, 8)

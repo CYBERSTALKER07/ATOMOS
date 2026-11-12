@@ -71,10 +71,10 @@ export function LiveEKGNetworkGraph({
 
     // Draw nodes
     const node = nodeGroup
-      .selectAll("g")
+      .selectAll<SVGGElement, NetworkNode>("g")
       .data(nodes)
       .join("g")
-      .call(drag(simulation) as any);
+      .call(drag(simulation));
 
     node.each(function(d) {
       const g = d3.select(this);
@@ -113,8 +113,8 @@ export function LiveEKGNetworkGraph({
     function pulse() {
       linkGroup.selectAll(".ekg-pulse").remove();
 
-      linkGroup.selectAll(".ekg-link").each(function(d: any, i) {
-        const path = this as SVGPathElement;
+      linkGroup.selectAll<SVGPathElement, NetworkLink>(".ekg-link").each(function() {
+        const path = this;
         const l = path.getTotalLength();
         
         // Randomly decide if a pulse happens on this tick to simulate traffic
@@ -144,15 +144,22 @@ export function LiveEKGNetworkGraph({
     pulse();
 
     simulation.on("tick", () => {
-      link.attr("d", (d: any) => {
+      link.attr("d", (d) => {
+        if (typeof d.source === "string" || typeof d.target === "string") {
+          return "";
+        }
+        const sx = d.source.x ?? 0;
+        const sy = d.source.y ?? 0;
+        const tx = d.target.x ?? 0;
+        const ty = d.target.y ?? 0;
         // Create curved paths
-        const dx = d.target.x - d.source.x;
-        const dy = d.target.y - d.source.y;
+        const dx = tx - sx;
+        const dy = ty - sy;
         const dr = Math.sqrt(dx * dx + dy * dy);
-        return `M\${d.source.x},\${d.source.y}A\${dr},\${dr} 0 0,1 \${d.target.x},\${d.target.y}`;
+        return `M${sx},${sy}A${dr},${dr} 0 0,1 ${tx},${ty}`;
       });
 
-      node.attr("transform", (d) => `translate(\${d.x},\${d.y})`);
+      node.attr("transform", (d) => `translate(${d.x ?? 0},${d.y ?? 0})`);
     });
 
     return () => {
@@ -161,22 +168,22 @@ export function LiveEKGNetworkGraph({
   }, [nodes, links, width, height]);
 
   // Drag functionality
-  const drag = (simulation: any) => {
-    function dragstarted(event: any, d: any) {
+  const drag = (simulation: d3.Simulation<NetworkNode, NetworkLink>) => {
+    function dragstarted(event: d3.D3DragEvent<SVGGElement, NetworkNode, NetworkNode>, d: NetworkNode) {
       if (!event.active) simulation.alphaTarget(0.3).restart();
       d.fx = d.x;
       d.fy = d.y;
     }
-    function dragged(event: any, d: any) {
+    function dragged(event: d3.D3DragEvent<SVGGElement, NetworkNode, NetworkNode>, d: NetworkNode) {
       d.fx = event.x;
       d.fy = event.y;
     }
-    function dragended(event: any, d: any) {
+    function dragended(event: d3.D3DragEvent<SVGGElement, NetworkNode, NetworkNode>, d: NetworkNode) {
       if (!event.active) simulation.alphaTarget(0);
       d.fx = null;
       d.fy = null;
     }
-    return d3.drag()
+    return d3.drag<SVGGElement, NetworkNode>()
       .on("start", dragstarted)
       .on("drag", dragged)
       .on("end", dragended);

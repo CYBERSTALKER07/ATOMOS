@@ -40,8 +40,10 @@ func packCurrency(_ pack: MarketPack?, fallback: String = "") -> String {
 
 /// Empty pack prints the number only. Never invents UZS.
 func formatPackMoney(_ minor: Int64, pack: MarketPack?, decimalPlaces: Int = 2) -> String {
-    let denom = pow(10.0, Double(max(decimalPlaces, 0)))
-    let units = Double(minor) / denom
+    var units = Decimal(minor)
+    for _ in 0..<max(decimalPlaces, 0) {
+        units /= 10
+    }
     let formatted = units.formatted(.number.precision(.fractionLength(0...max(decimalPlaces, 0))))
         .replacingOccurrences(of: ",", with: " ")
     let ccy = packCurrency(pack)

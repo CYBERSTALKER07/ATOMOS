@@ -61,7 +61,7 @@ export interface GeoJSONPolygon {
 export interface GeoJSONFeature<G = GeoJSONPolygon> {
   type: "Feature";
   geometry: G;
-  properties?: Record<string, any> | null;
+  properties?: Record<string, unknown> | null;
 }
 
 export type PolygonInput =
@@ -69,7 +69,7 @@ export type PolygonInput =
   | GeoJSONFeature<GeoJSONPolygon>
   | number[][][]
   | number[][]
-  | { type: string; coordinates?: any; geometry?: any }
+  | { type: string; coordinates?: unknown; geometry?: unknown }
   | null
   | undefined;
 
@@ -137,16 +137,17 @@ export function normalizePolygonInput(input: PolygonInput): number[][][] | null 
   }
 
   // Feature wrapper
-  if (typeof input === "object" && input.type === "Feature" && input.geometry) {
-    if (input.geometry.type === "Polygon" && Array.isArray(input.geometry.coordinates)) {
-      return input.geometry.coordinates;
+  if (typeof input === "object" && input.type === "Feature" && "geometry" in input && input.geometry && typeof input.geometry === "object") {
+    const geom = input.geometry as { type?: unknown; coordinates?: unknown };
+    if (geom.type === "Polygon" && Array.isArray(geom.coordinates)) {
+      return geom.coordinates as number[][][];
     }
     return null;
   }
 
   // Polygon geometry
-  if (typeof input === "object" && input.type === "Polygon" && Array.isArray(input.coordinates)) {
-    return input.coordinates;
+  if (typeof input === "object" && input.type === "Polygon" && "coordinates" in input && Array.isArray(input.coordinates)) {
+    return input.coordinates as number[][][];
   }
 
   return null;

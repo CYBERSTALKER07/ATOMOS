@@ -948,14 +948,14 @@ export class SupplierApiClient extends ApiClientBase {
     });
   }
 
-  async sealAllSupplierManifests(idempotencyKey: string): Promise<{ sealed_count: number; errors?: any[] }> {
-    return this.request<{ sealed_count: number; errors?: any[] }>("/v1/supplier/manifests/seal-all", "POST", {
+  async sealAllSupplierManifests(idempotencyKey: string): Promise<{ sealed_count: number; errors?: unknown[] }> {
+    return this.request<{ sealed_count: number; errors?: unknown[] }>("/v1/supplier/manifests/seal-all", "POST", {
       idempotencyKey,
     });
   }
 
-  async sealAllPayloaderManifests(idempotencyKey: string): Promise<{ sealed_count: number; errors?: any[] }> {
-    return this.request<{ sealed_count: number; errors?: any[] }>("/v1/payloader/manifests/seal-all", "POST", {
+  async sealAllPayloaderManifests(idempotencyKey: string): Promise<{ sealed_count: number; errors?: unknown[] }> {
+    return this.request<{ sealed_count: number; errors?: unknown[] }>("/v1/payloader/manifests/seal-all", "POST", {
       idempotencyKey,
     });
   }

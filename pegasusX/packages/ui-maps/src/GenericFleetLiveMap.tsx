@@ -3,18 +3,23 @@
 
 import { useEffect, useMemo, useRef } from 'react';
 
-import MapGL, { Layer, NavigationControl, Source } from 'react-map-gl/maplibre';
+import MapGL, { Layer, NavigationControl, Source, type MapRef } from 'react-map-gl/maplibre';
 import maplibregl from 'maplibre-gl';
 import { useMapLibreTeardown } from '@pegasusx/ui-maps';
 import { FLEET_ROUTE_COLORS, useAnimatedDriverMarkers } from './useAnimatedDriverMarkers';
 import { mapInitialViewState, readCachedAuthSession } from '@pegasusx/api-core';
 const MAP_PITCH_3D = 50;
 
+export interface RouteGeometry {
+  coordinates?: Array<{ lat: number; lng: number }>;
+  source?: string;
+}
+
 export interface GenericRouteType {
   driver_location?: { lat?: number; lng?: number; latitude?: number; longitude?: number };
   live_location_available?: boolean;
   location_stale?: boolean;
-  route_geometry?: any;
+  route_geometry?: RouteGeometry;
   manifest_id: string;
   driver_id: string;
   driver_name?: string;
@@ -46,7 +51,7 @@ function routeLineFeature(
     },
     geometry: {
       type: 'LineString',
-      coordinates: geometry.coordinates.map((point: any) => [point.lng, point.lat]),
+      coordinates: geometry.coordinates.map((point) => [point.lng, point.lat]),
     },
   };
 }
@@ -130,7 +135,7 @@ export function GenericFleetLiveMap({
   return (
     <div className={className}>
       <MapGL
-        ref={(ref: any) => {
+        ref={(ref: MapRef | null) => {
           mapRef.current = ref?.getMap() ?? null;
         }}
         initialViewState={{

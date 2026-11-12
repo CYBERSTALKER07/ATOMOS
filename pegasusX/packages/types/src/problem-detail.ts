@@ -9,13 +9,15 @@ export interface ProblemDetail {
   trace_id?: string;
 }
 
-export function isProblemDetail(obj: any): obj is ProblemDetail {
+export function isProblemDetail(obj: unknown): obj is ProblemDetail {
+  if (typeof obj !== "object" || obj === null) {
+    return false;
+  }
+  const candidate = obj as Record<string, unknown>;
   return (
-    typeof obj === "object" &&
-    obj !== null &&
-    typeof obj.type === "string" &&
-    typeof obj.title === "string" &&
-    typeof obj.status === "number"
+    typeof candidate.type === "string" &&
+    typeof candidate.title === "string" &&
+    typeof candidate.status === "number"
   );
 }
 

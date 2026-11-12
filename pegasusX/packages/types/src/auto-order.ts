@@ -341,7 +341,7 @@ export interface TaxRegimeVersion {
   effective_to?: string;
   currency: string;
   vat_rates_bps: number[];
-  simplified_rules?: any;
+  simplified_rules?: Record<string, unknown>;
   created_at: string;
   created_by: string;
   updated_at: string;
@@ -353,7 +353,7 @@ export interface CreateRegimeRequest {
   effective_to?: string;
   currency: string;
   vat_rates_bps: number[];
-  simplified_rules?: any;
+  simplified_rules?: Record<string, unknown>;
 }
 
 export interface OrderLineFiscalSnapshot {

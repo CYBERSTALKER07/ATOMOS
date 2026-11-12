@@ -32,9 +32,21 @@ export async function insertPendingCommand(
   });
 }
 
+interface PendingCommandRow {
+  command_id: string;
+  command_type: string;
+  entity_id: string;
+  known_version: number;
+  payload_json: string;
+  created_at: number;
+  retry_count: number;
+  status: "PENDING" | "FAILED" | "DISPUTED";
+  last_error?: string;
+}
+
 export async function getPendingCommands(): Promise<PendingCommand[]> {
   const result = await withDatabase(async (db) => {
-    return db.select<any[]>(
+    return db.select<PendingCommandRow[]>(
       `SELECT * FROM pending_commands WHERE status = 'PENDING' ORDER BY created_at ASC LIMIT 50`
     );
   });
@@ -42,15 +54,15 @@ export async function getPendingCommands(): Promise<PendingCommand[]> {
   if (!result) return [];
 
   return result.map((row) => ({
-    commandId: row.command_id as string,
-    commandType: row.command_type as string,
-    entityId: row.entity_id as string,
-    knownVersion: row.known_version as number,
-    payloadJson: row.payload_json as string,
-    createdAt: row.created_at as number,
-    retryCount: row.retry_count as number,
-    status: row.status as "PENDING" | "FAILED" | "DISPUTED",
-    lastError: row.last_error as string | undefined,
+    commandId: row.command_id,
+    commandType: row.command_type,
+    entityId: row.entity_id,
+    knownVersion: row.known_version,
+    payloadJson: row.payload_json,
+    createdAt: row.created_at,
+    retryCount: row.retry_count,
+    status: row.status,
+    lastError: row.last_error,
   }));
 }
 

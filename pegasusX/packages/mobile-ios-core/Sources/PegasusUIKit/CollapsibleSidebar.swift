@@ -58,7 +58,7 @@ struct CollapsibleSidebar<Item: Hashable, Detail: View>: View {
                         }
                     } label: {
                         Image(systemName: "sidebar.left")
-                            .font(.system(size: 20, weight: .medium))
+                            .font(.title3.weight(.medium))
                             .foregroundStyle(PegasusMonochromeTheme.secondaryLabel)
                             .frame(width: 44, height: 44)
                     }
@@ -102,7 +102,7 @@ struct CollapsibleSidebar<Item: Hashable, Detail: View>: View {
         } label: {
             HStack(spacing: 12) {
                 Image(systemName: item.icon)
-                    .font(.system(size: 18, weight: selected ? .semibold : .regular))
+                    .font(.body.weight(selected ? .semibold : .regular))
                     .frame(width: 28)
                     .foregroundStyle(selected ? PegasusMonochromeTheme.label : PegasusMonochromeTheme.secondaryLabel)
                 if effectiveExpanded {
