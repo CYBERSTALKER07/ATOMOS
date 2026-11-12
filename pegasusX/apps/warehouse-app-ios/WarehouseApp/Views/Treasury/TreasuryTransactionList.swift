@@ -25,6 +25,9 @@ struct TreasuryTransactionList: View {
                         Spacer()
                         WarehouseStatusBadge(text: inv.status)
                     }
+                    .frame(minHeight: 44)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("Invoice for \(inv.retailerName), amount \(inv.amountUzs.formatted()) \(inv.currency), due \(inv.dueDate), status \(inv.status)")
                 }
             }
         }

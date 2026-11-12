@@ -12,16 +12,37 @@ final class OrdersViewModel {
     var vettingOrderId: String?
 
     // Reassignment
-    var reassignTarget: String?
+    var reassignTarget: String? {
+        didSet { showReassignSheet = reassignTarget != nil }
+    }
     var reassignRecommendations: RecommendReassignResponse?
     var isReassigning = false
-    var reassignMessage: String?
+    var reassignMessage: String? {
+        didSet { showReassignMessageAlert = reassignMessage != nil }
+    }
+    var showReassignSheet = false {
+        didSet {
+            if !showReassignSheet && reassignTarget != nil {
+                reassignTarget = nil
+            }
+        }
+    }
+    var showReassignMessageAlert = false {
+        didSet {
+            if !showReassignMessageAlert && reassignMessage != nil {
+                reassignMessage = nil
+            }
+        }
+    }
+    var notice: String?
+
+    private var loadGeneration = 0
 
     let filters: [(id: String, label: String)] = [
-        ("ACTIVE", "Active"),
-        ("SCHEDULED", "Scheduled"),
-        ("COMPLETED", "Completed"),
-        ("CANCELLED", "Cancelled"),
+        ("ACTIVE", "portal.page.orders.filter.active_tab"),
+        ("SCHEDULED", "portal.page.orders.filter.scheduled"),
+        ("COMPLETED", "portal.page.orders.filter.completed"),
+        ("CANCELLED", "portal.page.orders.filter.cancelled"),
     ]
 
     var loadIdentity: String { "\(commandStatus ?? "")|\(statusFilter)" }
@@ -38,9 +59,13 @@ final class OrdersViewModel {
     }
 
     func load(silent: Bool = false) async {
-        if !silent { loading = true }
-        error = nil
-        defer { loading = false }
+        loadGeneration += 1
+        let generation = loadGeneration
+        if !silent {
+            loading = true
+            error = nil
+        }
+        let offline = !NetworkLifecycleEngine.shared.isOnline
         do {
             let query = resolveSupplierOrdersQuery(commandStatus: commandStatus, coarseFilter: statusFilter)
             let response: SupplierOrdersResponse
@@ -49,10 +74,30 @@ final class OrdersViewModel {
             } else {
                 response = try await SupplierService.orders(filter: query.filter, limit: 500)
             }
+            guard generation == loadGeneration else { return }
             orders = response.orders
-            if selection == nil { selection = orders.first }
+            error = nil
+            notice = nil
+            if let selection, !orders.contains(where: { $0.orderId == selection.orderId }) {
+                self.selection = orders.first
+            } else if selection == nil {
+                selection = orders.first
+            }
         } catch {
-            if !silent { self.error = error.localizedDescription }
+            guard generation == loadGeneration else { return }
+            let outcome = OrdersLoadFailure.message(
+                offline: offline,
+                silent: silent,
+                hasOrders: !orders.isEmpty,
+                underlying: error.localizedDescription
+            )
+            self.error = outcome.error
+            if let outcomeNotice = outcome.notice {
+                notice = outcomeNotice
+            }
+        }
+        if generation == loadGeneration {
+            loading = false
         }
     }
 
@@ -71,11 +116,11 @@ final class OrdersViewModel {
                 warehouseId: warehouseId,
                 proposedDeliveryDate: proposedDeliveryDate,
                 reason: reason,
-                idempotencyKey: "warehouse-order-propose-delivery:\(order.orderId):\(reason.hashValue)"
+                idempotencyKey: "warehouse-order-propose-delivery:\(order.orderId):\(proposedDeliveryDate):\(reason)"
             )
             await load(silent: true)
         } catch {
-            self.error = error.localizedDescription
+            SupplierActionFailure.record(underlying: error, hasContent: !orders.isEmpty, error: &self.error)
         }
     }
 
@@ -88,11 +133,11 @@ final class OrdersViewModel {
                 orderId: order.orderId,
                 warehouseId: warehouseId,
                 reason: reason,
-                idempotencyKey: "warehouse-order-reject:\(order.orderId):\(reason.hashValue)"
+                idempotencyKey: "warehouse-order-reject:\(order.orderId):\(reason)"
             )
             await load(silent: true)
         } catch {
-            self.error = error.localizedDescription
+            SupplierActionFailure.record(underlying: error, hasContent: !orders.isEmpty, error: &self.error)
         }
     }
 
@@ -103,25 +148,23 @@ final class OrdersViewModel {
         do {
             reassignRecommendations = try await SupplierOperationsService.recommendReassign(orderId: orderId)
         } catch {
-            reassignMessage = "Failed to load recommendations: \(error.localizedDescription)"
+            reassignMessage = L10n.format("mobile_supplier.chrome.reassign_recommendations_failed", error.localizedDescription)
             reassignTarget = nil
         }
     }
 
     func issuePaymentBypass(orderId: String, reason: String = "OPERATIONS_BYPASS") async {
-        loading = true
-        defer { loading = false }
         do {
             let req = PaymentBypassRequest(orderId: orderId, reason: reason)
-            let idempotency = UUID().uuidString
+            let idempotency = "payment-bypass:\(orderId):\(reason)"
             let res = try await SupplierOperationsService.issuePaymentBypass(req, idempotencyKey: idempotency)
             if !res.bypassToken.isEmpty {
-                error = "Token generated: \(res.bypassToken)"
+                notice = L10n.format("mobile_supplier.chrome.payment_bypass_token_generated", res.bypassToken)
             } else {
-                error = "Bypass request successful, but no token returned."
+                notice = L10n.format("mobile_supplier.chrome.payment_bypass_no_token")
             }
         } catch {
-            self.error = error.localizedDescription
+            SupplierActionFailure.record(underlying: error, hasContent: !orders.isEmpty, error: &self.error)
         }
     }
 
@@ -140,15 +183,38 @@ final class OrdersViewModel {
                 orderId: orderId,
                 driverId: driverId,
                 isPartial: isPartial,
-                idempotencyKey: UUID().uuidString
+                idempotencyKey: "order-reassign:\(orderId):\(driverId):\(isPartial)"
             )
-            reassignMessage = isPartial ? "Reassigned (Partial)" : "Reassigned (Full)"
+            reassignMessage = isPartial
+                ? L10n.format("mobile_supplier.chrome.reassigned_partial")
+                : L10n.format("mobile_supplier.chrome.reassigned_full")
             reassignTarget = nil
             await load(silent: true)
         } catch {
-            reassignMessage = "Failed to reassign: \(error.localizedDescription)"
+            reassignMessage = L10n.format("mobile_supplier.chrome.reassign_failed_with_error", error.localizedDescription)
         }
         isReassigning = false
+    }
+}
+
+enum OrdersLoadFailure {
+    static func message(
+        offline: Bool,
+        silent: Bool,
+        hasOrders: Bool,
+        underlying: String,
+        noun: String = "orders"
+    ) -> (error: String?, notice: String?) {
+        if hasOrders {
+            let notice = offline
+                ? L10n.format("mobile_supplier.chrome.offline_showing_last", noun)
+                : underlying
+            return (nil, notice)
+        }
+        if offline {
+            return (L10n.format("mobile_supplier.chrome.offline_connect", noun), nil)
+        }
+        return (underlying, nil)
     }
 }
 

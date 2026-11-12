@@ -14,11 +14,27 @@ enum SupplierService {
     }
 
     static func setupBusiness(_ request: BusinessSetupRequest) async throws -> BusinessSetupResponse {
-        try await APIClient.shared.post("v1/supplier/business/setup", body: request)
+        let key = SupplierIdempotencyKeys.businessSetup(
+            scopeId: await SupplierIdempotencyKeys.supplierScopeId(),
+            payloadFingerprint: SupplierIdempotencyKeys.encodedPayload(request)
+        )
+        return try await APIClient.shared.post(
+            "v1/supplier/business/setup",
+            body: request,
+            idempotencyKey: key
+        )
     }
 
     static func configure(body: [String: String]) async throws {
-        try await APIClient.shared.postVoid("v1/supplier/configure", body: body)
+        let key = SupplierIdempotencyKeys.supplierConfigure(
+            scopeId: await SupplierIdempotencyKeys.supplierScopeId(),
+            payloadFingerprint: SupplierIdempotencyKeys.encodedPayload(body)
+        )
+        try await APIClient.shared.postVoid(
+            "v1/supplier/configure",
+            body: body,
+            idempotencyKey: key
+        )
     }
 
     static func updateInventory(_ request: InventoryPatchRequest) async throws {
@@ -97,7 +113,10 @@ enum SupplierService {
     static func uploadCatalogImage(data: Data, ext: String) async throws -> String {
         let ticket = try await catalogUploadTicket(ext: ext)
         if !ticket.uploadUrl.contains("placehold.co") {
-            var request = URLRequest(url: URL(string: ticket.uploadUrl)!)
+            guard let uploadURL = SupplierURL.parse(ticket.uploadUrl) else {
+                throw URLError(.badURL)
+            }
+            var request = URLRequest(url: uploadURL)
             request.httpMethod = "PUT"
             request.httpBody = data
             request.setValue(mimeType(for: ext), forHTTPHeaderField: "Content-Type")
@@ -109,15 +128,20 @@ enum SupplierService {
         return ticket.imageUrl
     }
 
-    static func createCatalogProduct(_ request: CatalogProductCreateRequest) async throws -> CatalogProduct {
-        try await APIClient.shared.post("v1/catalog/products", body: request)
+    static func createCatalogProduct(_ request: CatalogProductCreateRequest, idempotencyKey: String) async throws -> CatalogProduct {
+        try await APIClient.shared.post("v1/catalog/products", body: request, idempotencyKey: idempotencyKey)
     }
 
     static func updateCatalogProduct(
         productId: String,
-        request: CatalogProductUpdateRequest
+        request: CatalogProductUpdateRequest,
+        idempotencyKey: String
     ) async throws -> CatalogProduct {
-        try await APIClient.shared.put("v1/catalog/products/\(productId)", body: request)
+        try await APIClient.shared.put(
+            "v1/catalog/products/\(productId)",
+            body: request,
+            idempotencyKey: idempotencyKey
+        )
     }
 
     private static func mimeType(for ext: String) -> String {
@@ -133,41 +157,43 @@ enum SupplierService {
         return resp.promotions
     }
 
-    static func createPromotion(_ request: SupplierPromotionUpsertRequest) async throws -> SupplierPromotion {
-        try await APIClient.shared.post("v1/supplier/promotions", body: request)
+    static func createPromotion(_ request: SupplierPromotionUpsertRequest, idempotencyKey: String) async throws -> SupplierPromotion {
+        try await APIClient.shared.post("v1/supplier/promotions", body: request, idempotencyKey: idempotencyKey)
     }
 
     static func updatePromotion(
         promotionId: String,
-        _ request: SupplierPromotionUpsertRequest
+        _ request: SupplierPromotionUpsertRequest,
+        idempotencyKey: String
     ) async throws -> SupplierPromotion {
-        try await APIClient.shared.patch("v1/supplier/promotions/\(promotionId)", body: request)
+        try await APIClient.shared.patch(
+            "v1/supplier/promotions/\(promotionId)",
+            body: request,
+            idempotencyKey: idempotencyKey
+        )
     }
 
-    static func deactivatePromotion(promotionId: String) async throws {
-        try await APIClient.shared.deleteVoid("v1/supplier/promotions/\(promotionId)")
+    static func deactivatePromotion(promotionId: String, idempotencyKey: String) async throws {
+        try await APIClient.shared.deleteVoid(
+            "v1/supplier/promotions/\(promotionId)",
+            idempotencyKey: idempotencyKey
+        )
     }
 
     static func earnings() async throws -> SupplierEarnings {
-        do {
-            return try await APIClient.shared.get("v1/supplier/earnings")
-        } catch {
-            let ledger = try await SupplierOperationsService.paymentLedger()
-            let total = ledger.items.reduce(Int64(0)) { $0 + $1.amountMinor }
-            let currency = displayPackCurrency(ledger.items.first?.currency)
-            return SupplierEarnings(
-                currency: currency,
-                todayMinor: 0,
-                weekMinor: total,
-                monthMinor: total,
-                authoritative: false,
-                updatedAt: nil
-            )
-        }
+        try await APIClient.shared.get("v1/supplier/earnings")
     }
 
     static func configureBilling(_ request: BillingSetupRequest) async throws -> BillingSetupResponse {
-        try await APIClient.shared.post("v1/supplier/billing/setup", body: request)
+        let key = SupplierIdempotencyKeys.billingSetup(
+            scopeId: await SupplierIdempotencyKeys.supplierScopeId(),
+            payloadFingerprint: SupplierIdempotencyKeys.encodedPayload(request)
+        )
+        return try await APIClient.shared.post(
+            "v1/supplier/billing/setup",
+            body: request,
+            idempotencyKey: key
+        )
     }
 
     static func updatePricingRules(_ request: SupplierPricingRuleUpdateRequest) async throws -> SupplierPricingRule {
@@ -188,6 +214,14 @@ enum SupplierService {
     }
 
     static func updateTopology(body: [String: String]) async throws -> SupplierTopologyResponse {
-        try await APIClient.shared.put("v1/supplier/topology", body: body)
+        let key = SupplierIdempotencyKeys.topologyPut(
+            scopeId: await SupplierIdempotencyKeys.supplierScopeId(),
+            payloadFingerprint: SupplierIdempotencyKeys.encodedPayload(body)
+        )
+        return try await APIClient.shared.put(
+            "v1/supplier/topology",
+            body: body,
+            idempotencyKey: key
+        )
     }
 }

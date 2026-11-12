@@ -18,7 +18,7 @@ struct KpiTile: View {
 
                 if let chip {
                     Text(chip.text)
-                        .font(.system(size: 9, weight: .bold))
+                        .font(.system(.caption2, weight: .bold))
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
                         .foregroundStyle(chip.tint)
@@ -30,7 +30,7 @@ struct KpiTile: View {
                 }
 
                 Image(systemName: systemImage)
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.system(.footnote, weight: .semibold))
                     .foregroundStyle(tint)
                     .frame(width: 28, height: 28)
                     .background(TacticalTheme.surfaceSunken)
@@ -42,12 +42,18 @@ struct KpiTile: View {
             }
 
             Text(value)
-                .tacticalMonospaceValue(size: 24)
+                .tacticalMonospaceValue(.title2)
                 .lineLimit(1)
                 .minimumScaleFactor(0.75)
                 .contentTransition(.numericText(value: 0))
                 .animation(.snappy, value: value)
         }
         .tacticalCard(padding: 14)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(
+            [title, value, chip?.text]
+                .compactMap { $0 }
+                .joined(separator: ", ")
+        )
     }
 }

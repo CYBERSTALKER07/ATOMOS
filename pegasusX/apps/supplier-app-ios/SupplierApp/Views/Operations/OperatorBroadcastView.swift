@@ -13,7 +13,7 @@ struct OperatorBroadcastView: View {
     var body: some View {
         Group {
             Section {
-                SupplierSectionHeader(title: "Operator broadcast")
+                SupplierSectionHeader(title: "mobile_supplier.chrome.operator_broadcast")
             }
             Section {
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -31,12 +31,12 @@ struct OperatorBroadcastView: View {
                 TextField("supplier_portal.admin.control_center.field.title", text: $title)
                 TextField("warehouse_portal.residual.text.message", text: $bodyText, axis: .vertical)
                     .lineLimit(3...6)
-                Picker("Target role", selection: $broadcastRole) {
+                Picker("mobile_supplier.chrome.target_role", selection: $broadcastRole) {
                     ForEach(broadcastRoles, id: \.self) { role in
                         Text(role).tag(role)
                     }
                 }
-                Button(broadcasting ? "Sending…" : "Send broadcast") {
+                Button(LocalizedStringKey(broadcasting ? "mobile_supplier.chrome.sending" : "mobile_supplier.chrome.send_broadcast")) {
                     sendBroadcast()
                 }
                 .disabled(broadcasting || title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -50,7 +50,7 @@ struct OperatorBroadcastView: View {
         broadcastRole = template.defaultRole
         let date = templateDate.trimmingCharacters(in: .whitespacesAndNewlines)
         if template.body.contains("{date}") {
-            bodyText = template.body.replacingOccurrences(of: "{date}", with: date.isEmpty ? "the selected date" : date)
+            bodyText = template.body.replacingOccurrences(of: "{date}", with: date.isEmpty ? L10n.format("mobile_supplier.chrome.the_selected_date") : date)
         } else {
             bodyText = template.body
         }

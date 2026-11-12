@@ -20,6 +20,9 @@ struct OrderLineItems: View {
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
+                    .frame(minHeight: 44)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("\(item.productName.isEmpty ? "Product" : item.productName), quantity \(item.quantity), \(item.unitPrice.formatted()) UZS")
                 }
             }
         }

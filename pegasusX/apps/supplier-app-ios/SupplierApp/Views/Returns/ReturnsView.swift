@@ -1,30 +1,25 @@
 import SwiftUI
 
 struct ReturnsView: View {
-    @State private var items: [SupplierReturnRow] = []
-    @State private var loading = true
-    @State private var error: String?
-    @State private var resolvingId: String?
-    @State private var resolution = "RETURN_TO_STOCK"
-    @State private var notes = ""
-    @State private var actionLoading: String?
+    @State private var viewModel = ReturnsViewModel()
 
     private let resolutions = ["RETURN_TO_STOCK", "WRITE_OFF"]
 
     var body: some View {
+        @Bindable var vm = viewModel
         Group {
-            if loading {
-                SupplierLoadingView(title: "Loading returns…")
-            } else if let error, items.isEmpty {
-                SupplierErrorView(message: error) { Task { await load() } }
-            } else if items.isEmpty {
+            if viewModel.loading && viewModel.items.isEmpty {
+                SupplierLoadingView(title: "mobile_supplier.loading.returns")
+            } else if let error = viewModel.error, viewModel.items.isEmpty {
+                SupplierErrorView(message: error) { Task { await viewModel.load() } }
+            } else if viewModel.items.isEmpty {
                 SupplierEmptyView(
-                    title: "No open returns",
-                    message: "Rejected delivery quantities appear here after driver offload."
+                    title: "mobile_supplier.empty.no_open_returns",
+                    message: "mobile_supplier.empty.returns_message"
                 )
             } else {
                 ResponsiveGridContentWrapper {
-                    ForEach(items) { row in
+                    ForEach(viewModel.items) { row in
                         VStack(alignment: .leading, spacing: 6) {
                             Text(row.productName).font(.headline)
                             Text(L10n.format("mobile_supplier.ui.qty_quantity_reason", "\(row.quantity)", "\(row.reason)"))
@@ -40,26 +35,28 @@ struct ReturnsView: View {
                             if row.receivedQty > 0 {
                                 Text(L10n.format("mobile_supplier.ui.scanned_receivedqty", "\(row.receivedQty)"))
                                     .font(.caption2)
-                                    .foregroundStyle(.orange)
+                                    .foregroundStyle(SupplierTheme.warning)
                             }
 
-                            if resolvingId == row.returnId {
-                                Picker("Resolution", selection: $resolution) {
+                            if viewModel.resolvingId == row.returnId {
+                                Picker("mobile_supplier.chrome.resolution", selection: $vm.resolution) {
                                     ForEach(resolutions, id: \.self) { option in
                                         Text(option.replacingOccurrences(of: "_", with: " ")).tag(option)
                                     }
                                 }
                                 .pickerStyle(.menu)
-                                TextField("supplier_portal.returns.text.notes_optional", text: $notes)
+                                TextField("supplier_portal.returns.text.notes_optional", text: $vm.notes)
                                     .textInputAutocapitalization(.sentences)
                                 HStack {
-                                    Button(actionLoading == row.returnId ? "…" : "Confirm") {
-                                        Task { await resolve(returnId: row.returnId) }
+                                    Button(LocalizedStringKey(viewModel.actionLoading == row.returnId ? "…" : "mobile_supplier.chrome.confirm")) {
+                                        Task { await viewModel.resolve(returnId: row.returnId) }
                                     }
                                     .buttonStyle(.borderedProminent)
-                                    .disabled(actionLoading == row.returnId)
-                                    Button("common.action.cancel") { resolvingId = nil }
+                                    .frame(minHeight: 44)
+                                    .disabled(viewModel.actionLoading == row.returnId)
+                                    Button("common.action.cancel") { viewModel.resolvingId = nil }
                                         .buttonStyle(.bordered)
+                                        .frame(minHeight: 44)
                                 }
                             } else if row.physicalStatus == "RESTOCKED" || row.physicalStatus == "WRITTEN_OFF" {
                                 Text("supplier_portal.returns.text.gate_resolved")
@@ -67,11 +64,10 @@ struct ReturnsView: View {
                                     .foregroundStyle(.secondary)
                             } else {
                                 Button("mobile_supplier.ui.dispute_override") {
-                                    resolvingId = row.returnId
-                                    resolution = "RETURN_TO_STOCK"
-                                    notes = ""
+                                    viewModel.startDispute(returnId: row.returnId)
                                 }
                                 .buttonStyle(.bordered)
+                                .frame(minHeight: 44)
                             }
                         }
                         .padding(.vertical, 4)
@@ -79,40 +75,10 @@ struct ReturnsView: View {
                 }
             }
         }
+        .scrollDismissesKeyboard(.interactively)
         .background(SupplierTheme.background)
         .navigationTitle("portal.nav.returns")
-        .task { await load() }
-        .refreshable { await load() }
-    }
-
-    private func load() async {
-        loading = true
-        error = nil
-        defer { loading = false }
-        do {
-            let resp = try await SupplierOperationsService.returns(status: "PENDING", limit: 100, offset: 0)
-            items = resp.data
-        } catch {
-            self.error = error.localizedDescription
-        }
-    }
-
-    private func resolve(returnId: String) async {
-        actionLoading = returnId
-        defer { actionLoading = nil }
-        do {
-            let key = SupplierIdempotency.resolveReturn(returnId: returnId, resolution: resolution)
-            try await SupplierOperationsService.resolveReturn(
-                returnId: returnId,
-                resolution: resolution,
-                notes: notes,
-                idempotencyKey: key
-            )
-            resolvingId = nil
-            notes = ""
-            await load()
-        } catch {
-            self.error = error.localizedDescription
-        }
+        .task { await viewModel.load() }
+        .refreshable { await viewModel.load(silent: true) }
     }
 }

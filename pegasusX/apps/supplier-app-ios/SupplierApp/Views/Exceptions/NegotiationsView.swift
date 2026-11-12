@@ -6,8 +6,8 @@ import SwiftUI
 struct NegotiationsView: View {
     var body: some View {
         SupplierEmptyView(
-            title: "Negotiations disabled",
-            message: "Quantity negotiation is not available. Use shop-closed, claims, or missing-items for delivery exceptions."
+            title: "mobile_supplier.empty.negotiations_disabled",
+            message: "mobile_supplier.empty.negotiations_message"
         )
         .navigationTitle("mobile_supplier.ui.negotiations")
     }

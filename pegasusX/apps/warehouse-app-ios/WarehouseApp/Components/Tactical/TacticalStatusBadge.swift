@@ -34,7 +34,7 @@ struct TacticalStatusBadge: View {
             }
 
             Text(status.replacingOccurrences(of: "_", with: " ").uppercased())
-                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                .font(.system(.caption2, design: .monospaced, weight: .bold))
                 .tracking(0.8)
                 .foregroundStyle(tint)
         }
@@ -46,5 +46,7 @@ struct TacticalStatusBadge: View {
             Capsule()
                 .stroke(tint.opacity(0.35), lineWidth: 1)
         )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Status: \(status.replacingOccurrences(of: "_", with: " "))")
     }
 }

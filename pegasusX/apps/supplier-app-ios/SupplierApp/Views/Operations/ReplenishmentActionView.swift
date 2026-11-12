@@ -8,15 +8,15 @@ struct ReplenishmentActionView: View {
         Group {
             Section {
                 SupplierSectionHeader(
-                    title: "Replenishment",
-                    subtitle: "Warehouse supply request against your primary node"
+                    title: "mobile_supplier.chrome.replenishment",
+                    subtitle: "mobile_supplier.chrome.warehouse_supply_request"
                 )
             }
             Section {
                 NavigationLink { ReplenishmentPoliciesView() } label: {
                     Label("mobile_supplier.ui.view_replenishment_policies", systemImage: "doc.text")
                 }
-                Button(replenishing ? "Triggering…" : "Trigger replenishment") {
+                Button(LocalizedStringKey(replenishing ? "mobile_supplier.chrome.triggering" : "mobile_supplier.chrome.trigger_replenishment")) {
                     runReplenishment()
                 }
                 .disabled(replenishing)

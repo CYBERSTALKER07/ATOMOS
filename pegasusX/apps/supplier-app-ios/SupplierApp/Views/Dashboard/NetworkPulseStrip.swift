@@ -13,7 +13,7 @@ struct NetworkPulseStrip: View {
         } else if let error, !error.isEmpty {
             Text(error)
                 .font(.caption)
-                .foregroundStyle(.red)
+                .foregroundStyle(SupplierTheme.destructive)
         } else if !events.isEmpty {
             VStack(alignment: .leading, spacing: SupplierTheme.spacingSM) {
                 Text("factory_portal.app.text.network_pulse")

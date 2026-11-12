@@ -12,7 +12,6 @@ struct TacticalKpiCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            // Top Row: Micro-label and Icon Badge
             HStack(alignment: .center) {
                 Text(title)
                     .tacticalMicroLabel()
@@ -22,7 +21,7 @@ struct TacticalKpiCard: View {
 
                 if let alertChip {
                     Text(alertChip)
-                        .font(.system(size: 9, weight: .bold))
+                        .font(.system(.caption2, weight: .bold))
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
                         .foregroundStyle(TacticalTheme.statusDanger)
@@ -34,7 +33,7 @@ struct TacticalKpiCard: View {
                 }
 
                 Image(systemName: systemImage)
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.system(.footnote, weight: .semibold))
                     .foregroundStyle(tint)
                     .frame(width: 28, height: 28)
                     .background(TacticalTheme.surfaceSunken)
@@ -45,21 +44,19 @@ struct TacticalKpiCard: View {
                     )
             }
 
-            // Main Metric: Tabular Monospace
             Text(value)
-                .tacticalMonospaceValue(size: 28)
+                .tacticalMonospaceValue(.title)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
                 .contentTransition(.numericText(value: 0))
 
-            // Bottom Row: Delta & Subtitle
             HStack(spacing: 6) {
                 if let delta, let deltaIsPositive {
                     HStack(spacing: 2) {
                         Image(systemName: deltaIsPositive ? "arrow.up.right" : "arrow.down.right")
-                            .font(.system(size: 9, weight: .bold))
+                            .font(.system(.caption2, weight: .bold))
                         Text(delta)
-                            .font(.system(size: 11, weight: .bold, design: .monospaced))
+                            .font(.system(.caption2, design: .monospaced, weight: .bold))
                     }
                     .foregroundStyle(deltaIsPositive ? TacticalTheme.accentLime : TacticalTheme.statusDanger)
                     .padding(.horizontal, 6)
@@ -70,12 +67,18 @@ struct TacticalKpiCard: View {
 
                 if let subtitle {
                     Text(subtitle)
-                        .font(.system(size: 11, weight: .medium))
+                        .font(.system(.caption2, weight: .medium))
                         .foregroundStyle(TacticalTheme.textTertiary)
                         .lineLimit(1)
                 }
             }
         }
         .tacticalCard(padding: 14)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(
+            [title, value, alertChip, delta.map { $0 + (deltaIsPositive == true ? " positive" : " negative") }, subtitle]
+                .compactMap { $0 }
+                .joined(separator: ", ")
+        )
     }
 }

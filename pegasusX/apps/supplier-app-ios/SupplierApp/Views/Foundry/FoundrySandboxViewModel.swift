@@ -15,6 +15,7 @@ public struct ScenarioPatchSummaryItem: Identifiable, Sendable {
 }
 
 @Observable
+@MainActor
 final class FoundrySandboxViewModel {
 
     var supplierId: String = "supplier-tashkent-1"
@@ -45,7 +46,13 @@ final class FoundrySandboxViewModel {
         let key = patchKey.trimmingCharacters(in: .whitespaces)
         let val = patchValue.trimmingCharacters(in: .whitespaces)
         guard !key.isEmpty, !val.isEmpty else {
-            errorMessage = "Patch key and value must not be empty"
+            errorMessage = L10n.format("mobile_supplier.chrome.patch_key_value_required")
+            return
+        }
+        guard let pinnedSupplier = pinnedSupplierId() else { return }
+        let scenario = scenarioId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !scenario.isEmpty else {
+            errorMessage = L10n.format("mobile_supplier.chrome.scenario_id_required")
             return
         }
 
@@ -54,7 +61,7 @@ final class FoundrySandboxViewModel {
 
         let req = ScenarioPatchRequest(
             cellId: cellId,
-            supplierId: supplierId,
+            supplierId: pinnedSupplier,
             objectType: objectType,
             objectId: objectId,
             operation: "SET",
@@ -62,7 +69,18 @@ final class FoundrySandboxViewModel {
         )
 
         do {
-            _ = try await SupplierService.applyScenarioPatch(scenarioId: scenarioId, req: req)
+            _ = try await SupplierService.applyScenarioPatch(
+                scenarioId: scenario,
+                req: req,
+                idempotencyKey: FoundryIdempotency.scenarioPatch(
+                    scenarioId: scenario,
+                    supplierId: pinnedSupplier,
+                    objectType: objectType,
+                    objectId: objectId,
+                    key: key,
+                    value: val
+                )
+            )
             let item = ScenarioPatchSummaryItem(
                 objectType: objectType,
                 objectId: objectId,
@@ -70,7 +88,7 @@ final class FoundrySandboxViewModel {
                 value: val
             )
             appliedPatches.append(item)
-            statusMessage = "CoW Patch staged: \(objectType):\(objectId) [\(key) = \(val)]"
+            statusMessage = L10n.format("mobile_supplier.chrome.cow_patch_staged", objectType, objectId, key, val)
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -78,28 +96,35 @@ final class FoundrySandboxViewModel {
 
     @MainActor
     func commitScenario() async {
+        guard pinnedSupplierId() != nil else { return }
+        let scenario = scenarioId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !scenario.isEmpty else {
+            errorMessage = L10n.format("mobile_supplier.chrome.scenario_id_required")
+            return
+        }
         isCommitting = true
+        defer { isCommitting = false }
         errorMessage = nil
         statusMessage = nil
 
         do {
-            let res = try await SupplierService.commitScenario(scenarioId: scenarioId)
-            isCommitting = false
+            let res = try await SupplierService.commitScenario(
+                scenarioId: scenario,
+                idempotencyKey: FoundryIdempotency.scenarioCommit(scenarioId: scenario)
+            )
             commitResult = res
             hasConflict = !res.conflicts.isEmpty
             conflicts = res.conflicts
-            statusMessage = hasConflict ? "Commit Conflict (409): Live objects mutated concurrently." : "Scenario committed (\(res.committedObjects) objects updated)."
+            statusMessage = hasConflict ? L10n.format("mobile_supplier.chrome.commit_conflict") : L10n.format("mobile_supplier.chrome.scenario_committed", "\(res.committedObjects)")
         } catch let apiError as APIError {
-            isCommitting = false
             switch apiError {
             case .httpError(let code) where code == 409:
                 hasConflict = true
-                errorMessage = "Scenario Watermark Conflict (409): Baseline modified by another user."
+                errorMessage = L10n.format("mobile_supplier.chrome.scenario_watermark_conflict")
             default:
-                errorMessage = "Commit failed: \(apiError)"
+                errorMessage = L10n.format("mobile_supplier.chrome.commit_failed", apiError.localizedDescription)
             }
         } catch {
-            isCommitting = false
             errorMessage = error.localizedDescription
         }
     }
@@ -108,28 +133,31 @@ final class FoundrySandboxViewModel {
     func analyzeLotRecall() async {
         let lot = lotBarcode.trimmingCharacters(in: .whitespaces)
         guard !lot.isEmpty else {
-            errorMessage = "Raw lot barcode is required"
+            errorMessage = L10n.format("mobile_supplier.chrome.raw_lot_required")
             return
         }
+        guard let pinnedSupplier = pinnedSupplierId() else { return }
 
         isAnalyzingRecall = true
+        defer { isAnalyzingRecall = false }
         errorMessage = nil
         statusMessage = nil
 
         let req = LotRecallRequest(
             cellId: cellId,
-            supplierId: supplierId,
+            supplierId: pinnedSupplier,
             rawMaterialLotId: lot
         )
 
         do {
-            let res = try await SupplierService.triggerLotRecall(req: req)
-            isAnalyzingRecall = false
+            let res = try await SupplierService.triggerLotRecall(
+                req: req,
+                idempotencyKey: FoundryIdempotency.lotRecall(supplierId: pinnedSupplier, lot: lot)
+            )
             recallReport = res
             quarantineSuccess = false
-            statusMessage = "Blast Radius Evaluated: \(res.quarantinedSsccPallets.count) pallets & \(res.inTransitDriverDropBlocks.count) transit drops affected."
+            statusMessage = L10n.format("mobile_supplier.chrome.blast_radius_evaluated", "\(res.quarantinedSsccPallets.count)", "\(res.inTransitDriverDropBlocks.count)")
         } catch {
-            isAnalyzingRecall = false
             errorMessage = error.localizedDescription
         }
     }
@@ -137,33 +165,65 @@ final class FoundrySandboxViewModel {
     @MainActor
     func executeQuarantineBlastRadius() async {
         guard let report = recallReport else {
-            errorMessage = "No recall report available to quarantine"
+            errorMessage = L10n.format("mobile_supplier.chrome.no_recall_report")
             return
         }
+        guard let pinnedSupplier = pinnedSupplierId() else { return }
 
         isQuarantining = true
+        defer { isQuarantining = false }
         errorMessage = nil
 
+        let idempotencyKey = "foundry-lot-quarantine:\(pinnedSupplier):\(report.contaminatedRawMaterialLot)"
         let req = ActionExecutionRequest(
             actionName: "EXECUTE_LOT_QUARANTINE_BLAST_RADIUS",
             actionType: "MUTATION",
-            actorId: supplierId,
+            actorId: pinnedSupplier,
             actorRole: "SUPPLIER_QUALITY_DIRECTOR",
             targetObjectType: "RAW_MATERIAL_LOT",
             targetObjectId: report.contaminatedRawMaterialLot,
-            idempotencyKey: UUID().uuidString,
+            idempotencyKey: idempotencyKey,
             cellId: cellId,
-            supplierId: supplierId
+            supplierId: pinnedSupplier
         )
 
         do {
-            _ = try await SupplierService.executeAction(req: req)
-            isQuarantining = false
+            _ = try await SupplierService.executeAction(req: req, idempotencyKey: idempotencyKey)
             quarantineSuccess = true
-            statusMessage = "EMERGENCY QUARANTINE ENFORCED: All downstream pallets, totes, and driver deliveries locked."
+            statusMessage = L10n.format("mobile_supplier.chrome.emergency_quarantine")
         } catch {
-            isQuarantining = false
             errorMessage = error.localizedDescription
         }
+    }
+
+    private func pinnedSupplierId() -> String? {
+        let session = TokenStore.shared.supplierId?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard !session.isEmpty else {
+            errorMessage = L10n.format("mobile_supplier.chrome.sign_in_foundry")
+            return nil
+        }
+        supplierId = session
+        return session
+    }
+}
+
+enum FoundryIdempotency {
+    static func scenarioPatch(
+        scenarioId: String,
+        supplierId: String,
+        objectType: String,
+        objectId: String,
+        key: String,
+        value: String
+    ) -> String {
+        "foundry-scenario-patch:\(scenarioId):\(supplierId):\(objectType):\(objectId):\(key):\(value)"
+    }
+
+    static func scenarioCommit(scenarioId: String) -> String {
+        "foundry-scenario-commit:\(scenarioId)"
+    }
+
+    static func lotRecall(supplierId: String, lot: String) -> String {
+        "foundry-lot-recall:\(supplierId):\(lot)"
     }
 }

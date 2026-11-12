@@ -1,31 +1,34 @@
 import SwiftUI
 
 struct NotificationInboxView: View {
-    @State private var items: [WarehouseNotificationItem] = []
-    @State private var unreadCount = 0
-    @State private var loading = true
-    @State private var error: String?
+    @State private var vm = NotificationInboxViewModel()
 
     var body: some View {
         Group {
-            if loading {
+            if vm.loading {
                 ProgressView()
                     .frame(maxWidth: .infinity, minHeight: 200)
-            } else if let error {
+            } else if let error = vm.error {
                 ContentUnavailableView {
                     Label("retailer_desktop.residual.text.notifications_unavailable", systemImage: "bell.slash")
                 } description: {
                     Text(error)
                 } actions: {
-                    Button("common.action.retry") { load() }
+                    Button("common.action.retry") {
+                        PegasusHaptics.light()
+                        Task { await vm.load() }
+                    }
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
                 }
-            } else if items.isEmpty {
+            } else if vm.items.isEmpty {
                 ContentUnavailableView("No notifications", systemImage: "bell")
             } else {
                 ResponsiveGridContentWrapper {
-                    ForEach(items) { item in
+                    ForEach(vm.items) { item in
+                        let displayTitle = item.title.isEmpty ? (item.type.isEmpty ? "Notification" : item.type) : item.title
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(item.title.isEmpty ? (item.type.isEmpty ? "Notification" : item.type) : item.title)
+                            Text(displayTitle)
                                 .fontWeight(item.readAt == nil ? .semibold : .regular)
                             if !item.body.isEmpty {
                                 Text(item.body)
@@ -39,98 +42,38 @@ struct NotificationInboxView: View {
                             }
                         }
                         .padding(.vertical, 4)
+                        .frame(minHeight: 44, alignment: .leading)
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel("\(item.readAt == nil ? "Unread, " : "")\(displayTitle)\(item.body.isEmpty ? "" : ", \(item.body)")")
                     }
                 }
+                .scrollDismissesKeyboard(.interactively)
             }
         }
-        .navigationTitle(unreadCount > 0 ? "Notifications (\(unreadCount))" : "Notifications")
+        .navigationTitle(vm.unreadCount > 0 ? "Notifications (\(vm.unreadCount))" : "Notifications")
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
-                if unreadCount > 0 {
+                if vm.unreadCount > 0 {
                     Button("mobile_warehouse.ui.mark_all_read") {
-                        Task { await markAllRead() }
+                        PegasusHaptics.light()
+                        Task { await vm.markAllRead() }
                     }
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
+                    .accessibilityLabel("Mark all notifications read")
                 }
-                Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") {
-                    load()
+                Button {
+                    PegasusHaptics.light()
+                    Task { await vm.load() }
+                } label: {
+                    Label("portal.page.orders.action.refresh", systemImage: "arrow.clockwise")
+                        .frame(minWidth: 44, minHeight: 44)
+                        .contentShape(Rectangle())
                 }
+                .accessibilityLabel("Refresh notifications")
             }
         }
-        .refreshable { load() }
-        .task { load() }
-    }
-
-    private func load() {
-        loading = true
-        error = nil
-        Task {
-            defer { loading = false }
-            do {
-                let page: WarehouseNotificationsPage = try await APIClient.shared.get(
-                    "v1/user/notifications",
-                    query: ["limit": "50", "offset": "0"],
-                )
-                items = page.notifications
-                unreadCount = page.unreadCount
-            } catch let apiError as APIError {
-                switch apiError {
-                case .httpError(503):
-                    self.error = "Notifications unavailable on this stack"
-                default:
-                    self.error = "Failed to load notifications"
-                }
-            } catch {
-                self.error = error.localizedDescription
-            }
-        }
-    }
-
-    private func markAllRead() async {
-        do {
-            try await APIClient.shared.postVoid(
-                "v1/user/notifications/read",
-                body: MarkNotificationsReadRequest(markAll: true),
-            )
-            load()
-        } catch {
-            self.error = error.localizedDescription
-        }
-    }
-}
-
-private struct WarehouseNotificationsPage: Decodable {
-    let notifications: [WarehouseNotificationItem]
-    let unreadCount: Int
-    let hasMore: Bool
-
-    enum CodingKeys: String, CodingKey {
-        case notifications
-        case unreadCount = "unread_count"
-        case hasMore = "has_more"
-    }
-}
-
-struct WarehouseNotificationItem: Decodable, Identifiable {
-    let id: String
-    let type: String
-    let title: String
-    let body: String
-    let payload: String
-    let channel: String
-    let readAt: String?
-    let createdAt: String
-
-    enum CodingKeys: String, CodingKey {
-        case id, type, title, body, payload, channel
-        case readAt = "read_at"
-        case createdAt = "created_at"
-    }
-}
-
-private struct MarkNotificationsReadRequest: Encodable {
-    let markAll: Bool
-
-    enum CodingKeys: String, CodingKey {
-        case markAll = "mark_all"
+        .refreshable { await vm.load() }
+        .task { await vm.load() }
     }
 }

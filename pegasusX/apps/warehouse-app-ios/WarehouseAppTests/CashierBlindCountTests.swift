@@ -1,6 +1,7 @@
 import XCTest
 @testable import WarehouseAppIOS
 
+@MainActor
 final class CashierBlindCountTests: XCTestCase {
 
     func testDenominationTiyinArithmeticAndBlindMasking() {
@@ -43,5 +44,35 @@ final class CashierBlindCountTests: XCTestCase {
         XCTAssertNil(session.expectedCashMinor)
         XCTAssertNil(session.varianceMinor)
         XCTAssertEqual(session.status, "BLIND_COUNT_PENDING")
+    }
+
+    func testStrapBundlesAndTotalBanknoteCount() {
+        let vm = CashierViewModel()
+        XCTAssertEqual(vm.totalBanknotesCount, 0)
+
+        // 10-strap bundle of 200k + 50-strap bundle of 100k
+        vm.addStrap(noteUzs: 200000, strapCount: 10)
+        vm.addStrap(noteUzs: 100000, strapCount: 50)
+
+        XCTAssertEqual(vm.totalBanknotesCount, 60)
+        // 10 * 200,000 = 2,000,000 UZS + 50 * 100,000 = 5,000,000 UZS = 7,000,000 UZS = 700,000,000 Tiyin
+        XCTAssertEqual(vm.countedCashMinor, 700_000_000)
+    }
+
+    func testFormatUzsThousandsGrouping() {
+        let formatted = CashierViewModel.formatUzs(amount: 1425000)
+        XCTAssertTrue(formatted.contains("1 425 000") || formatted.contains("1,425,000"), "Currency must format with thousands grouping")
+        XCTAssertTrue(formatted.hasSuffix("UZS"))
+    }
+
+    func testQuickSamplePresets() {
+        let vm = CashierViewModel()
+        vm.quickFillSampleBalanced()
+        XCTAssertEqual(vm.totalBanknotesCount, 9)
+        XCTAssertEqual(vm.countedCashMinor, 142_500_000) // 1,425,000 UZS
+
+        vm.quickFillSampleDiscrepant()
+        XCTAssertEqual(vm.totalBanknotesCount, 6)
+        XCTAssertEqual(vm.countedCashMinor, 120_000_000) // 1,200,000 UZS
     }
 }

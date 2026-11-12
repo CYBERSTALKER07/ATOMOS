@@ -17,12 +17,12 @@ struct KpiTile: View {
                         .fill(tint.opacity(0.12))
                         .frame(width: 32, height: 32)
                     Image(systemName: systemImage)
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.subheadline.weight(.semibold))
                         .foregroundStyle(tint)
                 }
                 Spacer()
                 if let chip {
-                    Text(chip.text)
+                    Text(LocalizedStringKey(chip.text))
                         .font(.caption2.bold())
                         .padding(.horizontal, SupplierTheme.spacingSM)
                         .padding(.vertical, SupplierTheme.spacingXS)
@@ -30,19 +30,19 @@ struct KpiTile: View {
                         .background(chip.tint.opacity(0.14), in: Capsule())
                 } else if showChevron {
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(.caption2.weight(.semibold))
                         .foregroundStyle(SupplierTheme.tertiaryLabel)
                 }
             }
-            Text(value)
+            Text(LocalizedStringKey(value))
                 .font(.title2.bold())
                 .minimumScaleFactor(0.8)
                 .lineLimit(1)
-            Text(title)
+            Text(LocalizedStringKey(title))
                 .font(.caption.bold())
                 .foregroundStyle(SupplierTheme.secondaryLabel)
             if let supporting, !supporting.isEmpty {
-                Text(supporting)
+                Text(LocalizedStringKey(supporting))
                     .font(.caption2)
                     .foregroundStyle(SupplierTheme.tertiaryLabel)
             }
@@ -50,5 +50,7 @@ struct KpiTile: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .supplierCard()
         .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(title), \(value)\(supporting.map { ", " + $0 } ?? "")")
     }
 }

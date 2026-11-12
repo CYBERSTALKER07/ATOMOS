@@ -8,7 +8,8 @@ struct PortalHandoffView: View {
         VStack(spacing: SupplierTheme.spacingLG) {
             Spacer()
             Image(systemName: "desktopcomputer")
-                .font(.system(size: 48))
+                .font(.largeTitle.weight(.semibold))
+                .imageScale(.large)
                 .foregroundStyle(.primary)
             Text("mobile_supplier.ui.manage_on_web_portal")
                 .font(.title2.bold())

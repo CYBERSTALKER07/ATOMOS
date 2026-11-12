@@ -26,7 +26,7 @@ struct ForecastConfidenceView: View {
                     .foregroundStyle(SupplierTheme.warning)
                     .accessibilityIdentifier("gs-u-forecast-blocked-reason")
             } else {
-                Text(L10n.format("mobile_supplier.ui.lowunits_0_highunits_0_units", "\(confidence.lowUnits ?? 0)", "\(confidence.highUnits ?? 0)"))
+                Text(L10n.format("mobile_supplier.ui.lowunits_0_highunits_0_units", MissingNumber.label(confidence.lowUnits), MissingNumber.label(confidence.highUnits)))
                     .font(.title3.bold())
                 if let pct = confidence.confidencePct {
                     Text(L10n.format("mobile_supplier.ui.pct_confidence_2", "\(pct)"))
@@ -35,7 +35,7 @@ struct ForecastConfidenceView: View {
                 }
             }
             if let updatedAt {
-                Text("\(stale ? "Stale · " : "")Updated \(updatedAt)")
+                Text(L10n.format(stale ? "mobile_supplier.chrome.stale_updated" : "mobile_supplier.chrome.updated_at", updatedAt))
                     .font(.caption)
                     .foregroundStyle(SupplierTheme.secondaryLabel)
             }

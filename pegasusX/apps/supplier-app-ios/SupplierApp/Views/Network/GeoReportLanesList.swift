@@ -13,11 +13,11 @@ struct GeoReportLanesList: View {
                     Text("\(totalCells)").font(.title2.bold())
                 }
             }
-            Section("Lane utilization") {
+            Section("mobile_supplier.chrome.lane_utilization") {
                 ForEach(lanes) { lane in
                     VStack(alignment: .leading, spacing: 4) {
                         Text(lane.name.isEmpty ? lane.warehouseId : lane.name).font(.body)
-                        Text(String(format: "%d cells · %.0f%% utilization today", lane.h3Cells, lane.utilizationPct))
+                        Text(L10n.format("mobile_supplier.chrome.lane_utilization_today", "\(lane.h3Cells)", String(format: "%.0f", lane.utilizationPct)))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }

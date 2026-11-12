@@ -15,11 +15,11 @@ struct ReplenishmentList: View {
                             .font(.headline)
                         if insight.reasonCode == "PREDICTIVE_PUSH" {
                             Text("mobile_warehouse.ui.ai_push")
-                                .font(.system(size: 10, weight: .bold))
+                                .font(.system(.caption2, weight: .bold))
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
                                 .background(Color.primary)
-                                .foregroundColor(Color(UIColor.systemBackground))
+                                .foregroundStyle(Color(UIColor.systemBackground))
                                 .clipShape(Capsule())
                         }
                     }
@@ -41,18 +41,28 @@ struct ReplenishmentList: View {
                     if insight.status.uppercased() == "OPEN" {
                         HStack {
                             Button("mobile_warehouse.ui.approve") {
+                                PegasusHaptics.medium()
                                 onApprove(insight.id)
                             }
+                            .frame(minHeight: 44)
+                            .contentShape(Rectangle())
                             .disabled(actingId == insight.id)
+                            .accessibilityLabel("Approve replenishment for \(insight.productName)")
+
                             Button("factory_portal.toast.text.dismiss", role: .destructive) {
+                                PegasusHaptics.warning()
                                 onDismiss(insight.id)
                             }
+                            .frame(minHeight: 44)
+                            .contentShape(Rectangle())
                             .disabled(actingId == insight.id)
+                            .accessibilityLabel("Dismiss replenishment for \(insight.productName)")
                         }
                         .buttonStyle(.bordered)
                     }
                 }
                 .padding(.vertical, LabTheme.spacingXS)
+                .accessibilityElement(children: .contain)
             }
         }
     }

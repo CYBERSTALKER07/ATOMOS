@@ -23,9 +23,10 @@ enum WarehouseSection: String, CaseIterable, Identifiable {
     case demandForecast = "Demand forecast"
     case retailers = "Retailers"
     case returns = "Returns"
-    case coldChain = "Cold chain"
     case laborCapacity = "Labor capacity"
     case exceptions = "Exceptions"
+    case cashier = "Cashier & Vault"
+    case yardGate = "Yard Gate Control"
     case claims = "Claims"
     case rescues = "Rescues"
     case paymentConfig = "Payment config"
@@ -64,9 +65,10 @@ enum WarehouseSection: String, CaseIterable, Identifiable {
         case .demandForecast: "chart.line.uptrend.xyaxis"
         case .retailers: "person.crop.rectangle"
         case .returns: "arrow.uturn.backward"
-        case .coldChain: "thermometer.snowflake"
         case .laborCapacity: "person.3"
         case .exceptions: "exclamationmark.triangle"
+        case .cashier: "banknote.fill"
+        case .yardGate: "lock.shield.fill"
         case .claims: "doc.text"
         case .rescues: "wrench.and.screwdriver"
         case .paymentConfig: "creditcard"
@@ -99,7 +101,7 @@ enum WarehouseSection: String, CaseIterable, Identifiable {
     }
 
     static var operationsSections: [WarehouseSection] {
-        [.orders, .drivers, .vehicles, .coldChain, .controlTower, .exceptions, .rescues, .claims, .retailers, .returns, .laborCapacity, .analytics, .treasury, .staff, .paymentConfig, .opsSettings, .notifications]
+        [.orders, .drivers, .vehicles, .cashier, .yardGate, .controlTower, .exceptions, .rescues, .claims, .retailers, .returns, .laborCapacity, .analytics, .treasury, .staff, .paymentConfig, .opsSettings, .notifications]
     }
 
     static var portalSections: [WarehouseSection] {

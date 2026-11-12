@@ -40,12 +40,10 @@ targets:
         includes:
           - EANBarcodeScannerView.swift
           - EANBarcode.swift
-      - path: ../../packages/mobile-ios-design
+      - path: ../../packages/i18n/generated/ios/en.lproj/Localizable.strings
+      - path: ../../packages/i18n/generated/ios/ru.lproj/Localizable.strings
+      - path: ../../packages/i18n/generated/ios/uz.lproj/Localizable.strings
     resources:
-      # pegasusx-i18n-generated
-      - path: ../../packages/i18n/generated/ios/en.lproj
-      - path: ../../packages/i18n/generated/ios/ru.lproj
-      - path: ../../packages/i18n/generated/ios/uz.lproj
       - path: SupplierApp/Assets.xcassets
       - path: SupplierApp/GoogleService-Info.plist
     info:
@@ -65,6 +63,9 @@ targets:
     platform: iOS
     sources:
       - path: SupplierAppTests
+      - path: ../../packages/i18n/generated/ios/en.lproj/Localizable.strings
+      - path: ../../packages/i18n/generated/ios/ru.lproj/Localizable.strings
+      - path: ../../packages/i18n/generated/ios/uz.lproj/Localizable.strings
     dependencies:
       - target: SupplierAppIOS
 packages:

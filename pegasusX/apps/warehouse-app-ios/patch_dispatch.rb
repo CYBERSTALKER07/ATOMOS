@@ -23,7 +23,7 @@ rescue_sheet = <<~SWIFT
                                 .disabled(lookupDriverId.isEmpty || lookupLoading)
                                 
                                 if lookupLoading { ProgressView() }
-                                if let err = lookupError { Text(err).foregroundColor(.red) }
+                                if let err = lookupError { Text(err).foregroundStyle(.red) }
                             }
                         } else if let req = earlyCompleteReq {
                             Section("Rescue Request") {

@@ -1,61 +1,77 @@
 import SwiftUI
 
 struct DemandForecastView: View {
-    @State private var horizon = 7
-    @State private var forecast = DemandForecastResponse()
-    @State private var loading = true
-    @State private var error: String?
-    @State private var selectedSegment = 0
-
-
+    @State private var vm = DemandForecastViewModel()
 
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-                Picker("View", selection: $selectedSegment) {
-                    Text("portal.nav.products").tag(0)
-                    Text("mobile_warehouse.ui.series").tag(1)
-                }
-                .pickerStyle(.segmented)
-                .padding()
-
-                forecastBody
+        @Bindable var vm = vm
+        VStack(spacing: 0) {
+            Picker("View", selection: $vm.selectedSegment) {
+                Text("portal.nav.products").tag(0)
+                Text("mobile_warehouse.ui.series").tag(1)
             }
-            .navigationTitle("portal.nav.demand_forecast")
-            .toolbar { forecastToolbar }
-            .onChange(of: horizon) { _, _ in load() }
-            .task { load() }
-            .refreshable { load() }
+            .pickerStyle(.segmented)
+            .padding()
+            .onChange(of: vm.selectedSegment) { _, _ in
+                PegasusHaptics.selection()
+            }
+
+            forecastBody
         }
+        .navigationTitle("portal.nav.demand_forecast")
+        .toolbar { forecastToolbar }
+        .onChange(of: vm.horizon) { _, _ in
+            PegasusHaptics.selection()
+            Task { await vm.load() }
+        }
+        .task { await vm.load() }
+        .refreshable { await vm.load() }
     }
 
     @ToolbarContentBuilder
     private var forecastToolbar: some ToolbarContent {
+        @Bindable var vm = vm
         ToolbarItem(placement: .topBarTrailing) {
-            Picker("Days", selection: $horizon) {
+            Picker("Days", selection: $vm.horizon) {
                 Text("mobile_warehouse.ui.7d").tag(7)
                 Text("mobile_warehouse.ui.14d").tag(14)
                 Text("mobile_warehouse.ui.30d").tag(30)
             }
             .pickerStyle(.menu)
+            .frame(minHeight: 44)
         }
         ToolbarItem(placement: .topBarTrailing) {
-            Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") { load() }
+            Button {
+                PegasusHaptics.light()
+                Task { await vm.load() }
+            } label: {
+                Label("portal.page.orders.action.refresh", systemImage: "arrow.clockwise")
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
+            }
+            .accessibilityLabel("Refresh demand forecast")
         }
     }
 
     @ViewBuilder
     private var forecastBody: some View {
-        if loading {
+        if vm.loading {
             ProgressView()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else if let error {
-            ContentUnavailableView(
-                "Forecast unavailable",
-                systemImage: "exclamationmark.triangle",
-                description: Text(error)
-            )
-        } else if selectedSegment == 0 {
+        } else if let error = vm.error {
+            ContentUnavailableView {
+                Label("Forecast unavailable", systemImage: "exclamationmark.triangle")
+            } description: {
+                Text(error)
+            } actions: {
+                Button("common.action.retry") {
+                    PegasusHaptics.light()
+                    Task { await vm.load() }
+                }
+                .frame(minWidth: 44, minHeight: 44)
+                .contentShape(Rectangle())
+            }
+        } else if vm.selectedSegment == 0 {
             productsSegment
         } else {
             seriesSegment
@@ -64,7 +80,7 @@ struct DemandForecastView: View {
 
     @ViewBuilder
     private var productsSegment: some View {
-        if forecast.products.isEmpty {
+        if vm.forecast.products.isEmpty {
             ContentUnavailableView(
                 "No product recommendations",
                 systemImage: "cube.box",
@@ -78,25 +94,26 @@ struct DemandForecastView: View {
                         .foregroundStyle(.secondary)
 
                     ForecastChartPanel(
-                        criticalCount: criticalCount,
-                        urgentCount: urgentCount,
-                        normalCount: normalCount
+                        criticalCount: vm.criticalCount,
+                        urgentCount: vm.urgentCount,
+                        normalCount: vm.normalCount
                     )
 
                     ForecastSkuTable(
-                        products: forecast.products,
-                        generatedAt: forecast.generatedAt,
-                        forecastDays: forecast.forecastDays
+                        products: vm.forecast.products,
+                        generatedAt: vm.forecast.generatedAt,
+                        forecastDays: vm.forecast.forecastDays
                     )
                 }
                 .padding()
             }
+            .scrollDismissesKeyboard(.interactively)
         }
     }
 
     @ViewBuilder
     private var seriesSegment: some View {
-        if forecast.series.isEmpty {
+        if vm.forecast.series.isEmpty {
             ContentUnavailableView(
                 "No series data",
                 systemImage: "chart.line.uptrend.xyaxis",
@@ -104,7 +121,7 @@ struct DemandForecastView: View {
             )
         } else {
             ResponsiveGridContentWrapper {
-                ForEach(forecast.series) { day in
+                ForEach(vm.forecast.series) { day in
                     VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
                         Text(day.date)
                             .font(.headline)
@@ -115,76 +132,12 @@ struct DemandForecastView: View {
                             .foregroundStyle(.secondary)
                     }
                     .padding(.vertical, LabTheme.spacingXS)
+                    .frame(minHeight: 44)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("Date \(day.date), projected \(day.projectedUnits) units, committed \(day.committedUnits) units, pending \(day.pendingConfirmationUnits) units")
                 }
             }
-        }
-    }
-
-    private var criticalCount: Int {
-        forecast.products.filter { $0.priority.uppercased() == "CRITICAL" }.count
-    }
-
-    private var urgentCount: Int {
-        forecast.products.filter { $0.priority.uppercased() == "URGENT" }.count
-    }
-
-    private var normalCount: Int {
-        forecast.products.filter { $0.priority.uppercased() == "NORMAL" }.count
-    }
-
-
-
-    private func load() {
-        loading = true
-        error = nil
-        Task {
-            do {
-                var body = try await WarehouseService.demandForecast(days: horizon)
-                if body.products.isEmpty {
-                    let insights = try await WarehouseService.replenishmentInsights()
-                    let rows = insights.rows
-                    if !rows.isEmpty {
-                        body = demandForecastFromInsights(rows, horizon: horizon)
-                    }
-                }
-                forecast = body
-            } catch {
-                self.error = error.localizedDescription
-            }
-            loading = false
+            .scrollDismissesKeyboard(.interactively)
         }
     }
 }
-
-private func demandForecastFromInsights(_ insights: [ReplenishmentInsight], horizon: Int) -> DemandForecastResponse {
-    let products = insights.map { insight in
-        let urgency = insight.urgency.uppercased()
-        let priority: String
-        if urgency == "CRITICAL" || urgency == "HIGH" {
-            priority = "CRITICAL"
-        } else if urgency == "URGENT" || urgency == "MEDIUM" {
-            priority = "URGENT"
-        } else {
-            priority = "NORMAL"
-        }
-        return DemandForecastProduct(
-            productId: insight.productId,
-            productName: insight.productName,
-            currentStock: insight.currentStock,
-            recommendedQty: insight.reorderQuantity,
-            daysUntilStockout: Double(insight.daysUntilStockout),
-            priority: priority,
-            unit: "VU",
-            sources: DemandForecastSources(burnRate: insight.avgDailyVelocity),
-            demandBreakdown: insight.demandBreakdown
-        )
-    }
-    return DemandForecastResponse(
-        warehouseId: insights.first?.warehouseId ?? "",
-        forecastDays: horizon,
-        generatedAt: insights.first?.createdAt,
-        products: products
-    )
-}
-
-

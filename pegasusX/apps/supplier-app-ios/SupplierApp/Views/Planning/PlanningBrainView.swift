@@ -1,70 +1,60 @@
 import SwiftUI
 
 struct PlanningBrainView: View {
-    @State private var tab: PlanBrainTab = .planning
-    @State private var sandop: PlanningSAndOPSnapshot?
-    @State private var scenario: PlanningScenarioResult?
-    @State private var downtimeHours = 8.0
-    @State private var demandDeltaPct = 10.0
-    @State private var loading = true
-    @State private var running = false
-    @State private var error: String?
-    @State private var demandConfidence: ForecastConfidence?
-    @State private var demandGeneratedAt: String?
-    @State private var retailerId = ""
-    @State private var sparsity: SparsityGateResult?
-    @State private var pushStatus: String?
+    @State private var viewModel = PlanningBrainViewModel()
 
     var body: some View {
+        @Bindable var vm = viewModel
         ScrollView {
             VStack(alignment: .leading, spacing: SupplierTheme.spacingXL) {
-                Picker("Plan and Brain", selection: $tab) {
-                    Text("Planning").tag(PlanBrainTab.planning)
-                    Text("Digital Brain").tag(PlanBrainTab.brain)
+                Picker("mobile_supplier.chrome.plan_and_brain", selection: $vm.tab) {
+                    Text("mobile_supplier.chrome.planning").tag(PlanBrainTab.planning)
+                    Text("mobile_supplier.chrome.digital_brain").tag(PlanBrainTab.brain)
                 }
                 .pickerStyle(.segmented)
                 .accessibilityIdentifier("gs-u-plan-brain-tabs")
 
-                if tab == .planning {
-                    planningTab
+                if viewModel.tab == .planning {
+                    planningTab(vm: vm)
                 } else {
-                    brainTab
+                    brainTab(vm: vm)
                 }
             }
             .supplierReadableWidth()
             .padding()
         }
+        .scrollDismissesKeyboard(.interactively)
         .background(SupplierTheme.background)
         .navigationTitle("portal.nav.planning")
-        .task { await load() }
+        .task { await viewModel.load() }
     }
 
     @ViewBuilder
-    private var planningTab: some View {
+    private func planningTab(@Bindable vm: PlanningBrainViewModel) -> some View {
         SupplierSectionHeader(
-            title: "S&OP snapshot",
-            subtitle: "Read-only what-if and lightweight S&OP"
+            title: "mobile_supplier.chrome.sandop_snapshot",
+            subtitle: "mobile_supplier.chrome.readonly_what_if"
         )
 
-        if let error {
+        if let error = viewModel.error {
             Text(error)
                 .font(.caption)
                 .foregroundStyle(SupplierTheme.destructive)
         }
 
-        if loading {
-            ProgressView("Loading S&OP…")
-        } else if let sandop {
+        if viewModel.loading && viewModel.sandop == nil {
+            ProgressView("mobile_supplier.loading.sandop")
+        } else if let sandop = viewModel.sandop {
             LazyVGrid(
                 columns: [GridItem(.adaptive(minimum: 140), spacing: SupplierTheme.spacingMD)],
                 spacing: SupplierTheme.spacingMD
             ) {
-                KpiTile(title: "Factory cap (7d)", value: "\(sandop.factoryCapacityUnits)", systemImage: "building.2", tint: .accentColor)
-                KpiTile(title: "WH inbound", value: "\(sandop.warehouseInboundCapUnits)", systemImage: "arrow.down.to.line", tint: SupplierTheme.secondaryLabel)
-                KpiTile(title: "Utilization", value: "\(Int(sandop.utilizationPct))%", systemImage: "gauge", tint: SupplierTheme.warning)
+                KpiTile(title: "mobile_supplier.chrome.factory_cap_7d", value: "\(sandop.factoryCapacityUnits)", systemImage: "building.2", tint: .accentColor)
+                KpiTile(title: "mobile_supplier.chrome.wh_inbound", value: "\(sandop.warehouseInboundCapUnits)", systemImage: "arrow.down.to.line", tint: SupplierTheme.secondaryLabel)
+                KpiTile(title: "mobile_supplier.chrome.utilization", value: "\(Int(sandop.utilizationPct))%", systemImage: "gauge", tint: SupplierTheme.warning)
                 KpiTile(
-                    title: "Capacity",
-                    value: sandop.capacityAlert ? "Breach" : "OK",
+                    title: "mobile_supplier.chrome.capacity",
+                    value: sandop.capacityAlert ? L10n.format("mobile_supplier.chrome.breach") : L10n.format("mobile_supplier.chrome.ok"),
                     systemImage: sandop.capacityAlert ? "exclamationmark.triangle" : "checkmark.circle",
                     tint: sandop.capacityAlert ? SupplierTheme.destructive : SupplierTheme.success
                 )
@@ -74,13 +64,14 @@ struct PlanningBrainView: View {
         VStack(alignment: .leading, spacing: SupplierTheme.spacingSM) {
             Text("supplier_portal.planning_brain_panel.text.scenario_run")
                 .font(.subheadline.bold())
-            Stepper("Downtime \(Int(downtimeHours))h", value: $downtimeHours, in: 0...168, step: 1)
-            Stepper("Demand \(Int(demandDeltaPct))%", value: $demandDeltaPct, in: -50...200, step: 5)
-            Button(running ? "Running…" : "Run scenario") {
-                Task { await runScenario() }
+            Stepper(LocalizedStringKey(L10n.format("mobile_supplier.chrome.downtime_hours", "\(Int(viewModel.downtimeHours))")), value: $vm.downtimeHours, in: 0...168, step: 1)
+            Stepper(LocalizedStringKey(L10n.format("mobile_supplier.chrome.demand_delta", "\(Int(viewModel.demandDeltaPct))")), value: $vm.demandDeltaPct, in: -50...200, step: 5)
+            Button(LocalizedStringKey(viewModel.running ? "mobile_supplier.chrome.running" : "mobile_supplier.chrome.run_scenario")) {
+                Task { await viewModel.runScenario() }
             }
-            .disabled(running)
-            if let scenario {
+            .frame(minHeight: 44)
+            .disabled(viewModel.running)
+            if let scenario = viewModel.scenario {
                 Text(L10n.format("mobile_supplier.ui.sla_risk_slariskpct_fleet_fleetvolumeorders_stockouts_count", "\(Int(scenario.slaRiskPct))", "\(scenario.fleetVolumeOrders)", "\(scenario.stockoutSkus.count)"))
                     .font(.caption)
                     .foregroundStyle(SupplierTheme.secondaryLabel)
@@ -88,46 +79,57 @@ struct PlanningBrainView: View {
         }
         .padding()
         .background(SupplierTheme.secondaryBackground)
-        .clipShape(RoundedRectangle(cornerRadius: SupplierTheme.radiusMD))
+        .clipShape(RoundedRectangle(cornerRadius: SupplierTheme.radiusMD, style: .continuous))
     }
 
     @ViewBuilder
-    private var brainTab: some View {
-        if let demandConfidence {
+    private func brainTab(@Bindable vm: PlanningBrainViewModel) -> some View {
+        if let demandConfidence = viewModel.demandConfidence {
             ForecastConfidenceView(
                 confidence: demandConfidence,
-                updatedAt: ForecastConfidenceSupport.formatForecastUpdatedAt(generatedAt: demandGeneratedAt),
-                stale: ForecastConfidenceSupport.isForecastStale(generatedAt: demandGeneratedAt)
+                updatedAt: ForecastConfidenceSupport.formatForecastUpdatedAt(generatedAt: viewModel.demandGeneratedAt),
+                stale: ForecastConfidenceSupport.isForecastStale(generatedAt: viewModel.demandGeneratedAt)
             )
+            if let demandError = viewModel.demandError {
+                Text(demandError).font(.caption).foregroundStyle(SupplierTheme.destructive)
+            }
+        } else if let demandError = viewModel.demandError {
+            Text(demandError).font(.caption).foregroundStyle(SupplierTheme.destructive)
         }
-        if brainForecastLine(confidence: demandConfidence, accuracyPoints: []) == nil {
-            Text("No forecast line")
+        if brainForecastLine(confidence: viewModel.demandConfidence, accuracyPoints: []) == nil {
+            Text("mobile_supplier.chrome.no_forecast_line")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .accessibilityIdentifier("gs-u-brain-no-forecast-line")
         }
 
         VStack(alignment: .leading, spacing: SupplierTheme.spacingSM) {
-            Text("Sparsity")
+            Text("mobile_supplier.chrome.sparsity")
                 .font(.subheadline.bold())
-            TextField("Retailer id", text: $retailerId)
+            TextField("mobile_supplier.chrome.retailer_id_field", text: $vm.retailerId)
                 .textInputAutocapitalization(.never)
-            Button("Check") { Task { await checkSparsity() } }
-            if let sparsity {
-                Text(sparsity.allowed ? "allowed · \(sparsity.label)" : "blocked · \(sparsity.blockedReason ?? sparsity.label)")
+                .frame(minHeight: 44)
+            Button("mobile_supplier.chrome.check") { Task { await viewModel.checkSparsity() } }
+                .frame(minHeight: 44)
+            if let sparsity = viewModel.sparsity {
+                Text(sparsity.allowed ? L10n.format("mobile_supplier.chrome.sparsity_allowed", sparsity.label) : L10n.format("mobile_supplier.chrome.sparsity_blocked", sparsity.blockedReason ?? sparsity.label))
                     .font(.caption)
                     .accessibilityIdentifier("gs-u-sparsity-result")
+            }
+            if let sparsityError = viewModel.sparsityError {
+                Text(sparsityError).font(.caption).foregroundStyle(SupplierTheme.destructive)
             }
         }
         .padding()
         .background(SupplierTheme.secondaryBackground)
-        .clipShape(RoundedRectangle(cornerRadius: SupplierTheme.radiusMD))
+        .clipShape(RoundedRectangle(cornerRadius: SupplierTheme.radiusMD, style: .continuous))
 
         VStack(alignment: .leading, spacing: SupplierTheme.spacingSM) {
-            Text("Predictive push")
+            Text("mobile_supplier.chrome.predictive_push")
                 .font(.subheadline.bold())
-            Button("Preview push") { Task { await runPush() } }
-            if let pushStatus {
+            Button("mobile_supplier.chrome.preview_push") { Task { await viewModel.runPush() } }
+                .frame(minHeight: 44)
+            if let pushStatus = viewModel.pushStatus {
                 Text(pushStatus)
                     .font(.caption)
                     .accessibilityIdentifier("gs-u-planning-push-status")
@@ -135,68 +137,6 @@ struct PlanningBrainView: View {
         }
         .padding()
         .background(SupplierTheme.secondaryBackground)
-        .clipShape(RoundedRectangle(cornerRadius: SupplierTheme.radiusMD))
-    }
-
-    @MainActor
-    private func load() async {
-        loading = true
-        error = nil
-        do {
-            sandop = try await SupplierOperationsService.planningSAndOP()
-        } catch {
-            self.error = error.localizedDescription
-        }
-        if let demand = try? await SupplierOperationsService.demandToday() {
-            demandGeneratedAt = demand.generatedAt
-            demandConfidence = ForecastConfidenceSupport.fromDemand(demand)
-        }
-        loading = false
-    }
-
-    @MainActor
-    private func runScenario() async {
-        running = true
-        error = nil
-        defer { running = false }
-        do {
-            let scope = await SupplierIdempotencyKeys.supplierScopeId()
-            scenario = try await SupplierOperationsService.runPlanningScenario(
-                factoryDowntimeHours: Int(downtimeHours),
-                demandDeltaPct: demandDeltaPct,
-                idempotencyKey: SupplierIdempotencyKeys.planningScenario(
-                    scopeId: scope,
-                    factoryDowntimeHours: Int(downtimeHours),
-                    demandDeltaPct: demandDeltaPct
-                )
-            )
-        } catch {
-            self.error = error.localizedDescription
-        }
-    }
-
-    @MainActor
-    private func checkSparsity() async {
-        let id = retailerId.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !id.isEmpty else { return }
-        sparsity = try? await SupplierOperationsService.planningSparsity(retailerId: id)
-    }
-
-    @MainActor
-    private func runPush() async {
-        do {
-            let scope = await SupplierIdempotencyKeys.supplierScopeId()
-            let resp = try await SupplierOperationsService.planningPredictivePush(
-                idempotencyKey: SupplierIdempotencyKeys.planningPredictivePush(scopeId: scope)
-            )
-            pushStatus = "preview \(resp.source) \(resp.transfers) transfers"
-        } catch {
-            let text = error.localizedDescription
-            if text.contains("factory_planning_disabled") || text.contains("HTTP 409") {
-                pushStatus = "factory_planning_disabled"
-            } else {
-                pushStatus = text
-            }
-        }
+        .clipShape(RoundedRectangle(cornerRadius: SupplierTheme.radiusMD, style: .continuous))
     }
 }

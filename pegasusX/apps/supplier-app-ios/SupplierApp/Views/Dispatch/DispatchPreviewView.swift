@@ -1,63 +1,49 @@
 import SwiftUI
 
-private enum DispatchMode: String, CaseIterable {
-    case manual = "Manual truck"
-    case auto = "Smart assign"
-}
-
-private let tetrisBuffer = 0.95
-
 struct DispatchPreviewView: View {
     @Environment(SupplierRealtimeHub.self) private var realtimeHub
     var embeddedInHub: Bool = false
-    @State private var preview: SupplierDispatchPreview?
-    @State private var warehouses: [SupplierTopologyWarehouse] = []
-    @State private var selectedWarehouseId: String?
-    @State private var loading = true
-    @State private var executing = false
-    @State private var error: String?
-    @State private var executeMessage: String?
-    @State private var showAutoConfirm = false
-    @State private var showCapacityOverride = false
-    @State private var dispatchMode: DispatchMode = .manual
-    @State private var selectedDriverId = ""
-    @State private var selectedOrderIds = Set<String>()
+    @State private var vm = DispatchPreviewViewModel()
 
     var body: some View {
+        @Bindable var vm = vm
         Group {
-            if loading && preview == nil {
-                SupplierLoadingView(title: "Loading dispatch preview…")
-            } else if let error, preview == nil {
-                SupplierErrorView(message: error) { Task { await load() } }
+            if vm.loading && vm.preview == nil {
+                SupplierLoadingView(title: "mobile_supplier.loading.dispatch")
+            } else if let error = vm.error, vm.preview == nil {
+                SupplierErrorView(message: error) { Task { await vm.load() } }
             } else {
                 ScrollView {
                     VStack(alignment: .leading, spacing: SupplierTheme.spacingLG) {
-                        Picker("Mode", selection: $dispatchMode) {
+                        Picker("mobile_supplier.chrome.mode", selection: $vm.dispatchMode) {
                             ForEach(DispatchMode.allCases, id: \.self) { mode in
-                                Text(mode.rawValue).tag(mode)
+                                Text(LocalizedStringKey(mode == .manual ? "mobile_supplier.chrome.manual_truck" : "mobile_supplier.chrome.smart_assign")).tag(mode)
                             }
                         }
                         .pickerStyle(.segmented)
+                        .onChange(of: vm.dispatchMode) { _, _ in
+                            PegasusHaptics.selection()
+                        }
 
-                        if !warehouses.isEmpty {
+                        if !vm.warehouses.isEmpty {
                             VStack(alignment: .leading, spacing: SupplierTheme.spacingSM) {
                                 Text("supplier_portal.dispatch.text.warehouse_scope").font(.headline)
                                 ScrollView(.horizontal, showsIndicators: false) {
                                     HStack(spacing: SupplierTheme.spacingSM) {
-                                        ForEach(warehouses) { wh in
+                                        ForEach(vm.warehouses) { wh in
                                             Button {
-                                                selectedWarehouseId = selectedWarehouseId == wh.warehouseId ? nil : wh.warehouseId
-                                                Task { await load() }
+                                                Task { await vm.toggleWarehouse(wh.warehouseId) }
                                             } label: {
                                                 Text(wh.name.isEmpty ? wh.warehouseId : wh.name)
                                                     .font(.subheadline.weight(.medium))
                                                     .padding(.horizontal, 12)
                                                     .padding(.vertical, 8)
-                                                    .background(selectedWarehouseId == wh.warehouseId ? Color.primary : Color.clear)
-                                                    .foregroundStyle(selectedWarehouseId == wh.warehouseId ? Color(.systemBackground) : Color.primary)
+                                                    .frame(minHeight: 44)
+                                                    .background(vm.selectedWarehouseId == wh.warehouseId ? Color.primary : Color.clear)
+                                                    .foregroundStyle(vm.selectedWarehouseId == wh.warehouseId ? Color(.systemBackground) : Color.primary)
                                                     .clipShape(Capsule())
                                                     .overlay {
-                                                        Capsule().strokeBorder(Color.primary.opacity(0.25), lineWidth: selectedWarehouseId == wh.warehouseId ? 0 : 1)
+                                                        Capsule().strokeBorder(Color.primary.opacity(0.25), lineWidth: vm.selectedWarehouseId == wh.warehouseId ? 0 : 1)
                                                     }
                                             }
                                             .buttonStyle(.plain)
@@ -66,30 +52,30 @@ struct DispatchPreviewView: View {
                                 }
                             }
                         }
-                        if let preview {
+                        if let preview = vm.preview {
                             if preview.planFingerprintMismatch {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text("mobile_supplier.ui.dispatch_plan_drift")
                                         .font(.subheadline.weight(.semibold))
-                                        .foregroundStyle(.red)
+                                        .foregroundStyle(SupplierTheme.destructive)
                                     Text("mobile_supplier.ui.supplier_preview_differs_from_warehouse_floor_plan_refresh_wareh")
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                 }
                                 .padding()
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                                .background(Color.red.opacity(0.08))
-                                .clipShape(RoundedRectangle(cornerRadius: SupplierTheme.radiusLG))
+                                .background(SupplierTheme.destructive.opacity(0.08))
+                                .clipShape(RoundedRectangle(cornerRadius: SupplierTheme.radiusLG, style: .continuous))
                             }
                             HStack(spacing: SupplierTheme.spacingMD) {
-                                DispatchKpiCard(title: "Pending", value: "\(preview.pendingCount ?? 0)")
-                                DispatchKpiCard(title: "Drivers", value: "\(preview.availableDriverCount ?? 0)")
-                                DispatchKpiCard(title: "Undispatched", value: "\(preview.undispatchedOrderCount ?? preview.undispatchedOrders.count)")
+                                DispatchKpiCard(title: "mobile_supplier.chrome.pending", value: MissingNumber.label(preview.pendingCount))
+                                DispatchKpiCard(title: "mobile_supplier.chrome.drivers", value: MissingNumber.label(preview.availableDriverCount))
+                                DispatchKpiCard(title: "mobile_supplier.chrome.undispatched", value: "\(preview.undispatchedOrderCount ?? preview.undispatchedOrders.count)")
                             }
-                            if dispatchMode == .manual, !preview.undispatchedOrders.isEmpty {
+                            if vm.dispatchMode == .manual, !preview.undispatchedOrders.isEmpty {
                                 manualAssignmentSection(preview: preview)
                             }
-                            if dispatchMode == .auto, !preview.proposedRoutes.isEmpty {
+                            if vm.dispatchMode == .auto, !preview.proposedRoutes.isEmpty {
                                 VStack(alignment: .leading, spacing: SupplierTheme.spacingSM) {
                                     HStack {
                                         Text("mobile_supplier.ui.route_map").font(.headline)
@@ -102,60 +88,66 @@ struct DispatchPreviewView: View {
                                     }
                                     DispatchPreviewMapView(routes: preview.proposedRoutes)
                                         .frame(height: 320)
-                                        .clipShape(RoundedRectangle(cornerRadius: SupplierTheme.radiusLG))
+                                        .clipShape(RoundedRectangle(cornerRadius: SupplierTheme.radiusLG, style: .continuous))
                                 }
                             }
                         }
-                        if let executeMessage {
+                        if let executeMessage = vm.executeMessage {
                             Text(executeMessage)
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
-                        if dispatchMode == .auto {
-                            Button("mobile_supplier.ui.execute_auto_dispatch") { showAutoConfirm = true }
-                                .buttonStyle(.borderedProminent)
-                                .tint(.primary)
-                                .disabled(loading || executing || preview == nil)
-                        } else {
-                            Button(L10n.format("mobile_supplier.ui.manual_dispatch_count", "\(selectedOrderIds.count)")) {
-                                Task { await executeManual(forceCapacity: false) }
+                        if vm.dispatchMode == .auto {
+                            Button("mobile_supplier.ui.execute_auto_dispatch") {
+                                PegasusHaptics.light()
+                                vm.showAutoConfirm = true
                             }
                             .buttonStyle(.borderedProminent)
                             .tint(.primary)
-                            .disabled(loading || executing || selectedDriverId.isEmpty || selectedOrderIds.isEmpty)
+                            .frame(minHeight: 44)
+                            .disabled(vm.loading || vm.executing || vm.preview == nil)
+                        } else {
+                            Button(L10n.format("mobile_supplier.ui.manual_dispatch_count", "\(vm.selectedOrderIds.count)")) {
+                                PegasusHaptics.light()
+                                Task { await vm.executeManual(forceCapacity: false) }
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .tint(.primary)
+                            .frame(minHeight: 44)
+                            .disabled(vm.loading || vm.executing || vm.selectedDriverId.isEmpty || vm.selectedOrderIds.isEmpty)
                         }
-                        Button("mobile_supplier.ui.refresh_preview") { Task { await load() } }
-                            .disabled(loading || executing)
+                        Button("mobile_supplier.ui.refresh_preview") {
+                            PegasusHaptics.light()
+                            Task { await vm.load() }
+                        }
+                        .frame(minHeight: 44)
+                        .disabled(vm.loading || vm.executing)
                     }
                     .padding()
                 }
+                .scrollDismissesKeyboard(.interactively)
             }
         }
         .background(SupplierTheme.background)
-        .navigationTitle(embeddedInHub ? "" : "Dispatch")
-        .task { await load() }
-        .onChange(of: preview?.availableDrivers.map(\.driverId)) { _, _ in
-            syncDriverSelection()
+        .navigationTitle(embeddedInHub ? LocalizedStringKey("") : LocalizedStringKey("mobile_supplier.chrome.dispatch"))
+        .task { await vm.load() }
+        .onChange(of: vm.preview?.availableDrivers.map(\.driverId)) { _, _ in
+            vm.syncDriverSelection()
         }
-        .onChange(of: preview?.undispatchedOrders.map(\.orderId)) { _, ids in
-            guard let ids else { return }
-            let valid = Set(ids)
-            selectedOrderIds = selectedOrderIds.intersection(valid)
+        .onChange(of: vm.preview?.undispatchedOrders.map(\.orderId)) { _, ids in
+            vm.pruneSelectedOrders(validIds: ids)
         }
         .onChange(of: realtimeHub.reconnectEpoch) { _, _ in
-            if executing {
-                executing = false
-                error = "Connection restored — verify dispatch status before retrying."
-            }
+            vm.handleReconnect()
         }
-        .alert("Execute auto-dispatch?", isPresented: $showAutoConfirm) {
-            Button("mobile_supplier.ui.confirm", role: .destructive) { Task { await executeAuto() } }
+        .alert("mobile_supplier.chrome.execute_auto_dispatch", isPresented: $vm.showAutoConfirm) {
+            Button("mobile_supplier.ui.confirm", role: .destructive) { Task { await vm.executeAuto() } }
             Button("common.action.cancel", role: .cancel) {}
         } message: {
             Text("mobile_supplier.ui.assign_pending_orders_via_the_optimizer")
         }
-        .alert("Capacity exceeded", isPresented: $showCapacityOverride) {
-            Button("supplier_portal.bulk_import_wizard.text.continue", role: .destructive) { Task { await executeManual(forceCapacity: true) } }
+        .alert("mobile_supplier.chrome.capacity_exceeded", isPresented: $vm.showCapacityOverride) {
+            Button("supplier_portal.bulk_import_wizard.text.continue", role: .destructive) { Task { await vm.executeManual(forceCapacity: true) } }
             Button("retailer_desktop.stock.text.adjust", role: .cancel) {}
         } message: {
             Text("mobile_supplier.ui.selected_orders_exceed_truck_capacity_continue_anyway")
@@ -164,28 +156,29 @@ struct DispatchPreviewView: View {
 
     @ViewBuilder
     private func manualAssignmentSection(preview: SupplierDispatchPreview) -> some View {
-        let driver = preview.availableDrivers.first { $0.driverId == selectedDriverId }
+        @Bindable var vm = vm
+        let driver = preview.availableDrivers.first { $0.driverId == vm.selectedDriverId }
         let selectedVolume = preview.undispatchedOrders
-            .filter { selectedOrderIds.contains($0.orderId) }
+            .filter { vm.selectedOrderIds.contains($0.orderId) }
             .reduce(0.0) { $0 + $1.volumeVu }
         let truckMax = driver?.maxVolumeVu ?? 0
-        let truckEffective = truckMax * tetrisBuffer
+        let truckEffective = truckMax * DispatchPreviewViewModel.tetrisBuffer
         let capacityExceeded = truckEffective > 0 && selectedVolume > truckEffective
 
         VStack(alignment: .leading, spacing: SupplierTheme.spacingSM) {
             Text("mobile_supplier.ui.manual_assignment").font(.headline)
             if truckMax > 0 {
-                Text(String(format: "Selected %.1f / %.1f VU", selectedVolume, truckEffective))
+                Text(L10n.format("mobile_supplier.chrome.selected_volume", String(format: "%.1f", selectedVolume), String(format: "%.1f", truckEffective)))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
             if capacityExceeded {
                 Text("mobile_supplier.ui.insufficient_truck_space_for_selected_orders")
                     .font(.caption)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(SupplierTheme.destructive)
             }
             if !preview.availableDrivers.isEmpty {
-                Picker("Driver", selection: $selectedDriverId) {
+                Picker("mobile_supplier.chrome.driver", selection: $vm.selectedDriverId) {
                     ForEach(preview.availableDrivers) { d in
                         let vu = d.maxVolumeVu.map { String(format: " · %.0f VU", $0) } ?? ""
                         Text(L10n.format("mobile_supplier.ui.namevu", "\(d.name.isEmpty ? d.driverId : d.name)", "\(vu)")).tag(d.driverId)
@@ -196,126 +189,38 @@ struct DispatchPreviewView: View {
                 Text("portal.nav.orders").font(.subheadline.weight(.semibold))
                 Spacer()
                 Button("supplier_portal.replenishment.suggestions.text.select_all") {
-                    selectedOrderIds = Set(preview.undispatchedOrders.map(\.orderId))
+                    vm.selectAllUndispatched()
                 }
                 .font(.caption)
+                .frame(minHeight: 44)
             }
             ForEach(preview.undispatchedOrders) { order in
-                Toggle(isOn: Binding(
-                    get: { selectedOrderIds.contains(order.orderId) },
-                    set: { on in
-                        if on { selectedOrderIds.insert(order.orderId) }
-                        else { selectedOrderIds.remove(order.orderId) }
-                    }
-                )) {
-                    HStack {
+                let isSelected = vm.selectedOrderIds.contains(order.orderId)
+                Button {
+                    vm.toggleOrderSelection(order.orderId)
+                } label: {
+                    HStack(spacing: SupplierTheme.spacingSM) {
+                        Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                            .foregroundStyle(isSelected ? Color.accentColor : Color.secondary)
                         Text(order.orderId.prefix(12) + "…")
                             .font(.caption.monospaced())
+                            .foregroundStyle(.primary)
                         Spacer()
                         Text(String(format: "%.1f VU", order.volumeVu))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
+                .accessibilityElement(children: .combine)
+                .accessibilityAddTraits(.isButton)
             }
         }
         .padding()
         .background(SupplierTheme.card)
-        .clipShape(RoundedRectangle(cornerRadius: SupplierTheme.radiusLG))
-    }
-
-    private func syncDriverSelection() {
-        guard let preview else { return }
-        let drivers = preview.availableDrivers
-        if selectedDriverId.isEmpty, let first = drivers.first {
-            selectedDriverId = first.driverId
-        } else if !drivers.contains(where: { $0.driverId == selectedDriverId }) {
-            selectedDriverId = drivers.first?.driverId ?? ""
-        }
-    }
-
-    private func executeAuto() async {
-        executing = true
-        defer { executing = false }
-        do {
-            let routeFingerprint: String
-            if let preview {
-                routeFingerprint = """
-                {"pending":\(preview.pendingCount ?? 0),"drivers":\(preview.availableDriverCount ?? 0),"undispatched":\(preview.undispatchedOrders.count)}
-                """
-            } else {
-                routeFingerprint = "[]"
-            }
-            let supplierId = TokenStore.shared.supplierId ?? "supplier"
-            let warehouseId = selectedWarehouseId ?? "default"
-            let key = SupplierIdempotency.dispatch(
-                supplierId: supplierId,
-                warehouseId: warehouseId,
-                mode: "AUTO",
-                routeFingerprint: routeFingerprint
-            )
-            _ = try await SupplierOperationsService.executeDispatch(
-                warehouseId: selectedWarehouseId,
-                idempotencyKey: key,
-                mode: "AUTO"
-            )
-            executeMessage = "Auto dispatch executed"
-            await load()
-        } catch {
-            self.error = error.localizedDescription
-        }
-    }
-
-    private func executeManual(forceCapacity: Bool) async {
-        let orderIds = selectedOrderIds.sorted()
-        guard !selectedDriverId.isEmpty, !orderIds.isEmpty else { return }
-        executing = true
-        defer { executing = false }
-        do {
-            let routeFingerprint = """
-            {"mode":"MANUAL","force_capacity":\(forceCapacity),"routes":[{"driver_id":"\(selectedDriverId)","order_ids":\(orderIds)}]}
-            """
-            let supplierId = TokenStore.shared.supplierId ?? "supplier"
-            let warehouseId = selectedWarehouseId ?? "default"
-            let key = SupplierIdempotency.dispatch(
-                supplierId: supplierId,
-                warehouseId: warehouseId,
-                mode: "MANUAL",
-                routeFingerprint: routeFingerprint
-            )
-            let result = try await SupplierOperationsService.executeDispatch(
-                warehouseId: selectedWarehouseId,
-                idempotencyKey: key,
-                mode: "MANUAL",
-                forceCapacity: forceCapacity,
-                routes: [SupplierDispatchManualRoutePayload(driverId: selectedDriverId, orderIds: orderIds)]
-            )
-            if result.status == "capacity_exceeded" {
-                executeMessage = "Truck capacity exceeded"
-                showCapacityOverride = true
-            } else {
-                executeMessage = "Manual dispatch committed"
-                selectedOrderIds = []
-                showCapacityOverride = false
-                await load()
-            }
-        } catch {
-            self.error = error.localizedDescription
-        }
-    }
-
-    private func load() async {
-        loading = true
-        error = nil
-        defer { loading = false }
-        do {
-            let topology = try await SupplierOperationsService.topology()
-            warehouses = topology.warehouses
-            preview = try await SupplierOperationsService.dispatchPreview(warehouseId: selectedWarehouseId)
-            syncDriverSelection()
-        } catch {
-            self.error = error.localizedDescription
-        }
+        .clipShape(RoundedRectangle(cornerRadius: SupplierTheme.radiusLG, style: .continuous))
     }
 }
 
@@ -325,16 +230,17 @@ private struct DispatchKpiCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(title).font(.caption).foregroundStyle(.secondary)
+            Text(LocalizedStringKey(title)).font(.caption).foregroundStyle(.secondary)
             Text(value).font(.title2.weight(.semibold))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding()
         .background(SupplierTheme.card)
-        .clipShape(RoundedRectangle(cornerRadius: SupplierTheme.radiusLG))
+        .clipShape(RoundedRectangle(cornerRadius: SupplierTheme.radiusLG, style: .continuous))
         .overlay {
-            RoundedRectangle(cornerRadius: SupplierTheme.radiusLG)
+            RoundedRectangle(cornerRadius: SupplierTheme.radiusLG, style: .continuous)
                 .strokeBorder(Color.primary.opacity(0.12), lineWidth: 1)
         }
+        .accessibilityElement(children: .combine)
     }
 }

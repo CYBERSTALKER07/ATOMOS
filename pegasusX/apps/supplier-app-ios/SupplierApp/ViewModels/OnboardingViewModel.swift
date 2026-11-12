@@ -108,7 +108,7 @@ final class OnboardingViewModel {
             Task { await PushNotificationManager.shared.uploadStoredTokenIfPossible() }
             return true
         } catch {
-            self.error = error.localizedDescription
+            SupplierActionFailure.record(underlying: error, hasContent: false, error: &self.error)
             return false
         }
     }
@@ -134,7 +134,7 @@ final class OnboardingViewModel {
             tokenStore.markRegistered(response.isRegistered)
             return true
         } catch {
-            self.error = error.localizedDescription
+            SupplierActionFailure.record(underlying: error, hasContent: false, error: &self.error)
             return false
         }
     }

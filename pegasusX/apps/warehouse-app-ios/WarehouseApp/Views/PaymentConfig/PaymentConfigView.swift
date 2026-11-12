@@ -1,35 +1,41 @@
 import SwiftUI
 
 struct PaymentConfigView: View {
-    @State private var listings: [PSPListing] = []
-    @State private var currency = ""
-    @State private var loading = true
-    @State private var error: String?
+    @State private var vm = PaymentConfigViewModel()
 
     var body: some View {
         Group {
-            if loading {
+            if vm.loading {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if let error {
+            } else if let error = vm.error {
                 ContentUnavailableView {
                     Label("mobile_warehouse.ui.error", systemImage: "exclamationmark.triangle")
                 } description: {
                     Text(error)
                 } actions: {
-                    Button("common.action.retry") { load() }
+                    Button("common.action.retry") {
+                        PegasusHaptics.light()
+                        Task { await vm.load() }
+                    }
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
                 }
-            } else if listings.isEmpty {
-                ContentUnavailableView("No Gateways", systemImage: "creditcard", description: Text("warehouse_portal.payment_config.text.no_payment_gateways_configured"))
+            } else if vm.listings.isEmpty {
+                ContentUnavailableView(
+                    "No Gateways",
+                    systemImage: "creditcard",
+                    description: Text("warehouse_portal.payment_config.text.no_payment_gateways_configured")
+                )
             } else {
                 List {
-                    if !currency.isEmpty {
+                    if !vm.currency.isEmpty {
                         Section {
-                            LabeledContent("Pack currency", value: currency)
+                            LabeledContent("Pack currency", value: vm.currency)
                         }
                     }
                     Section("Pack payment catalog") {
-                        ForEach(listings) { listing in
+                        ForEach(vm.listings) { listing in
                             HStack {
                                 VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
                                     Text(listing.code)
@@ -42,29 +48,30 @@ struct PaymentConfigView: View {
                                 Image(systemName: listing.selectable ? "checkmark.circle.fill" : "xmark.circle")
                                     .foregroundStyle(listing.selectable ? .green : .secondary)
                             }
+                            .frame(minHeight: 44)
+                            .accessibilityElement(children: .combine)
+                            .accessibilityLabel("Gateway \(listing.code), status \(listing.status), \(listing.selectable ? "selectable" : "not selectable")")
                         }
                     }
                 }
+                .scrollDismissesKeyboard(.interactively)
             }
         }
         .navigationTitle("warehouse_portal.treasury.text.payment_config")
-        .task { load() }
-    }
-
-    private func load() {
-        loading = true
-        error = nil
-        Task {
-            do {
-                let resp = try await WarehouseService.paymentConfig()
-                listings = resp.catalog.isEmpty
-                    ? resp.gateways.map { PSPListing(code: $0.code, status: $0.status, selectable: $0.selectable) }
-                    : resp.catalog
-                currency = resp.currencyCode
-            } catch {
-                self.error = error.localizedDescription
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    PegasusHaptics.light()
+                    Task { await vm.load() }
+                } label: {
+                    Label("portal.page.orders.action.refresh", systemImage: "arrow.clockwise")
+                        .frame(minWidth: 44, minHeight: 44)
+                        .contentShape(Rectangle())
+                }
+                .accessibilityLabel("Refresh payment config")
             }
-            loading = false
         }
+        .task { await vm.load() }
+        .refreshable { await vm.load() }
     }
 }

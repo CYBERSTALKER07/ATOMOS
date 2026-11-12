@@ -19,7 +19,6 @@ struct TacticalGaugeCard: View {
             }
 
             ZStack {
-                // Background Track Arc
                 Circle()
                     .trim(from: 0.15, to: 0.85)
                     .stroke(
@@ -28,7 +27,6 @@ struct TacticalGaugeCard: View {
                     )
                     .rotationEffect(.degrees(90))
 
-                // Progress Arc
                 Circle()
                     .trim(from: 0.15, to: 0.15 + (percentageClamped * 0.70))
                     .stroke(
@@ -38,14 +36,13 @@ struct TacticalGaugeCard: View {
                     .rotationEffect(.degrees(90))
                     .animation(.spring(response: 0.6, dampingFraction: 0.8), value: percentageClamped)
 
-                // Central Readout
                 VStack(spacing: 2) {
                     Text(String(format: "%.0f%%", percentageClamped * 100))
-                        .tacticalMonospaceValue(size: 22)
+                        .tacticalMonospaceValue(.title2)
 
                     if let subtitle {
                         Text(subtitle)
-                            .font(.system(size: 9, weight: .bold))
+                            .font(.system(.caption2, weight: .bold))
                             .textCase(.uppercase)
                             .foregroundStyle(TacticalTheme.textTertiary)
                     }
@@ -56,5 +53,11 @@ struct TacticalGaugeCard: View {
             .padding(.vertical, 4)
         }
         .tacticalCard(padding: 14)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(
+            [title, "\(Int(percentageClamped * 100)) percent", subtitle]
+                .compactMap { $0 }
+                .joined(separator: ", ")
+        )
     }
 }

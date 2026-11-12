@@ -2,69 +2,60 @@ import SwiftUI
 
 struct EarningsView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @State private var earnings: SupplierEarnings?
-    @State private var loading = true
-    @State private var error: String?
+    @State private var viewModel = EarningsViewModel()
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                Group {
-                    if loading {
-                        SupplierLoadingView(title: "Loading earnings…")
-                    } else if let error {
-                        SupplierErrorView(message: error) { Task { await load() } }
-                    } else if let earnings {
-                        LazyVGrid(
-                            columns: [GridItem(.adaptive(minimum: horizontalSizeClass == .regular ? 220 : 160))],
-                            spacing: SupplierTheme.spacingMD
-                        ) {
-                            KpiTile(
-                                title: "Today",
-                                value: MoneyFormat.minor(earnings.todayMinor, currency: earnings.currency),
-                                systemImage: "sun.max",
-                                tint: .accentColor
-                            )
-                            KpiTile(
-                                title: "This week",
-                                value: MoneyFormat.minor(earnings.weekMinor, currency: earnings.currency),
-                                systemImage: "calendar",
-                                tint: SupplierTheme.success
-                            )
-                            KpiTile(
-                                title: "This month",
-                                value: MoneyFormat.minor(earnings.monthMinor, currency: earnings.currency),
-                                systemImage: "chart.bar",
-                                tint: SupplierTheme.warning
-                            )
-                        }
-                        if !earnings.authoritative {
-                            Text("mobile_supplier.ui.scaffold_data_treasury_authority_not_connected")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .padding(.top, SupplierTheme.spacingSM)
-                        }
+        ScrollView {
+            Group {
+                if viewModel.loading && viewModel.earnings == nil {
+                    SupplierLoadingView(title: "mobile_supplier.loading.earnings")
+                } else if let error = viewModel.error, viewModel.earnings == nil {
+                    SupplierErrorView(message: error) { Task { await viewModel.load() } }
+                } else if let earnings = viewModel.earnings {
+                    LazyVGrid(
+                        columns: [GridItem(.adaptive(minimum: horizontalSizeClass == .regular ? 220 : 160))],
+                        spacing: SupplierTheme.spacingMD
+                    ) {
+                        KpiTile(
+                            title: "mobile_supplier.chrome.today",
+                            value: earningsLabel(earnings.todayMinor, earnings),
+                            systemImage: "sun.max",
+                            tint: SupplierTheme.primaryAction
+                        )
+                        KpiTile(
+                            title: "mobile_supplier.chrome.this_week",
+                            value: earningsLabel(earnings.weekMinor, earnings),
+                            systemImage: "calendar",
+                            tint: SupplierTheme.success
+                        )
+                        KpiTile(
+                            title: "mobile_supplier.chrome.this_month",
+                            value: earningsLabel(earnings.monthMinor, earnings),
+                            systemImage: "chart.bar",
+                            tint: SupplierTheme.warning
+                        )
+                    }
+                    if !earnings.authoritative {
+                        Text("mobile_supplier.ui.scaffold_data_treasury_authority_not_connected")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .padding(.top, SupplierTheme.spacingSM)
                     }
                 }
-                .supplierReadableWidth()
-                .padding()
             }
-            .background(SupplierTheme.background)
-            .navigationTitle("portal.nav.earnings")
-            .task { await load() }
-            .refreshable { await load(silent: true) }
+            .supplierReadableWidth()
+            .padding()
         }
+        .background(SupplierTheme.background)
+        .navigationTitle("portal.nav.earnings")
+        .task { await viewModel.load() }
+        .refreshable { await viewModel.load(silent: true) }
     }
 
-    @MainActor
-    private func load(silent: Bool = false) async {
-        if !silent { loading = true }
-        error = nil
-        do {
-            earnings = try await SupplierService.earnings()
-        } catch {
-            if !silent { self.error = error.localizedDescription }
+    private func earningsLabel(_ minor: Int64, _ earnings: SupplierEarnings) -> String {
+        guard let amount = EarningsHonesty.minor(minor, authoritative: earnings.authoritative) else {
+            return "—"
         }
-        loading = false
+        return MoneyFormat.minor(amount, currency: earnings.currency)
     }
 }

@@ -36,14 +36,21 @@ struct PreordersList: View {
                             onPropose(row)
                         }
                         .disabled(acting)
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
                         Button("mobile_warehouse.ui.reject", role: .destructive) {
                             onReject(row)
                         }
                         .disabled(acting)
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
                     }
                     .font(.subheadline)
                 }
                 .padding(.vertical, 4)
+                .frame(minHeight: 44)
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Pre-order \(row.orderId), status \(row.status)\(row.requestedDeliveryDate.map { ", delivery \($0)" } ?? "")")
             }
         }
     }

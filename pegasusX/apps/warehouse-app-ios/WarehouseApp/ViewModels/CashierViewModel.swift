@@ -5,22 +5,24 @@
 
 import Foundation
 import SwiftUI
+import Observation
 
-public struct DenominationRowItem: Identifiable, Sendable {
-    public var id: Int64 { noteUzs }
-    public let noteUzs: Int64
-    public var count: Int64
+struct DenominationRowItem: Identifiable, Sendable {
+    var id: Int64 { noteUzs }
+    let noteUzs: Int64
+    var count: Int64
 
-    public var totalUzs: Int64 {
+    var totalUzs: Int64 {
         noteUzs * count
     }
 
-    public var totalTiyin: Int64 {
+    var totalTiyin: Int64 {
         noteUzs * count * 100
     }
 }
 
 @Observable
+@MainActor
 final class CashierViewModel {
     private static let isoFormatter = ISO8601DateFormatter()
 
@@ -62,9 +64,59 @@ final class CashierViewModel {
     var errorMessage: String? = nil
 
     var amlExposureMinor: Int64 = 0
-    var amlCeilingMinor: Int64 = 0 // Dynamic / Uncapped by default
+    var amlCeilingMinor: Int64 = 0
     var amlExceeded: Bool = false
     var lastVaultEntry: DepotVaultLedgerEntry? = nil
+
+    // Sheet & Form State (Consolidates UI state out of CashierBlindCountView)
+    var showRRNSheet: Bool = false
+    var showCITSheet: Bool = false
+    var showAMLSheet: Bool = false
+
+    var rrnOrderId: String = "order-uz-8812"
+    var rrnGateway: String = "123456789012"
+    var rrnDisputedText: String = "500000"
+
+    var citBadgeId: String = "INKAS-9921"
+    var citSealBarcode: String = "CIT-SEAL-7712"
+    var citHandoverText: String = "1425000"
+
+    var amlTin: String = "123456789"
+    var amlExposureText: String = "15000000"
+
+    var totalBanknotesCount: Int64 {
+        denominations.values.reduce(0, +)
+    }
+
+    private let startSessionHandler: @Sendable (StartCashierSessionRequest) async throws -> CashierSessionView
+    private let submitBlindCountHandler: @Sendable (String, BlindCountRequest) async throws -> CashierSessionView
+    private let reclassifyTenderHandler: @Sendable (RRNTenderReclassificationRequest) async throws -> CashierSessionView
+    private let executeCITHandoverHandler: @Sendable (CITHandoverRequest) async throws -> DepotVaultLedgerEntry
+    private let checkAMLHandler: @Sendable (AMLCheckRequest) async throws -> AMLCheckResponse
+
+    init(
+        startSessionHandler: @escaping @Sendable (StartCashierSessionRequest) async throws -> CashierSessionView = { req in
+            try await WarehouseService.startCashierSession(req: req)
+        },
+        submitBlindCountHandler: @escaping @Sendable (String, BlindCountRequest) async throws -> CashierSessionView = { sessionId, req in
+            try await WarehouseService.submitBlindCount(sessionId: sessionId, req: req)
+        },
+        reclassifyTenderHandler: @escaping @Sendable (RRNTenderReclassificationRequest) async throws -> CashierSessionView = { req in
+            try await WarehouseService.reclassifyTender(req: req)
+        },
+        executeCITHandoverHandler: @escaping @Sendable (CITHandoverRequest) async throws -> DepotVaultLedgerEntry = { req in
+            try await WarehouseService.executeCITHandover(req: req)
+        },
+        checkAMLHandler: @escaping @Sendable (AMLCheckRequest) async throws -> AMLCheckResponse = { req in
+            try await WarehouseService.checkAML(req: req)
+        }
+    ) {
+        self.startSessionHandler = startSessionHandler
+        self.submitBlindCountHandler = submitBlindCountHandler
+        self.reclassifyTenderHandler = reclassifyTenderHandler
+        self.executeCITHandoverHandler = executeCITHandoverHandler
+        self.checkAMLHandler = checkAMLHandler
+    }
 
     func setDenominationCount(noteUzs: Int64, count: Int64) {
         let safe = max(0, count)
@@ -76,13 +128,36 @@ final class CashierViewModel {
         setDenominationCount(noteUzs: noteUzs, count: current + delta)
     }
 
+    func addStrap(noteUzs: Int64, strapCount: Int64) {
+        adjustCount(noteUzs: noteUzs, delta: strapCount)
+    }
+
     func clearCounts() {
         for key in denominations.keys {
             denominations[key] = 0
         }
     }
 
-    @MainActor
+    func quickFillSampleBalanced() {
+        clearCounts()
+        setDenominationCount(noteUzs: 200000, count: 7)
+        setDenominationCount(noteUzs: 20000, count: 1)
+        setDenominationCount(noteUzs: 5000, count: 1)
+    }
+
+    func quickFillSampleDiscrepant() {
+        clearCounts()
+        setDenominationCount(noteUzs: 200000, count: 6)
+    }
+
+    static func formatUzs(amount: Int64) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.groupingSeparator = " "
+        let formatted = formatter.string(from: NSNumber(value: amount)) ?? "\(amount)"
+        return "\(formatted) UZS"
+    }
+
     func startSession(expectedCashMinor: Int64 = 1425000000) async {
         isLoading = true
         errorMessage = nil
@@ -99,7 +174,7 @@ final class CashierViewModel {
         )
 
         do {
-            let sess = try await WarehouseService.startCashierSession(req: req)
+            let sess = try await startSessionHandler(req)
             isLoading = false
             session = sess
             attemptNumber = sess.attemptNumber
@@ -120,7 +195,6 @@ final class CashierViewModel {
         }
     }
 
-    @MainActor
     func submitBlindCount(toleranceThresholdMinor: Int64 = 500000) async {
         guard let sessionId = session?.sessionId, !sessionId.isEmpty else {
             errorMessage = "Please start or select a session first"
@@ -141,7 +215,7 @@ final class CashierViewModel {
         )
 
         do {
-            let updated = try await WarehouseService.submitBlindCount(sessionId: sessionId, req: req)
+            let updated = try await submitBlindCountHandler(sessionId, req)
             isLoading = false
             session = updated
             attemptNumber = updated.attemptNumber
@@ -159,7 +233,6 @@ final class CashierViewModel {
             isLoading = false
             switch apiError {
             case .httpError(let code) where code == 409:
-                // Mandatory Dual-Blind Recount Ratchet: Expected cash MUST remain masked!
                 isRecountRequired = true
                 isBlindCountMasked = true
                 attemptNumber = 2
@@ -173,7 +246,6 @@ final class CashierViewModel {
         }
     }
 
-    @MainActor
     func reclassifyTender(
         orderId: String,
         gatewayRrn: String,
@@ -201,7 +273,7 @@ final class CashierViewModel {
         )
 
         do {
-            let updated = try await WarehouseService.reclassifyTender(req: req)
+            let updated = try await reclassifyTenderHandler(req)
             isLoading = false
             session = updated
             isBalanced = updated.status == "BALANCED"
@@ -213,7 +285,6 @@ final class CashierViewModel {
         }
     }
 
-    @MainActor
     func executeCITHandover(
         courierBadgeId: String,
         citSealBarcode: String,
@@ -233,7 +304,7 @@ final class CashierViewModel {
         )
 
         do {
-            let entry = try await WarehouseService.executeCITHandover(req: req)
+            let entry = try await executeCITHandoverHandler(req)
             isLoading = false
             lastVaultEntry = entry
             statusMessage = "CIT Armored Handover Complete: Manifest \(entry.citManifestId ?? entry.vaultEntryId)"
@@ -243,7 +314,6 @@ final class CashierViewModel {
         }
     }
 
-    @MainActor
     func checkAMLExposure(tin: String, cashMinor: Int64) async {
         isLoading = true
         errorMessage = nil
@@ -257,7 +327,7 @@ final class CashierViewModel {
         )
 
         do {
-            let resp = try await WarehouseService.checkAML(req: req)
+            let resp = try await checkAMLHandler(req)
             isLoading = false
             amlExposureMinor = resp.accumulatedCashMinor
             amlCeilingMinor = resp.ceilingMinor

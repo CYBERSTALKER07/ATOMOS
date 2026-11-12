@@ -5,6 +5,7 @@ import Observation
 /// Leading-edge + trailing-edge burst coalescing prevents Kafka/Redis event storms
 /// from triggering redundant view reloads while preserving immediate first-event reactivity.
 @Observable
+@MainActor
 final class SupplierRealtimeHub {
     var refreshEpoch: Int = 0
     var reconnectEpoch: Int = 0

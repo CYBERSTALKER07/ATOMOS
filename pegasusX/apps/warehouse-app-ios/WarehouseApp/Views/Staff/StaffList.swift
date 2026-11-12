@@ -36,14 +36,17 @@ struct StaffList: View {
                             .font(.caption.bold())
                             .padding(.horizontal, LabTheme.spacingSM)
                             .padding(.vertical, LabTheme.spacingXS)
-                            .foregroundStyle(member.isActive ? Color.primary : Color.white)
-                            .background(member.isActive ? AnyShapeStyle(Color.clear) : AnyShapeStyle(Color.red), in: Capsule())
+                            .foregroundStyle(member.isActive ? PegasusMonochromeTheme.label : PegasusMonochromeTheme.onPrimaryAction)
+                            .background(member.isActive ? AnyShapeStyle(Color.clear) : AnyShapeStyle(PegasusMonochromeTheme.destructive), in: Capsule())
                             .overlay {
                                 if member.isActive {
-                                    Capsule().strokeBorder(Color.gray.opacity(0.3))
+                                    Capsule().strokeBorder(PegasusMonochromeTheme.cardBorder)
                                 }
                             }
                     }
+                    .frame(minHeight: 44)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("\(member.name), role \(member.role), phone \(member.phone), \(member.isActive ? "Active" : "Inactive")")
                 }
             }
         }

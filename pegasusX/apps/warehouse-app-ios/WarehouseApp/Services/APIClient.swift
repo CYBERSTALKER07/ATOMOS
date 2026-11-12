@@ -28,7 +28,7 @@ final class APIClient: Sendable {
             s = raw.hasSuffix("/") ? raw : raw + "/"
         } else if raw.contains(":") { s = "http://\(raw)/" }
         else { s = "http://\(raw):8180/" }
-        return URL(string: s)!
+        return URL(string: s) ?? URL(string: "http://localhost:8180/") ?? URL(fileURLWithPath: "/")
     }()
     #else
     private let bootstrapURL: URL = {
@@ -38,7 +38,7 @@ final class APIClient: Sendable {
         if raw.isEmpty { s = "https://api.pegasusx.app/" }
         else if raw.hasSuffix("/") { s = raw }
         else { s = raw + "/" }
-        return URL(string: s)!
+        return URL(string: s) ?? URL(string: "https://api.pegasusx.app/") ?? URL(fileURLWithPath: "/")
     }()
     #endif
 
@@ -57,24 +57,32 @@ final class APIClient: Sendable {
         encoder = JSONEncoder()
     }
 
-    // MARK: - GET
-    func get<T: Decodable>(_ path: String, query: [String: String] = [:]) async throws -> T {
-        var components = URLComponents(url: baseURL.appendingPathComponent(path), resolvingAgainstBaseURL: false)!
+    private func buildURL(path: String, query: [String: String] = [:]) throws -> URL {
+        let full = baseURL.appendingPathComponent(path)
+        guard var components = URLComponents(url: full, resolvingAgainstBaseURL: false) else {
+            throw APIError.invalidURL
+        }
         if !query.isEmpty {
             components.queryItems = query.map { URLQueryItem(name: $0.key, value: $0.value) }
         }
-        var request = URLRequest(url: components.url!)
+        guard let url = components.url else {
+            throw APIError.invalidURL
+        }
+        return url
+    }
+
+    // MARK: - GET
+    func get<T: Decodable>(_ path: String, query: [String: String] = [:]) async throws -> T {
+        let url = try buildURL(path: path, query: query)
+        var request = URLRequest(url: url)
         request.httpMethod = "GET"
         await attachToken(&request)
         return try await execute(request)
     }
 
     func getJSONString(_ path: String, query: [String: String] = [:]) async throws -> String {
-        var components = URLComponents(url: baseURL.appendingPathComponent(path), resolvingAgainstBaseURL: false)!
-        if !query.isEmpty {
-            components.queryItems = query.map { URLQueryItem(name: $0.key, value: $0.value) }
-        }
-        var request = URLRequest(url: components.url!)
+        let url = try buildURL(path: path, query: query)
+        var request = URLRequest(url: url)
         request.httpMethod = "GET"
         await attachToken(&request)
         let (data, response) = try await dataForRequestWithFallback(request)
@@ -159,11 +167,8 @@ final class APIClient: Sendable {
         query: [String: String] = [:],
         idempotencyKey: String? = nil
     ) async throws -> T {
-        var components = URLComponents(url: baseURL.appendingPathComponent(path), resolvingAgainstBaseURL: false)!
-        if !query.isEmpty {
-            components.queryItems = query.map { URLQueryItem(name: $0.key, value: $0.value) }
-        }
-        var request = URLRequest(url: components.url!)
+        let url = try buildURL(path: path, query: query)
+        var request = URLRequest(url: url)
         request.httpMethod = "PUT"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         if let idempotencyKey {
@@ -210,11 +215,8 @@ final class APIClient: Sendable {
 
     // MARK: - DELETE
     func delete<T: Decodable>(_ path: String, query: [String: String] = [:], idempotencyKey: String? = nil) async throws -> T {
-        var components = URLComponents(url: baseURL.appendingPathComponent(path), resolvingAgainstBaseURL: false)!
-        if !query.isEmpty {
-            components.queryItems = query.map { URLQueryItem(name: $0.key, value: $0.value) }
-        }
-        var request = URLRequest(url: components.url!)
+        let url = try buildURL(path: path, query: query)
+        var request = URLRequest(url: url)
         request.httpMethod = "DELETE"
         if let idempotencyKey {
             request.setValue(idempotencyKey, forHTTPHeaderField: "Idempotency-Key")
@@ -327,7 +329,9 @@ final class APIClient: Sendable {
     }
 
     func warehouseWebSocketURL(token: String, lastEventId: String? = nil) -> URL {
-        var components = URLComponents(url: baseURL, resolvingAgainstBaseURL: false)!
+        guard var components = URLComponents(url: baseURL, resolvingAgainstBaseURL: false) else {
+            return URL(string: "ws://localhost:8180/v1/ws?token=\(token)") ?? URL(fileURLWithPath: "/")
+        }
         components.scheme = components.scheme == "https" ? "wss" : "ws"
         components.path = "/v1/ws"
         var items = [URLQueryItem(name: "token", value: token)]
@@ -335,7 +339,7 @@ final class APIClient: Sendable {
             items.append(URLQueryItem(name: "last_event_id", value: lastEventId))
         }
         components.queryItems = items
-        return components.url!
+        return components.url ?? URL(string: "ws://localhost:8180/v1/ws?token=\(token)") ?? URL(fileURLWithPath: "/")
     }
 }
 
@@ -398,12 +402,14 @@ private actor WarehouseHTTPCoalescer {
 
 // MARK: - Errors
 enum APIError: LocalizedError {
+    case invalidURL
     case invalidResponse
     case httpError(Int)
     case unauthorized
 
     var errorDescription: String? {
         switch self {
+        case .invalidURL: "Invalid request URL"
         case .invalidResponse: "Invalid response"
         case .httpError(let code): "HTTP \(code)"
         case .unauthorized: "Session expired"

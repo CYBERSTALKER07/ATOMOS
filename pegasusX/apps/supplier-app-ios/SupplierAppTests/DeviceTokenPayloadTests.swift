@@ -10,4 +10,11 @@ final class DeviceTokenPayloadTests: XCTestCase {
         XCTAssertEqual(json?["platform"], "ios")
         XCTAssertNil(json?["supplier_id"])
     }
+
+    func testDeviceTokenKeyStaysWithTheToken() {
+        let first = SupplierIdempotencyKeys.deviceToken(platform: "ios", token: "fcm-1")
+        XCTAssertEqual(first, SupplierIdempotencyKeys.deviceToken(platform: "ios", token: "fcm-1"))
+        XCTAssertNotEqual(first, SupplierIdempotencyKeys.deviceToken(platform: "ios", token: "fcm-2"))
+        XCTAssertFalse(first.contains("fcm-1"))
+    }
 }

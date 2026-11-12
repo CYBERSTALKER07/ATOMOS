@@ -7,7 +7,7 @@ struct VehicleListView: View {
     var body: some View {
         Group {
             if vehicles.isEmpty {
-                SupplierEmptyView(title: "No vehicles", message: "Create a vehicle for driver assignment.")
+                SupplierEmptyView(title: "mobile_supplier.empty.no_vehicles", message: "mobile_supplier.empty.vehicles_create")
             } else {
                 ResponsiveGridContentWrapper {
                     ForEach(vehicles) { vehicle in

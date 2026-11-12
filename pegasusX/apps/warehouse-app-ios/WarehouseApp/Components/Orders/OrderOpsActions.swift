@@ -15,24 +15,34 @@ struct OrderOpsActions: View {
                 if canProposeDate(state) {
                     DatePicker("Proposed delivery date", selection: $proposeDate, displayedComponents: .date)
                     Button("mobile_warehouse.ui.propose_new_date") { showProposeSheet = true }
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
                         .disabled(mutating || reasonInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
                 TextField("mobile_warehouse.ui.reason_required_for_propose_and_cancel", text: $reasonInput, axis: .vertical)
                     .lineLimit(2...4)
                 if canOverflow(state) {
                     Button("mobile_warehouse.ui.return_to_dispatch_pool") { pendingAction = .overflow }
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
                         .disabled(mutating)
                 }
                 if canReject(state) {
                     Button("warehouse_portal.dispatch.text.cancel_order", role: .destructive) { pendingAction = .reject }
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
                         .disabled(mutating)
                 }
                 if canReassign(state) {
                     Button("mobile_warehouse.ui.reassign_order") { onLoadRecommendations() }
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
                         .disabled(mutating)
                 }
                 if !["COMPLETED", "CANCELLED"].contains(state.uppercased()) {
                     Button("Emergency Payment Bypass") { pendingAction = .paymentBypass }
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
                         .disabled(mutating)
                 }
             }

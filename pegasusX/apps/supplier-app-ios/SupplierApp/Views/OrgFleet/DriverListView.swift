@@ -7,7 +7,7 @@ struct DriverListView: View {
     var body: some View {
         Group {
             if drivers.isEmpty {
-                SupplierEmptyView(title: "No drivers", message: "Create a driver to start fleet onboarding.")
+                SupplierEmptyView(title: "mobile_supplier.empty.no_drivers", message: "mobile_supplier.empty.drivers_onboarding")
             } else {
                 ResponsiveGridContentWrapper {
                     ForEach(drivers) { driver in

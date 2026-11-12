@@ -52,7 +52,8 @@ enum WarehouseIdempotency {
     }
 
     static func assignDriverVehicle(driverId: String, vehicleId: String?) -> String {
-        let vid = vehicleId?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false ? vehicleId! : "none"
+        let trimmedVid = vehicleId?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let vid = (trimmedVid?.isEmpty == false ? trimmedVid : nil) ?? "none"
         return "warehouse-assign-driver-vehicle:\(warehouseId()):\(driverId):\(vid)"
     }
 

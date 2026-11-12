@@ -9,7 +9,6 @@ struct TacticalWorkbenchView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                // Tactical Command Header
                 HStack(alignment: .center) {
                     VStack(alignment: .leading, spacing: 4) {
                         HStack(spacing: 8) {
@@ -19,26 +18,29 @@ struct TacticalWorkbenchView: View {
                         }
 
                         Text("\(section.rawValue) Workbench")
-                            .font(.system(size: 24, weight: .bold))
+                            .font(.system(.title2, weight: .bold))
                             .foregroundStyle(TacticalTheme.textPrimary)
 
                         Text("ZONE TASHKENT-NORTH-01 · LIVE DISPATCH HUB")
-                            .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                            .font(.system(.caption2, design: .monospaced, weight: .semibold))
                             .foregroundStyle(TacticalTheme.textTertiary)
                     }
 
                     Spacer()
 
                     Button {
+                        PegasusHaptics.light()
                         onInspect?()
                     } label: {
                         HStack(spacing: 6) {
                             Image(systemName: "sidebar.right")
                             Text("TELEMETRY INSPECTOR")
-                                .font(.system(size: 11, weight: .bold))
+                                .font(.system(.caption2, weight: .bold))
                         }
                         .padding(.horizontal, 12)
                         .padding(.vertical, 8)
+                        .frame(minWidth: 44, minHeight: 44)
+                        .contentShape(Rectangle())
                         .foregroundStyle(TacticalTheme.accentCobalt)
                         .background(TacticalTheme.accentCobalt.opacity(0.12))
                         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
@@ -48,10 +50,10 @@ struct TacticalWorkbenchView: View {
                         )
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("Toggle Telemetry Inspector")
                 }
                 .tacticalCard()
 
-                // Stage Stepper: Operational Pipeline
                 VStack(alignment: .leading, spacing: 10) {
                     Text("FULFILLMENT PIPELINE STAGE")
                         .tacticalMicroLabel()
@@ -60,7 +62,6 @@ struct TacticalWorkbenchView: View {
                 }
                 .tacticalCard()
 
-                // Bento Grid: Live Gauges and Metrics
                 LazyVGrid(
                     columns: [
                         GridItem(.flexible(minimum: 180), spacing: 14),
@@ -91,14 +92,13 @@ struct TacticalWorkbenchView: View {
                     )
                 }
 
-                // Staging Lanes & Active Pick Waves
                 VStack(alignment: .leading, spacing: 14) {
                     HStack {
                         Text("ACTIVE STAGING LANES")
                             .tacticalMicroLabel()
                         Spacer()
                         Text("AUTO-REFRESH: 300MS")
-                            .font(.system(size: 10, weight: .bold, design: .monospaced))
+                            .font(.system(.caption2, design: .monospaced, weight: .bold))
                             .foregroundStyle(TacticalTheme.accentCyan)
                     }
 
@@ -155,19 +155,19 @@ struct TacticalWorkbenchView: View {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(lane)
-                        .font(.system(size: 13, weight: .bold))
+                        .font(.system(.footnote, weight: .bold))
                         .foregroundStyle(TacticalTheme.textPrimary)
 
                     HStack(spacing: 8) {
                         Text(truck)
-                            .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                            .font(.system(.caption2, design: .monospaced, weight: .semibold))
                             .foregroundStyle(TacticalTheme.textSecondary)
 
                         Text("·")
                             .foregroundStyle(TacticalTheme.textTertiary)
 
                         Text(driver)
-                            .font(.system(size: 11, weight: .medium))
+                            .font(.system(.caption2, weight: .medium))
                             .foregroundStyle(TacticalTheme.accentCobalt)
                     }
                 }
@@ -177,7 +177,7 @@ struct TacticalWorkbenchView: View {
                 VStack(alignment: .trailing, spacing: 4) {
                     TacticalStatusBadge(status: status)
                     Text(eta)
-                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .font(.system(.caption2, design: .monospaced, weight: .bold))
                         .foregroundStyle(TacticalTheme.textTertiary)
                 }
             }
@@ -196,5 +196,7 @@ struct TacticalWorkbenchView: View {
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .stroke(TacticalTheme.border, lineWidth: 1)
         )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(lane), truck \(truck), driver \(driver), status \(status), \(progress.current) of \(progress.total) pallets loaded, \(eta)")
     }
 }

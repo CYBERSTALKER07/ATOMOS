@@ -11,8 +11,8 @@ struct InventoryList: View {
         if horizontalSizeClass == .regular {
             Table(items) {
                 TableColumn("SKU") { Text($0.sku).font(.body.monospaced()) }
-                TableColumn("Product") { Text($0.productName) }
-                TableColumn("Qty") { quantityCell($0) }
+                TableColumn("mobile_supplier.chrome.product") { Text($0.productName) }
+                TableColumn("mobile_supplier.chrome.qty") { quantityCell($0) }
             }
             .supplierReadableWidth()
             .padding()
@@ -38,22 +38,26 @@ struct InventoryList: View {
     @ViewBuilder
     private func quantityCell(_ item: InventoryItem) -> some View {
         HStack(spacing: SupplierTheme.spacingSM) {
-            Button {
+            Button("mobile_supplier.chrome.decrease_quantity", systemImage: "minus.circle") {
+                PegasusHaptics.light()
                 Task { await onAdjustQuantity(item.sku, -1) }
-            } label: {
-                Image(systemName: "minus.circle")
             }
+            .labelStyle(.iconOnly)
+            .frame(minWidth: 44, minHeight: 44)
+            .contentShape(Rectangle())
             .disabled(adjustingSku == item.sku)
 
             Text("\(item.quantity)")
                 .font(.title3.bold())
                 .frame(minWidth: 36)
 
-            Button {
+            Button("mobile_supplier.chrome.increase_quantity", systemImage: "plus.circle") {
+                PegasusHaptics.light()
                 Task { await onAdjustQuantity(item.sku, 1) }
-            } label: {
-                Image(systemName: "plus.circle")
             }
+            .labelStyle(.iconOnly)
+            .frame(minWidth: 44, minHeight: 44)
+            .contentShape(Rectangle())
             .disabled(adjustingSku == item.sku)
         }
     }

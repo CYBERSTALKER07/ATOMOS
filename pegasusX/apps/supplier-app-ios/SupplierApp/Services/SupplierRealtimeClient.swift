@@ -125,19 +125,12 @@ final class SupplierRealtimeClient {
         let base = raw.isEmpty ? "https://api.pegasusx.app" : raw.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         #endif
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0"
-        var components = URLComponents(string: base)!
-        components.scheme = components.scheme == "https" ? "wss" : "ws"
-        components.path = "/v1/ws"
-        var items = [
-            URLQueryItem(name: "token", value: sessionToken),
-            URLQueryItem(name: "platform", value: "ios"),
-            URLQueryItem(name: "version", value: version),
-        ]
-        if let lastEventId, !lastEventId.isEmpty {
-            items.append(URLQueryItem(name: "last_event_id", value: lastEventId))
-        }
-        components.queryItems = items
-        return components.url
+        return supplierWebSocketURL(
+            base: base,
+            sessionToken: sessionToken,
+            version: version,
+            lastEventId: lastEventId
+        )
     }
 
     private func receiveLoop(onEvent: @escaping (SupplierLiveEvent) -> Void) {
@@ -170,6 +163,25 @@ final class SupplierRealtimeClient {
             }
         }
     }
+}
+
+func supplierWebSocketURL(base: String, sessionToken: String, version: String, lastEventId: String?) -> URL? {
+    guard let parsed = SupplierURL.parse(base),
+          var components = URLComponents(url: parsed, resolvingAgainstBaseURL: false) else {
+        return nil
+    }
+    components.scheme = parsed.scheme?.lowercased() == "https" ? "wss" : "ws"
+    components.path = "/v1/ws"
+    var items = [
+        URLQueryItem(name: "token", value: sessionToken),
+        URLQueryItem(name: "platform", value: "ios"),
+        URLQueryItem(name: "version", value: version),
+    ]
+    if let lastEventId, !lastEventId.isEmpty {
+        items.append(URLQueryItem(name: "last_event_id", value: lastEventId))
+    }
+    components.queryItems = items
+    return components.url
 }
 
 private func reconnectDelaySeconds(attempt: Int, base: TimeInterval, maxDelay: TimeInterval) -> TimeInterval {

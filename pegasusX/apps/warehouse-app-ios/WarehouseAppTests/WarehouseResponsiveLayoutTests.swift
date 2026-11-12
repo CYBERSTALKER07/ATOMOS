@@ -31,6 +31,10 @@ final class WarehouseResponsiveLayoutTests: XCTestCase {
         XCTAssertFalse(WarehouseSection.fulfillmentSections.isEmpty)
         XCTAssertFalse(WarehouseSection.inventorySections.isEmpty)
         XCTAssertFalse(WarehouseSection.operationsSections.isEmpty)
+        XCTAssertTrue(WarehouseSection.operationsSections.contains(.cashier))
+        XCTAssertTrue(WarehouseSection.operationsSections.contains(.yardGate))
+        XCTAssertEqual(WarehouseSection.cashier.icon, "banknote.fill")
+        XCTAssertEqual(WarehouseSection.yardGate.icon, "lock.shield.fill")
         XCTAssertFalse(WarehouseSection.portalSections.isEmpty)
 
         // Ensure total sections coverage
@@ -55,5 +59,20 @@ final class WarehouseResponsiveLayoutTests: XCTestCase {
 
         let overGauge = TacticalGaugeCard(title: "OVERLOAD", percentage: 1.5)
         XCTAssertEqual(overGauge.percentage, 1.5)
+    }
+
+    func testWarehousePortalLinksDefensiveFallback() {
+        let base = WarehousePortalLinks.baseURL
+        XCTAssertFalse(base.absoluteString.isEmpty)
+
+        let url = WarehousePortalLinks.url(for: .setup)
+        XCTAssertTrue(url.absoluteString.contains("setup"))
+    }
+
+    func testScannedBarcodeRecordIntegrity() {
+        let code = "BIN-A-04-12"
+        let record = ScannedBarcodeRecord(code: code, timestamp: Date())
+        XCTAssertEqual(record.code, code)
+        XCTAssertFalse(record.id.uuidString.isEmpty)
     }
 }

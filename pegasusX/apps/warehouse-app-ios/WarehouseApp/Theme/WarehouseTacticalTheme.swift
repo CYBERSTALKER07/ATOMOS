@@ -93,15 +93,15 @@ extension View {
 
     func tacticalMicroLabel() -> some View {
         self
-            .font(.system(size: 11, weight: .bold, design: .default))
+            .font(.system(.caption2, design: .default, weight: .bold))
             .textCase(.uppercase)
             .tracking(1.1)
             .foregroundStyle(TacticalTheme.textTertiary)
     }
 
-    func tacticalMonospaceValue(size: CGFloat = 28) -> some View {
+    func tacticalMonospaceValue(_ style: Font.TextStyle = .title) -> some View {
         self
-            .font(.system(size: size, weight: .bold, design: .monospaced))
+            .font(.system(style, design: .monospaced, weight: .bold))
             .monospacedDigit()
             .foregroundStyle(TacticalTheme.textPrimary)
     }

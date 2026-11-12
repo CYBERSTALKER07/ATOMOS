@@ -3,7 +3,7 @@ import XCTest
 
 final class DashboardTests: XCTestCase {
     func testFullStacksAndDemandSource() throws {
-        let raw = """
+        let raw = try XCTUnwrap("""
         {
           "pending_dispatch": 2,
           "orders_by_status": { "PENDING": 2, "FISCAL_FAILED": 1 },
@@ -18,7 +18,7 @@ final class DashboardTests: XCTestCase {
           "demand_source": "empty",
           "history_available": false
         }
-        """.data(using: .utf8)!
+        """.data(using: .utf8))
         let dash = try JSONDecoder().decode(DashboardData.self, from: raw)
         XCTAssertEqual(dash.ordersByStatus["FISCAL_FAILED"], 1)
         XCTAssertEqual(dash.truckDuty["VEHICLE_INACTIVE"], 1)

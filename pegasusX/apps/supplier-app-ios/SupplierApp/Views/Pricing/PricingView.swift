@@ -2,43 +2,40 @@ import SwiftUI
 
 struct PricingView: View {
     @Environment(SupplierRealtimeHub.self) private var realtimeHub
-    @State private var products: [CatalogProduct] = []
-    @State private var loading = true
-    @State private var error: String?
-    @State private var query = ""
-
-    private var filtered: [CatalogProduct] {
-        guard !query.isEmpty else { return products }
-        return products.filter { $0.name.localizedCaseInsensitiveContains(query) }
-    }
+    @State private var viewModel = PricingViewModel()
 
     var body: some View {
+        @Bindable var vm = viewModel
         Group {
-            if loading && products.isEmpty {
-                SupplierLoadingView(title: "Loading pricing…")
-            } else if let error, products.isEmpty {
-                SupplierErrorView(message: error) { Task { await load() } }
-            } else if products.isEmpty {
+            if viewModel.loading && viewModel.products.isEmpty {
+                SupplierLoadingView(title: "mobile_supplier.loading.pricing")
+            } else if let error = viewModel.error, viewModel.products.isEmpty {
+                SupplierErrorView(message: error) { Task { await viewModel.load() } }
+            } else if viewModel.products.isEmpty {
                 SupplierEmptyView(
-                    title: "No products to price",
-                    message: "Add products in Catalog first. They will appear here for list and sale pricing."
+                    title: "mobile_supplier.empty.no_products_to_price",
+                    message: "mobile_supplier.empty.pricing_message"
                 )
-            } else if filtered.isEmpty {
-                SupplierEmptyView(title: "No matches", message: "No products match \"\(query)\".")
+            } else if viewModel.filtered.isEmpty {
+                SupplierEmptyView(
+                    title: "mobile_supplier.empty.no_matches",
+                    message: L10n.format("mobile_supplier.empty.no_products_match", viewModel.query)
+                )
             } else {
                 ResponsiveGridContentWrapper {
-                    ForEach(filtered) { product in
+                    ForEach(viewModel.filtered) { product in
                         NavigationLink {
                             ProductPricingDetailView(product: product) {
-                                Task { await load(silent: true) }
+                                Task { await viewModel.load(silent: true) }
                             }
                         } label: {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(product.name).font(.headline)
-                                Text(formatPrice(product))
+                                Text(Self.formatPrice(product))
                                     .font(.caption.monospaced())
                                     .foregroundStyle(.secondary)
                             }
+                            .accessibilityElement(children: .combine)
                         }
                     }
                 }
@@ -46,31 +43,18 @@ struct PricingView: View {
         }
         .background(SupplierTheme.background)
         .navigationTitle("portal.nav.pricing")
-        .searchable(text: $query, prompt: "Product name")
-        .task { await load() }
-        .refreshable { await load(silent: true) }
+        .searchable(text: $vm.query, prompt: "mobile_supplier.chrome.product_name")
+        .task { await viewModel.load() }
+        .refreshable { await viewModel.load(silent: true) }
         .silentRealtimeRefresh(
             refreshEpoch: realtimeHub.refreshEpoch,
             reconnectEpoch: realtimeHub.reconnectEpoch
         ) { silent in
-            Task { await load(silent: silent) }
+            Task { await viewModel.load(silent: silent) }
         }
     }
 
-    private func formatPrice(_ product: CatalogProduct) -> String {
-        let major = Double(product.priceMinor) / 100.0
-        return String(format: "%.2f %@", major, product.currency)
-    }
-
-    @MainActor
-    private func load(silent: Bool = false) async {
-        if !silent { loading = true }
-        error = nil
-        defer { loading = false }
-        do {
-            products = try await SupplierService.catalogProducts()
-        } catch {
-            if !silent { self.error = error.localizedDescription }
-        }
+    static func formatPrice(_ product: CatalogProduct) -> String {
+        MoneyFormat.minor(product.priceMinor, currency: product.currency)
     }
 }

@@ -1,218 +1,90 @@
 import SwiftUI
 
 struct PlanningSettingsView: View {
-    @State private var data: SeasonalTemplatesResponse?
-    @State private var loading = true
-    @State private var saving = false
-    @State private var error: String?
-    @State private var formError: String?
-    @State private var templateId = ""
-    @State private var name = ""
-    @State private var startDate = ""
-    @State private var endDate = ""
-    @State private var multiplier = ""
-    @State private var networkMode = ""
-    @State private var planningEnabled = false
-    @State private var opsStatus: String? = nil
-    @State private var killReason = ""
-    @State private var opsBusy = false
+    @State private var viewModel = PlanningSettingsViewModel()
 
     var body: some View {
+        @Bindable var vm = viewModel
         Form {
-            if loading {
+            if viewModel.loading && viewModel.data == nil {
                 Section {
-                    ProgressView("Loading seasonal overrides…")
+                    ProgressView("mobile_supplier.loading.seasonal")
                 }
-            } else if let error {
+            } else if let error = viewModel.error, viewModel.data == nil {
                 Section {
-                    SupplierErrorView(message: error) { Task { await load() } }
+                    SupplierErrorView(message: error) { Task { await viewModel.load() } }
                 }
             } else {
-                Section("Factory network ops") {
-                    Text("Mode, pull-matrix, predictive-push, kill-switch. Pull-matrix and predictive-push 409 if FACTORY_PLANNING_ENABLED is off.")
+                Section("mobile_supplier.chrome.factory_network_ops") {
+                    Text("mobile_supplier.chrome.factory_ops_explainer")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
-                    if !planningEnabled {
-                        Text("Engines off (env flag).")
+                    if let modeError = viewModel.modeError, !viewModel.modeKnown {
+                        Text(modeError)
+                            .font(.caption)
+                            .foregroundStyle(SupplierTheme.destructive)
+                    } else if viewModel.modeKnown, !viewModel.planningEnabled {
+                        Text("mobile_supplier.chrome.engines_off")
                             .font(.caption)
                     }
-                    ForEach(["SPEED", "ECONOMY", "BALANCED", "LOW_CARBON", "MANUAL_ONLY"], id: \.self) { mode in
-                        Button(networkMode == mode ? "● \(mode)" : mode) {
-                            Task { await putMode(mode) }
-                        }
-                        .disabled(opsBusy)
+                    if let modeError = viewModel.modeError, viewModel.modeKnown {
+                        Text(modeError)
+                            .font(.caption)
+                            .foregroundStyle(SupplierTheme.destructive)
                     }
-                    Button("Run pull-matrix") { Task { await runPullMatrix() } }
-                        .disabled(opsBusy)
-                    Button("Predictive push") { Task { await runPredictivePush() } }
-                        .disabled(opsBusy)
-                    TextField("Kill-switch reason (ADMIN)", text: $killReason)
-                    Button("Kill-switch") { Task { await runKillSwitch() } }
-                        .disabled(opsBusy)
-                    if let opsStatus {
+                    ForEach(["SPEED", "ECONOMY", "BALANCED", "LOW_CARBON", "MANUAL_ONLY"], id: \.self) { mode in
+                        Button(viewModel.networkMode == mode ? "● \(mode)" : mode) {
+                            Task { await viewModel.putMode(mode) }
+                        }
+                        .frame(minHeight: 44)
+                        .disabled(viewModel.opsBusy)
+                    }
+                    Button("mobile_supplier.chrome.run_pull_matrix") { Task { await viewModel.runPullMatrix() } }
+                        .frame(minHeight: 44)
+                        .disabled(viewModel.opsBusy)
+                    Button("mobile_supplier.chrome.predictive_push") { Task { await viewModel.runPredictivePush() } }
+                        .frame(minHeight: 44)
+                        .disabled(viewModel.opsBusy)
+                    TextField("mobile_supplier.chrome.kill_switch_reason", text: $vm.killReason)
+                    Button("mobile_supplier.chrome.kill_switch") { Task { await viewModel.runKillSwitch() } }
+                        .frame(minHeight: 44)
+                        .disabled(viewModel.opsBusy)
+                    if let opsStatus = viewModel.opsStatus {
                         Text(opsStatus).font(.footnote)
                     }
                 }
-                Section("Create override") {
+                Section("mobile_supplier.chrome.create_override") {
                     CreateOverrideForm(
-                        templates: data?.builtinTemplates ?? [],
-                        templateId: $templateId,
-                        name: $name,
-                        startDate: $startDate,
-                        endDate: $endDate,
-                        multiplier: $multiplier,
-                        formError: formError,
-                        saving: saving,
+                        templates: viewModel.data?.builtinTemplates ?? [],
+                        templateId: $vm.templateId,
+                        name: $vm.name,
+                        startDate: $vm.startDate,
+                        endDate: $vm.endDate,
+                        multiplier: $vm.multiplier,
+                        formError: viewModel.formError,
+                        saving: viewModel.saving,
                         onSubmit: {
-                            Task { await createOverride() }
+                            Task { await viewModel.createOverride() }
                         }
                     )
                 }
-                Section("Active overrides") {
-                    SeasonalOverridesList(overrides: data?.overrides ?? [])
+                Section("mobile_supplier.chrome.active_overrides") {
+                    SeasonalOverridesList(overrides: viewModel.data?.overrides ?? [])
                 }
             }
         }
+        .scrollDismissesKeyboard(.interactively)
         .background(SupplierTheme.background)
         .navigationTitle("supplier_portal.settings.planning.text.planning_settings")
-        .task { await load() }
-        .refreshable { await load(silent: true) }
+        .task { await viewModel.load() }
+        .refreshable { await viewModel.load(silent: true) }
     }
 
-    @MainActor
-    private func load(silent: Bool = false) async {
-        if !silent { loading = true }
-        error = nil
-        defer { loading = false }
-        do {
-            data = try await SupplierOperationsService.seasonalOverrides()
-            if let nm = try? await SupplierOperationsService.networkMode() {
-                networkMode = nm.mode
-                planningEnabled = nm.planningEnabled
-            }
-        } catch {
-            if !silent { self.error = error.localizedDescription }
+    static func killSwitchReasonValidation(reason: String) -> String? {
+        let trimmed = reason.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            return L10n.format("mobile_supplier.chrome.typed_reason_required")
         }
-    }
-
-    @MainActor
-    private func createOverride() async {
-        guard !startDate.isEmpty, !endDate.isEmpty else {
-            formError = "Start and end dates are required"
-            return
-        }
-        saving = true
-        formError = nil
-        defer { saving = false }
-        do {
-            let scope = await SupplierIdempotencyKeys.supplierScopeId()
-            let multVal = Double(multiplier.trimmingCharacters(in: .whitespacesAndNewlines))
-            let row = try await SupplierOperationsService.createSeasonalOverride(
-                SeasonalOverrideInput(
-                    templateId: templateId.isEmpty ? nil : templateId,
-                    startDate: startDate,
-                    endDate: endDate,
-                    name: name.isEmpty ? nil : name,
-                    multiplier: multVal
-                ),
-                idempotencyKey: SupplierIdempotencyKeys.seasonalOverrideCreate(
-                    scopeId: scope,
-                    startDate: startDate,
-                    endDate: endDate
-                )
-            )
-            var overrides = data?.overrides ?? []
-            overrides.insert(row, at: 0)
-            data = SeasonalTemplatesResponse(
-                builtinTemplates: data?.builtinTemplates ?? [],
-                overrides: overrides
-            )
-            name = ""
-            startDate = ""
-            endDate = ""
-            templateId = ""
-            multiplier = ""
-        } catch {
-            formError = error.localizedDescription
-        }
-    }
-
-    @MainActor
-    private func putMode(_ mode: String) async {
-        opsBusy = true
-        defer { opsBusy = false }
-        do {
-            let scope = await SupplierIdempotencyKeys.supplierScopeId()
-            let resp = try await SupplierOperationsService.putNetworkMode(
-                NetworkModeUpdateRequest(mode: mode, reason: nil),
-                idempotencyKey: SupplierIdempotencyKeys.networkModePut(scopeId: scope, mode: mode)
-            )
-            networkMode = resp.newMode
-            opsStatus = "Mode \(resp.oldMode) → \(resp.newMode)"
-        } catch {
-            opsStatus = error.localizedDescription
-        }
-    }
-
-    @MainActor
-    private func runPullMatrix() async {
-        opsBusy = true
-        defer { opsBusy = false }
-        do {
-            let scope = await SupplierIdempotencyKeys.supplierScopeId()
-            let resp = try await SupplierOperationsService.planningPullMatrix(
-                idempotencyKey: SupplierIdempotencyKeys.planningPullMatrix(scopeId: scope)
-            )
-            opsStatus = "Pull-matrix \(resp.status): \(resp.transfers) transfers"
-        } catch {
-            let text = error.localizedDescription
-            if text.contains("factory_planning_disabled") || text.contains("HTTP 409") {
-                opsStatus = "factory_planning_disabled — engines off until FACTORY_PLANNING_ENABLED is on"
-            } else {
-                opsStatus = text
-            }
-        }
-    }
-
-    @MainActor
-    private func runPredictivePush() async {
-        opsBusy = true
-        defer { opsBusy = false }
-        do {
-            let scope = await SupplierIdempotencyKeys.supplierScopeId()
-            let resp = try await SupplierOperationsService.planningPredictivePush(
-                idempotencyKey: SupplierIdempotencyKeys.planningPredictivePush(scopeId: scope)
-            )
-            opsStatus = "Predictive-push \(resp.source): \(resp.transfers) transfers, \(resp.skus) SKUs (\(resp.grain.isEmpty ? "baseline" : resp.grain))"
-        } catch {
-            let text = error.localizedDescription
-            if text.contains("factory_planning_disabled") || text.contains("HTTP 409") {
-                opsStatus = "factory_planning_disabled — engines off until FACTORY_PLANNING_ENABLED is on"
-            } else {
-                opsStatus = text
-            }
-        }
-    }
-
-    @MainActor
-    private func runKillSwitch() async {
-        let reason = killReason.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !reason.isEmpty else {
-            opsStatus = "Typed reason required"
-            return
-        }
-        opsBusy = true
-        defer { opsBusy = false }
-        do {
-            let scope = await SupplierIdempotencyKeys.supplierScopeId()
-            let resp = try await SupplierOperationsService.planningKillSwitch(
-                KillSwitchRequest(reason: reason),
-                idempotencyKey: SupplierIdempotencyKeys.planningKillSwitch(scopeId: scope, reason: reason)
-            )
-            opsStatus = "Kill-switch cancelled \(resp.cancelledTransfers), mode \(resp.mode)"
-            killReason = ""
-        } catch {
-            opsStatus = error.localizedDescription
-        }
+        return nil
     }
 }

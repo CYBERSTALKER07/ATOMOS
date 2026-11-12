@@ -39,38 +39,22 @@ enum GeocodeService {
   static func autocomplete(_ input: String) async throws -> [GeocodePrediction] {
     let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
     guard trimmed.count >= 3 else { return [] }
-    if let resp: AutocompleteResponse = try? await APIClient.shared.get(
+    let resp: AutocompleteResponse = try await APIClient.shared.get(
       "v1/platform/geocode/autocomplete",
       query: ["input": trimmed]
-    ), !resp.predictions.isEmpty {
-      return resp.predictions
-    }
-    let common = [
-      GeocodePrediction(placeId: "tash-chilonzor", description: "Chilonzor District, Tashkent"),
-      GeocodePrediction(placeId: "tash-yunusobod", description: "Yunusobod District, Tashkent"),
-      GeocodePrediction(placeId: "tash-mirzo-ulugbek", description: "Mirzo Ulugbek District, Tashkent"),
-      GeocodePrediction(placeId: "tash-sergeli", description: "Sergeli Industrial Zone, Tashkent"),
-      GeocodePrediction(placeId: "tash-temur", description: "Amir Temur Avenue, Tashkent")
-    ]
-    let matches = common.filter { $0.description.localizedCaseInsensitiveContains(trimmed) }
-    return matches.isEmpty ? [GeocodePrediction(placeId: "custom-\(trimmed)", description: "\(trimmed), Tashkent")] : matches
+    )
+    return resp.predictions
   }
 
   static func resolvePlace(_ placeId: String) async throws -> ResolvedLocation {
-    if let resolved: ResolvedLocation = try? await APIClient.shared.get(
+    let resolved: ResolvedLocation = try await APIClient.shared.get(
       "v1/platform/geocode/place",
       query: ["place_id": placeId]
-    ), !resolved.address.isEmpty {
-      return resolved
+    )
+    guard !resolved.address.isEmpty, resolved.lat != 0 || resolved.lng != 0 else {
+      throw APIError.server("geocode_not_found")
     }
-    if placeId.contains("chilonzor") {
-      return ResolvedLocation(address: "Chilonzor District, Tashkent", lat: 41.2721, lng: 69.2045, placeId: placeId)
-    } else if placeId.contains("yunusobod") {
-      return ResolvedLocation(address: "Yunusobod District, Tashkent", lat: 41.3456, lng: 69.2891, placeId: placeId)
-    } else if placeId.contains("sergeli") {
-      return ResolvedLocation(address: "Sergeli Industrial Zone, Tashkent", lat: 41.2234, lng: 69.2178, placeId: placeId)
-    }
-    return ResolvedLocation(address: "Amir Temur Avenue, Tashkent", lat: 41.2995, lng: 69.2401, placeId: placeId)
+    return resolved
   }
 
   static func reverse(lat: Double, lng: Double) async throws -> ResolvedLocation {
@@ -95,19 +79,22 @@ enum GeocodeService {
       }
     }
 
-    if abs(lat - 41.2995) < 0.25 && abs(lng - 69.2401) < 0.25 {
-      return ResolvedLocation(address: "Amir Temur Ave, Tashkent, Uzbekistan", lat: lat, lng: lng, placeId: nil)
-    }
-    return ResolvedLocation(address: String(format: "Location (%.4f, %.4f)", lat, lng), lat: lat, lng: lng, placeId: nil)
+    return ResolvedLocation(
+      address: String(format: "Location (%.4f, %.4f)", lat, lng),
+      lat: lat,
+      lng: lng,
+      placeId: nil
+    )
   }
 
   static func forward(address: String) async throws -> ResolvedLocation {
     struct ForwardRequest: Encodable { let address: String }
     let trimmed = address.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !trimmed.isEmpty else { throw APIError.server("address_required") }
     if let result: ResolvedLocation = try? await APIClient.shared.post(
       "v1/platform/geocode/forward",
       body: ForwardRequest(address: trimmed)
-    ), !result.address.isEmpty {
+    ), !result.address.isEmpty, result.lat != 0 || result.lng != 0 {
       return result
     }
 
@@ -121,7 +108,7 @@ enum GeocodeService {
       return ResolvedLocation(address: resolvedAddress, lat: loc.coordinate.latitude, lng: loc.coordinate.longitude, placeId: nil)
     }
 
-    return ResolvedLocation(address: trimmed.isEmpty ? "Amir Temur Ave, Tashkent" : trimmed, lat: 41.2995, lng: 69.2401, placeId: nil)
+    throw APIError.server("geocode_not_found")
   }
 
   private struct AutocompleteResponse: Decodable {

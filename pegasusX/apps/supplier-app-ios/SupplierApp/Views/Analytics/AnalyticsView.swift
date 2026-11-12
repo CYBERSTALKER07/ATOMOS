@@ -3,215 +3,175 @@ import SwiftUI
 struct AnalyticsView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(SupplierRealtimeHub.self) private var realtimeHub
-    @State private var loading = true
-    @State private var error: String?
-    @State private var hasSnapshot = false
-    @State private var pendingOrders = 0
-    @State private var inventorySKUs = 0
-    @State private var revenueLabel = "—"
-    @State private var predictionCount = 0
-    @State private var forecastUnits = 0
-    @State private var velocityCreated = 0
-    @State private var demandGeneratedAt: String?
-    @State private var demandConfidence: ForecastConfidence?
+    @State private var viewModel = AnalyticsViewModel()
 
     private var gridMin: CGFloat {
         horizontalSizeClass == .regular ? 200 : 150
     }
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                Group {
-                    if loading && !hasSnapshot {
-                        SupplierLoadingView(
-                            title: "Loading analytics",
-                            message: "Fetching revenue, demand, and velocity metrics."
+        ScrollView {
+            Group {
+                if viewModel.loading && !viewModel.hasSnapshot {
+                    SupplierLoadingView(
+                        title: "mobile_supplier.loading.analytics",
+                        message: "mobile_supplier.loading.analytics_message"
+                    )
+                } else if let error = viewModel.error, !viewModel.hasSnapshot {
+                    SupplierErrorView(message: error) { Task { await viewModel.load() } }
+                } else {
+                    VStack(alignment: .leading, spacing: SupplierTheme.spacingXL) {
+                        SupplierSectionHeader(
+                            title: "mobile_supplier.chrome.intelligence",
+                            subtitle: "mobile_supplier.chrome.revenue_and_demand"
                         )
-                    } else if let error {
-                        SupplierErrorView(message: error) { Task { await load() } }
-                    } else {
-                        VStack(alignment: .leading, spacing: SupplierTheme.spacingXL) {
-                            SupplierSectionHeader(
-                                title: "Intelligence",
-                                subtitle: "Revenue and demand signals"
+
+                        LazyVGrid(
+                            columns: [GridItem(.adaptive(minimum: gridMin), spacing: SupplierTheme.spacingMD)],
+                            spacing: SupplierTheme.spacingMD
+                        ) {
+                            KpiTile(
+                                title: "mobile_supplier.chrome.revenue_30_day",
+                                value: viewModel.revenueLabel,
+                                systemImage: "banknote",
+                                tint: SupplierTheme.success
                             )
-
-                            LazyVGrid(
-                                columns: [GridItem(.adaptive(minimum: gridMin), spacing: SupplierTheme.spacingMD)],
-                                spacing: SupplierTheme.spacingMD
-                            ) {
-                                KpiTile(
-                                    title: "30-day revenue",
-                                    value: revenueLabel,
-                                    systemImage: "banknote",
-                                    tint: SupplierTheme.success
-                                )
-                                KpiTile(
-                                    title: "Demand predictions",
-                                    value: "\(predictionCount)",
-                                    systemImage: "sparkles",
-                                    tint: .accentColor
-                                )
-                                KpiTile(
-                                    title: "Forecast units (24h)",
-                                    value: "\(forecastUnits)",
-                                    systemImage: "chart.line.uptrend.xyaxis",
-                                    tint: SupplierTheme.warning
-                                )
-                                KpiTile(
-                                    title: "Orders created (velocity)",
-                                    value: "\(velocityCreated)",
-                                    systemImage: "clock.arrow.circlepath",
-                                    tint: SupplierTheme.secondaryLabel
-                                )
-                            }
-
-                            SupplierSectionHeader(
-                                title: "Operational snapshot",
-                                subtitle: "Current queue and catalog depth"
+                            KpiTile(
+                                title: "mobile_supplier.chrome.demand_predictions",
+                                value: "\(viewModel.predictionCount)",
+                                systemImage: "sparkles",
+                                tint: .accentColor
                             )
-
-                            LazyVGrid(
-                                columns: [GridItem(.adaptive(minimum: gridMin), spacing: SupplierTheme.spacingMD)],
-                                spacing: SupplierTheme.spacingMD
-                            ) {
-                                KpiTile(
-                                    title: "Pending orders",
-                                    value: "\(pendingOrders)",
-                                    systemImage: "shippingbox",
-                                    tint: SupplierTheme.warning
-                                )
-                                KpiTile(
-                                    title: "Inventory SKUs",
-                                    value: "\(inventorySKUs)",
-                                    systemImage: "archivebox",
-                                    tint: .accentColor
-                                )
-                            }
-
-                            PlanningBrainSection()
-
-                            if let demandConfidence {
-                                ForecastConfidenceView(
-                                    confidence: demandConfidence,
-                                    updatedAt: ForecastConfidenceSupport.formatForecastUpdatedAt(generatedAt: demandGeneratedAt),
-                                    stale: ForecastConfidenceSupport.isForecastStale(generatedAt: demandGeneratedAt)
-                                )
-                            }
-
-                            SupplierSectionHeader(
-                                title: "Planning tools",
-                                subtitle: "Sandbox, graph, and seasonal settings"
+                            KpiTile(
+                                title: "mobile_supplier.chrome.forecast_units_24h",
+                                value: "\(viewModel.forecastUnits)",
+                                systemImage: "chart.line.uptrend.xyaxis",
+                                tint: SupplierTheme.warning
                             )
+                            KpiTile(
+                                title: "mobile_supplier.chrome.orders_created_velocity",
+                                value: "\(viewModel.velocityCreated)",
+                                systemImage: "clock.arrow.circlepath",
+                                tint: SupplierTheme.secondaryLabel
+                            )
+                        }
 
-                            VStack(spacing: SupplierTheme.spacingSM) {
-                                NavigationLink { PlanningBrainView() } label: {
-                                    Label("mobile_supplier.ui.planning_sandbox", systemImage: "brain.head.profile")
-                                }
-                                NavigationLink { KnowledgeGraphView() } label: {
-                                    Label("mobile_supplier.ui.knowledge_graph", systemImage: "point.3.connected.trianglepath.dotted")
-                                }
-                                NavigationLink { PlanningSettingsView() } label: {
-                                    Label("supplier_portal.settings.planning.text.planning_settings", systemImage: "calendar")
-                                }
-                                NavigationLink { ReturnPolicySettingsView() } label: {
-                                    Label("portal.nav.return_policy", systemImage: "arrow.uturn.backward.circle")
-                                }
+                        SupplierSectionHeader(
+                            title: "mobile_supplier.chrome.operational_snapshot",
+                            subtitle: "mobile_supplier.chrome.current_queue_depth"
+                        )
+
+                        LazyVGrid(
+                            columns: [GridItem(.adaptive(minimum: gridMin), spacing: SupplierTheme.spacingMD)],
+                            spacing: SupplierTheme.spacingMD
+                        ) {
+                            KpiTile(
+                                title: "mobile_supplier.chrome.pending_orders",
+                                value: MissingNumber.label(viewModel.pendingOrders),
+                                systemImage: "shippingbox",
+                                tint: SupplierTheme.warning
+                            )
+                            KpiTile(
+                                title: "mobile_supplier.chrome.inventory_skus",
+                                value: MissingNumber.label(viewModel.inventorySKUs),
+                                systemImage: "archivebox",
+                                tint: .accentColor
+                            )
+                        }
+
+                        PlanningBrainSection()
+
+                        if let demandConfidence = viewModel.demandConfidence {
+                            ForecastConfidenceView(
+                                confidence: demandConfidence,
+                                updatedAt: ForecastConfidenceSupport.formatForecastUpdatedAt(generatedAt: viewModel.demandGeneratedAt),
+                                stale: ForecastConfidenceSupport.isForecastStale(generatedAt: viewModel.demandGeneratedAt)
+                            )
+                        }
+
+                        SupplierSectionHeader(
+                            title: "mobile_supplier.chrome.planning_tools",
+                            subtitle: "mobile_supplier.chrome.sandbox_graph_seasonal"
+                        )
+
+                        VStack(spacing: SupplierTheme.spacingSM) {
+                            NavigationLink { PlanningBrainView() } label: {
+                                Label("mobile_supplier.ui.planning_sandbox", systemImage: "brain.head.profile")
+                            }
+                            NavigationLink { KnowledgeGraphView() } label: {
+                                Label("mobile_supplier.ui.knowledge_graph", systemImage: "point.3.connected.trianglepath.dotted")
+                            }
+                            NavigationLink { PlanningSettingsView() } label: {
+                                Label("supplier_portal.settings.planning.text.planning_settings", systemImage: "calendar")
+                            }
+                            NavigationLink { ReturnPolicySettingsView() } label: {
+                                Label("portal.nav.return_policy", systemImage: "arrow.uturn.backward.circle")
                             }
                         }
-                        .supplierReadableWidth()
-                        .padding()
                     }
+                    .supplierReadableWidth()
+                    .padding()
                 }
             }
-            .background(SupplierTheme.background)
-            .navigationTitle("portal.nav.analytics")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") {
-                        Task { await load(silent: true) }
-                    }
-                    .labelStyle(.iconOnly)
+        }
+        .scrollDismissesKeyboard(.interactively)
+        .background(SupplierTheme.background)
+        .navigationTitle("portal.nav.analytics")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    PegasusHaptics.light()
+                    Task { await viewModel.load(silent: true) }
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(SupplierTheme.label)
+                        .frame(minWidth: 44, minHeight: 44)
                 }
-            }
-            .task { await load() }
-            .refreshable { await load(silent: true) }
-            .silentRealtimeRefresh(
-                refreshEpoch: realtimeHub.refreshEpoch,
-                reconnectEpoch: realtimeHub.reconnectEpoch
-            ) { silent in
-                Task { await load(silent: silent) }
+                .accessibilityLabel(Text("portal.page.orders.action.refresh"))
             }
         }
-    }
-
-    @MainActor
-    private func load(silent: Bool = false) async {
-        if !silent { loading = true }
-        error = nil
-        do {
-            async let dash = SupplierService.dashboard()
-            async let revenue = SupplierOperationsService.analyticsRevenue()
-            async let demand = SupplierOperationsService.demandToday()
-            async let velocity = SupplierOperationsService.analyticsVelocity()
-
-            let dashValue = try await dash
-            let revenueValue = try await revenue
-            let demandValue = try await demand
-            let velocityValue = try await velocity
-
-            pendingOrders = dashValue.pendingOrders
-            inventorySKUs = dashValue.inventorySKUs
-            revenueLabel = MoneyFormat.minor(revenueValue.totalMinor, currency: revenueValue.currency)
-            predictionCount = demandValue.predictionCount
-            forecastUnits = demandValue.totalPallets
-            demandGeneratedAt = demandValue.generatedAt
-            demandConfidence = ForecastConfidenceSupport.fromDemand(demandValue)
-            velocityCreated = velocityValue.points.reduce(0) { $0 + $1.ordersCreated }
-            hasSnapshot = true
-        } catch {
-            if !silent { self.error = error.localizedDescription }
+        .task { await viewModel.load() }
+        .refreshable { await viewModel.load(silent: true) }
+        .silentRealtimeRefresh(
+            refreshEpoch: realtimeHub.refreshEpoch,
+            reconnectEpoch: realtimeHub.reconnectEpoch
+        ) { silent in
+            Task { await viewModel.load(silent: silent) }
         }
-        loading = false
     }
 }
 
 private struct PlanningBrainSection: View {
-    @State private var sandop: PlanningSAndOPSnapshot?
-    @State private var scenario: PlanningScenarioResult?
-    @State private var downtimeHours = 8.0
-    @State private var demandDeltaPct = 10.0
-    @State private var loading = true
-    @State private var running = false
-    @State private var error: String?
+    @State private var viewModel = PlanningBrainSectionViewModel()
 
     var body: some View {
+        @Bindable var vm = viewModel
         VStack(alignment: .leading, spacing: SupplierTheme.spacingMD) {
             SupplierSectionHeader(
-                title: "Planning sandbox",
-                subtitle: "Read-only what-if and lightweight S&OP"
+                title: "mobile_supplier.chrome.planning_sandbox",
+                subtitle: "mobile_supplier.chrome.readonly_what_if"
             )
 
-            if let error {
+            if let error = viewModel.error {
                 Text(error)
                     .font(.caption)
                     .foregroundStyle(SupplierTheme.destructive)
             }
 
-            if loading {
-                ProgressView("Loading S&OP…")
-            } else if let sandop {
+            if viewModel.loading && viewModel.sandop == nil {
+                ProgressView("mobile_supplier.loading.sandop")
+            } else if let sandop = viewModel.sandop {
                 LazyVGrid(
                     columns: [GridItem(.adaptive(minimum: 140), spacing: SupplierTheme.spacingMD)],
                     spacing: SupplierTheme.spacingMD
                 ) {
-                    KpiTile(title: "Factory cap (7d)", value: "\(sandop.factoryCapacityUnits)", systemImage: "building.2", tint: .accentColor)
-                    KpiTile(title: "WH inbound", value: "\(sandop.warehouseInboundCapUnits)", systemImage: "arrow.down.to.line", tint: SupplierTheme.secondaryLabel)
-                    KpiTile(title: "Utilization", value: "\(Int(sandop.utilizationPct))%", systemImage: "gauge", tint: SupplierTheme.warning)
+                    KpiTile(title: "mobile_supplier.chrome.factory_cap_7d", value: "\(sandop.factoryCapacityUnits)", systemImage: "building.2", tint: .accentColor)
+                    KpiTile(title: "mobile_supplier.chrome.wh_inbound", value: "\(sandop.warehouseInboundCapUnits)", systemImage: "arrow.down.to.line", tint: SupplierTheme.secondaryLabel)
+                    KpiTile(title: "mobile_supplier.chrome.utilization", value: "\(Int(sandop.utilizationPct))%", systemImage: "gauge", tint: SupplierTheme.warning)
                     KpiTile(
-                        title: "Capacity",
-                        value: sandop.capacityAlert ? "Breach" : "OK",
+                        title: "mobile_supplier.chrome.capacity",
+                        value: sandop.capacityAlert ? L10n.format("mobile_supplier.chrome.breach") : L10n.format("mobile_supplier.chrome.ok"),
                         systemImage: sandop.capacityAlert ? "exclamationmark.triangle" : "checkmark.circle",
                         tint: sandop.capacityAlert ? SupplierTheme.destructive : SupplierTheme.success
                     )
@@ -222,18 +182,19 @@ private struct PlanningBrainSection: View {
                 Text("supplier_portal.planning_brain_panel.text.scenario_run")
                     .font(.subheadline.bold())
                 HStack {
-                    Stepper("Downtime \(Int(downtimeHours))h", value: $downtimeHours, in: 0...168, step: 1)
+                    Stepper(LocalizedStringKey(L10n.format("mobile_supplier.chrome.downtime_hours", "\(Int(viewModel.downtimeHours))")), value: $vm.downtimeHours, in: 0...168, step: 1)
                 }
                 HStack {
-                    Stepper("Demand \(Int(demandDeltaPct))%", value: $demandDeltaPct, in: -50...200, step: 5)
+                    Stepper(LocalizedStringKey(L10n.format("mobile_supplier.chrome.demand_delta", "\(Int(viewModel.demandDeltaPct))")), value: $vm.demandDeltaPct, in: -50...200, step: 5)
                 }
-                Button(running ? "Running…" : "Run scenario") {
-                    Task { await runScenario() }
+                Button(LocalizedStringKey(viewModel.running ? "mobile_supplier.chrome.running" : "mobile_supplier.chrome.run_scenario")) {
+                    Task { await viewModel.runScenario() }
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(running)
+                .frame(minHeight: 44)
+                .disabled(viewModel.running)
 
-                if let scenario {
+                if let scenario = viewModel.scenario {
                     Text(L10n.format("mobile_supplier.ui.sla_risk_slariskpct_fleet_fleetvolumeorders_stockouts_count", "\(Int(scenario.slaRiskPct))", "\(scenario.fleetVolumeOrders)", "\(scenario.stockoutSkus.count)"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -241,42 +202,8 @@ private struct PlanningBrainSection: View {
             }
             .padding()
             .background(SupplierTheme.card)
-            .clipShape(RoundedRectangle(cornerRadius: SupplierTheme.radiusLG))
+            .clipShape(RoundedRectangle(cornerRadius: SupplierTheme.radiusLG, style: .continuous))
         }
-        .task { await loadSandop() }
-    }
-
-    @MainActor
-    private func loadSandop() async {
-        loading = true
-        error = nil
-        defer { loading = false }
-        do {
-            sandop = try await SupplierOperationsService.planningSAndOP()
-        } catch {
-            self.error = error.localizedDescription
-        }
-    }
-
-    @MainActor
-    private func runScenario() async {
-        running = true
-        error = nil
-        defer { running = false }
-        do {
-            let scope = SupplierIdempotencyKeys.supplierScopeId()
-            let key = SupplierIdempotencyKeys.planningScenario(
-                scopeId: scope,
-                factoryDowntimeHours: Int(downtimeHours),
-                demandDeltaPct: demandDeltaPct
-            )
-            scenario = try await SupplierOperationsService.runPlanningScenario(
-                factoryDowntimeHours: Int(downtimeHours),
-                demandDeltaPct: demandDeltaPct,
-                idempotencyKey: key
-            )
-        } catch {
-            self.error = error.localizedDescription
-        }
+        .task { await viewModel.loadSandop() }
     }
 }

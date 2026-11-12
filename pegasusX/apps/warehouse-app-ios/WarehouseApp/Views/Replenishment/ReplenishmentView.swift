@@ -2,98 +2,72 @@ import SwiftUI
 
 struct ReplenishmentView: View {
     @Environment(WarehouseRealtimeHub.self) private var realtimeHub
-    @State private var insights: [ReplenishmentInsight] = []
-    @State private var loading = true
-    @State private var error: String?
-    @State private var actingId: String?
-    @State private var statusMessage: String?
+    @State private var vm = ReplenishmentViewModel()
 
     var body: some View {
         Group {
-            if loading && insights.isEmpty {
+            if vm.loading && vm.insights.isEmpty {
                 WarehouseLoadingView(
                     title: "Loading replenishment",
                     message: "Fetching stock insights and reorder recommendations."
                 )
-            } else if let error, insights.isEmpty {
-                WarehouseErrorView(message: error) { load() }
-            } else if insights.isEmpty {
+            } else if let error = vm.error, vm.insights.isEmpty {
+                WarehouseErrorView(message: error) {
+                    PegasusHaptics.light()
+                    Task { await vm.load() }
+                }
+            } else if vm.insights.isEmpty {
                 WarehouseEmptyView(
                     title: "No insights",
                     message: "No replenishment insights for this warehouse."
                 )
             } else {
                 ReplenishmentList(
-                    insights: insights,
-                    actingId: actingId,
-                    onApprove: { id in runAction(insightId: id, action: "approve") },
-                    onDismiss: { id in runAction(insightId: id, action: "dismiss") }
+                    insights: vm.insights,
+                    actingId: vm.actingId,
+                    onApprove: { id in
+                        PegasusHaptics.medium()
+                        Task { await vm.runAction(insightId: id, action: "approve") }
+                    },
+                    onDismiss: { id in
+                        PegasusHaptics.warning()
+                        Task { await vm.runAction(insightId: id, action: "dismiss") }
+                    }
                 )
             }
         }
         .navigationTitle("portal.nav.replenishment")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") { load() }
+                Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") {
+                    PegasusHaptics.light()
+                    Task { await vm.load() }
+                }
+                .frame(minWidth: 44, minHeight: 44)
+                .contentShape(Rectangle())
+                .accessibilityLabel("Refresh replenishment insights")
             }
         }
         .overlay(alignment: .bottom) {
-            if let statusMessage {
+            if let statusMessage = vm.statusMessage {
                 Text(statusMessage)
                     .font(.caption)
                     .padding(8)
                     .background(.ultraThinMaterial)
                     .clipShape(RoundedRectangle(cornerRadius: LabTheme.radiusSM))
                     .padding()
-                    .onAppear {
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
-                            self.statusMessage = nil
-                        }
+                    .task(id: statusMessage) {
+                        await vm.autoClearStatusMessage()
                     }
             }
         }
-        .task { load() }
-        .refreshable { load(silent: false) }
+        .task { await vm.load() }
+        .refreshable { await vm.load(silent: false) }
         .silentRealtimeRefresh(refreshEpoch: realtimeHub.refreshEpoch, reconnectEpoch: realtimeHub.reconnectEpoch) { silent in
-            load(silent: silent)
+            Task { await vm.load(silent: silent) }
         }
         .onChange(of: realtimeHub.reconnectEpoch) { _, _ in
-            if actingId != nil {
-                actingId = nil
-                statusMessage = "Connection restored — verify status before retrying."
-            }
-        }
-    }
-
-    private func load(silent: Bool = false) {
-        if !silent { loading = true }
-        error = nil
-        Task {
-            do {
-                let response = try await WarehouseService.replenishmentInsights()
-                insights = response.rows
-            } catch {
-                if !silent { self.error = error.localizedDescription }
-            }
-            if !silent { loading = false }
-        }
-    }
-
-    private func runAction(insightId: String, action: String) {
-        actingId = insightId
-        Task {
-            do {
-                let response = try await WarehouseService.replenishmentInsightAction(insightId: insightId, action: action)
-                if action == "approve", let transferId = response.transferId, !transferId.isEmpty {
-                    statusMessage = "Approved — transfer \(String(transferId.prefix(8)))"
-                } else {
-                    statusMessage = action == "approve" ? "Insight approved" : "Insight dismissed"
-                }
-                load()
-            } catch {
-                statusMessage = error.localizedDescription
-            }
-            actingId = nil
+            vm.handleReconnect()
         }
     }
 }

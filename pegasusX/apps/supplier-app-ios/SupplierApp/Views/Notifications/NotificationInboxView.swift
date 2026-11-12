@@ -1,24 +1,21 @@
 import SwiftUI
 
 struct NotificationInboxView: View {
-    @State private var items: [SupplierNotificationItem] = []
-    @State private var unreadCount = 0
-    @State private var loading = true
-    @State private var error: String?
+    @State private var vm = NotificationInboxViewModel()
 
     var body: some View {
         Group {
-            if loading {
-                SupplierLoadingView(title: "Loading notifications…")
-            } else if let error {
-                SupplierErrorView(message: error) { load() }
-            } else if items.isEmpty {
-                ContentUnavailableView("No notifications", systemImage: "bell")
+            if vm.loading && vm.items.isEmpty {
+                SupplierLoadingView(title: "mobile_supplier.loading.notifications")
+            } else if let error = vm.error, vm.items.isEmpty {
+                SupplierErrorView(message: error) { Task { await vm.load() } }
+            } else if vm.items.isEmpty {
+                ContentUnavailableView("mobile_supplier.chrome.no_notifications", systemImage: "bell")
             } else {
                 ResponsiveGridContentWrapper {
-                    ForEach(items) { item in
+                    ForEach(vm.items) { item in
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(item.title.isEmpty ? (item.type.isEmpty ? "Notification" : item.type) : item.title)
+                            Text(item.title.isEmpty ? (item.type.isEmpty ? L10n.format("mobile_supplier.chrome.notification") : item.type) : item.title)
                                 .fontWeight(item.readAt == nil ? .semibold : .regular)
                             if !item.body.isEmpty {
                                 Text(item.body)
@@ -32,71 +29,34 @@ struct NotificationInboxView: View {
                             }
                         }
                         .padding(.vertical, 4)
+                        .accessibilityElement(children: .combine)
                     }
                 }
             }
         }
-        .navigationTitle(unreadCount > 0 ? "Notifications (\(unreadCount))" : "Notifications")
+        .navigationTitle(vm.unreadCount > 0 ? LocalizedStringKey(L10n.format("mobile_supplier.chrome.notifications_count", "\(vm.unreadCount)")) : LocalizedStringKey("mobile_supplier.chrome.notifications"))
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
-                if unreadCount > 0 {
+                if vm.unreadCount > 0 {
                     Button("mobile_supplier.ui.mark_all_read") {
-                        Task { await markAllRead() }
+                        PegasusHaptics.light()
+                        Task { await vm.markAllRead() }
                     }
+                    .frame(minHeight: 44)
                 }
                 Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") {
-                    load()
+                    PegasusHaptics.light()
+                    Task { await vm.load(silent: true) }
                 }
+                .frame(minWidth: 44, minHeight: 44)
             }
         }
-        .refreshable { load() }
-        .task { load() }
-    }
-
-    private func load() {
-        loading = true
-        error = nil
-        Task {
-            defer { loading = false }
-            do {
-                let page: SupplierNotificationsPage = try await APIClient.shared.get(
-                    "v1/user/notifications",
-                    query: ["limit": "50", "offset": "0"],
-                )
-                items = page.notifications
-                unreadCount = page.unreadCount
-            } catch {
-                self.error = error.localizedDescription
-            }
-        }
-    }
-
-    private func markAllRead() async {
-        do {
-            try await APIClient.shared.postVoid(
-                "v1/user/notifications/read",
-                body: MarkNotificationsReadRequest(markAll: true),
-            )
-            load()
-        } catch {
-            self.error = error.localizedDescription
-        }
+        .refreshable { await vm.load(silent: true) }
+        .task { await vm.load() }
     }
 }
 
-private struct SupplierNotificationsPage: Decodable {
-    let notifications: [SupplierNotificationItem]
-    let unreadCount: Int
-    let hasMore: Bool
-
-    enum CodingKeys: String, CodingKey {
-        case notifications
-        case unreadCount = "unread_count"
-        case hasMore = "has_more"
-    }
-}
-
-struct SupplierNotificationItem: Decodable, Identifiable {
+struct SupplierNotificationItem: Decodable, Identifiable, Sendable {
     let id: String
     let type: String
     let title: String
@@ -111,13 +71,5 @@ struct SupplierNotificationItem: Decodable, Identifiable {
         case type, title, body, payload, channel
         case readAt = "read_at"
         case createdAt = "created_at"
-    }
-}
-
-private struct MarkNotificationsReadRequest: Encodable {
-    let markAll: Bool
-
-    enum CodingKeys: String, CodingKey {
-        case markAll = "mark_all"
     }
 }

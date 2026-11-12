@@ -5,6 +5,7 @@ import Foundation
 final class InventoryViewModel {
     var items: [InventoryItem] = []
     var loading = true
+    private var loadGeneration = 0
     var error: String?
     var query = ""
     var adjustingSku: String?
@@ -18,15 +19,31 @@ final class InventoryViewModel {
     }
 
     func load(silent: Bool = false) async {
-        if !silent { loading = true }
-        error = nil
-        defer { loading = false }
+        loadGeneration += 1
+        let generation = loadGeneration
+        let hadContent = !items.isEmpty
+        SupplierScreenLoad.begin(silent: silent, loading: &loading, error: &error)
         do {
-            items = try await SupplierService.inventory()
+            let loadedItems = try await SupplierService.inventory()
+            guard generation == loadGeneration else { return }
+            items = loadedItems
+            guard generation == loadGeneration else { return }
+            SupplierScreenLoad.succeed(error: &error)
         } catch {
-            if !silent { self.error = error.localizedDescription }
+            guard generation == loadGeneration else { return }
+            SupplierScreenLoad.fail(
+                silent: silent,
+                hasContent: hadContent,
+                underlying: error,
+                error: &self.error,
+                noun: "data"
+            )
+        }
+        if generation == loadGeneration {
+            loading = false
         }
     }
+
 
     func adjustQuantity(sku: String, delta: Int64) async {
         adjustingSku = sku
@@ -43,7 +60,7 @@ final class InventoryViewModel {
             )
             await load(silent: true)
         } catch {
-            self.error = error.localizedDescription
+            SupplierActionFailure.record(underlying: error, hasContent: !items.isEmpty, error: &self.error)
         }
     }
 }

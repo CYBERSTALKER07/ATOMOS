@@ -17,7 +17,6 @@ struct TacticalActivityTimeline: View {
         VStack(alignment: .leading, spacing: 0) {
             ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
                 HStack(alignment: .top, spacing: 12) {
-                    // Timeline indicator column
                     VStack(spacing: 0) {
                         Circle()
                             .fill(item.tint)
@@ -38,29 +37,28 @@ struct TacticalActivityTimeline: View {
                     }
                     .frame(width: 16)
 
-                    // Event Content
                     VStack(alignment: .leading, spacing: 4) {
                         HStack {
                             Text(item.title)
-                                .font(.system(size: 13, weight: .bold))
+                                .font(.system(.footnote, weight: .bold))
                                 .foregroundStyle(TacticalTheme.textPrimary)
 
                             Spacer()
 
                             Text(item.timestamp)
-                                .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                                .font(.system(.caption2, design: .monospaced, weight: .semibold))
                                 .foregroundStyle(TacticalTheme.textTertiary)
                         }
 
                         Text(item.description)
-                            .font(.system(size: 12, weight: .regular))
+                            .font(.system(.caption, weight: .regular))
                             .foregroundStyle(TacticalTheme.textSecondary)
 
                         HStack(spacing: 6) {
                             Text("ACTOR:")
                                 .tacticalMicroLabel()
                             Text(item.actor)
-                                .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                                .font(.system(.caption2, design: .monospaced, weight: .semibold))
                                 .foregroundStyle(TacticalTheme.accentCobalt)
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
@@ -70,6 +68,8 @@ struct TacticalActivityTimeline: View {
                         .padding(.top, 2)
                     }
                     .padding(.bottom, 16)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("\(item.title), \(item.timestamp), \(item.description), actor \(item.actor)")
                 }
             }
         }

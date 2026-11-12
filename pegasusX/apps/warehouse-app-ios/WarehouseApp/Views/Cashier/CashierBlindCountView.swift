@@ -6,445 +6,532 @@
 import SwiftUI
 
 struct CashierBlindCountView: View {
-
+    @Environment(\.dismiss) private var dismiss
     @State private var vm = CashierViewModel()
-    let onBack: () -> Void
+    var onBack: (() -> Void)? = nil
 
-    @State private var showRRNSheet: Bool = false
-    @State private var showCITSheet: Bool = false
-    @State private var showAMLSheet: Bool = false
-
-    @State private var rrnOrderId: String = "order-uz-8812"
-    @State private var rrnGateway: String = "123456789012"
-    @State private var rrnDisputedCash: String = "500000"
-
-    @State private var citBadgeId: String = "INKAS-9921"
-    @State private var citSealBarcode: String = "CIT-SEAL-7712"
-    @State private var citAmountUzs: String = "1425000"
-
-    @State private var amlTin: String = "123456789"
-    @State private var amlAmountUzs: String = "15000000"
+    init(onBack: (() -> Void)? = nil) {
+        self.onBack = onBack
+    }
 
     private let banknoteDenominations: [Int64] = [200000, 100000, 50000, 20000, 10000, 5000, 2000, 1000]
 
     var body: some View {
-        NavigationStack {
-            ZStack(alignment: .bottom) {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 18) {
-                        // Title
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Cashier Blind Count & Vault")
-                                .font(.system(size: 24, weight: .bold))
-                            Text("Dual-Blind Reconciliation with UZS Integer Tiyin Arithmetic")
-                                .font(.system(size: 13))
+        @Bindable var vm = vm
+        ZStack(alignment: .bottom) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Cashier Blind Count & Vault")
+                            .font(.system(.title2, weight: .bold))
+                        Text("Dual-Blind Reconciliation with UZS Integer Tiyin Arithmetic")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.top, 10)
+
+                    if let err = vm.errorMessage {
+                        HStack {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundStyle(PegasusMonochromeTheme.destructive)
+                            Text(err)
+                                .font(.system(.footnote, weight: .medium))
+                                .foregroundStyle(PegasusMonochromeTheme.destructive)
+                        }
+                        .padding(12)
+                        .background(PegasusMonochromeTheme.destructive.opacity(0.12))
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .accessibilityElement(children: .combine)
+                    }
+
+                    if vm.isRecountRequired {
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Image(systemName: "lock.rotation")
+                                    .font(.system(.title3, weight: .bold))
+                                    .foregroundStyle(PegasusMonochromeTheme.warning)
+                                Text("BLIND RECOUNT #2 REQUIRED")
+                                    .font(.system(.subheadline, weight: .heavy))
+                                    .foregroundStyle(PegasusMonochromeTheme.warning)
+                            }
+                            Text("Physical count does not match route ledger. Expected cash remains strictly masked.")
+                                .font(.caption)
+                                .foregroundStyle(PegasusMonochromeTheme.secondaryLabel)
+                        }
+                        .padding(14)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(PegasusMonochromeTheme.warning.opacity(0.12))
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .accessibilityElement(children: .combine)
+                    }
+
+                    if vm.isBalanced, let hash = vm.clearanceTokenHash {
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Image(systemName: "checkmark.seal.fill")
+                                    .font(.title3)
+                                    .foregroundStyle(PegasusMonochromeTheme.success)
+                                Text("COUNT BALANCED · CLEARANCE ISSUED")
+                                    .font(.system(.subheadline, weight: .bold))
+                                    .foregroundStyle(PegasusMonochromeTheme.success)
+                            }
+                            Text("Token Hash: \(hash)")
+                                .font(.system(.caption2, design: .monospaced))
+                                .foregroundStyle(PegasusMonochromeTheme.secondaryLabel)
+                        }
+                        .padding(12)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(PegasusMonochromeTheme.success.opacity(0.12))
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .accessibilityElement(children: .combine)
+                    }
+
+                    // Session Setup Card
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Route Deposit Bag Verification")
+                            .font(.system(.subheadline, weight: .semibold))
+
+                        HStack {
+                            Text("Bag Seal:")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                            TextField("Bag Seal Barcode", text: $vm.bagSealBarcode)
+                                .textFieldStyle(.roundedBorder)
+                                .font(.system(.footnote, design: .monospaced))
+                                .autocorrectionDisabled()
+                                .textInputAutocapitalization(.characters)
+                        }
+
+                        HStack {
+                            Text("Driver ID:")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                            TextField("Driver ID", text: $vm.driverId)
+                                .textFieldStyle(.roundedBorder)
+                                .font(.footnote)
+                                .autocorrectionDisabled()
+                                .textInputAutocapitalization(.characters)
+                        }
+
+                        if vm.session == nil {
+                            Button {
+                                PegasusHaptics.medium()
+                                Task { await vm.startSession() }
+                            } label: {
+                                Text("Start Cashier Session")
+                                    .font(.system(.subheadline, weight: .bold))
+                                    .frame(maxWidth: .infinity, minHeight: 44)
+                                    .contentShape(Rectangle())
+                                    .background(PegasusMonochromeTheme.primaryAction)
+                                    .foregroundStyle(PegasusMonochromeTheme.onPrimaryAction)
+                                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(14)
+                    .background(Color(.secondarySystemGroupedBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+
+                    // Blind Masking Verification Card
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Reconciliation State (Attempt #\(vm.attemptNumber))")
+                            .font(.system(.subheadline, weight: .semibold))
+
+                        HStack {
+                            Text("Physical Counted Cash:")
+                                .font(.footnote)
+                            Spacer()
+                            Text(CashierViewModel.formatUzs(amount: vm.countedCashMinor / 100))
+                                .font(.system(.subheadline, design: .monospaced, weight: .bold))
+                                .foregroundStyle(Color.primary)
+                        }
+                        .accessibilityElement(children: .combine)
+
+                        HStack {
+                            Text("Expected Route Cash:")
+                                .font(.footnote)
+                            Spacer()
+                            if vm.isBlindCountMasked {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "lock.fill")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                    Text("•••••••• UZS [MASKED]")
+                                        .font(.system(.subheadline, design: .monospaced, weight: .bold))
+                                        .foregroundStyle(.secondary)
+                                }
+                            } else {
+                                Text(CashierViewModel.formatUzs(amount: (vm.session?.expectedCashMinor ?? 0) / 100))
+                                    .font(.system(.subheadline, design: .monospaced, weight: .bold))
+                            }
+                        }
+                        .accessibilityElement(children: .combine)
+
+                        if vm.isBlindCountMasked {
+                            Text("Dual-Blind Rule: Expected amount strictly masked during counts #1 and #2 to prevent cashier confirmation bias.")
+                                .font(.caption2)
                                 .foregroundStyle(.secondary)
                         }
-                        .padding(.top, 10)
+                    }
+                    .padding(14)
+                    .background(Color(.secondarySystemGroupedBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
 
-                        // Status / Alert Banners
-                        if let err = vm.errorMessage {
-                            HStack {
-                                Image(systemName: "exclamationmark.triangle.fill")
-                                    .foregroundStyle(.red)
-                                Text(err)
-                                    .font(.system(size: 13, weight: .medium))
-                                    .foregroundStyle(.red)
-                            }
-                            .padding(12)
-                            .background(Color.red.opacity(0.12))
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
-                        }
-
-                        if vm.isRecountRequired {
-                            VStack(alignment: .leading, spacing: 8) {
-                                HStack {
-                                    Image(systemName: "lock.rotation")
-                                        .font(.system(size: 20, weight: .bold))
-                                        .foregroundStyle(.orange)
-                                    Text("BLIND RECOUNT #2 REQUIRED")
-                                        .font(.system(size: 15, weight: .heavy))
-                                        .foregroundStyle(.orange)
-                                }
-                                Text("Physical count does not match route ledger. Expected cash remains strictly masked.")
-                                    .font(.system(size: 12))
-                                    .foregroundStyle(.secondary)
-                            }
-                            .padding(14)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(Color.orange.opacity(0.12))
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
-                        }
-
-                        if vm.isBalanced, let hash = vm.clearanceTokenHash {
-                            VStack(alignment: .leading, spacing: 8) {
-                                HStack {
-                                    Image(systemName: "checkmark.seal.fill")
-                                        .font(.system(size: 20))
-                                        .foregroundStyle(.green)
-                                    Text("COUNT BALANCED · CLEARANCE ISSUED")
-                                        .font(.system(size: 14, weight: .bold))
-                                        .foregroundStyle(.green)
-                                }
-                                Text("Token Hash: \(hash)")
-                                    .font(.system(size: 10, design: .monospaced))
-                                    .foregroundStyle(.secondary)
-                            }
-                            .padding(12)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(Color.green.opacity(0.12))
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
-                        }
-
-                        // Session Setup Card
-                        VStack(alignment: .leading, spacing: 10) {
-                            Text("Route Deposit Bag Verification")
-                                .font(.system(size: 14, weight: .semibold))
-
-                            HStack {
-                                Text("Bag Seal:")
-                                    .font(.system(size: 13))
-                                    .foregroundStyle(.secondary)
-                                TextField("Bag Seal Barcode", text: $vm.bagSealBarcode)
-                                    .textFieldStyle(.roundedBorder)
-                                    .font(.system(size: 13, design: .monospaced))
-                            }
-
-                            HStack {
-                                Text("Driver ID:")
-                                    .font(.system(size: 13))
-                                    .foregroundStyle(.secondary)
-                                TextField("Driver ID", text: $vm.driverId)
-                                    .textFieldStyle(.roundedBorder)
-                                    .font(.system(size: 13))
-                            }
-
-                            if vm.session == nil {
-                                Button {
-                                    Task { await vm.startSession() }
-                                } label: {
-                                    Text("Start Cashier Session")
-                                        .font(.system(size: 14, weight: .bold))
-                                        .frame(maxWidth: .infinity)
-                                        .frame(height: 40)
-                                        .background(Color.blue)
-                                        .foregroundStyle(.white)
-                                        .clipShape(RoundedRectangle(cornerRadius: 8))
-                                }
-                            }
-                        }
-                        .padding(14)
-                        .background(Color(.secondarySystemGroupedBackground))
-                        .clipShape(RoundedRectangle(cornerRadius: 14))
-
-                        // Blind Masking Verification Card
-                        VStack(alignment: .leading, spacing: 10) {
-                            Text("Reconciliation State (Attempt #\(vm.attemptNumber))")
-                                .font(.system(size: 14, weight: .semibold))
-
-                            HStack {
-                                Text("Physical Counted Cash:")
-                                    .font(.system(size: 13))
-                                Spacer()
-                                Text("\(vm.countedCashMinor / 100) UZS")
-                                    .font(.system(size: 15, weight: .bold, design: .monospaced))
-                                    .foregroundStyle(Color.primary)
-                            }
-
-                            HStack {
-                                Text("Expected Route Cash:")
-                                    .font(.system(size: 13))
-                                Spacer()
-                                if vm.isBlindCountMasked {
-                                    HStack(spacing: 4) {
-                                        Image(systemName: "lock.fill")
-                                            .font(.system(size: 12))
-                                            .foregroundStyle(.secondary)
-                                        Text("•••••••• UZS [MASKED]")
-                                            .font(.system(size: 14, weight: .bold, design: .monospaced))
-                                            .foregroundStyle(.secondary)
-                                    }
-                                } else {
-                                    Text("\((vm.session?.expectedCashMinor ?? 0) / 100) UZS")
-                                        .font(.system(size: 15, weight: .bold, design: .monospaced))
-                                }
-                            }
-
-                            if vm.isBlindCountMasked {
-                                Text("Dual-Blind Rule: Expected amount strictly masked during counts #1 and #2 to prevent cashier confirmation bias.")
-                                    .font(.system(size: 11))
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                        .padding(14)
-                        .background(Color(.secondarySystemGroupedBackground))
-                        .clipShape(RoundedRectangle(cornerRadius: 14))
-
-                        // Banknote Denomination Grid
-                        VStack(alignment: .leading, spacing: 10) {
-                            HStack {
+                    // Banknote Denomination Grid with Quick Strap Bundles
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
                                 Text("UZS Banknote Physical Counter")
-                                    .font(.system(size: 14, weight: .semibold))
-                                Spacer()
-                                Button {
+                                    .font(.system(.subheadline, weight: .semibold))
+                                    .foregroundStyle(PegasusMonochromeTheme.label)
+                                Text("Total Notes: \(vm.totalBanknotesCount)")
+                                    .font(.system(.caption, design: .monospaced, weight: .medium))
+                                    .foregroundStyle(PegasusMonochromeTheme.secondaryLabel)
+                            }
+                            Spacer()
+                            Menu {
+                                Button("Preset: Balanced Count (1,425,000 UZS)") {
                                     PegasusHaptics.medium()
-                                    vm.clearCounts()
-                                } label: {
-                                    Text("Reset")
-                                        .font(.system(size: 12, weight: .bold))
-                                        .foregroundStyle(.red)
-                                        .frame(minHeight: 32)
+                                    vm.quickFillSampleBalanced()
                                 }
+                                Button("Preset: Discrepant Count (Trigger Recount)") {
+                                    PegasusHaptics.warning()
+                                    vm.quickFillSampleDiscrepant()
+                                }
+                            } label: {
+                                Label("Presets", systemImage: "sparkles")
+                                    .font(.system(.caption, weight: .semibold))
+                                    .foregroundStyle(PegasusMonochromeTheme.accentBronze)
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 6)
+                                    .frame(minHeight: 44)
+                                    .contentShape(Rectangle())
+                                    .background(PegasusMonochromeTheme.tertiaryBackground)
+                                    .clipShape(Capsule())
                             }
 
-                            ForEach(banknoteDenominations, id: \.self) { denom in
-                                let count = vm.denominations[denom] ?? 0
-                                let subtotal = denom * count
+                            Button {
+                                PegasusHaptics.medium()
+                                vm.clearCounts()
+                            } label: {
+                                Text("Reset")
+                                    .font(.system(.caption, weight: .bold))
+                                    .foregroundStyle(PegasusMonochromeTheme.destructive)
+                            }
+                            .padding(.horizontal, 6)
+                            .pegasusMinimumHitTarget(44)
+                        }
+
+                        ForEach(banknoteDenominations, id: \.self) { denom in
+                            let count = vm.denominations[denom] ?? 0
+                            let subtotal = denom * count
+                            VStack(alignment: .leading, spacing: 6) {
                                 HStack {
-                                    Text("\(denom) UZS")
-                                        .font(.system(size: 14, weight: .bold, design: .monospaced))
-                                        .frame(width: 100, alignment: .leading)
+                                    Text(CashierViewModel.formatUzs(amount: denom))
+                                        .font(.system(.subheadline, design: .monospaced, weight: .bold))
+                                        .foregroundStyle(PegasusMonochromeTheme.label)
+                                    Spacer()
+                                    Text(CashierViewModel.formatUzs(amount: subtotal))
+                                        .font(.system(.footnote, design: .monospaced, weight: .bold))
+                                        .monospacedDigit()
+                                        .foregroundStyle(count > 0 ? PegasusMonochromeTheme.label : PegasusMonochromeTheme.secondaryLabel)
+                                }
+
+                                HStack(spacing: 8) {
+                                    HStack(spacing: 4) {
+                                        ForEach([10, 50, 100], id: \.self) { bundle in
+                                            Button {
+                                                PegasusHaptics.light()
+                                                vm.addStrap(noteUzs: denom, strapCount: Int64(bundle))
+                                            } label: {
+                                                Text("+\(bundle)")
+                                                    .font(.system(.caption2, design: .monospaced, weight: .bold))
+                                                    .padding(.horizontal, 8)
+                                                    .padding(.vertical, 6)
+                                                    .frame(minWidth: 44, minHeight: 44)
+                                                    .contentShape(Rectangle())
+                                                    .background(PegasusMonochromeTheme.tertiaryBackground)
+                                                    .foregroundStyle(PegasusMonochromeTheme.label)
+                                                    .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                                            }
+                                            .buttonStyle(.plain)
+                                            .accessibilityLabel("Add strap of \(bundle) notes (\(CashierViewModel.formatUzs(amount: denom * Int64(bundle))))")
+                                        }
+                                    }
 
                                     Spacer()
 
-                                    Button {
-                                        PegasusHaptics.light()
-                                        vm.adjustCount(noteUzs: denom, delta: -1)
-                                    } label: {
-                                        Image(systemName: "minus.circle.fill")
-                                            .font(.system(size: 24))
-                                            .foregroundStyle(.secondary)
-                                            .frame(minWidth: 44, minHeight: 44)
-                                            .contentShape(Rectangle())
+                                    HStack(spacing: 6) {
+                                        Button {
+                                            PegasusHaptics.light()
+                                            vm.adjustCount(noteUzs: denom, delta: -1)
+                                        } label: {
+                                            Image(systemName: "minus.circle.fill")
+                                                .font(.title2)
+                                                .foregroundStyle(count > 0 ? PegasusMonochromeTheme.secondaryLabel : PegasusMonochromeTheme.tertiaryLabel)
+                                                .frame(minWidth: 44, minHeight: 44)
+                                                .contentShape(Rectangle())
+                                        }
+                                        .disabled(count <= 0)
+                                        .accessibilityLabel("Decrease \(denom) UZS note count")
+
+                                        Text("\(count)")
+                                            .font(.system(.subheadline, design: .monospaced, weight: .bold))
+                                            .monospacedDigit()
+                                            .frame(minWidth: 36, alignment: .center)
+                                            .accessibilityLabel("\(count) notes of \(denom) UZS")
+
+                                        Button {
+                                            PegasusHaptics.light()
+                                            vm.adjustCount(noteUzs: denom, delta: 1)
+                                        } label: {
+                                            Image(systemName: "plus.circle.fill")
+                                                .font(.title2)
+                                                .foregroundStyle(PegasusMonochromeTheme.label)
+                                                .frame(minWidth: 44, minHeight: 44)
+                                                .contentShape(Rectangle())
+                                        }
+                                        .accessibilityLabel("Increase \(denom) UZS note count")
                                     }
-                                    .accessibilityLabel("Decrease \(denom) UZS note count")
-
-                                    Text("\(count)")
-                                        .font(.system(size: 15, weight: .bold))
-                                        .monospacedDigit()
-                                        .frame(width: 44, alignment: .center)
-                                        .accessibilityLabel("\(count) notes")
-
-                                    Button {
-                                        PegasusHaptics.light()
-                                        vm.adjustCount(noteUzs: denom, delta: 1)
-                                    } label: {
-                                        Image(systemName: "plus.circle.fill")
-                                            .font(.system(size: 24))
-                                            .foregroundStyle(Color.blue)
-                                            .frame(minWidth: 44, minHeight: 44)
-                                            .contentShape(Rectangle())
-                                    }
-                                    .accessibilityLabel("Increase \(denom) UZS note count")
-
-                                    Text("\(subtotal) UZS")
-                                        .font(.system(size: 13, design: .monospaced))
-                                        .monospacedDigit()
-                                        .foregroundStyle(.secondary)
-                                        .frame(width: 90, alignment: .trailing)
                                 }
-                                .padding(.vertical, 2)
-                                .accessibilityElement(children: .contain)
-                                Divider()
                             }
+                            .padding(.vertical, 4)
+                            .accessibilityElement(children: .contain)
+                            Divider()
                         }
-                        .padding(14)
-                        .background(Color(.secondarySystemGroupedBackground))
-                        .clipShape(RoundedRectangle(cornerRadius: 14))
-
-                        // Ops Action Buttons
-                        HStack(spacing: 10) {
-                            Button {
-                                showRRNSheet = true
-                            } label: {
-                                Text("Reclassify RRN")
-                                    .font(.system(size: 12, weight: .bold))
-                                    .frame(maxWidth: .infinity)
-                                    .frame(height: 38)
-                                    .background(Color(.tertiarySystemGroupedBackground))
-                                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                            }
-
-                            Button {
-                                showCITSheet = true
-                            } label: {
-                                Text("CIT Handover")
-                                    .font(.system(size: 12, weight: .bold))
-                                    .frame(maxWidth: .infinity)
-                                    .frame(height: 38)
-                                    .background(Color(.tertiarySystemGroupedBackground))
-                                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                            }
-
-                            Button {
-                                showAMLSheet = true
-                            } label: {
-                                Text("AML Exposure")
-                                    .font(.system(size: 12, weight: .bold))
-                                    .frame(maxWidth: .infinity)
-                                    .frame(height: 38)
-                                    .background(Color(.tertiarySystemGroupedBackground))
-                                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                            }
-                        }
-
-                        Spacer(minLength: 80)
                     }
-                    .padding(.horizontal, 16)
-                }
+                    .padding(14)
+                    .background(Color(.secondarySystemGroupedBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
 
-                // Submit Button
-                VStack {
-                    Button {
-                        PegasusHaptics.heavy()
-                        Task {
-                            await vm.submitBlindCount()
-                            if vm.isBalanced {
-                                PegasusHaptics.success()
-                            } else if vm.isRecountRequired || vm.errorMessage != nil {
-                                PegasusHaptics.error()
-                            }
+                    // Ops Action Buttons
+                    HStack(spacing: 10) {
+                        Button {
+                            PegasusHaptics.selection()
+                            vm.showRRNSheet = true
+                        } label: {
+                            Text("Reclassify RRN")
+                                .font(.system(.caption, weight: .bold))
+                                .frame(maxWidth: .infinity, minHeight: 44)
+                                .contentShape(Rectangle())
+                                .background(Color(.tertiarySystemGroupedBackground))
+                                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                         }
-                    } label: {
-                        HStack {
-                            if vm.isLoading {
-                                ProgressView().tint(.white)
-                                Spacer().frame(width: 8)
-                            }
-                            Text(vm.isRecountRequired ? "Submit Blind Recount #2" : "Submit Blind Count #1")
-                                .font(.system(size: 16, weight: .bold))
+
+                        Button {
+                            PegasusHaptics.selection()
+                            vm.showCITSheet = true
+                        } label: {
+                            Text("CIT Handover")
+                                .font(.system(.caption, weight: .bold))
+                                .frame(maxWidth: .infinity, minHeight: 44)
+                                .contentShape(Rectangle())
+                                .background(Color(.tertiarySystemGroupedBackground))
+                                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                         }
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 50)
-                        .background(vm.isRecountRequired ? Color.orange : Color.blue)
-                        .foregroundStyle(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                        .shadow(color: (vm.isRecountRequired ? Color.orange : Color.blue).opacity(0.3), radius: 8, x: 0, y: 4)
+
+                        Button {
+                            PegasusHaptics.selection()
+                            vm.showAMLSheet = true
+                        } label: {
+                            Text("AML Exposure")
+                                .font(.system(.caption, weight: .bold))
+                                .frame(maxWidth: .infinity, minHeight: 44)
+                                .contentShape(Rectangle())
+                                .background(Color(.tertiarySystemGroupedBackground))
+                                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        }
                     }
-                    .disabled(vm.isLoading || vm.countedCashMinor == 0)
+
+                    Spacer(minLength: 80)
                 }
                 .padding(.horizontal, 16)
-                .padding(.bottom, 16)
-                .background(.ultraThinMaterial)
             }
-            .animation(.snappy, value: vm.isRecountRequired)
-            .animation(.snappy, value: vm.isBalanced)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button(action: onBack) {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: 16, weight: .semibold))
+            .scrollDismissesKeyboard(.interactively)
+
+            // Submit Button
+            VStack {
+                Button {
+                    PegasusHaptics.heavy()
+                    Task {
+                        await vm.submitBlindCount()
+                        if vm.isBalanced {
+                            PegasusHaptics.success()
+                        } else if vm.isRecountRequired || vm.errorMessage != nil {
+                            PegasusHaptics.error()
+                        }
                     }
+                } label: {
+                    HStack {
+                        if vm.isLoading {
+                            ProgressView().tint(.white)
+                            Spacer().frame(width: 8)
+                        }
+                        Text(vm.isRecountRequired ? "Submit Blind Recount #2" : "Submit Blind Count #1")
+                            .font(.system(.callout, weight: .bold))
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 50)
+                    .contentShape(Rectangle())
+                    .background(vm.isRecountRequired ? PegasusMonochromeTheme.warning : PegasusMonochromeTheme.primaryAction)
+                    .foregroundStyle(PegasusMonochromeTheme.onPrimaryAction)
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 }
+                .buttonStyle(.plain)
+                .disabled(vm.isLoading || vm.countedCashMinor == 0)
             }
-            .sheet(isPresented: $showRRNSheet) {
-                NavigationStack {
+            .padding(.horizontal, 16)
+            .padding(.bottom, 16)
+            .background(.ultraThinMaterial)
+        }
+        .scrollDismissesKeyboard(.interactively)
+        .animation(.snappy, value: vm.isRecountRequired)
+        .animation(.snappy, value: vm.isBalanced)
+        .navigationTitle("Cashier Vault")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button {
+                    PegasusHaptics.light()
+                    if let onBack = onBack {
+                        onBack()
+                    } else {
+                        dismiss()
+                    }
+                } label: {
+                    Image(systemName: "chevron.left")
+                        .font(.system(.callout, weight: .semibold))
+                        .foregroundStyle(PegasusMonochromeTheme.label)
+                        .frame(minWidth: 44, minHeight: 44)
+                        .contentShape(Rectangle())
+                }
+                .accessibilityLabel("Back")
+            }
+        }
+        .sheet(isPresented: $vm.showRRNSheet) {
+            NavigationStack {
+                ScrollView {
                     VStack(alignment: .leading, spacing: 14) {
                         Text("Reclassify card or online gateway transaction to cash ledger.")
-                            .font(.system(size: 13))
+                            .font(.footnote)
                             .foregroundStyle(.secondary)
-                        TextField("Order ID", text: $rrnOrderId)
+                        TextField("Order ID", text: $vm.rrnOrderId)
                             .textFieldStyle(.roundedBorder)
-                        TextField("POS Terminal Gateway RRN", text: $rrnGateway)
+                        TextField("POS Terminal Gateway RRN", text: $vm.rrnGateway)
                             .textFieldStyle(.roundedBorder)
-                        TextField("Disputed Cash Amount (UZS)", text: $rrnDisputedCash)
+                        TextField("Disputed Cash Amount (UZS)", text: $vm.rrnDisputedText)
                             .textFieldStyle(.roundedBorder)
                             .keyboardType(.numberPad)
                         Button("Apply Compensating Ledger") {
-                            let minor = (Int64(rrnDisputedCash) ?? 0) * 100
+                            PegasusHaptics.medium()
+                            let minor = (Int64(vm.rrnDisputedText) ?? 0) * 100
                             Task {
-                                await vm.reclassifyTender(orderId: rrnOrderId, gatewayRrn: rrnGateway, disputedCashMinor: minor)
-                                showRRNSheet = false
+                                await vm.reclassifyTender(orderId: vm.rrnOrderId, gatewayRrn: vm.rrnGateway, disputedCashMinor: minor)
+                                vm.showRRNSheet = false
                             }
                         }
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 44)
-                        .background(Color.blue)
-                        .foregroundStyle(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .contentShape(Rectangle())
+                        .background(PegasusMonochromeTheme.primaryAction)
+                        .foregroundStyle(PegasusMonochromeTheme.onPrimaryAction)
+                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                         Spacer()
                     }
                     .padding(20)
-                    .navigationTitle("RRN Reclassification")
-                    .navigationBarTitleDisplayMode(.inline)
-                    .toolbar {
-                        ToolbarItem(placement: .cancellationAction) {
-                            Button("Cancel") { showRRNSheet = false }
-                        }
+                }
+                .scrollDismissesKeyboard(.interactively)
+                .navigationTitle("RRN Reclassification")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cancel") { vm.showRRNSheet = false }
+                            .frame(minWidth: 44, minHeight: 44)
+                            .contentShape(Rectangle())
                     }
                 }
             }
-            .sheet(isPresented: $showCITSheet) {
-                NavigationStack {
+        }
+        .sheet(isPresented: $vm.showCITSheet) {
+            NavigationStack {
+                ScrollView {
                     VStack(alignment: .leading, spacing: 14) {
                         Text("Log physical cash handoff to authorized CIT armored courier.")
-                            .font(.system(size: 13))
+                            .font(.footnote)
                             .foregroundStyle(.secondary)
-                        TextField("Courier Badge ID", text: $citBadgeId)
+                        TextField("Courier Badge ID", text: $vm.citBadgeId)
                             .textFieldStyle(.roundedBorder)
-                        TextField("CIT Security Bag Seal Barcode", text: $citSealBarcode)
+                        TextField("CIT Security Bag Seal Barcode", text: $vm.citSealBarcode)
                             .textFieldStyle(.roundedBorder)
-                        TextField("Cash Handover (UZS)", text: $citAmountUzs)
+                        TextField("Cash Handover (UZS)", text: $vm.citHandoverText)
                             .textFieldStyle(.roundedBorder)
                             .keyboardType(.numberPad)
                         Button("Confirm Armored Handover") {
-                            let minor = (Int64(citAmountUzs) ?? 0) * 100
+                            PegasusHaptics.medium()
+                            let minor = (Int64(vm.citHandoverText) ?? 0) * 100
                             Task {
-                                await vm.executeCITHandover(courierBadgeId: citBadgeId, citSealBarcode: citSealBarcode, amountMinor: minor)
-                                showCITSheet = false
+                                await vm.executeCITHandover(courierBadgeId: vm.citBadgeId, citSealBarcode: vm.citSealBarcode, amountMinor: minor)
+                                vm.showCITSheet = false
                             }
                         }
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 44)
-                        .background(Color.blue)
-                        .foregroundStyle(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .contentShape(Rectangle())
+                        .background(PegasusMonochromeTheme.primaryAction)
+                        .foregroundStyle(PegasusMonochromeTheme.onPrimaryAction)
+                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                         Spacer()
                     }
                     .padding(20)
-                    .navigationTitle("Armored Handover")
-                    .navigationBarTitleDisplayMode(.inline)
-                    .toolbar {
-                        ToolbarItem(placement: .cancellationAction) {
-                            Button("Cancel") { showCITSheet = false }
-                        }
+                }
+                .scrollDismissesKeyboard(.interactively)
+                .navigationTitle("Armored Handover")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cancel") { vm.showCITSheet = false }
+                            .frame(minWidth: 44, minHeight: 44)
+                            .contentShape(Rectangle())
                     }
                 }
             }
-            .sheet(isPresented: $showAMLSheet) {
-                NavigationStack {
+        }
+        .sheet(isPresented: $vm.showAMLSheet) {
+            NavigationStack {
+                ScrollView {
                     VStack(alignment: .leading, spacing: 14) {
                         Text("Audit legal entity multi-tender cash exposure.")
-                            .font(.system(size: 13))
+                            .font(.footnote)
                             .foregroundStyle(.secondary)
-                        TextField("Legal Entity TIN", text: $amlTin)
+                        TextField("Legal Entity TIN", text: $vm.amlTin)
                             .textFieldStyle(.roundedBorder)
                             .keyboardType(.numberPad)
-                        TextField("Amount (UZS)", text: $amlAmountUzs)
+                        TextField("Amount (UZS)", text: $vm.amlExposureText)
                             .textFieldStyle(.roundedBorder)
                             .keyboardType(.numberPad)
                         Button("Audit Cash Exposure") {
-                            let minor = (Int64(amlAmountUzs) ?? 0) * 100
+                            PegasusHaptics.medium()
+                            let minor = (Int64(vm.amlExposureText) ?? 0) * 100
                             Task {
-                                await vm.checkAMLExposure(tin: amlTin, cashMinor: minor)
-                                showAMLSheet = false
+                                await vm.checkAMLExposure(tin: vm.amlTin, cashMinor: minor)
+                                vm.showAMLSheet = false
                             }
                         }
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 44)
-                        .background(Color.blue)
-                        .foregroundStyle(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .contentShape(Rectangle())
+                        .background(PegasusMonochromeTheme.primaryAction)
+                        .foregroundStyle(PegasusMonochromeTheme.onPrimaryAction)
+                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                         Spacer()
                     }
                     .padding(20)
-                    .navigationTitle("Exposure Audit")
-                    .navigationBarTitleDisplayMode(.inline)
-                    .toolbar {
-                        ToolbarItem(placement: .cancellationAction) {
-                            Button("Cancel") { showAMLSheet = false }
-                        }
+                }
+                .scrollDismissesKeyboard(.interactively)
+                .navigationTitle("Exposure Audit")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cancel") { vm.showAMLSheet = false }
+                            .frame(minWidth: 44, minHeight: 44)
+                            .contentShape(Rectangle())
                     }
                 }
             }

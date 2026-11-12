@@ -41,11 +41,6 @@ targets:
       - path: ../../packages/mobile-ios-barcode
         includes:
           - EANBarcodeScannerView.swift
-      - path: ../../packages/mobile-ios-design
-        excludes:
-          - CellApi.swift
-          - MarketPack.swift
-          - StatusStack.swift
     resources:
       # pegasusx-i18n-generated
       - path: ../../packages/i18n/generated/ios/en.lproj

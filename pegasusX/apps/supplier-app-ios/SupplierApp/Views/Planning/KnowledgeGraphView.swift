@@ -1,27 +1,27 @@
 import SwiftUI
 
 struct KnowledgeGraphView: View {
-    @State private var graph: SupplierKnowledgeGraph?
-    @State private var loading = true
-    @State private var error: String?
+    @State private var viewModel = KnowledgeGraphViewModel()
 
     var body: some View {
         Group {
-            if loading {
-                SupplierLoadingView(title: "Loading knowledge graph…")
-            } else if let error {
-                SupplierErrorView(message: error) { Task { await load() } }
-            } else if let graph {
+            if viewModel.loading && viewModel.graph == nil {
+                SupplierLoadingView(title: "mobile_supplier.loading.knowledge_graph")
+            } else if let error = viewModel.error, viewModel.graph == nil {
+                SupplierErrorView(message: error) { Task { await viewModel.load() } }
+            } else if let graph = viewModel.graph {
                 ResponsiveGridContentWrapper {
                     Section(L10n.format("mobile_supplier.ui.nodes_count", "\(graph.nodes.count)")) {
                         ForEach(graph.nodes) { node in
                             VStack(alignment: .leading, spacing: SupplierTheme.spacingXS) {
-                                Text(node.name?.isEmpty == false ? node.name! : node.id)
+                                Text((node.name?.isEmpty == false ? node.name : nil) ?? node.id)
                                     .font(.headline)
                                 Text(L10n.format("mobile_supplier.ui.type_id", "\(node.type)", "\(node.id)"))
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
+                            .accessibilityElement(children: .combine)
+                            .accessibilityLabel("\((node.name?.isEmpty == false ? node.name : nil) ?? node.id), type \(node.type)")
                         }
                     }
                     Section(L10n.format("mobile_supplier.ui.edges_count", "\(graph.edges.count)")) {
@@ -33,6 +33,7 @@ struct KnowledgeGraphView: View {
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
+                            .accessibilityElement(children: .combine)
                         }
                     }
                 }
@@ -40,19 +41,7 @@ struct KnowledgeGraphView: View {
         }
         .background(SupplierTheme.background)
         .navigationTitle("mobile_supplier.ui.knowledge_graph")
-        .task { await load() }
-        .refreshable { await load(silent: true) }
-    }
-
-    @MainActor
-    private func load(silent: Bool = false) async {
-        if !silent { loading = true }
-        error = nil
-        defer { loading = false }
-        do {
-            graph = try await SupplierOperationsService.knowledgeGraph()
-        } catch {
-            if !silent { self.error = error.localizedDescription }
-        }
+        .task { await viewModel.load() }
+        .refreshable { await viewModel.load(silent: true) }
     }
 }

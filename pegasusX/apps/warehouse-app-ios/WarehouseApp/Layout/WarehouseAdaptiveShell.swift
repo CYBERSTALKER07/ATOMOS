@@ -23,7 +23,7 @@ struct WarehouseAdaptiveShell: View {
     @State private var showInspector: Bool = false
     @State private var searchFilter: String = ""
     @FocusState private var isSidebarFilterFocused: Bool
-    @ObservedObject private var network = NetworkLifecycleEngine.shared
+    private var network = NetworkLifecycleEngine.shared
     private var wasOffline: Bool { !network.isOnline }
 
     var body: some View {
@@ -44,10 +44,14 @@ struct WarehouseAdaptiveShell: View {
             sidebarView
                 .navigationSplitViewColumnWidth(min: 240, ideal: 270, max: 320)
         } content: {
-            contentColumnView
-                .navigationSplitViewColumnWidth(min: 340, ideal: 400, max: 500)
+            NavigationStack {
+                contentColumnView
+            }
+            .navigationSplitViewColumnWidth(min: 340, ideal: 400, max: 500)
         } detail: {
-            detailWorkbenchView
+            NavigationStack {
+                detailWorkbenchView
+            }
         }
         .inspector(isPresented: $showInspector) {
             TacticalInspectorView(
@@ -66,16 +70,16 @@ struct WarehouseAdaptiveShell: View {
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 8) {
                     Image(systemName: "shippingbox.and.arrow.backward.fill")
-                        .font(.system(size: 16, weight: .bold))
+                        .font(.system(.callout, weight: .bold))
                         .foregroundStyle(TacticalTheme.accentCobalt)
 
                     Text("PEGASUS")
-                        .font(.system(size: 15, weight: .heavy))
+                        .font(.system(.subheadline, weight: .heavy))
                         .tracking(1.5)
                         .foregroundStyle(TacticalTheme.textPrimary)
 
                     Text("WH")
-                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .font(.system(.caption2, design: .monospaced, weight: .bold))
                         .padding(.horizontal, 5)
                         .padding(.vertical, 2)
                         .foregroundStyle(TacticalTheme.accentCobalt)
@@ -91,6 +95,7 @@ struct WarehouseAdaptiveShell: View {
                             Circle()
                                 .stroke((wasOffline ? TacticalTheme.statusDanger : TacticalTheme.statusSuccess).opacity(0.4), lineWidth: 2)
                         )
+                        .accessibilityLabel(wasOffline ? "Network offline" : "Network online")
                 }
 
                 Text("DEPOT: UZ-TAS-01 (TASHKENT)")
@@ -103,22 +108,26 @@ struct WarehouseAdaptiveShell: View {
             // Search Filter
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass")
-                    .font(.system(size: 12))
+                    .font(.caption)
                     .foregroundStyle(isSidebarFilterFocused ? TacticalTheme.accentCobalt : TacticalTheme.textTertiary)
                 TextField("Filter sections...", text: $searchFilter)
-                    .font(.system(size: 13))
+                    .font(.footnote)
                     .focused($isSidebarFilterFocused)
                     .submitLabel(.search)
                 if !searchFilter.isEmpty {
                     Button {
+                        PegasusHaptics.light()
                         searchFilter = ""
                         isSidebarFilterFocused = true
                     } label: {
                         Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 12))
+                            .font(.subheadline)
                             .foregroundStyle(TacticalTheme.textTertiary)
+                            .frame(minWidth: 44, minHeight: 44)
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("Clear search filter")
                 }
             }
             .padding(.horizontal, 10)
@@ -143,7 +152,7 @@ struct WarehouseAdaptiveShell: View {
                             NavigationLink(value: section) {
                                 HStack(spacing: 10) {
                                     Image(systemName: section.icon)
-                                        .font(.system(size: 13, weight: .semibold))
+                                        .font(.system(.footnote, weight: .semibold))
                                         .frame(width: 20)
                                         .foregroundStyle(
                                             sidebarSelection == section
@@ -152,7 +161,7 @@ struct WarehouseAdaptiveShell: View {
                                         )
 
                                     Text(section.rawValue)
-                                        .font(.system(size: 13, weight: sidebarSelection == section ? .bold : .medium))
+                                        .font(.system(.footnote, weight: sidebarSelection == section ? .bold : .medium))
                                         .foregroundStyle(
                                             sidebarSelection == section
                                                 ? TacticalTheme.textPrimary
@@ -162,6 +171,7 @@ struct WarehouseAdaptiveShell: View {
                                     Spacer()
                                 }
                                 .padding(.vertical, 2)
+                                .frame(minHeight: 44)
                             }
                             .listRowBackground(
                                 sidebarSelection == section
@@ -173,8 +183,12 @@ struct WarehouseAdaptiveShell: View {
                 }
             }
             .listStyle(.sidebar)
+            .scrollDismissesKeyboard(.interactively)
             .scrollContentBackground(.hidden)
             .background(TacticalTheme.surface)
+            .onChange(of: sidebarSelection) { _, _ in
+                PegasusHaptics.selection()
+            }
 
             // Operator Footer Capsule
             Divider()
@@ -182,12 +196,12 @@ struct WarehouseAdaptiveShell: View {
 
             HStack(spacing: 10) {
                 Image(systemName: "person.crop.circle.fill")
-                    .font(.system(size: 28))
+                    .font(.title)
                     .foregroundStyle(TacticalTheme.accentCobalt)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text("DEPOT SUPERVISOR")
-                        .font(.system(size: 12, weight: .bold))
+                        .font(.system(.caption, weight: .bold))
                         .foregroundStyle(TacticalTheme.textPrimary)
                     Text("ON-DUTY SHIFT A")
                         .tacticalMicroLabel()
@@ -196,16 +210,18 @@ struct WarehouseAdaptiveShell: View {
                 Spacer()
 
                 Button {
+                    PegasusHaptics.warning()
                     tokenStore.clear()
                 } label: {
                     Image(systemName: "rectangle.portrait.and.arrow.right")
-                        .font(.system(size: 14))
+                        .font(.subheadline)
                         .foregroundStyle(TacticalTheme.textTertiary)
-                        .frame(width: 32, height: 32)
+                        .frame(width: 44, height: 44)
                         .background(TacticalTheme.surfaceSunken)
                         .clipShape(Circle())
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Sign out")
             }
             .padding(14)
             .background(TacticalTheme.surfaceRaised)
@@ -233,7 +249,10 @@ struct WarehouseAdaptiveShell: View {
                 } label: {
                     Image(systemName: showInspector ? "sidebar.right" : "sidebar.right")
                         .foregroundStyle(showInspector ? TacticalTheme.accentCobalt : TacticalTheme.textSecondary)
+                        .frame(minWidth: 44, minHeight: 44)
+                        .contentShape(Rectangle())
                 }
+                .accessibilityLabel(showInspector ? "Hide Inspector" : "Show Inspector")
             }
         }
     }
@@ -253,31 +272,37 @@ struct WarehouseAdaptiveShell: View {
     // MARK: - iPhone Floor Suite Shell
     private var compactFloorSuiteShell: some View {
         TabView(selection: $compactTab) {
-            sectionView(.dashboard)
-                .tabItem {
-                    Label("Command", systemImage: "antenna.radiowaves.left.and.right")
-                }
-                .tag(WarehouseCompactTab.dashboard)
+            NavigationStack {
+                sectionView(.dashboard)
+            }
+            .tabItem {
+                Label("Command", systemImage: "antenna.radiowaves.left.and.right")
+            }
+            .tag(WarehouseCompactTab.dashboard)
 
             NavigationStack {
-                ManifestsView()
+                sectionView(.manifests)
             }
             .tabItem {
                 Label("Inbound", systemImage: "doc.text")
             }
             .tag(WarehouseCompactTab.inbound)
 
-            sectionView(.inventory)
-                .tabItem {
-                    Label("Floor", systemImage: "archivebox")
-                }
-                .tag(WarehouseCompactTab.floor)
+            NavigationStack {
+                sectionView(.inventory)
+            }
+            .tabItem {
+                Label("Floor", systemImage: "archivebox")
+            }
+            .tag(WarehouseCompactTab.floor)
 
-            sectionView(.dispatch)
-                .tabItem {
-                    Label("Dispatch", systemImage: "paperplane")
-                }
-                .tag(WarehouseCompactTab.dispatch)
+            NavigationStack {
+                sectionView(.dispatch)
+            }
+            .tabItem {
+                Label("Dispatch", systemImage: "paperplane")
+            }
+            .tag(WarehouseCompactTab.dispatch)
 
             NavigationStack {
                 MoreHubView()
@@ -336,35 +361,37 @@ struct WarehouseAdaptiveShell: View {
         case .manifests:
             ManifestsView()
         case .dispatchSettings:
-            NavigationStack { DispatchSettingsView() }
+            DispatchSettingsView()
         case .fleetLiveMap:
-            NavigationStack { FleetLiveMapView() }
+            FleetLiveMapView()
         case .transferActions:
-            NavigationStack { TransferActionsView() }
+            TransferActionsView()
         case .products:
             ProductsView()
         case .supplyRequests:
-            NavigationStack { SupplyRequestsHubView() }
+            SupplyRequestsHubView()
         case .preorders:
-            NavigationStack { PreordersView() }
+            PreordersView()
         case .stockCommitments:
             StockCommitmentsView()
         case .tomorrowBoard:
-            NavigationStack { TomorrowBoardView() }
+            TomorrowBoardView()
         case .replenishment:
-            NavigationStack { ReplenishmentView() }
+            ReplenishmentView()
         case .demandForecast:
             DemandForecastView()
         case .retailers:
             CRMView()
         case .returns:
             ReturnsView()
-        case .coldChain:
-            ColdChainView()
         case .laborCapacity:
             LaborCapacityView()
         case .exceptions:
             ExceptionsView()
+        case .cashier:
+            CashierBlindCountView(onBack: nil)
+        case .yardGate:
+            YardGateView(onBack: nil)
         case .controlTower:
             WarehouseScoredExceptionsView()
         case .claims:
@@ -372,15 +399,15 @@ struct WarehouseAdaptiveShell: View {
         case .rescues:
             RescuesView()
         case .coverage:
-            NavigationStack { CoverageView() }
+            CoverageView()
         case .paymentConfig:
-            NavigationStack { PaymentConfigView() }
+            PaymentConfigView()
         case .opsSettings:
-            NavigationStack { OpsSettingsView() }
+            OpsSettingsView()
         case .returnPolicy:
-            NavigationStack { ReturnPolicySettingsView() }
+            ReturnPolicySettingsView()
         case .notifications:
-            NavigationStack { NotificationInboxView() }
+            NotificationInboxView()
         case .portalSetup, .portalProfile, .portalSearch:
             if let feature = section.portalFeature {
                 PortalHandoffView(feature: feature)

@@ -32,6 +32,10 @@ struct VehiclesList: View {
                             .padding(.vertical, LabTheme.spacingXS)
                             .background(.quaternary, in: Capsule())
                     }
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("\(vehicle.label.isEmpty ? vehicle.licensePlate : vehicle.label), class \(vehicle.vehicleClass), \(vehicle.capacityVu) VU, \(vehicle.assignedDriverName ?? "Unassigned"), \(vehicle.isActive ? (vehicle.status.isEmpty ? "AVAILABLE" : vehicle.status) : "UNAVAILABLE")")
                 }
             }
         }

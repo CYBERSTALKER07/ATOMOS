@@ -4,185 +4,195 @@ struct DashboardView: View {
     @Environment(TokenStore.self) private var tokenStore
     @Environment(SupplierRealtimeHub.self) private var realtimeHub
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @State private var dashboard: SupplierDashboard?
-    @State private var meiSummary: SupplierMEIONetworkSummary?
-    @State private var pulseEvents: [SupplierPulseEvent] = []
-    @State private var pulseLoading = true
-    @State private var pulseError: String?
-    @State private var demandConfidence: ForecastConfidence?
-    @State private var demandGeneratedAt: String?
-    @State private var loading = true
-    @State private var error: String?
-    @State private var pack: MarketPack?
-    @State private var commandJump: CommandStatusJump?
+    @State private var vm = DashboardViewModel()
 
     private var gridMin: CGFloat {
         horizontalSizeClass == .regular ? 200 : 150
     }
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                Group {
-                    if loading {
-                        SupplierLoadingView(
-                            title: "Loading dashboard",
-                            message: "Fetching pending orders, inventory, and billing status."
-                        )
-                    } else if let error {
-                        SupplierErrorView(message: error) {
-                            Task { await load() }
+        ScrollView {
+            Group {
+                if vm.loading && vm.dashboard == nil {
+                    SupplierLoadingView(
+                        title: "mobile_supplier.loading.dashboard",
+                        message: "mobile_supplier.loading.dashboard_message"
+                    )
+                } else if let error = vm.error, vm.dashboard == nil {
+                    SupplierErrorView(message: error) {
+                        Task { await vm.load(tokenStore: tokenStore) }
+                    }
+                } else if let dashboard = vm.dashboard {
+                    VStack(alignment: .leading, spacing: SupplierTheme.spacingXL) {
+                        if !tokenStore.isConfigured {
+                            billingBanner
                         }
-                    } else if let dashboard {
-                        VStack(alignment: .leading, spacing: SupplierTheme.spacingXL) {
-                            if !tokenStore.isConfigured {
-                                billingBanner
-                            }
-                            PackBanner(pack: pack)
+                        PackBanner(pack: vm.pack)
 
-                            SupplierSectionHeader(
-                                title: "Operations at a glance",
-                                subtitle: "Live supplier KPIs"
-                            )
+                        SupplierSectionHeader(
+                            title: "mobile_supplier.chrome.operations_at_a_glance",
+                            subtitle: "mobile_supplier.chrome.live_supplier_kpis"
+                        )
 
-                            if let meiSummary {
-                                VStack(alignment: .leading, spacing: SupplierTheme.spacingSM) {
-                                    Text("supplier_portal.residual.text.meio_network")
-                                        .font(.headline)
-                                    Text(L10n.format("mobile_supplier.ui.warehousesscanned_warehouses_transferrecommendations_transfer_recs_insig", "\(meiSummary.warehousesScanned)", "\(meiSummary.transferRecommendations)", "\(meiSummary.insightsGenerated)"))
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
+                        if let meiSummary = vm.meiSummary {
+                            VStack(alignment: .leading, spacing: SupplierTheme.spacingSM) {
+                                Text("supplier_portal.residual.text.meio_network")
+                                    .font(.headline)
+                                Text(L10n.format("mobile_supplier.ui.warehousesscanned_warehouses_transferrecommendations_transfer_recs_insig", "\(meiSummary.warehousesScanned)", "\(meiSummary.transferRecommendations)", "\(meiSummary.insightsGenerated)"))
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                if let meiError = vm.meiError {
+                                    Text(meiError).font(.caption).foregroundStyle(SupplierTheme.destructive)
                                 }
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding()
-                                .background(SupplierTheme.card)
-                                .clipShape(RoundedRectangle(cornerRadius: SupplierTheme.radiusMD))
                             }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding()
+                            .background(SupplierTheme.card)
+                            .clipShape(RoundedRectangle(cornerRadius: SupplierTheme.radiusMD))
+                        } else if let meiError = vm.meiError {
+                            Text(meiError).font(.caption).foregroundStyle(SupplierTheme.destructive)
+                        }
 
-                            if let demandConfidence {
-                                ForecastConfidenceView(
-                                    confidence: demandConfidence,
-                                    updatedAt: ForecastConfidenceSupport.formatForecastUpdatedAt(generatedAt: demandGeneratedAt),
-                                    stale: ForecastConfidenceSupport.isForecastStale(generatedAt: demandGeneratedAt)
+                        if let demandConfidence = vm.demandConfidence {
+                            ForecastConfidenceView(
+                                confidence: demandConfidence,
+                                updatedAt: ForecastConfidenceSupport.formatForecastUpdatedAt(generatedAt: vm.demandGeneratedAt),
+                                stale: ForecastConfidenceSupport.isForecastStale(generatedAt: vm.demandGeneratedAt)
+                            )
+                            if let demandError = vm.demandError {
+                                Text(demandError).font(.caption).foregroundStyle(SupplierTheme.destructive)
+                            }
+                        } else if let demandError = vm.demandError {
+                            Text(demandError).font(.caption).foregroundStyle(SupplierTheme.destructive)
+                        }
+
+                        NetworkPulseStrip(events: vm.pulseEvents, loading: vm.pulseLoading, error: vm.pulseError)
+
+                        LazyVGrid(
+                            columns: [GridItem(.adaptive(minimum: gridMin), spacing: SupplierTheme.spacingMD)],
+                            spacing: SupplierTheme.spacingMD
+                        ) {
+                            NavigationLink {
+                                TreasuryHubView()
+                            } label: {
+                                KpiTile(
+                                    title: "mobile_supplier.chrome.revenue_today",
+                                    value: dashboard.todayRevenueMinor.map { formatPackMoney($0, pack: vm.pack) } ?? "—",
+                                    systemImage: "banknote",
+                                    tint: SupplierTheme.accentWarm
                                 )
                             }
+                            .buttonStyle(.pressable)
 
-                            NetworkPulseStrip(events: pulseEvents, loading: pulseLoading, error: pulseError)
-
-                            LazyVGrid(
-                                columns: [GridItem(.adaptive(minimum: gridMin), spacing: SupplierTheme.spacingMD)],
-                                spacing: SupplierTheme.spacingMD
-                            ) {
-                                NavigationLink {
-                                    TreasuryHubView()
-                                } label: {
-                                    KpiTile(
-                                        title: "Revenue today",
-                                        value: formatPackMoney(dashboard.todayRevenueMinor, pack: pack),
-                                        systemImage: "banknote",
-                                        tint: SupplierTheme.accentWarm
-                                    )
-                                }
-                                .buttonStyle(.pressable)
-
-                                NavigationLink {
-                                    OrdersHubView()
-                                } label: {
-                                    KpiTile(
-                                        title: "Completion",
-                                        value: "\(dashboard.deliveriesCompletedToday)/\(dashboard.deliveriesAttemptedToday)",
-                                        systemImage: "checkmark.circle",
-                                        tint: SupplierTheme.success
-                                    )
-                                }
-                                .buttonStyle(.pressable)
-
-                                NavigationLink {
-                                    OrdersHubView(initialCommandStatus: "SUBMITTED")
-                                } label: {
-                                    KpiTile(
-                                        title: "Pending orders",
-                                        value: "\(dashboard.pendingOrders)",
-                                        systemImage: "shippingbox",
-                                        tint: SupplierTheme.warning
-                                    )
-                                }
-                                .buttonStyle(.pressable)
-
-                                NavigationLink {
-                                    InventoryView()
-                                } label: {
-                                    KpiTile(
-                                        title: "Inventory SKUs",
-                                        value: "\(dashboard.inventorySKUs)",
-                                        systemImage: "archivebox",
-                                        tint: SupplierTheme.accentWarm
-                                    )
-                                }
-                                .buttonStyle(.pressable)
+                            NavigationLink {
+                                OrdersHubView()
+                            } label: {
+                                KpiTile(
+                                    title: "mobile_supplier.chrome.completion",
+                                    value: "\(MissingNumber.label(dashboard.deliveriesCompletedToday))/\(MissingNumber.label(dashboard.deliveriesAttemptedToday))",
+                                    systemImage: "checkmark.circle",
+                                    tint: SupplierTheme.success
+                                )
                             }
+                            .buttonStyle(.pressable)
 
-                            StatusStackView(
-                                dictionary: orderStatusFunnel,
-                                counts: dashboard.ordersByStatus,
-                                source: "live",
-                                onSelect: { commandJump = CommandStatusJump(status: $0) }
-                            )
+                            NavigationLink {
+                                OrdersHubView(initialCommandStatus: "SUBMITTED")
+                            } label: {
+                                KpiTile(
+                                    title: "mobile_supplier.chrome.pending_orders",
+                                    value: MissingNumber.label(dashboard.pendingOrders),
+                                    systemImage: "shippingbox",
+                                    tint: SupplierTheme.warning
+                                )
+                            }
+                            .buttonStyle(.pressable)
 
-                            StatusStackView(
-                                dictionary: manifestStates,
-                                counts: dashboard.manifestsByState,
-                                source: dashboard.manifestsByState.isEmpty ? "empty" : "live"
-                            )
-
-                            Text(L10n.format("mobile_supplier.ui.updated_updatedat", "\(dashboard.updatedAt)"))
-                                .font(.caption2)
-                                .foregroundStyle(.tertiary)
+                            NavigationLink {
+                                InventoryView()
+                            } label: {
+                                KpiTile(
+                                    title: "mobile_supplier.chrome.inventory_skus",
+                                    value: MissingNumber.label(dashboard.inventorySKUs),
+                                    systemImage: "archivebox",
+                                    tint: SupplierTheme.accentWarm
+                                )
+                            }
+                            .buttonStyle(.pressable)
                         }
-                        .supplierReadableWidth()
-                        .padding()
+
+                        StatusStackView(
+                            dictionary: orderStatusFunnel,
+                            counts: dashboard.ordersByStatus,
+                            source: "live",
+                            onSelect: { commandJump($0) }
+                        )
+
+                        StatusStackView(
+                            dictionary: manifestStates,
+                            counts: dashboard.manifestsByState,
+                            source: dashboard.manifestsByState.isEmpty ? "empty" : "live"
+                        )
+
+                        Text(L10n.format("mobile_supplier.ui.updated_updatedat", "\(dashboard.updatedAt)"))
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
                     }
+                    .supplierReadableWidth()
+                    .padding()
                 }
-            }
-            .background(SupplierTheme.background)
-            .navigationTitle("portal.nav.dashboard")
-            .toolbar {
-                signOutToolbar
-                ToolbarItem(placement: .topBarTrailing) {
-                    NavigationLink {
-                        NotificationInboxView()
-                    } label: {
-                        Image(systemName: "bell")
-                    }
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") {
-                        Task { await load(silent: true) }
-                    }
-                    .labelStyle(.iconOnly)
-                }
-            }
-            .navigationDestination(item: $commandJump) { jump in
-                OrdersHubView(initialCommandStatus: jump.status)
-            }
-            .refreshable { await load(silent: true) }
-            .task {
-                if let token = tokenStore.token {
-                    pack = await MarketPackBinder.fetch(baseUrl: APIClient.shared.cellBootstrap, token: token)?.pack
-                }
-                await load()
-                while !Task.isCancelled {
-                    try? await Task.sleep(nanoseconds: 60_000_000_000)
-                    await load(silent: true)
-                }
-            }
-            .onChange(of: realtimeHub.refreshEpoch) { _, _ in
-                Task { await load(silent: true) }
-            }
-            .onChange(of: realtimeHub.reconnectEpoch) { _, _ in
-                Task { await load(silent: true) }
             }
         }
+        .scrollDismissesKeyboard(.interactively)
+        .background(SupplierTheme.background)
+        .navigationTitle("portal.nav.dashboard")
+        .toolbar {
+            signOutToolbar
+            ToolbarItem(placement: .topBarTrailing) {
+                NavigationLink {
+                    NotificationInboxView()
+                } label: {
+                    Image(systemName: "bell")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(SupplierTheme.label)
+                        .frame(minWidth: 44, minHeight: 44)
+                }
+                .accessibilityLabel(Text("portal.nav.notifications"))
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    PegasusHaptics.light()
+                    Task { await vm.load(tokenStore: tokenStore, silent: true) }
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(SupplierTheme.label)
+                        .frame(minWidth: 44, minHeight: 44)
+                }
+                .accessibilityLabel(Text("portal.page.orders.action.refresh"))
+            }
+        }
+        .navigationDestination(item: $vm.commandJump) { jump in
+            OrdersHubView(initialCommandStatus: jump.status)
+        }
+        .refreshable {
+            PegasusHaptics.light()
+            await vm.load(tokenStore: tokenStore, silent: true)
+        }
+        .task {
+            await vm.runDashboardLoop(tokenStore: tokenStore, intervalNs: 60_000_000_000)
+        }
+        .onChange(of: realtimeHub.refreshEpoch) { _, _ in
+            Task { await vm.load(tokenStore: tokenStore, silent: true) }
+        }
+        .onChange(of: realtimeHub.reconnectEpoch) { _, _ in
+            Task { await vm.load(tokenStore: tokenStore, silent: true) }
+        }
+    }
+
+    private func commandJump(_ status: String) {
+        PegasusHaptics.selection()
+        vm.commandJump = CommandStatusJump(status: status)
     }
 
     private var billingBanner: some View {
@@ -197,9 +207,11 @@ struct DashboardView: View {
             }
             Spacer()
             Button("mobile_supplier.ui.setup") {
+                PegasusHaptics.light()
                 tokenStore.showBillingGate()
             }
             .font(.caption.bold())
+            .frame(minWidth: 44, minHeight: 44)
         }
         .supplierCard()
     }
@@ -207,50 +219,16 @@ struct DashboardView: View {
     @ToolbarContentBuilder
     private var signOutToolbar: some ToolbarContent {
         ToolbarItem(placement: .topBarTrailing) {
-            Button("common.action.sign_out", systemImage: "rectangle.portrait.and.arrow.right") {
+            Button {
+                PegasusHaptics.selection()
                 tokenStore.clear()
+            } label: {
+                Image(systemName: "rectangle.portrait.and.arrow.right")
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(SupplierTheme.label)
+                    .frame(minWidth: 44, minHeight: 44)
             }
-            .labelStyle(.iconOnly)
+            .accessibilityLabel(Text("common.action.sign_out"))
         }
-    }
-
-    @MainActor
-    private func load(silent: Bool = false) async {
-        if !silent { loading = true }
-        error = nil
-        do {
-            dashboard = try await SupplierService.dashboard()
-            _ = try? await SupplierOperationsService.activity()
-            _ = try? await SupplierOperationsService.exceptions()
-            meiSummary = try? await SupplierOperationsService.meiNetworkSummary()
-            if let demand = try? await SupplierOperationsService.demandToday() {
-                demandGeneratedAt = demand.generatedAt
-                demandConfidence = ForecastConfidenceSupport.fromDemand(demand)
-            } else {
-                demandGeneratedAt = nil
-                demandConfidence = nil
-            }
-            pulseLoading = true
-            pulseError = nil
-            do {
-                let events = try await SupplierOperationsService.pulse().events
-                let result = PulseHonesty.apply(ok: true, incoming: events, previous: pulseEvents)
-                pulseEvents = result.events
-                pulseError = result.error
-            } catch {
-                let result = PulseHonesty.apply(ok: false, incoming: nil, previous: pulseEvents)
-                pulseEvents = result.events
-                pulseError = result.error
-            }
-            pulseLoading = false
-            if let configured = dashboard?.isConfigured {
-                tokenStore.markConfigured(configured)
-            }
-        } catch {
-            // Resilient fallback to sample dashboard for offline/dev access
-            self.dashboard = SupplierDashboard.sample
-            self.error = nil
-        }
-        loading = false
     }
 }

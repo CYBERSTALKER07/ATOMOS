@@ -1,29 +1,31 @@
 import SwiftUI
 
 struct CoverageView: View {
-    @State private var coverage: WarehouseCoverageResponse?
-    @State private var factory: WarehouseSupplyFactoryResponse?
-    @State private var factoryError: String?
-    @State private var loading = true
-    @State private var error: String?
+    @State private var vm = CoverageViewModel()
 
     var body: some View {
         Group {
-            if loading {
-                ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if let error {
+            if vm.loading {
+                ProgressView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if let error = vm.error {
                 ContentUnavailableView {
                     Label("mobile_warehouse.ui.error", systemImage: "exclamationmark.triangle")
                 } description: {
                     Text(error)
                 } actions: {
-                    Button("common.action.retry") { load() }
+                    Button("common.action.retry") {
+                        PegasusHaptics.light()
+                        Task { await vm.load() }
+                    }
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
                 }
             } else {
                 List {
                     Section("Coverage") {
-                        LabeledContent("Mode", value: coverageModeLabel(coverage?.mode))
-                        if let country = coverage?.countryCode, !country.isEmpty {
+                        LabeledContent("Mode", value: vm.coverageModeLabel(vm.coverage?.mode))
+                        if let country = vm.coverage?.countryCode, !country.isEmpty {
                             LabeledContent("Country", value: country)
                         }
                         Text("Pins and cities are set by the supplier. This warehouse cannot re-pin.")
@@ -31,9 +33,10 @@ struct CoverageView: View {
                             .foregroundStyle(.secondary)
                     }
                     Section("Cities") {
-                        if let cities = coverage?.cities, !cities.isEmpty {
+                        if let cities = vm.coverage?.cities, !cities.isEmpty {
                             ForEach(cities) { city in
                                 Text(city.name)
+                                    .frame(minHeight: 44, alignment: .leading)
                             }
                         } else {
                             Text("Closest same-country matching (no city cells).")
@@ -41,9 +44,11 @@ struct CoverageView: View {
                         }
                     }
                     Section("Pins") {
-                        if let pins = coverage?.pins, !pins.isEmpty {
+                        if let pins = vm.coverage?.pins, !pins.isEmpty {
                             ForEach(pins) { pin in
                                 LabeledContent(pin.targetType, value: pin.targetId)
+                                    .frame(minHeight: 44)
+                                    .accessibilityElement(children: .combine)
                             }
                         } else {
                             Text("No supplier pins on this warehouse.")
@@ -51,50 +56,36 @@ struct CoverageView: View {
                         }
                     }
                     Section("Nearest factory") {
-                        if let factory, !factory.factoryId.isEmpty {
+                        if let factory = vm.factory, !factory.factoryId.isEmpty {
                             LabeledContent("Factory", value: factory.factoryId)
                             LabeledContent("Source", value: factory.source)
                             if !factory.countryCode.isEmpty {
                                 LabeledContent("Country", value: factory.countryCode)
                             }
                         } else {
-                            Text(factoryError ?? "No same-country factory assigned.")
+                            Text(vm.factoryError ?? "No same-country factory assigned.")
                                 .foregroundStyle(.secondary)
                         }
                     }
                 }
+                .scrollDismissesKeyboard(.interactively)
             }
         }
         .navigationTitle("Coverage and supply")
-        .task { load() }
-    }
-
-    private func coverageModeLabel(_ mode: String?) -> String {
-        switch (mode ?? "").uppercased() {
-        case "PINNED": "Pinned"
-        case "CITY_CELLS": "City cells"
-        default: "Closest in country"
-        }
-    }
-
-    private func load() {
-        loading = true
-        error = nil
-        factoryError = nil
-        Task {
-            do {
-                coverage = try await WarehouseService.opsCoverage()
-            } catch {
-                self.error = error.localizedDescription
-                loading = false
-                return
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    PegasusHaptics.light()
+                    Task { await vm.load() }
+                } label: {
+                    Label("portal.page.orders.action.refresh", systemImage: "arrow.clockwise")
+                        .frame(minWidth: 44, minHeight: 44)
+                        .contentShape(Rectangle())
+                }
+                .accessibilityLabel("Refresh coverage and supply")
             }
-            do {
-                factory = try await WarehouseService.opsSupplyFactory()
-            } catch {
-                factoryError = error.localizedDescription
-            }
-            loading = false
         }
+        .task { await vm.load() }
+        .refreshable { await vm.load() }
     }
 }

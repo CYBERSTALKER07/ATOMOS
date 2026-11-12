@@ -16,27 +16,51 @@ struct ReturnsList: View {
                 ResponsiveGridContentWrapper {
                     Section(isQueueTab ? "Open at gate" : "Completed receives") {
                         ForEach(items) { item in
-                            returnRow(item, selectable: isQueueTab)
+                            ReturnItemRowView(
+                                item: item,
+                                selectable: isQueueTab,
+                                selected: $selected
+                            )
                         }
                     }
                 }
             }
         }
     }
+}
 
-    @ViewBuilder
-    private func returnRow(_ item: InboundReturnRow, selectable: Bool) -> some View {
+private struct ReturnItemRowView: View {
+    let item: InboundReturnRow
+    let selectable: Bool
+    @Binding var selected: Set<String>
+
+    @State private var isSelected: Bool
+
+    init(
+        item: InboundReturnRow,
+        selectable: Bool,
+        selected: Binding<Set<String>>
+    ) {
+        self.item = item
+        self.selectable = selectable
+        self._selected = selected
+        self._isSelected = State(initialValue: selected.wrappedValue.contains(item.returnId))
+    }
+
+    var body: some View {
+        let displayTitle = item.productName.isEmpty ? item.returnId : item.productName
         HStack {
             VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
                 HStack {
-                    Text(item.productName.isEmpty ? item.returnId : item.productName)
+                    Text(displayTitle)
                         .font(.headline)
                     if item.isClaimTicket {
                         Text("mobile_warehouse.ui.claim_ticket")
                             .font(.caption2.weight(.semibold))
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
-                            .background(Color.orange.opacity(0.2))
+                            .foregroundStyle(PegasusMonochromeTheme.warning)
+                            .background(PegasusMonochromeTheme.warning.opacity(0.15))
                             .clipShape(Capsule())
                     }
                 }
@@ -64,15 +88,27 @@ struct ReturnsList: View {
             }
             Spacer()
             if selectable {
-                Toggle("", isOn: Binding(
-                    get: { selected.contains(item.returnId) },
-                    set: { on in
-                        if on { selected.insert(item.returnId) }
-                        else { selected.remove(item.returnId) }
+                Toggle("Select \(displayTitle)", isOn: $isSelected)
+                    .labelsHidden()
+                    .frame(minWidth: 44, minHeight: 44)
+                    .accessibilityLabel("Select return \(displayTitle)")
+                    .onChange(of: isSelected) { _, newValue in
+                        guard selected.contains(item.returnId) != newValue else { return }
+                        PegasusHaptics.selection()
+                        if newValue {
+                            selected.insert(item.returnId)
+                        } else {
+                            selected.remove(item.returnId)
+                        }
                     }
-                ))
-                .labelsHidden()
+                    .onChange(of: selected) { _, newSet in
+                        let contains = newSet.contains(item.returnId)
+                        if isSelected != contains {
+                            isSelected = contains
+                        }
+                    }
             }
         }
+        .accessibilityElement(children: .contain)
     }
 }

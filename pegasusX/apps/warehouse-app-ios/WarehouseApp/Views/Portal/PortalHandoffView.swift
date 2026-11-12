@@ -8,8 +8,10 @@ struct PortalHandoffView: View {
         VStack(spacing: LabTheme.spacingLG) {
             Spacer()
             Image(systemName: "desktopcomputer")
-                .font(.system(size: 48))
+                .font(.largeTitle)
+                .imageScale(.large)
                 .foregroundStyle(.primary)
+                .accessibilityHidden(true)
             Text("mobile_warehouse.ui.manage_on_web_portal")
                 .font(.title2.bold())
             Text(feature.handoffMessage)
@@ -17,11 +19,15 @@ struct PortalHandoffView: View {
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 360)
-            Button("mobile_warehouse.ui.open_warehouse_portal") {
+            Button {
+                PegasusHaptics.light()
                 openURL(WarehousePortalLinks.url(for: feature))
+            } label: {
+                Text("mobile_warehouse.ui.open_warehouse_portal")
+                    .frame(maxWidth: 360, minHeight: 44)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.borderedProminent)
-            .frame(maxWidth: 360)
             Spacer()
         }
         .padding()

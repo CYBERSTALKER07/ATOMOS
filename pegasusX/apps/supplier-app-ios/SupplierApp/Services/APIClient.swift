@@ -13,7 +13,7 @@ final class APIClient: Sendable {
             s = raw.hasSuffix("/") ? raw : raw + "/"
         } else if raw.contains(":") { s = "http://\(raw)/" }
         else { s = "http://\(raw):8180/" }
-        return URL(string: s)!
+        return SupplierURL.parse(s) ?? SupplierURL.devBootstrap
     }()
     #else
     private let bootstrapURL: URL = {
@@ -23,7 +23,7 @@ final class APIClient: Sendable {
         if raw.isEmpty { s = "https://api.pegasusx.app/" }
         else if raw.hasSuffix("/") { s = raw }
         else { s = raw + "/" }
-        return URL(string: s)!
+        return SupplierURL.parse(s) ?? SupplierURL.releaseBootstrap
     }()
     #endif
 
@@ -53,27 +53,20 @@ final class APIClient: Sendable {
     func registerDeviceToken(token: String, platform: String = "ios") async throws {
         let _: [String: String] = try await post(
             "v1/user/device-token",
-            body: DeviceTokenRequest(token: token, platform: platform)
+            body: DeviceTokenRequest(token: token, platform: platform),
+            idempotencyKey: SupplierIdempotencyKeys.deviceToken(platform: platform, token: token)
         )
     }
 
     func get<T: Decodable>(_ path: String, query: [String: String] = [:]) async throws -> T {
-        var components = URLComponents(url: baseURL.appendingPathComponent(path), resolvingAgainstBaseURL: false)!
-        if !query.isEmpty {
-            components.queryItems = query.map { URLQueryItem(name: $0.key, value: $0.value) }
-        }
-        var request = URLRequest(url: components.url!)
+        var request = URLRequest(url: try requestURL(path: path, query: query))
         request.httpMethod = "GET"
         await attachToken(&request)
         return try await execute(request)
     }
 
     func getJSONString(_ path: String, query: [String: String] = [:]) async throws -> String {
-        var components = URLComponents(url: baseURL.appendingPathComponent(path), resolvingAgainstBaseURL: false)!
-        if !query.isEmpty {
-            components.queryItems = query.map { URLQueryItem(name: $0.key, value: $0.value) }
-        }
-        var request = URLRequest(url: components.url!)
+        var request = URLRequest(url: try requestURL(path: path, query: query))
         request.httpMethod = "GET"
         await attachToken(&request)
         let (data, response) = try await session.data(for: request)
@@ -102,9 +95,7 @@ final class APIClient: Sendable {
         var request = URLRequest(url: baseURL.appendingPathComponent(path))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        if let idempotencyKey {
-            request.setValue(idempotencyKey, forHTTPHeaderField: "X-Idempotency-Key")
-        }
+        stampIdempotency(idempotencyKey, on: &request)
         request.httpBody = try encoder.encode(body)
         if authenticated {
             await attachToken(&request)
@@ -112,10 +103,11 @@ final class APIClient: Sendable {
         return try await execute(request)
     }
 
-    func postEmpty<T: Decodable>(_ path: String, authenticated: Bool = true) async throws -> T {
+    func postEmpty<T: Decodable>(_ path: String, idempotencyKey: String? = nil, authenticated: Bool = true) async throws -> T {
         var request = URLRequest(url: baseURL.appendingPathComponent(path))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        stampIdempotency(idempotencyKey, on: &request)
         request.httpBody = Data("{}".utf8)
         if authenticated {
             await attachToken(&request)
@@ -123,19 +115,37 @@ final class APIClient: Sendable {
         return try await execute(request)
     }
 
-    func postText(_ path: String, authenticated: Bool = true) async throws -> String {
+    func postText(
+        _ path: String,
+        idempotencyKey: String? = nil,
+        authenticated: Bool = true
+    ) async throws -> String {
         var request = URLRequest(url: baseURL.appendingPathComponent(path))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        stampIdempotency(idempotencyKey, on: &request)
         request.httpBody = Data("{}".utf8)
         if authenticated {
             await attachToken(&request)
         }
-        let (data, response) = try await session.data(for: request)
+        await coalescer.invalidateCache()
+        let (data, response) = try await dataForRequestWithRetry(request)
         guard let http = response as? HTTPURLResponse else {
             throw APIError.invalidResponse
         }
         if http.statusCode == 401 {
+            let refreshed = try await coalescer.refreshToken { [self] in
+                try await self.attemptRefresh()
+            }
+            if refreshed {
+                var retry = request
+                await attachToken(&retry)
+                let (retryData, retryResp) = try await dataForRequestWithRetry(retry)
+                guard let retryHttp = retryResp as? HTTPURLResponse, (200...299).contains(retryHttp.statusCode) else {
+                    throw APIError.httpError((retryResp as? HTTPURLResponse)?.statusCode ?? 0)
+                }
+                return String(data: retryData, encoding: .utf8) ?? ""
+            }
             await MainActor.run { TokenStore.shared.clear() }
             throw APIError.unauthorized
         }
@@ -157,9 +167,7 @@ final class APIClient: Sendable {
         var request = URLRequest(url: baseURL.appendingPathComponent(path))
         request.httpMethod = "PUT"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        if let idempotencyKey {
-            request.setValue(idempotencyKey, forHTTPHeaderField: "X-Idempotency-Key")
-        }
+        stampIdempotency(idempotencyKey, on: &request)
         request.httpBody = try encoder.encode(body)
         if authenticated {
             await attachToken(&request)
@@ -180,9 +188,7 @@ final class APIClient: Sendable {
         var request = URLRequest(url: baseURL.appendingPathComponent(path))
         request.httpMethod = "PATCH"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        if let idempotencyKey {
-            request.setValue(idempotencyKey, forHTTPHeaderField: "X-Idempotency-Key")
-        }
+        stampIdempotency(idempotencyKey, on: &request)
         request.httpBody = try encoder.encode(body)
         if authenticated {
             await attachToken(&request)
@@ -203,9 +209,7 @@ final class APIClient: Sendable {
         var request = URLRequest(url: baseURL.appendingPathComponent(path))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        if let idempotencyKey {
-            request.setValue(idempotencyKey, forHTTPHeaderField: "X-Idempotency-Key")
-        }
+        stampIdempotency(idempotencyKey, on: &request)
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         if authenticated {
             await attachToken(&request)
@@ -223,9 +227,7 @@ final class APIClient: Sendable {
         var request = URLRequest(url: baseURL.appendingPathComponent(path))
         request.httpMethod = "POST"
         request.setValue(contentType, forHTTPHeaderField: "Content-Type")
-        if let idempotencyKey {
-            request.setValue(idempotencyKey, forHTTPHeaderField: "X-Idempotency-Key")
-        }
+        stampIdempotency(idempotencyKey, on: &request)
         request.httpBody = body
         if authenticated {
             await attachToken(&request)
@@ -242,9 +244,7 @@ final class APIClient: Sendable {
         var request = URLRequest(url: baseURL.appendingPathComponent(path))
         request.httpMethod = "PATCH"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        if let idempotencyKey {
-            request.setValue(idempotencyKey, forHTTPHeaderField: "X-Idempotency-Key")
-        }
+        stampIdempotency(idempotencyKey, on: &request)
         request.httpBody = try encoder.encode(body)
         if authenticated {
             await attachToken(&request)
@@ -259,16 +259,10 @@ final class APIClient: Sendable {
         idempotencyKey: String? = nil,
         authenticated: Bool = true
     ) async throws {
-        var components = URLComponents(url: baseURL.appendingPathComponent(path), resolvingAgainstBaseURL: false)!
-        if !query.isEmpty {
-            components.queryItems = query.map { URLQueryItem(name: $0.key, value: $0.value) }
-        }
-        var request = URLRequest(url: components.url!)
+        var request = URLRequest(url: try requestURL(path: path, query: query))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        if let idempotencyKey {
-            request.setValue(idempotencyKey, forHTTPHeaderField: "X-Idempotency-Key")
-        }
+        stampIdempotency(idempotencyKey, on: &request)
         request.httpBody = try encoder.encode(body)
         if authenticated {
             await attachToken(&request)
@@ -283,9 +277,7 @@ final class APIClient: Sendable {
     ) async throws {
         var request = URLRequest(url: baseURL.appendingPathComponent(path))
         request.httpMethod = "DELETE"
-        if let idempotencyKey {
-            request.setValue(idempotencyKey, forHTTPHeaderField: "X-Idempotency-Key")
-        }
+        stampIdempotency(idempotencyKey, on: &request)
         if authenticated {
             await attachToken(&request)
         }
@@ -299,9 +291,7 @@ final class APIClient: Sendable {
     ) async throws -> T {
         var request = URLRequest(url: baseURL.appendingPathComponent(path))
         request.httpMethod = "DELETE"
-        if let idempotencyKey {
-            request.setValue(idempotencyKey, forHTTPHeaderField: "X-Idempotency-Key")
-        }
+        stampIdempotency(idempotencyKey, on: &request)
         if authenticated {
             await attachToken(&request)
         }
@@ -382,8 +372,20 @@ final class APIClient: Sendable {
         }
     }
 
+    /// Stripe and the IETF draft name the header `Idempotency-Key`. Billing setup
+    /// and the payment replay path read only that name. The global middleware also
+    /// accepts `X-Idempotency-Key`, so both go out with the same value.
+    private func stampIdempotency(_ key: String?, on request: inout URLRequest) {
+        let trimmed = key?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard !trimmed.isEmpty else { return }
+        request.setValue(trimmed, forHTTPHeaderField: "Idempotency-Key")
+        request.setValue(trimmed, forHTTPHeaderField: "X-Idempotency-Key")
+    }
+
     private func dataForRequestWithRetry(_ request: URLRequest) async throws -> (Data, URLResponse) {
-        let isIdempotent = request.httpMethod == "GET" || request.value(forHTTPHeaderField: "X-Idempotency-Key") != nil
+        let hasIdempotencyKey = request.value(forHTTPHeaderField: "Idempotency-Key") != nil
+            || request.value(forHTTPHeaderField: "X-Idempotency-Key") != nil
+        let isIdempotent = request.httpMethod == "GET" || hasIdempotencyKey
         let maxAttempts = isIdempotent ? 3 : 1
         var lastError: Error = URLError(.unknown)
 
@@ -440,6 +442,17 @@ final class APIClient: Sendable {
             TokenStore.shared.updateTokens(token: auth.token, refresh: auth.refreshToken ?? refresh)
         }
         return true
+    }
+
+    private func requestURL(path: String, query: [String: String] = [:]) throws -> URL {
+        guard var components = URLComponents(url: baseURL.appendingPathComponent(path), resolvingAgainstBaseURL: false) else {
+            throw APIError.invalidURL
+        }
+        if !query.isEmpty {
+            components.queryItems = query.map { URLQueryItem(name: $0.key, value: $0.value) }
+        }
+        guard let url = components.url else { throw APIError.invalidURL }
+        return url
     }
 
     private func attachToken(_ request: inout URLRequest) async {
@@ -513,6 +526,7 @@ struct APIErrorBody: Decodable {
 }
 
 enum APIError: LocalizedError {
+    case invalidURL
     case invalidResponse
     case httpError(Int)
     case unauthorized
@@ -520,10 +534,35 @@ enum APIError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
+        case .invalidURL: "The request URL is invalid."
         case .invalidResponse: "Invalid response"
         case .httpError(let code): "HTTP \(code)"
         case .unauthorized: "Session expired — sign in again"
         case .server(let message): message.replacingOccurrences(of: "_", with: " ")
         }
+    }
+}
+
+enum SupplierURL {
+    static let devBootstrap = literal(scheme: "http", host: "localhost", port: 8180)
+    static let releaseBootstrap = literal(scheme: "https", host: "api.pegasusx.app")
+    static let portalDefault = literal(scheme: "http", host: "localhost", port: 3000)
+
+    static func literal(scheme: String, host: String, port: Int? = nil, path: String = "/") -> URL {
+        var components = URLComponents()
+        components.scheme = scheme
+        components.host = host
+        components.port = port
+        components.path = path
+        if let url = components.url { return url }
+        return URL(fileURLWithPath: "/")
+    }
+
+    static func parse(_ raw: String) -> URL? {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, let url = URL(string: trimmed) else { return nil }
+        guard let scheme = url.scheme?.lowercased(), scheme == "http" || scheme == "https" else { return nil }
+        guard let host = url.host, !host.isEmpty else { return nil }
+        return url
     }
 }

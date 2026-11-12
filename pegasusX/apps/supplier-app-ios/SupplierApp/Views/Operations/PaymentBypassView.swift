@@ -10,14 +10,14 @@ struct PaymentBypassView: View {
     var body: some View {
         Group {
             Section {
-                SupplierSectionHeader(title: "Payment bypass")
+                SupplierSectionHeader(title: "mobile_supplier.chrome.payment_bypass")
             }
             Section {
                 TextField("supplier_portal.operations.payment_bypass.text.order_id_awaiting_payment", text: $orderId)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                 TextField("warehouse_portal.inventory.text.reason_optional", text: $bypassReason)
-                Button(bypassing ? "Issuing…" : "Issue bypass token") {
+                Button(LocalizedStringKey(bypassing ? "mobile_supplier.chrome.issuing" : "mobile_supplier.chrome.issue_bypass_token")) {
                     showBypassConfirm = true
                 }
                 .disabled(bypassing || orderId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)

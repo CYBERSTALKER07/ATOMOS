@@ -9,195 +9,153 @@ struct LoginView: View {
 
     @Environment(TokenStore.self) private var tokenStore
     @Environment(\.openURL) private var openURL
-    @State private var phone = ""
-    @State private var pin = ""
-    @State private var otpCode = ""
-    @State private var useOtp = true
-    @State private var otpSent = false
-    @State private var loading = false
-    @State private var error: String?
+    @State private var vm = LoginViewModel()
     @FocusState private var focusedField: Field?
 
     var body: some View {
-        VStack(spacing: LabTheme.spacingXXL) {
-            Spacer()
+        @Bindable var vm = vm
+        ScrollView {
+            VStack(spacing: LabTheme.spacingXXL) {
+                Spacer(minLength: 40)
 
-            VStack(spacing: LabTheme.spacingSM) {
-                Text("mobile_warehouse.ui.pegasus_warehouse")
-                    .font(.largeTitle.bold())
-                Text(useOtp ? "Sign in with phone OTP" : "Dev fallback: phone + PIN")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
+                VStack(spacing: LabTheme.spacingSM) {
+                    Text("mobile_warehouse.ui.pegasus_warehouse")
+                        .font(.largeTitle.bold())
+                    Text(vm.useOtp ? "Sign in with phone OTP" : "Dev fallback: phone + PIN")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
 
-            VStack(spacing: LabTheme.spacingLG) {
-                TextField("common.field.phone", text: $phone)
-                    .textContentType(.telephoneNumber)
-                    .keyboardType(.phonePad)
-                    .textFieldStyle(.roundedBorder)
-                    .focused($focusedField, equals: .phone)
-                    .submitLabel(useOtp ? .send : .next)
+                VStack(spacing: LabTheme.spacingLG) {
+                    TextField("common.field.phone", text: $vm.phone)
+                        .textContentType(.telephoneNumber)
+                        .keyboardType(.phonePad)
+                        .textFieldStyle(.roundedBorder)
+                        .focused($focusedField, equals: .phone)
+                        .submitLabel(vm.useOtp ? .send : .next)
 
-                if useOtp {
-                    if otpSent {
-                        TextField("mobile_warehouse.ui.verification_code", text: $otpCode)
+                    if vm.useOtp {
+                        if vm.otpSent {
+                            TextField("mobile_warehouse.ui.verification_code", text: $vm.otpCode)
+                                .textContentType(.oneTimeCode)
+                                .keyboardType(.numberPad)
+                                .textFieldStyle(.roundedBorder)
+                                .focused($focusedField, equals: .otp)
+                                .submitLabel(.go)
+                                .onChange(of: vm.otpCode) {
+                                    vm.clampOtpCode()
+                                }
+                        }
+                    } else {
+                        SecureField("PIN", text: $vm.pin)
                             .textContentType(.oneTimeCode)
                             .keyboardType(.numberPad)
                             .textFieldStyle(.roundedBorder)
-                            .focused($focusedField, equals: .otp)
+                            .focused($focusedField, equals: .pin)
                             .submitLabel(.go)
-                            .onChange(of: otpCode) {
-                                if otpCode.count > 6 { otpCode = String(otpCode.prefix(6)) }
+                            .onChange(of: vm.pin) {
+                                vm.clampPin()
                             }
                     }
-                } else {
-                    SecureField("PIN", text: $pin)
-                        .textContentType(.oneTimeCode)
-                        .keyboardType(.numberPad)
-                        .textFieldStyle(.roundedBorder)
-                        .focused($focusedField, equals: .pin)
-                        .submitLabel(.go)
-                        .onChange(of: pin) {
-                            if pin.count > 6 { pin = String(pin.prefix(6)) }
+                }
+                .frame(maxWidth: 360)
+
+                if let error = vm.error {
+                    Text(error)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
+
+                Button {
+                    PegasusHaptics.light()
+                    Task {
+                        if vm.useOtp {
+                            if vm.otpSent {
+                                await vm.verifyOtp(tokenStore: tokenStore)
+                            } else {
+                                await vm.sendOtp()
+                            }
+                        } else {
+                            await vm.loginWithPin(tokenStore: tokenStore)
                         }
-                }
-            }
-            .frame(maxWidth: 360)
-
-            if let error {
-                Text(error)
-                    .font(.caption)
-                    .foregroundStyle(.red)
-            }
-
-            Button {
-                if useOtp {
-                    if otpSent {
-                        verifyOtp()
-                    } else {
-                        sendOtp()
                     }
-                } else {
-                    loginWithPin()
-                }
-            } label: {
-                Group {
-                    if loading {
-                        ProgressView().tint(.white)
-                    } else {
-                        Text(useOtp ? (otpSent ? "Verify & Sign In" : "Send code") : "Sign In")
+                } label: {
+                    Group {
+                        if vm.loading {
+                            ProgressView().tint(.white)
+                        } else {
+                            Text(vm.useOtp ? (vm.otpSent ? "Verify & Sign In" : "Send code") : "Sign In")
+                        }
                     }
+                    .frame(maxWidth: 360, minHeight: 44)
+                    .contentShape(Rectangle())
                 }
-                .frame(maxWidth: 360, minHeight: 44)
-            }
-            .buttonStyle(.borderedProminent)
-            .tint(.primary)
-            .disabled(loading || phone.isEmpty || (!useOtp && pin.isEmpty))
+                .buttonStyle(.borderedProminent)
+                .tint(.primary)
+                .disabled(vm.isSubmitDisabled)
+                .accessibilityLabel(vm.useOtp ? (vm.otpSent ? "Verify code and sign in" : "Send verification code") : "Sign in with PIN")
 
-            Button {
-                useOtp.toggle()
-                otpSent = false
-                otpCode = ""
-                FirebaseAuthHelper.shared.resetFlow()
-                focusedField = .phone
-            } label: {
-                Text(useOtp ? "Use PIN (dev)" : "Use phone OTP")
-                    .font(.footnote)
-            }
+                Button {
+                    PegasusHaptics.selection()
+                    vm.toggleAuthMode()
+                    focusedField = .phone
+                } label: {
+                    Text(vm.useOtp ? "Use PIN (dev)" : "Use phone OTP")
+                        .font(.footnote)
+                        .frame(minWidth: 44, minHeight: 44)
+                        .contentShape(Rectangle())
+                }
+                .accessibilityLabel(vm.useOtp ? "Switch to PIN authentication" : "Switch to phone OTP authentication")
 
-            Button {
-                openURL(WarehousePortalLinks.url(for: .register))
-            } label: {
-                Text("mobile_warehouse.ui.new_warehouse_register_on_the_web_portal")
-                    .font(.footnote)
-            }
-            .padding(.top, LabTheme.spacingSM)
+                Button {
+                    PegasusHaptics.light()
+                    openURL(WarehousePortalLinks.url(for: .register))
+                } label: {
+                    Text("mobile_warehouse.ui.new_warehouse_register_on_the_web_portal")
+                        .font(.footnote)
+                        .frame(minWidth: 44, minHeight: 44)
+                        .contentShape(Rectangle())
+                }
+                .accessibilityLabel("Register new warehouse on web portal")
+                .padding(.top, LabTheme.spacingSM)
 
-            Spacer()
+                Spacer(minLength: 40)
+            }
+            .padding()
+            .frame(maxWidth: .infinity)
         }
-        .padding()
+        .scrollDismissesKeyboard(.interactively)
         .defaultFocus($focusedField, .phone)
         .onAppear {
             focusedField = .phone
         }
-        .onChange(of: otpSent) { _, sent in
+        .onChange(of: vm.otpSent) { _, sent in
             focusedField = sent ? .otp : .phone
         }
         .onSubmit {
             switch focusedField {
             case .phone:
-                if useOtp {
-                    if !phone.isEmpty { sendOtp() }
+                if vm.useOtp {
+                    if !vm.phone.isEmpty {
+                        Task { await vm.sendOtp() }
+                    }
                 } else {
                     focusedField = .pin
                 }
             case .otp:
-                if !otpCode.isEmpty { verifyOtp() }
+                if !vm.otpCode.isEmpty {
+                    Task { await vm.verifyOtp(tokenStore: tokenStore) }
+                }
             case .pin:
-                if !phone.isEmpty && !pin.isEmpty { loginWithPin() }
+                if !vm.phone.isEmpty && !vm.pin.isEmpty {
+                    Task { await vm.loginWithPin(tokenStore: tokenStore) }
+                }
             case nil:
                 break
             }
         }
         .task {
-            FirebaseAuthHelper.shared.configure()
+            vm.configure()
         }
-    }
-
-    private func sendOtp() {
-        loading = true
-        error = nil
-        Task {
-            do {
-                try await FirebaseAuthHelper.shared.sendPhoneVerification(phone: phone)
-                otpSent = true
-            } catch {
-                self.error = error.localizedDescription
-            }
-            loading = false
-        }
-    }
-
-    private func verifyOtp() {
-        loading = true
-        error = nil
-        Task {
-            do {
-                let idToken = try await FirebaseAuthHelper.shared.verifySmsCode(otpCode)
-                let auth = try await WarehouseService.login(idToken: idToken)
-                tokenStore.store(auth: auth)
-                await registerPushTokenIfNeeded()
-            } catch {
-                if let apiError = error as? APIError, case .httpError(404) = apiError {
-                    self.error = "No account found. Register your warehouse on the web portal."
-                } else {
-                    self.error = error.localizedDescription
-                }
-            }
-            loading = false
-        }
-    }
-
-    private func loginWithPin() {
-        loading = true
-        error = nil
-        Task {
-            do {
-                let auth = try await WarehouseService.login(phone: phone, pin: pin)
-                tokenStore.store(auth: auth)
-                await registerPushTokenIfNeeded()
-            } catch {
-                if let apiError = error as? APIError, case .httpError(404) = apiError {
-                    self.error = "No account found. Register your warehouse on the web portal."
-                } else {
-                    self.error = error.localizedDescription
-                }
-            }
-            loading = false
-        }
-    }
-
-    private func registerPushTokenIfNeeded() async {
-        await PushNotificationManager.shared.uploadStoredTokenIfPossible()
     }
 }

@@ -20,7 +20,7 @@ struct TacticalLedProgressBar: View {
                     .tacticalMicroLabel()
                 Spacer()
                 Text("\(current)/\(total)")
-                    .font(.system(size: 11, weight: .bold, design: .monospaced))
+                    .font(.system(.caption2, design: .monospaced, weight: .bold))
                     .foregroundStyle(TacticalTheme.textPrimary)
             }
 
@@ -37,5 +37,7 @@ struct TacticalLedProgressBar: View {
                 }
             }
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(title), \(current) of \(total)")
     }
 }

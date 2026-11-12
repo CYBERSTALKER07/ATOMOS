@@ -43,6 +43,8 @@ struct OperationsBroadcastForm: View {
                                     }
                                     .buttonStyle(.bordered)
                                     .font(.caption)
+                                    .frame(minHeight: 44)
+                                    .contentShape(Rectangle())
 
                                     if template.source == "custom" {
                                         Button(role: .destructive) {
@@ -52,6 +54,9 @@ struct OperationsBroadcastForm: View {
                                         }
                                         .buttonStyle(.borderless)
                                         .font(.caption)
+                                        .frame(minWidth: 44, minHeight: 44)
+                                        .contentShape(Rectangle())
+                                        .accessibilityLabel("Delete template \(template.title)")
                                     }
                                 }
                             }
@@ -79,6 +84,8 @@ struct OperationsBroadcastForm: View {
                 Button(broadcasting || savingTemplate ? "Sending…" : "Send broadcast") {
                     Task { await onSendBroadcast() }
                 }
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
                 .disabled(
                     broadcasting || savingTemplate
                         || title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty

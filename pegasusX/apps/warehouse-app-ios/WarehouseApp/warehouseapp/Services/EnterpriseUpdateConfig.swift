@@ -38,9 +38,10 @@ enum EnterpriseUpdateConfig {
 
     static let policyRole = "WAREHOUSE"
 
-    static let defaultManifestURL = URL(
-        string: "https://storage.googleapis.com/pegasusx-ssmr-app-updates/ios/warehouse/updater.json"
-    )!
+    static let defaultManifestURL: URL = {
+        URL(string: "https://storage.googleapis.com/pegasusx-ssmr-app-updates/ios/warehouse/updater.json")
+            ?? URL(fileURLWithPath: "/")
+    }()
 
     /// App Store listing URL for production builds.
     static var storeListingURL: URL? {

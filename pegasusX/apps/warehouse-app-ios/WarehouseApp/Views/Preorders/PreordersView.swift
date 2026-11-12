@@ -1,76 +1,81 @@
 import SwiftUI
 
-private enum PreorderSheet: Identifiable {
-    case propose(WarehousePreorderRow)
-    case reject(WarehousePreorderRow)
-
-    var id: String {
-        switch self {
-        case .propose(let row): return "propose-\(row.orderId)"
-        case .reject(let row): return "reject-\(row.orderId)"
-        }
-    }
-}
-
 struct PreordersView: View {
-    @State private var rows: [WarehousePreorderRow] = []
-    @State private var loading = true
-    @State private var acting = false
-    @State private var activeSheet: PreorderSheet?
-    @State private var proposeDate = Date()
-    @State private var reasonInput = ""
-    @State private var statusMessage: String?
+    @State private var vm = PreordersViewModel()
 
     var body: some View {
+        @Bindable var vm = vm
         Group {
-            if loading && rows.isEmpty {
+            if vm.loading && vm.rows.isEmpty {
                 WarehouseLoadingView(title: "Loading pre-orders…", message: "Fetching scheduled deliveries")
-            } else if rows.isEmpty {
-                if let error = statusMessage, error.contains("network") || error.contains("fail") {
-                    WarehouseErrorView(message: error, retry: { Task { await load() } })
+            } else if vm.rows.isEmpty {
+                if vm.hasBlockingError, let error = vm.statusMessage {
+                    WarehouseErrorView(message: error, retry: {
+                        PegasusHaptics.light()
+                        Task { await vm.load() }
+                    })
                 } else {
                     WarehouseEmptyView(title: "No scheduled pre-orders", message: "No future orders waiting for delivery scheduling.")
                 }
             } else {
                 PreordersList(
-                    rows: rows,
-                    acting: acting,
+                    rows: vm.rows,
+                    acting: vm.acting,
                     onPropose: { row in
-                        reasonInput = ""
-                        proposeDate = initialProposeDate(for: row)
-                        activeSheet = .propose(row)
+                        vm.beginPropose(row)
                     },
                     onReject: { row in
-                        reasonInput = ""
-                        activeSheet = .reject(row)
+                        vm.beginReject(row)
                     }
                 )
             }
         }
         .navigationTitle("portal.nav.preorders")
-        .onAppear {
-            Task { await load() }
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") {
+                    PegasusHaptics.light()
+                    Task { await vm.load() }
+                }
+                .frame(minWidth: 44, minHeight: 44)
+                .contentShape(Rectangle())
+                .accessibilityLabel("Refresh pre-orders")
+            }
         }
-        .sheet(item: $activeSheet) { sheet in
+        .task {
+            await vm.load()
+        }
+        .refreshable {
+            await vm.load()
+        }
+        .sheet(item: $vm.activeSheet) { sheet in
             switch sheet {
             case .propose(let row):
                 NavigationStack {
                     Form {
-                        DatePicker("Proposed delivery date", selection: $proposeDate, displayedComponents: .date)
+                        DatePicker("Proposed delivery date", selection: $vm.proposeDate, displayedComponents: .date)
                         Section("Reason for date change") {
-                            TextField("supplier_portal.admin.control_center.field.reason", text: $reasonInput, axis: .vertical)
+                            TextField("supplier_portal.admin.control_center.field.reason", text: $vm.reasonInput, axis: .vertical)
                                 .lineLimit(2...4)
                         }
                     }
+                    .scrollDismissesKeyboard(.interactively)
                     .navigationTitle("mobile_warehouse.ui.propose_date")
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
                         ToolbarItem(placement: .cancellationAction) {
-                            Button("common.action.cancel") { activeSheet = nil }
+                            Button("common.action.cancel") { vm.activeSheet = nil }
+                                .frame(minWidth: 44, minHeight: 44)
+                                .contentShape(Rectangle())
                         }
                         ToolbarItem(placement: .confirmationAction) {
-                            Button("mobile_warehouse.ui.send") { submitPropose(row) }
-                                .disabled(acting || reasonInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                            Button("mobile_warehouse.ui.send") {
+                                PegasusHaptics.medium()
+                                Task { await vm.submitPropose(row) }
+                            }
+                            .disabled(vm.acting || vm.trimmedReason.isEmpty)
+                            .frame(minWidth: 44, minHeight: 44)
+                            .contentShape(Rectangle())
                         }
                     }
                 }
@@ -79,19 +84,27 @@ struct PreordersView: View {
                 NavigationStack {
                     Form {
                         Section("Rejection reason") {
-                            TextField("supplier_portal.admin.control_center.field.reason", text: $reasonInput, axis: .vertical)
+                            TextField("supplier_portal.admin.control_center.field.reason", text: $vm.reasonInput, axis: .vertical)
                                 .lineLimit(2...4)
                         }
                     }
+                    .scrollDismissesKeyboard(.interactively)
                     .navigationTitle("mobile_warehouse.ui.reject_pre_order")
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
                         ToolbarItem(placement: .cancellationAction) {
-                            Button("common.action.cancel") { activeSheet = nil }
+                            Button("common.action.cancel") { vm.activeSheet = nil }
+                                .frame(minWidth: 44, minHeight: 44)
+                                .contentShape(Rectangle())
                         }
                         ToolbarItem(placement: .confirmationAction) {
-                            Button("mobile_warehouse.ui.reject", role: .destructive) { submitReject(row) }
-                                .disabled(acting || reasonInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                            Button("mobile_warehouse.ui.reject", role: .destructive) {
+                                PegasusHaptics.warning()
+                                Task { await vm.submitReject(row) }
+                            }
+                            .disabled(vm.acting || vm.trimmedReason.isEmpty)
+                            .frame(minWidth: 44, minHeight: 44)
+                            .contentShape(Rectangle())
                         }
                     }
                 }
@@ -99,7 +112,7 @@ struct PreordersView: View {
             }
         }
         .safeAreaInset(edge: .bottom) {
-            if let statusMessage {
+            if let statusMessage = vm.statusMessage {
                 Text(statusMessage)
                     .font(.footnote)
                     .foregroundStyle(.secondary)
@@ -108,99 +121,5 @@ struct PreordersView: View {
                     .background(.bar)
             }
         }
-    }
-
-    private func load() async {
-        loading = true
-        defer { loading = false }
-        do {
-            let data = try await WarehouseService.preorders()
-            rows = data.preorders.isEmpty ? data.items : data.preorders
-        } catch {
-            rows = []
-            statusMessage = error.localizedDescription
-        }
-    }
-
-    private func submitPropose(_ row: WarehousePreorderRow) {
-        let reason = reasonInput.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !reason.isEmpty else { return }
-        acting = true
-        statusMessage = nil
-        let iso = isoDeliveryDate(from: proposeDate)
-        Task {
-            defer { acting = false }
-            do {
-                let response = try await WarehouseOperationsService.proposePreorderDelivery(
-                    orderId: row.orderId,
-                    proposedDeliveryDate: iso,
-                    reason: reason
-                )
-                activeSheet = nil
-                statusMessage = "Delivery date proposed · \(response.status)"
-                await load()
-            } catch {
-                statusMessage = error.localizedDescription
-            }
-        }
-    }
-
-    private func submitReject(_ row: WarehousePreorderRow) {
-        let reason = reasonInput.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !reason.isEmpty else { return }
-        acting = true
-        statusMessage = nil
-        Task {
-            defer { acting = false }
-            do {
-                let response = try await WarehouseOperationsService.rejectPreorder(orderId: row.orderId, reason: reason)
-                activeSheet = nil
-                statusMessage = "Pre-order rejected · \(response.status)"
-                await load()
-            } catch {
-                statusMessage = error.localizedDescription
-            }
-        }
-    }
-
-    private static let tashkentDayFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.calendar = Calendar(identifier: .gregorian)
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.timeZone = TimeZone(secondsFromGMT: 5 * 3600)
-        formatter.dateFormat = "yyyy-MM-dd"
-        return formatter
-    }()
-
-    private static let tashkentIsoFormatter: ISO8601DateFormatter = {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withColonSeparatorInTimeZone]
-        formatter.timeZone = TimeZone(secondsFromGMT: 5 * 3600)
-        return formatter
-    }()
-
-    private func initialProposeDate(for row: WarehousePreorderRow) -> Date {
-        if let raw = row.requestedDeliveryDate?.prefix(10), !raw.isEmpty {
-            if let parsed = Self.tashkentDayFormatter.date(from: String(raw)) {
-                return parsed
-            }
-        }
-        return Date()
-    }
-
-    private func isoDeliveryDate(from date: Date) -> String {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone(secondsFromGMT: 5 * 3600) ?? .current
-        let day = calendar.dateComponents([.year, .month, .day], from: date)
-        var noon = DateComponents()
-        noon.year = day.year
-        noon.month = day.month
-        noon.day = day.day
-        noon.hour = 12
-        noon.minute = 0
-        noon.second = 0
-        noon.timeZone = calendar.timeZone
-        let normalized = calendar.date(from: noon) ?? date
-        return Self.tashkentIsoFormatter.string(from: normalized)
     }
 }

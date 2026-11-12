@@ -31,7 +31,7 @@ struct DispatchOrderList: View {
         let selectedDriver = preview.availableDrivers.first(where: { $0.driverId == selectedDriverId })
         let selectedVolume = preview.undispatchedOrders
             .filter { selectedOrderIds.contains($0.orderId) }
-            .reduce(0.0) { $0 + $1.volumeVu }
+            .reduce(0.0) { $0 + ($1.volumeVu ?? 0) }
         let effectiveMax: Double = {
             guard let driver = selectedDriver else { return 0 }
             if let free = driver.freeVolumeVu, free > 0 {
@@ -45,18 +45,10 @@ struct DispatchOrderList: View {
             if !fleetVehicles.isEmpty {
                 Section(L10n.format("mobile_warehouse.ui.fleet_trucks_count", "\(fleetVehicles.count)")) {
                     ForEach(fleetVehicles) { vehicle in
-                        let reasonBinding = Binding<String>(
-                            get: { vehicleReasons[vehicle.vehicleId] ?? vehicle.unavailableReason ?? "MANUAL_HOLD" },
-                            set: { vehicleReasons[vehicle.vehicleId] = $0 }
-                        )
-                        let noteBinding = Binding<String>(
-                            get: { vehicleNotes[vehicle.vehicleId] ?? vehicle.unavailableNote ?? "" },
-                            set: { vehicleNotes[vehicle.vehicleId] = $0 }
-                        )
-                        FleetTruckDispatchCard(
+                        DispatchFleetVehicleRow(
                             vehicle: vehicle,
-                            selectedReason: reasonBinding,
-                            customNote: noteBinding,
+                            vehicleReasons: $vehicleReasons,
+                            vehicleNotes: $vehicleNotes,
                             mutating: mutatingFleetVehicleId == vehicle.vehicleId,
                             onMarkUnavailable: { onMarkVehicleUnavailable(vehicle) },
                             onRestore: { onRestoreVehicle(vehicle) }
@@ -79,38 +71,44 @@ struct DispatchOrderList: View {
                         }
                     }
                     .pickerStyle(.segmented)
-                    if dispatchMode == .manual {
-                    Picker("Truck / driver", selection: $selectedDriverId) {
-                        Text("mobile_warehouse.ui.select_truck_driver").tag("")
-                        ForEach(preview.availableDrivers) { driver in
-                            Text(driverPickerLabel(driver)).tag(driver.driverId)
-                        }
+                    .onChange(of: dispatchMode) { _, _ in
+                        PegasusHaptics.selection()
                     }
-                    if selectedDriver != nil {
-                        Text(L10n.format("mobile_warehouse.ui.loaded_n_1f_n_1f_2_vu_effective", String(format: "%.1f", selectedVolume), String(format: "%.1f", effectiveMax)))
+                    if dispatchMode == .manual {
+                        Picker("Truck / driver", selection: $selectedDriverId) {
+                            Text("mobile_warehouse.ui.select_truck_driver").tag("")
+                            ForEach(preview.availableDrivers) { driver in
+                                Text(driverPickerLabel(driver)).tag(driver.driverId)
+                            }
+                        }
+                        .frame(minHeight: 44)
+                        if selectedDriver != nil {
+                            Text(L10n.format("mobile_warehouse.ui.loaded_n_1f_n_1f_2_vu_effective", String(format: "%.1f", selectedVolume), String(format: "%.1f", effectiveMax)))
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                        Button {
+                            PegasusHaptics.medium()
+                            onManualDispatch()
+                        } label: {
+                            Text(executing ? "Dispatching…" : "Manual (\(selectedOrderIds.count))")
+                                .frame(maxWidth: .infinity, minHeight: 44)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(executing || selectedDriverId.isEmpty || selectedOrderIds.isEmpty)
+                    } else {
+                        Text("mobile_warehouse.ui.trucks_are_assigned_automatically_across_the_fleet")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
-                    }
-                    Button {
-                        onManualDispatch()
-                    } label: {
-                        Text(executing ? "Dispatching…" : "Manual (\(selectedOrderIds.count))")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(executing || selectedDriverId.isEmpty || selectedOrderIds.isEmpty)
-                    } else {
-                    Text("mobile_warehouse.ui.trucks_are_assigned_automatically_across_the_fleet")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                    Button {
-                        onSmartDispatch()
-                    } label: {
-                        Text("mobile_warehouse.ui.smart_dispatch")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(executing || preview.undispatchedOrders.isEmpty || preview.availableDrivers.isEmpty)
+                        Button {
+                            PegasusHaptics.medium()
+                            onSmartDispatch()
+                        } label: {
+                            Text("mobile_warehouse.ui.smart_dispatch")
+                                .frame(maxWidth: .infinity, minHeight: 44)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(executing || preview.undispatchedOrders.isEmpty || preview.availableDrivers.isEmpty)
                     }
                     if preview.fleetEffectiveCapacityVu > 0 {
                         Text(L10n.format("mobile_warehouse.ui.fleet_n_1f_vu_effective", String(format: "%.1f", preview.fleetEffectiveCapacityVu)))
@@ -122,41 +120,54 @@ struct DispatchOrderList: View {
                 // ── Orders list ──
                 Section("Orders") {
                     ForEach(preview.undispatchedOrders) { order in
+                        let isSelected = selectedOrderIds.contains(order.orderId)
+                        let displayTitle = order.retailerName.isEmpty ? String(order.orderId.prefix(8)) : order.retailerName
                         HStack(alignment: .center, spacing: LabTheme.spacingSM) {
                             Button {
-                                if selectedOrderIds.contains(order.orderId) {
+                                PegasusHaptics.selection()
+                                if isSelected {
                                     selectedOrderIds.remove(order.orderId)
                                 } else {
                                     selectedOrderIds.insert(order.orderId)
                                 }
                             } label: {
-                                Image(systemName: selectedOrderIds.contains(order.orderId) ? "checkmark.circle.fill" : "circle")
-                                    .foregroundStyle(selectedOrderIds.contains(order.orderId) ? Color.accentColor : .secondary)
+                                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                                    .foregroundStyle(isSelected ? Color.accentColor : .secondary)
+                                    .frame(minWidth: 44, minHeight: 44)
+                                    .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
+                            .accessibilityLabel("\(isSelected ? "Deselect" : "Select") order \(displayTitle)")
 
                             VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
-                                Text(order.retailerName.isEmpty ? String(order.orderId.prefix(8)) : order.retailerName)
+                                Text(displayTitle)
                                     .font(.headline)
                                 Text(L10n.format("mobile_warehouse.ui.formatted_uzs_n_1f_vu", "\(order.totalUzs.formatted())", String(format: "%.1f", order.volumeVu ?? 0)))
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
                                 HStack(spacing: LabTheme.spacingSM) {
                                     Button("mobile_warehouse.ui.propose_date") {
+                                        PegasusHaptics.light()
                                         onProposeDate(order.orderId)
                                     }
                                     .buttonStyle(.bordered)
                                     .controlSize(.small)
+                                    .frame(minHeight: 44)
+                                    .contentShape(Rectangle())
                                     Button("common.action.cancel", role: .destructive) {
+                                        PegasusHaptics.warning()
                                         onReject(order.orderId)
                                     }
                                     .buttonStyle(.bordered)
                                     .controlSize(.small)
+                                    .frame(minHeight: 44)
+                                    .contentShape(Rectangle())
                                 }
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .contentShape(Rectangle())
                             .onTapGesture(count: 2) {
+                                PegasusHaptics.light()
                                 onOrderDoubleTap(order.orderId)
                             }
                             .accessibilityHint("Double-tap to open order detail")
@@ -209,10 +220,86 @@ struct DispatchOrderList: View {
                 }
             }
         }
+        .scrollDismissesKeyboard(.interactively)
     }
 
     private func driverPickerLabel(_ driver: AvailableDriver) -> String {
         let vehicle = driver.vehicleLabel.isEmpty ? driver.truckStatus : driver.vehicleLabel
         return "\(driver.name) · \(vehicle.isEmpty ? "No vehicle" : vehicle)"
+    }
+}
+
+private struct DispatchFleetVehicleRow: View {
+    let vehicle: Vehicle
+    @Binding var vehicleReasons: [String: String]
+    @Binding var vehicleNotes: [String: String]
+    let mutating: Bool
+    let onMarkUnavailable: () -> Void
+    let onRestore: () -> Void
+
+    @State private var selectedReason: String
+    @State private var customNote: String
+
+    init(
+        vehicle: Vehicle,
+        vehicleReasons: Binding<[String: String]>,
+        vehicleNotes: Binding<[String: String]>,
+        mutating: Bool,
+        onMarkUnavailable: @escaping () -> Void,
+        onRestore: @escaping () -> Void
+    ) {
+        self.vehicle = vehicle
+        self._vehicleReasons = vehicleReasons
+        self._vehicleNotes = vehicleNotes
+        self.mutating = mutating
+        self.onMarkUnavailable = onMarkUnavailable
+        self.onRestore = onRestore
+        let initialReason = vehicleReasons.wrappedValue[vehicle.vehicleId]
+            ?? vehicle.unavailableReason
+            ?? "MANUAL_HOLD"
+        let initialNote = vehicleNotes.wrappedValue[vehicle.vehicleId]
+            ?? vehicle.unavailableNote
+            ?? ""
+        _selectedReason = State(initialValue: initialReason)
+        _customNote = State(initialValue: initialNote)
+    }
+
+    var body: some View {
+        FleetTruckDispatchCard(
+            vehicle: vehicle,
+            selectedReason: $selectedReason,
+            customNote: $customNote,
+            mutating: mutating,
+            onMarkUnavailable: {
+                vehicleReasons[vehicle.vehicleId] = selectedReason
+                vehicleNotes[vehicle.vehicleId] = customNote
+                PegasusHaptics.medium()
+                onMarkUnavailable()
+            },
+            onRestore: {
+                PegasusHaptics.light()
+                onRestore()
+            }
+        )
+        .onChange(of: selectedReason) { _, newValue in
+            if vehicleReasons[vehicle.vehicleId] != newValue {
+                vehicleReasons[vehicle.vehicleId] = newValue
+            }
+        }
+        .onChange(of: customNote) { _, newValue in
+            if vehicleNotes[vehicle.vehicleId] != newValue {
+                vehicleNotes[vehicle.vehicleId] = newValue
+            }
+        }
+        .onChange(of: vehicle.unavailableReason) { _, newReason in
+            if vehicleReasons[vehicle.vehicleId] == nil {
+                selectedReason = newReason ?? "MANUAL_HOLD"
+            }
+        }
+        .onChange(of: vehicle.unavailableNote) { _, newNote in
+            if vehicleNotes[vehicle.vehicleId] == nil {
+                customNote = newNote ?? ""
+            }
+        }
     }
 }

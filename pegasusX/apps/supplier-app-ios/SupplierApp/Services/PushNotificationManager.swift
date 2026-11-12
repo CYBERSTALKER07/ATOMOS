@@ -54,7 +54,18 @@ final class PushNotificationManager: NSObject, UNUserNotificationCenterDelegate 
         let token = (deviceToken ?? UserDefaults.standard.string(forKey: storedTokenKey) ?? "")
             .trimmingCharacters(in: .whitespacesAndNewlines)
         guard !token.isEmpty, TokenStore.shared.isAuthenticated else { return }
-        _ = try? await api.registerDeviceToken(token: token)
+        await uploadDeviceToken(token)
+    }
+
+    func uploadDeviceToken(_ token: String) async {
+        let trimmed = token.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        do {
+            try await api.registerDeviceToken(token: trimmed)
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 
     func userNotificationCenter(

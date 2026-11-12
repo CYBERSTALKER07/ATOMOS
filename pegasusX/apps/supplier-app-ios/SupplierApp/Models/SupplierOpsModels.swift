@@ -278,15 +278,18 @@ struct SupplierDispatchPreview: Decodable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         pendingCount = try container.decodeIfPresent(Int.self, forKey: .pendingCount)
         availableDriverCount = try container.decodeIfPresent(Int.self, forKey: .availableDriverCount)
-        if let orders = try? container.decodeIfPresent([SupplierDispatchOrderRow].self, forKey: .undispatchedOrders) {
-            undispatchedOrders = orders
-            undispatchedOrderCount = orders.count
-        } else if let count = try? container.decodeIfPresent(Int.self, forKey: .undispatchedOrderCount) {
-            undispatchedOrderCount = count
-            undispatchedOrders = []
+        if container.contains(.undispatchedOrders) {
+            if try container.decodeNil(forKey: .undispatchedOrders) {
+                undispatchedOrders = []
+                undispatchedOrderCount = try container.decodeIfPresent(Int.self, forKey: .undispatchedOrderCount)
+            } else {
+                let orders = try container.decode([SupplierDispatchOrderRow].self, forKey: .undispatchedOrders)
+                undispatchedOrders = orders
+                undispatchedOrderCount = orders.count
+            }
         } else {
-            undispatchedOrderCount = nil
             undispatchedOrders = []
+            undispatchedOrderCount = try container.decodeIfPresent(Int.self, forKey: .undispatchedOrderCount)
         }
         availableDrivers = try container.decodeIfPresent([SupplierDispatchDriverRow].self, forKey: .availableDrivers) ?? []
         proposedRoutes = try container.decodeIfPresent([DispatchProposedRoute].self, forKey: .proposedRoutes) ?? []
@@ -1109,7 +1112,7 @@ struct PaymentLedgerEntry: Decodable, Identifiable {
     let retailerId: String?
     let gateway: String
     let entryType: String
-    let amountMinor: Int64
+    let amountMinor: Int64?
     let currency: String
     let referenceId: String?
     let source: String?
@@ -1137,7 +1140,7 @@ struct PaymentLedgerEntry: Decodable, Identifiable {
         retailerId = try c.decodeIfPresent(String.self, forKey: .retailerId)
         gateway = try c.decodeIfPresent(String.self, forKey: .gateway) ?? ""
         entryType = try c.decodeIfPresent(String.self, forKey: .entryType) ?? ""
-        amountMinor = try c.decodeIfPresent(Int64.self, forKey: .amountMinor) ?? 0
+        amountMinor = try c.decodeIfPresent(Int64.self, forKey: .amountMinor)
         currency = try c.decodeIfPresent(String.self, forKey: .currency) ?? packCurrency(MarketPackStore.pack)
         referenceId = try c.decodeIfPresent(String.self, forKey: .referenceId)
         source = try c.decodeIfPresent(String.self, forKey: .source)
@@ -1300,9 +1303,9 @@ struct ReconciliationMismatchRow: Decodable, Identifiable {
     var id: String { "\(gateway)-\(currency)" }
     let gateway: String
     let currency: String
-    let netAmountMinor: Int64
-    let creditAmountMinorTotal: Int64
-    let debitAmountMinorTotal: Int64
+    let netAmountMinor: Int64?
+    let creditAmountMinorTotal: Int64?
+    let debitAmountMinorTotal: Int64?
     let entryCountTotal: Int
     let lastOccurredAt: String
 
@@ -1319,9 +1322,9 @@ struct ReconciliationMismatchRow: Decodable, Identifiable {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         gateway = try c.decodeIfPresent(String.self, forKey: .gateway) ?? ""
         currency = try c.decodeIfPresent(String.self, forKey: .currency) ?? ""
-        netAmountMinor = try c.decodeIfPresent(Int64.self, forKey: .netAmountMinor) ?? 0
-        creditAmountMinorTotal = try c.decodeIfPresent(Int64.self, forKey: .creditAmountMinorTotal) ?? 0
-        debitAmountMinorTotal = try c.decodeIfPresent(Int64.self, forKey: .debitAmountMinorTotal) ?? 0
+        netAmountMinor = try c.decodeIfPresent(Int64.self, forKey: .netAmountMinor)
+        creditAmountMinorTotal = try c.decodeIfPresent(Int64.self, forKey: .creditAmountMinorTotal)
+        debitAmountMinorTotal = try c.decodeIfPresent(Int64.self, forKey: .debitAmountMinorTotal)
         entryCountTotal = try c.decodeIfPresent(Int.self, forKey: .entryCountTotal) ?? 0
         lastOccurredAt = try c.decodeIfPresent(String.self, forKey: .lastOccurredAt) ?? ""
     }
@@ -1998,7 +2001,7 @@ struct RejectClaimRequest: Encodable {
 
 struct ClaimSettlementResult: Decodable {
     let chargebackId: String?
-    let amountMinor: Int64
+    let amountMinor: Int64?
     let mode: String
     let gatewayRefunded: Bool
 
@@ -2012,7 +2015,7 @@ struct ClaimSettlementResult: Decodable {
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         chargebackId = try c.decodeIfPresent(String.self, forKey: .chargebackId)
-        amountMinor = try c.decodeIfPresent(Int64.self, forKey: .amountMinor) ?? 0
+        amountMinor = try c.decodeIfPresent(Int64.self, forKey: .amountMinor)
         mode = try c.decodeIfPresent(String.self, forKey: .mode) ?? ""
         gatewayRefunded = try c.decodeIfPresent(Bool.self, forKey: .gatewayRefunded) ?? false
     }
@@ -2236,8 +2239,8 @@ struct ComplianceCreditFreezeRow: Decodable, Identifiable {
     var id: String { retailerId + status }
     let retailerId: String
     let status: String
-    let currentBalanceMinor: Int64
-    let creditLimitMinor: Int64
+    let currentBalanceMinor: Int64?
+    let creditLimitMinor: Int64?
 
     enum CodingKeys: String, CodingKey {
         case retailerId = "retailer_id"
@@ -2250,8 +2253,8 @@ struct ComplianceCreditFreezeRow: Decodable, Identifiable {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         retailerId = try c.decode(String.self, forKey: .retailerId)
         status = try c.decodeIfPresent(String.self, forKey: .status) ?? ""
-        currentBalanceMinor = try c.decodeIfPresent(Int64.self, forKey: .currentBalanceMinor) ?? 0
-        creditLimitMinor = try c.decodeIfPresent(Int64.self, forKey: .creditLimitMinor) ?? 0
+        currentBalanceMinor = try c.decodeIfPresent(Int64.self, forKey: .currentBalanceMinor)
+        creditLimitMinor = try c.decodeIfPresent(Int64.self, forKey: .creditLimitMinor)
     }
 }
 
@@ -2297,14 +2300,15 @@ struct ComplianceDashboardResponse: Decodable {
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        summary = (try? c.decode(ComplianceSummary.self, forKey: .summary))
-            ?? (try? ComplianceSummary(from: decoder))
-            ?? ComplianceSummary()
-        // Fallback empty if decode fails for optional arrays
-        openFiscal = (try? c.decode([ComplianceFiscalOpenRow].self, forKey: .openFiscal)) ?? []
-        forceCompletes = (try? c.decode([ComplianceForceCompleteRow].self, forKey: .forceCompletes)) ?? []
-        claimMismatches = (try? c.decode([ComplianceClaimMismatchRow].self, forKey: .claimMismatches)) ?? []
-        creditFreezes = (try? c.decode([ComplianceCreditFreezeRow].self, forKey: .creditFreezes)) ?? []
+        if c.contains(.summary) {
+            summary = try c.decode(ComplianceSummary.self, forKey: .summary)
+        } else {
+            summary = try ComplianceSummary(from: decoder)
+        }
+        openFiscal = try c.decodeIfPresent([ComplianceFiscalOpenRow].self, forKey: .openFiscal) ?? []
+        forceCompletes = try c.decodeIfPresent([ComplianceForceCompleteRow].self, forKey: .forceCompletes) ?? []
+        claimMismatches = try c.decodeIfPresent([ComplianceClaimMismatchRow].self, forKey: .claimMismatches) ?? []
+        creditFreezes = try c.decodeIfPresent([ComplianceCreditFreezeRow].self, forKey: .creditFreezes) ?? []
     }
 }
 
@@ -2332,7 +2336,7 @@ struct CreditNoteRow: Decodable, Identifiable {
     let creditNoteId: String
     let orderId: String
     let status: String
-    let totalGrossMinor: Int64
+    let totalGrossMinor: Int64?
 
     enum CodingKeys: String, CodingKey {
         case creditNoteId = "credit_note_id"
@@ -2345,8 +2349,8 @@ struct CreditNoteRow: Decodable, Identifiable {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         creditNoteId = try c.decode(String.self, forKey: .creditNoteId)
         orderId = try c.decode(String.self, forKey: .orderId)
-        status = (try? c.decode(String.self, forKey: .status)) ?? ""
-        totalGrossMinor = (try? c.decode(Int64.self, forKey: .totalGrossMinor)) ?? 0
+        status = try c.decodeIfPresent(String.self, forKey: .status) ?? ""
+        totalGrossMinor = try c.decodeIfPresent(Int64.self, forKey: .totalGrossMinor)
     }
 }
 
@@ -2356,16 +2360,21 @@ struct CreditNotesResponse: Decodable {
     enum CodingKeys: String, CodingKey {
         case creditNotes = "credit_notes"
     }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        creditNotes = try c.decodeIfPresent([CreditNoteRow].self, forKey: .creditNotes) ?? []
+    }
 }
 
 struct CreditProfileRow: Decodable, Identifiable {
     var id: String { retailerId }
     let retailerId: String
     let supplierId: String
-    let creditLimitMinor: Int64
-    let currentBalanceMinor: Int64
-    let availableCreditMinor: Int64
-    let riskScore: Int64
+    let creditLimitMinor: Int64?
+    let currentBalanceMinor: Int64?
+    let availableCreditMinor: Int64?
+    let riskScore: Int64?
     let riskTier: String
     let delinquencyCount: Int64
     let status: String
@@ -2389,16 +2398,16 @@ struct CreditProfileRow: Decodable, Identifiable {
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         retailerId = try c.decode(String.self, forKey: .retailerId)
-        supplierId = (try? c.decode(String.self, forKey: .supplierId)) ?? ""
-        creditLimitMinor = (try? c.decode(Int64.self, forKey: .creditLimitMinor)) ?? 0
-        currentBalanceMinor = (try? c.decode(Int64.self, forKey: .currentBalanceMinor)) ?? 0
-        availableCreditMinor = (try? c.decode(Int64.self, forKey: .availableCreditMinor)) ?? 0
-        riskScore = (try? c.decode(Int64.self, forKey: .riskScore)) ?? 0
-        riskTier = (try? c.decode(String.self, forKey: .riskTier)) ?? ""
-        delinquencyCount = (try? c.decode(Int64.self, forKey: .delinquencyCount)) ?? 0
-        status = (try? c.decode(String.self, forKey: .status)) ?? ""
-        utilizationBps = try? c.decode(Int64.self, forKey: .utilizationBps)
-        needsAttention = (try? c.decode(Bool.self, forKey: .needsAttention)) ?? false
+        supplierId = try c.decodeIfPresent(String.self, forKey: .supplierId) ?? ""
+        creditLimitMinor = try c.decodeIfPresent(Int64.self, forKey: .creditLimitMinor)
+        currentBalanceMinor = try c.decodeIfPresent(Int64.self, forKey: .currentBalanceMinor)
+        availableCreditMinor = try c.decodeIfPresent(Int64.self, forKey: .availableCreditMinor)
+        riskScore = try c.decodeIfPresent(Int64.self, forKey: .riskScore)
+        riskTier = try c.decodeIfPresent(String.self, forKey: .riskTier) ?? ""
+        delinquencyCount = try c.decodeIfPresent(Int64.self, forKey: .delinquencyCount) ?? 0
+        status = try c.decodeIfPresent(String.self, forKey: .status) ?? ""
+        utilizationBps = try c.decodeIfPresent(Int64.self, forKey: .utilizationBps)
+        needsAttention = try c.decodeIfPresent(Bool.self, forKey: .needsAttention) ?? false
     }
 }
 
@@ -2412,8 +2421,8 @@ struct CreditProfilesResponse: Decodable {
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        profiles = (try? c.decode([CreditProfileRow].self, forKey: .profiles)) ?? []
-        count = try? c.decode(Int.self, forKey: .count)
+        profiles = try c.decodeIfPresent([CreditProfileRow].self, forKey: .profiles) ?? []
+        count = try c.decodeIfPresent(Int.self, forKey: .count)
     }
 }
 
@@ -2470,7 +2479,7 @@ struct SupplierCRMRetailer: Decodable, Identifiable {
     let retailerName: String
     let phone: String
     let email: String
-    let lifetime: Int64
+    let lifetime: Int64?
     let orderCount: Int64
     let lastOrderDate: String
     let status: String
@@ -2492,7 +2501,7 @@ struct SupplierCRMRetailer: Decodable, Identifiable {
         retailerName = try c.decodeIfPresent(String.self, forKey: .retailerName) ?? ""
         phone = try c.decodeIfPresent(String.self, forKey: .phone) ?? ""
         email = try c.decodeIfPresent(String.self, forKey: .email) ?? ""
-        lifetime = try c.decodeIfPresent(Int64.self, forKey: .lifetime) ?? 0
+        lifetime = try c.decodeIfPresent(Int64.self, forKey: .lifetime)
         orderCount = try c.decodeIfPresent(Int64.self, forKey: .orderCount) ?? 0
         lastOrderDate = try c.decodeIfPresent(String.self, forKey: .lastOrderDate) ?? ""
         status = try c.decodeIfPresent(String.self, forKey: .status) ?? ""
@@ -2503,7 +2512,7 @@ struct SupplierCRMOrder: Decodable, Identifiable {
     var id: String { orderId }
     let orderId: String
     let state: String
-    let amount: Int64
+    let amount: Int64?
     let itemCount: Int64
     let createdAt: String
     let lines: [SupplierCRMOrderLine]
@@ -2519,7 +2528,7 @@ struct SupplierCRMOrder: Decodable, Identifiable {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         orderId = try c.decodeIfPresent(String.self, forKey: .orderId) ?? ""
         state = try c.decodeIfPresent(String.self, forKey: .state) ?? ""
-        amount = try c.decodeIfPresent(Int64.self, forKey: .amount) ?? 0
+        amount = try c.decodeIfPresent(Int64.self, forKey: .amount)
         itemCount = try c.decodeIfPresent(Int64.self, forKey: .itemCount) ?? 0
         createdAt = try c.decodeIfPresent(String.self, forKey: .createdAt) ?? ""
         lines = try c.decodeIfPresent([SupplierCRMOrderLine].self, forKey: .lines) ?? []
@@ -2531,7 +2540,7 @@ struct SupplierCRMOrderLine: Decodable, Identifiable {
     let sku: String
     let productName: String
     let qty: Int64
-    let amountMinor: Int64
+    let amountMinor: Int64?
 
     enum CodingKeys: String, CodingKey {
         case sku, qty
@@ -2544,7 +2553,7 @@ struct SupplierCRMOrderLine: Decodable, Identifiable {
         sku = try c.decodeIfPresent(String.self, forKey: .sku) ?? ""
         productName = try c.decodeIfPresent(String.self, forKey: .productName) ?? ""
         qty = try c.decodeIfPresent(Int64.self, forKey: .qty) ?? 0
-        amountMinor = try c.decodeIfPresent(Int64.self, forKey: .amountMinor) ?? 0
+        amountMinor = try c.decodeIfPresent(Int64.self, forKey: .amountMinor)
     }
 }
 
@@ -2553,7 +2562,7 @@ struct SupplierCRMRetailerDetail: Decodable {
     let retailerName: String
     let phone: String
     let email: String
-    let lifetime: Int64
+    let lifetime: Int64?
     let orderCount: Int64
     let lastOrderDate: String
     let status: String
@@ -2573,7 +2582,7 @@ struct SupplierCRMRetailerDetail: Decodable {
         retailerName = try c.decodeIfPresent(String.self, forKey: .retailerName) ?? ""
         phone = try c.decodeIfPresent(String.self, forKey: .phone) ?? ""
         email = try c.decodeIfPresent(String.self, forKey: .email) ?? ""
-        lifetime = try c.decodeIfPresent(Int64.self, forKey: .lifetime) ?? 0
+        lifetime = try c.decodeIfPresent(Int64.self, forKey: .lifetime)
         orderCount = try c.decodeIfPresent(Int64.self, forKey: .orderCount) ?? 0
         lastOrderDate = try c.decodeIfPresent(String.self, forKey: .lastOrderDate) ?? ""
         status = try c.decodeIfPresent(String.self, forKey: .status) ?? ""
@@ -2846,7 +2855,7 @@ struct PayoutBatch: Decodable, Identifiable {
     let supplierId: String
     let periodStart: String
     let periodEnd: String
-    let netPayoutMinor: Int64
+    let netPayoutMinor: Int64?
     let currency: String
     let status: String
     let createdAt: String
@@ -2867,7 +2876,7 @@ struct PayoutBatch: Decodable, Identifiable {
         supplierId = try c.decodeIfPresent(String.self, forKey: .supplierId) ?? ""
         periodStart = try c.decodeIfPresent(String.self, forKey: .periodStart) ?? ""
         periodEnd = try c.decodeIfPresent(String.self, forKey: .periodEnd) ?? ""
-        netPayoutMinor = try c.decodeIfPresent(Int64.self, forKey: .netPayoutMinor) ?? 0
+        netPayoutMinor = try c.decodeIfPresent(Int64.self, forKey: .netPayoutMinor)
         currency = try c.decodeIfPresent(String.self, forKey: .currency) ?? ""
         status = try c.decodeIfPresent(String.self, forKey: .status) ?? ""
         createdAt = try c.decodeIfPresent(String.self, forKey: .createdAt) ?? ""
@@ -2973,7 +2982,7 @@ struct SupplierPayoutPolicy: Decodable {
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         supplierId = try c.decodeIfPresent(String.self, forKey: .supplierId) ?? ""
-        payoutMode = try c.decodeIfPresent(String.self, forKey: .payoutMode) ?? "HQ_SUPPLIER"
+        payoutMode = try c.decodeIfPresent(String.self, forKey: .payoutMode) ?? ""
         feePolicyVersion = try c.decodeIfPresent(String.self, forKey: .feePolicyVersion) ?? ""
         effectiveAt = try c.decodeIfPresent(String.self, forKey: .effectiveAt)
         updatedBy = try c.decodeIfPresent(String.self, forKey: .updatedBy) ?? ""

@@ -4,29 +4,29 @@ struct SupplyRequestDetailView: View {
     let requestId: String
 
     @Environment(WarehouseRealtimeHub.self) private var realtimeHub
-    @State private var request: WarehouseSupplyRequest?
-    @State private var qcResult = ""
-    @State private var loading = true
-    @State private var error: String?
-    @State private var busy = false
-    @State private var statusMessage: String?
+    @State private var vm = SupplyRequestDetailViewModel()
 
     var body: some View {
         Group {
-            if loading && request == nil {
+            if vm.loading && vm.request == nil {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if let error, request == nil {
+            } else if let error = vm.error, vm.request == nil {
                 ContentUnavailableView {
                     Label("mobile_warehouse.ui.error", systemImage: "exclamationmark.triangle")
                 } description: {
                     Text(error)
                 } actions: {
-                    Button("common.action.retry") { load() }
+                    Button("common.action.retry") {
+                        PegasusHaptics.light()
+                        Task { await vm.load(requestId: requestId) }
+                    }
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
                 }
-            } else if let request {
+            } else if let request = vm.request {
                 ResponsiveGridContentWrapper {
-                    if let statusMessage {
+                    if let statusMessage = vm.statusMessage {
                         Section { Text(statusMessage).foregroundStyle(.green) }
                     }
                     Section("Request") {
@@ -37,7 +37,7 @@ struct SupplyRequestDetailView: View {
                         LabKeyValueRow(label: "Volume (VU)", value: String(format: "%.1f", request.totalVolumeVu))
                         LabKeyValueRow(label: "Transfer order", value: request.transferOrderId ?? "—")
                         LabKeyValueRow(label: "Created", value: request.createdAt)
-                        LabKeyValueRow(label: "QC", value: qcResult.isEmpty ? "—" : qcResult)
+                        LabKeyValueRow(label: "QC", value: vm.qcResult.isEmpty ? "—" : vm.qcResult)
                         if !request.notes.isEmpty {
                             LabKeyValueRow(label: "Notes", value: request.notes)
                         }
@@ -45,63 +45,46 @@ struct SupplyRequestDetailView: View {
                     if request.state.uppercased() == "OPEN" {
                         Section {
                             Button("mobile_warehouse.ui.cancel_request", role: .destructive) {
-                                cancelRequest()
+                                PegasusHaptics.warning()
+                                Task { await vm.cancelRequest(requestId: requestId) }
                             }
-                            .disabled(busy)
+                            .frame(minHeight: 44)
+                            .contentShape(Rectangle())
+                            .disabled(vm.busy)
                         }
                     }
                 }
+                .scrollDismissesKeyboard(.interactively)
             } else {
-                ContentUnavailableView("Not found", systemImage: "tray", description: Text("mobile_warehouse.ui.supply_request_not_found"))
+                ContentUnavailableView(
+                    "Not found",
+                    systemImage: "tray",
+                    description: Text("mobile_warehouse.ui.supply_request_not_found")
+                )
             }
         }
         .navigationTitle("mobile_warehouse.ui.supply_request")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") { load() }
+                Button {
+                    PegasusHaptics.light()
+                    Task { await vm.load(requestId: requestId) }
+                } label: {
+                    Label("portal.page.orders.action.refresh", systemImage: "arrow.clockwise")
+                        .frame(minWidth: 44, minHeight: 44)
+                        .contentShape(Rectangle())
+                }
+                .accessibilityLabel("Refresh supply request")
             }
         }
-        .task(id: requestId) { load() }
+        .task(id: requestId) {
+            await vm.load(requestId: requestId)
+        }
         .silentRealtimeRefresh(refreshEpoch: realtimeHub.refreshEpoch, reconnectEpoch: realtimeHub.reconnectEpoch) { silent in
-            load(silent: silent)
+            Task { await vm.load(requestId: requestId, silent: silent) }
         }
         .onChange(of: realtimeHub.reconnectEpoch) { _, _ in
-            if busy {
-                busy = false
-                statusMessage = "Connection restored — verify status before retrying."
-            }
-        }
-    }
-
-    private func load(silent: Bool = false) {
-        if !silent && request == nil { loading = true }
-        error = nil
-        Task {
-            do {
-                request = try await WarehouseService.supplyRequest(id: requestId)
-                if let qc = try? await WarehouseService.supplyRequestQC(id: requestId) {
-                    qcResult = qc.result
-                } else {
-                    qcResult = ""
-                }
-            } catch {
-                if !silent { self.error = error.localizedDescription }
-            }
-            if !silent { loading = false }
-        }
-    }
-
-    private func cancelRequest() {
-        busy = true
-        Task {
-            do {
-                _ = try await WarehouseService.cancelSupplyRequest(id: requestId)
-                statusMessage = "Request cancelled"
-                load()
-            } catch {
-                statusMessage = error.localizedDescription
-            }
-            busy = false
+            vm.handleReconnect()
         }
     }
 }
@@ -117,5 +100,8 @@ private struct LabKeyValueRow: View {
                 .foregroundStyle(.secondary)
             Text(value)
         }
+        .frame(minHeight: 44, alignment: .leading)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(label), \(value)")
     }
 }

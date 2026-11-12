@@ -1,18 +1,12 @@
 import SwiftUI
 
 struct ReturnPolicySettingsView: View {
-    @State private var loading = true
-    @State private var saving = false
-    @State private var error: String?
-    @State private var saved = false
-    @State private var reverseSla = "24"
-    @State private var canOverride = false
-    @State private var retailerWindow = ""
-    @State private var supplierId = ""
+    @State private var vm = ReturnPolicySettingsViewModel()
 
     var body: some View {
+        @Bindable var vm = vm
         Group {
-            if loading {
+            if vm.loading {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
@@ -23,96 +17,67 @@ struct ReturnPolicySettingsView: View {
                             .foregroundStyle(.secondary)
                     }
 
-                    if let error {
+                    if let error = vm.error {
                         Section {
                             Text(error).foregroundStyle(.red)
                         }
                     }
-                    if saved {
+                    if vm.saved {
                         Section {
-                            Text("supplier_portal.settings.return_policy.text.return_policy_saved").foregroundStyle(.green)
+                            Text("supplier_portal.settings.return_policy.text.return_policy_saved")
+                                .foregroundStyle(.green)
                         }
                     }
 
                     Section("Reverse dock") {
-                        TextField("mobile_warehouse.ui.sla_hours", text: $reverseSla)
+                        TextField("mobile_warehouse.ui.sla_hours", text: $vm.reverseSla)
                             .keyboardType(.numberPad)
-                            .onChange(of: reverseSla) { _, newValue in
-                                let digits = newValue.filter(\.isNumber)
-                                if digits != newValue { reverseSla = digits }
+                            .onChange(of: vm.reverseSla) { _, newValue in
+                                vm.sanitizeReverseSla(newValue)
                             }
                     }
 
                     Section("Retailer window") {
-                        Toggle("Override retailer claim filing window (lengthen only)", isOn: $canOverride)
-                        if canOverride {
-                            TextField("mobile_warehouse.ui.retailer_file_window_hours", text: $retailerWindow)
+                        Toggle("Override retailer claim filing window (lengthen only)", isOn: $vm.canOverride)
+                            .frame(minHeight: 44)
+                            .onChange(of: vm.canOverride) { _, _ in
+                                PegasusHaptics.selection()
+                            }
+                        if vm.canOverride {
+                            TextField("mobile_warehouse.ui.retailer_file_window_hours", text: $vm.retailerWindow)
                                 .keyboardType(.numberPad)
-                                .onChange(of: retailerWindow) { _, newValue in
-                                    let digits = newValue.filter(\.isNumber)
-                                    if digits != newValue { retailerWindow = digits }
+                                .onChange(of: vm.retailerWindow) { _, newValue in
+                                    vm.sanitizeRetailerWindow(newValue)
                                 }
                         }
                     }
 
                     Section {
-                        Button(saving ? "Saving…" : "Save return policy") { Task { await save() } }
-                            .disabled(saving)
+                        Button(vm.saving ? "Saving…" : "Save return policy") {
+                            PegasusHaptics.medium()
+                            Task { await vm.save() }
+                        }
+                        .disabled(vm.saving)
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
+                        .accessibilityLabel("Save return policy")
                     }
                 }
+                .scrollDismissesKeyboard(.interactively)
             }
         }
         .navigationTitle("warehouse_portal.settings.return_policy_settings_section.text.returns_and_reverse_sla")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") { Task { await load() } }
+                Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") {
+                    PegasusHaptics.light()
+                    Task { await vm.load() }
+                }
+                .frame(minWidth: 44, minHeight: 44)
+                .contentShape(Rectangle())
+                .accessibilityLabel("Refresh return policy settings")
             }
         }
-        .task { await load() }
-    }
-
-    @MainActor
-    private func load() async {
-        loading = true
-        error = nil
-        defer { loading = false }
-        do {
-            let wh = TokenStore.shared.warehouseId
-            let p = try await WarehouseService.getReturnPolicy(warehouseId: wh)
-            supplierId = p.supplierId
-            reverseSla = p.reverseDockSlaHours.map(String.init) ?? "24"
-            canOverride = p.canOverrideRetailerWindow
-            retailerWindow = p.retailerFileWindowHours.map(String.init) ?? ""
-        } catch {
-            self.error = error.localizedDescription
-        }
-    }
-
-    @MainActor
-    private func save() async {
-        saving = true
-        error = nil
-        saved = false
-        defer { saving = false }
-        var body = WarehouseReturnPolicy(
-            supplierId: supplierId,
-            reverseDockSlaHours: Int64(reverseSla).flatMap { $0 > 0 ? $0 : nil },
-            retailerFileWindowHours: nil,
-            canOverrideRetailerWindow: canOverride
-        )
-        if canOverride {
-            guard let hours = Int64(retailerWindow), hours >= 1 else {
-                error = "Retailer file window hours required when override is enabled"
-                return
-            }
-            body.retailerFileWindowHours = hours
-        }
-        do {
-            let wh = TokenStore.shared.warehouseId
-            _ = try await WarehouseService.putReturnPolicy(body, warehouseId: wh)
-            saved = true
-        } catch {
-            self.error = error.localizedDescription
-        }
+        .task { await vm.load() }
     }
 }

@@ -23,6 +23,8 @@ struct OrderRow: View {
                 .foregroundStyle(.secondary)
         }
         .padding(.vertical, SupplierTheme.spacingXS)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(order.retailerId.isEmpty ? String(order.orderId.prefix(12)) : order.retailerId), \(order.status), \(MoneyFormat.minor(order.totalMinor, currency: order.currency))")
         .contextMenu {
             if showWarehouseMenu {
                 if let onDelay {

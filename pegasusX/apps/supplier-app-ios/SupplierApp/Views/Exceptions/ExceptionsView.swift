@@ -1,25 +1,22 @@
 import SwiftUI
 
 struct ExceptionsView: View {
-    @State private var rows: [SupplierExceptionRow] = []
-    @State private var loading = true
-    @State private var error: String?
-    @State private var busyKey: String?
+    @State private var viewModel = ExceptionsViewModel()
 
     var body: some View {
         Group {
-            if loading {
-                SupplierLoadingView(title: "Loading exceptions…")
-            } else if let error {
-                SupplierErrorView(message: error) { Task { await load() } }
-            } else if rows.isEmpty {
+            if viewModel.loading && viewModel.rows.isEmpty {
+                SupplierLoadingView(title: "mobile_supplier.loading.exceptions")
+            } else if let error = viewModel.error, viewModel.rows.isEmpty {
+                SupplierErrorView(message: error) { Task { await viewModel.load() } }
+            } else if viewModel.rows.isEmpty {
                 SupplierEmptyView(
-                    title: "No exceptions",
-                    message: "Operational exceptions will appear here. Use Claims for post-delivery OS&D."
+                    title: "mobile_supplier.empty.no_exceptions",
+                    message: "mobile_supplier.empty.exceptions_message"
                 )
             } else {
-                ExceptionsList(rows: rows, busyKey: busyKey) { row in
-                    Task { await resolve(row) }
+                ExceptionsList(rows: viewModel.rows, busyKey: viewModel.busyKey) { row in
+                    Task { await viewModel.resolve(row) }
                 }
             }
         }
@@ -33,44 +30,7 @@ struct ExceptionsView: View {
                 }
             }
         }
-        .refreshable { await load() }
-        .task { await load() }
-    }
-
-    private func load() async {
-        loading = true
-        error = nil
-        defer { loading = false }
-        do {
-            rows = try await SupplierOperationsService.exceptions()
-        } catch {
-            self.error = error.localizedDescription
-        }
-    }
-
-    private func resolve(_ row: SupplierExceptionRow) async {
-        let kind = row.kind.uppercased()
-        let key = "\(kind):\(row.orderId)"
-        busyKey = key
-        defer { busyKey = nil }
-        do {
-            let resolveId: String
-            let creditNoteId: String?
-            if kind == "CREDIT_NOTE_DRAFT" {
-                creditNoteId = row.note.flatMap { $0.isEmpty ? nil : $0 }
-                resolveId = creditNoteId ?? row.orderId
-            } else {
-                creditNoteId = nil
-                resolveId = row.orderId
-            }
-            try await SupplierOperationsService.resolveException(
-                kind: kind,
-                id: resolveId,
-                creditNoteId: creditNoteId
-            )
-            await load()
-        } catch {
-            self.error = error.localizedDescription
-        }
+        .refreshable { await viewModel.load(silent: true) }
+        .task { await viewModel.load() }
     }
 }

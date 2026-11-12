@@ -2,52 +2,38 @@ import SwiftUI
 
 struct ProfileView: View {
     @Environment(TokenStore.self) private var tokenStore
-    @State private var profile: SupplierProfile?
-    @State private var loading = true
-    @State private var error: String?
+    @State private var viewModel = ProfileViewModel()
 
     var body: some View {
-        NavigationStack {
-            Group {
-                if loading {
-                    SupplierLoadingView(title: "Loading profile…")
-                } else if let error {
-                    SupplierErrorView(message: error) { Task { await load() } }
-                } else if let profile {
-                    ResponsiveGridContentWrapper {
-                        SupplierIdentityCard(profile: profile)
-                        Section {
-                            if !profile.isConfigured {
-                                Button("mobile_supplier.ui.complete_billing_setup") {
-                                    tokenStore.showBillingGate()
-                                }
+        Group {
+            if viewModel.loading && viewModel.profile == nil {
+                SupplierLoadingView(title: "mobile_supplier.loading.profile")
+            } else if let error = viewModel.error, viewModel.profile == nil {
+                SupplierErrorView(message: error) { Task { await viewModel.load(tokenStore: tokenStore) } }
+            } else if let profile = viewModel.profile {
+                ResponsiveGridContentWrapper {
+                    SupplierIdentityCard(profile: profile)
+                    Section {
+                        if !profile.isConfigured {
+                            Button("mobile_supplier.ui.complete_billing_setup") {
+                                PegasusHaptics.light()
+                                tokenStore.showBillingGate()
                             }
-                            Button("mobile_supplier.ui.sign_out", role: .destructive) {
-                                tokenStore.clear()
-                            }
+                            .frame(minHeight: 44)
                         }
+                        Button("mobile_supplier.ui.sign_out", role: .destructive) {
+                            PegasusHaptics.selection()
+                            tokenStore.clear()
+                        }
+                        .frame(minHeight: 44)
                     }
-                    .supplierReadableWidth()
                 }
+                .supplierReadableWidth()
             }
-            .navigationTitle("portal.nav.profile")
-            .task { await load() }
-            .refreshable { await load(silent: true) }
         }
-    }
-
-    @MainActor
-    private func load(silent: Bool = false) async {
-        if !silent { loading = true }
-        error = nil
-        do {
-            profile = try await SupplierService.profile()
-            if let configured = profile?.isConfigured {
-                tokenStore.markConfigured(configured)
-            }
-        } catch {
-            if !silent { self.error = error.localizedDescription }
-        }
-        loading = false
+        .background(SupplierTheme.background)
+        .navigationTitle("portal.nav.profile")
+        .task { await viewModel.load(tokenStore: tokenStore) }
+        .refreshable { await viewModel.load(silent: true, tokenStore: tokenStore) }
     }
 }

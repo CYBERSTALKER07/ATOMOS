@@ -1,24 +1,26 @@
 import SwiftUI
 
 struct DispatchSettingsView: View {
-    @State private var autoDispatchEnabled: Bool?
-    @State private var loading = true
-    @State private var saving = false
-    @State private var error: String?
-    @State private var saveMessage: String?
+    @State private var vm = DispatchSettingsViewModel()
 
     var body: some View {
+        @Bindable var vm = vm
         Group {
-            if loading {
+            if vm.loading {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if let error {
+            } else if let error = vm.error {
                 ContentUnavailableView {
                     Label("mobile_warehouse.ui.error", systemImage: "exclamationmark.triangle")
                 } description: {
                     Text(error)
                 } actions: {
-                    Button("common.action.retry") { load() }
+                    Button("common.action.retry") {
+                        PegasusHaptics.light()
+                        Task { await vm.load() }
+                    }
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
                 }
             } else {
                 Form {
@@ -27,63 +29,42 @@ struct DispatchSettingsView: View {
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
-                    if let saveMessage {
+                    if let saveMessage = vm.saveMessage {
                         Section {
                             Text(saveMessage)
-                                .foregroundStyle(.green)
+                                .foregroundStyle(
+                                    saveMessage.hasPrefix("Auto dispatch") ? .green : .red
+                                )
                         }
                     }
                     Section("Auto dispatch") {
-                        Toggle(
-                            "Enable auto dispatch",
-                            isOn: Binding(
-                                get: { autoDispatchEnabled ?? false },
-                                set: { newValue in save(enabled: newValue) }
-                            )
-                        )
-                        .disabled(saving || autoDispatchEnabled == nil)
+                        Toggle("Enable auto dispatch", isOn: $vm.autoDispatchEnabled)
+                            .frame(minHeight: 44)
+                            .disabled(vm.saving || !vm.hasLoaded)
+                            .accessibilityLabel("Enable auto dispatch")
+                            .onChange(of: vm.autoDispatchEnabled) { _, newValue in
+                                Task { await vm.handleToggleChange(newValue) }
+                            }
                         Text("mobile_warehouse.ui.when_enabled_the_ai_worker_may_auto_assign_pending_orders")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
                 }
+                .scrollDismissesKeyboard(.interactively)
             }
         }
         .navigationTitle("warehouse_portal.dispatch_settings.text.dispatch_settings")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") { load() }
+                Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") {
+                    PegasusHaptics.light()
+                    Task { await vm.load() }
+                }
+                .frame(minWidth: 44, minHeight: 44)
+                .contentShape(Rectangle())
+                .accessibilityLabel("Refresh dispatch settings")
             }
         }
-        .task { load() }
-    }
-
-    private func load() {
-        loading = true
-        error = nil
-        Task {
-            do {
-                let settings = try await WarehouseService.dispatchSettings()
-                autoDispatchEnabled = settings.autoDispatchEnabled
-            } catch {
-                self.error = error.localizedDescription
-            }
-            loading = false
-        }
-    }
-
-    private func save(enabled: Bool) {
-        saving = true
-        saveMessage = nil
-        Task {
-            do {
-                try await WarehouseService.patchDispatchSettings(enabled: enabled)
-                autoDispatchEnabled = enabled
-                saveMessage = enabled ? "Auto dispatch enabled" : "Auto dispatch disabled"
-            } catch {
-                saveMessage = error.localizedDescription
-            }
-            saving = false
-        }
+        .task { await vm.load() }
     }
 }

@@ -35,12 +35,12 @@ struct LoginResponse: Decodable {
     }
 
     init(
-        supplierId: String = "sup-tashkent-01",
+        supplierId: String,
         isRegistered: Bool = true,
         isConfigured: Bool = true,
         nextStep: String = "DASHBOARD",
-        token: String? = "mock-supplier-jwt-dev",
-        refreshToken: String? = "mock-supplier-refresh-dev"
+        token: String? = nil,
+        refreshToken: String? = nil
     ) {
         self.supplierId = supplierId
         self.isRegistered = isRegistered
@@ -49,8 +49,6 @@ struct LoginResponse: Decodable {
         self.token = token
         self.refreshToken = refreshToken
     }
-
-    static let mock = LoginResponse()
 }
 
 struct DeviceTokenRequest: Encodable, Equatable {
@@ -89,13 +87,13 @@ struct RefreshTokenRequest: Encodable {
 struct SupplierDashboard: Decodable {
     let supplierId: String
     let isConfigured: Bool
-    let inventorySKUs: Int
-    let pendingOrders: Int
+    let inventorySKUs: Int?
+    let pendingOrders: Int?
     let updatedAt: String
     let ordersByStatus: [String: Int]
-    let todayRevenueMinor: Int64
-    let deliveriesCompletedToday: Int
-    let deliveriesAttemptedToday: Int
+    let todayRevenueMinor: Int64?
+    let deliveriesCompletedToday: Int?
+    let deliveriesAttemptedToday: Int?
     let manifestsByState: [String: Int]
 
     enum CodingKeys: String, CodingKey {
@@ -115,14 +113,14 @@ struct SupplierDashboard: Decodable {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         supplierId = try c.decode(String.self, forKey: .supplierId)
         isConfigured = try c.decode(Bool.self, forKey: .isConfigured)
-        inventorySKUs = (try? c.decode(Int.self, forKey: .inventorySKUs)) ?? 0
-        pendingOrders = (try? c.decode(Int.self, forKey: .pendingOrders)) ?? 0
-        updatedAt = (try? c.decode(String.self, forKey: .updatedAt)) ?? ""
-        ordersByStatus = (try? c.decode([String: Int].self, forKey: .ordersByStatus)) ?? [:]
-        todayRevenueMinor = (try? c.decode(Int64.self, forKey: .todayRevenueMinor)) ?? 0
-        deliveriesCompletedToday = (try? c.decode(Int.self, forKey: .deliveriesCompletedToday)) ?? 0
-        deliveriesAttemptedToday = (try? c.decode(Int.self, forKey: .deliveriesAttemptedToday)) ?? 0
-        manifestsByState = (try? c.decode([String: Int].self, forKey: .manifestsByState)) ?? [:]
+        inventorySKUs = try c.decodeIfPresent(Int.self, forKey: .inventorySKUs)
+        pendingOrders = try c.decodeIfPresent(Int.self, forKey: .pendingOrders)
+        updatedAt = try c.decodeIfPresent(String.self, forKey: .updatedAt) ?? ""
+        ordersByStatus = try c.decodeIfPresent([String: Int].self, forKey: .ordersByStatus) ?? [:]
+        todayRevenueMinor = try c.decodeIfPresent(Int64.self, forKey: .todayRevenueMinor)
+        deliveriesCompletedToday = try c.decodeIfPresent(Int.self, forKey: .deliveriesCompletedToday)
+        deliveriesAttemptedToday = try c.decodeIfPresent(Int.self, forKey: .deliveriesAttemptedToday)
+        manifestsByState = try c.decodeIfPresent([String: Int].self, forKey: .manifestsByState) ?? [:]
     }
 
     init(
@@ -148,8 +146,6 @@ struct SupplierDashboard: Decodable {
         self.deliveriesAttemptedToday = deliveriesAttemptedToday
         self.manifestsByState = manifestsByState
     }
-
-    static let sample = SupplierDashboard()
 }
 
 // MARK: - Profile
@@ -194,31 +190,6 @@ struct SupplierOrdersResponse: Decodable {
         self.limit = limit
         self.offset = offset
     }
-
-    static let samples = SupplierOrdersResponse(orders: [
-        SupplierOrder(
-            orderId: "ord-sup-101",
-            retailerId: "ret-chilonzor-4",
-            warehouseId: "wh-tashkent-central",
-            status: "IN_TRANSIT",
-            decision: "AUTO_ACCEPTED",
-            note: "Dispatched from Central Hub",
-            totalMinor: 1_450_000,
-            currency: "UZS",
-            updatedAt: "2026-11-01T08:30:00Z"
-        ),
-        SupplierOrder(
-            orderId: "ord-sup-102",
-            retailerId: "ret-yunusobod-12",
-            warehouseId: "wh-tashkent-central",
-            status: "PENDING",
-            decision: nil,
-            note: "Standard delivery",
-            totalMinor: 2_890_000,
-            currency: "UZS",
-            updatedAt: "2026-11-01T08:45:00Z"
-        )
-    ])
 }
 
 struct SupplierOrder: Decodable, Identifiable, Hashable {
@@ -267,7 +238,14 @@ struct SupplierOrder: Decodable, Identifiable, Hashable {
 }
 
 struct WarehouseOrderLineItem: Decodable, Identifiable, Hashable {
-    var id: String { productId ?? productName ?? UUID().uuidString }
+    var id: String {
+        let product = productId?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if !product.isEmpty { return product }
+        let name = productName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let qty = quantity.map { String($0) } ?? ""
+        let price = unitPrice.map(String.init) ?? ""
+        return "line:\(name):\(qty):\(price)"
+    }
     let productId: String?
     let productName: String?
     let quantity: Double?
@@ -588,6 +566,28 @@ struct SupplierEarnings: Decodable {
         case monthMinor = "month_minor"
         case authoritative
         case updatedAt = "updated_at"
+    }
+}
+
+enum EarningsHonesty {
+    /// A non-authoritative figure is not a today, week, or month total.
+    static func minor(_ value: Int64, authoritative: Bool) -> Int64? {
+        authoritative ? value : nil
+    }
+}
+
+enum MissingNumber {
+    static func label<T: CustomStringConvertible>(_ value: T?) -> String {
+        value.map { String(describing: $0) } ?? "—"
+    }
+}
+
+enum ActionResultText {
+    static func nonEmpty(status: String?, error: String?) -> String? {
+        let statusText = status?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if !statusText.isEmpty { return statusText }
+        let errorText = error?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return errorText.isEmpty ? nil : errorText
     }
 }
 

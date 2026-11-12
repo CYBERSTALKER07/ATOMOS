@@ -1,30 +1,28 @@
 import SwiftUI
 
 struct ReplenishmentPoliciesView: View {
-    @State private var policy: SupplierReplenishmentPolicy?
-    @State private var loading = true
-    @State private var error: String?
+    @State private var viewModel = ReplenishmentPoliciesViewModel()
 
     var body: some View {
         Group {
-            if loading {
-                SupplierLoadingView(title: "Loading policies…")
-            } else if let error {
-                SupplierErrorView(message: error) { Task { await load() } }
-            } else if let policy {
+            if viewModel.loading && viewModel.policy == nil {
+                SupplierLoadingView(title: "mobile_supplier.loading.policies")
+            } else if let error = viewModel.error, viewModel.policy == nil {
+                SupplierErrorView(message: error) { Task { await viewModel.load() } }
+            } else if let policy = viewModel.policy {
                 ResponsiveGridContentWrapper {
-                    Section("Auto-approval") {
-                        LabeledContent("Stable replenishment", value: policy.autoApproveStable ? "Enabled" : "Disabled")
-                        LabeledContent("Predictive push", value: policy.autoApprovePredictivePush ? "Enabled" : "Disabled")
+                    Section("mobile_supplier.chrome.auto_approval") {
+                        LabeledContent("mobile_supplier.chrome.stable_replenishment", value: policy.autoApproveStable ? L10n.format("mobile_supplier.chrome.enabled") : L10n.format("mobile_supplier.chrome.disabled"))
+                        LabeledContent("mobile_supplier.chrome.predictive_push", value: policy.autoApprovePredictivePush ? L10n.format("mobile_supplier.chrome.enabled") : L10n.format("mobile_supplier.chrome.disabled"))
                     }
-                    Section("Thresholds") {
-                        LabeledContent("Max daily transfer units", value: "\(policy.maxDailyTransferUnits)")
-                        LabeledContent("Min confidence score", value: String(format: "%.1f", policy.minConfidenceScore))
+                    Section("mobile_supplier.chrome.thresholds") {
+                        LabeledContent("mobile_supplier.chrome.max_daily_transfer", value: "\(policy.maxDailyTransferUnits)")
+                        LabeledContent("mobile_supplier.chrome.min_confidence_score", value: String(format: "%.1f", policy.minConfidenceScore))
                     }
-                    Section("Safety stock") {
-                        LabeledContent("Target service level", value: String(format: "%.0f%%", policy.targetServiceLevel * 100))
-                        LabeledContent("Lead time (days)", value: "\(policy.leadTimeDays)")
-                        LabeledContent("Lead σ (days, assumed)", value: String(format: "%.1f", policy.leadTimeSigmaDays))
+                    Section("mobile_supplier.chrome.safety_stock") {
+                        LabeledContent("mobile_supplier.chrome.target_service_level", value: String(format: "%.0f%%", policy.targetServiceLevel * 100))
+                        LabeledContent("mobile_supplier.chrome.lead_time_days", value: "\(policy.leadTimeDays)")
+                        LabeledContent("mobile_supplier.chrome.lead_sigma_days", value: String(format: "%.1f", policy.leadTimeSigmaDays))
                         Text("mobile_supplier.ui.lead_is_assumed_until_10_transfers_have_receivedat_history")
                             .font(.caption)
                             .foregroundStyle(.secondary)
@@ -39,19 +37,7 @@ struct ReplenishmentPoliciesView: View {
         }
         .background(SupplierTheme.background)
         .navigationTitle("supplier_portal.operations.replenishment_policies.text.replenishment_policies")
-        .task { await load() }
-        .refreshable { await load(silent: true) }
-    }
-
-    @MainActor
-    private func load(silent: Bool = false) async {
-        if !silent { loading = true }
-        error = nil
-        defer { loading = false }
-        do {
-            policy = try await SupplierOperationsService.replenishmentPolicies()
-        } catch {
-            if !silent { self.error = error.localizedDescription }
-        }
+        .task { await viewModel.load() }
+        .refreshable { await viewModel.load(silent: true) }
     }
 }

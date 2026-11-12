@@ -130,6 +130,9 @@ private struct OrderOpsCardView: View {
                 .foregroundStyle(.secondary)
         }
         .labCard()
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(title), \(state), \(amountLabel)")
+        .accessibilityHint("Double tap to view order details")
         .contextMenu {
             if let onDelay, canDelay {
                 Button(delayLabel) { onDelay() }

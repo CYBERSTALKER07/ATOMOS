@@ -1,153 +1,93 @@
 import SwiftUI
 
-private let hourPresets: [Int64] = [8, 24, 48, 72]
-
 struct ReturnPolicySettingsView: View {
-    @State private var loading = true
-    @State private var saving = false
-    @State private var error: String?
-    @State private var saved = false
-    @State private var hours: Int64 = 48
-    @State private var hoursText = "48"
-    @State private var concealed = ""
-    @State private var requirePhoto = true
-    @State private var allowExpired = false
-    @State private var sourceHint = ""
+    @State private var vm = ReturnPolicySettingsViewModel()
 
     var body: some View {
+        @Bindable var vm = vm
         Group {
-            if loading {
-                SupplierLoadingView(title: "Loading return policy…")
+            if vm.loading && !vm.hasLoaded {
+                SupplierLoadingView(title: "mobile_supplier.loading.return_policy")
             } else {
                 Form {
                     Section {
                         Text("supplier_portal.residual.text.claim_filing_windows_applied_when_orders_complete_retailers_see_")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
-                        if !sourceHint.isEmpty {
-                            Text(L10n.format("mobile_supplier.ui.source_hint_sourcehint_2", "\(sourceHint)"))
+                        if !vm.sourceHint.isEmpty {
+                            Text(L10n.format("mobile_supplier.ui.source_hint_sourcehint_2", "\(vm.sourceHint)"))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
                     }
 
-                    if let error {
+                    if let error = vm.error {
                         Section {
-                            Text(error).foregroundStyle(.red)
+                            Text(error).foregroundStyle(SupplierTheme.destructive)
                         }
                     }
-                    if saved {
+                    if vm.saved {
                         Section {
                             Text("supplier_portal.settings.return_policy.text.return_policy_saved").foregroundStyle(SupplierTheme.success)
                         }
                     }
 
-                    Section("Default claim window (hours)") {
+                    Section("mobile_supplier.chrome.default_claim_window") {
                         HStack {
-                            ForEach(hourPresets, id: \.self) { preset in
+                            ForEach(ReturnPolicySettingsViewModel.hourPresets, id: \.self) { preset in
                                 Button(L10n.format("mobile_supplier.ui.preseth", "\(preset)")) {
-                                    hours = preset
-                                    hoursText = String(preset)
+                                    vm.selectPreset(preset)
                                 }
                                 .buttonStyle(.bordered)
-                                .tint(hours == preset ? Color.accentColor : .secondary)
+                                .frame(minWidth: 44, minHeight: 44)
+                                .tint(vm.hours == preset ? Color.accentColor : .secondary)
                             }
                         }
-                        TextField("mobile_supplier.ui.custom_1_168", text: $hoursText)
+                        TextField("mobile_supplier.ui.custom_1_168", text: $vm.hoursText)
                             .keyboardType(.numberPad)
-                            .onChange(of: hoursText) { _, newValue in
-                                let digits = newValue.filter(\.isNumber)
-                                if digits != newValue { hoursText = digits }
-                                if let parsed = Int64(digits) { hours = parsed }
+                            .onChange(of: vm.hoursText) { _, newValue in
+                                vm.sanitizeHoursText(newValue)
                             }
-                        Text(L10n.format("mobile_supplier.ui.preview_retailers_may_file_claims_for_isempty_hourstexth_after_delivery", "\(hoursText.isEmpty ? "—" : hoursText)"))
+                        Text(L10n.format("mobile_supplier.ui.preview_retailers_may_file_claims_for_isempty_hourstexth_after_delivery", "\(vm.hoursText.isEmpty ? "—" : vm.hoursText)"))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
 
-                    Section("Concealed damage (optional)") {
-                        TextField("mobile_supplier.ui.hours_same_as_default_if_empty", text: $concealed)
+                    Section("mobile_supplier.chrome.concealed_damage_optional") {
+                        TextField("mobile_supplier.ui.hours_same_as_default_if_empty", text: $vm.concealed)
                             .keyboardType(.numberPad)
-                            .onChange(of: concealed) { _, newValue in
-                                let digits = newValue.filter(\.isNumber)
-                                if digits != newValue { concealed = digits }
+                            .onChange(of: vm.concealed) { _, newValue in
+                                vm.sanitizeConcealed(newValue)
                             }
                     }
 
-                    Section("Claims rules") {
-                        Toggle("Require photo evidence on claims", isOn: $requirePhoto)
-                        Toggle("Allow filing after window expires", isOn: $allowExpired)
+                    Section("mobile_supplier.chrome.claims_rules") {
+                        Toggle("mobile_supplier.chrome.require_photo_evidence", isOn: $vm.requirePhoto)
+                        Toggle("mobile_supplier.chrome.allow_filing_after_window", isOn: $vm.allowExpired)
                     }
 
                     Section {
-                        Button(saving ? "Saving…" : "Save return policy") { Task { await save() } }
-                            .disabled(saving)
+                        Button(LocalizedStringKey(vm.saving ? "mobile_supplier.chrome.saving" : "mobile_supplier.chrome.save_return_policy")) {
+                            PegasusHaptics.light()
+                            Task { await vm.save() }
+                        }
+                        .frame(minHeight: 44)
+                        .disabled(vm.saving)
                     }
                 }
+                .scrollDismissesKeyboard(.interactively)
             }
         }
         .navigationTitle("portal.nav.return_policy")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") { Task { await load() } }
+                Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") {
+                    PegasusHaptics.light()
+                    Task { await vm.load(silent: true) }
+                }
+                .frame(minWidth: 44, minHeight: 44)
             }
         }
-        .task { await load() }
-    }
-
-    @MainActor
-    private func load() async {
-        loading = true
-        error = nil
-        defer { loading = false }
-        do {
-            let p = try await SupplierOperationsService.returnPolicy()
-            hours = p.defaultWindowHours > 0 ? p.defaultWindowHours : 48
-            hoursText = String(hours)
-            if let c = p.concealedDamageWindowHours, c > 0 {
-                concealed = String(c)
-            } else {
-                concealed = ""
-            }
-            requirePhoto = p.requirePhoto
-            allowExpired = p.allowExpiredClaims
-            sourceHint = p.policySourceHint ?? ""
-        } catch {
-            self.error = error.localizedDescription
-        }
-    }
-
-    @MainActor
-    private func save() async {
-        let parsed = Int64(hoursText) ?? hours
-        guard parsed >= 1, parsed <= 168 else {
-            error = "Default window must be between 1 and 168 hours"
-            return
-        }
-        saving = true
-        error = nil
-        saved = false
-        defer { saving = false }
-        var body = SupplierReturnPolicy(
-            defaultWindowHours: parsed,
-            concealedDamageWindowHours: nil,
-            requirePhoto: requirePhoto,
-            allowExpiredClaims: allowExpired,
-            policySourceHint: nil
-        )
-        if let c = Int64(concealed.trimmingCharacters(in: .whitespaces)), c > 0 {
-            body.concealedDamageWindowHours = c
-        }
-        do {
-            let scope = await SupplierIdempotencyKeys.supplierScopeId()
-            let key = SupplierIdempotencyKeys.returnPolicyPut(scopeId: scope, hours: parsed)
-            let savedPolicy = try await SupplierOperationsService.putReturnPolicy(body, idempotencyKey: key)
-            sourceHint = savedPolicy.policySourceHint ?? "SUPPLIER"
-            hours = parsed
-            hoursText = String(parsed)
-            saved = true
-        } catch {
-            self.error = error.localizedDescription
-        }
+        .task { await vm.load() }
     }
 }

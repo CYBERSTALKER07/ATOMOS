@@ -1,8 +1,8 @@
 import SwiftUI
 
 private enum OrdersHubSurface: String, CaseIterable, Identifiable {
-  case queue = "Orders"
-  case dispatch = "Dispatch"
+  case queue = "mobile_supplier.chrome.orders"
+  case dispatch = "mobile_supplier.chrome.dispatch"
 
   var id: String { rawValue }
 }
@@ -26,15 +26,15 @@ struct OrdersHubView: View {
       .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
     .background(SupplierTheme.background)
-    .navigationTitle(surface.rawValue)
+    .navigationTitle(LocalizedStringKey(surface.rawValue))
     .navigationBarTitleDisplayMode(.inline)
   }
 
   private var hubChrome: some View {
     VStack(spacing: SupplierTheme.spacingSM) {
-      Picker("Surface", selection: $surface) {
+      Picker("mobile_supplier.chrome.surface", selection: $surface) {
         ForEach(OrdersHubSurface.allCases) { item in
-          Text(item.rawValue).tag(item)
+          Text(LocalizedStringKey(item.rawValue)).tag(item)
         }
       }
       .pickerStyle(.segmented)
@@ -59,11 +59,9 @@ struct OrdersQueueView: View {
       } else if embeddedInHub {
         phoneContent
       } else {
-        NavigationStack {
-          phoneContent
-            .navigationTitle("portal.nav.orders")
-            .toolbar { ordersToolbar }
-        }
+        phoneContent
+          .navigationTitle("portal.nav.orders")
+          .toolbar { ordersToolbar }
       }
     }
     .background(SupplierTheme.background)
@@ -87,13 +85,13 @@ struct OrdersQueueView: View {
       Group {
         if vm.loading && vm.orders.isEmpty {
           SupplierLoadingView(
-            title: "Loading orders",
-            message: "Fetching your supplier order queue."
+            title: "mobile_supplier.loading.orders",
+            message: "mobile_supplier.loading.orders_message"
           )
         } else if let error = vm.error, vm.orders.isEmpty {
           SupplierErrorView(message: error) { Task { await vm.load() } }
         } else if vm.orders.isEmpty {
-          SupplierEmptyView(title: "No orders", message: "Nothing in this queue.")
+          SupplierEmptyView(title: "mobile_supplier.empty.no_orders", message: "mobile_supplier.empty.nothing_in_queue")
         } else {
           ResponsiveGridContentWrapper {
             ForEach(vm.orders) { order in
@@ -127,7 +125,7 @@ struct OrdersQueueView: View {
       if let selection = vm.selection {
         OrderDetailPanel(order: selection, vm: vm)
       } else {
-        ContentUnavailableView("Select an order", systemImage: "shippingbox")
+        ContentUnavailableView("mobile_supplier.chrome.select_an_order", systemImage: "shippingbox")
       }
     }
   }
@@ -137,10 +135,10 @@ struct OrdersQueueView: View {
       HStack(spacing: SupplierTheme.spacingSM) {
         if let commandStatus = vm.commandStatus {
           HStack {
-            Text("Filtered by \(commandStatus.replacingOccurrences(of: "_", with: " "))")
+            Text(L10n.format("mobile_supplier.chrome.filtered_by", commandStatus.replacingOccurrences(of: "_", with: " ")))
               .font(.caption)
               .accessibilityIdentifier("gs-u-command-filter")
-            Button("Clear") { vm.setCoarseFilter(vm.statusFilter) }
+            Button("mobile_supplier.chrome.clear") { vm.setCoarseFilter(vm.statusFilter) }
               .font(.caption.bold())
           }
           .padding(.horizontal)
@@ -149,7 +147,7 @@ struct OrdersQueueView: View {
           Button {
             vm.setCoarseFilter(filter.id)
           } label: {
-            Text(filter.label)
+            Text(LocalizedStringKey(filter.label))
               .font(.subheadline.weight(vm.statusFilter == filter.id ? .semibold : .regular))
               .padding(.horizontal, 12)
               .padding(.vertical, 8)
@@ -173,13 +171,13 @@ struct OrdersQueueView: View {
     Group {
       if vm.loading && vm.orders.isEmpty {
         SupplierLoadingView(
-          title: "Loading orders",
-          message: "Fetching your supplier order queue."
+          title: "mobile_supplier.loading.orders",
+          message: "mobile_supplier.loading.orders_message"
         )
       } else if let error = vm.error, vm.orders.isEmpty {
         SupplierErrorView(message: error) { Task { await vm.load() } }
       } else if vm.orders.isEmpty {
-        SupplierEmptyView(title: "No orders", message: "Nothing in this queue.")
+        SupplierEmptyView(title: "mobile_supplier.empty.no_orders", message: "mobile_supplier.empty.nothing_in_queue")
       } else {
         List(vm.orders, selection: $vm.selection) { order in
           OrderRow(order: order)

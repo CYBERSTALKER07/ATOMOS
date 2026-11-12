@@ -5,42 +5,44 @@ struct BusinessSetupView: View {
     @State private var vm = OnboardingViewModel()
 
     var body: some View {
-        NavigationStack {
-            Form {
-                Section {
-                    Text("mobile_supplier.ui.provide_tax_and_headquarters_information_to_complete_supplier_re")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-
-                Section("Tax & registration") {
-                    TextField("supplier_portal.residual.text.tax_id_vat_tin", text: $vm.taxId)
-                    TextField("supplier_portal.residual.text.company_registration_number", text: $vm.registrationNumber)
-                }
-
-                Section("Location") {
-                    TextField("mobile_supplier.ui.headquarters_address", text: $vm.headquartersAddress)
-                    TextField("supplier_portal.analytics.demand.signals.text.city", text: $vm.city)
-                    TextField("supplier_portal.residual.text.postal_code", text: $vm.postalCode)
-                }
-
-                if let error = vm.error {
-                    Section { Text(error).foregroundStyle(SupplierTheme.destructive) }
-                }
-
-                Section {
-                    Button(vm.loading ? "Saving…" : "Save & continue") {
-                        Task { _ = await vm.setupBusiness(tokenStore: tokenStore) }
-                    }
-                    .disabled(vm.loading)
-
-                    Button("common.action.skip_for_now", role: .cancel) {
-                        tokenStore.markRegistered(true)
-                    }
-                    .disabled(vm.loading)
-                }
+        Form {
+            Section {
+                Text("mobile_supplier.ui.provide_tax_and_headquarters_information_to_complete_supplier_re")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
             }
-            .navigationTitle("mobile_supplier.ui.business_setup")
+
+            Section("mobile_supplier.chrome.tax_and_registration") {
+                TextField("supplier_portal.residual.text.tax_id_vat_tin", text: $vm.taxId)
+                TextField("supplier_portal.residual.text.company_registration_number", text: $vm.registrationNumber)
+            }
+
+            Section("mobile_supplier.chrome.location") {
+                TextField("mobile_supplier.ui.headquarters_address", text: $vm.headquartersAddress)
+                TextField("supplier_portal.analytics.demand.signals.text.city", text: $vm.city)
+                TextField("supplier_portal.residual.text.postal_code", text: $vm.postalCode)
+            }
+
+            if let error = vm.error {
+                Section { Text(error).foregroundStyle(SupplierTheme.destructive) }
+            }
+
+            Section {
+                Button(LocalizedStringKey(vm.loading ? "mobile_supplier.chrome.saving" : "mobile_supplier.chrome.save_and_continue")) {
+                    PegasusHaptics.light()
+                    Task { _ = await vm.setupBusiness(tokenStore: tokenStore) }
+                }
+                .frame(minHeight: 44)
+                .disabled(vm.loading)
+
+                Button("common.action.skip_for_now", role: .cancel) {
+                    tokenStore.markRegistered(true)
+                }
+                .frame(minHeight: 44)
+                .disabled(vm.loading)
+            }
         }
+        .scrollDismissesKeyboard(.interactively)
+        .navigationTitle("mobile_supplier.ui.business_setup")
     }
 }

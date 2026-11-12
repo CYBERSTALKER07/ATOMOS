@@ -3,76 +3,86 @@ import SwiftUI
 struct FleetView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(SupplierRealtimeHub.self) private var realtimeHub
-    @State private var segment = 0
-    @State private var drivers: [FleetDriver] = []
-    @State private var vehicles: [FleetVehicle] = []
-    @State private var loading = true
-    @State private var error: String?
+    @State private var vm = FleetViewModel()
 
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-                Picker("Fleet", selection: $segment) {
-                    Text("portal.nav.drivers").tag(0)
-                    Text("supplier_portal.org_fleet.components.vehicle_form.text.vehicles").tag(1)
-                }
-                .pickerStyle(.segmented)
-                .padding()
+        VStack(spacing: 0) {
+            Picker("mobile_supplier.chrome.fleet", selection: $vm.segment) {
+                Text("portal.nav.drivers").tag(0)
+                Text("supplier_portal.org_fleet.components.vehicle_form.text.vehicles").tag(1)
+            }
+            .pickerStyle(.segmented)
+            .padding()
+            .onChange(of: vm.segment) { _, _ in
+                PegasusHaptics.selection()
+            }
 
-                Group {
-                    if loading {
-                        SupplierLoadingView(
-                            title: "Loading fleet",
-                            message: "Fetching drivers and vehicles for your nodes."
-                        )
-                    } else if let error {
-                        SupplierErrorView(message: error) { Task { await load() } }
-                    } else if segment == 0 {
-                        fleetList(
-                            emptyTitle: "No drivers",
-                            emptyMessage: "Create drivers from the supplier portal or API."
-                        ) {
-                            ForEach(drivers) { driver in
-                                DriverRow(driver: driver)
-                            }
-                        }
-                    } else {
-                        fleetList(
-                            emptyTitle: "No vehicles",
-                            emptyMessage: "Register trucks against your home nodes."
-                        ) {
-                            ForEach(vehicles) { vehicle in
-                                VehicleRow(vehicle: vehicle)
-                            }
+            Group {
+                if vm.loading && vm.drivers.isEmpty && vm.vehicles.isEmpty {
+                    SupplierLoadingView(
+                        title: "mobile_supplier.loading.fleet",
+                        message: "mobile_supplier.loading.fleet_message"
+                    )
+                } else if let error = vm.error, vm.drivers.isEmpty && vm.vehicles.isEmpty {
+                    SupplierErrorView(message: error) { Task { await vm.load() } }
+                } else if vm.segment == 0 {
+                    fleetList(
+                        emptyTitle: "mobile_supplier.empty.no_drivers",
+                        emptyMessage: "mobile_supplier.empty.drivers_portal"
+                    ) {
+                        ForEach(vm.drivers) { driver in
+                            DriverRow(driver: driver)
                         }
                     }
-                }
-            }
-            .background(SupplierTheme.background)
-            .navigationTitle("portal.nav.fleet")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    NavigationLink {
-                        FleetLiveMapView()
-                    } label: {
-                        Label("retailer_desktop.tracking.tracking_map.text.live_map", systemImage: "map")
+                } else {
+                    fleetList(
+                        emptyTitle: "mobile_supplier.empty.no_vehicles",
+                        emptyMessage: "mobile_supplier.empty.vehicles_register"
+                    ) {
+                        ForEach(vm.vehicles) { vehicle in
+                            VehicleRow(vehicle: vehicle)
+                        }
                     }
                 }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") {
-                        Task { await load(silent: true) }
-                    }
-                    .labelStyle(.iconOnly)
+            }
+        }
+        .background(SupplierTheme.background)
+        .navigationTitle("portal.nav.fleet")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                NavigationLink {
+                    FleetLiveMapView()
+                } label: {
+                    Image(systemName: "map")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(SupplierTheme.label)
+                        .frame(minWidth: 44, minHeight: 44)
                 }
+                .accessibilityLabel(Text("retailer_desktop.tracking.tracking_map.text.live_map"))
             }
-            .task { await load() }
-            .refreshable { await load(silent: true) }
-            .onChange(of: realtimeHub.refreshEpoch) { _, _ in
-                Task { await load(silent: true) }
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    PegasusHaptics.light()
+                    Task { await vm.load(silent: true) }
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(SupplierTheme.label)
+                        .frame(minWidth: 44, minHeight: 44)
+                }
+                .accessibilityLabel(Text("portal.page.orders.action.refresh"))
             }
-            .onChange(of: realtimeHub.reconnectEpoch) { _, _ in
-                Task { await load(silent: true) }
-            }
+        }
+        .task { await vm.load() }
+        .refreshable {
+            PegasusHaptics.light()
+            await vm.load(silent: true)
+        }
+        .onChange(of: realtimeHub.refreshEpoch) { _, _ in
+            Task { await vm.load(silent: true) }
+        }
+        .onChange(of: realtimeHub.reconnectEpoch) { _, _ in
+            Task { await vm.load(silent: true) }
         }
     }
 
@@ -82,7 +92,7 @@ struct FleetView: View {
         emptyMessage: String,
         @ViewBuilder rows: @escaping () -> Rows
     ) -> some View {
-        if (segment == 0 && drivers.isEmpty) || (segment == 1 && vehicles.isEmpty) {
+        if (vm.segment == 0 && vm.drivers.isEmpty) || (vm.segment == 1 && vm.vehicles.isEmpty) {
             SupplierEmptyView(title: emptyTitle, message: emptyMessage)
         } else {
             ResponsiveGridContentWrapper {
@@ -90,66 +100,5 @@ struct FleetView: View {
             }
             .supplierReadableWidth()
         }
-    }
-
-    @MainActor
-    private func load(silent: Bool = false) async {
-        if !silent { loading = true }
-        error = nil
-        do {
-            async let d = SupplierService.fleetDrivers()
-            async let v = SupplierService.fleetVehicles()
-            drivers = try await d
-            vehicles = try await v
-            _ = try? await SupplierOperationsService.fleetOrders()
-        } catch {
-            if !silent { self.error = error.localizedDescription }
-        }
-        loading = false
-    }
-}
-
-private struct DriverRow: View {
-    let driver: FleetDriver
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Text(driver.name)
-                    .font(.headline)
-                Spacer()
-                SupplierStatusBadge(
-                    text: driver.isActive ? "ACTIVE" : "OFFLINE",
-                    tint: driver.isActive ? SupplierTheme.live : SupplierTheme.secondaryLabel
-                )
-            }
-            Text(driver.phone)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-            Text(L10n.format("mobile_supplier.ui.homenodetype_homenodeid", "\(driver.homeNodeType)", "\(driver.homeNodeId)"))
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
-        }
-        .padding(.vertical, 4)
-    }
-}
-
-private struct VehicleRow: View {
-    let vehicle: FleetVehicle
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(vehicle.licensePlate)
-                .font(.headline)
-            if let label = vehicle.label, !label.isEmpty {
-                Text(label)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-            Text(L10n.format("mobile_supplier.ui.homenodetype_homenodeid", "\(vehicle.homeNodeType)", "\(vehicle.homeNodeId)"))
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
-        }
-        .padding(.vertical, 4)
     }
 }

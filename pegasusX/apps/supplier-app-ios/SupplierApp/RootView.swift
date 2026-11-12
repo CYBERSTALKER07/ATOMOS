@@ -10,7 +10,9 @@ struct RootView: View {
             if !tokenStore.isAuthenticated {
                 LoginView()
             } else if tokenStore.needsBusinessSetup {
-                BusinessSetupView()
+                NavigationStack {
+                    BusinessSetupView()
+                }
             } else if tokenStore.needsBillingGate {
                 BillingGateView()
             } else {
@@ -21,35 +23,29 @@ struct RootView: View {
         .animation(SupplierAnim.smooth, value: tokenStore.needsBusinessSetup)
         .animation(SupplierAnim.smooth, value: tokenStore.needsBillingGate)
         .onChange(of: tokenStore.isAuthenticated) { _, authenticated in
-            if authenticated {
-                realtime.connect(
-                    onEvent: { event in
-                        guard !event.type.hasPrefix("SYSTEM") else { return }
-                        realtimeHub.bump()
-                    },
-                    onReconnect: {
-                        realtimeHub.bumpReconnect()
-                    }
-                )
-            } else {
-                realtime.disconnect()
-            }
-        }
-        .onAppear {
-            if tokenStore.isAuthenticated {
-                realtime.connect(
-                    onEvent: { event in
-                        guard !event.type.hasPrefix("SYSTEM") else { return }
-                        realtimeHub.bump()
-                    },
-                    onReconnect: {
-                        realtimeHub.bumpReconnect()
-                    }
-                )
-            }
+            syncRealtime(authenticated: authenticated)
         }
         .task {
+            syncRealtime(authenticated: tokenStore.isAuthenticated)
             await PushNotificationManager.shared.requestAuthorization()
+        }
+    }
+
+    private func syncRealtime(authenticated: Bool) {
+        if authenticated {
+            realtime.connect(
+                onEvent: { event in
+                    guard !event.type.hasPrefix("SYSTEM") else { return }
+                    Task { @MainActor in
+                        realtimeHub.bump()
+                    }
+                },
+                onReconnect: {
+                    realtimeHub.bumpReconnect()
+                }
+            )
+        } else {
+            realtime.disconnect()
         }
     }
 }

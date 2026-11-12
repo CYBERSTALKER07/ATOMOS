@@ -26,6 +26,7 @@ struct RegisterView: View {
                 Section { Text(error).foregroundStyle(SupplierTheme.destructive) }
             }
         }
+        .scrollDismissesKeyboard(.interactively)
         .navigationTitle("mobile_supplier.ui.register_supplier")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -34,7 +35,7 @@ struct RegisterView: View {
             }
             ToolbarItem(placement: .confirmationAction) {
                 if vm.step == .profile {
-                    Button(vm.loading ? "Creating…" : "Create") {
+                    Button(LocalizedStringKey(vm.loading ? "mobile_supplier.chrome.creating" : "mobile_supplier.chrome.create")) {
                         Task { _ = await vm.register(tokenStore: tokenStore) }
                     }
                     .disabled(vm.loading)
@@ -55,14 +56,14 @@ struct RegisterView: View {
 
     private var identityStep: some View {
         Group {
-            Section("Country") {
-                Picker("Country", selection: $vm.countryCode) {
+            Section("mobile_supplier.chrome.country") {
+                Picker("mobile_supplier.chrome.country", selection: $vm.countryCode) {
                     ForEach(OnboardingViewModel.countries) { country in
                         Text(country.name).tag(country.id)
                     }
                 }
             }
-            Section("Phone") {
+            Section("mobile_supplier.chrome.phone") {
                 HStack {
                     Text(vm.dialCode).foregroundStyle(.secondary)
                     TextField("mobile_supplier.ui.phone_number", text: $vm.phoneLocal)
@@ -73,7 +74,7 @@ struct RegisterView: View {
     }
 
     private var verificationStep: some View {
-        Section("Verification code") {
+        Section("mobile_supplier.chrome.verification_code") {
             TextField("mobile_supplier.ui.6_digit_code", text: $vm.otpCode)
                 .keyboardType(.numberPad)
             Text(L10n.format("mobile_supplier.ui.enter_the_verification_code_sent_to_fullphone", "\(vm.fullPhone)"))
@@ -84,7 +85,7 @@ struct RegisterView: View {
 
     private var profileStep: some View {
         Group {
-            Section("Business") {
+            Section("mobile_supplier.chrome.business") {
                 TextField("supplier_portal.residual.text.legal_name", text: $vm.legalName)
                 TextField("supplier_portal.residual.text.contact_name", text: $vm.contactName)
                 TextField("supplier_portal.auth.login.email_label", text: $vm.email)

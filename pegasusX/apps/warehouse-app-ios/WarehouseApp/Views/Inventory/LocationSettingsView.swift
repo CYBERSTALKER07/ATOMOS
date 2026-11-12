@@ -1,105 +1,74 @@
 import SwiftUI
 
 struct LocationSettingsView: View {
-    @State private var warehouseName = ""
-    @State private var location = AddressLocationValue()
-    @State private var loading = true
-    @State private var saving = false
-    @State private var error: String?
-    @State private var saveMessage: String?
-    @State private var packCountry = ""
+    @State private var vm = LocationSettingsViewModel()
 
     var body: some View {
+        @Bindable var vm = vm
         Group {
-            if loading {
+            if vm.loading {
                 ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if let error {
+            } else if let error = vm.error {
                 ContentUnavailableView {
                     Label("mobile_warehouse.ui.error", systemImage: "exclamationmark.triangle")
                 } description: {
                     Text(error)
                 } actions: {
-                    Button("common.action.retry") { load() }
+                    Button("common.action.retry") {
+                        PegasusHaptics.light()
+                        Task { await vm.load() }
+                    }
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
                 }
             } else {
                 Form {
-                    if !warehouseName.isEmpty {
-                        Section { Text(warehouseName) }
+                    if !vm.warehouseName.isEmpty {
+                        Section { Text(vm.warehouseName) }
                     }
-                    if !packCountry.isEmpty {
+                    if !vm.packCountry.isEmpty {
                         Section("Pack country") {
-                            Text(packCountry)
+                            Text(vm.packCountry)
                         }
                     }
                     Section("Depot address") {
                         Text("mobile_warehouse.ui.used_for_smart_dispatch_routing_coordinates_stay_hidden_from_dai")
                             .font(.caption)
                             .foregroundStyle(.secondary)
-                        AddressLocationField(value: $location, label: "Warehouse address")
+                        AddressLocationField(value: $vm.location, label: "Warehouse address")
                     }
-                    if let saveMessage {
-                        Section { Text(saveMessage).foregroundStyle(saveMessage.contains("saved") ? .green : .red) }
+                    if let saveMessage = vm.saveMessage {
+                        Section {
+                            Text(saveMessage)
+                                .foregroundStyle(saveMessage.contains("saved") ? .green : .red)
+                        }
                     }
                     Section {
-                        Button(saving ? "Saving…" : "Save location") { save() }
-                            .disabled(saving || location.address.isEmpty)
+                        Button(vm.saving ? "Saving…" : "Save location") {
+                            PegasusHaptics.medium()
+                            Task { await vm.save() }
+                        }
+                        .disabled(vm.saving || vm.location.address.isEmpty)
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
+                        .accessibilityLabel("Save warehouse location")
                     }
                 }
+                .scrollDismissesKeyboard(.interactively)
             }
         }
         .navigationTitle("warehouse_portal.settings.text.depot_location")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") { load() }
+                Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") {
+                    PegasusHaptics.light()
+                    Task { await vm.load() }
+                }
+                .frame(minWidth: 44, minHeight: 44)
+                .contentShape(Rectangle())
+                .accessibilityLabel("Refresh depot location")
             }
         }
-        .task { load() }
-    }
-
-    private func load() {
-        loading = true
-        error = nil
-        Task {
-            do {
-                let resp = try await WarehouseService.warehouseLocation()
-                warehouseName = resp.name
-                location = AddressLocationValue(
-                    address: resp.address,
-                    lat: resp.lat,
-                    lng: resp.lng,
-                    placeId: resp.placeId
-                )
-                packCountry = resp.packCountryCode.isEmpty ? resp.countryCode : resp.packCountryCode
-                loading = false
-            } catch {
-                self.error = error.localizedDescription
-                loading = false
-            }
-        }
-    }
-
-    private func save() {
-        saving = true
-        saveMessage = nil
-        Task {
-            defer { saving = false }
-            guard let resolved = await GeocodeLocationSupport.resolveLocationValue(location) else {
-                saveMessage = "Select an address from the suggestions or share your location."
-                return
-            }
-            location = resolved
-            do {
-                _ = try await WarehouseService.patchWarehouseLocation(
-                    address: resolved.address,
-                    placeId: resolved.placeId,
-                    lat: resolved.lat,
-                    lng: resolved.lng
-                )
-                saveMessage = "Location saved"
-                load()
-            } catch let saveError {
-                saveMessage = saveError.localizedDescription
-            }
-        }
+        .task { await vm.load() }
     }
 }

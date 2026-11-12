@@ -5,74 +5,45 @@ struct CreateVehicleSheet: View {
     let onDone: () -> Void
     @Environment(\.dismiss) private var dismiss
     @Environment(SupplierRealtimeHub.self) private var realtimeHub
-    @State private var label = ""
-    @State private var plate = ""
-    @State private var nodeType = "WAREHOUSE"
-    @State private var nodeId = ""
-    @State private var busy = false
-    @State private var error: String?
+    @State private var viewModel = CreateVehicleViewModel()
 
     var body: some View {
+        @Bindable var vm = viewModel
         NavigationStack {
             Form {
-                TextField("mobile_supplier.ui.label", text: $label)
-                TextField("warehouse_portal.vehicles._vehicle_id_.text.license_plate", text: $plate)
+                TextField("mobile_supplier.ui.label", text: $vm.label)
+                TextField("warehouse_portal.vehicles._vehicle_id_.text.license_plate", text: $vm.plate)
                     .textInputAutocapitalization(.characters)
-                Picker("Node type", selection: $nodeType) {
+                Picker("mobile_supplier.chrome.node_type", selection: $vm.nodeType) {
                     Text("factory_portal.insights.text.warehouse").tag("WAREHOUSE")
                     Text("factory_portal.setup.factory.text.factory").tag("FACTORY")
                 }
-                .onChange(of: nodeType) { _, _ in nodeId = "" }
-                Picker("Home node", selection: $nodeId) {
+                .onChange(of: viewModel.nodeType) { _, _ in viewModel.nodeId = "" }
+                Picker("mobile_supplier.chrome.home_node", selection: $vm.nodeId) {
                     Text("supplier_portal.org_fleet.components.org_member_form.text.select_node").tag("")
-                    ForEach(nodeOptions, id: \.0) { id, name in Text(name).tag(id) }
+                    ForEach(viewModel.nodeOptions(topology: topology), id: \.0) { id, name in Text(name).tag(id) }
                 }
-                if let error { Text(error).foregroundStyle(.red) }
+                if let error = viewModel.error { Text(error).foregroundStyle(SupplierTheme.destructive) }
             }
+            .scrollDismissesKeyboard(.interactively)
             .navigationTitle("mobile_supplier.ui.create_vehicle")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("common.action.cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(busy ? "…" : "Create") { Task { await create() } }
-                        .disabled(busy || plate.isEmpty || nodeId.isEmpty)
+                    Button(LocalizedStringKey(viewModel.busy ? "mobile_supplier.chrome.creating" : "mobile_supplier.chrome.create")) {
+                        Task {
+                            await viewModel.create {
+                                dismiss()
+                                onDone()
+                            }
+                        }
+                    }
+                    .disabled(viewModel.busy || viewModel.plate.isEmpty || viewModel.nodeId.isEmpty)
                 }
             }
             .onChange(of: realtimeHub.reconnectEpoch) { _, _ in
-                if busy {
-                    busy = false
-                    error = "Connection restored — verify status before retrying."
-                }
+                viewModel.handleReconnect()
             }
-        }
-    }
-
-    private var nodeOptions: [(String, String)] {
-        if nodeType == "FACTORY" {
-            return topology.factories.map { ($0.factoryId, $0.name) }
-        }
-        return topology.warehouses.map { ($0.warehouseId, $0.name) }
-    }
-
-    private func create() async {
-        busy = true
-        error = nil
-        defer { busy = false }
-        do {
-            let request = FleetVehicleCreateRequest(
-                label: label.isEmpty ? nil : label,
-                licensePlate: plate.uppercased(),
-                homeNodeType: nodeType,
-                homeNodeId: nodeId,
-                isActive: nil
-            )
-            _ = try await SupplierOperationsService.createFleetVehicle(
-                request,
-                idempotencyKey: SupplierIdempotencyKeys.fleetVehicleCreate(scopeId: SupplierIdempotencyKeys.supplierScopeId(), licensePlate: request.licensePlate)
-            )
-            dismiss()
-            onDone()
-        } catch {
-            self.error = error.localizedDescription
         }
     }
 }

@@ -42,9 +42,9 @@ struct AuthResponse: Decodable {
     }
 
     init(
-        token: String = "mock-warehouse-jwt-dev",
-        refreshToken: String = "mock-warehouse-refresh",
-        warehouseId: String = "wh-tashkent-central",
+        token: String,
+        refreshToken: String,
+        warehouseId: String = "",
         isConfigured: Bool = true
     ) {
         self.token = token
@@ -52,8 +52,6 @@ struct AuthResponse: Decodable {
         self.warehouseId = warehouseId
         self.isConfigured = isConfigured
     }
-
-    static let mock = AuthResponse()
 }
 
 // MARK: - Dashboard
@@ -172,30 +170,6 @@ struct DashboardData: Decodable {
     }
 
     static let empty = DashboardData()
-
-    static let sample = DashboardData(
-        activeOrders: 14,
-        completedToday: 32,
-        pendingDispatch: 6,
-        driversOnRoute: 8,
-        driversIdle: 3,
-        totalDrivers: 11,
-        totalVehicles: 12,
-        todayRevenue: 64_000_000,
-        completedTodayAvailable: true,
-        todayRevenueAvailable: true,
-        lowStockCount: 2,
-        totalStaff: 18,
-        fleetStatus: [
-            FleetStatusEntry(status: "ON_ROUTE", count: 8),
-            FleetStatusEntry(status: "IDLE", count: 3)
-        ],
-        ordersByStatus: ["PENDING": 4, "IN_TRANSIT": 8, "DELIVERED": 32],
-        truckDuty: ["ACTIVE": 8, "MAINTENANCE": 1],
-        holdReasons: [],
-        demandSource: "SSMR",
-        historyAvailable: true
-    )
 }
 
 // MARK: - Order
@@ -2641,79 +2615,6 @@ struct WarehouseOpsBoardResponse: Decodable {
         case warehouseId = "warehouse_id"
         case preorders
         case deliverBefore = "deliver_before"
-    }
-}
-
-// MARK: - Cold chain
-
-struct TemperatureReading: Decodable, Identifiable {
-    var id: String { readingId }
-    let readingId: String
-    let manifestId: String
-    let sensorId: String?
-    let recordedAt: String
-    let tempC: Double
-    let minC: Double?
-    let maxC: Double?
-    let excursion: Bool
-
-    enum CodingKeys: String, CodingKey {
-        case readingId = "reading_id"
-        case manifestId = "manifest_id"
-        case sensorId = "sensor_id"
-        case recordedAt = "recorded_at"
-        case tempC = "temp_c"
-        case minC = "min_c"
-        case maxC = "max_c"
-        case excursion
-    }
-
-    init(from decoder: Decoder) throws {
-        let c = try decoder.container(keyedBy: CodingKeys.self)
-        readingId = try c.decodeIfPresent(String.self, forKey: .readingId) ?? ""
-        manifestId = try c.decodeIfPresent(String.self, forKey: .manifestId) ?? ""
-        sensorId = try c.decodeIfPresent(String.self, forKey: .sensorId)
-        recordedAt = try c.decodeIfPresent(String.self, forKey: .recordedAt) ?? ""
-        tempC = try c.decodeIfPresent(Double.self, forKey: .tempC) ?? 0
-        minC = try c.decodeIfPresent(Double.self, forKey: .minC)
-        maxC = try c.decodeIfPresent(Double.self, forKey: .maxC)
-        excursion = try c.decodeIfPresent(Bool.self, forKey: .excursion) ?? false
-    }
-}
-
-struct TemperatureReadingListResponse: Decodable {
-    let readings: [TemperatureReading]
-
-    init(from decoder: Decoder) throws {
-        let c = try decoder.container(keyedBy: CodingKeys.self)
-        readings = try c.decodeIfPresent([TemperatureReading].self, forKey: .readings) ?? []
-    }
-
-    enum CodingKeys: String, CodingKey { case readings }
-}
-
-struct TemperatureReadingIngestRequest: Encodable {
-    let manifestId: String
-    let tempC: Double
-    let sensorId: String?
-    let minC: Double?
-    let maxC: Double?
-
-    enum CodingKeys: String, CodingKey {
-        case manifestId = "manifest_id"
-        case tempC = "temp_c"
-        case sensorId = "sensor_id"
-        case minC = "min_c"
-        case maxC = "max_c"
-    }
-
-    func encode(to encoder: Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(manifestId, forKey: .manifestId)
-        try c.encode(tempC, forKey: .tempC)
-        if let sensorId, !sensorId.isEmpty { try c.encode(sensorId, forKey: .sensorId) }
-        if let minC { try c.encode(minC, forKey: .minC) }
-        if let maxC { try c.encode(maxC, forKey: .maxC) }
     }
 }
 

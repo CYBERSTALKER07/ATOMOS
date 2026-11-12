@@ -6,65 +6,80 @@
 import SwiftUI
 
 struct FoundrySandboxView: View {
-
+    @Environment(\.dismiss) private var dismiss
     @State private var vm = FoundrySandboxViewModel()
     @State private var selectedTab: Int = 0
-    let onBack: () -> Void
+    var onBack: (() -> Void)? = nil
+
+    init(onBack: (() -> Void)? = nil) {
+        self.onBack = onBack
+    }
 
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-                Picker("Section", selection: $selectedTab) {
-                    Text("Scenario Sandbox (CoW)").tag(0)
-                    Text("Lot Recall Blast-Radius").tag(1)
-                }
-                .pickerStyle(.segmented)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-
-                if let err = vm.errorMessage {
-                    HStack {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .foregroundStyle(.red)
-                        Text(err)
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundStyle(.red)
-                    }
-                    .padding(12)
-                    .background(Color.red.opacity(0.12))
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
-                    .padding(.horizontal, 16)
-                }
-
-                if let msg = vm.statusMessage {
-                    HStack {
-                        Image(systemName: vm.hasConflict ? "exclamationmark.octagon.fill" : "checkmark.circle.fill")
-                            .foregroundStyle(vm.hasConflict ? .red : .green)
-                        Text(msg)
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundStyle(vm.hasConflict ? .red : .green)
-                    }
-                    .padding(12)
-                    .background((vm.hasConflict ? Color.red : Color.green).opacity(0.12))
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
-                    .padding(.horizontal, 16)
-                }
-
-                if selectedTab == 0 {
-                    scenarioSandboxTab
-                } else {
-                    lotRecallTab
-                }
+        VStack(spacing: 0) {
+            Picker("mobile_supplier.chrome.section", selection: $selectedTab) {
+                Text("mobile_supplier.chrome.scenario_sandbox_cow").tag(0)
+                Text("mobile_supplier.chrome.lot_recall_blast").tag(1)
             }
-            .navigationTitle("Foundry Operations")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button(action: onBack) {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: 16, weight: .semibold))
-                    }
+            .pickerStyle(.segmented)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .onChange(of: selectedTab) { _, _ in
+                PegasusHaptics.selection()
+            }
+
+            if let err = vm.errorMessage {
+                HStack {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(SupplierTheme.destructive)
+                    Text(err)
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(SupplierTheme.destructive)
                 }
+                .padding(12)
+                .background(SupplierTheme.destructive.opacity(0.12))
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .padding(.horizontal, 16)
+            }
+
+            if let msg = vm.statusMessage {
+                HStack {
+                    Image(systemName: vm.hasConflict ? "exclamationmark.octagon.fill" : "checkmark.circle.fill")
+                        .foregroundStyle(vm.hasConflict ? SupplierTheme.destructive : SupplierTheme.success)
+                    Text(msg)
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(vm.hasConflict ? SupplierTheme.destructive : SupplierTheme.success)
+                }
+                .padding(12)
+                .background((vm.hasConflict ? SupplierTheme.destructive : SupplierTheme.success).opacity(0.12))
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .padding(.horizontal, 16)
+            }
+
+            if selectedTab == 0 {
+                scenarioSandboxTab
+            } else {
+                lotRecallTab
+            }
+        }
+        .navigationTitle("mobile_supplier.chrome.foundry_operations")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button {
+                    PegasusHaptics.light()
+                    if let onBack {
+                        onBack()
+                    } else {
+                        dismiss()
+                    }
+                } label: {
+                    Image(systemName: "chevron.left")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(SupplierTheme.label)
+                        .frame(minWidth: 44, minHeight: 44)
+                }
+                .accessibilityLabel(Text("common.action.back"))
             }
         }
     }
@@ -74,87 +89,88 @@ struct FoundrySandboxView: View {
             VStack(alignment: .leading, spacing: 16) {
                 // Isolation Card
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Scenario Isolation Layer")
-                        .font(.system(size: 15, weight: .bold))
-                    Text("Copy-on-Write (CoW) creates an isolated branch to simulate price, lot, and policy changes without mutating production data.")
-                        .font(.system(size: 12))
+                    Text("mobile_supplier.chrome.scenario_isolation")
+                        .font(.headline)
+                    Text("mobile_supplier.chrome.cow_explainer")
+                        .font(.caption)
                         .foregroundStyle(.secondary)
-                    TextField("Scenario ID", text: $vm.scenarioId)
+                    TextField("mobile_supplier.chrome.scenario_id", text: $vm.scenarioId)
                         .textFieldStyle(.roundedBorder)
-                        .font(.system(size: 13, design: .monospaced))
+                        .font(.subheadline.monospaced())
                 }
                 .padding(14)
-                .background(Color(.secondarySystemGroupedBackground))
+                .background(SupplierTheme.card)
                 .clipShape(RoundedRectangle(cornerRadius: 14))
 
                 // Patch Editor
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("Add CoW Patch")
-                        .font(.system(size: 15, weight: .bold))
+                    Text("mobile_supplier.chrome.add_cow_patch")
+                        .font(.headline)
 
                     HStack(spacing: 8) {
-                        TextField("Object Type", text: $vm.objectType)
+                        TextField("mobile_supplier.chrome.object_type", text: $vm.objectType)
                             .textFieldStyle(.roundedBorder)
-                            .font(.system(size: 13))
-                        TextField("Object ID", text: $vm.objectId)
+                            .font(.subheadline)
+                        TextField("mobile_supplier.chrome.object_id", text: $vm.objectId)
                             .textFieldStyle(.roundedBorder)
-                            .font(.system(size: 13, design: .monospaced))
+                            .font(.subheadline.monospaced())
                     }
 
                     HStack(spacing: 8) {
-                        TextField("Property Key", text: $vm.patchKey)
+                        TextField("mobile_supplier.chrome.property_key", text: $vm.patchKey)
                             .textFieldStyle(.roundedBorder)
-                            .font(.system(size: 13))
-                        TextField("New Value", text: $vm.patchValue)
+                            .font(.subheadline)
+                        TextField("mobile_supplier.chrome.new_value", text: $vm.patchValue)
                             .textFieldStyle(.roundedBorder)
-                            .font(.system(size: 13, design: .monospaced))
+                            .font(.subheadline.monospaced())
                     }
 
                     Button {
+                        PegasusHaptics.light()
                         Task { await vm.applyCowPatch() }
                     } label: {
                         HStack {
                             Image(systemName: "plus.circle.fill")
-                            Text("Apply Patch to Branch")
+                            Text("mobile_supplier.chrome.apply_patch_to_branch")
                         }
-                        .font(.system(size: 14, weight: .bold))
+                        .font(.subheadline.bold())
                         .frame(maxWidth: .infinity)
-                        .frame(height: 40)
-                        .background(Color.blue)
-                        .foregroundStyle(.white)
+                        .frame(minHeight: 44)
+                        .background(SupplierTheme.primaryAction)
+                        .foregroundStyle(SupplierTheme.onPrimaryAction)
                         .clipShape(RoundedRectangle(cornerRadius: 8))
                     }
                 }
                 .padding(14)
-                .background(Color(.secondarySystemGroupedBackground))
+                .background(SupplierTheme.card)
                 .clipShape(RoundedRectangle(cornerRadius: 14))
 
                 // Staged Patches
                 if !vm.appliedPatches.isEmpty {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Staged CoW Patches (\(vm.appliedPatches.count))")
-                            .font(.system(size: 14, weight: .semibold))
+                        Text(L10n.format("mobile_supplier.chrome.staged_cow_patches", "\(vm.appliedPatches.count)"))
+                            .font(.subheadline.weight(.semibold))
 
                         ForEach(vm.appliedPatches) { patch in
                             HStack {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text("\(patch.objectType):\(patch.objectId)")
-                                        .font(.system(size: 13, weight: .bold))
+                                        .font(.subheadline.bold())
                                     Text("\(patch.key) → \(patch.value)")
-                                        .font(.system(size: 12, design: .monospaced))
-                                        .foregroundStyle(.secondary)
+                                        .font(.caption.monospaced())
+                                        .foregroundStyle(SupplierTheme.secondaryLabel)
                                 }
                                 Spacer()
                                 Text("STAGED")
-                                    .font(.system(size: 10, weight: .heavy))
-                                    .foregroundStyle(Color.blue)
+                                    .font(.caption2.weight(.heavy))
+                                    .foregroundStyle(SupplierTheme.primaryAction)
                                     .padding(.horizontal, 6)
                                     .padding(.vertical, 3)
-                                    .background(Color.blue.opacity(0.12))
+                                    .background(SupplierTheme.fill)
                                     .clipShape(Capsule())
                             }
                             .padding(10)
-                            .background(Color(.tertiarySystemGroupedBackground))
+                            .background(SupplierTheme.secondaryBackground)
                             .clipShape(RoundedRectangle(cornerRadius: 8))
                         }
                     }
@@ -163,23 +179,23 @@ struct FoundrySandboxView: View {
                 // Conflicts
                 if !vm.conflicts.isEmpty {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Concurrency Conflicts (409)")
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundStyle(.red)
+                        Text("mobile_supplier.chrome.concurrency_conflicts")
+                            .font(.subheadline.bold())
+                            .foregroundStyle(SupplierTheme.destructive)
 
                         ForEach(vm.conflicts) { conf in
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("\(conf.objectType):\(conf.objectId)")
-                                    .font(.system(size: 13, weight: .bold))
-                                Text("Base Version: \(conf.baseVersion) | Live Version: \(conf.liveVersion)")
-                                    .font(.system(size: 11, design: .monospaced))
-                                Text("Baseline changed concurrently. Rebase required before commit.")
-                                    .font(.system(size: 10, weight: .semibold))
-                                    .foregroundStyle(.red)
+                                        .font(.subheadline.bold())
+                                Text(L10n.format("mobile_supplier.chrome.base_vs_live_version", "\(conf.baseVersion)", "\(conf.liveVersion)"))
+                                    .font(.caption.monospaced())
+                                Text("mobile_supplier.chrome.baseline_changed")
+                                    .font(.caption2.weight(.semibold))
+                                    .foregroundStyle(SupplierTheme.destructive)
                             }
                             .padding(10)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(Color.red.opacity(0.1))
+                            .background(SupplierTheme.destructive.opacity(0.1))
                             .clipShape(RoundedRectangle(cornerRadius: 8))
                         }
                     }
@@ -187,20 +203,21 @@ struct FoundrySandboxView: View {
 
                 // Commit Button
                 Button {
+                    PegasusHaptics.heavy()
                     Task { await vm.commitScenario() }
                 } label: {
                     HStack {
                         if vm.isCommitting {
-                            ProgressView().tint(.white)
+                            ProgressView().tint(SupplierTheme.onPrimaryAction)
                             Spacer().frame(width: 8)
                         }
-                        Text("Optimistic Commit to Live Production Layer")
-                            .font(.system(size: 15, weight: .bold))
+                        Text("mobile_supplier.chrome.optimistic_commit")
+                            .font(.headline)
                     }
                     .frame(maxWidth: .infinity)
-                    .frame(height: 48)
-                    .background(Color.primary)
-                    .foregroundStyle(Color(.systemBackground))
+                    .frame(minHeight: 48)
+                    .background(SupplierTheme.primaryAction)
+                    .foregroundStyle(SupplierTheme.onPrimaryAction)
                     .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
                 .disabled(vm.isCommitting)
@@ -209,71 +226,74 @@ struct FoundrySandboxView: View {
             }
             .padding(16)
         }
+        .scrollDismissesKeyboard(.interactively)
     }
 
     private var lotRecallTab: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Contaminated Lot Blast-Radius")
-                        .font(.system(size: 15, weight: .bold))
-                    Text("Trace forward lineage of defective raw material lots across all downstream work orders, pallets, and in-transit deliveries.")
-                        .font(.system(size: 12))
+                    Text("mobile_supplier.chrome.contaminated_lot")
+                        .font(.headline)
+                    Text("mobile_supplier.chrome.trace_forward_lineage")
+                        .font(.caption)
                         .foregroundStyle(.secondary)
-                    TextField("Raw Material Lot Barcode", text: $vm.lotBarcode)
+                    TextField("mobile_supplier.chrome.raw_lot_barcode", text: $vm.lotBarcode)
                         .textFieldStyle(.roundedBorder)
-                        .font(.system(size: 13, design: .monospaced))
+                        .font(.subheadline.monospaced())
 
                     Button {
+                        PegasusHaptics.light()
                         Task { await vm.analyzeLotRecall() }
                     } label: {
                         HStack {
                             if vm.isAnalyzingRecall {
-                                ProgressView().tint(.white)
+                                ProgressView().tint(SupplierTheme.onPrimaryAction)
                                 Spacer().frame(width: 8)
                             }
-                            Text("Trace Blast Radius Lineage")
-                                .font(.system(size: 14, weight: .bold))
+                            Text("mobile_supplier.chrome.trace_blast_lineage")
+                                .font(.subheadline.bold())
                         }
                         .frame(maxWidth: .infinity)
-                        .frame(height: 42)
-                        .background(Color.blue)
-                        .foregroundStyle(.white)
+                        .frame(minHeight: 44)
+                        .background(SupplierTheme.primaryAction)
+                        .foregroundStyle(SupplierTheme.onPrimaryAction)
                         .clipShape(RoundedRectangle(cornerRadius: 8))
                     }
                     .disabled(vm.isAnalyzingRecall)
                 }
                 .padding(14)
-                .background(Color(.secondarySystemGroupedBackground))
+                .background(SupplierTheme.card)
                 .clipShape(RoundedRectangle(cornerRadius: 14))
 
                 if let report = vm.recallReport {
                     VStack(alignment: .leading, spacing: 10) {
-                        Text("Forward Blast Radius Results")
-                            .font(.system(size: 15, weight: .bold))
+                        Text("mobile_supplier.chrome.forward_blast_results")
+                            .font(.headline)
 
-                        MetricCard(title: "Affected Work Orders", count: report.affectedWorkOrders.count, items: report.affectedWorkOrders)
-                        MetricCard(title: "Affected Finished Lots", count: report.affectedFinishedLots.count, items: report.affectedFinishedLots)
-                        MetricCard(title: "Quarantined SSCC Pallets", count: report.quarantinedSsccPallets.count, items: report.quarantinedSsccPallets, isWarning: true)
-                        MetricCard(title: "Quarantined Warehouse Totes", count: report.quarantinedWarehouseTotes.count, items: report.quarantinedWarehouseTotes)
-                        MetricCard(title: "In-Transit Driver Drop Blocks", count: report.inTransitDriverDropBlocks.count, items: report.inTransitDriverDropBlocks, isWarning: true)
-                        MetricCard(title: "Impacted Soliq E-Facturas", count: report.impactedSoliqFacturas.count, items: report.impactedSoliqFacturas)
+                        MetricCard(title: "mobile_supplier.chrome.affected_work_orders", count: report.affectedWorkOrders.count, items: report.affectedWorkOrders)
+                        MetricCard(title: "mobile_supplier.chrome.affected_finished_lots", count: report.affectedFinishedLots.count, items: report.affectedFinishedLots)
+                        MetricCard(title: "mobile_supplier.chrome.quarantined_sscc", count: report.quarantinedSsccPallets.count, items: report.quarantinedSsccPallets, isWarning: true)
+                        MetricCard(title: "mobile_supplier.chrome.quarantined_totes", count: report.quarantinedWarehouseTotes.count, items: report.quarantinedWarehouseTotes)
+                        MetricCard(title: "mobile_supplier.chrome.in_transit_drop_blocks", count: report.inTransitDriverDropBlocks.count, items: report.inTransitDriverDropBlocks, isWarning: true)
+                        MetricCard(title: "mobile_supplier.chrome.impacted_soliq", count: report.impactedSoliqFacturas.count, items: report.impactedSoliqFacturas)
 
                         Button {
+                            PegasusHaptics.heavy()
                             Task { await vm.executeQuarantineBlastRadius() }
                         } label: {
                             HStack {
                                 if vm.isQuarantining {
-                                    ProgressView().tint(.white)
+                                    ProgressView().tint(SupplierTheme.onPrimaryAction)
                                     Spacer().frame(width: 8)
                                 }
-                                Text(vm.quarantineSuccess ? "QUARANTINE ENFORCED" : "LOCKDOWN & QUARANTINE BLAST RADIUS")
-                                    .font(.system(size: 15, weight: .bold))
+                                Text(LocalizedStringKey(vm.quarantineSuccess ? "mobile_supplier.chrome.quarantine_enforced" : "mobile_supplier.chrome.lockdown_quarantine"))
+                                    .font(.headline)
                             }
                             .frame(maxWidth: .infinity)
-                            .frame(height: 50)
-                            .background(Color.red)
-                            .foregroundStyle(.white)
+                            .frame(minHeight: 50)
+                            .background(SupplierTheme.destructive)
+                            .foregroundStyle(SupplierTheme.onPrimaryAction)
                             .clipShape(RoundedRectangle(cornerRadius: 12))
                         }
                         .disabled(vm.isQuarantining || vm.quarantineSuccess)
@@ -284,6 +304,7 @@ struct FoundrySandboxView: View {
             }
             .padding(16)
         }
+        .scrollDismissesKeyboard(.interactively)
     }
 }
 
@@ -296,22 +317,22 @@ private struct MetricCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
-                Text(title)
-                    .font(.system(size: 13, weight: .semibold))
+                Text(LocalizedStringKey(title))
+                    .font(.subheadline.weight(.semibold))
                 Spacer()
                 Text("\(count)")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(isWarning ? Color.red : Color.primary)
+                    .font(.subheadline.bold())
+                    .foregroundStyle(isWarning ? SupplierTheme.destructive : SupplierTheme.label)
             }
             if !items.isEmpty {
                 Text(items.joined(separator: ", "))
-                    .font(.system(size: 11, design: .monospaced))
-                    .foregroundStyle(.secondary)
+                    .font(.caption.monospaced())
+                    .foregroundStyle(SupplierTheme.secondaryLabel)
                     .lineLimit(2)
             }
         }
         .padding(10)
-        .background(isWarning ? Color.red.opacity(0.08) : Color(.secondarySystemGroupedBackground))
+        .background(isWarning ? SupplierTheme.destructive.opacity(0.08) : SupplierTheme.card)
         .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 }

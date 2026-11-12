@@ -1,63 +1,55 @@
 import SwiftUI
 
 struct StockCommitmentsView: View {
-    @State private var commitments: [StockCommitmentRow] = []
-    @State private var loading = true
-    @State private var error: String?
+    @State private var vm = StockCommitmentsViewModel()
 
     var body: some View {
         Group {
-            if loading && commitments.isEmpty {
+            if vm.loading && vm.commitments.isEmpty {
                 WarehouseLoadingView(
                     title: "Loading stock commitments",
                     message: "Calculating pre-order allocations."
                 )
-            } else if let error {
+            } else if let error = vm.error {
                 WarehouseErrorView(message: error) {
-                    Task { await load() }
+                    PegasusHaptics.light()
+                    Task { await vm.load() }
                 }
-            } else if commitments.isEmpty {
+            } else if vm.commitments.isEmpty {
                 WarehouseEmptyView(
                     title: "No commitments",
                     message: "No stock is currently reserved for pre-orders."
                 )
             } else {
                 ResponsiveGridContentWrapper {
-                    ForEach(commitments) { row in
-                    StockCommitmentCard(row: row)
-                        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-                        .listRowSeparator(.hidden)
-                        .listRowBackground(Color.clear)
+                    ForEach(vm.commitments) { row in
+                        StockCommitmentCard(row: row)
+                            .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                            .listRowSeparator(.hidden)
+                            .listRowBackground(Color.clear)
                     }
                 }
+                .scrollDismissesKeyboard(.interactively)
             }
         }
         .navigationTitle("mobile_warehouse.ui.stock_commitments")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") {
-                    Task { await load() }
+                Button {
+                    PegasusHaptics.light()
+                    Task { await vm.load() }
+                } label: {
+                    Label("portal.page.orders.action.refresh", systemImage: "arrow.clockwise")
+                        .frame(minWidth: 44, minHeight: 44)
+                        .contentShape(Rectangle())
                 }
-                .disabled(loading)
+                .accessibilityLabel("Refresh stock commitments")
+                .disabled(vm.loading)
             }
         }
-        .task { await load() }
-        .refreshable { await load(silent: true) }
-    }
-
-    @MainActor
-    private func load(silent: Bool = false) async {
-        if !silent { loading = true }
-        error = nil
-        do {
-            let response = try await WarehouseService.stockCommitments()
-            // Prefer items, fallback to skus depending on API shape returned
-            commitments = response.items.isEmpty ? response.skus : response.items
-        } catch {
-            self.error = error.localizedDescription
-        }
-        if !silent { loading = false }
+        .task { await vm.load() }
+        .refreshable { await vm.load(silent: true) }
     }
 }
 
@@ -77,11 +69,11 @@ private struct StockCommitmentCard: View {
                             image.resizable()
                                 .aspectRatio(contentMode: .fit)
                                 .frame(width: 60, height: 60)
-                                .cornerRadius(LabTheme.radiusSM)
+                                .clipShape(RoundedRectangle(cornerRadius: LabTheme.radiusSM, style: .continuous))
                         case .failure:
                             Image(systemName: "photo")
                                 .frame(width: 60, height: 60)
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                         @unknown default:
                             EmptyView()
                         }
@@ -91,10 +83,10 @@ private struct StockCommitmentCard: View {
                         .resizable()
                         .aspectRatio(contentMode: .fit)
                         .frame(width: 40, height: 40)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                         .frame(width: 60, height: 60)
                         .background(Color(uiColor: .systemGray6))
-                        .cornerRadius(LabTheme.radiusSM)
+                        .clipShape(RoundedRectangle(cornerRadius: LabTheme.radiusSM, style: .continuous))
                 }
 
                 VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
@@ -122,15 +114,17 @@ private struct StockCommitmentCard: View {
                 }
             }
             .background(Color(uiColor: .systemBackground))
-            .cornerRadius(LabTheme.radiusMD)
+            .clipShape(RoundedRectangle(cornerRadius: LabTheme.radiusMD, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: LabTheme.radiusMD)
+                RoundedRectangle(cornerRadius: LabTheme.radiusMD, style: .continuous)
                     .stroke(Color(uiColor: .systemGray5), lineWidth: 1)
             )
         }
         .padding()
         .background(Color(uiColor: .secondarySystemBackground))
-        .cornerRadius(LabTheme.radiusLG)
+        .clipShape(RoundedRectangle(cornerRadius: LabTheme.radiusLG, style: .continuous))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(row.name ?? row.skuId), on hand \(row.onHand), available \(row.availableQty), deficit \(row.deficitQty)")
     }
 
     @ViewBuilder
