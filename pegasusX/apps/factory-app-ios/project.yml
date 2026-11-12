@@ -37,8 +37,6 @@ targets:
       - path: FactoryApp
         excludes:
           - "**/.DS_Store"
-          - "Views/Components/LoadingBay/PayloadOverrideView.swift"
-      - path: ../../packages/mobile-ios-design
     resources:
       # pegasusx-i18n-generated
       - path: ../../packages/i18n/generated/ios/en.lproj

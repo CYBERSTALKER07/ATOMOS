@@ -1,7 +1,7 @@
 import SwiftUI
 
 public struct SidebarView: View {
-    @ObservedObject var viewModel: ControlTowerViewModel
+    @Bindable var viewModel: ControlTowerViewModel
 
     public init(viewModel: ControlTowerViewModel) {
         self.viewModel = viewModel
@@ -21,7 +21,7 @@ public struct SidebarView: View {
                             }
                         } icon: {
                             Image(systemName: section.icon)
-                                .foregroundColor(colorForSection(section))
+                                .foregroundStyle(colorForSection(section))
                         }
                     }
                     .tag(section)
@@ -42,9 +42,11 @@ public struct SidebarView: View {
                     }
                     Text("P99 Latency: 4.2ms | 16 Nodes")
                         .font(.caption2)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
                 .padding(.vertical, 4)
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Active Cloud Cell cell-uz-tashkent, P99 Latency 4.2 milliseconds, 16 Nodes")
             }
         }
         .listStyle(.sidebar)
@@ -56,29 +58,29 @@ public struct SidebarView: View {
         switch section {
         case .infra:
             Text("\(viewModel.cells.count) Cells")
-                .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                .font(.system(.caption2, design: .monospaced).weight(.semibold))
                 .padding(.horizontal, 6)
                 .padding(.vertical, 2)
                 .background(Color.blue.opacity(0.15))
-                .foregroundColor(.blue)
-                .cornerRadius(4)
+                .foregroundStyle(.blue)
+                .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
         case .telemetry:
             let count = viewModel.filteredTelemetryEvents.count
             Text("\(count)")
-                .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                .font(.system(.caption2, design: .monospaced).weight(.semibold))
                 .padding(.horizontal, 6)
                 .padding(.vertical, 2)
                 .background(Color.green.opacity(0.15))
-                .foregroundColor(.green)
-                .cornerRadius(4)
+                .foregroundStyle(.green)
+                .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
         case .finops:
             Text("FinOps")
-                .font(.system(size: 10, weight: .semibold))
+                .font(.caption2.weight(.semibold))
                 .padding(.horizontal, 6)
                 .padding(.vertical, 2)
                 .background(Color.purple.opacity(0.15))
-                .foregroundColor(.purple)
-                .cornerRadius(4)
+                .foregroundStyle(.purple)
+                .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
         default:
             EmptyView()
         }

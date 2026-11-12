@@ -1,19 +1,29 @@
 import Foundation
-import Combine
+import Observation
 
+@Observable
 @MainActor
-public final class WebSocketStreamClient: ObservableObject {
-    @Published public private(set) var isConnected: Bool = false
-    @Published public private(set) var events: [TelemetryLogEvent] = []
-    @Published public var isPaused: Bool = false
+public final class WebSocketStreamClient {
+    public static var defaultStreamURL: URL {
+        var components = URLComponents()
+        components.scheme = "ws"
+        components.host = "127.0.0.1"
+        components.port = 8180
+        components.path = "/ws/telemetry"
+        return components.url ?? URL(fileURLWithPath: "/")
+    }
 
+    public private(set) var isConnected: Bool = false
+    public private(set) var events: [TelemetryLogEvent] = []
+    public var isPaused: Bool = false
+
+    public let url: URL
     private var webSocketTask: URLSessionWebSocketTask?
-    private let url: URL
     private let maxBufferSize: Int = 50
     private var retryAttempt: Int = 0
 
-    public init(url: URL = URL(string: "ws://127.0.0.1:8180/ws/telemetry")!) {
-        self.url = url
+    public init(url: URL? = nil) {
+        self.url = url ?? Self.defaultStreamURL
         seedInitialEvents()
     }
 
@@ -35,6 +45,7 @@ public final class WebSocketStreamClient: ObservableObject {
     }
 
     public func togglePause() {
+        ControlTowerHaptics.levelChange()
         isPaused.toggle()
     }
 
@@ -43,6 +54,13 @@ public final class WebSocketStreamClient: ObservableObject {
         events.insert(event, at: 0)
         if events.count > maxBufferSize {
             events.removeLast(events.count - maxBufferSize)
+        }
+    }
+
+    public func ingestRawPayload(_ data: Data) {
+        let decoder = JSONDecoder()
+        if let event = try? decoder.decode(TelemetryLogEvent.self, from: data) {
+            pushEvent(event)
         }
     }
 
@@ -57,7 +75,7 @@ public final class WebSocketStreamClient: ObservableObject {
                     case .string(let text):
                         self.handleIncomingString(text)
                     case .data(let data):
-                        self.handleIncomingData(data)
+                        self.ingestRawPayload(data)
                     @unknown default:
                         break
                     }
@@ -72,14 +90,7 @@ public final class WebSocketStreamClient: ObservableObject {
 
     private func handleIncomingString(_ text: String) {
         guard let data = text.data(using: .utf8) else { return }
-        handleIncomingData(data)
-    }
-
-    private func handleIncomingData(_ data: Data) {
-        let decoder = JSONDecoder()
-        if let event = try? decoder.decode(TelemetryLogEvent.self, from: data) {
-            pushEvent(event)
-        }
+        ingestRawPayload(data)
     }
 
     private func scheduleReconnect() {
@@ -87,7 +98,9 @@ public final class WebSocketStreamClient: ObservableObject {
         let jitter = Double.random(in: 0.1...0.8)
         retryAttempt += 1
         DispatchQueue.main.asyncAfter(deadline: .now() + backoff + jitter) { [weak self] in
-            self?.connect()
+            Task { @MainActor [weak self] in
+                self?.connect()
+            }
         }
     }
 

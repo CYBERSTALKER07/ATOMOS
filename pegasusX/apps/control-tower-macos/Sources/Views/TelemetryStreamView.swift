@@ -1,7 +1,7 @@
 import SwiftUI
 
 public struct TelemetryStreamView: View {
-    @ObservedObject var viewModel: ControlTowerViewModel
+    @Bindable var viewModel: ControlTowerViewModel
 
     public init(viewModel: ControlTowerViewModel) {
         self.viewModel = viewModel
@@ -23,29 +23,35 @@ public struct TelemetryStreamView: View {
                 .padding(.horizontal, 8)
                 .padding(.vertical, 4)
                 .background(Color(NSColor.controlBackgroundColor))
-                .cornerRadius(4)
+                .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(viewModel.streamClient.isConnected ? "WebSocket Live" : "WebSocket Reconnecting")
 
                 // Search field
                 HStack {
                     Image(systemName: "magnifyingglass")
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                     TextField("Filter message, entity ID, or service...", text: $viewModel.searchQuery)
                         .textFieldStyle(.plain)
                         .accessibilityLabel("Filter telemetry stream")
                     if !viewModel.searchQuery.isEmpty {
                         Button {
+                            ControlTowerHaptics.alignment()
                             viewModel.searchQuery = ""
                         } label: {
                             Image(systemName: "xmark.circle.fill")
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
+                                .frame(minWidth: 32, minHeight: 32)
+                                .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel("Clear search query")
                     }
                 }
-                .padding(6)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
                 .background(Color(NSColor.controlBackgroundColor))
-                .cornerRadius(6)
+                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
 
                 // Severity Filter Picker
                 Picker("Severity", selection: $viewModel.selectedSeverity) {
@@ -55,6 +61,7 @@ public struct TelemetryStreamView: View {
                     }
                 }
                 .frame(width: 130)
+                .accessibilityLabel("Filter by log severity")
 
                 // Pause / Resume Toggle
                 Button {
@@ -66,6 +73,7 @@ public struct TelemetryStreamView: View {
                     )
                 }
                 .buttonStyle(.bordered)
+                .accessibilityLabel(viewModel.streamClient.isPaused ? "Resume telemetry stream" : "Pause telemetry stream")
 
                 // Export Diagnostic Bundle
                 Button {
@@ -74,6 +82,7 @@ public struct TelemetryStreamView: View {
                     Label("Export Bundle", systemImage: "arrow.down.doc")
                 }
                 .buttonStyle(.bordered)
+                .accessibilityLabel("Export diagnostic bundle")
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
@@ -86,14 +95,14 @@ public struct TelemetryStreamView: View {
                 VStack(spacing: 12) {
                     Spacer()
                     Image(systemName: "waveform.path.ecg")
-                        .font(.system(size: 40))
-                        .foregroundColor(.secondary)
+                        .font(.largeTitle)
+                        .foregroundStyle(.secondary)
                     Text("No telemetry events matching current filter")
                         .font(.headline)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                     Text("Adjust role perspective, severity selector, or search query.")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                     Spacer()
                 }
             } else {
@@ -103,39 +112,43 @@ public struct TelemetryStreamView: View {
                             severityBadge(event.severity)
                             Text(event.timestampIso)
                                 .font(.system(.caption2, design: .monospaced))
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                             Text("• \(event.role)")
                                 .font(.caption2)
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                             Text("[\(event.service)]")
                                 .font(.system(.caption2, design: .monospaced))
-                                .foregroundColor(.teal)
+                                .foregroundStyle(.teal)
                             Spacer()
 
                             // Copyable Trace ID
                             HStack(spacing: 4) {
                                 Text(event.traceId)
-                                    .font(.system(size: 10, design: .monospaced))
-                                    .foregroundColor(.blue)
+                                    .font(.system(.caption2, design: .monospaced))
+                                    .foregroundStyle(.blue)
                                 Button {
                                     viewModel.copyToClipboard(event.traceId, label: "Trace ID")
                                 } label: {
                                     Image(systemName: "doc.on.doc")
-                                        .font(.system(size: 9))
-                                        .foregroundColor(.secondary)
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                        .frame(minWidth: 32, minHeight: 32)
+                                        .contentShape(Rectangle())
                                 }
                                 .buttonStyle(.plain)
+                                .help("Copy Trace ID")
+                                .accessibilityLabel("Copy Trace ID \(event.traceId)")
                             }
                         }
 
                         Text(event.message)
                             .font(.system(.body, design: .default))
-                            .foregroundColor(.primary)
+                            .foregroundStyle(.primary)
 
                         HStack(spacing: 8) {
                             Text("Entity:")
                                 .font(.caption2)
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                             Text(event.entityId)
                                 .font(.system(.caption2, design: .monospaced))
                                 .fontWeight(.semibold)
@@ -143,10 +156,14 @@ public struct TelemetryStreamView: View {
                                 viewModel.copyToClipboard(event.entityId, label: "Entity ID")
                             } label: {
                                 Image(systemName: "doc.on.doc")
-                                    .font(.system(size: 9))
-                                    .foregroundColor(.secondary)
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                                    .frame(minWidth: 32, minHeight: 32)
+                                    .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
+                            .help("Copy Entity ID")
+                            .accessibilityLabel("Copy Entity ID \(event.entityId)")
                         }
                     }
                     .padding(.vertical, 4)
@@ -179,14 +196,14 @@ public struct TelemetryStreamView: View {
 
         return HStack(spacing: 4) {
             Image(systemName: icon)
-                .font(.system(size: 8, weight: .bold))
+                .font(.caption2.weight(.bold))
             Text(severity.rawValue)
-                .font(.system(size: 9, weight: .bold, design: .monospaced))
+                .font(.system(.caption2, design: .monospaced).weight(.bold))
         }
         .padding(.horizontal, 7)
         .padding(.vertical, 3)
         .background(color.opacity(0.15))
-        .foregroundColor(color)
+        .foregroundStyle(color)
         .overlay(
             Capsule()
                 .stroke(color.opacity(0.3), lineWidth: 1)

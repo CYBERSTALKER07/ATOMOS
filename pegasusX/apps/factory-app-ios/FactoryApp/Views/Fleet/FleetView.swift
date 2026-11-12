@@ -1,137 +1,134 @@
 import SwiftUI
 
 struct FleetView: View {
-    @State private var realtimeClient = FactoryRealtimeClient()
-    @State private var vehicles: [Vehicle] = []
-    @State private var liveRoutes: [FactoryFleetLiveRoute] = []
-    @State private var loading = true
-    @State private var error: String?
+    @State private var vm = FleetViewModel()
 
     var body: some View {
-        NavigationStack {
-            Group {
-                if loading && vehicles.isEmpty {
-                    FactoryLoadingView(
-                        title: "Loading fleet",
-                        message: "Fetching registered vehicles and assignment status."
-                    )
-                } else if let error {
-                    FactoryErrorView(message: error, retry: { load() })
-                } else if vehicles.isEmpty {
-                    FactoryStateView(
-                        kind: .empty,
-                        headline: "No vehicles",
-                        message: "No vehicles are registered for this factory yet."
-                    )
-                } else {
-                    ResponsiveGridContentWrapper {
-                        if !liveRoutes.isEmpty {
-                            Section {
-                                FactorySectionHeader(
-                                    title: "Live drivers",
-                                    subtitle: "\(liveRoutes.count) sealed/dispatched with GPS"
-                                )
-                                .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
-                                .listRowBackground(Color.clear)
-                            }
-                            Section {
-                                ForEach(liveRoutes) { route in
-                                    let lat = route.driverLocation?.lat ?? route.driverLocation?.latitude
-                                    let lng = route.driverLocation?.lng ?? route.driverLocation?.longitude
-                                    HStack {
-                                        VStack(alignment: .leading, spacing: 2) {
-                                            Text(route.driverName?.isEmpty == false ? route.driverName! : (route.driverId ?? route.manifestId))
-                                                .font(.subheadline.bold())
-                                            Text(
-                                                lat != nil && lng != nil
-                                                    ? String(format: "%.5f, %.5f", lat!, lng!)
-                                                    : "Waiting for GPS"
-                                            )
-                                            .font(.caption)
-                                            .foregroundStyle(.secondary)
-                                        }
-                                        Spacer()
-                                        FactoryStatusBadge(text: (route.liveLocationAvailable ?? false) ? "LIVE" : "OFFLINE")
-                                    }
-                                }
-                            }
-                        }
+        Group {
+            if vm.loading && vm.vehicles.isEmpty {
+                FactoryLoadingView(
+                    title: "Loading fleet",
+                    message: "Fetching registered vehicles and assignment status."
+                )
+            } else if let error = vm.error {
+                FactoryErrorView(message: error) {
+                    Task { await vm.load() }
+                }
+            } else if vm.vehicles.isEmpty {
+                FactoryStateView(
+                    kind: .empty,
+                    headline: "No vehicles",
+                    message: "No vehicles are registered for this factory yet."
+                )
+            } else {
+                ResponsiveGridContentWrapper {
+                    if !vm.liveRoutes.isEmpty {
                         Section {
                             FactorySectionHeader(
-                                title: "Fleet roster",
-                                subtitle: "\(vehicles.count) vehicles on record"
+                                title: "Live drivers",
+                                subtitle: "\(vm.liveRoutes.count) sealed/dispatched with GPS"
                             )
                             .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
                             .listRowBackground(Color.clear)
                         }
-
                         Section {
-                            ForEach(Array(vehicles.enumerated()), id: \.element.id) { index, vehicle in
-                                HStack(spacing: LabTheme.spacingLG) {
-                                    Image(systemName: "truck.box")
-                                        .font(.title2)
-                                        .foregroundStyle(.secondary)
-                                        .frame(width: 32)
+                            ForEach(vm.liveRoutes) { route in
+                                let lat = route.driverLocation?.lat ?? route.driverLocation?.latitude
+                                let lng = route.driverLocation?.lng ?? route.driverLocation?.longitude
+                                let driverLabel = resolvedDriverLabel(for: route)
+                                let coordText = resolvedCoordText(lat: lat, lng: lng)
+                                let liveBadge = (route.liveLocationAvailable ?? false) ? "LIVE" : "OFFLINE"
+
+                                HStack {
                                     VStack(alignment: .leading, spacing: 2) {
-                                        Text(vehicle.plateNumber)
+                                        Text(driverLabel)
                                             .font(.subheadline.bold())
-                                        Text(vehicle.driverName.isEmpty ? "Unassigned" : vehicle.driverName)
-                                            .font(.caption)
-                                            .foregroundStyle(.secondary)
-                                        Text(L10n.format("mobile_factory.ui.capacitykgkg_capacityll", "\(Int(vehicle.capacityKg))", "\(Int(vehicle.capacityL))"))
+                                        Text(coordText)
                                             .font(.caption)
                                             .foregroundStyle(.secondary)
                                     }
                                     Spacer()
-                                    FactoryStatusBadge(text: vehicle.status)
+                                    FactoryStatusBadge(text: liveBadge)
                                 }
-                                .staggeredAppear(index: index)
+                                .frame(minHeight: 44)
+                                .accessibilityElement(children: .combine)
+                                .accessibilityLabel("Driver \(driverLabel), \(liveBadge), \(coordText)")
                             }
+                        }
+                    }
+
+                    Section {
+                        FactorySectionHeader(
+                            title: "Fleet roster",
+                            subtitle: "\(vm.vehicles.count) vehicles on record"
+                        )
+                        .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
+                        .listRowBackground(Color.clear)
+                    }
+
+                    Section {
+                        ForEach(Array(vm.vehicles.enumerated()), id: \.element.id) { index, vehicle in
+                            let assignedDriver = vehicle.driverName.isEmpty ? "Unassigned" : vehicle.driverName
+                            HStack(spacing: LabTheme.spacingLG) {
+                                Image(systemName: "truck.box")
+                                    .font(.title2)
+                                    .foregroundStyle(.secondary)
+                                    .frame(width: 32)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(vehicle.plateNumber)
+                                        .font(.subheadline.bold())
+                                    Text(assignedDriver)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                    Text(L10n.format("mobile_factory.ui.capacitykgkg_capacityll", "\(Int(vehicle.capacityKg))", "\(Int(vehicle.capacityL))"))
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                FactoryStatusBadge(text: vehicle.status)
+                            }
+                            .frame(minHeight: 44)
+                            .accessibilityElement(children: .combine)
+                            .accessibilityLabel("Vehicle \(vehicle.plateNumber), driver \(assignedDriver), status \(vehicle.status)")
+                            .staggeredAppear(index: index)
                         }
                     }
                 }
             }
-            .background(LabTheme.background)
-            .navigationTitle("portal.nav.fleet")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise", action: { load() })
-                        .labelStyle(.iconOnly)
+        }
+        .background(LabTheme.background)
+        .navigationTitle("portal.nav.fleet")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") {
+                    PegasusHaptics.selection()
+                    Task { await vm.load() }
                 }
+                .labelStyle(.iconOnly)
+                .frame(minWidth: 44, minHeight: 44)
+                .accessibilityLabel("Refresh fleet")
             }
-            .task { load() }
-            .onAppear {
-                realtimeClient.connect(
-                    onStateChange: { _ in },
-                    onEvent: { event in
-                        guard event.type.hasPrefix("TRANSFER_") || event.type.hasPrefix("MANIFEST_") || event.type.hasPrefix("WAREHOUSE_TRANSFER_") else { return }
-                        load(silent: true)
-                    }
-                )
-            }
-            .onDisappear {
-                realtimeClient.disconnect()
-            }
+        }
+        .task {
+            vm.startRealtime()
+            await vm.load()
+        }
+        .onDisappear {
+            vm.stopRealtime()
         }
     }
 
-    private func load(silent: Bool = false) {
-        if !silent {
-            loading = true
+    private func resolvedDriverLabel(for route: FactoryFleetLiveRoute) -> String {
+        if let name = route.driverName, !name.isEmpty {
+            return name
         }
-        error = nil
-        Task {
-            do {
-                vehicles = try await FactoryService.fleet().vehicles
-                if let live = try? await FactoryService.fleetLiveMap() {
-                    liveRoutes = live.routes
-                }
-            } catch {
-                self.error = error.localizedDescription
-            }
-            if !silent {
-                loading = false
-            }
+        return route.driverId ?? route.manifestId
+    }
+
+    private func resolvedCoordText(lat: Double?, lng: Double?) -> String {
+        guard let lat, let lng else {
+            return "Waiting for GPS"
         }
+        return String(format: "%.5f, %.5f", lat, lng)
     }
 }

@@ -2,27 +2,31 @@ import SwiftUI
 
 struct ManifestDetailView: View {
     let manifestId: String
+    @State private var vm: ManifestDetailViewModel
 
-    @State private var realtimeClient = FactoryRealtimeClient()
-    @State private var detail: ManifestDetailSnapshot?
-    @State private var loading = true
-    @State private var acting = false
-    @State private var error: String?
+    init(manifestId: String) {
+        self.manifestId = manifestId
+        _vm = State(initialValue: ManifestDetailViewModel(manifestId: manifestId))
+    }
 
     var body: some View {
         Group {
-            if loading && detail == nil {
+            if vm.loading && vm.detail == nil {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if let error {
+            } else if let error = vm.error, vm.detail == nil {
                 ContentUnavailableView {
                     Label("mobile_factory.ui.error", systemImage: "exclamationmark.triangle")
                 } description: {
                     Text(error)
                 } actions: {
-                    Button("common.action.retry") { Task { await load() } }
+                    Button("common.action.retry") {
+                        PegasusHaptics.selection()
+                        Task { await vm.load() }
+                    }
+                    .frame(minWidth: 44, minHeight: 44)
                 }
-            } else if let detail {
+            } else if let detail = vm.detail {
                 ResponsiveGridContentWrapper {
                     Section {
                         Text(detail.manifest.manifestId)
@@ -34,10 +38,12 @@ struct ManifestDetailView: View {
 
                     if let next = ManifestLifecycleAction.next(for: detail.manifest.state) {
                         Section {
-                            Button(acting ? "Applying…" : next.label) {
-                                Task { await runLifecycle(next) }
+                            Button(vm.acting ? "Applying…" : next.label) {
+                                Task { await vm.runLifecycle(next) }
                             }
-                            .disabled(acting)
+                            .frame(minWidth: 44, minHeight: 44)
+                            .disabled(vm.acting)
+                            .accessibilityLabel("\(next.label) for manifest")
                         }
                     }
 
@@ -49,6 +55,8 @@ struct ManifestDetailView: View {
                             ForEach(detail.transfers) { transfer in
                                 Text(L10n.format("mobile_factory.ui.id_state", "\(transfer.id)", "\(transfer.state)"))
                                     .font(.footnote.monospaced())
+                                    .frame(minHeight: 44, alignment: .leading)
+                                    .accessibilityLabel("Transfer \(transfer.id), status \(transfer.state)")
                             }
                         }
                     }
@@ -60,11 +68,15 @@ struct ManifestDetailView: View {
                         } else {
                             ForEach(detail.transitions) { transition in
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text(transition.action).font(.subheadline.bold())
+                                    Text(transition.action)
+                                        .font(.subheadline.bold())
                                     Text(L10n.format("mobile_factory.ui.fromstate_tostate", "\(transition.fromState)", "\(transition.toState)"))
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                 }
+                                .frame(minHeight: 44, alignment: .leading)
+                                .accessibilityElement(children: .combine)
+                                .accessibilityLabel("\(transition.action): from \(transition.fromState) to \(transition.toState)")
                             }
                         }
                     }
@@ -72,50 +84,23 @@ struct ManifestDetailView: View {
             }
         }
         .navigationTitle("warehouse_portal.manifests.text.manifest")
-        .task(id: manifestId) { await load() }
-        .onAppear {
-            realtimeClient.connect(
-                onStateChange: { _ in },
-                onEvent: { event in
-                    guard event.type.hasPrefix("MANIFEST_") else { return }
-                    Task { await load(silent: true) }
-                },
-                onReconnect: {
-                    acting = false
-                    Task { await load(silent: true) }
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") {
+                    PegasusHaptics.selection()
+                    Task { await vm.load() }
                 }
-            )
+                .labelStyle(.iconOnly)
+                .frame(minWidth: 44, minHeight: 44)
+                .accessibilityLabel("Refresh manifest detail")
+            }
+        }
+        .task(id: manifestId) {
+            vm.startRealtime()
+            await vm.load()
         }
         .onDisappear {
-            realtimeClient.disconnect()
+            vm.stopRealtime()
         }
-    }
-
-    @MainActor
-    private func load(silent: Bool = false) async {
-        if !silent {
-            loading = true
-        }
-        error = nil
-        do {
-            detail = try await FactoryService.manifestDetail(id: manifestId)
-        } catch {
-            self.error = error.localizedDescription
-        }
-        if !silent {
-            loading = false
-        }
-    }
-
-    @MainActor
-    private func runLifecycle(_ action: ManifestLifecycleAction) async {
-        acting = true
-        do {
-            _ = try await FactoryService.transitionManifest(id: manifestId, action: action.rawValue)
-            await load()
-        } catch {
-            self.error = error.localizedDescription
-        }
-        acting = false
     }
 }

@@ -2,7 +2,7 @@ import Charts
 import SwiftUI
 
 public struct FinOpsView: View {
-    @ObservedObject var viewModel: ControlTowerViewModel
+    @Bindable var viewModel: ControlTowerViewModel
 
     public init(viewModel: ControlTowerViewModel) {
         self.viewModel = viewModel
@@ -19,7 +19,7 @@ public struct FinOpsView: View {
                             .fontWeight(.bold)
                         Text("Enterprise multidimensional financial ledger matching SAP S/4HANA TM and o9 Solutions Digital Brain.")
                             .font(.subheadline)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
                     Spacer()
                     Button {
@@ -28,6 +28,7 @@ public struct FinOpsView: View {
                         Label("Export Waterfall CSV", systemImage: "square.and.arrow.up")
                     }
                     .buttonStyle(.bordered)
+                    .accessibilityLabel("Export Tender Waterfall CSV")
                 }
 
                 // Role Perspective Picker
@@ -41,6 +42,7 @@ public struct FinOpsView: View {
                     }
                 }
                 .pickerStyle(.segmented)
+                .accessibilityLabel("Role Perspective")
 
                 // Visual Tender Settlement Waterfall
                 VStack(alignment: .leading, spacing: 14) {
@@ -50,7 +52,7 @@ public struct FinOpsView: View {
                                 .font(.headline)
                             Text("Multi-tender breakdown with mathematical balance invariants and tax tracking.")
                                 .font(.caption)
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                         }
                         Spacer()
                     }
@@ -59,7 +61,7 @@ public struct FinOpsView: View {
                     Chart {
                         ForEach(viewModel.waterfallSlices) { slice in
                             BarMark(
-                                x: .value("Amount", Double(slice.amountTiyin) / 100_000_000.0),
+                                x: .value("Amount", slice.amountTiyin / 100),
                                 y: .value("Stage", slice.label)
                             )
                             .foregroundStyle(
@@ -67,11 +69,11 @@ public struct FinOpsView: View {
                                     ? LinearGradient(colors: [Color.red.opacity(0.9), Color.orange.opacity(0.8)], startPoint: .leading, endPoint: .trailing)
                                     : LinearGradient(colors: [Color.blue.opacity(0.9), Color.teal.opacity(0.8)], startPoint: .leading, endPoint: .trailing)
                             )
-                            .cornerRadius(6)
+                            .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                             .annotation(position: .trailing) {
                                 Text(slice.amountUzsFormatted)
-                                    .font(.system(size: 10, weight: .bold, design: .monospaced))
-                                    .foregroundColor(.primary)
+                                    .font(.system(.caption2, design: .monospaced).weight(.bold))
+                                    .foregroundStyle(.primary)
                                     .padding(.leading, 4)
                             }
                             .accessibilityLabel(slice.label)
@@ -94,34 +96,34 @@ public struct FinOpsView: View {
                                             .font(.subheadline)
                                             .fontWeight(.semibold)
                                         Text(slice.isDeduction ? "DEDUCTION" : "DISBURSABLE")
-                                            .font(.system(size: 8, weight: .bold, design: .monospaced))
+                                            .font(.system(.caption2, design: .monospaced).weight(.bold))
                                             .padding(.horizontal, 5)
                                             .padding(.vertical, 2)
                                             .background(slice.isDeduction ? Color.red.opacity(0.12) : Color.blue.opacity(0.12))
-                                            .foregroundColor(slice.isDeduction ? .red : .blue)
+                                            .foregroundStyle(slice.isDeduction ? Color.red : Color.blue)
                                             .clipShape(Capsule())
                                     }
                                     Text(slice.detail)
                                         .font(.caption)
-                                        .foregroundColor(.secondary)
+                                        .foregroundStyle(.secondary)
                                 }
                                 Spacer()
                                 VStack(alignment: .trailing, spacing: 2) {
                                     Text(slice.amountUzsFormatted)
                                         .font(.system(.subheadline, design: .monospaced))
                                         .fontWeight(.bold)
-                                        .foregroundColor(slice.isDeduction ? .red : .primary)
+                                        .foregroundStyle(slice.isDeduction ? Color.red : Color.primary)
                                         .monospacedDigit()
                                     Text("\(String(format: "%.2f", slice.percentage))%")
                                         .font(.caption2)
-                                        .foregroundColor(.secondary)
+                                        .foregroundStyle(.secondary)
                                         .monospacedDigit()
                                 }
                             }
                             .padding(.horizontal, 12)
                             .padding(.vertical, 8)
                             .background(Color.primary.opacity(0.02))
-                            .cornerRadius(8)
+                            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                             .accessibilityElement(children: .combine)
                             .accessibilityLabel("\(slice.label), \(slice.isDeduction ? "Deduction" : "Disbursable"): \(slice.amountUzsFormatted)")
                         }
@@ -158,23 +160,27 @@ public struct FinOpsView: View {
                                             .fontWeight(.semibold)
                                         Text("• \(cost.role)")
                                             .font(.caption)
-                                            .foregroundColor(.secondary)
+                                            .foregroundStyle(.secondary)
                                     }
                                     HStack(spacing: 6) {
                                         Text("Entity:")
                                             .font(.caption2)
-                                            .foregroundColor(.secondary)
+                                            .foregroundStyle(.secondary)
                                         Text(cost.entityId)
                                             .font(.system(.caption2, design: .monospaced))
-                                            .foregroundColor(.blue)
+                                            .foregroundStyle(.blue)
                                         Button {
                                             viewModel.copyToClipboard(cost.entityId, label: "Entity ID")
                                         } label: {
                                             Image(systemName: "doc.on.doc")
-                                                .font(.system(size: 9))
-                                                .foregroundColor(.secondary)
+                                                .font(.caption2)
+                                                .foregroundStyle(.secondary)
+                                                .frame(minWidth: 32, minHeight: 32)
+                                                .contentShape(Rectangle())
                                         }
                                         .buttonStyle(.plain)
+                                        .help("Copy Entity ID")
+                                        .accessibilityLabel("Copy Entity ID \(cost.entityId)")
                                     }
                                 }
                                 Spacer()
@@ -182,27 +188,31 @@ public struct FinOpsView: View {
                                     VStack(alignment: .trailing, spacing: 2) {
                                         Text(cost.usageMetric)
                                             .font(.system(.caption, design: .monospaced))
-                                            .foregroundColor(.secondary)
+                                            .foregroundStyle(.secondary)
                                         Text("Quota Volume")
                                             .font(.caption2)
-                                            .foregroundColor(.secondary)
+                                            .foregroundStyle(.secondary)
                                     }
                                     VStack(alignment: .trailing, spacing: 2) {
-                                        Text("$\(String(format: "%.2f", cost.monthlyCostUsd))")
+                                        Text(cost.monthlyCostUsdFormatted)
                                             .font(.system(.subheadline, design: .monospaced))
                                             .fontWeight(.bold)
+                                            .monospacedDigit()
                                         HStack(spacing: 2) {
                                             Image(systemName: cost.trendPercent >= 0 ? "arrow.up.right" : "arrow.down.right")
                                             Text("\(String(format: "%+.1f", cost.trendPercent))%")
                                         }
                                         .font(.caption2)
-                                        .foregroundColor(cost.trendPercent > 0 ? .orange : .green)
+                                        .foregroundStyle(cost.trendPercent > 0 ? Color.orange : Color.green)
                                     }
                                 }
                             }
                             .padding(10)
                             .background(Color(NSColor.controlBackgroundColor))
-                            .cornerRadius(8)
+                            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                            .accessibilityElement(children: .combine)
+                            .accessibilityLabel("\(cost.resourceName), Role \(cost.role), Entity \(cost.entityId)")
+                            .accessibilityValue("\(cost.monthlyCostUsdFormatted) per month, Quota \(cost.usageMetric), Trend \(String(format: "%+.1f", cost.trendPercent)) percent")
                         }
                     }
                 }

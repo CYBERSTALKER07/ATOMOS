@@ -2,85 +2,74 @@ import SwiftUI
 
 struct SupplyRequestsHubView: View {
     @Environment(\.dismiss) private var dismiss
-    @State private var requests: [SupplyRequest] = []
-    @State private var loading = true
-    @State private var error: String?
-    @State private var selectedRequestID: String?
+    @State private var vm = SupplyRequestsHubViewModel()
 
     var body: some View {
-        NavigationSplitView {
-            Group {
-                if loading && requests.isEmpty {
-                    FactoryLoadingView(
-                        title: "Loading supply requests",
-                        message: "Fetching inbound supply pipeline status."
-                    )
-                } else if let error {
-                    FactoryErrorView(message: error) {
-                        Task { await load() }
+        Group {
+            if vm.loading && vm.requests.isEmpty {
+                FactoryLoadingView(
+                    title: "Loading supply requests",
+                    message: "Fetching inbound supply pipeline status."
+                )
+            } else if let error = vm.error {
+                FactoryErrorView(message: error) {
+                    Task { await vm.load() }
+                }
+            } else if vm.requests.isEmpty {
+                FactoryStateView(
+                    kind: .empty,
+                    headline: "No requests",
+                    message: "No supply requests pending from warehouses."
+                )
+            } else {
+                List {
+                    Section {
+                        FactorySectionHeader(
+                            title: "Inbound supply requests",
+                            subtitle: "\(vm.requests.count) active requests"
+                        )
+                        .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
+                        .listRowBackground(Color.clear)
                     }
-                } else if requests.isEmpty {
-                    FactoryStateView(
-                        kind: .empty,
-                        headline: "No requests",
-                        message: "No supply requests pending from warehouses."
-                    )
-                } else {
-                    List(selection: $selectedRequestID) {
-                        Section {
-                            FactorySectionHeader(
-                                title: "Inbound supply requests",
-                                subtitle: "\(requests.count) active requests"
-                            )
-                            .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
-                            .listRowBackground(Color.clear)
-                        }
 
-                        Section {
-                            ForEach(requests) { request in
+                    Section {
+                        ForEach(vm.requests) { request in
+                            NavigationLink {
+                                SupplyRequestDetailView(requestId: request.id)
+                            } label: {
                                 SupplyRequestRow(request: request)
-                                    .tag(request.id)
                             }
                         }
                     }
                 }
-            }
-            .navigationTitle("portal.nav.supply_requests")
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("common.action.close", systemImage: "xmark") { dismiss() }
-                        .labelStyle(.iconOnly)
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") {
-                        Task { await load() }
-                    }
-                    .labelStyle(.iconOnly)
-                }
-            }
-        } detail: {
-            if let selectedRequestID {
-                SupplyRequestDetailView(requestId: selectedRequestID)
-            } else {
-                ContentUnavailableView("Select a Request", systemImage: "tray.full", description: Text("mobile_factory.ui.choose_a_supply_request_to_review_and_transition"))
+                .scrollDismissesKeyboard(.interactively)
             }
         }
-        .task { await load() }
-    }
-
-    @MainActor
-    private func load() async {
-        loading = true
-        error = nil
-        do {
-            requests = try await FactoryService.supplyRequests()
-            if selectedRequestID == nil {
-                selectedRequestID = requests.first?.id
+        .navigationTitle("portal.nav.supply_requests")
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button {
+                    PegasusHaptics.selection()
+                    dismiss()
+                } label: {
+                    Image(systemName: "xmark")
+                        .frame(minWidth: 44, minHeight: 44)
+                        .contentShape(Rectangle())
+                }
+                .accessibilityLabel("Close supply requests hub")
             }
-        } catch {
-            self.error = error.localizedDescription
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    PegasusHaptics.selection()
+                    Task { await vm.load() }
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                        .frame(minWidth: 44, minHeight: 44)
+                        .contentShape(Rectangle())
+                }
+                .accessibilityLabel("Refresh supply requests")
+            }
         }
-        loading = false
+        .task { await vm.load() }
     }
 }
-

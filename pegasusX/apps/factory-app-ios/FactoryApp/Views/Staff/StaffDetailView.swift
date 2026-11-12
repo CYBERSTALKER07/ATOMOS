@@ -2,27 +2,33 @@ import SwiftUI
 
 struct StaffDetailView: View {
     let staffId: String
+    @State private var vm: StaffDetailViewModel
 
-    @State private var staff: StaffMember?
-    @State private var loading = true
-    @State private var error: String?
-    @State private var pin = ""
-    @State private var setMsg: String?
-    @State private var setting = false
+    init(staffId: String) {
+        self.staffId = staffId
+        _vm = State(initialValue: StaffDetailViewModel(staffId: staffId))
+    }
 
     var body: some View {
+        @Bindable var vm = vm
+
         Group {
-            if loading {
+            if vm.loading {
                 ProgressView()
-            } else if let error {
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if let error = vm.error {
                 ContentUnavailableView {
                     Label("mobile_factory.ui.error", systemImage: "exclamationmark.triangle")
                 } description: {
                     Text(error)
                 } actions: {
-                    Button("common.action.retry") { Task { await load() } }
+                    Button("common.action.retry") {
+                        PegasusHaptics.selection()
+                        Task { await vm.load() }
+                    }
+                    .frame(minWidth: 44, minHeight: 44)
                 }
-            } else if let staff {
+            } else if let staff = vm.staff {
                 ResponsiveGridContentWrapper {
                     Section {
                         LabeledContent("Name", value: staff.name)
@@ -33,43 +39,28 @@ struct StaffDetailView: View {
                         LabeledContent("Joined", value: staff.joinedAt.isEmpty ? "—" : staff.joinedAt)
                     }
                     Section("Set login PIN") {
-                        SecureField("PIN (min 4)", text: $pin)
-                        Button(setting ? "Saving…" : "Set password") {
-                            Task { await setPassword() }
+                        SecureField("PIN (min 4)", text: $vm.pin)
+                            .frame(minHeight: 44)
+                            .accessibilityLabel("Login PIN, minimum four characters")
+                        Button(vm.setting ? "Saving…" : "Set password") {
+                            Task { await vm.setPassword() }
                         }
-                        .disabled(setting || pin.trimmingCharacters(in: .whitespaces).count < 4)
-                        if let setMsg { Text(setMsg) }
+                        .frame(minWidth: 44, minHeight: 44, alignment: .leading)
+                        .disabled(!vm.canSetPassword)
+                        .accessibilityLabel("Save staff login PIN")
+                        if let setMsg = vm.setMsg {
+                            Text(setMsg)
+                                .font(.caption)
+                                .foregroundStyle(setMsg == "Password set" ? .green : .red)
+                                .accessibilityLabel(setMsg)
+                        }
                     }
                 }
             }
         }
         .navigationTitle("portal.nav.staff")
-        .task(id: staffId) { await load() }
-    }
-
-    @MainActor
-    private func load() async {
-        loading = true
-        error = nil
-        do {
-            staff = try await FactoryService.staffDetail(id: staffId)
-        } catch {
-            self.error = error.localizedDescription
+        .task(id: staffId) {
+            await vm.load()
         }
-        loading = false
-    }
-
-    @MainActor
-    private func setPassword() async {
-        setting = true
-        setMsg = nil
-        do {
-            try await FactoryService.setStaffPassword(id: staffId, pin: pin)
-            setMsg = "Password set"
-            pin = ""
-        } catch {
-            setMsg = error.localizedDescription
-        }
-        setting = false
     }
 }

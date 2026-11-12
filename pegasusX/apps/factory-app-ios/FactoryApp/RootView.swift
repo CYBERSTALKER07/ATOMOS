@@ -8,7 +8,9 @@ struct RootView: View {
             if !tokenStore.isAuthenticated {
                 LoginView()
             } else if !tokenStore.isConfigured {
-                LocationSetupView()
+                NavigationStack {
+                    LocationSetupView()
+                }
             } else {
                 FactoryAdaptiveShell()
             }

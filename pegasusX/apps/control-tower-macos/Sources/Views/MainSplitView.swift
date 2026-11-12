@@ -1,7 +1,7 @@
 import SwiftUI
 
 public struct MainSplitView: View {
-    @ObservedObject var viewModel: ControlTowerViewModel
+    @Bindable var viewModel: ControlTowerViewModel
 
     public init(viewModel: ControlTowerViewModel) {
         self.viewModel = viewModel
@@ -29,7 +29,7 @@ public struct MainSplitView: View {
                 if let toast = viewModel.copiedToastMessage {
                     HStack(spacing: 8) {
                         Image(systemName: "checkmark.circle.fill")
-                            .foregroundColor(.green)
+                            .foregroundStyle(.green)
                         Text(toast)
                             .font(.system(.caption, design: .monospaced))
                             .fontWeight(.medium)
@@ -37,17 +37,58 @@ public struct MainSplitView: View {
                     .padding(.horizontal, 14)
                     .padding(.vertical, 8)
                     .background(.ultraThinMaterial)
-                    .cornerRadius(8)
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                     .shadow(radius: 6)
                     .padding(.bottom, 20)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel(toast)
                 }
             }
         }
-        .inspector(isPresented: .constant(true)) {
+        .inspector(isPresented: $viewModel.isInspectorPresented) {
             InspectorView(viewModel: viewModel)
         }
+        .sheet(isPresented: $viewModel.isCheatsheetPresented) {
+            DesktopKeyboardCheatsheetView(isPresented: $viewModel.isCheatsheetPresented)
+        }
         .toolbar {
+            ToolbarItem(placement: .status) {
+                HStack(spacing: 8) {
+                    HStack(spacing: 6) {
+                        Circle()
+                            .fill(viewModel.streamClient.isConnected ? Color.green : Color.orange)
+                            .frame(width: 7, height: 7)
+                        Text(viewModel.telemetryHUDString)
+                            .font(.system(.caption, design: .monospaced).weight(.semibold))
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Color.primary.opacity(0.05))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 6, style: .continuous)
+                            .stroke(Color.primary.opacity(0.10), lineWidth: 1)
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("Telemetry HUD: \(viewModel.telemetryHUDString)")
+
+                    Button {
+                        ControlTowerHaptics.alignment()
+                        viewModel.isCheatsheetPresented = true
+                    } label: {
+                        Image(systemName: "keyboard")
+                            .foregroundStyle(.secondary)
+                            .frame(minWidth: 32, minHeight: 32)
+                            .contentShape(Rectangle())
+                    }
+                    .help("Keyboard Shortcuts (⌘/)")
+                    .accessibilityLabel("Keyboard Shortcuts Cheatsheet")
+                    .buttonStyle(.plain)
+                }
+            }
+
             ToolbarItem(placement: .automatic) {
                 Picker("Role", selection: $viewModel.selectedRole) {
                     ForEach(RolePerspective.allCases) { role in
@@ -58,14 +99,16 @@ public struct MainSplitView: View {
                         .tag(role)
                     }
                 }
+                .accessibilityLabel("Role Perspective")
             }
 
             ToolbarItem(placement: .automatic) {
                 Button {
-                    Task { await viewModel.initialLoad() }
+                    viewModel.refresh()
                 } label: {
                     Label("Refresh", systemImage: "arrow.clockwise")
                 }
+                .accessibilityLabel("Refresh Telemetry")
                 .keyboardShortcut("r", modifiers: .command)
             }
         }

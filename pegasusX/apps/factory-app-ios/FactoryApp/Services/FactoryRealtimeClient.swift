@@ -140,25 +140,22 @@ final class FactoryRealtimeClient {
             let socketTask = self.session.webSocketTask(with: wsRequest)
             self.task = socketTask
             socketTask.resume()
-            socketTask.sendPing { [weak self] error in
-                guard let self else { return }
-                if error != nil {
-                    self.handleSocketDrop()
-                } else {
-                    let wasReconnect = self.hasConnectedOnce
-                    self.hasConnectedOnce = true
-                    self.reconnectAttempt = 0
-                    self.publish(.live)
-                    self.startHeartbeat()
-                    if wasReconnect, let reconnectHandler = self.reconnectHandler {
-                        Task { @MainActor in
-                            await FactorySessionReconcile.run()
-                            reconnectHandler()
-                        }
+            self.receiveLoop()
+            if await Self.sendPing(socketTask) != nil {
+                self.handleSocketDrop()
+            } else {
+                let wasReconnect = self.hasConnectedOnce
+                self.hasConnectedOnce = true
+                self.reconnectAttempt = 0
+                self.publish(.live)
+                self.startHeartbeat()
+                if wasReconnect, let reconnectHandler = self.reconnectHandler {
+                    Task { @MainActor in
+                        await FactorySessionReconcile.run()
+                        reconnectHandler()
                     }
                 }
             }
-            self.receiveLoop()
         }
     }
 
@@ -168,11 +165,17 @@ final class FactoryRealtimeClient {
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: 25_000_000_000)
                 guard !Task.isCancelled, let self, !self.closed, let socket = self.task else { return }
-                socket.sendPing { [weak self] error in
-                    if error != nil {
-                        self?.handleSocketDrop()
-                    }
+                if await Self.sendPing(socket) != nil {
+                    self.handleSocketDrop()
                 }
+            }
+        }
+    }
+
+    private static func sendPing(_ socket: URLSessionWebSocketTask) async -> Error? {
+        await withCheckedContinuation { continuation in
+            socket.sendPing { error in
+                continuation.resume(returning: error)
             }
         }
     }

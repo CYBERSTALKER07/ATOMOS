@@ -3,7 +3,7 @@ import SwiftUI
 
 @main
 struct PegasusControlTowerApp: App {
-    @StateObject private var viewModel = ControlTowerViewModel()
+    @State private var viewModel = ControlTowerViewModel()
 
     var body: some Scene {
         WindowGroup {
@@ -30,7 +30,7 @@ struct PegasusControlTowerApp: App {
                 Divider()
 
                 Button("Refresh Telemetry") {
-                    Task { await viewModel.initialLoad() }
+                    viewModel.refresh()
                 }
                 .keyboardShortcut("r", modifiers: .command)
             }
@@ -45,6 +45,14 @@ struct PegasusControlTowerApp: App {
                     viewModel.exportDiagnosticBundle()
                 }
                 .keyboardShortcut("d", modifiers: [.command, .shift])
+            }
+
+            CommandGroup(replacing: .help) {
+                Button("Pegasus Control Tower Keyboard Shortcuts…") {
+                    ControlTowerHaptics.alignment()
+                    viewModel.isCheatsheetPresented = true
+                }
+                .keyboardShortcut("/", modifiers: .command)
             }
         }
 

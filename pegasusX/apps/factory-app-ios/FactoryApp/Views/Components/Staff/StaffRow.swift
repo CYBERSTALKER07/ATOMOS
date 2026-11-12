@@ -22,5 +22,8 @@ struct StaffRow: View {
             Spacer()
             FactoryStatusBadge(text: member.status)
         }
+        .frame(minHeight: 44)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(member.name), role \(member.role), status \(member.status)")
     }
 }

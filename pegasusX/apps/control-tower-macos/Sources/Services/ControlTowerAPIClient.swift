@@ -3,20 +3,32 @@ import Foundation
 public actor ControlTowerAPIClient {
     public static let shared = ControlTowerAPIClient()
 
+    public static var defaultBaseURL: URL {
+        var components = URLComponents()
+        components.scheme = "http"
+        components.host = "127.0.0.1"
+        components.port = 8180
+        return components.url ?? URL(fileURLWithPath: "/")
+    }
+
+    public nonisolated let baseURL: URL
     private let session: URLSession
-    private let baseURL: URL
     private var authToken: String?
 
-    public init(baseURL: URL = URL(string: "http://127.0.0.1:8180")!) {
+    public init(baseURL: URL? = nil) {
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 8.0
         config.timeoutIntervalForResource = 15.0
         self.session = URLSession(configuration: config)
-        self.baseURL = baseURL
+        self.baseURL = baseURL ?? Self.defaultBaseURL
     }
 
     public func setAuthToken(_ token: String?) {
         self.authToken = token
+    }
+
+    public func currentAuthToken() -> String? {
+        authToken
     }
 
     public func fetchCellHealth() async throws -> [CellHealth] {
@@ -132,12 +144,12 @@ public actor ControlTowerAPIClient {
 
     public func fetchAttributedCosts() async throws -> [AttributedCostItem] {
         return [
-            AttributedCostItem(role: "Supplier", entityId: "SPL-SAM-901", resourceName: "Cloud Spanner Mutations", monthlyCostUsd: 1420.50, usageMetric: "18.4M mutations", trendPercent: 4.2),
-            AttributedCostItem(role: "Supplier", entityId: "SPL-SAM-901", resourceName: "GTIN Catalog Matching", monthlyCostUsd: 380.20, usageMetric: "24.5k inferences", trendPercent: -1.5),
-            AttributedCostItem(role: "Warehouse", entityId: "DEPOT-TAS-CENTRAL", resourceName: "Wave Planning Compute", monthlyCostUsd: 910.80, usageMetric: "480 batch runs", trendPercent: 2.1),
-            AttributedCostItem(role: "Warehouse", entityId: "DEPOT-TAS-CENTRAL", resourceName: "Cold-Chain Telemetry Ingest", monthlyCostUsd: 290.40, usageMetric: "12.8M MQTT msgs", trendPercent: 0.0),
-            AttributedCostItem(role: "Fleet", entityId: "FLT-EAST-CARRIER", resourceName: "Routing Graph Solver (VRP)", monthlyCostUsd: 1840.00, usageMetric: "14.2k routes solved", trendPercent: 5.6),
-            AttributedCostItem(role: "Retailer", entityId: "TIN-309182746", resourceName: "Catalog Dynamic Search", monthlyCostUsd: 420.10, usageMetric: "1.2M queries", trendPercent: 8.4),
+            AttributedCostItem(role: "Supplier", entityId: "SPL-SAM-901", resourceName: "Cloud Spanner Mutations", monthlyCostCents: 1420_50, usageMetric: "18.4M mutations", trendPercent: 4.2),
+            AttributedCostItem(role: "Supplier", entityId: "SPL-SAM-901", resourceName: "GTIN Catalog Matching", monthlyCostCents: 380_20, usageMetric: "24.5k inferences", trendPercent: -1.5),
+            AttributedCostItem(role: "Warehouse", entityId: "DEPOT-TAS-CENTRAL", resourceName: "Wave Planning Compute", monthlyCostCents: 910_80, usageMetric: "480 batch runs", trendPercent: 2.1),
+            AttributedCostItem(role: "Warehouse", entityId: "DEPOT-TAS-CENTRAL", resourceName: "Cold-Chain Telemetry Ingest", monthlyCostCents: 290_40, usageMetric: "12.8M MQTT msgs", trendPercent: 0.0),
+            AttributedCostItem(role: "Fleet", entityId: "FLT-EAST-CARRIER", resourceName: "Routing Graph Solver (VRP)", monthlyCostCents: 1840_00, usageMetric: "14.2k routes solved", trendPercent: 5.6),
+            AttributedCostItem(role: "Retailer", entityId: "TIN-309182746", resourceName: "Catalog Dynamic Search", monthlyCostCents: 420_10, usageMetric: "1.2M queries", trendPercent: 8.4),
         ]
     }
 

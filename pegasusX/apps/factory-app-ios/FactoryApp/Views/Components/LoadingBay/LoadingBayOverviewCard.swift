@@ -14,6 +14,7 @@ struct LoadingBayOverviewCard: View {
                     .font(.body)
                     .foregroundStyle(.secondary)
             }
+            .accessibilityElement(children: .combine)
 
             HStack(spacing: LabTheme.spacingSM) {
                 BayOverviewMetric(label: "Ready", value: "\(readyCount)")
@@ -40,6 +41,8 @@ struct BayOverviewMetric: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(LabTheme.spacingMD)
-        .background(LabTheme.tertiaryBackground, in: RoundedRectangle(cornerRadius: LabTheme.radiusMD))
+        .background(LabTheme.tertiaryBackground, in: RoundedRectangle(cornerRadius: LabTheme.radiusMD, style: .continuous))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(label): \(value)")
     }
 }

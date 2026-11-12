@@ -2,7 +2,7 @@ import Charts
 import SwiftUI
 
 public struct InfraHealthView: View {
-    @ObservedObject var viewModel: ControlTowerViewModel
+    var viewModel: ControlTowerViewModel
 
     public init(viewModel: ControlTowerViewModel) {
         self.viewModel = viewModel
@@ -18,7 +18,7 @@ public struct InfraHealthView: View {
                         .fontWeight(.bold)
                     Text("Direct instrumentation into distributed Cloud Spanner quorum, Kafka broker lag, and Redis priority semaphores.")
                         .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
 
                 // Cloud Spanner Latency Chart (Swift Charts)
@@ -30,7 +30,7 @@ public struct InfraHealthView: View {
                                     .font(.headline)
                                 Text("True-Time synchronized distributed transaction latency and replica offload.")
                                     .font(.caption)
-                                    .foregroundColor(.secondary)
+                                    .foregroundStyle(.secondary)
                             }
                             Spacer()
                             HStack(spacing: 6) {
@@ -39,7 +39,7 @@ public struct InfraHealthView: View {
                                     .frame(width: 8, height: 8)
                                 Text("Replica Stale Reads: \(String(format: "%.1f", spanner.staleReadOffloadPercent))% Offloaded")
                                     .font(.system(.caption, design: .monospaced))
-                                    .foregroundColor(.secondary)
+                                    .foregroundStyle(.secondary)
                             }
                         }
 
@@ -111,9 +111,9 @@ public struct InfraHealthView: View {
                         Text("Distributed Kafka Partition Lag & DLQ Backlog")
                             .font(.headline)
                         Spacer()
-                        Text("3 Outbox Topics")
+                        Text("\(viewModel.kafkaPartitions.count) Outbox Topics")
                             .font(.system(.caption, design: .monospaced))
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
 
                     VStack(spacing: 8) {
@@ -129,13 +129,17 @@ public struct InfraHealthView: View {
                                         } label: {
                                             Image(systemName: "doc.on.doc")
                                                 .font(.caption2)
-                                                .foregroundColor(.secondary)
+                                                .foregroundStyle(.secondary)
+                                                .frame(minWidth: 32, minHeight: 32)
+                                                .contentShape(Rectangle())
                                         }
                                         .buttonStyle(.plain)
+                                        .help("Copy Topic Name")
+                                        .accessibilityLabel("Copy Kafka topic \(kafka.topic)")
                                     }
                                     Text("Consumer Group: \(kafka.consumerGroup) • \(kafka.partitions) Partitions")
                                         .font(.caption)
-                                        .foregroundColor(.secondary)
+                                        .foregroundStyle(.secondary)
                                 }
                                 Spacer()
                                 HStack(spacing: 20) {
@@ -146,17 +150,17 @@ public struct InfraHealthView: View {
                                             .monospacedDigit()
                                         Text("Max Lag")
                                             .font(.caption2)
-                                            .foregroundColor(.secondary)
+                                            .foregroundStyle(.secondary)
                                     }
                                     VStack(alignment: .trailing, spacing: 2) {
                                         Text("\(kafka.dlqCount) msgs")
                                             .font(.system(.subheadline, design: .monospaced))
                                             .fontWeight(.bold)
-                                            .foregroundColor(kafka.dlqCount > 0 ? .red : .green)
+                                            .foregroundStyle(kafka.dlqCount > 0 ? Color.red : Color.green)
                                             .monospacedDigit()
                                         Text("Poison DLQ")
                                             .font(.caption2)
-                                            .foregroundColor(.secondary)
+                                            .foregroundStyle(.secondary)
                                     }
                                 }
                             }
@@ -180,6 +184,8 @@ public struct InfraHealthView: View {
 
                     LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
                         ForEach(viewModel.redisPools) { pool in
+                            let maxPermits = Double(max(pool.maxPermits, 1))
+                            let activePermits = Double(min(max(pool.activePermits, 0), max(pool.maxPermits, 1)))
                             VStack(alignment: .leading, spacing: 8) {
                                 HStack {
                                     Text(pool.poolName)
@@ -188,24 +194,27 @@ public struct InfraHealthView: View {
                                     Spacer()
                                     Text("\(pool.activePermits) / \(pool.maxPermits)")
                                         .font(.system(.caption, design: .monospaced))
-                                        .foregroundColor(.secondary)
+                                        .foregroundStyle(.secondary)
                                 }
-                                ProgressView(value: Double(pool.activePermits), total: Double(pool.maxPermits))
+                                ProgressView(value: activePermits, total: maxPermits)
                                     .tint(pool.utilizationPercent > 80 ? .orange : .blue)
                                 HStack {
                                     Text("Queue wait: \(String(format: "%.1f", pool.queueWaitMs))ms")
                                         .font(.caption2)
-                                        .foregroundColor(.secondary)
+                                        .foregroundStyle(.secondary)
                                     Spacer()
                                     Text("\(String(format: "%.0f", pool.utilizationPercent))% utilized")
                                         .font(.caption2)
                                         .fontWeight(.semibold)
-                                        .foregroundColor(pool.utilizationPercent > 80 ? .orange : .green)
+                                        .foregroundStyle(pool.utilizationPercent > 80 ? Color.orange : Color.green)
                                 }
                             }
                             .padding(12)
                             .background(Color(NSColor.controlBackgroundColor))
-                            .cornerRadius(8)
+                            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                            .accessibilityElement(children: .combine)
+                            .accessibilityLabel("Redis Pool \(pool.poolName), \(pool.activePermits) of \(pool.maxPermits) permits active")
+                            .accessibilityValue("Queue wait \(String(format: "%.1f", pool.queueWaitMs)) milliseconds, \(String(format: "%.0f", pool.utilizationPercent)) percent utilized")
                         }
                     }
                 }
@@ -224,7 +233,7 @@ public struct InfraHealthView: View {
             VStack(alignment: .leading, spacing: 1) {
                 Text(label)
                     .font(.caption2)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                 Text(value)
                     .font(.system(.subheadline, design: .monospaced))
                     .fontWeight(.bold)

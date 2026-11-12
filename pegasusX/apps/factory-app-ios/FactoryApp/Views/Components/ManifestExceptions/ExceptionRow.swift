@@ -7,34 +7,43 @@ struct ExceptionRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: LabTheme.spacingSM) {
-            HStack {
-                Text(exception.reason)
-                    .font(.headline)
-                Spacer()
-                if exception.escalated {
-                    Text("factory_portal.residual.text.escalated")
-                        .font(.caption.bold())
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(LabTheme.destructive.opacity(0.15), in: Capsule())
+            VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
+                HStack {
+                    Text(exception.reason)
+                        .font(.headline)
+                    Spacer()
+                    if exception.escalated {
+                        Text("factory_portal.residual.text.escalated")
+                            .font(.caption.bold())
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(LabTheme.destructive.opacity(0.15), in: Capsule())
+                    }
+                }
+                Text(L10n.format("mobile_factory.ui.transfer_shortid_manifest_shortid_2", "\(shortId(exception.transferId))", "\(shortId(exception.manifestId))"))
+                    .font(.footnote.monospaced())
+                    .foregroundStyle(.secondary)
+                Text(attemptLabel)
+                    .font(.subheadline)
+                    .foregroundStyle(exception.attemptCount >= 3 ? LabTheme.destructive : .secondary)
+                if !exception.createdAt.isEmpty {
+                    Text(formattedDate(exception.createdAt))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
             }
-            Text(L10n.format("mobile_factory.ui.transfer_shortid_manifest_shortid_2", "\(shortId(exception.transferId))", "\(shortId(exception.manifestId))"))
-                .font(.footnote.monospaced())
-                .foregroundStyle(.secondary)
-            Text(attemptLabel)
-                .font(.subheadline)
-                .foregroundStyle(exception.attemptCount >= 3 ? LabTheme.destructive : .secondary)
-            if !exception.createdAt.isEmpty {
-                Text(formattedDate(exception.createdAt))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("\(exception.reason), \(exception.escalated ? "escalated, " : "")\(attemptLabel)")
+
             if let onResolve {
-                Button(resolving ? "Resolving…" : "Resolve", action: onResolve)
-                    .buttonStyle(.borderedProminent)
-                    .disabled(resolving)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                Button(resolving ? "Resolving…" : "Resolve") {
+                    PegasusHaptics.confirm()
+                    onResolve()
+                }
+                .buttonStyle(.borderedProminent)
+                .frame(minWidth: 44, minHeight: 44, alignment: .leading)
+                .disabled(resolving)
+                .accessibilityLabel("Resolve exception \(shortId(exception.id))")
             }
         }
         .padding(.vertical, LabTheme.spacingXS)

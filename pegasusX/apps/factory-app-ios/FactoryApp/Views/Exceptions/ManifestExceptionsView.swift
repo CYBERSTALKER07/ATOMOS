@@ -1,44 +1,44 @@
 import SwiftUI
 
 struct ManifestExceptionsView: View {
-    @Environment(\.dismiss) private var dismiss
-    @State private var realtimeClient = FactoryRealtimeClient()
-    @State private var exceptions: [ManifestException] = []
-    @State private var loading = true
-    @State private var error: String?
-    @State private var escalatedOnly = false
-    @State private var resolvingId: String?
+    @State private var vm = ManifestExceptionsViewModel()
 
     var body: some View {
         Group {
-            if loading && exceptions.isEmpty {
+            if vm.loading && vm.exceptions.isEmpty {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if let error, exceptions.isEmpty {
+            } else if let error = vm.error, vm.exceptions.isEmpty {
                 ContentUnavailableView {
                     Label("mobile_factory.ui.error", systemImage: "exclamationmark.triangle")
                 } description: {
                     Text(error)
                 } actions: {
-                    Button("common.action.retry") { load() }
+                    Button("common.action.retry") {
+                        PegasusHaptics.selection()
+                        Task { await vm.load() }
+                    }
+                    .frame(minWidth: 44, minHeight: 44)
                 }
-            } else if exceptions.isEmpty {
+            } else if vm.exceptions.isEmpty {
                 ContentUnavailableView(
-                    escalatedOnly ? "No Escalated Exceptions" : "No Exceptions",
+                    vm.escalatedOnly ? "No Escalated Exceptions" : "No Exceptions",
                     systemImage: "checkmark.circle",
                     description: Text(
-                        escalatedOnly
+                        vm.escalatedOnly
                             ? "No transfers have hit the DLQ threshold (3+ overflows)."
                             : "All manifest loading operations completed without exceptions."
                     )
                 )
             } else {
                 ResponsiveGridContentWrapper {
-                    ForEach(Array(exceptions.enumerated()), id: \.element.id) { index, exception in
+                    ForEach(Array(vm.exceptions.enumerated()), id: \.element.id) { index, exception in
                         ExceptionRow(
                             exception: exception,
-                            resolving: resolvingId == exception.exceptionId,
-                            onResolve: { resolve(exception.exceptionId) }
+                            resolving: vm.resolvingId == exception.exceptionId,
+                            onResolve: {
+                                Task { await vm.resolve(exception.exceptionId) }
+                            }
                         )
                         .staggeredAppear(index: index)
                     }
@@ -49,69 +49,32 @@ struct ManifestExceptionsView: View {
         .navigationTitle("portal.nav.gate_exceptions")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                Button("common.action.close", systemImage: "xmark") {
-                    dismiss()
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    vm.toggleEscalated()
+                } label: {
+                    Image(systemName: vm.escalatedOnly ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
+                        .frame(minWidth: 44, minHeight: 44)
                 }
-                .labelStyle(.iconOnly)
+                .accessibilityLabel(vm.escalatedOnly ? "Show all exceptions" : "Filter escalated exceptions only")
             }
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
-                    escalatedOnly.toggle()
-                    load()
+                    PegasusHaptics.selection()
+                    Task { await vm.load() }
                 } label: {
-                    Image(systemName: escalatedOnly ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
-                }
-            }
-            ToolbarItem(placement: .topBarTrailing) {
-                Button { load() } label: {
                     Image(systemName: "arrow.clockwise")
+                        .frame(minWidth: 44, minHeight: 44)
                 }
+                .accessibilityLabel("Refresh gate exceptions")
             }
         }
-        .task(id: escalatedOnly) { load() }
-        .onAppear {
-            realtimeClient.connect(
-                onStateChange: { _ in },
-                onEvent: { event in
-                    guard event.type.hasPrefix("TRANSFER_") || event.type.hasPrefix("MANIFEST_") || event.type.hasPrefix("WAREHOUSE_TRANSFER_") else { return }
-                    load(silent: true)
-                }
-            )
+        .task(id: vm.escalatedOnly) {
+            vm.startRealtime()
+            await vm.load()
         }
         .onDisappear {
-            realtimeClient.disconnect()
-        }
-    }
-
-    private func load(silent: Bool = false) {
-        Task { @MainActor in
-            if !silent {
-                loading = true
-            }
-            error = nil
-            do {
-                let response = try await FactoryService.manifestExceptions(escalatedOnly: escalatedOnly)
-                exceptions = response.exceptions
-            } catch {
-                self.error = error.localizedDescription
-            }
-            if !silent {
-                loading = false
-            }
-        }
-    }
-
-    private func resolve(_ exceptionId: String) {
-        Task { @MainActor in
-            resolvingId = exceptionId
-            do {
-                _ = try await FactoryService.resolveManifestException(exceptionId: exceptionId)
-                load(silent: true)
-            } catch {
-                self.error = error.localizedDescription
-            }
-            resolvingId = nil
+            vm.stopRealtime()
         }
     }
 }

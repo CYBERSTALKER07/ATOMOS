@@ -84,7 +84,7 @@ final class APIClient: Sendable {
             s = raw.hasSuffix("/") ? raw : raw + "/"
         } else if raw.contains(":") { s = "http://\(raw)/" }
         else { s = "http://\(raw):8180/" }
-        return URL(string: s)!
+        return URL(string: s) ?? URL(fileURLWithPath: "/")
     }()
     #else
     private let bootstrapURL: URL = {
@@ -94,7 +94,7 @@ final class APIClient: Sendable {
         if raw.isEmpty { s = "https://api.pegasusx.app/" }
         else if raw.hasSuffix("/") { s = raw }
         else { s = raw + "/" }
-        return URL(string: s)!
+        return URL(string: s) ?? URL(fileURLWithPath: "/")
     }()
     #endif
 
@@ -122,11 +122,16 @@ final class APIClient: Sendable {
 
     // MARK: - GET
     func get<T: Decodable>(_ path: String, query: [String: String] = [:]) async throws -> T {
-        var components = URLComponents(url: baseURL.appendingPathComponent(path), resolvingAgainstBaseURL: false)!
+        guard var components = URLComponents(url: baseURL.appendingPathComponent(path), resolvingAgainstBaseURL: false) else {
+            throw APIError.invalidResponse
+        }
         if !query.isEmpty {
             components.queryItems = query.map { URLQueryItem(name: $0.key, value: $0.value) }
         }
-        var request = URLRequest(url: components.url!)
+        guard let requestURL = components.url else {
+            throw APIError.invalidResponse
+        }
+        var request = URLRequest(url: requestURL)
         request.httpMethod = "GET"
         await attachToken(&request)
         return try await execute(request)
@@ -290,7 +295,9 @@ final class APIClient: Sendable {
     }
 
     func factoryWebSocketURL(token: String, lastEventId: String? = nil) -> URL {
-        var components = URLComponents(url: baseURL, resolvingAgainstBaseURL: false)!
+        guard var components = URLComponents(url: baseURL, resolvingAgainstBaseURL: false) else {
+            return baseURL
+        }
         components.scheme = components.scheme == "https" ? "wss" : "ws"
         components.path = "/v1/ws"
         var items = [URLQueryItem(name: "token", value: token)]
@@ -298,7 +305,7 @@ final class APIClient: Sendable {
             items.append(URLQueryItem(name: "last_event_id", value: lastEventId))
         }
         components.queryItems = items
-        return components.url!
+        return components.url ?? baseURL
     }
 }
 

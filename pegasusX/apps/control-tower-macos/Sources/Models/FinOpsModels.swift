@@ -29,11 +29,11 @@ public struct TenderWaterfallSlice: Identifiable, Codable, Sendable {
     public let detail: String
 
     public var amountUzsFormatted: String {
-        let uzs = Double(amountTiyin) / 100.0
+        let uzs: Int64 = amountTiyin / 100
         let formatter = NumberFormatter()
         formatter.numberStyle = .decimal
         formatter.maximumFractionDigits = 0
-        let formatted = formatter.string(from: NSNumber(value: uzs)) ?? "\(Int64(uzs))"
+        let formatted = formatter.string(from: NSNumber(value: uzs)) ?? "\(uzs)"
         return "\(formatted) UZS"
     }
 
@@ -51,22 +51,34 @@ public struct AttributedCostItem: Identifiable, Codable, Sendable {
     public let role: String
     public let entityId: String
     public let resourceName: String
-    public let monthlyCostUsd: Double
+    public let monthlyCostCents: Int64
     public let usageMetric: String
     public let trendPercent: Double
+
+    public var monthlyCostUsdFormatted: String {
+        let isNegative = monthlyCostCents < 0
+        let dollars: Int64 = abs(monthlyCostCents / 100)
+        let cents: Int64 = abs(monthlyCostCents % 100)
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.maximumFractionDigits = 0
+        let formattedDollars = formatter.string(from: NSNumber(value: dollars)) ?? "\(dollars)"
+        let prefix = isNegative ? "-$" : "$"
+        return "\(prefix)\(formattedDollars)\(String(format: ".%02lld", cents))"
+    }
 
     public init(
         role: String,
         entityId: String,
         resourceName: String,
-        monthlyCostUsd: Double,
+        monthlyCostCents: Int64,
         usageMetric: String,
         trendPercent: Double
     ) {
         self.role = role
         self.entityId = entityId
         self.resourceName = resourceName
-        self.monthlyCostUsd = monthlyCostUsd
+        self.monthlyCostCents = monthlyCostCents
         self.usageMetric = usageMetric
         self.trendPercent = trendPercent
     }
@@ -89,11 +101,12 @@ public struct BillingInvoice: Identifiable, Codable, Sendable {
     }
 
     public var amountUzsFormatted: String {
-        let uzs = Double(totalAmountTiyin) / 100.0
+        let uzs: Int64 = totalAmountTiyin / 100
         let formatter = NumberFormatter()
         formatter.numberStyle = .decimal
         formatter.maximumFractionDigits = 0
-        return "\(formatter.string(from: NSNumber(value: uzs)) ?? "\(Int64(uzs))") UZS"
+        let formatted = formatter.string(from: NSNumber(value: uzs)) ?? "\(uzs)"
+        return "\(formatted) UZS"
     }
 
     public init(

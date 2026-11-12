@@ -24,6 +24,7 @@ struct WorkflowLaunchCard: View {
                     .font(.title3)
                     .foregroundStyle(.secondary)
             }
+            .accessibilityElement(children: .combine)
 
             WorkflowLaunchRow(
                 title: "Supply requests",
@@ -89,12 +90,20 @@ struct WorkflowLaunchRow: View {
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
+            .accessibilityElement(children: .combine)
+
             Spacer()
-            Button(actionLabel, action: onTap)
-                .buttonStyle(.borderedProminent)
+
+            Button(actionLabel) {
+                PegasusHaptics.selection()
+                onTap()
+            }
+            .buttonStyle(.borderedProminent)
+            .frame(minWidth: 44, minHeight: 44)
+            .accessibilityLabel("\(actionLabel): \(title)")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(LabTheme.spacingMD)
-        .background(LabTheme.tertiaryBackground, in: RoundedRectangle(cornerRadius: LabTheme.radiusMD))
+        .background(LabTheme.tertiaryBackground, in: RoundedRectangle(cornerRadius: LabTheme.radiusMD, style: .continuous))
     }
 }

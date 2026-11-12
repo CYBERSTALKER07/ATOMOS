@@ -1,7 +1,7 @@
 import SwiftUI
 
 public struct InspectorView: View {
-    @ObservedObject var viewModel: ControlTowerViewModel
+    var viewModel: ControlTowerViewModel
 
     public init(viewModel: ControlTowerViewModel) {
         self.viewModel = viewModel
@@ -19,17 +19,19 @@ public struct InspectorView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
                             Image(systemName: viewModel.selectedRole.systemIcon)
-                                .foregroundColor(.accentColor)
+                                .foregroundStyle(Color.accentColor)
                             Text(viewModel.selectedRole.rawValue)
                                 .font(.subheadline)
                                 .fontWeight(.medium)
                         }
                         Text("All telemetry, FinOps cost-to-serve, and scorecards are scoped to this echelon.")
                             .font(.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(4)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("Active Filter Scope: \(viewModel.selectedRole.rawValue)")
                 }
 
                 // Cloud Engine Summary
@@ -53,17 +55,19 @@ public struct InspectorView: View {
                             viewModel.exportDiagnosticBundle()
                         } label: {
                             Label("Export Diagnostic Bundle", systemImage: "arrow.down.doc.fill")
-                                .frame(maxWidth: .infinity)
+                                .frame(maxWidth: .infinity, minHeight: 32)
                         }
                         .buttonStyle(.borderedProminent)
+                        .accessibilityLabel("Export Diagnostic Bundle")
 
                         Button {
                             viewModel.exportWaterfallCSV()
                         } label: {
                             Label("Export Waterfall CSV", systemImage: "tablecells.badge.ellipsis")
-                                .frame(maxWidth: .infinity)
+                                .frame(maxWidth: .infinity, minHeight: 32)
                         }
                         .buttonStyle(.bordered)
+                        .accessibilityLabel("Export Waterfall CSV")
                     }
                     .padding(4)
                 }
@@ -79,12 +83,12 @@ public struct InspectorView: View {
         HStack {
             Text(label)
                 .font(.caption)
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
             Spacer()
             Text(value)
                 .font(.system(.caption, design: .monospaced))
                 .fontWeight(.semibold)
-                .foregroundColor(isAlert ? .red : .primary)
+                .foregroundStyle(isAlert ? Color.red : Color.primary)
                 .monospacedDigit()
         }
         .accessibilityElement(children: .combine)

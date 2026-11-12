@@ -1,7 +1,7 @@
 import SwiftUI
 
 public struct AnalyticsScorecardView: View {
-    @ObservedObject var viewModel: ControlTowerViewModel
+    var viewModel: ControlTowerViewModel
 
     public init(viewModel: ControlTowerViewModel) {
         self.viewModel = viewModel
@@ -16,11 +16,12 @@ public struct AnalyticsScorecardView: View {
                         .fontWeight(.bold)
                     Text("Cross-calibrated SLAs and compliance thresholds across Supplier, Warehouse, Fleet, and Retailer echelons.")
                         .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
 
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
                     ForEach(viewModel.scorecards) { card in
+                        let maxCompliance = 100.0
                         VStack(alignment: .leading, spacing: 14) {
                             HStack {
                                 Text(card.role)
@@ -34,7 +35,7 @@ public struct AnalyticsScorecardView: View {
                                     Text("\(String(format: "%.1f", card.complianceRatePercent))% SLA")
                                         .font(.system(.caption, design: .monospaced))
                                         .fontWeight(.bold)
-                                        .foregroundColor(card.complianceRatePercent >= 98.0 ? .green : .orange)
+                                        .foregroundStyle(card.complianceRatePercent >= 98.0 ? Color.green : Color.orange)
                                 }
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 3)
@@ -48,28 +49,28 @@ public struct AnalyticsScorecardView: View {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(card.primaryMetricName)
                                         .font(.caption)
-                                        .foregroundColor(.secondary)
+                                        .foregroundStyle(.secondary)
                                     Text(card.primaryMetricValue)
                                         .font(.system(.title2, design: .rounded))
                                         .fontWeight(.bold)
                                         .monospacedDigit()
                                     Text(card.primaryMetricSubtext)
                                         .font(.caption2)
-                                        .foregroundColor(.secondary)
+                                        .foregroundStyle(.secondary)
                                 }
                                 Spacer()
                                 VStack(alignment: .trailing, spacing: 4) {
                                     Text(card.secondaryMetricName)
                                         .font(.caption)
-                                        .foregroundColor(.secondary)
+                                        .foregroundStyle(.secondary)
                                     Text(card.secondaryMetricValue)
                                         .font(.system(.title3, design: .monospaced))
                                         .fontWeight(.bold)
-                                        .foregroundColor(.blue)
+                                        .foregroundStyle(.blue)
                                         .monospacedDigit()
                                     Text("Statutory Target")
                                         .font(.caption2)
-                                        .foregroundColor(.secondary)
+                                        .foregroundStyle(.secondary)
                                 }
                             }
 
@@ -77,13 +78,13 @@ public struct AnalyticsScorecardView: View {
                                 HStack {
                                     Text("SLA Delivery Threshold")
                                         .font(.caption2)
-                                        .foregroundColor(.secondary)
+                                        .foregroundStyle(.secondary)
                                     Spacer()
                                     Text("\(String(format: "%.1f", card.complianceRatePercent))%")
-                                        .font(.system(size: 10, weight: .bold, design: .monospaced))
-                                        .foregroundColor(.secondary)
+                                        .font(.system(.caption2, design: .monospaced).weight(.bold))
+                                        .foregroundStyle(.secondary)
                                 }
-                                ProgressView(value: card.complianceRatePercent, total: 100.0)
+                                ProgressView(value: card.complianceRatePercent, total: maxCompliance)
                                     .tint(card.complianceRatePercent >= 98.0 ? .green : .orange)
                             }
                         }

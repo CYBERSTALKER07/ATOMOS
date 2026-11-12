@@ -1,7 +1,7 @@
 import SwiftUI
 
 public struct MenuBarStatusView: View {
-    @ObservedObject var viewModel: ControlTowerViewModel
+    var viewModel: ControlTowerViewModel
 
     public init(viewModel: ControlTowerViewModel) {
         self.viewModel = viewModel
@@ -17,10 +17,12 @@ public struct MenuBarStatusView: View {
                 Text("PegasusX Control Tower")
                     .font(.headline)
                 Spacer()
-                Text("3 Cells")
+                Text("\(viewModel.cells.isEmpty ? 3 : viewModel.cells.count) Cells")
                     .font(.system(.caption, design: .monospaced))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("PegasusX Control Tower, \(viewModel.cells.isEmpty ? 3 : viewModel.cells.count) active cells")
 
             Divider()
 
@@ -34,27 +36,30 @@ public struct MenuBarStatusView: View {
                         .font(.system(.caption, design: .monospaced))
                         .fontWeight(.bold)
                 }
+                .accessibilityElement(children: .combine)
 
+                let totalDLQ = viewModel.kafkaPartitions.reduce(0) { $0 + $1.dlqCount }
                 HStack {
                     Text("Kafka DLQ Backlog:")
                         .font(.caption)
                     Spacer()
-                    let totalDLQ = viewModel.kafkaPartitions.reduce(0) { $0 + $1.dlqCount }
                     Text("\(totalDLQ) messages")
                         .font(.system(.caption, design: .monospaced))
                         .fontWeight(.bold)
-                        .foregroundColor(totalDLQ > 0 ? .red : .green)
+                        .foregroundStyle(totalDLQ > 0 ? Color.red : Color.green)
                 }
+                .accessibilityElement(children: .combine)
 
                 HStack {
                     Text("Active Perspective:")
-                        .font(.caption)
+                    .font(.caption)
                     Spacer()
                     Text(viewModel.selectedRole.rawValue)
                         .font(.caption)
                         .fontWeight(.semibold)
-                        .foregroundColor(.blue)
+                        .foregroundStyle(.blue)
                 }
+                .accessibilityElement(children: .combine)
             }
 
             Divider()
@@ -62,6 +67,7 @@ public struct MenuBarStatusView: View {
             // Quick App Controls
             HStack(spacing: 8) {
                 Button("Open Window") {
+                    ControlTowerHaptics.alignment()
                     NSApp.activate(ignoringOtherApps: true)
                     if let window = NSApp.windows.first(where: { $0.canBecomeMain }) {
                         window.makeKeyAndOrderFront(nil)
@@ -69,12 +75,14 @@ public struct MenuBarStatusView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .font(.caption)
+                .accessibilityLabel("Open Control Tower Main Window")
 
                 Button("Refresh") {
-                    Task { await viewModel.initialLoad() }
+                    viewModel.refresh()
                 }
                 .buttonStyle(.bordered)
                 .font(.caption)
+                .accessibilityLabel("Refresh Telemetry")
 
                 Spacer()
 
@@ -83,7 +91,10 @@ public struct MenuBarStatusView: View {
                 }
                 .buttonStyle(.plain)
                 .font(.caption)
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
+                .frame(minWidth: 36, minHeight: 28)
+                .contentShape(Rectangle())
+                .accessibilityLabel("Quit Pegasus Control Tower")
             }
         }
         .padding(14)

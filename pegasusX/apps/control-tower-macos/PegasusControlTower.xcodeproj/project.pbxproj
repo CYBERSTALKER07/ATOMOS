@@ -12,12 +12,14 @@
 		0AB7BEB448C19B73E6CEE825 /* ExportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCCA18CC4EBF4C5914A310A0 /* ExportService.swift */; };
 		0C71071E7A677B0D8904B827 /* FinOpsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5628C9E085B9746F4AF552C0 /* FinOpsView.swift */; };
 		17226DA297E384BDFD7D38CE /* InfraHealthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93C3BA2630F591340212F884 /* InfraHealthView.swift */; };
+		2B7B6FB53C2BE94850609578 /* ControlTowerHaptics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27B0FFCD2027E4461721923D /* ControlTowerHaptics.swift */; };
 		2C9B514C7DED3ECCB065721F /* ControlTowerAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D84C801C989AEB1DA6844D3 /* ControlTowerAPIClient.swift */; };
 		370AC87F4B771B3B58A21F8A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 4CC93130F908B38071DB06BF /* Assets.xcassets */; };
 		418277076780153C773BB0B2 /* InfraModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 635E474C6597FA2A951F515E /* InfraModels.swift */; };
 		499D8C33CE34C69498FAD851 /* InspectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1AB147861CFA84F6FAFC3F82 /* InspectorView.swift */; };
 		4FB2EFBBCB8D1F1872F9F90E /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9ACAEC33595EA6FAAF2ACF2B /* SidebarView.swift */; };
 		5DADA20B9AE53C36B7DADEB4 /* WebSocketStreamClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6780CE329710338A30F81CCC /* WebSocketStreamClient.swift */; };
+		6400B459C16B6F71E0F784FB /* ControlTowerHaptics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27B0FFCD2027E4461721923D /* ControlTowerHaptics.swift */; };
 		6EA2840F2A551205CCB1CADE /* FinOpsModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53154162645A7DEBB92F5A1F /* FinOpsModels.swift */; };
 		757A4159A80B6BF238A473F1 /* ExportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCCA18CC4EBF4C5914A310A0 /* ExportService.swift */; };
 		7A59E0FDF5DF94D7E80C2E33 /* PegasusControlTowerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B817B102CAA1CC10DFF72CE /* PegasusControlTowerApp.swift */; };
@@ -25,6 +27,7 @@
 		7F824313D5C2B5F5D91AF8A2 /* AnalyticsScorecardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C13A3AF859F4CF95A3C62E61 /* AnalyticsScorecardView.swift */; };
 		876957DB90432D184D62B34A /* TelemetryStreamView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D582328462FA60D5F4184503 /* TelemetryStreamView.swift */; };
 		8C8FE8374987B0CE036360CE /* OverviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3FB1F16B228E22A58882E09 /* OverviewView.swift */; };
+		9D8981483446C75D494E07DF /* DesktopKeyboardCheatsheetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F8BEA15DACC5329C8F96484 /* DesktopKeyboardCheatsheetView.swift */; };
 		A1AF4504C805176F15E5A386 /* MenuBarStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7AE046B28D4B66138F9F13D /* MenuBarStatusView.swift */; };
 		A5054FF9395E2BEC743873C4 /* FinOpsModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53154162645A7DEBB92F5A1F /* FinOpsModels.swift */; };
 		A98911F737A3264B59829846 /* WebSocketStreamClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6780CE329710338A30F81CCC /* WebSocketStreamClient.swift */; };
@@ -42,6 +45,7 @@
 		0B817B102CAA1CC10DFF72CE /* PegasusControlTowerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PegasusControlTowerApp.swift; sourceTree = "<group>"; };
 		1AB147861CFA84F6FAFC3F82 /* InspectorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InspectorView.swift; sourceTree = "<group>"; };
 		220CD902A4C65F350F8DDB20 /* MainSplitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainSplitView.swift; sourceTree = "<group>"; };
+		27B0FFCD2027E4461721923D /* ControlTowerHaptics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControlTowerHaptics.swift; sourceTree = "<group>"; };
 		42915969A20E8B1344F060A4 /* ControlTowerTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControlTowerTheme.swift; sourceTree = "<group>"; };
 		4CC93130F908B38071DB06BF /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		4D84C801C989AEB1DA6844D3 /* ControlTowerAPIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControlTowerAPIClient.swift; sourceTree = "<group>"; };
@@ -53,6 +57,7 @@
 		8D786CB8CA73371AF0C864A3 /* PegasusControlTower.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PegasusControlTower.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		93C3BA2630F591340212F884 /* InfraHealthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InfraHealthView.swift; sourceTree = "<group>"; };
 		9ACAEC33595EA6FAAF2ACF2B /* SidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarView.swift; sourceTree = "<group>"; };
+		9F8BEA15DACC5329C8F96484 /* DesktopKeyboardCheatsheetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesktopKeyboardCheatsheetView.swift; sourceTree = "<group>"; };
 		A5D91B33E5733188A70DFD53 /* ControlTowerViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControlTowerViewModel.swift; sourceTree = "<group>"; };
 		B7AE046B28D4B66138F9F13D /* MenuBarStatusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarStatusView.swift; sourceTree = "<group>"; };
 		C10D15A1A39DC2A03D863B72 /* TelemetryModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TelemetryModels.swift; sourceTree = "<group>"; };
@@ -115,6 +120,7 @@
 			isa = PBXGroup;
 			children = (
 				4D84C801C989AEB1DA6844D3 /* ControlTowerAPIClient.swift */,
+				27B0FFCD2027E4461721923D /* ControlTowerHaptics.swift */,
 				DCCA18CC4EBF4C5914A310A0 /* ExportService.swift */,
 				6780CE329710338A30F81CCC /* WebSocketStreamClient.swift */,
 			);
@@ -146,6 +152,7 @@
 			isa = PBXGroup;
 			children = (
 				C13A3AF859F4CF95A3C62E61 /* AnalyticsScorecardView.swift */,
+				9F8BEA15DACC5329C8F96484 /* DesktopKeyboardCheatsheetView.swift */,
 				5628C9E085B9746F4AF552C0 /* FinOpsView.swift */,
 				93C3BA2630F591340212F884 /* InfraHealthView.swift */,
 				1AB147861CFA84F6FAFC3F82 /* InspectorView.swift */,
@@ -245,6 +252,7 @@
 			files = (
 				EA4D30CE8C39C29712E9C802 /* AnalyticsModels.swift in Sources */,
 				2C9B514C7DED3ECCB065721F /* ControlTowerAPIClient.swift in Sources */,
+				2B7B6FB53C2BE94850609578 /* ControlTowerHaptics.swift in Sources */,
 				0514D491539A7BF157081CF8 /* ControlTowerTests.swift in Sources */,
 				C26AE4627B04DFC758938664 /* ControlTowerViewModel.swift in Sources */,
 				0AB7BEB448C19B73E6CEE825 /* ExportService.swift in Sources */,
@@ -262,8 +270,10 @@
 				D9D2757BEF198C6C519CC24E /* AnalyticsModels.swift in Sources */,
 				7F824313D5C2B5F5D91AF8A2 /* AnalyticsScorecardView.swift in Sources */,
 				DE19441B10F3BBFDA400E577 /* ControlTowerAPIClient.swift in Sources */,
+				6400B459C16B6F71E0F784FB /* ControlTowerHaptics.swift in Sources */,
 				C814DDE254E6953E408EB57D /* ControlTowerTheme.swift in Sources */,
 				CFBB4761077108A4D70804EF /* ControlTowerViewModel.swift in Sources */,
+				9D8981483446C75D494E07DF /* DesktopKeyboardCheatsheetView.swift in Sources */,
 				757A4159A80B6BF238A473F1 /* ExportService.swift in Sources */,
 				A5054FF9395E2BEC743873C4 /* FinOpsModels.swift in Sources */,
 				0C71071E7A677B0D8904B827 /* FinOpsView.swift in Sources */,

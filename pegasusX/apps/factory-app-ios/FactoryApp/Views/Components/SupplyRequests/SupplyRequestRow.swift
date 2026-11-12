@@ -30,5 +30,8 @@ struct SupplyRequestRow: View {
             }
         }
         .padding(.vertical, LabTheme.spacingXS)
+        .frame(minHeight: 44)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Supply request \(request.id.prefix(8)), status \(request.state), priority \(request.priority), \(Int(request.totalVolumeVU)) volume units")
     }
 }

@@ -6,12 +6,14 @@ struct OverrideTransferRow: View {
     let canMove: Bool
     let onMove: () -> Void
     let onRelease: () -> Void
-    
+
     var body: some View {
+        let titleText = transfer.productName.isEmpty ? "Transfer \(transfer.id.prefix(8))" : transfer.productName
+
         VStack(spacing: LabTheme.spacingSM) {
             HStack {
                 VStack(alignment: .leading) {
-                    Text(transfer.productName.isEmpty ? "Transfer \(transfer.id.prefix(8))" : transfer.productName)
+                    Text(titleText)
                         .font(.subheadline.bold())
                     Text(transfer.id.prefix(8))
                         .font(.caption.monospaced())
@@ -20,24 +22,36 @@ struct OverrideTransferRow: View {
                 Spacer()
                 FactoryStatusBadge(text: transfer.state)
             }
-            
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("\(titleText), status \(transfer.state)")
+
             HStack {
                 MetricBox(label: "Qty", value: "\(transfer.quantity)")
                 MetricBox(label: "Volume", value: "\(Int(transfer.volumeVU)) VU")
             }
-            
+
             HStack {
-                Button("mobile_factory.ui.move", action: onMove)
+                Button("mobile_factory.ui.move") {
+                    PegasusHaptics.selection()
+                    onMove()
+                }
                 .buttonStyle(.borderedProminent)
+                .frame(minWidth: 44, minHeight: 44)
                 .disabled(isProcessing || !canMove)
-                
-                Button("mobile_factory.ui.release", action: onRelease)
+                .accessibilityLabel("Move \(titleText) to another manifest")
+
+                Button("mobile_factory.ui.release") {
+                    PegasusHaptics.warning()
+                    onRelease()
+                }
                 .buttonStyle(.bordered)
+                .frame(minWidth: 44, minHeight: 44)
                 .disabled(isProcessing)
+                .accessibilityLabel("Release \(titleText) from manifest")
             }
         }
         .padding()
         .background(Color(uiColor: .systemBackground))
-        .cornerRadius(LabTheme.radiusMD)
+        .clipShape(RoundedRectangle(cornerRadius: LabTheme.radiusMD, style: .continuous))
     }
 }

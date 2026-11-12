@@ -1,7 +1,7 @@
 import SwiftUI
 
 public struct OverviewView: View {
-    @ObservedObject var viewModel: ControlTowerViewModel
+    var viewModel: ControlTowerViewModel
     @State private var isPulsing: Bool = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -20,16 +20,16 @@ public struct OverviewView: View {
                                 .font(.system(.title2, design: .rounded))
                                 .fontWeight(.bold)
                             Text("PROD-CELL")
-                                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                                .font(.system(.caption2, design: .monospaced).weight(.bold))
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
                                 .background(Color.blue.opacity(0.15))
-                                .foregroundColor(.blue)
+                                .foregroundStyle(.blue)
                                 .clipShape(Capsule())
                         }
                         Text("Enterprise-grade real-time telemetry across multi-cell infrastructure and settlement engines.")
                             .font(.subheadline)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
                     Spacer()
 
@@ -49,8 +49,8 @@ public struct OverviewView: View {
                                 .frame(width: 8, height: 8)
                         }
                         Text("ALL CELLS OPERATIONAL")
-                            .font(.system(size: 11, weight: .bold, design: .monospaced))
-                            .foregroundColor(.green)
+                            .font(.system(.caption, design: .monospaced).weight(.bold))
+                            .foregroundStyle(.green)
                     }
                     .padding(.horizontal, 12)
                     .padding(.vertical, 7)
@@ -63,7 +63,7 @@ public struct OverviewView: View {
                     .accessibilityElement(children: .combine)
                     .accessibilityLabel("Operational Status: All Cells Operational")
                 }
-                .onAppear { isPulsing = true }
+                .task { isPulsing = true }
 
                 // Top KPI Grid with Glassmorphic Elevation
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
@@ -112,7 +112,7 @@ public struct OverviewView: View {
                                 .frame(width: 36, height: 36)
                             Image(systemName: "exclamationmark.triangle.fill")
                                 .font(.title3)
-                                .foregroundColor(.orange)
+                                .foregroundStyle(.orange)
                         }
                         VStack(alignment: .leading, spacing: 3) {
                             Text("Dead-Letter Queue Backlog Alert (Kafka topic: compliance.fiscal.soliq)")
@@ -120,15 +120,15 @@ public struct OverviewView: View {
                                 .fontWeight(.bold)
                             Text("3 poison messages held in DLQ partition 2 awaiting Soliq endpoint token renewal. Auto-quarantine engaged.")
                                 .font(.caption)
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                         }
                         Spacer()
                         Button("Triage in Telemetry") {
-                            viewModel.selectedSection = .telemetry
-                            viewModel.selectedSeverity = .error
+                            viewModel.triageDLQInTelemetry()
                         }
                         .buttonStyle(.borderedProminent)
                         .tint(.orange)
+                        .accessibilityLabel("Triage Dead-Letter Queue in Telemetry")
                     }
                     .padding(14)
                     .background(.ultraThinMaterial)
@@ -148,10 +148,11 @@ public struct OverviewView: View {
                         Spacer()
                         Text("\(viewModel.cells.count) Live Nodes")
                             .font(.system(.caption, design: .monospaced))
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
 
                     ForEach(viewModel.cells) { cell in
+                        let maxCpuPercent = 100.0
                         HStack(spacing: 16) {
                             // Status indicator & Cell ID
                             VStack(alignment: .leading, spacing: 3) {
@@ -164,11 +165,11 @@ public struct OverviewView: View {
                                         .fontWeight(.bold)
                                     Text("• \(cell.region)")
                                         .font(.subheadline)
-                                        .foregroundColor(.secondary)
+                                        .foregroundStyle(.secondary)
                                 }
                                 Text("Role: \(cell.role) • \(cell.activeNodes) Cluster Nodes Active")
                                     .font(.caption)
-                                    .foregroundColor(.secondary)
+                                    .foregroundStyle(.secondary)
                             }
 
                             Spacer()
@@ -178,12 +179,12 @@ public struct OverviewView: View {
                                 HStack(spacing: 6) {
                                     Text("Load:")
                                         .font(.caption2)
-                                        .foregroundColor(.secondary)
+                                        .foregroundStyle(.secondary)
                                     Text("\(String(format: "%.1f", cell.cpuPercent))% CPU")
                                         .font(.system(.caption, design: .monospaced))
                                         .fontWeight(.semibold)
                                 }
-                                ProgressView(value: cell.cpuPercent, total: 100.0)
+                                ProgressView(value: cell.cpuPercent, total: maxCpuPercent)
                                     .frame(width: 90)
                                     .tint(cell.cpuPercent > 80 ? .red : (cell.cpuPercent > 60 ? .orange : .blue))
                             }
@@ -196,7 +197,7 @@ public struct OverviewView: View {
                                     .monospacedDigit()
                                 Text("Throughput")
                                     .font(.caption2)
-                                    .foregroundColor(.secondary)
+                                    .foregroundStyle(.secondary)
                             }
                             .frame(minWidth: 70, alignment: .trailing)
 
@@ -204,11 +205,11 @@ public struct OverviewView: View {
                                 Text("\(String(format: "%.1f", cell.p99LatencyMs)) ms")
                                     .font(.system(.caption, design: .monospaced))
                                     .fontWeight(.bold)
-                                    .foregroundColor(.teal)
+                                    .foregroundStyle(.teal)
                                     .monospacedDigit()
                                 Text("P99 Latency")
                                     .font(.caption2)
-                                    .foregroundColor(.secondary)
+                                    .foregroundStyle(.secondary)
                             }
                             .frame(minWidth: 70, alignment: .trailing)
                         }
@@ -227,6 +228,9 @@ public struct OverviewView: View {
                         )
                         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                         .shadow(color: Color.black.opacity(0.04), radius: 6, x: 0, y: 2)
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel("Cell \(cell.cellId), \(cell.region), Role \(cell.role), \(cell.activeNodes) cluster nodes active")
+                        .accessibilityValue("CPU Load \(String(format: "%.1f", cell.cpuPercent)) percent, Throughput \(cell.qps) QPS, P99 Latency \(String(format: "%.1f", cell.p99LatencyMs)) milliseconds")
                     }
                 }
 
@@ -241,12 +245,12 @@ public struct OverviewView: View {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(title.uppercased())
-                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .font(.system(.caption2, design: .monospaced).weight(.bold))
                         .tracking(0.8)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                     Text(trend)
-                        .font(.system(size: 9, weight: .bold, design: .monospaced))
-                        .foregroundColor(color)
+                        .font(.system(.caption2, design: .monospaced).weight(.bold))
+                        .foregroundStyle(color)
                         .padding(.horizontal, 5)
                         .padding(.vertical, 2)
                         .background(color.opacity(0.12))
@@ -258,18 +262,18 @@ public struct OverviewView: View {
                         .fill(color.opacity(0.15))
                         .frame(width: 36, height: 36)
                     Image(systemName: icon)
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(color)
+                        .font(.headline.weight(.semibold))
+                        .foregroundStyle(color)
                 }
             }
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(value)
-                    .font(.system(size: 22, weight: .bold, design: .monospaced))
+                    .font(.system(.title2, design: .monospaced).weight(.bold))
                     .monospacedDigit()
                 Text(subtext)
                     .font(.caption2)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
         }
         .padding(16)
