@@ -5,6 +5,8 @@ struct EmpathyEngineSection: View {
     @Binding var showHistoryAlert: Bool
     var toggleAction: (Bool, Bool) async -> Void
 
+    @State private var toggleValue = false
+
     var body: some View {
         LabCard {
             VStack(alignment: .leading, spacing: 0) {
@@ -12,11 +14,11 @@ struct EmpathyEngineSection: View {
 
                 HStack(spacing: AppTheme.spacingMD) {
                     ZStack {
-                        RoundedRectangle(cornerRadius: AppTheme.radiusSM)
+                        RoundedRectangle(cornerRadius: AppTheme.radiusSM, style: .continuous)
                             .fill(AppTheme.surfaceElevated)
                             .frame(width: 36, height: 36)
                         Image(systemName: "arrow.triangle.2.circlepath")
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(.system(.subheadline, weight: .semibold))
                             .foregroundStyle(AppTheme.textPrimary)
                     }
 
@@ -31,27 +33,19 @@ struct EmpathyEngineSection: View {
 
                     Spacer()
 
-                    Toggle("", isOn: Binding(
-                        get: { globalAutoOrder },
-                        set: { newVal in
-                            globalAutoOrder = newVal
-                            if newVal {
-                                showHistoryAlert = true
-                            } else {
-                                Task { await toggleAction(false, false) }
-                            }
-                        }
-                    ))
+                    Toggle("", isOn: $toggleValue)
                         .tint(AppTheme.accent)
                         .labelsHidden()
+                        .accessibilityLabel("Auto-order everything")
                 }
+                .frame(minHeight: 44)
                 .padding(.horizontal, AppTheme.spacingLG)
                 .padding(.vertical, AppTheme.spacingMD)
 
                 if globalAutoOrder {
                     HStack(spacing: AppTheme.spacingSM) {
                         Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: 12))
+                            .font(.caption)
                             .foregroundStyle(AppTheme.success)
                         Text("mobile_retailer.ui.global_auto_order_is_active_this_overrides_individual_supplier_a")
                             .font(.system(.caption2, design: .rounded))
@@ -64,6 +58,24 @@ struct EmpathyEngineSection: View {
             }
         }
         .animation(AnimationConstants.express, value: globalAutoOrder)
+        .onAppear {
+            toggleValue = globalAutoOrder
+        }
+        .onChange(of: globalAutoOrder) { _, newValue in
+            if toggleValue != newValue {
+                toggleValue = newValue
+            }
+        }
+        .onChange(of: toggleValue) { _, newValue in
+            guard newValue != globalAutoOrder else { return }
+            Haptics.selection()
+            globalAutoOrder = newValue
+            if newValue {
+                showHistoryAlert = true
+            } else {
+                Task { await toggleAction(false, false) }
+            }
+        }
         .alert("Use Previous Analytics?", isPresented: $showHistoryAlert, actions: {
             Button("mobile_retailer.ui.use_history") {
                 Task { await toggleAction(true, true) }

@@ -2,30 +2,26 @@ import SwiftUI
 
 struct MySuppliersView: View {
     @State private var refreshCenter = RetailerRefreshCenter.shared
-    @State private var suppliers: [Supplier] = []
-    @State private var isLoading = false
-    @State private var errorMessage: String?
-    @State private var autoOrderSettings = SimpleAutoOrderSettings.default
-    @State private var showConnectSheet = false
-    @State private var supplierPendingRemoval: Supplier?
+    @State private var vm = MySuppliersViewModel()
 
-    private let api = APIClient.shared
     private let columns = [GridItem(.adaptive(minimum: 160), spacing: 14)]
 
     var body: some View {
+        @Bindable var vm = vm
+
         ScrollView {
-            if isLoading && suppliers.isEmpty {
+            if vm.isLoading && vm.suppliers.isEmpty {
                 skeletonGrid(cardCount: 6)
-            } else if suppliers.isEmpty && !isLoading {
+            } else if vm.suppliers.isEmpty && !vm.isLoading {
                 emptyState
             } else {
                 VStack(alignment: .leading, spacing: AppTheme.spacingLG) {
-                    if let errorMessage, !errorMessage.isEmpty {
+                    if let errorMessage = vm.errorMessage, !errorMessage.isEmpty {
                         syncStatusBanner(errorMessage)
                     }
 
                     LazyVGrid(columns: columns, spacing: AppTheme.spacingLG) {
-                        ForEach(Array(suppliers.enumerated()), id: \.element.id) { index, supplier in
+                        ForEach(Array(vm.suppliers.enumerated()), id: \.element.id) { index, supplier in
                             NavigationLink {
                                 SupplierProductsView(supplier: supplier)
                             } label: {
@@ -34,7 +30,7 @@ struct MySuppliersView: View {
                             .buttonStyle(.pressable)
                             .contextMenu {
                                 Button("mobile_retailer.ui.remove_vendor", role: .destructive) {
-                                    supplierPendingRemoval = supplier
+                                    vm.promptRemoval(for: supplier)
                                 }
                             }
                             .staggeredSlideIn(index: index)
@@ -46,41 +42,53 @@ struct MySuppliersView: View {
                 .padding(.bottom, AppTheme.spacingXXL)
             }
         }
+        .scrollDismissesKeyboard(.interactively)
         .scrollIndicators(.hidden)
         .background(AppTheme.background)
         .navigationTitle("mobile_retailer.ui.my_suppliers")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button("mobile_retailer.ui.connect") { showConnectSheet = true }
+                Button("mobile_retailer.ui.connect") {
+                    Haptics.light()
+                    vm.showConnectSheet = true
+                }
+                .pegasusMinimumHitTarget()
+                .accessibilityLabel("Connect supplier")
             }
         }
-        .sheet(isPresented: $showConnectSheet) {
-            ConnectSupplierSheet(existingSuppliers: suppliers) {
-                await loadSuppliers()
+        .sheet(isPresented: $vm.showConnectSheet) {
+            NavigationStack {
+                ConnectSupplierSheet(existingSuppliers: vm.suppliers) {
+                    await vm.loadSuppliers()
+                }
             }
         }
         .confirmationDialog(
             "Remove vendor?",
-            isPresented: Binding(
-                get: { supplierPendingRemoval != nil },
-                set: { if !$0 { supplierPendingRemoval = nil } }
-            ),
+            isPresented: $vm.showRemoveConfirmation,
             titleVisibility: .visible
         ) {
-            if let supplier = supplierPendingRemoval {
+            if let supplier = vm.supplierPendingRemoval {
                 Button(L10n.format("mobile_retailer.ui.remove_name", "\(supplier.name)"), role: .destructive) {
-                    Task { await removeSupplier(supplier.id) }
+                    Task { await vm.removeSupplier(supplier.id) }
                 }
             }
-            Button("common.action.cancel", role: .cancel) { supplierPendingRemoval = nil }
+            Button("common.action.cancel", role: .cancel) {
+                vm.cancelRemoval()
+            }
         } message: {
-            if let supplier = supplierPendingRemoval {
+            if let supplier = vm.supplierPendingRemoval {
                 Text(L10n.format("mobile_retailer.ui.name_will_be_removed_from_your_connected_suppliers", "\(supplier.name)"))
             }
         }
-        .task { await loadSuppliers() }
-        .task(id: refreshCenter.refreshToken) { await loadSuppliers() }
-        .refreshable { await loadSuppliers() }
+        .onChange(of: vm.showRemoveConfirmation) { _, isPresented in
+            if !isPresented {
+                vm.supplierPendingRemoval = nil
+            }
+        }
+        .task { await vm.loadSuppliers() }
+        .task(id: refreshCenter.refreshToken) { await vm.loadSuppliers() }
+        .refreshable { await vm.loadSuppliers() }
     }
 
     private func supplierCard(_ supplier: Supplier) -> some View {
@@ -95,9 +103,9 @@ struct MySuppliersView: View {
                         .foregroundStyle(AppTheme.textSecondary)
                 }
                 Spacer()
-                if autoOrderSettings.supplierSettings[supplier.id] == true {
+                if vm.autoOrderSettings.supplierSettings[supplier.id] == true {
                     Image(systemName: "arrow.triangle.2.circlepath")
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.caption.weight(.semibold))
                         .foregroundStyle(AppTheme.success)
                 }
             }
@@ -126,12 +134,14 @@ struct MySuppliersView: View {
         .background(AppTheme.cardBackground)
         .clipShape(.rect(cornerRadius: AppTheme.radiusCard))
         .shadow(color: AppTheme.shadowColor, radius: 4, x: 0, y: 2)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(supplier.name)\(supplier.displayCategory.map { ", \($0)" } ?? ""), \(supplier.orderCount) orders")
     }
 
     private func syncStatusBanner(_ message: String) -> some View {
         HStack(spacing: AppTheme.spacingSM) {
             Image(systemName: "exclamationmark.triangle.fill")
-                .font(.system(size: 12, weight: .semibold))
+                .font(.caption.weight(.semibold))
                 .foregroundStyle(AppTheme.warning)
             Text(message)
                 .font(.system(.caption, design: .rounded, weight: .medium))
@@ -139,10 +149,13 @@ struct MySuppliersView: View {
                 .lineLimit(3)
             Spacer()
             Button("common.action.retry") {
-                Task { await loadSuppliers() }
+                Haptics.light()
+                Task { await vm.loadSuppliers() }
             }
             .font(.system(.caption, design: .rounded, weight: .semibold))
             .foregroundStyle(AppTheme.accent)
+            .pegasusMinimumHitTarget()
+            .accessibilityLabel("Retry loading suppliers")
         }
         .padding(.horizontal, AppTheme.spacingMD)
         .padding(.vertical, AppTheme.spacingSM)
@@ -155,20 +168,25 @@ struct MySuppliersView: View {
             Spacer(minLength: 100)
             ZStack {
                 Circle().fill(AppTheme.surfaceElevated).frame(width: 80, height: 80)
-                Image(systemName: "building.2").font(.system(size: 32)).foregroundStyle(AppTheme.textTertiary)
+                Image(systemName: "building.2")
+                    .font(.title)
+                    .foregroundStyle(AppTheme.textTertiary)
             }
+            .accessibilityHidden(true)
+
             Text("mobile_retailer.ui.no_suppliers_yet")
                 .font(.system(.headline, design: .rounded))
                 .foregroundStyle(AppTheme.textPrimary)
-            Text(errorMessage ?? "Connect vendors from the network or browse category catalogs.")
+            Text(vm.errorMessage ?? "Connect vendors from the network or browse category catalogs.")
                 .font(.system(.subheadline, design: .rounded))
                 .foregroundStyle(AppTheme.textTertiary)
                 .multilineTextAlignment(.center)
-            Button(errorMessage == nil ? "Connect vendor" : "Retry") {
-                if errorMessage == nil {
-                    showConnectSheet = true
+            Button(vm.errorMessage == nil ? "Connect vendor" : "Retry") {
+                Haptics.medium()
+                if vm.errorMessage == nil {
+                    vm.showConnectSheet = true
                 } else {
-                    Task { await loadSuppliers() }
+                    Task { await vm.loadSuppliers() }
                 }
             }
             .font(.system(.subheadline, design: .rounded, weight: .semibold))
@@ -177,33 +195,11 @@ struct MySuppliersView: View {
             .padding(.vertical, AppTheme.spacingMD)
             .background(AppTheme.textPrimary)
             .clipShape(.rect(cornerRadius: AppTheme.radiusButton))
+            .pegasusMinimumHitTarget()
+            .accessibilityLabel(vm.errorMessage == nil ? "Connect vendor" : "Retry loading suppliers")
             Spacer()
         }
         .padding(AppTheme.spacingXL)
-    }
-
-    private func loadSuppliers() async {
-        isLoading = true
-        errorMessage = nil
-        do {
-            let result: [Supplier] = try await api.get(path: "/v1/retailer/suppliers")
-            suppliers = result.isEmpty ? Supplier.samples : result
-        } catch {
-            suppliers = Supplier.samples
-            errorMessage = nil
-        }
-        isLoading = false
-    }
-
-    private func removeSupplier(_ supplierId: String) async {
-        do {
-            try await RetailerSupplierDiscoveryService.removeSupplier(api: api, supplierId: supplierId)
-            supplierPendingRemoval = nil
-            await loadSuppliers()
-        } catch {
-            errorMessage = error.localizedDescription
-            supplierPendingRemoval = nil
-        }
     }
 
     private func skeletonGrid(cardCount: Int) -> some View {

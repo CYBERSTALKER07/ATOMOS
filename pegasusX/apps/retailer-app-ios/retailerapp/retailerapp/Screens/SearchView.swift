@@ -3,84 +3,82 @@ import SwiftUI
 struct SearchView: View {
     @Environment(CartManager.self) private var cart
     @State private var refreshCenter = RetailerRefreshCenter.shared
-    @State private var searchText = ""
-    @State private var products: [Product] = []
-    @State private var selectedProduct: Product?
+    @State private var vm = SearchViewModel()
     @FocusState private var isSearchFocused: Bool
 
-    private let api = APIClient.shared
     private let columns = [GridItem(.adaptive(minimum: 160), spacing: 14)]
 
-    var filteredProducts: [Product] {
-        guard !searchText.isEmpty else { return [] }
-        return products.filter {
-            $0.name.localizedCaseInsensitiveContains(searchText) ||
-            $0.description.localizedCaseInsensitiveContains(searchText)
-        }
-    }
-
     var body: some View {
+        @Bindable var vm = vm
+
         VStack(spacing: 0) {
-            // Search Bar
             HStack(spacing: AppTheme.spacingMD) {
                 Image(systemName: "magnifyingglass")
-                    .font(.system(size: 16, weight: .medium))
+                    .font(.callout.weight(.medium))
                     .foregroundStyle(AppTheme.textTertiary)
+                    .accessibilityHidden(true)
 
-                TextField("mobile_retailer.ui.search_all_products", text: $searchText)
+                TextField("mobile_retailer.ui.search_all_products", text: $vm.searchText)
                     .font(.system(.body, design: .rounded))
                     .textFieldStyle(.plain)
                     .focused($isSearchFocused)
                     .submitLabel(.search)
                     .autocorrectionDisabled()
+                    .accessibilityLabel("Search all products")
 
-                if !searchText.isEmpty {
+                if !vm.searchText.isEmpty {
                     Button {
-                        withAnimation(AnimationConstants.express) { searchText = "" }
+                        withAnimation(AnimationConstants.express) { vm.clearSearch() }
                         isSearchFocused = true
                     } label: {
                         Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 16))
+                            .font(.callout)
                             .foregroundStyle(AppTheme.textTertiary)
+                            .pegasusMinimumHitTarget()
                     }
+                    .accessibilityLabel("Clear search query")
                 }
             }
-            .padding(AppTheme.spacingMD)
-            .padding(.horizontal, AppTheme.spacingSM)
+            .padding(.horizontal, AppTheme.spacingMD)
+            .padding(.vertical, AppTheme.spacingXS)
             .defaultFocus($isSearchFocused, true)
 
             Rectangle().fill(AppTheme.separator.opacity(0.3)).frame(height: AppTheme.separatorHeight)
 
-            if searchText.isEmpty {
+            if vm.searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 emptySearchState
-            } else if filteredProducts.isEmpty {
+            } else if vm.filteredProducts.isEmpty {
                 noResultsState
             } else {
                 ScrollView {
                     LazyVGrid(columns: columns, spacing: AppTheme.spacingLG) {
-                        ForEach(Array(filteredProducts.enumerated()), id: \.element.id) { index, product in
+                        ForEach(Array(vm.filteredProducts.enumerated()), id: \.element.id) { index, product in
                             ProductCardView(product: product) {
-                                selectedProduct = product
+                                Haptics.light()
+                                vm.selectedProduct = product
                             }
+                            .accessibilityElement(children: .combine)
+                            .accessibilityLabel("\(product.name), \(product.displayPrice)")
                             .staggeredSlideIn(index: index)
                         }
                     }
                     .padding(AppTheme.spacingLG)
                     .padding(.bottom, AppTheme.spacingXXL)
                 }
+                .scrollDismissesKeyboard(.interactively)
                 .scrollIndicators(.hidden)
             }
         }
         .background(AppTheme.background)
-        .navigationDestination(item: $selectedProduct) { product in
+        .navigationDestination(item: $vm.selectedProduct) { product in
             ProductDetailView(product: product)
         }
         .task {
-            await loadProducts()
+            await vm.loadProducts()
             isSearchFocused = true
         }
-        .task(id: refreshCenter.refreshToken) { await loadProducts() }
-        .refreshable { await loadProducts() }
+        .task(id: refreshCenter.refreshToken) { await vm.loadProducts() }
+        .refreshable { await vm.loadProducts() }
     }
 
     private var emptySearchState: some View {
@@ -88,8 +86,12 @@ struct SearchView: View {
             Spacer()
             ZStack {
                 Circle().fill(AppTheme.accentSoft.opacity(0.3)).frame(width: 80, height: 80)
-                Image(systemName: "magnifyingglass").font(.system(size: 32)).foregroundStyle(AppTheme.accent.opacity(0.4))
+                Image(systemName: "magnifyingglass")
+                    .font(.title)
+                    .foregroundStyle(AppTheme.accent.opacity(0.4))
             }
+            .accessibilityHidden(true)
+
             Text("mobile_retailer.ui.search_products")
                 .font(.system(.headline, design: .rounded))
                 .foregroundStyle(AppTheme.textPrimary)
@@ -100,6 +102,7 @@ struct SearchView: View {
             Spacer()
         }
         .padding(AppTheme.spacingXL)
+        .accessibilityElement(children: .combine)
     }
 
     private var noResultsState: some View {
@@ -107,22 +110,22 @@ struct SearchView: View {
             Spacer()
             ZStack {
                 Circle().fill(AppTheme.warningSoft.opacity(0.3)).frame(width: 80, height: 80)
-                Image(systemName: "exclamationmark.magnifyingglass").font(.system(size: 28)).foregroundStyle(AppTheme.warning.opacity(0.5))
+                Image(systemName: "exclamationmark.magnifyingglass")
+                    .font(.title2)
+                    .foregroundStyle(AppTheme.warning.opacity(0.5))
             }
+            .accessibilityHidden(true)
+
             Text("mobile_retailer.ui.no_results")
                 .font(.system(.headline, design: .rounded))
                 .foregroundStyle(AppTheme.textPrimary)
-            Text(L10n.format("mobile_retailer.ui.no_products_found_in_name", searchText))
+            Text(L10n.format("mobile_retailer.ui.no_products_found_in_name", vm.searchText))
                 .font(.system(.subheadline, design: .rounded))
                 .foregroundStyle(AppTheme.textTertiary)
             Spacer()
         }
         .padding(AppTheme.spacingXL)
-    }
-
-    private func loadProducts() async {
-        do { let r: [Product] = try await api.get(path: "/v1/catalog/products"); products = r }
-        catch { products = [] }
+        .accessibilityElement(children: .combine)
     }
 }
 

@@ -1,23 +1,19 @@
 import SwiftUI
 
 struct ActiveOrderView: View {
-    @State private var activeOrders: [Order] = []
-    @State private var isLoading = false
-    @State private var loadError = false
-
-    private let api = APIClient.shared
+    @State private var vm = ActiveOrderViewModel()
 
     var body: some View {
         ScrollView {
-            if isLoading && activeOrders.isEmpty {
+            if vm.isLoading && vm.activeOrders.isEmpty {
                 SkeletonOrderList()
-            } else if loadError && activeOrders.isEmpty {
-                ErrorStateView { await loadActiveOrders() }
-            } else if activeOrders.isEmpty {
+            } else if vm.loadError && vm.activeOrders.isEmpty {
+                ErrorStateView { await vm.loadActiveOrders() }
+            } else if vm.activeOrders.isEmpty {
                 emptyState
             } else {
                 LazyVStack(spacing: AppTheme.spacingLG) {
-                    ForEach(Array(activeOrders.enumerated()), id: \.element.id) { index, order in
+                    ForEach(Array(vm.activeOrders.enumerated()), id: \.element.id) { index, order in
                         activeOrderCard(order)
                             .staggeredSlideIn(index: index)
                     }
@@ -27,10 +23,11 @@ struct ActiveOrderView: View {
                 .padding(.bottom, AppTheme.spacingXXL)
             }
         }
+        .scrollDismissesKeyboard(.interactively)
         .scrollIndicators(.hidden)
         .background(AppTheme.background)
-        .task { await loadActiveOrders() }
-        .refreshable { await loadActiveOrders() }
+        .task { await vm.loadActiveOrders() }
+        .refreshable { await vm.loadActiveOrders() }
     }
 
     // MARK: - Active Order Card
@@ -45,7 +42,7 @@ struct ActiveOrderView: View {
                             .fill(AppTheme.success.opacity(0.12))
                             .frame(width: 42, height: 42)
                         Image(systemName: "bolt.fill")
-                            .font(.system(size: 16, weight: .semibold))
+                            .font(.body.weight(.semibold))
                             .foregroundStyle(AppTheme.success)
                     }
 
@@ -63,9 +60,9 @@ struct ActiveOrderView: View {
                     HStack(spacing: 6) {
                         Circle()
                             .fill(AppTheme.success)
-                            .frame(width: 6, height: 6) // Slightly smaller
-                        Text("TACTICAL") // Strategic status
-                            .font(.system(size: 10, weight: .black, design: .rounded))
+                            .frame(width: 6, height: 6)
+                        Text("TACTICAL")
+                            .font(.system(.caption2, design: .rounded, weight: .black))
                             .foregroundStyle(AppTheme.success)
                     }
                     .padding(.horizontal, 10).padding(.vertical, 5)
@@ -76,8 +73,8 @@ struct ActiveOrderView: View {
                 // ETA
                 if let eta = order.estimatedDelivery {
                     VStack(spacing: AppTheme.spacingSM) {
-                        Text("mobile_retailer.ui.impact_time") // Tactical label
-                            .font(.system(size: 10, weight: .black, design: .rounded))
+                        Text("mobile_retailer.ui.impact_time")
+                            .font(.system(.caption2, design: .rounded, weight: .black))
                             .foregroundStyle(AppTheme.textTertiary)
                             .tracking(1)
                         CountdownText(targetISO: eta, font: .system(.title2, design: .monospaced, weight: .bold), color: AppTheme.accent)
@@ -86,7 +83,7 @@ struct ActiveOrderView: View {
                     .padding(AppTheme.spacingMD)
                     .background {
                         RoundedRectangle(cornerRadius: AppTheme.radiusMD, style: .continuous)
-                            .fill(AppTheme.accentSoft.opacity(0.12)) // Softer background
+                            .fill(AppTheme.accentSoft.opacity(0.12))
                     }
                 }
 
@@ -127,7 +124,7 @@ struct ActiveOrderView: View {
                 } else if !order.status.hasDeliveryToken {
                     VStack(spacing: AppTheme.spacingSM) {
                         Image(systemName: "lock.fill")
-                            .font(.system(size: 28))
+                            .font(.title2)
                             .foregroundStyle(AppTheme.textTertiary)
                         Text("mobile_retailer.ui.awaiting_dispatch")
                             .font(.system(.caption, design: .rounded, weight: .semibold))
@@ -152,6 +149,8 @@ struct ActiveOrderView: View {
             }
             .padding(AppTheme.spacingLG)
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Active order \(order.id.suffix(3)), \(order.status.displayName), total \(order.displayTotal)")
     }
 
     // MARK: - Empty State
@@ -161,7 +160,9 @@ struct ActiveOrderView: View {
             Spacer(minLength: 80)
             ZStack {
                 Circle().fill(AppTheme.accentSoft.opacity(0.3)).frame(width: 80, height: 80)
-                Image(systemName: "shippingbox").font(.system(size: 32)).foregroundStyle(AppTheme.accent.opacity(0.4))
+                Image(systemName: "shippingbox")
+                    .font(.title)
+                    .foregroundStyle(AppTheme.accent.opacity(0.4))
             }
             Text("mobile_retailer.ui.no_active_orders")
                 .font(.system(.headline, design: .rounded))
@@ -173,30 +174,7 @@ struct ActiveOrderView: View {
             Spacer()
         }
         .padding(AppTheme.spacingXL)
-    }
-
-    // MARK: - API
-
-    private func loadActiveOrders() async {
-        let rid = AuthManager.shared.currentUser?.id ?? ""
-        isLoading = true
-        loadError = false
-        do {
-            let r: [Order] = try await api.get(path: "/v1/retailers/\(rid)/orders")
-            var scopedOrders: [Order] = []
-            for order in r {
-                if order.status == .inTransit || order.status == .dispatched || order.status == .arrived {
-                    scopedOrders.append(order)
-                }
-            }
-            activeOrders = scopedOrders.isEmpty
-                ? Order.samples.filter { $0.status == .inTransit || $0.status == .dispatched || $0.status == .arrived }
-                : scopedOrders
-        } catch {
-            activeOrders = Order.samples.filter { $0.status == .inTransit || $0.status == .dispatched || $0.status == .arrived }
-            loadError = false
-        }
-        isLoading = false
+        .accessibilityElement(children: .combine)
     }
 }
 

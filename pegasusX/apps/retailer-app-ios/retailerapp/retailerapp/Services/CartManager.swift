@@ -13,30 +13,27 @@ final class CartManager {
         items.reduce(0) { $0 + $1.quantity }
     }
 
-    var totalPrice: Double {
-        items.reduce(0) { $0 + $1.totalPrice }
+    var totalPriceMinor: Int64 {
+        items.reduce(0) { $0 + $1.totalPriceMinor }
     }
 
     var quotedSubtotalMinor: Int64?
     var quotedDiscountMinor: Int64 = 0
 
-    var checkoutSubtotal: Double {
-        if let quotedSubtotalMinor {
-            return Double(quotedSubtotalMinor)
-        }
-        return totalPrice
+    var checkoutSubtotalMinor: Int64 {
+        quotedSubtotalMinor ?? totalPriceMinor
     }
 
-    var checkoutDiscount: Double {
-        Double(quotedDiscountMinor)
+    var checkoutDiscountMinor: Int64 {
+        quotedDiscountMinor
     }
 
-    var checkoutTotal: Double {
-        max(0, checkoutSubtotal - checkoutDiscount)
+    var checkoutTotalMinor: Int64 {
+        max(0, checkoutSubtotalMinor - checkoutDiscountMinor)
     }
 
     var displayTotal: String {
-        "\(Int(checkoutTotal).formatted())"
+        checkoutTotalMinor.formatted()
     }
 
     var isEmpty: Bool { items.isEmpty }
@@ -76,7 +73,7 @@ final class CartManager {
             items.remove(at: index)
         } else {
             let cap = items[index].product.cartMaxQuantity
-            items[index].quantity = cap != nil ? min(quantity, cap!) : quantity
+            items[index].quantity = cap.map { min(quantity, $0) } ?? quantity
         }
         Task { await refreshCheckoutQuote() }
     }
@@ -124,7 +121,7 @@ final class CartManager {
                     CheckoutQuoteLine(
                         productID: item.variant.id.isEmpty ? item.product.id : item.variant.id,
                         quantity: Int64(item.quantity),
-                        unitPriceMinor: Int64(item.variant.price)
+                        unitPriceMinor: item.variant.priceMinor
                     )
                 }
                 let quote = try await APIClient.shared.checkoutQuote(
@@ -164,7 +161,7 @@ final class CartManager {
                 UnifiedCheckoutPayload.Item(
                     skuId: item.variant.id.isEmpty ? item.product.id : item.variant.id,
                     quantity: item.quantity,
-                    unitPriceUzs: Int64(item.variant.price)
+                    unitPriceUzs: item.variant.priceMinor
                 )
             },
             deliveryMode: deliveryMode,
@@ -371,14 +368,14 @@ extension CartManager {
             .map { item in
                 let skuID = item.variant.id.isEmpty ? item.product.id : item.variant.id
                 let supplierID = item.product.supplierID ?? ""
-                return "\(skuID):\(supplierID):\(item.quantity):\(Int(item.variant.price))"
+                return "\(skuID):\(supplierID):\(item.quantity):\(item.variant.priceMinor)"
             }
             .joined(separator: "|")
     }
 
     private func cartItem(from serverItem: CartSyncItem, existing: CartItem?) -> CartItem {
         let quantity = max(1, Int(serverItem.quantity))
-        let serverPrice = Double(serverItem.unitPrice)
+        let serverPriceMinor = serverItem.unitPrice
 
         if let existing {
             let updatedVariant = Variant(
@@ -387,7 +384,7 @@ extension CartManager {
                 pack: existing.variant.pack,
                 packCount: existing.variant.packCount,
                 weightPerUnit: existing.variant.weightPerUnit,
-                price: serverPrice
+                priceMinor: serverPriceMinor
             )
             let updatedProduct = Product(
                 id: existing.product.id,
@@ -403,7 +400,7 @@ extension CartManager {
                 categoryName: existing.product.categoryName,
                 sellByBlock: existing.product.sellByBlock,
                 unitsPerBlock: existing.product.unitsPerBlock,
-                price: Int(serverItem.unitPrice),
+                priceMinor: serverPriceMinor,
                 availableStock: existing.product.availableStock,
                 isOutOfStockFlag: existing.product.isOutOfStockFlag,
                 acceptsBackorder: existing.product.acceptsBackorder
@@ -422,7 +419,7 @@ extension CartManager {
             pack: "Per unit",
             packCount: 1,
             weightPerUnit: "1 unit",
-            price: serverPrice
+            priceMinor: serverPriceMinor
         )
         let fallbackProduct = Product(
             id: serverItem.skuId,
@@ -438,7 +435,7 @@ extension CartManager {
             categoryName: nil,
             sellByBlock: false,
             unitsPerBlock: nil,
-            price: Int(serverItem.unitPrice),
+            priceMinor: serverPriceMinor,
             availableStock: nil
         )
         return CartItem(
@@ -499,7 +496,7 @@ extension CartManager {
                 skuId: skuID,
                 supplierId: supplierID,
                 quantity: Int64(item.quantity),
-                unitPrice: Int64(item.variant.price),
+                unitPrice: item.variant.priceMinor,
                 currency: packCurrency(MarketPackStore.pack)
             )
         }

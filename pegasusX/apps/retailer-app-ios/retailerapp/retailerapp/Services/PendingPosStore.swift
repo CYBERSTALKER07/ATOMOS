@@ -1,13 +1,13 @@
 import Foundation
 
-/// Durable offline POS cash-sale queue (UserDefaults JSON). Survives app restart.
+/// Durable offline POS cash-sale queue backed by Keychain (Invariant I1 & §3.3). Survives app restart.
 final class PendingPosStore {
     static let shared = PendingPosStore()
     private let key = "retailer_pending_pos_sales_v1"
-    private let defaults = UserDefaults.standard
     private let lock = NSLock()
+    private var memoryFallback: [Entry]?
 
-    struct Entry: Codable, Identifiable {
+    struct Entry: Codable, Identifiable, Equatable {
         var id: String { clientSaleId }
         let clientSaleId: String
         let clientReceipt: String
@@ -19,16 +19,12 @@ final class PendingPosStore {
         var lastError: String?
     }
 
-    private init() {}
+    init() {}
 
     func list() -> [Entry] {
         lock.lock()
         defer { lock.unlock() }
-        guard let data = defaults.data(forKey: key),
-              let rows = try? JSONDecoder().decode([Entry].self, from: data) else {
-            return []
-        }
-        return rows.sorted { $0.createdAt < $1.createdAt }
+        return readLocked().sorted { $0.createdAt < $1.createdAt }
     }
 
     func active() -> [Entry] {
@@ -42,8 +38,9 @@ final class PendingPosStore {
     private static let isoFormatter = ISO8601DateFormatter()
 
     func enqueue(sessionId: String, lines: [PosSaleLineWire], totalMinor: Int64) throws -> Entry {
-        let clientSaleId = UUID().uuidString
-        let short = String(Int(Date().timeIntervalSince1970), radix: 36).uppercased()
+        let nowMs = Int64(Date().timeIntervalSince1970 * 1000)
+        let clientSaleId = RetailerIdempotency.uuidV7(timestampMs: nowMs)
+        let short = String(nowMs / 1000, radix: 36).uppercased()
         let receipt = "OFF-\(short)-\(Int.random(in: 1...999))"
         let payload: [String: Any] = [
             "session_id": sessionId,
@@ -88,11 +85,30 @@ final class PendingPosStore {
         save(list().filter { $0.clientSaleId != clientSaleId })
     }
 
+    func clearAll() {
+        lock.lock()
+        defer { lock.unlock() }
+        memoryFallback = []
+        KeychainHelper.delete(key: key)
+    }
+
+    private func readLocked() -> [Entry] {
+        if let raw = KeychainHelper.read(key: key),
+           let data = raw.data(using: .utf8),
+           let rows = try? JSONDecoder().decode([Entry].self, from: data) {
+            memoryFallback = rows
+            return rows
+        }
+        return memoryFallback ?? []
+    }
+
     private func save(_ rows: [Entry]) {
         lock.lock()
         defer { lock.unlock() }
-        if let data = try? JSONEncoder().encode(rows) {
-            defaults.set(data, forKey: key)
+        memoryFallback = rows
+        if let data = try? JSONEncoder().encode(rows),
+           let json = String(data: data, encoding: .utf8) {
+            KeychainHelper.save(key: key, value: json)
         }
     }
 

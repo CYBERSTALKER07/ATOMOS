@@ -1,260 +1,38 @@
 import SwiftUI
 
-struct StoreStockView: View {
-    @State private var rows: [StoreStockRow] = []
-    @State private var locationId: String = ""
-    @State private var banner: String?
-    @State private var orderId = ""
-    @State private var sku = ""
-    @State private var qty = "1"
-    @State private var busy = false
+// MARK: - Aggregated Model for Shelf vs. Backroom
 
-    @State private var showOrderPicker = false
-    @State private var preferredSku: String?
-    @State private var claimableOrders: [Order] = []
-    @State private var pickerQuery = ""
-    @State private var pickerLoading = false
-    @State private var pickerError: String?
-    @State private var claimOrder: Order?
-    @State private var claimPreferredSku: String?
+struct AggregatedStockItem: Identifiable, Equatable {
+    var id: String { sku }
+    let sku: String
+    var floorOnHand: Int64 = 0
+    var floorAvailable: Int64 = 0
+    var backroomOnHand: Int64 = 0
+    var backroomAvailable: Int64 = 0
 
-    private let api = APIClient.shared
+    var totalOnHand: Int64 { floorOnHand + backroomOnHand }
+    var totalAvailable: Int64 { floorAvailable + backroomAvailable }
+    var isLowShelf: Bool { floorOnHand < 10 && backroomOnHand > 0 }
+    var hasBackroom: Bool { backroomOnHand > 0 }
 
-    private var filteredOrders: [Order] {
-        let q = pickerQuery.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        if q.isEmpty { return claimableOrders }
-        return claimableOrders.filter { $0.id.lowercased().contains(q) }
-    }
-
-    var body: some View {
-        List {
-            Section {
-                Text("mobile_retailer.ui.receive_deliveries_into_backroom_putaway_to_floor_adjust_quantit")
-                    .font(.system(.footnote, design: .rounded))
-                    .foregroundStyle(AppTheme.textSecondary)
-                Button("mobile_retailer.ui.request_return_chargeback") {
-                    openRequestReturn(skuHint: nil)
-                }
-            }
-            if let banner {
-                Section { Text(banner).font(.caption).foregroundStyle(AppTheme.accent) }
-            }
-            Section("Receive order") {
-                TextField("supplier_portal.admin.control_center.field.order_id", text: $orderId)
-                Button(busy ? "…" : "Receive to BACKROOM") {
-                    Task { await receive() }
-                }
-                .disabled(busy || orderId.isEmpty)
-            }
-            Section("Putaway / adjust") {
-                TextField("SKU", text: $sku)
-                TextField("retailer_desktop.pos.text.qty", text: $qty)
-                Button("mobile_retailer.ui.putaway_backroom_floor") { Task { await transfer() } }
-                    .disabled(busy || sku.isEmpty)
-                Button("mobile_retailer.ui.adjust_backroom_by_qty") { Task { await adjust() } }
-                    .disabled(busy || sku.isEmpty)
-            }
-            Section("Balances") {
-                ForEach(rows) { row in
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(row.sku).font(.headline)
-                        Text(L10n.format("mobile_retailer.ui.bin_on_hand_onhand_available_available", "\(row.bin)", "\(row.onHand)", "\(row.available)"))
-                            .font(.caption)
-                            .foregroundStyle(AppTheme.textSecondary)
-                        Button("mobile_retailer.ui.request_return") {
-                            openRequestReturn(skuHint: row.sku)
-                        }
-                        .font(.caption)
-                    }
-                }
-            }
-        }
-        .navigationTitle("portal.nav.store_stock")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button("mobile_retailer.ui.return") { openRequestReturn(skuHint: nil) }
-            }
-        }
-        .task { await load() }
-        .refreshable { await load() }
-        .sheet(isPresented: $showOrderPicker) {
-            NavigationStack {
-                List {
-                    Section {
-                        Text("mobile_retailer.ui.pick_a_completed_delivery_then_file_the_same_claim_as_order_deta")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        if let preferredSku {
-                            Text(L10n.format("mobile_retailer.ui.preferred_sku_from_stock_preferredsku_2", "\(preferredSku)"))
-                                .font(.caption)
-                        }
-                        TextField("retailer_desktop.stock_request_return_modal.text.search_by_order_id", text: $pickerQuery)
-                    }
-                    if let pickerError {
-                        Section {
-                            Text(pickerError).foregroundStyle(.red).font(.caption)
-                        }
-                    }
-                    Section("COMPLETED orders") {
-                        if pickerLoading {
-                            ProgressView()
-                        } else if filteredOrders.isEmpty {
-                            Text("mobile_retailer.ui.no_completed_delivered_on_credit_orders_found")
-                                .foregroundStyle(.secondary)
-                        } else {
-                            ForEach(filteredOrders) { order in
-                                Button {
-                                    Task { await pickOrder(order) }
-                                } label: {
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text(L10n.format("mobile_retailer.ui.suffix_replacingoccurrences", "\(order.id.suffix(8))", "\(order.status.rawValue.replacingOccurrences(of: "_", with: " "))"))
-                                            .font(.subheadline.weight(.semibold))
-                                        Text(order.id)
-                                            .font(.caption2)
-                                            .foregroundStyle(.secondary)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                .navigationTitle("mobile_retailer.ui.request_return")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button("common.action.close") { showOrderPicker = false }
-                    }
-                }
-            }
-        }
-        .sheet(item: $claimOrder) { order in
-            FileClaimView(order: order, preferredSku: claimPreferredSku)
-        }
-    }
-
-    private func openRequestReturn(skuHint: String?) {
-        preferredSku = skuHint
-        pickerQuery = ""
-        pickerError = nil
-        showOrderPicker = true
-        Task { await loadClaimableOrders() }
-    }
-
-    private func loadClaimableOrders() async {
-        pickerLoading = true
-        defer { pickerLoading = false }
-        let rid = AuthManager.shared.currentUser?.id ?? ""
-        guard !rid.isEmpty else {
-            pickerError = "Not signed in"
-            claimableOrders = []
-            return
-        }
-        do {
-            let orders: [Order] = try await api.get(path: "/v1/retailers/\(rid)/orders")
-            let completed = orders.filter {
-                $0.status == .completed || $0.status == .deliveredOnCredit
-            }
-            claimableOrders = completed.isEmpty
-                ? Order.samples.filter { $0.status == .completed || $0.status == .inTransit }
-                : completed
-            pickerError = nil
-        } catch {
-            claimableOrders = Order.samples.filter { $0.status == .completed || $0.status == .inTransit }
-            pickerError = nil
-        }
-    }
-
-    private func pickOrder(_ order: Order) async {
-        pickerLoading = true
-        defer { pickerLoading = false }
-        var next = order
-        if next.items.isEmpty {
-            if let tracking = try? await api.getTracking() {
-                let pool = tracking.orders + (tracking.recentReceipts ?? [])
-                if let hit = pool.first(where: { $0.orderId == order.id }) {
-                    next = hit.asClaimOrder()
-                }
-            }
-        }
-        claimPreferredSku = preferredSku
-        claimOrder = next
-        showOrderPicker = false
-    }
-
-    private func load() async {
-        do {
-            if locationId.isEmpty {
-                let locs = try await api.getLocations()
-                locationId = locs.activeLocationId ?? locs.items.first?.locationId ?? ""
-            }
-            let res = try await api.getStoreStock(locationId: locationId.isEmpty ? nil : locationId)
-            rows = res.items.map {
-                StoreStockRow(
-                    id: "\($0.sku)-\($0.stockBin)",
-                    sku: $0.sku,
-                    bin: $0.stockBin,
-                    onHand: $0.onHand,
-                    available: $0.available ?? $0.onHand
-                )
-            }
-        } catch {
-            rows = [
-                StoreStockRow(id: "DAIRY-001-FLOOR", sku: "DAIRY-MILK-32", bin: "FLOOR", onHand: 48, available: 42),
-                StoreStockRow(id: "DAIRY-001-BACKROOM", sku: "DAIRY-MILK-32", bin: "BACKROOM", onHand: 120, available: 120),
-                StoreStockRow(id: "BAKERY-002-FLOOR", sku: "BAKERY-BREAD-01", bin: "FLOOR", onHand: 30, available: 28),
-                StoreStockRow(id: "PRODUCE-003-FLOOR", sku: "PRODUCE-AVOCADO-01", bin: "FLOOR", onHand: 65, available: 60)
-            ]
-        }
-    }
-
-    private func receive() async {
-        busy = true
-        defer { busy = false }
-        do {
-            _ = try await api.receiveStoreStock(orderId: orderId, locationId: locationId)
-            banner = "Received"
-            orderId = ""
-            await load()
-        } catch {
-            banner = error.localizedDescription
-        }
-    }
-
-    private func transfer() async {
-        busy = true
-        defer { busy = false }
-        do {
-            _ = try await api.transferStoreStock(
-                locationId: locationId,
-                sku: sku,
-                qty: Int64(qty) ?? 1
-            )
-            banner = "Putaway done"
-            await load()
-        } catch {
-            banner = error.localizedDescription
-        }
-    }
-
-    private func adjust() async {
-        busy = true
-        defer { busy = false }
-        do {
-            _ = try await api.adjustStoreStock(
-                locationId: locationId,
-                sku: sku,
-                qtyDelta: Int64(qty) ?? 0
-            )
-            banner = "Adjusted"
-            await load()
-        } catch {
-            banner = error.localizedDescription
-        }
+    var shelfRatio: Double {
+        let totalCount = Double(totalOnHand)
+        guard totalCount > 0 else { return 0 }
+        return Double(floorOnHand) / totalCount
     }
 }
 
-struct StoreStockRow: Identifiable {
+enum StockFilterTab: String, CaseIterable, Identifiable {
+    case all = "All Items"
+    case lowShelf = "Low on Shelf"
+    case backroomReserve = "In Backroom"
+
+    var id: String { rawValue }
+}
+
+// MARK: - Row Data Model
+
+struct StoreStockRow: Identifiable, Equatable {
     let id: String
     let sku: String
     let bin: String
@@ -262,7 +40,7 @@ struct StoreStockRow: Identifiable {
     let available: Int64
 }
 
-private extension TrackingOrder {
+extension TrackingOrder {
     func asClaimOrder() -> Order {
         let status = OrderStatus(rawValue: state) ?? .completed
         let lineItems = items.map { item in
@@ -291,5 +69,398 @@ private extension TrackingOrder {
             estimatedDelivery: nil,
             qrCode: deliveryToken.isEmpty ? nil : deliveryToken
         )
+    }
+}
+
+// MARK: - Main StoreStockView
+
+struct StoreStockView: View {
+    @State private var vm = StoreStockViewModel()
+
+    var body: some View {
+        @Bindable var vm = vm
+        ScrollView {
+            VStack(spacing: 16) {
+                if let banner = vm.banner {
+                    bannerView(banner)
+                }
+
+                if let loadError = vm.loadError, vm.rawRows.isEmpty {
+                    RetailerErrorView(message: loadError) {
+                        Task { await vm.load() }
+                    }
+                }
+
+                kpiOverviewGrid
+                actionShortcutsBar
+                filterAndSearchBar
+
+                if vm.filteredItems.isEmpty {
+                    emptyStateView
+                } else {
+                    LazyVStack(spacing: 12) {
+                        ForEach(vm.filteredItems) { item in
+                            stockItemCard(item)
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+        }
+        .scrollDismissesKeyboard(.interactively)
+        .background(Color(.systemGroupedBackground))
+        .navigationTitle("Store Inventory")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    Button {
+                        Haptics.selection()
+                        vm.showReceiveSheet = true
+                    } label: {
+                        Label("Receive Delivery", systemImage: "arrow.down.box")
+                    }
+                    Button {
+                        Haptics.selection()
+                        vm.selectedSkuForAction = nil
+                        vm.showPutawaySheet = true
+                    } label: {
+                        Label("Putaway to Shelf", systemImage: "arrow.up.and.down.and.arrow.left.and.right")
+                    }
+                    Button {
+                        Haptics.selection()
+                        vm.selectedSkuForAction = nil
+                        vm.showAdjustSheet = true
+                    } label: {
+                        Label("Adjust Stock Count", systemImage: "slider.horizontal.3")
+                    }
+                    Divider()
+                    Button {
+                        vm.openOrderPicker(skuHint: nil)
+                    } label: {
+                        Label("File Return / Claim", systemImage: "exclamationmark.triangle")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                        .font(.body)
+                        .pegasusMinimumHitTarget()
+                }
+                .accessibilityLabel("Inventory actions")
+            }
+        }
+        .task { await vm.load() }
+        .refreshable { await vm.load() }
+        .sheet(isPresented: $vm.showReceiveSheet) {
+            ReceiveDeliverySheet(locationId: vm.locationId) {
+                Task { await vm.load() }
+            }
+        }
+        .sheet(isPresented: $vm.showPutawaySheet) {
+            PutawaySheet(
+                locationId: vm.locationId,
+                initialSku: vm.selectedSkuForAction ?? "",
+                availableSkus: vm.aggregatedItems.filter(\.hasBackroom).map(\.sku)
+            ) {
+                Task { await vm.load() }
+            }
+        }
+        .sheet(isPresented: $vm.showAdjustSheet) {
+            AdjustStockSheet(
+                locationId: vm.locationId,
+                initialSku: vm.selectedSkuForAction ?? "",
+                allSkus: vm.aggregatedItems.map(\.sku)
+            ) {
+                Task { await vm.load() }
+            }
+        }
+        .sheet(isPresented: $vm.showOrderPicker) {
+            NavigationStack {
+                StoreStockOrderPickerSheet(vm: vm)
+            }
+        }
+        .sheet(item: $vm.claimOrder) { order in
+            FileClaimView(order: order, preferredSku: vm.claimPreferredSku)
+        }
+    }
+
+    // MARK: - Subviews
+
+    private func bannerView(_ message: String) -> some View {
+        HStack {
+            Image(systemName: "checkmark.circle.fill")
+                .foregroundStyle(.green)
+            Text(message)
+                .font(.subheadline)
+                .foregroundStyle(AppTheme.textPrimary)
+            Spacer()
+            Button {
+                Haptics.light()
+                vm.banner = nil
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.caption2)
+                    .foregroundStyle(AppTheme.textSecondary)
+                    .pegasusMinimumHitTarget()
+            }
+            .accessibilityLabel("Dismiss banner")
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 6)
+        .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 10))
+    }
+
+    private var kpiOverviewGrid: some View {
+        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+            kpiCard(title: "On Sales Floor", value: "\(vm.totalFloorOnHand)", subtitle: "Ready for shoppers", icon: "storefront", color: .blue)
+            kpiCard(title: "In Backroom", value: "\(vm.totalBackroomOnHand)", subtitle: "Reserve storage", icon: "shippingbox", color: .indigo)
+            kpiCard(title: "Total Units", value: "\(vm.totalStoreUnits)", subtitle: "\(vm.aggregatedItems.count) total SKUs", icon: "archivebox", color: .secondary)
+            kpiCard(title: "Low on Shelf", value: "\(vm.lowShelfCount)", subtitle: "Need restock", icon: "exclamationmark.triangle", color: vm.lowShelfCount > 0 ? .orange : .green)
+        }
+    }
+
+    private func kpiCard(title: String, value: String, subtitle: String, icon: String, color: Color) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text(title)
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(AppTheme.textSecondary)
+                Spacer()
+                Image(systemName: icon)
+                    .font(.caption)
+                    .foregroundStyle(color)
+            }
+            Text(value)
+                .font(.title2.weight(.bold))
+                .foregroundStyle(AppTheme.textPrimary)
+            Text(subtitle)
+                .font(.caption2)
+                .foregroundStyle(AppTheme.textSecondary)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 12))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(title): \(value), \(subtitle)")
+    }
+
+    private var actionShortcutsBar: some View {
+        HStack(spacing: 10) {
+            Button {
+                Haptics.selection()
+                vm.showReceiveSheet = true
+            } label: {
+                Label("Receive", systemImage: "arrow.down.box")
+                    .font(.subheadline.weight(.semibold))
+                    .frame(maxWidth: .infinity, minHeight: AppTheme.minTouchTarget)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(.accentColor)
+
+            Button {
+                Haptics.selection()
+                vm.selectedSkuForAction = nil
+                vm.showPutawaySheet = true
+            } label: {
+                Label("Putaway", systemImage: "arrow.up.right")
+                    .font(.subheadline.weight(.medium))
+                    .frame(maxWidth: .infinity, minHeight: AppTheme.minTouchTarget)
+            }
+            .buttonStyle(.bordered)
+
+            Button {
+                vm.openOrderPicker(skuHint: nil)
+            } label: {
+                Label("Return", systemImage: "arrow.counterclockwise")
+                    .font(.subheadline.weight(.medium))
+                    .frame(maxWidth: .infinity, minHeight: AppTheme.minTouchTarget)
+            }
+            .buttonStyle(.bordered)
+        }
+    }
+
+    private var filterAndSearchBar: some View {
+        @Bindable var vm = vm
+        return VStack(spacing: 10) {
+            HStack {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(.secondary)
+                TextField("Search by SKU or name...", text: $vm.searchQuery)
+                    .font(.subheadline)
+                if !vm.searchQuery.isEmpty {
+                    Button {
+                        Haptics.light()
+                        vm.searchQuery = ""
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(.secondary)
+                            .pegasusMinimumHitTarget()
+                    }
+                    .accessibilityLabel("Clear search")
+                }
+            }
+            .padding(.horizontal, 12)
+            .frame(minHeight: AppTheme.minTouchTarget)
+            .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 10))
+
+            HStack(spacing: 8) {
+                ForEach(StockFilterTab.allCases) { tab in
+                    Button {
+                        Haptics.selection()
+                        withAnimation(.snappy) {
+                            vm.selectedFilter = tab
+                        }
+                    } label: {
+                        Text(tab.rawValue)
+                            .font(.caption.weight(vm.selectedFilter == tab ? .semibold : .regular))
+                            .padding(.horizontal, 14)
+                            .frame(minHeight: AppTheme.minTouchTarget)
+                            .background(
+                                vm.selectedFilter == tab ? Color.accentColor : Color(.secondarySystemGroupedBackground),
+                                in: .capsule
+                            )
+                            .foregroundStyle(vm.selectedFilter == tab ? .white : AppTheme.textPrimary)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Filter: \(tab.rawValue)")
+                }
+                Spacer()
+            }
+        }
+    }
+
+    private func stockItemCard(_ item: AggregatedStockItem) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(item.sku)
+                            .font(.headline)
+                            .foregroundStyle(AppTheme.textPrimary)
+                        Text("Total: \(item.totalOnHand) units")
+                            .font(.caption2)
+                            .foregroundStyle(AppTheme.textSecondary)
+                    }
+                    Spacer()
+                    if item.isLowShelf {
+                        HStack(spacing: 4) {
+                            Image(systemName: "exclamationmark.circle.fill")
+                            Text("Low Shelf")
+                        }
+                        .font(.caption2.weight(.bold))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.orange.opacity(0.15), in: .capsule)
+                        .foregroundStyle(.orange)
+                    }
+                }
+
+                VStack(spacing: 4) {
+                    GeometryReader { geo in
+                        HStack(spacing: 2) {
+                            Rectangle()
+                                .fill(Color.blue)
+                                .frame(width: max(0, geo.size.width * CGFloat(item.shelfRatio)))
+                            Rectangle()
+                                .fill(Color.indigo.opacity(0.7))
+                        }
+                        .clipShape(.rect(cornerRadius: 4))
+                    }
+                    .frame(height: 8)
+
+                    HStack {
+                        HStack(spacing: 4) {
+                            Circle().fill(Color.blue).frame(width: 6, height: 6)
+                            Text("Shelf: \(item.floorOnHand)")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(AppTheme.textPrimary)
+                        }
+                        Spacer()
+                        HStack(spacing: 4) {
+                            Circle().fill(Color.indigo.opacity(0.7)).frame(width: 6, height: 6)
+                            Text("Backroom: \(item.backroomOnHand)")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(AppTheme.textPrimary)
+                        }
+                    }
+                }
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("\(item.sku), Shelf \(item.floorOnHand), Backroom \(item.backroomOnHand), Total \(item.totalOnHand) units\(item.isLowShelf ? ", Low Shelf" : "")")
+
+            Divider()
+
+            HStack {
+                if item.backroomOnHand > 0 {
+                    Button {
+                        let qty = min(10, item.backroomOnHand)
+                        Task { await vm.quickPutaway(sku: item.sku, qtyToMove: qty) }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "plus.circle.fill")
+                            Text("+\(min(10, item.backroomOnHand)) to Shelf")
+                        }
+                        .font(.caption.weight(.semibold))
+                        .frame(minHeight: AppTheme.minTouchTarget)
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(.blue)
+                    .disabled(vm.busy)
+                } else {
+                    Text("No backroom reserve")
+                        .font(.caption2)
+                        .foregroundStyle(AppTheme.textSecondary)
+                }
+
+                Spacer()
+
+                Menu {
+                    Button {
+                        Haptics.selection()
+                        vm.selectedSkuForAction = item.sku
+                        vm.showPutawaySheet = true
+                    } label: {
+                        Label("Custom Putaway...", systemImage: "arrow.up.and.down.and.arrow.left.and.right")
+                    }
+                    Button {
+                        Haptics.selection()
+                        vm.selectedSkuForAction = item.sku
+                        vm.showAdjustSheet = true
+                    } label: {
+                        Label("Adjust Count...", systemImage: "slider.horizontal.3")
+                    }
+                    Button {
+                        vm.openOrderPicker(skuHint: item.sku)
+                    } label: {
+                        Label("Return / Claim...", systemImage: "exclamationmark.triangle")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.subheadline)
+                        .foregroundStyle(AppTheme.textSecondary)
+                        .pegasusMinimumHitTarget()
+                }
+                .accessibilityLabel("More actions for \(item.sku)")
+            }
+        }
+        .padding(14)
+        .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 14))
+    }
+
+    private var emptyStateView: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "shippingbox.fill")
+                .font(.largeTitle)
+                .foregroundStyle(.secondary)
+            Text("No Inventory Matches")
+                .font(.headline)
+            Text("Try clearing your search filter or receive a new incoming delivery order.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 40)
+        .accessibilityElement(children: .combine)
     }
 }

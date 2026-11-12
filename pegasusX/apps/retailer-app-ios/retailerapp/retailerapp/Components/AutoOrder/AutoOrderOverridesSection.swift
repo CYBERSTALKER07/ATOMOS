@@ -32,32 +32,14 @@ struct AutoOrderOverridesSection: View {
         LabCardWithHeader(title: title, icon: icon) {
             VStack(spacing: 0) {
                 ForEach(items) { item in
-                    HStack(spacing: AppTheme.spacingMD) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(item.label)
-                                .font(.system(.subheadline, design: .rounded, weight: .medium))
-                                .foregroundStyle(AppTheme.textPrimary)
-                                .lineLimit(1)
-                            Text(item.level.subtitle)
-                                .font(.system(.caption2, design: .rounded))
-                                .foregroundStyle(AppTheme.textTertiary)
+                    OverrideToggleRow(
+                        item: item,
+                        externalValue: localToggleStates[item.id] ?? item.enabled,
+                        onUserToggle: { newVal in
+                            localToggleStates[item.id] = newVal
+                            onToggle(item, newVal)
                         }
-
-                        Spacer()
-
-                        Toggle("", isOn: Binding(
-                            get: { localToggleStates[item.id] ?? item.enabled },
-                            set: { newVal in
-                                localToggleStates[item.id] = newVal
-                                onToggle(item, newVal)
-                            }
-                        ))
-                        .tint(AppTheme.accent)
-                        .labelsHidden()
-                        .scaleEffect(0.85)
-                    }
-                    .padding(.vertical, AppTheme.spacingSM)
-                    .padding(.horizontal, AppTheme.spacingXS)
+                    )
 
                     if item.id != items.last?.id {
                         Rectangle()
@@ -66,6 +48,52 @@ struct AutoOrderOverridesSection: View {
                     }
                 }
             }
+        }
+    }
+}
+
+private struct OverrideToggleRow: View {
+    let item: OverrideItem
+    let externalValue: Bool
+    let onUserToggle: (Bool) -> Void
+
+    @State private var toggleValue = false
+
+    var body: some View {
+        HStack(spacing: AppTheme.spacingMD) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(item.label)
+                    .font(.system(.subheadline, design: .rounded, weight: .medium))
+                    .foregroundStyle(AppTheme.textPrimary)
+                    .lineLimit(1)
+                Text(item.level.subtitle)
+                    .font(.system(.caption2, design: .rounded))
+                    .foregroundStyle(AppTheme.textTertiary)
+            }
+
+            Spacer()
+
+            Toggle("", isOn: $toggleValue)
+                .tint(AppTheme.accent)
+                .labelsHidden()
+                .scaleEffect(0.85)
+                .accessibilityLabel("\(item.label), \(item.level.subtitle)")
+        }
+        .frame(minHeight: 44)
+        .padding(.vertical, AppTheme.spacingSM)
+        .padding(.horizontal, AppTheme.spacingXS)
+        .onAppear {
+            toggleValue = externalValue
+        }
+        .onChange(of: externalValue) { _, newValue in
+            if toggleValue != newValue {
+                toggleValue = newValue
+            }
+        }
+        .onChange(of: toggleValue) { _, newValue in
+            guard newValue != externalValue else { return }
+            Haptics.selection()
+            onUserToggle(newValue)
         }
     }
 }

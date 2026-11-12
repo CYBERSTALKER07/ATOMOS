@@ -1,6 +1,7 @@
 import Foundation
 
 @Observable
+@MainActor
 final class OnboardingViewModel {
     enum SetupStep {
         case tax

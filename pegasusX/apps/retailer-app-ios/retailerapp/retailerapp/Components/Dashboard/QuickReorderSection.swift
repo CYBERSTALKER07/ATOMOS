@@ -10,7 +10,7 @@ struct QuickReorderSection: View {
             if reorderProducts.isEmpty {
                 HStack(spacing: AppTheme.spacingMD) {
                     Image(systemName: "cart.badge.plus")
-                        .font(.system(size: 20))
+                        .font(.title3)
                         .foregroundStyle(AppTheme.accentWarm)
                     VStack(alignment: .leading, spacing: 2) {
                         Text("No reorders yet")
@@ -64,11 +64,11 @@ struct QuickReorderItem: View {
             } label: {
                 VStack(spacing: AppTheme.spacingSM) {
                     ZStack {
-                        RoundedRectangle(cornerRadius: AppTheme.radiusMD)
+                        RoundedRectangle(cornerRadius: AppTheme.radiusMD, style: .continuous)
                             .fill(AppTheme.surfaceElevated)
                             .frame(width: 68, height: 68)
                         Image(systemName: "leaf.fill")
-                            .font(.system(size: 24))
+                            .font(.title2)
                             .foregroundStyle(AppTheme.textTertiary)
                     }
 
@@ -108,12 +108,13 @@ struct QuickReorderItem: View {
                 }
             } label: {
                 Image(systemName: addedToast ? "checkmark.circle.fill" : "plus.circle.fill")
-                    .font(.system(size: 20, weight: .semibold))
+                    .font(.system(.title3, weight: .semibold))
                     .foregroundStyle(addedToast ? AppTheme.success : AppTheme.accent)
                     .frame(width: 44, height: 44)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Quick add \(product.name) to cart")
             .offset(x: 4, y: -4)
         }
     }

@@ -1,125 +1,60 @@
 import SwiftUI
 
 struct HqView: View {
-    @State private var summaryLine = "—"
-    @State private var locations: [HqLocationWire] = []
-    @State private var loadError: String?
-    @State private var summaryReady = false
-    private let api = APIClient.shared
-    private static let dayFormatter: ISO8601DateFormatter = {
-        let f = ISO8601DateFormatter()
-        f.formatOptions = [.withFullDate]
-        return f
-    }()
-    private var day: String {
-        String(Self.dayFormatter.string(from: Date()).prefix(10))
-    }
+    @State private var vm = HqViewModel()
 
     var body: some View {
         List {
-            if let loadError {
-                Section { Text(loadError).font(.caption).foregroundStyle(AppTheme.destructive) }
+            if vm.isLoading && !vm.summaryReady && vm.loadError == nil {
+                Section {
+                    ProgressView("Loading…")
+                }
             }
-            if summaryReady && loadError == nil {
+            if let loadError = vm.loadError {
+                Section {
+                    Text(loadError)
+                        .font(.caption)
+                        .foregroundStyle(AppTheme.destructive)
+                    Button("common.action.retry") {
+                        Haptics.light()
+                        Task { await vm.load() }
+                    }
+                    .pegasusMinimumHitTarget()
+                    .accessibilityLabel("Retry HQ summary")
+                }
+            }
+            if vm.summaryReady && vm.loadError == nil {
                 Section("Summary") {
-                    Text(summaryLine)
+                    Text(vm.summaryLine)
+                        .font(.system(.subheadline, design: .rounded))
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel("HQ summary: \(vm.summaryLine)")
                 }
                 Section("Sales by location") {
-                    if locations.isEmpty {
+                    if vm.locations.isEmpty {
                         Text("No HQ rows for this day.")
                             .foregroundStyle(AppTheme.textSecondary)
                     } else {
-                        ForEach(locations, id: \.locationId) { loc in
+                        ForEach(vm.locations, id: \.locationId) { loc in
                             VStack(alignment: .leading, spacing: 4) {
-                                Text(loc.locationId).font(.headline)
-                                Text(String(format: "Qty %d · Net %.2f", loc.qtySold, Double(loc.netMinor) / 100.0))
+                                Text(loc.locationId)
+                                    .font(.headline)
+                                Text("Qty \(loc.qtySold) · Net \(vm.formatMinor(loc.netMinor))")
                                     .font(.caption)
                                     .foregroundStyle(AppTheme.textSecondary)
                             }
+                            .padding(.vertical, 2)
+                            .accessibilityElement(children: .combine)
+                            .accessibilityLabel("Location \(loc.locationId), quantity sold \(loc.qtySold), net \(vm.formatMinor(loc.netMinor))")
                         }
                     }
                 }
             }
         }
+        .scrollDismissesKeyboard(.interactively)
         .navigationTitle("HQ multi-store")
         .navigationBarTitleDisplayMode(.inline)
-        .task { await load() }
-        .refreshable { await load() }
+        .task { await vm.load() }
+        .refreshable { await vm.load() }
     }
-
-    private func load() async {
-        do {
-            let summary = try await api.getHqSummary(day: day)
-            summaryLine = String(
-                format: "%@ · %d locations · %d SKUs · net %.2f",
-                day,
-                summary.locationCount,
-                summary.skuCount,
-                Double(summary.netMinor) / 100.0
-            )
-            locations = try await api.getHqSalesByLocation(day: day)
-            summaryReady = true
-            loadError = nil
-        } catch {
-            summaryLine = String(
-                format: "%@: %d locations • %d SKUs • sum %.2f",
-                day, 3, 142, 48_500_000.0 / 100.0
-            )
-            locations = [
-                HqLocationWire(locationId: "LOC-TASHKENT-CHORSU", qtySold: 420, netMinor: 24_200_000),
-                HqLocationWire(locationId: "LOC-TASHKENT-SERGELI", qtySold: 310, netMinor: 16_800_000),
-                HqLocationWire(locationId: "LOC-TASHKENT-YUNUSABAD", qtySold: 180, netMinor: 7_500_000)
-            ]
-            summaryReady = true
-            loadError = nil
-        }
-    }
-}
-
-struct HqSummaryWire: Decodable {
-    let locationCount: Int
-    let skuCount: Int
-    let netMinor: Int64
-
-    enum CodingKeys: String, CodingKey {
-        case locationCount = "location_count"
-        case skuCount = "sku_count"
-        case netMinor = "net_minor"
-    }
-
-    init(from decoder: Decoder) throws {
-        let c = try decoder.container(keyedBy: CodingKeys.self)
-        locationCount = try c.decodeIfPresent(Int.self, forKey: .locationCount) ?? 0
-        skuCount = try c.decodeIfPresent(Int.self, forKey: .skuCount) ?? 0
-        netMinor = try c.decodeIfPresent(Int64.self, forKey: .netMinor) ?? 0
-    }
-}
-
-struct HqLocationWire: Decodable {
-    let locationId: String
-    let qtySold: Int
-    let netMinor: Int64
-
-    enum CodingKeys: String, CodingKey {
-        case locationId = "location_id"
-        case qtySold = "qty_sold"
-        case netMinor = "net_minor"
-    }
-
-    init(locationId: String, qtySold: Int, netMinor: Int64) {
-        self.locationId = locationId
-        self.qtySold = qtySold
-        self.netMinor = netMinor
-    }
-
-    init(from decoder: Decoder) throws {
-        let c = try decoder.container(keyedBy: CodingKeys.self)
-        locationId = try c.decodeIfPresent(String.self, forKey: .locationId) ?? "—"
-        qtySold = try c.decodeIfPresent(Int.self, forKey: .qtySold) ?? 0
-        netMinor = try c.decodeIfPresent(Int64.self, forKey: .netMinor) ?? 0
-    }
-}
-
-struct HqLocationsResponse: Decodable {
-    let items: [HqLocationWire]?
 }

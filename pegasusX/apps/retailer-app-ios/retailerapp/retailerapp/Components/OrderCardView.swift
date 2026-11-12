@@ -22,7 +22,7 @@ struct OrderCardView: View {
                         .fill(statusColor.opacity(0.12))
                         .frame(width: 42, height: 42)
                     Image(systemName: statusIcon)
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.system(.callout, weight: .semibold))
                         .foregroundStyle(statusColor)
                 }
 
@@ -69,7 +69,7 @@ struct OrderCardView: View {
             if order.status.isActive, let eta = order.estimatedDelivery {
                 HStack(spacing: AppTheme.spacingSM) {
                     Image(systemName: "clock")
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.system(.caption, weight: .semibold))
                         .foregroundStyle(AppTheme.accent)
 
                     CountdownText(targetISO: eta, font: .system(.caption, design: .monospaced, weight: .bold), color: AppTheme.accent)
@@ -199,7 +199,7 @@ struct OrderCardView: View {
                         } label: {
                             HStack(spacing: 4) {
                                 Image(systemName: "xmark")
-                                    .font(.system(size: 10, weight: .bold))
+                                    .font(.system(.caption2, weight: .bold))
                                 Text("mobile_retailer.ui.cancel_order")
                                     .font(.system(.caption, design: .rounded, weight: .semibold))
                             }
@@ -208,6 +208,7 @@ struct OrderCardView: View {
                             .padding(.vertical, AppTheme.spacingSM)
                             .background(AppTheme.destructiveSoft.opacity(0.5))
                             .clipShape(.capsule)
+                            .pegasusMinimumHitTarget()
                         }
                     }
                 }
@@ -224,6 +225,8 @@ struct OrderCardView: View {
                 onTap()
             }
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Order \(order.id.suffix(3)), \(order.status.displayName), \(order.itemCount) items, \(order.displayTotal)")
         .opacity(appeared ? 1 : 0)
         .offset(y: appeared ? 0 : 16)
         .onAppear {
@@ -311,9 +314,20 @@ struct OrderCardView: View {
 #Preview {
     ScrollView {
         VStack(spacing: 16) {
-            ForEach(Order.samples) { order in
-                OrderCardView(order: order)
-            }
+            OrderCardView(order: Order(
+                id: "preview-ord-1",
+                retailerId: "ret-1",
+                supplierId: "sup-1",
+                supplierName: "Fresh Farms",
+                status: .inTransit,
+                items: [],
+                totalAmount: 50_000,
+                orderSource: "MANUAL",
+                createdAt: "2026-11-04T00:00:00Z",
+                updatedAt: "2026-11-04T00:00:00Z",
+                estimatedDelivery: nil,
+                qrCode: nil
+            ))
         }
         .padding()
     }

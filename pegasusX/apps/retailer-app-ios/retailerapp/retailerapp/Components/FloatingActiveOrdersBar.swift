@@ -51,20 +51,23 @@ struct FloatingActiveOrdersBar: View {
                     }
 
                     Image(systemName: "chevron.up")
-                        .font(.system(size: 12, weight: .bold))
+                        .font(.system(.caption, weight: .bold))
                         .foregroundStyle(AppTheme.textTertiary)
                 }
+                .frame(minHeight: 44)
                 .padding(.horizontal, AppTheme.spacingLG)
                 .padding(.vertical, AppTheme.spacingMD)
                 .background {
-                    RoundedRectangle(cornerRadius: AppTheme.radiusPill)
+                    RoundedRectangle(cornerRadius: AppTheme.radiusPill, style: .continuous)
                         .fill(AppTheme.cardBackground)
                         .shadow(color: .black.opacity(0.12), radius: 16, x: 0, y: -4)
                         .overlay {
-                            RoundedRectangle(cornerRadius: AppTheme.radiusPill)
+                            RoundedRectangle(cornerRadius: AppTheme.radiusPill, style: .continuous)
                                 .strokeBorder(AppTheme.separator.opacity(0.15), lineWidth: 0.5)
                         }
                 }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("\(activeOrders.count) active orders")
             }
             .buttonStyle(.pressable)
             .padding(.horizontal, AppTheme.spacingLG)
@@ -83,7 +86,7 @@ struct FloatingActiveOrdersBar: View {
     VStack {
         Spacer()
         FloatingActiveOrdersBar(
-            activeOrders: Order.samples.filter { $0.status.isActive },
+            activeOrders: [],
             onTap: {}
         )
     }

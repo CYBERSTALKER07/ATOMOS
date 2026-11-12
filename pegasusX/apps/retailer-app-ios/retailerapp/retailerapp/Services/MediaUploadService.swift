@@ -27,12 +27,14 @@ enum MediaUploadService {
         }
     }
 
+    @MainActor
     static func uploadJPEG(
         image: UIImage,
         purpose: String,
         orderId: String?,
-        api: APIClient = .shared
+        api: APIClient? = nil
     ) async throws -> String {
+        let api = api ?? .shared
         guard let data = image.jpegData(compressionQuality: 0.82) else {
             throw APIError.serverError(statusCode: 0, message: "image_encode_failed")
         }

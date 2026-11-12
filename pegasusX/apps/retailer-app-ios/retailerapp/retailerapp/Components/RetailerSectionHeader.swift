@@ -10,7 +10,7 @@ struct RetailerSectionHeader: View {
         HStack(spacing: AppTheme.spacingSM) {
             if let icon {
                 Image(systemName: icon)
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.system(.subheadline, weight: .semibold))
                     .foregroundStyle(AppTheme.textSecondary)
             }
 
@@ -57,11 +57,13 @@ struct RetailerStatusBadge: View {
                     .frame(width: 6, height: 6)
             }
             Text(text.replacingOccurrences(of: "_", with: " "))
-                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .font(.system(.caption2, design: .rounded, weight: .bold))
         }
         .foregroundStyle(resolvedTint)
         .padding(.horizontal, 10)
         .padding(.vertical, 5)
         .background(resolvedTint.opacity(0.12), in: Capsule())
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(text.replacingOccurrences(of: "_", with: " "))
     }
 }

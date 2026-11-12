@@ -29,7 +29,7 @@ struct CreditProfileSection: View {
                 Spacer()
                 if let profile {
                     Text(profile.status.uppercased())
-                        .font(.system(size: 10, weight: .bold, design: .rounded))
+                        .font(.system(.caption2, design: .rounded, weight: .bold))
                         .foregroundStyle(statusColor(profile.status))
                         .padding(.horizontal, 8)
                         .padding(.vertical, 3)
@@ -76,8 +76,8 @@ struct CreditProfileSection: View {
                 HStack {
                     let util: String = {
                         guard profile.creditLimitMinor > 0 else { return "0.0" }
-                        let pct = (Double(profile.currentBalanceMinor) * 100.0) / Double(profile.creditLimitMinor)
-                        return String(format: "%.1f", pct)
+                        let tenths = (profile.currentBalanceMinor * 1_000) / profile.creditLimitMinor
+                        return "\(tenths / 10).\(abs(tenths % 10))"
                     }()
                     Text(
                         profile.riskTier.map { "Utilization \(util)% · risk \($0)" }

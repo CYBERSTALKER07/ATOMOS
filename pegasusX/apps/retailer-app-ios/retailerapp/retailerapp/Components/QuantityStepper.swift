@@ -42,7 +42,7 @@ struct QuantityStepper: View {
     private func stepperButton(icon: String, enabled: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: icon)
-                .font(.system(size: compact ? 10 : 12, weight: .bold))
+                .font(.system(compact ? .caption2 : .caption, weight: .bold))
                 .foregroundStyle(enabled ? AppTheme.accent : AppTheme.textTertiary.opacity(0.4))
                 .frame(width: compact ? 26 : 32, height: compact ? 26 : 32)
                 .background(enabled ? AppTheme.accentSoft.opacity(0.5) : AppTheme.separator.opacity(0.2))

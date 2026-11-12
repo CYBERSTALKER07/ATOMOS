@@ -110,10 +110,10 @@ struct RetailerServiceTests {
     // MARK: - OrderLineItem
 
     @Test func orderLineItemDecoding() throws {
-        let json = """
+        let json = Data("""
         {"line_item_id":"li-1","sku_id":"v-1","sku_name":"Milk",
          "quantity":10,"unit_price":12000.0}
-        """.data(using: .utf8)!
+        """.utf8)
 
         let item = try JSONDecoder().decode(OrderLineItem.self, from: json)
         #expect(item.id == "li-1")
@@ -124,7 +124,7 @@ struct RetailerServiceTests {
     }
 
     @Test func orderDecodingIncludesRetailerListMetadata() throws {
-        let json = """
+        let json = Data("""
         {
           "order_id":"ord-1",
           "retailer_id":"ret-1",
@@ -146,7 +146,7 @@ struct RetailerServiceTests {
           "version":7,
           "items":[{"line_item_id":"li-1","sku_id":"sku-1","sku_name":"Milk","quantity":2,"unit_price":11225,"total_price":22450}]
         }
-        """.data(using: .utf8)!
+        """.utf8)
 
         let order = try JSONDecoder().decode(Order.self, from: json)
         #expect(order.totalAmount == 22450)

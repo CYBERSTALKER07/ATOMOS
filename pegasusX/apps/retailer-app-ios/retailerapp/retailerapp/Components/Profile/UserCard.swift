@@ -42,7 +42,7 @@ struct UserCard: View {
 
                 HStack(spacing: AppTheme.spacingSM) {
                     Image(systemName: "envelope")
-                        .font(.system(size: 12))
+                        .font(.caption)
                     Text(userEmail ?? "—")
                         .font(.system(.caption, design: .rounded))
                 }
@@ -51,7 +51,7 @@ struct UserCard: View {
                 if !profilePhone.isEmpty {
                     HStack(spacing: AppTheme.spacingSM) {
                         Image(systemName: "phone")
-                            .font(.system(size: 12))
+                            .font(.caption)
                         Text(profilePhone)
                             .font(.system(.caption, design: .rounded))
                     }

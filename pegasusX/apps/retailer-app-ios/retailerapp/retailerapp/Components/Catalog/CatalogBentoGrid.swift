@@ -13,7 +13,6 @@ struct CatalogBentoGrid: View {
             .padding(.horizontal, AppTheme.spacingLG)
             .padding(.top, AppTheme.spacingMD)
 
-            // Row 1: 1 big + 1 big
             if categories.count >= 2 {
                 HStack(spacing: AppTheme.spacingMD) {
                     bentoBig(categories[0], height: 150)
@@ -24,7 +23,6 @@ struct CatalogBentoGrid: View {
                 .padding(.horizontal, AppTheme.spacingLG)
             }
 
-            // Row 2: 1 wide + 2 small stacked
             if categories.count >= 4 {
                 HStack(spacing: AppTheme.spacingMD) {
                     bentoWide(categories[2], height: 130)
@@ -42,7 +40,6 @@ struct CatalogBentoGrid: View {
                 .padding(.horizontal, AppTheme.spacingLG)
             }
 
-            // Row 3: 3 equal
             if categories.count >= 7 {
                 HStack(spacing: AppTheme.spacingMD) {
                     bentoCompact(categories[5])
@@ -57,7 +54,6 @@ struct CatalogBentoGrid: View {
                 .padding(.horizontal, AppTheme.spacingLG)
             }
 
-            // Remaining categories in adaptive grid
             if categories.count > 8 {
                 let remaining = Array(categories.dropFirst(8))
                 let cols = [GridItem(.adaptive(minimum: 160), spacing: AppTheme.spacingMD)]
@@ -80,7 +76,7 @@ struct CatalogBentoGrid: View {
             VStack(alignment: .leading, spacing: 0) {
                 Spacer()
                 Image(systemName: cat.icon)
-                    .font(.system(size: 32, weight: .bold)) // Bold & slightly smaller icon
+                    .font(.system(.title, weight: .bold))
                     .foregroundStyle(AppTheme.accent)
                     .padding(.bottom, AppTheme.spacingSM)
                 Text(cat.name)
@@ -88,12 +84,12 @@ struct CatalogBentoGrid: View {
                     .foregroundStyle(AppTheme.textPrimary)
                 if let count = cat.productCount {
                     Text(L10n.format("mobile_retailer.ui.count_items_2", "\(count)"))
-                        .font(.system(.caption2, design: .rounded, weight: .medium)) // Medium weight
+                        .font(.system(.caption2, design: .rounded, weight: .medium))
                         .foregroundStyle(AppTheme.textTertiary)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .frame(height: height)
+            .frame(minHeight: height)
             .padding(AppTheme.spacingMD)
             .background {
                 RoundedRectangle(cornerRadius: AppTheme.radiusCard, style: .continuous)
@@ -103,10 +99,11 @@ struct CatalogBentoGrid: View {
                             .stroke(AppTheme.separator.opacity(0.12), lineWidth: 1)
                     }
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(cat.productCount.map { "\(cat.name), \($0) items" } ?? cat.name)
         }
         .buttonStyle(.pressable)
     }
-
 
     func bentoWide(_ cat: ProductCategory, height: Double) -> some View {
         NavigationLink {
@@ -114,21 +111,21 @@ struct CatalogBentoGrid: View {
         } label: {
             HStack(spacing: AppTheme.spacingMD) {
                 Image(systemName: cat.icon)
-                    .font(.system(size: 38, weight: .bold)) // Bold icon
+                    .font(.system(.largeTitle, weight: .bold))
                     .foregroundStyle(AppTheme.accent)
                 VStack(alignment: .leading, spacing: 3) {
                     Text(cat.name)
-                        .font(.system(.headline, design: .rounded, weight: .bold)) // Bold title
+                        .font(.system(.headline, design: .rounded, weight: .bold))
                         .foregroundStyle(AppTheme.textPrimary)
                     if let count = cat.productCount {
                         Text(L10n.format("mobile_retailer.ui.count_items_2", "\(count)"))
-                            .font(.system(.caption, design: .rounded, weight: .medium)) // Medium weight
+                            .font(.system(.caption, design: .rounded, weight: .medium))
                             .foregroundStyle(AppTheme.textTertiary)
                     }
                 }
                 Spacer()
             }
-            .frame(height: height)
+            .frame(minHeight: height)
             .padding(AppTheme.spacingMD)
             .background {
                 RoundedRectangle(cornerRadius: AppTheme.radiusCard, style: .continuous)
@@ -138,10 +135,11 @@ struct CatalogBentoGrid: View {
                             .stroke(AppTheme.separator.opacity(0.12), lineWidth: 1)
                     }
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(cat.productCount.map { "\(cat.name), \($0) items" } ?? cat.name)
         }
         .buttonStyle(.pressable)
     }
-
 
     func bentoSmall(_ cat: ProductCategory) -> some View {
         NavigationLink {
@@ -149,15 +147,15 @@ struct CatalogBentoGrid: View {
         } label: {
             HStack(spacing: AppTheme.spacingSM) {
                 Image(systemName: cat.icon)
-                    .font(.system(size: 18, weight: .bold)) // Bold icon
+                    .font(.system(.headline, weight: .bold))
                     .foregroundStyle(AppTheme.accent)
                 Text(cat.name)
-                    .font(.system(.caption, design: .rounded, weight: .bold)) // Bold title
+                    .font(.system(.caption, design: .rounded, weight: .bold))
                     .foregroundStyle(AppTheme.textPrimary)
                     .lineLimit(1)
                 Spacer()
             }
-            .frame(height: 54)
+            .frame(minHeight: 54)
             .padding(.horizontal, AppTheme.spacingMD)
             .background {
                 RoundedRectangle(cornerRadius: AppTheme.radiusMD, style: .continuous)
@@ -167,10 +165,11 @@ struct CatalogBentoGrid: View {
                             .stroke(AppTheme.separator.opacity(0.12), lineWidth: 1)
                     }
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(cat.name)
         }
         .buttonStyle(.pressable)
     }
-
 
     func bentoCompact(_ cat: ProductCategory) -> some View {
         NavigationLink {
@@ -178,14 +177,14 @@ struct CatalogBentoGrid: View {
         } label: {
             VStack(spacing: AppTheme.spacingSM) {
                 Image(systemName: cat.icon)
-                    .font(.system(size: 24, weight: .bold)) // Bold icon
+                    .font(.system(.title2, weight: .bold))
                     .foregroundStyle(AppTheme.accent)
                 Text(cat.name)
-                    .font(.system(.caption2, design: .rounded, weight: .bold)) // Bold title
+                    .font(.system(.caption2, design: .rounded, weight: .bold))
                     .foregroundStyle(AppTheme.textSecondary)
             }
             .frame(maxWidth: .infinity)
-            .frame(height: 80)
+            .frame(minHeight: 80)
             .background {
                 RoundedRectangle(cornerRadius: AppTheme.radiusMD, style: .continuous)
                     .fill(AppTheme.cardBackground)
@@ -194,8 +193,9 @@ struct CatalogBentoGrid: View {
                             .stroke(AppTheme.separator.opacity(0.12), lineWidth: 1)
                     }
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(cat.name)
         }
         .buttonStyle(.pressable)
     }
-
 }

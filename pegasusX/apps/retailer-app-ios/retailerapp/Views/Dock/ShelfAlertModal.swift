@@ -8,19 +8,19 @@ struct ShelfAlertModal: View {
     var body: some View {
         VStack(spacing: AppTheme.spacingLG) {
             Image(systemName: "exclamationmark.triangle.fill")
-                .font(.system(size: 44))
-                .foregroundColor(AppTheme.destructive)
+                .font(.largeTitle)
+                .foregroundStyle(AppTheme.destructive)
                 .accessibilityHidden(true)
             
             Text("Restock Needed")
                 .font(.title2)
                 .bold()
-                .foregroundColor(AppTheme.destructive)
+                .foregroundStyle(AppTheme.destructive)
             
             Text("Product \(productId) has dropped to \(currentStock) items on the floor.")
                 .font(.subheadline)
                 .multilineTextAlignment(.center)
-                .foregroundColor(AppTheme.textSecondary)
+                .foregroundStyle(AppTheme.textSecondary)
                 .monospacedDigit()
             
             Button(action: {
@@ -29,11 +29,11 @@ struct ShelfAlertModal: View {
             }) {
                 Text("Acknowledge")
                     .font(.headline)
-                    .foregroundColor(AppTheme.cardBackground)
+                    .foregroundStyle(AppTheme.cardBackground)
                     .frame(maxWidth: .infinity)
                     .pegasusMinimumHitTarget(minHeight: AppTheme.minTouchTarget)
                     .background(AppTheme.destructive)
-                    .cornerRadius(AppTheme.radiusSM)
+                    .clipShape(RoundedRectangle(cornerRadius: AppTheme.radiusSM, style: .continuous))
             }
             .accessibilityLabel("Acknowledge Restock Alert for Product \(productId)")
             .accessibilityHint("Dismisses the low stock alert")
@@ -41,13 +41,13 @@ struct ShelfAlertModal: View {
         }
         .padding(AppTheme.spacingXL)
         .background(AppTheme.secondaryBackground)
-        .cornerRadius(AppTheme.radiusLG)
+        .clipShape(RoundedRectangle(cornerRadius: AppTheme.radiusLG, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: AppTheme.radiusLG)
+            RoundedRectangle(cornerRadius: AppTheme.radiusLG, style: .continuous)
                 .stroke(AppTheme.destructive.opacity(0.3), lineWidth: 1)
         )
         .shadow(color: AppTheme.shadowColorLG, radius: 10, y: 4)
         .padding(AppTheme.spacingXL)
-        .accessibilityElement(children: .contain)
+        .accessibilityElement(children: .combine)
     }
 }

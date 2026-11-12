@@ -9,11 +9,11 @@ struct OrderHistoryLink: View {
         } label: {
             HStack(spacing: AppTheme.spacingMD) {
                 ZStack {
-                    RoundedRectangle(cornerRadius: AppTheme.radiusSM)
+                    RoundedRectangle(cornerRadius: AppTheme.radiusSM, style: .continuous)
                         .fill(AppTheme.surfaceElevated)
                         .frame(width: 36, height: 36)
                     Image(systemName: "clock.fill")
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.system(.subheadline, weight: .semibold))
                         .foregroundStyle(AppTheme.textSecondary)
                 }
 
@@ -28,13 +28,16 @@ struct OrderHistoryLink: View {
                     .foregroundStyle(AppTheme.textTertiary)
 
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.system(.caption2, weight: .semibold))
                     .foregroundStyle(AppTheme.textTertiary.opacity(0.5))
             }
+            .frame(minHeight: 44)
             .padding(AppTheme.spacingLG)
             .background(AppTheme.cardBackground)
             .clipShape(.rect(cornerRadius: AppTheme.radiusCard))
             .shadow(color: AppTheme.shadowColor, radius: 4, y: 2)
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Order history, \(orderCount) orders")
         }
     }
 }

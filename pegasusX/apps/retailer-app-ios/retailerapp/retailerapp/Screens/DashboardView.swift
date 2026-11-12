@@ -4,20 +4,27 @@ struct DashboardView: View {
     @Environment(CartManager.self) private var cart
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var refreshCenter = RetailerRefreshCenter.shared
-    @State private var activeOrders: [Order] = []
-    @State private var predictions: [RetailerAIPrediction] = []
-    @State private var reorderProducts: [Product] = []
-    @State private var isLoading = false
-    @State private var actingId: String?
-    @State private var orderActionPending = false
-    @State private var loadError: String?
-    @State private var pulseEvents: [RetailerPulseEvent] = []
-    @State private var pulseLoading = false
-    @State private var pulseError: String?
-    @State private var commandPulse: ControlTowerPulseWire?
-    @State private var commandPulseError: String?
+    @State private var vm = DashboardViewModel()
     @State private var socket = RetailerWebSocket.shared
-    @State private var commandJump: CommandStatusJump?
+
+    private var activeOrders: [Order] { vm.activeOrders }
+    private var predictions: [RetailerAIPrediction] { vm.predictions }
+    private var reorderProducts: [Product] { vm.reorderProducts }
+    private var isLoading: Bool { vm.isLoading }
+    private var actingId: String? { vm.actingId }
+    private var orderActionPending: Bool {
+        get { vm.orderActionPending }
+        nonmutating set { vm.orderActionPending = newValue }
+    }
+    private var loadError: String? {
+        get { vm.loadError }
+        nonmutating set { vm.loadError = newValue }
+    }
+    private var pulseEvents: [RetailerPulseEvent] { vm.pulseEvents }
+    private var pulseLoading: Bool { vm.pulseLoading }
+    private var pulseError: String? { vm.pulseError }
+    private var commandPulse: ControlTowerPulseWire? { vm.commandPulse }
+    private var commandPulseError: String? { vm.commandPulseError }
 
     private let api = APIClient.shared
 
@@ -26,6 +33,7 @@ struct DashboardView: View {
     }
 
     var body: some View {
+        @Bindable var vm = vm
         ScrollView {
             VStack(spacing: AppTheme.spacingXL) {
                 if isLoading && activeOrders.isEmpty && predictions.isEmpty && reorderProducts.isEmpty {
@@ -66,7 +74,7 @@ struct DashboardView: View {
                     // AI Prediction Cards
                     AiPredictionSection(
                         predictions: predictions,
-                        actingId: $actingId,
+                        actingId: $vm.actingId,
                         onConfirm: { item in
                             await confirmAiOrder(item.orderId)
                         },
@@ -96,17 +104,18 @@ struct DashboardView: View {
                 }
             }
         }
+        .scrollDismissesKeyboard(.interactively)
         .refreshable {
             await loadData()
         }
-        .navigationDestination(item: $commandJump) { jump in
+        .navigationDestination(item: $vm.commandJump) { jump in
             OrdersView(initialCommandStatus: jump.status, initialSupplierId: jump.supplierId)
         }
         .task {
-            while !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: 60_000_000_000)
-                await loadCommandPulse()
-            }
+            await vm.pollCommandPulseLoop()
+        }
+        .onChange(of: NetworkLifecycleEngine.shared.syncEpoch) { _, _ in
+            Task { await loadData(silent: hasCachedDashboardData) }
         }
         .onChange(of: socket.reconnectEpoch) { _, _ in
             if orderActionPending {
@@ -159,7 +168,7 @@ struct DashboardView: View {
                         NavigationLink {
                             ArrivalView()
                         } label: {
-                            commandTile("Dock", "0")
+                            commandTile("Receiving", "0")
                         }
                         .buttonStyle(.pressable)
 
@@ -190,7 +199,7 @@ struct DashboardView: View {
                     NavigationLink {
                         ArrivalView()
                     } label: {
-                        commandTile("Dock", "\(pulse.dockPending)")
+                        commandTile("Receiving", "\(pulse.dockPending)")
                     }
                     .buttonStyle(.pressable)
 
@@ -207,7 +216,7 @@ struct DashboardView: View {
                     dictionary: orderStatusFunnel,
                     counts: commandPulse?.ordersByStatus,
                     source: commandPulse?.source,
-                    onSelect: { commandJump = CommandStatusJump(status: $0) }
+                    onSelect: { commandJump($0) }
                 )
                 .accessibilityIdentifier("gs-u-retailer-stack")
                 ForEach(Array((commandPulse?.ordersBySupplier ?? []).enumerated()), id: \.offset) { _, facet in
@@ -219,7 +228,7 @@ struct DashboardView: View {
                             dictionary: orderStatusFunnel,
                             counts: facet.ordersByStatus,
                             source: commandPulse?.source,
-                            onSelect: { commandJump = CommandStatusJump(status: $0, supplierId: facet.supplierId) }
+                            onSelect: { commandJump($0, supplierId: facet.supplierId) }
                         )
                     }
                     .accessibilityIdentifier("gs-u-retailer-supplier-facet")
@@ -234,6 +243,10 @@ struct DashboardView: View {
         }
     }
 
+    private func commandJump(_ status: String, supplierId: String? = nil) {
+        vm.commandJump = CommandStatusJump(status: status, supplierId: supplierId)
+    }
+
     private func commandTile(_ label: String, _ value: String) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(label)
@@ -242,10 +255,12 @@ struct DashboardView: View {
             Text(value)
                 .font(.system(.headline, design: .rounded))
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, minHeight: AppTheme.minTouchTarget, alignment: .leading)
         .padding(10)
         .background(AppTheme.cardBackground)
         .clipShape(.rect(cornerRadius: AppTheme.radiusCard))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(label): \(value)")
     }
 
     // MARK: - Active Deliveries
@@ -294,7 +309,7 @@ struct DashboardView: View {
                     .fill(AppTheme.surfaceElevated)
                     .frame(width: 64, height: 64)
                 Image(systemName: icon)
-                    .font(.system(size: 24))
+                    .font(.title2)
                     .foregroundStyle(AppTheme.textTertiary)
             }
             Text(title)
@@ -324,149 +339,35 @@ struct DashboardView: View {
     }
 
     private func loadData(silent: Bool = false) async {
-        let rid = AuthManager.shared.currentUser?.id ?? ""
-        if !silent { isLoading = true }
-        if !silent { loadError = nil }
-        pulseLoading = true
-        pulseError = nil
-        do {
-            let orders: [Order] = try await api.get(path: "/v1/retailers/\(rid)/orders")
-            let active = orders.filter { $0.status.isActive }
-            activeOrders = active.isEmpty ? Order.samples.filter { $0.status.isActive } : active
-        } catch {
-            activeOrders = Order.samples.filter { $0.status.isActive }
-        }
-
-        do {
-            let p = try await api.getRetailerAIPredictions()
-            predictions = p.isEmpty ? RetailerAIPrediction.samples : p
-        } catch {
-            predictions = RetailerAIPrediction.samples
-        }
-
-        do {
-            let products: [Product] = try await api.get(path: "/v1/catalog/products")
-            let list = Array(products.prefix(6))
-            reorderProducts = list.isEmpty ? Array(Product.samples.prefix(6)) : list
-        } catch {
-            reorderProducts = Array(Product.samples.prefix(6))
-        }
-
-        do {
-            let pulse = try await api.getRetailerPulse()
-            let result = PulseHonesty.apply(ok: true, incoming: pulse.events, previous: pulseEvents)
-            pulseEvents = result.events
-            pulseError = result.error
-        } catch {
-            pulseEvents = RetailerPulseEvent.samples
-            pulseError = nil
-        }
-        await loadCommandPulse()
-        pulseLoading = false
-        if !silent { isLoading = false }
+        await vm.loadData(silent: silent)
     }
 
     private func loadCommandPulse() async {
-        do {
-            let incoming = try await api.getControlTowerPulse()
-            let result = PulseHonesty.applyObject(ok: true, incoming: incoming, previous: commandPulse)
-            commandPulse = result.value ?? ControlTowerPulseWire.sample
-            commandPulseError = nil
-        } catch {
-            commandPulse = commandPulse ?? ControlTowerPulseWire.sample
-            commandPulseError = nil
-        }
+        await vm.loadCommandPulse()
     }
 
     private func cancelOrder(_ orderId: String) async {
-        let retailerId = AuthManager.shared.currentUser?.id ?? ""
-        do {
-            let _: [String: String] = try await api.post(
-                path: "/v1/order/cancel",
-                body: [
-                    "order_id": orderId,
-                    "retailer_id": retailerId,
-                ],
-                headers: ["Idempotency-Key": RetailerIdempotency.cancel(orderId: orderId)]
-            )
-            withAnimation(AnimationConstants.fluid) {
-                activeOrders.removeAll { $0.id == orderId }
-            }
-        } catch {}
+        await vm.cancelOrder(orderId)
     }
 
     private func confirmAiOrder(_ orderId: String) async {
-        actingId = orderId
-        orderActionPending = true
-        defer {
-            actingId = nil
-            orderActionPending = false
-        }
-        do {
-            try await APIClient.shared.confirmAiOrder(orderId: orderId)
-            await loadData()
-        } catch {
-            loadError = "Failed to confirm AI order"
-        }
+        await vm.confirmAiOrder(orderId)
     }
 
     private func rejectAiOrder(_ orderId: String) async {
-        actingId = orderId
-        orderActionPending = true
-        defer {
-            actingId = nil
-            orderActionPending = false
-        }
-        do {
-            try await APIClient.shared.rejectAiOrder(orderId: orderId, reason: "Retailer rejected")
-            await loadData()
-        } catch {
-            loadError = "Failed to reject AI order"
-        }
+        await vm.rejectAiOrder(orderId)
     }
 
     private func confirmPreorder(_ orderId: String) async {
-        orderActionPending = true
-        defer { orderActionPending = false }
-        do {
-            try await APIClient.shared.confirmPreorder(orderId: orderId)
-            await loadData()
-        } catch {
-            loadError = "Failed to confirm preorder"
-        }
+        await vm.confirmPreorder(orderId)
     }
 
     private func editPreorder(_ orderId: String) async {
-        orderActionPending = true
-        defer { orderActionPending = false }
-        guard let order = await findOrder(orderId) else { return }
-        let deliveryDate = order.deliverBefore ?? order.autoConfirmAt ?? order.estimatedDelivery ?? ""
-        guard !deliveryDate.isEmpty else { return }
-        let lineItems = order.items.map { item in
-            APIClient.EditPreorderItem(
-                sku: item.productId.isEmpty ? item.id : item.productId,
-                name: item.productName,
-                quantity: Int64(item.quantity),
-                unitPriceMinor: item.unitPrice
-            )
-        }
-        guard !lineItems.isEmpty else { return }
-        do {
-            try await APIClient.shared.editPreorder(orderId: orderId, deliveryDate: deliveryDate, items: lineItems)
-            await loadData()
-        } catch {
-            print("Failed to edit preorder")
-        }
+        await vm.editPreorder(orderId)
     }
 
     private func findOrder(_ orderId: String) async -> Order? {
-        if let order = activeOrders.first(where: { $0.id == orderId }) {
-            return order
-        }
-        let retailerId = AuthManager.shared.currentUser?.id ?? ""
-        guard !retailerId.isEmpty else { return nil }
-        let orders: [Order] = (try? await api.get(path: "/v1/retailers/\(retailerId)/orders")) ?? []
-        return orders.first { $0.id == orderId }
+        await vm.findOrder(orderId)
     }
 }
 

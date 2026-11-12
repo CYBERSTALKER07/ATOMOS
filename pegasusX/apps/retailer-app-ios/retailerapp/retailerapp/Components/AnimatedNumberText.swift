@@ -15,12 +15,12 @@ struct AnimatedNumberText: View {
 }
 
 struct AnimatedCurrencyText: View {
-    let value: Double
+    let value: Int64
     var font: Font = .headline
     var color: Color = AppTheme.accent
 
     var body: some View {
-        Text("\(Int(value).formatted())")
+        Text(value.formatted())
             .font(font.monospacedDigit())
             .foregroundStyle(color)
             .contentTransition(.numericText())
@@ -31,6 +31,6 @@ struct AnimatedCurrencyText: View {
 #Preview {
     VStack(spacing: 20) {
         AnimatedNumberText(value: 42)
-        AnimatedCurrencyText(value: 123.45)
+        AnimatedCurrencyText(value: 12_345)
     }
 }

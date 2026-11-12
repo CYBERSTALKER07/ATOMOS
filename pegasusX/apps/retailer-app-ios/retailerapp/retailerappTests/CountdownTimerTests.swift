@@ -18,7 +18,11 @@ struct CountdownTimerTests {
         let timer = CountdownTimer()
         timer.start(from: "2030-01-01T00:00:00Z")
         // After starting, calling update should produce a non-default string
-        timer.update(now: ISO8601DateFormatter().date(from: "2029-12-31T23:00:00Z")!)
+        guard let mockDate = ISO8601DateFormatter().date(from: "2029-12-31T23:00:00Z") else {
+            Issue.record("Failed to parse test date")
+            return
+        }
+        timer.update(now: mockDate)
         #expect(timer.remainingString == "01:00:00")
     }
 

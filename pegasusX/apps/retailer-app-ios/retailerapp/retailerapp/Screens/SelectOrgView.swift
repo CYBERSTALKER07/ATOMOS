@@ -25,7 +25,7 @@ struct SelectOrgView: View {
                     } label: {
                         HStack {
                             VStack(alignment: .leading, spacing: 4) {
-                                Text(m.name?.isEmpty == false ? m.name! : m.retailerId)
+                                Text((m.name?.isEmpty == false ? m.name : nil) ?? m.retailerId)
                                     .font(.headline)
                                 Text(m.retailerRole)
                                     .font(.caption)

@@ -31,5 +31,7 @@ struct KpiTile: View {
                 .foregroundStyle(AppTheme.textTertiary)
         }
         .retailerCard()
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(title): \(value)")
     }
 }

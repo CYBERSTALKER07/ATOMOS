@@ -2,99 +2,79 @@ import SwiftUI
 import UIKit
 
 struct ReportsProView: View {
-    @State private var salesMinor: Int64 = 0
-    @State private var saleCount = 0
-    @State private var onHand = 0
-    @State private var lowStock = 0
-    @State private var topLine = "—"
-    @State private var banner: String?
-    @State private var loadError: String?
-    @State private var summaryReady = false
-    @State private var exportURL: URL?
-    @State private var exporting = false
-    @State private var showShare = false
-    private let api = APIClient.shared
+    @State private var vm = ReportsProViewModel()
 
     var body: some View {
+        @Bindable var vm = vm
         List {
-            if let loadError {
-                Section { Text(loadError).font(.caption).foregroundStyle(AppTheme.destructive) }
-            } else if let banner {
-                Section { Text(banner).font(.caption).foregroundStyle(AppTheme.accent) }
-            }
-            if summaryReady && loadError == nil {
-                Section("Last 7 days") {
-                    Text(String(format: "Sales %.2f", Double(salesMinor) / 100.0))
-                    Text(L10n.format("mobile_retailer.ui.sale_count_salecount_2", "\(saleCount)"))
-                    Text(L10n.format("mobile_retailer.ui.on_hand_skus_onhand_2", "\(onHand)"))
-                    Text(L10n.format("mobile_retailer.ui.low_stock_bins_lowstock_2", "\(lowStock)"))
-                    Text(L10n.format("mobile_retailer.ui.top_sku_topline_2", "\(topLine)"))
+            if let loadError = vm.loadError {
+                Section {
+                    Text(loadError)
+                        .font(.caption)
+                        .foregroundStyle(AppTheme.destructive)
+                    Button("common.action.retry") {
+                        Haptics.light()
+                        Task { await vm.load() }
+                    }
+                    .pegasusMinimumHitTarget()
+                    .accessibilityLabel("Retry loading reports")
+                }
+            } else if let banner = vm.banner {
+                Section {
+                    Text(banner)
+                        .font(.caption)
+                        .foregroundStyle(AppTheme.accent)
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel(banner)
                 }
             }
+
+            if vm.summaryReady && vm.loadError == nil {
+                Section("Last 7 days") {
+                    Text("Sales \(vm.formatMinor(vm.salesMinor))")
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel("Sales \(vm.formatMinor(vm.salesMinor))")
+                    Text(L10n.format("mobile_retailer.ui.sale_count_salecount_2", "\(vm.saleCount)"))
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel("Sale count \(vm.saleCount)")
+                    Text(L10n.format("mobile_retailer.ui.on_hand_skus_onhand_2", "\(vm.onHand)"))
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel("On hand SKUs \(vm.onHand)")
+                    Text(L10n.format("mobile_retailer.ui.low_stock_bins_lowstock_2", "\(vm.lowStock)"))
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel("Low stock bins \(vm.lowStock)")
+                    Text(L10n.format("mobile_retailer.ui.top_sku_topline_2", "\(vm.topLine)"))
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel("Top SKU \(vm.topLine)")
+                }
+            }
+
             Section {
                 Button {
-                    Task { await exportCSV() }
+                    Task { await vm.exportCSV() }
                 } label: {
                     HStack {
-                        Text(exporting ? "Exporting…" : "Export sales CSV")
+                        Text(vm.exporting ? "Exporting…" : "Export sales CSV")
                         Spacer()
-                        if exporting {
+                        if vm.exporting {
                             ProgressView()
                         }
                     }
+                    .pegasusMinimumHitTarget()
                 }
-                .disabled(exporting)
+                .disabled(vm.exporting)
+                .accessibilityLabel("Export sales CSV")
             }
         }
+        .scrollDismissesKeyboard(.interactively)
         .navigationTitle("portal.nav.reports_pro")
         .navigationBarTitleDisplayMode(.inline)
-        .task { await load() }
-        .refreshable { await load() }
-        .sheet(isPresented: $showShare) {
-            if let exportURL {
+        .task { await vm.load() }
+        .refreshable { await vm.load() }
+        .sheet(isPresented: $vm.showShare) {
+            if let exportURL = vm.exportURL {
                 ActivityView(activityItems: [exportURL])
             }
-        }
-    }
-
-    private func load() async {
-        do {
-            let s = try await api.getReportsSummary()
-            salesMinor = s.salesMinor ?? 0
-            saleCount = s.saleCount ?? 0
-            onHand = s.onHandSkuCount ?? 0
-            lowStock = s.lowStockCount ?? 0
-            if let first = s.topSkus?.first {
-                topLine = "\(first.sku ?? "?") · \(Double(first.salesMinor ?? 0) / 100.0)"
-            }
-            summaryReady = true
-            loadError = nil
-            banner = "REPORTS_PRO auto-enabled if needed"
-        } catch {
-            salesMinor = 48_500_000
-            saleCount = 142
-            onHand = 340
-            lowStock = 4
-            topLine = "DAIRY-MILK-32 · 124,000.00"
-            summaryReady = true
-            loadError = nil
-            banner = nil
-        }
-    }
-
-    private func exportCSV() async {
-        guard !exporting else { return }
-        exporting = true
-        defer { exporting = false }
-        do {
-            let data = try await api.exportReportsCSV(report: "sales")
-            let url = FileManager.default.temporaryDirectory.appendingPathComponent("sales.csv")
-            try data.write(to: url, options: .atomic)
-            exportURL = url
-            showShare = true
-            banner = "Sales CSV ready to share"
-        } catch {
-            banner = error.localizedDescription
         }
     }
 }

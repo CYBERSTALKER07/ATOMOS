@@ -1,5 +1,31 @@
 import Foundation
 
+// MARK: - Strict Int64 Money Formatting
+
+enum RetailerMoney {
+    /// Formats tiyin (1/100 major unit) into `major.minor` string using pure Int64 arithmetic.
+    static func formatTiyin(_ minor: Int64) -> String {
+        let sign = minor < 0 ? "-" : ""
+        let magnitude = minor == Int64.min ? Int64.max : abs(minor)
+        let major = magnitude / 100
+        let remainder = magnitude % 100
+        return String(format: "%@%lld.%02lld", sign, major, remainder)
+    }
+
+    /// Decodes a JSON integer or decimal literal into Int64 without floating-point intermediates.
+    static func decodeInt64<K: CodingKey>(from container: KeyedDecodingContainer<K>, forKey key: K) -> Int64? {
+        if let intVal = try? container.decodeIfPresent(Int64.self, forKey: key) {
+            return intVal
+        }
+        if var decVal = try? container.decodeIfPresent(Decimal.self, forKey: key) {
+            var rounded = Decimal()
+            NSDecimalRound(&rounded, &decVal, 0, .plain)
+            return NSDecimalNumber(decimal: rounded).int64Value
+        }
+        return nil
+    }
+}
+
 // MARK: - Variant
 
 struct Variant: Codable, Identifiable, Hashable {
@@ -8,23 +34,26 @@ struct Variant: Codable, Identifiable, Hashable {
     let pack: String
     let packCount: Int
     let weightPerUnit: String
-    let price: Double
+    /// Unit price in minor units (whole UZS / tiyin as delivered by the backend). 100% Int64 arithmetic.
+    let priceMinor: Int64
 
     enum CodingKeys: String, CodingKey {
-        case id, size, pack, price
+        case id, size, pack
+        case price
+        case priceMinorKey = "price_minor"
         case packCount = "pack_count"
         case packCountCamel = "packCount"
         case weightPerUnit = "weight_per_unit"
         case weightPerUnitCamel = "weightPerUnit"
     }
 
-    init(id: String, size: String, pack: String, packCount: Int, weightPerUnit: String, price: Double) {
+    init(id: String, size: String, pack: String, packCount: Int, weightPerUnit: String, priceMinor: Int64) {
         self.id = id
         self.size = size
         self.pack = pack
         self.packCount = packCount
         self.weightPerUnit = weightPerUnit
-        self.price = price
+        self.priceMinor = priceMinor
     }
 
     init(from decoder: Decoder) throws {
@@ -35,17 +64,19 @@ struct Variant: Codable, Identifiable, Hashable {
         packCount = try container.decodeIfPresent(Int.self, forKey: .packCount)
             ?? container.decodeIfPresent(Int.self, forKey: .packCountCamel)
             ?? 1
-        price = try container.decodeIfPresent(Double.self, forKey: .price) ?? 0
+        priceMinor = RetailerMoney.decodeInt64(from: container, forKey: .priceMinorKey)
+            ?? RetailerMoney.decodeInt64(from: container, forKey: .price)
+            ?? 0
 
-        // weightPerUnit can arrive as String or Double from backend
+        // weightPerUnit can arrive as String or numeric from backend
         if let s = try? container.decodeIfPresent(String.self, forKey: .weightPerUnit) {
             weightPerUnit = s
         } else if let s = try? container.decodeIfPresent(String.self, forKey: .weightPerUnitCamel) {
             weightPerUnit = s
-        } else if let d = try? container.decodeIfPresent(Double.self, forKey: .weightPerUnit) {
-            weightPerUnit = String(format: "%.1f", d)
-        } else if let d = try? container.decodeIfPresent(Double.self, forKey: .weightPerUnitCamel) {
-            weightPerUnit = String(format: "%.1f", d)
+        } else if let dec = try? container.decodeIfPresent(Decimal.self, forKey: .weightPerUnit) {
+            weightPerUnit = NSDecimalNumber(decimal: dec).stringValue
+        } else if let dec = try? container.decodeIfPresent(Decimal.self, forKey: .weightPerUnitCamel) {
+            weightPerUnit = NSDecimalNumber(decimal: dec).stringValue
         } else {
             weightPerUnit = "1 unit"
         }
@@ -58,7 +89,7 @@ struct Variant: Codable, Identifiable, Hashable {
         try container.encode(pack, forKey: .pack)
         try container.encode(packCount, forKey: .packCount)
         try container.encode(weightPerUnit, forKey: .weightPerUnit)
-        try container.encode(price, forKey: .price)
+        try container.encode(priceMinor, forKey: .price)
     }
 }
 
@@ -102,7 +133,7 @@ struct Product: Codable, Identifiable, Hashable {
     let categoryName: String?
     let sellByBlock: Bool
     let unitsPerBlock: Int?
-    let price: Int?
+    let priceMinor: Int64?
     let availableStock: Int?
     let isOutOfStockFlag: Bool
     let acceptsBackorder: Bool
@@ -111,9 +142,9 @@ struct Product: Codable, Identifiable, Hashable {
     let offer: ProductOffer?
 
     var isOutOfStock: Bool {
-        (availableStock != nil && availableStock! <= 0) || isOutOfStockFlag
+        (availableStock.map { $0 <= 0 } ?? false) || isOutOfStockFlag
     }
-    var isLowStock: Bool { availableStock != nil && (1...5).contains(availableStock!) }
+    var isLowStock: Bool { availableStock.map { (1...5).contains($0) } ?? false }
     var blocksAddToCart: Bool { isOutOfStock && !acceptsBackorder }
     var cartMaxQuantity: Int? {
         if let maxQuantity, maxQuantity > 0 { return maxQuantity }
@@ -163,7 +194,7 @@ struct Product: Codable, Identifiable, Hashable {
         categoryName: String? = nil,
         sellByBlock: Bool = false,
         unitsPerBlock: Int? = nil,
-        price: Int? = nil,
+        priceMinor: Int64? = nil,
         availableStock: Int? = nil,
         isOutOfStockFlag: Bool = false,
         acceptsBackorder: Bool = false,
@@ -184,7 +215,7 @@ struct Product: Codable, Identifiable, Hashable {
         self.categoryName = categoryName
         self.sellByBlock = sellByBlock
         self.unitsPerBlock = unitsPerBlock
-        self.price = price
+        self.priceMinor = priceMinor
         self.availableStock = availableStock
         self.isOutOfStockFlag = isOutOfStockFlag
         self.acceptsBackorder = acceptsBackorder
@@ -217,7 +248,7 @@ struct Product: Codable, Identifiable, Hashable {
             ?? false
         unitsPerBlock = try container.decodeIfPresent(Int.self, forKey: .unitsPerBlock)
             ?? container.decodeIfPresent(Int.self, forKey: .unitsPerBlockCamel)
-        price = try container.decodeIfPresent(Int.self, forKey: .price)
+        priceMinor = RetailerMoney.decodeInt64(from: container, forKey: .price)
         availableStock = try container.decodeIfPresent(Int.self, forKey: .availableStock)
             ?? container.decodeIfPresent(Int.self, forKey: .availableStockCamel)
         isOutOfStockFlag = try container.decodeIfPresent(Bool.self, forKey: .isOutOfStockFlag) ?? false
@@ -242,7 +273,7 @@ struct Product: Codable, Identifiable, Hashable {
         try container.encodeIfPresent(categoryName, forKey: .categoryName)
         try container.encode(sellByBlock, forKey: .sellByBlock)
         try container.encodeIfPresent(unitsPerBlock, forKey: .unitsPerBlock)
-        try container.encodeIfPresent(price, forKey: .price)
+        try container.encodeIfPresent(priceMinor, forKey: .price)
         try container.encodeIfPresent(availableStock, forKey: .availableStock)
     }
 
@@ -256,8 +287,8 @@ struct Product: Codable, Identifiable, Hashable {
         if let list = offer?.listPriceMinor, list > 0 {
             return "\(list.formatted())"
         }
-        if let price {
-            return "\(price.formatted())"
+        if let priceMinor {
+            return "\(priceMinor.formatted())"
         }
         return nil
     }
@@ -267,10 +298,10 @@ struct Product: Codable, Identifiable, Hashable {
             return "\(sale.formatted())"
         }
         if let v = defaultVariant {
-            return "\(Int(v.price).formatted())"
+            return "\(v.priceMinor.formatted())"
         }
-        if let price {
-            return "\(price.formatted())"
+        if let priceMinor {
+            return "\(priceMinor.formatted())"
         }
         return "—"
     }
@@ -288,77 +319,4 @@ struct Product: Codable, Identifiable, Hashable {
         }
         return nil
     }
-}
-
-// MARK: - Sample Data
-
-extension Product {
-    static let samples: [Product] = [
-        Product(
-            id: "prod-001",
-            name: "Organic Whole Milk",
-            description: "Farm-fresh organic whole milk, pasteurized.",
-            nutrition: "Calories: 150, Fat: 8g, Protein: 8g",
-            imageURL: nil,
-            variants: [
-                Variant(id: "v-001a", size: "1L", pack: "Single", packCount: 1, weightPerUnit: "1.03kg", price: 3.49),
-                Variant(id: "v-001b", size: "1L", pack: "6-Pack", packCount: 6, weightPerUnit: "1.03kg", price: 18.99)
-            ]
-        ),
-        Product(
-            id: "prod-002",
-            name: "Sourdough Bread",
-            description: "Artisan sourdough, slow-fermented 24 hours.",
-            nutrition: "Calories: 120, Fat: 0.5g, Protein: 4g",
-            imageURL: nil,
-            variants: [
-                Variant(id: "v-002a", size: "500g", pack: "Single", packCount: 1, weightPerUnit: "500g", price: 4.99),
-                Variant(id: "v-002b", size: "500g", pack: "3-Pack", packCount: 3, weightPerUnit: "500g", price: 13.49)
-            ]
-        ),
-        Product(
-            id: "prod-003",
-            name: "Free-Range Eggs",
-            description: "Grade A free-range eggs from local farms.",
-            nutrition: "Calories: 70, Fat: 5g, Protein: 6g",
-            imageURL: nil,
-            variants: [
-                Variant(id: "v-003a", size: "12 ct", pack: "Dozen", packCount: 1, weightPerUnit: "720g", price: 5.99),
-                Variant(id: "v-003b", size: "30 ct", pack: "Tray", packCount: 1, weightPerUnit: "1.8kg", price: 12.99)
-            ]
-        ),
-        Product(
-            id: "prod-004",
-            name: "Avocado",
-            description: "Hass avocados, ripe and ready to eat.",
-            nutrition: "Calories: 240, Fat: 22g, Protein: 3g",
-            imageURL: nil,
-            variants: [
-                Variant(id: "v-004a", size: "Single", pack: "Each", packCount: 1, weightPerUnit: "200g", price: 1.99),
-                Variant(id: "v-004b", size: "Single", pack: "6-Pack", packCount: 6, weightPerUnit: "200g", price: 9.99)
-            ]
-        ),
-        Product(
-            id: "prod-005",
-            name: "Sparkling Water",
-            description: "Natural mineral sparkling water, unflavored.",
-            nutrition: "Calories: 0, Fat: 0g, Protein: 0g",
-            imageURL: nil,
-            variants: [
-                Variant(id: "v-005a", size: "500ml", pack: "Single", packCount: 1, weightPerUnit: "500g", price: 1.49),
-                Variant(id: "v-005b", size: "500ml", pack: "12-Pack", packCount: 12, weightPerUnit: "500g", price: 14.99)
-            ]
-        ),
-        Product(
-            id: "prod-006",
-            name: "Greek Yogurt",
-            description: "Thick, creamy Greek yogurt with live cultures.",
-            nutrition: "Calories: 100, Fat: 0g, Protein: 17g",
-            imageURL: nil,
-            variants: [
-                Variant(id: "v-006a", size: "170g", pack: "Single", packCount: 1, weightPerUnit: "170g", price: 1.79),
-                Variant(id: "v-006b", size: "170g", pack: "4-Pack", packCount: 4, weightPerUnit: "170g", price: 5.99)
-            ]
-        )
-    ]
 }

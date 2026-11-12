@@ -5,8 +5,8 @@
 //  Created by Shakhzod on 3/17/26.
 //
 
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 // MARK: - Tab Enums
 
@@ -75,64 +75,28 @@ struct ContentView: View {
     @Environment(CartManager.self) private var cart
     @Environment(AuthManager.self) private var auth
     @Environment(\.scenePhase) private var scenePhase
-
-    @State private var selectedTab: AppTab = .home
-    @State private var sideMenuSelection: SideMenuTab = .home
-    @State private var columnVisibility: NavigationSplitViewVisibility = .automatic
-    @State private var isSidebarExpanded: Bool = true
-    @Namespace private var namespace
-
-    @State private var showSidebar = false
-    @State private var showFutureDemand = false
-    @State private var showAutoOrder = false
-    @State private var showActiveOrderDetail = false
-    @State private var showProfile = false
-    @State private var showCart = false
-    @State private var showInsights = false
-    @State private var showProcurement = false
-    @State private var showControlTower = false
-    @State private var showCredit = false
-    @State private var showHq = false
-    @State private var showNotificationInbox = false
-    @State private var notificationCount = 0
-    @State private var cartBounce = false
-    @State private var activeOrders: [Order] = []
-    @State private var paymentEvent: PaymentRequiredEvent?
-    @State private var shopClosedAlert: ShopClosedAlertEvent?
-    @State private var refreshCenter = RetailerRefreshCenter.shared
-    @State private var clientPolicyMessage: String?
-    @State private var clientPolicyForce = false
-    @State private var pendingManifest: AutoUpdater.Manifest?
-    @State private var rescueWarningMessage: String?
-    @State private var deliveriesHubInitialTab: DeliveriesHubTab = .map
-
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.modelContext) private var modelContext
 
-    private let api = APIClient.shared
+    @State private var vm = AppShellViewModel()
+    @State private var refreshCenter = RetailerRefreshCenter.shared
+    @Namespace private var namespace
+
     private let ws = RetailerWebSocket.shared
 
-    /// Show floating bar only on main pages
-    private var showFloatingBar: Bool {
-        if horizontalSizeClass == .regular {
-            return sideMenuSelection == .home || sideMenuSelection == .orders || sideMenuSelection == .suppliers || sideMenuSelection == .deliveries
-        } else {
-            return selectedTab == .home || selectedTab == .catalog || selectedTab == .deliveries || selectedTab == .store
-        }
-    }
-
     var body: some View {
+        @Bindable var vm = vm
         VStack(spacing: 0) {
             ClientPolicyBanner(
-                message: clientPolicyMessage,
-                force: clientPolicyForce,
-                onUpdate: clientPolicyMessage == nil ? nil : {
-                    AutoUpdater.shared.promptInstall(manifest: pendingManifest, force: clientPolicyForce)
+                message: vm.clientPolicyMessage,
+                force: vm.clientPolicyForce,
+                onUpdate: vm.clientPolicyMessage == nil ? nil : {
+                    AutoUpdater.shared.promptInstall(manifest: vm.pendingManifest, force: vm.clientPolicyForce)
                 },
-                onDismiss: clientPolicyForce ? nil : { clientPolicyMessage = nil },
+                onDismiss: vm.clientPolicyForce ? nil : { vm.clientPolicyMessage = nil }
             )
-            RescueWarningBanner(message: rescueWarningMessage) {
-                withAnimation(AnimationConstants.fluid) { rescueWarningMessage = nil }
+            RescueWarningBanner(message: vm.rescueWarningMessage) {
+                withAnimation(AnimationConstants.fluid) { vm.rescueWarningMessage = nil }
             }
             Group {
                 if horizontalSizeClass == .regular {
@@ -142,13 +106,17 @@ struct ContentView: View {
                 }
             }
         }
-        .sheet(isPresented: $showFutureDemand) {
-            FutureDemandView()
+        .sheet(isPresented: $vm.showFutureDemand) {
+            NavigationStack {
+                FutureDemandView()
+            }
         }
-        .sheet(isPresented: $showAutoOrder) {
-            AutoOrderView()
+        .sheet(isPresented: $vm.showAutoOrder) {
+            NavigationStack {
+                AutoOrderView()
+            }
         }
-        .sheet(isPresented: $showActiveOrderDetail) {
+        .sheet(isPresented: $vm.showActiveOrderDetail) {
             NavigationStack {
                 ActiveDeliveriesView()
                     .navigationTitle("mobile_retailer.ui.active_deliveries")
@@ -160,10 +128,12 @@ struct ContentView: View {
                             } label: {
                                 Image(systemName: "map")
                                     .font(.system(.subheadline, weight: .semibold))
+                                    .pegasusMinimumHitTarget()
                             }
+                            .accessibilityLabel("Delivery Map")
                         }
                         ToolbarItem(placement: .confirmationAction) {
-                            Button("warehouse_portal.kpi_stat_card.text.done") { showActiveOrderDetail = false }
+                            Button("Done") { vm.showActiveOrderDetail = false }
                                 .font(.system(.subheadline, design: .rounded)).fontWeight(.semibold)
                         }
                     }
@@ -171,12 +141,12 @@ struct ContentView: View {
             .presentationDetents([.large])
             .presentationCompactAdaptation(.sheet)
         }
-        .sheet(isPresented: $showProfile) {
+        .sheet(isPresented: $vm.showProfile) {
             NavigationStack {
                 ProfileView()
                     .toolbar {
                         ToolbarItem(placement: .confirmationAction) {
-                            Button("warehouse_portal.kpi_stat_card.text.done") { showProfile = false }
+                            Button("Done") { vm.showProfile = false }
                                 .font(.system(.subheadline, design: .rounded)).fontWeight(.semibold)
                         }
                     }
@@ -184,12 +154,12 @@ struct ContentView: View {
             .presentationDetents([.large])
             .presentationCompactAdaptation(.sheet)
         }
-        .sheet(isPresented: $showCart) {
+        .sheet(isPresented: $vm.showCart) {
             NavigationStack {
                 CartView()
                     .toolbar {
                         ToolbarItem(placement: .confirmationAction) {
-                            Button("warehouse_portal.kpi_stat_card.text.done") { showCart = false }
+                            Button("Done") { vm.showCart = false }
                                 .font(.system(.subheadline, design: .rounded)).fontWeight(.semibold)
                         }
                     }
@@ -198,7 +168,7 @@ struct ContentView: View {
             .presentationDragIndicator(.visible)
             .presentationCompactAdaptation(.sheet)
         }
-        .sheet(isPresented: $showInsights) {
+        .sheet(isPresented: $vm.showInsights) {
             NavigationStack {
                 InsightsView()
             }
@@ -206,12 +176,12 @@ struct ContentView: View {
             .presentationDragIndicator(.visible)
             .presentationCompactAdaptation(.sheet)
         }
-        .sheet(isPresented: $showProcurement) {
+        .sheet(isPresented: $vm.showProcurement) {
             NavigationStack {
                 ProcurementView()
                     .toolbar {
                         ToolbarItem(placement: .confirmationAction) {
-                            Button("warehouse_portal.kpi_stat_card.text.done") { showProcurement = false }
+                            Button("Done") { vm.showProcurement = false }
                                 .font(.system(.subheadline, design: .rounded)).fontWeight(.semibold)
                         }
                     }
@@ -220,26 +190,12 @@ struct ContentView: View {
             .presentationDragIndicator(.visible)
             .presentationCompactAdaptation(.sheet)
         }
-        .sheet(isPresented: $showControlTower) {
-            NavigationStack {
-                ControlTowerView()
-                    .toolbar {
-                        ToolbarItem(placement: .confirmationAction) {
-                            Button("warehouse_portal.kpi_stat_card.text.done") { showControlTower = false }
-                                .font(.system(.subheadline, design: .rounded)).fontWeight(.semibold)
-                        }
-                    }
-            }
-            .presentationDetents([.large])
-            .presentationDragIndicator(.visible)
-            .presentationCompactAdaptation(.sheet)
-        }
-        .sheet(isPresented: $showCredit) {
+        .sheet(isPresented: $vm.showCredit) {
             NavigationStack {
                 CreditPartnersView()
                     .toolbar {
                         ToolbarItem(placement: .confirmationAction) {
-                            Button("warehouse_portal.kpi_stat_card.text.done") { showCredit = false }
+                            Button("Done") { vm.showCredit = false }
                                 .font(.system(.subheadline, design: .rounded)).fontWeight(.semibold)
                         }
                     }
@@ -248,12 +204,12 @@ struct ContentView: View {
             .presentationDragIndicator(.visible)
             .presentationCompactAdaptation(.sheet)
         }
-        .sheet(isPresented: $showHq) {
+        .sheet(isPresented: $vm.showHq) {
             NavigationStack {
                 HqView()
                     .toolbar {
                         ToolbarItem(placement: .confirmationAction) {
-                            Button("warehouse_portal.kpi_stat_card.text.done") { showHq = false }
+                            Button("Done") { vm.showHq = false }
                                 .font(.system(.subheadline, design: .rounded)).fontWeight(.semibold)
                         }
                     }
@@ -262,54 +218,54 @@ struct ContentView: View {
             .presentationDragIndicator(.visible)
             .presentationCompactAdaptation(.sheet)
         }
-        .sheet(isPresented: $showNotificationInbox) {
-            NotificationInboxView()
-                .presentationDetents([.large])
-                .presentationDragIndicator(.visible)
-                .presentationCompactAdaptation(.sheet)
+        .sheet(isPresented: $vm.showNotificationInbox) {
+            NavigationStack {
+                NotificationInboxView()
+            }
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
+            .presentationCompactAdaptation(.sheet)
         }
-        .onChange(of: showNotificationInbox) { _, isOpen in
+        .onChange(of: vm.showNotificationInbox) { _, isOpen in
             if !isOpen {
-                Task { await loadNotificationCount() }
+                Task { await vm.loadNotificationCount() }
             }
         }
         .onChange(of: cart.totalItems) {
-            withAnimation(AnimationConstants.bouncy) { cartBounce = true }
+            withAnimation(AnimationConstants.bouncy) { vm.cartBounce = true }
+        }
+        .onChange(of: vm.selectedTab) { oldTab, newTab in
+            vm.handleTabChange(from: oldTab, to: newTab)
         }
         .onChange(of: scenePhase) {
             guard scenePhase == .active else { return }
             Task {
-                await loadActiveOrders()
-                await loadPendingPayments()
-                await loadNotificationCount()
-                refreshCenter.trigger()
+                await vm.refreshOnActive(refreshCenter: refreshCenter)
             }
         }
         .task {
-            await PushNotificationManager.shared.requestAuthorization()
-            await loadActiveOrders()
-            await loadPendingPayments()
-            await loadNotificationCount()
-            await loadClientPolicy()
+            await vm.bootstrap()
         }
         .task(id: ws.reconnectEpoch) {
-            await loadClientPolicy()
+            await vm.loadClientPolicy()
         }
-        .task { await connectWebSocket() }
-        .sheet(item: $paymentEvent) { event in
+        .task {
+            await vm.connectWebSocket(modelContext: modelContext, refreshCenter: refreshCenter)
+        }
+        .sheet(item: $vm.paymentEvent) { event in
             DeliveryPaymentSheetView(event: event) {
-                paymentEvent = nil
-                Task { await loadActiveOrders() }
+                vm.paymentEvent = nil
+                Task { await vm.loadActiveOrders() }
             }
             .presentationDetents([.large])
             .interactiveDismissDisabled()
             .presentationCompactAdaptation(.sheet)
         }
-        .sheet(item: $shopClosedAlert) { alert in
+        .sheet(item: $vm.shopClosedAlert) { alert in
             NavigationStack {
                 ShopClosedBanner(event: alert) { _ in
-                    shopClosedAlert = nil
-                    Task { await loadActiveOrders() }
+                    vm.shopClosedAlert = nil
+                    Task { await vm.loadActiveOrders() }
                 }
                 .navigationTitle("mobile_retailer.ui.shop_status")
                 .navigationBarTitleDisplayMode(.inline)
@@ -318,7 +274,7 @@ struct ContentView: View {
             .interactiveDismissDisabled()
             .presentationCompactAdaptation(.sheet)
         }
-        .animation(AnimationConstants.fluid, value: selectedTab)
+        .animation(AnimationConstants.fluid, value: vm.selectedTab)
     }
 
     // MARK: - Layouts
@@ -328,15 +284,13 @@ struct ContentView: View {
         HStack(spacing: 0) {
             // MARK: Collapsible Navigation Rail
             VStack(alignment: .leading, spacing: 0) {
-                // Header (App Icon + Toggle)
                 VStack(alignment: .leading, spacing: 24) {
-                    // Top row: Brand & Menu
                     HStack {
-                        if isSidebarExpanded {
+                        if vm.isSidebarExpanded {
                             HStack(spacing: 8) {
                                 Image(systemName: "leaf.fill")
-                                    .font(.system(size: 20, weight: .bold))
-                                    .foregroundColor(AppTheme.accent)
+                                    .font(.title3.weight(.bold))
+                                    .foregroundStyle(AppTheme.accent)
                                 Text("auth.login.title")
                                     .font(.system(.title3, design: .rounded)).fontWeight(.heavy)
                                     .foregroundStyle(AppTheme.textPrimary)
@@ -345,18 +299,20 @@ struct ContentView: View {
                         }
 
                         Button {
+                            Haptics.light()
                             withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
-                                isSidebarExpanded.toggle()
+                                vm.isSidebarExpanded.toggle()
                             }
                         } label: {
                             Image(systemName: "sidebar.left")
-                                .font(.system(size: 22, weight: .medium))
+                                .font(.title3.weight(.medium))
                                 .foregroundStyle(AppTheme.textSecondary)
                                 .frame(width: 44, height: 44)
                                 .contentShape(Rectangle())
                         }
+                        .accessibilityLabel(vm.isSidebarExpanded ? "Collapse sidebar" : "Expand sidebar")
                     }
-                    .padding(.horizontal, isSidebarExpanded ? 24 : 22)
+                    .padding(.horizontal, vm.isSidebarExpanded ? 24 : 22)
 
                     // Profile Row
                     HStack(spacing: 12) {
@@ -369,7 +325,7 @@ struct ContentView: View {
                                 .foregroundStyle(.white)
                         }
 
-                        if isSidebarExpanded {
+                        if vm.isSidebarExpanded {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(auth.currentUser?.name ?? "Retailer")
                                     .font(.system(.subheadline, design: .rounded)).fontWeight(.bold)
@@ -384,7 +340,8 @@ struct ContentView: View {
                             Spacer(minLength: 0)
                         }
                     }
-                    .padding(.horizontal, isSidebarExpanded ? 24 : 22)
+                    .padding(.horizontal, vm.isSidebarExpanded ? 24 : 22)
+                    .accessibilityElement(children: .combine)
                 }
                 .padding(.top, 24)
                 .padding(.bottom, 24)
@@ -392,10 +349,9 @@ struct ContentView: View {
                 // Navigation Items
                 ScrollView(showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 8) {
-                        // Main Section
-                        if isSidebarExpanded {
+                        if vm.isSidebarExpanded {
                             Text("MAIN")
-                                .font(.system(size: 11, weight: .bold, design: .rounded))
+                                .font(.system(.caption2, design: .rounded, weight: .bold))
                                 .foregroundStyle(AppTheme.textTertiary)
                                 .padding(.leading, 36)
                                 .padding(.bottom, 8)
@@ -412,10 +368,9 @@ struct ContentView: View {
                             .padding(.vertical, 20)
                             .padding(.horizontal, 24)
 
-                        // Tools Section
-                        if isSidebarExpanded {
+                        if vm.isSidebarExpanded {
                             Text("TOOLS")
-                                .font(.system(size: 11, weight: .bold, design: .rounded))
+                                .font(.system(.caption2, design: .rounded, weight: .bold))
                                 .foregroundStyle(AppTheme.textTertiary)
                                 .padding(.leading, 36)
                                 .padding(.bottom, 8)
@@ -430,10 +385,10 @@ struct ContentView: View {
                 }
                 .padding(.bottom, 24)
             }
-            .frame(width: isSidebarExpanded ? 280 : 88)
+            .frame(width: vm.isSidebarExpanded ? 280 : 88)
             .background(AppTheme.cardBackground.ignoresSafeArea())
             .clipShape(
-                RoundedRectangle(cornerRadius: AppTheme.radiusLG)
+                RoundedRectangle(cornerRadius: AppTheme.radiusLG, style: .continuous)
             )
             .shadow(color: AppTheme.shadowColor.opacity(0.08), radius: 12, x: 4, y: 0)
             .zIndex(10)
@@ -442,80 +397,82 @@ struct ContentView: View {
             ZStack(alignment: .bottom) {
                 ipadDetailContent
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                
-                if showFloatingBar {
+
+                if vm.showFloatingBar(horizontalSizeClass: horizontalSizeClass) {
                     VStack {
                         Spacer()
-                        FloatingActiveOrdersBar(activeOrders: activeOrders) {
-                            showActiveOrderDetail = true
+                        FloatingActiveOrdersBar(activeOrders: vm.activeOrders) {
+                            vm.showActiveOrderDetail = true
                         }
                         .retailerReadableWidth()
                         .padding(.horizontal, AppTheme.spacingMD)
                     }
                     .padding(.bottom, 32)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
-                    .animation(AnimationConstants.fluid, value: activeOrders.count)
+                    .animation(AnimationConstants.fluid, value: vm.activeOrders.count)
                 }
             }
             .background(AppTheme.background.ignoresSafeArea())
             .zIndex(1)
         }
-        .animation(.spring(response: 0.4, dampingFraction: 0.75), value: isSidebarExpanded)
+        .animation(.spring(response: 0.4, dampingFraction: 0.75), value: vm.isSidebarExpanded)
     }
 
     // MARK: - Sidebar Item Component
 
     @ViewBuilder
     private func sidebarItem(for tab: SideMenuTab) -> some View {
-        let isSelected = sideMenuSelection == tab
-        
+        let isSelected = vm.sideMenuSelection == tab
+
         Button {
+            Haptics.selection()
             withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                 if tab == .deliveries {
-                    deliveriesHubInitialTab = .map
+                    vm.deliveriesHubInitialTab = .map
                 }
-                sideMenuSelection = tab
+                vm.sideMenuSelection = tab
             }
         } label: {
             HStack(spacing: 16) {
                 ZStack {
                     if isSelected {
-                        RoundedRectangle(cornerRadius: AppTheme.radiusSM)
+                        RoundedRectangle(cornerRadius: AppTheme.radiusSM, style: .continuous)
                             .fill(AppTheme.accentSoft.opacity(0.6))
                             .frame(width: 44, height: 44)
                             .matchedGeometryEffect(id: "sidebar_active_bg", in: namespace)
                     } else {
-                        RoundedRectangle(cornerRadius: AppTheme.radiusSM)
+                        RoundedRectangle(cornerRadius: AppTheme.radiusSM, style: .continuous)
                             .fill(Color.clear)
                             .frame(width: 44, height: 44)
                     }
 
                     Image(systemName: tab.icon)
-                        .font(.system(size: 24, weight: isSelected ? .bold : .medium))
+                        .font(.title2.weight(isSelected ? .bold : .medium))
                         .foregroundStyle(isSelected ? AppTheme.accent : AppTheme.textSecondary)
                 }
-                
-                if isSidebarExpanded {
+
+                if vm.isSidebarExpanded {
                     Text(tab.title)
                         .font(.system(.body, design: .rounded, weight: isSelected ? .bold : .medium))
                         .foregroundStyle(isSelected ? AppTheme.accent : AppTheme.textPrimary)
                         .transition(.move(edge: .trailing).combined(with: .opacity))
-                    
+
                     Spacer(minLength: 0)
                 }
             }
             .padding(.vertical, 8)
-            .padding(.horizontal, isSidebarExpanded ? 16 : 22)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, vm.isSidebarExpanded ? 16 : 22)
+            .frame(maxWidth: .infinity, minHeight: AppTheme.minTouchTarget, alignment: .leading)
             .background(Color.white.opacity(0.001))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(tab.title)
     }
 
     @ViewBuilder
     private var ipadDetailContent: some View {
-        switch sideMenuSelection {
+        switch vm.sideMenuSelection {
         case .home: tabContent(.home)
         case .catalog: tabContent(.catalog)
         case .orders:
@@ -525,7 +482,7 @@ struct ContentView: View {
             }
         case .deliveries:
             NavigationStack {
-                DeliveriesHubView(initialTab: deliveriesHubInitialTab)
+                DeliveriesHubView(initialTab: vm.deliveriesHubInitialTab)
                     .toolbar { standardToolbar }
             }
         case .suppliers:
@@ -563,32 +520,31 @@ struct ContentView: View {
 
     @ViewBuilder
     private var iphoneLayout: some View {
+        @Bindable var vm = vm
         ZStack(alignment: .bottom) {
-            TabView(selection: tabSelection) {
+            TabView(selection: $vm.selectedTab) {
                 ForEach(AppTab.allCases, id: \.self) { tab in
                     Tab(tab.title, systemImage: tab.icon, value: tab) {
                         tabContent(tab)
                     }
                 }
             }
-            .sensoryFeedback(.selection, trigger: selectedTab)
+            .sensoryFeedback(.selection, trigger: vm.selectedTab)
             .tint(AppTheme.accent)
 
-            // Floating Active Orders Bar
-            if showFloatingBar && !showSidebar && !activeOrders.isEmpty {
-                FloatingActiveOrdersBar(activeOrders: activeOrders) {
-                    showActiveOrderDetail = true
+            if vm.showFloatingBar(horizontalSizeClass: horizontalSizeClass) && !vm.showSidebar && !vm.activeOrders.isEmpty {
+                FloatingActiveOrdersBar(activeOrders: vm.activeOrders) {
+                    vm.showActiveOrderDetail = true
                 }
                 .retailerReadableWidth()
                 .padding(.horizontal, AppTheme.spacingMD)
                 .padding(.bottom, 52)
                 .transition(.move(edge: .bottom).combined(with: .opacity))
-                .animation(AnimationConstants.fluid, value: activeOrders.count)
+                .animation(AnimationConstants.fluid, value: vm.activeOrders.count)
             }
 
-            // Sidebar Overlay
-            SidebarMenu(isOpen: $showSidebar) { destination in
-                handleSidebarNavigation(destination)
+            SidebarMenu(isOpen: $vm.showSidebar) { destination in
+                vm.handleSidebarNavigation(destination, horizontalSizeClass: horizontalSizeClass, auth: auth)
             }
             .zIndex(100)
         }
@@ -603,8 +559,10 @@ struct ContentView: View {
                 switch tab {
                 case .home: DashboardView()
                 case .catalog:
-                    CatalogView(onNavigateToSuppliers: navigateToSuppliersTab)
-                case .deliveries: DeliveriesHubView(initialTab: deliveriesHubInitialTab)
+                    CatalogView(onNavigateToSuppliers: {
+                        vm.navigateToSuppliersTab(horizontalSizeClass: horizontalSizeClass)
+                    })
+                case .deliveries: DeliveriesHubView(initialTab: vm.deliveriesHubInitialTab)
                 case .store: StoreStockView()
                 case .more: RetailerMoreHubView()
                 }
@@ -612,11 +570,11 @@ struct ContentView: View {
             .toolbar { standardToolbar }
             .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
-            .toolbar(showSidebar ? .hidden : .visible, for: .tabBar)
+            .toolbar(vm.showSidebar ? .hidden : .visible, for: .tabBar)
         }
-        .sensoryFeedback(.impact(weight: .light), trigger: showSidebar)
-        .sensoryFeedback(.impact(weight: .light), trigger: showInsights)
-        .sensoryFeedback(.impact(weight: .light), trigger: showActiveOrderDetail)
+        .sensoryFeedback(.impact(weight: .light), trigger: vm.showSidebar)
+        .sensoryFeedback(.impact(weight: .light), trigger: vm.showInsights)
+        .sensoryFeedback(.impact(weight: .light), trigger: vm.showActiveOrderDetail)
     }
 
     // MARK: - Toolbar
@@ -626,7 +584,8 @@ struct ContentView: View {
         if horizontalSizeClass != .regular {
             ToolbarItem(placement: .topBarLeading) {
                 Button {
-                    withAnimation(AnimationConstants.fluid) { showSidebar.toggle() }
+                    Haptics.light()
+                    withAnimation(AnimationConstants.fluid) { vm.showSidebar.toggle() }
                 } label: {
                     ZStack {
                         Circle()
@@ -636,6 +595,7 @@ struct ContentView: View {
                             .font(.system(.caption, design: .rounded)).fontWeight(.bold)
                             .foregroundStyle(.white)
                     }
+                    .pegasusMinimumHitTarget()
                 }
                 .accessibilityLabel("Menu")
             }
@@ -644,7 +604,7 @@ struct ContentView: View {
         ToolbarItem(placement: .principal) {
             HStack(spacing: 6) {
                 Image(systemName: "leaf.fill")
-                    .font(.system(size: 13))
+                    .font(.footnote)
                     .foregroundStyle(AppTheme.accent)
                 Text("auth.login.title")
                     .font(.system(.headline, design: .rounded)).fontWeight(.bold)
@@ -654,268 +614,59 @@ struct ContentView: View {
 
         ToolbarItemGroup(placement: .topBarTrailing) {
             Button {
+                Haptics.light()
                 RetailerRefreshCenter.shared.trigger()
             } label: {
                 Image(systemName: "arrow.clockwise")
-                    .font(.system(size: 16, weight: .medium))
+                    .font(.callout.weight(.medium))
                     .foregroundStyle(AppTheme.textPrimary)
+                    .pegasusMinimumHitTarget()
             }
             .accessibilityLabel("Refresh")
 
             Button {
-                showCart = true
+                Haptics.selection()
+                vm.showCart = true
             } label: {
                 ZStack(alignment: .topTrailing) {
                     Image(systemName: "cart")
-                        .font(.system(size: 16, weight: .medium))
+                        .font(.callout.weight(.medium))
                         .foregroundStyle(AppTheme.textPrimary)
                     if cart.totalItems > 0 {
                         Text("\(cart.totalItems)")
-                            .font(.system(size: 9, weight: .black, design: .rounded))
+                            .font(.system(.caption2, design: .rounded, weight: .black))
                             .foregroundStyle(.white)
-                            .frame(width: 16, height: 16)
+                            .frame(minWidth: 16, minHeight: 16)
                             .background(AppTheme.accent)
                             .clipShape(.circle)
                             .offset(x: 8, y: -6)
                     }
                 }
+                .pegasusMinimumHitTarget()
             }
             .accessibilityLabel("Cart, \(cart.totalItems) items")
 
             Button {
-                showNotificationInbox = true
+                Haptics.selection()
+                vm.showNotificationInbox = true
             } label: {
                 ZStack(alignment: .topTrailing) {
                     Image(systemName: "bell")
-                        .font(.system(size: 16, weight: .medium))
+                        .font(.callout.weight(.medium))
                         .foregroundStyle(AppTheme.textPrimary)
-                    if notificationCount > 0 {
-                        Text("\(notificationCount)")
-                            .font(.system(size: 9, weight: .black, design: .rounded))
+                    if vm.notificationCount > 0 {
+                        Text("\(vm.notificationCount)")
+                            .font(.system(.caption2, design: .rounded, weight: .black))
                             .foregroundStyle(.white)
-                            .frame(width: 16, height: 16)
+                            .frame(minWidth: 16, minHeight: 16)
                             .background(AppTheme.destructive)
                             .clipShape(.circle)
                             .offset(x: 8, y: -6)
                     }
                 }
+                .pegasusMinimumHitTarget()
             }
-            .accessibilityLabel("Notifications, \(notificationCount) new")
+            .accessibilityLabel("Notifications, \(vm.notificationCount) new")
         }
     }
-
-    // MARK: - Tab Navigation
-
-    private func navigateToSuppliersTab() {
-        if horizontalSizeClass == .regular {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                sideMenuSelection = .suppliers
-            }
-        } else {
-            selectedTab = .more
-        }
-    }
-
-    // MARK: - Sidebar Navigation
-
-    private var tabSelection: Binding<AppTab> {
-        Binding(
-            get: { selectedTab },
-            set: { newTab in
-                if newTab == .deliveries && selectedTab != .deliveries {
-                    deliveriesHubInitialTab = .map
-                }
-                selectedTab = newTab
-            }
-        )
-    }
-
-    private func handleSidebarNavigation(_ destination: SidebarDestination) {
-        switch destination {
-        case .dashboard: selectedTab = .home
-        case .procurement:
-            if horizontalSizeClass == .regular {
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                    sideMenuSelection = .procurement
-                }
-            } else {
-                showProcurement = true
-            }
-        case .autoOrder: showAutoOrder = true
-        case .futureDemand: showFutureDemand = true
-        case .dock:
-            deliveriesHubInitialTab = .dock
-            if horizontalSizeClass == .regular {
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                    sideMenuSelection = .deliveries
-                }
-            } else {
-                selectedTab = .deliveries
-            }
-        case .inbox: showNotificationInbox = true
-        case .profile: selectedTab = .more
-        case .insights: showInsights = true
-        case .controlTower: showControlTower = true
-        case .credit: showCredit = true
-        case .hq: showHq = true
-        case .settings: selectedTab = .more
-        case .logout: auth.logout()
-        }
-    }
-
-    // MARK: - API
-
-    private func loadActiveOrders() async {
-        let rid = AuthManager.shared.currentUser?.id ?? ""
-        do {
-            let result: [Order] = try await api.get(path: "/v1/retailers/\(rid)/orders")
-            activeOrders = result.filter { $0.status.isActive }
-        } catch {
-            activeOrders = []
-        }
-    }
-
-    private func loadNotificationCount() async {
-        do {
-            let resp: NotificationsResponse = try await api.get(
-                path: "/v1/user/notifications?limit=1&offset=0"
-            )
-            notificationCount = resp.unreadCount
-        } catch {
-            // Keep last known badge; inbox sheet refreshes on open.
-        }
-    }
-
-    private func loadPendingPayments(reconcile: Bool = false) async {
-        if !reconcile {
-            guard paymentEvent == nil else { return }
-        }
-        do {
-            let response = try await api.getPendingPayments()
-            guard let session = response.pendingPayments.first else {
-                if reconcile {
-                    paymentEvent = nil
-                }
-                return
-            }
-            let gateway = session.gateway ?? ""
-            paymentEvent = PaymentRequiredEvent(
-                type: "PAYMENT_REQUIRED",
-                orderId: session.orderId,
-                invoiceId: session.invoiceId ?? "",
-                sessionId: session.sessionId ?? "",
-                amountUzs: session.lockedAmount,
-                originalAmountUzs: session.lockedAmount,
-                availableCardGateways: gateway == "CASH" || gateway.isEmpty ? [] : [gateway],
-                message: "Pending payment requires completion.",
-                paymentMethod: gateway == "CASH" ? "CASH" : "CARD"
-            )
-        } catch {
-            // WebSocket delivery remains the primary realtime path.
-        }
-    }
-
-    private func loadClientPolicy() async {
-        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
-        do {
-            struct ClientPolicy: Decodable {
-                let outdated: Bool?
-                let forceUpdate: Bool?
-                let updateDeferred: Bool?
-                let minimumVersion: String?
-                let recommendedVersion: String?
-                let updateURL: String?
-                let deferReason: String?
-                enum CodingKeys: String, CodingKey {
-                    case outdated
-                    case forceUpdate = "force_update"
-                    case updateDeferred = "update_deferred"
-                    case minimumVersion = "minimum_version"
-                    case recommendedVersion = "recommended_version"
-                    case updateURL = "update_url"
-                    case deferReason = "defer_reason"
-                }
-            }
-            let role = EnterpriseUpdateConfig.policyRole
-            let channel = EnterpriseUpdateConfig.channel
-            let policy: ClientPolicy = try await api.get(
-                path: "/v1/platform/client-policy?role=\(role)&platform=ios&version=\(version)&channel=\(channel)"
-            )
-            let state = await AutoUpdater.shared.evaluate(
-                outdated: policy.outdated == true,
-                forceUpdate: policy.forceUpdate == true,
-                updateDeferred: policy.updateDeferred == true,
-                minimumVersion: policy.minimumVersion,
-                recommendedVersion: policy.recommendedVersion,
-                deferReason: policy.deferReason,
-                updateURL: policy.updateURL,
-            )
-            clientPolicyMessage = state.message
-            clientPolicyForce = state.force
-            pendingManifest = state.manifest
-            if state.force, state.available {
-                await MainActor.run {
-                    AutoUpdater.shared.promptInstall(manifest: state.manifest, force: true)
-                }
-            }
-        } catch {
-            clientPolicyMessage = nil
-            clientPolicyForce = false
-            pendingManifest = nil
-        }
-    }
-
-    // MARK: - WebSocket
-
-    private func connectWebSocket() async {
-        let rid = AuthManager.shared.currentUser?.id ?? ""
-        guard !rid.isEmpty else { return }
-        ws.connect(retailerId: rid)
-        for await event in ws.eventStream() {
-            switch event {
-            case .paymentRequired(let payload):
-                paymentEvent = payload
-            case .driverApproaching:
-                await loadActiveOrders()
-            case .orderCompleted, .fiscalSucceeded:
-                await loadActiveOrders()
-            case .fiscalizing:
-                await loadActiveOrders()
-            case .paymentSettled:
-                await loadActiveOrders()
-            case .paymentFailed, .paymentExpired:
-                await loadActiveOrders()
-            case .orderStatusChanged:
-                await loadActiveOrders()
-            case .orderReassigned(let orderId, let licensePlate):
-                withAnimation(AnimationConstants.fluid) {
-                    rescueWarningMessage = "Your order #\(orderId.suffix(4)) has been reassigned to rescue truck (\(licensePlate)) due to a breakdown."
-                }
-                await loadActiveOrders()
-            case .preOrderAutoAccepted, .preOrderConfirmed, .preOrderEdited, .preOrderNudge, .preOrderConfirmationPush,
-                 .preOrderDateProposed, .preOrderDateAccepted, .preOrderDateRejected, .preOrderCancelled:
-                await loadActiveOrders()
-            case .shopClosedAlert(let alert):
-                shopClosedAlert = alert
-                await loadActiveOrders()
-            case .cartSyncUpdated:
-                break
-            case .promotionChanged:
-                break
-            case .transportReconnected:
-                await RetailerSessionReconcile.run(api: api)
-                await loadActiveOrders()
-                await loadPendingPayments(reconcile: true)
-                await loadClientPolicy()
-                await PendingOrderReplayer.flush(modelContext: modelContext, api: api)
-            }
-            refreshCenter.trigger()
-        }
-    }
-}
-
-#Preview {
-    ContentView()
-        .environment(CartManager())
-        .environment(AuthManager.shared)
 }

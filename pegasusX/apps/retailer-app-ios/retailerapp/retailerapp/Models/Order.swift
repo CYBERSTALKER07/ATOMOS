@@ -19,18 +19,10 @@ private extension KeyedDecodingContainer {
         if let value = try decodeIfPresent(Int64.self, forKey: key) {
             return value
         }
-        if let value = try decodeIfPresent(Double.self, forKey: key) {
-            return Int64(value.rounded())
-        }
-        return 0
-    }
-
-    func decodeDoubleLossy(forKey key: Key) throws -> Double {
-        if let value = try decodeIfPresent(Double.self, forKey: key) {
-            return value
-        }
-        if let value = try decodeIfPresent(Int64.self, forKey: key) {
-            return Double(value)
+        if var dec = try decodeIfPresent(Decimal.self, forKey: key) {
+            var rounded = Decimal()
+            NSDecimalRound(&rounded, &dec, 0, .plain)
+            return NSDecimalNumber(decimal: rounded).int64Value
         }
         return 0
     }
@@ -132,7 +124,6 @@ enum OrderStatus: String, Codable, CaseIterable {
         case .arriving, .arrived, .arrivedShopClosed, .awaitingPayment, .pendingCashCollection, .fiscalizing, .fiscalFailed: 4
         case .completed, .deliveredOnCredit: 5
         case .cancelled, .cancelRequested, .noCapacity, .quarantine, .reconciliationRequired, .delayed: -1
-        default: -1
         }
     }
 
@@ -720,158 +711,4 @@ struct PendingPaymentsResponse: Codable {
         case pendingPayments = "pending_payments"
         case count
     }
-}
-
-// MARK: - Sample Data
-
-extension Order {
-    static let samples: [Order] = [
-        Order(
-            id: "ord-001",
-            retailerId: "retailer-123",
-            supplierId: "sup-001",
-            supplierName: "Fresh Farms Co.",
-            status: .inTransit,
-            items: [
-                OrderLineItem(id: "li-001", productId: "prod-001", productName: "Organic Whole Milk", variantId: "v-001a", variantSize: "1L", quantity: 3, unitPrice: 3490, totalPrice: 10470),
-                OrderLineItem(id: "li-002", productId: "prod-003", productName: "Free-Range Eggs", variantId: "v-003a", variantSize: "12 ct", quantity: 2, unitPrice: 5990, totalPrice: 11980)
-            ],
-            totalAmount: 22_450,
-            orderSource: "MANUAL",
-            createdAt: "2026-03-17T08:00:00Z",
-            updatedAt: "2026-03-17T09:30:00Z",
-            estimatedDelivery: "2026-03-17T14:00:00Z",
-            qrCode: "ORD-001-QR-DATA"
-        ),
-        Order(
-            id: "ord-002",
-            retailerId: "retailer-123",
-            supplierId: "sup-002",
-            supplierName: "Bakery Express",
-            status: .completed,
-            items: [
-                OrderLineItem(id: "li-003", productId: "prod-002", productName: "Sourdough Bread", variantId: "v-002b", variantSize: "500g", quantity: 1, unitPrice: 13490, totalPrice: 13490)
-            ],
-            totalAmount: 13_490,
-            orderSource: "AI_PREDICTED",
-            createdAt: "2026-03-16T10:00:00Z",
-            updatedAt: "2026-03-16T15:00:00Z",
-            estimatedDelivery: nil,
-            qrCode: nil
-        ),
-        Order(
-            id: "ord-003",
-            retailerId: "retailer-123",
-            supplierId: "sup-003",
-            supplierName: "Mountain Spring Water",
-            status: .pending,
-            items: [
-                OrderLineItem(id: "li-004", productId: "prod-005", productName: "Sparkling Water", variantId: "v-005b", variantSize: "500ml", quantity: 2, unitPrice: 14990, totalPrice: 29980)
-            ],
-            totalAmount: 29_980,
-            orderSource: "B2B_CHECKOUT",
-            createdAt: "2026-03-17T11:00:00Z",
-            updatedAt: "2026-03-17T11:00:00Z",
-            estimatedDelivery: "2026-03-18T10:00:00Z",
-            qrCode: nil // JIT: no token until dispatched
-        )
-    ]
-}
-
-extension TrackingOrder {
-    static let samples: [TrackingOrder] = [
-        TrackingOrder(
-            orderId: "ord-001",
-            supplierId: "sup-001",
-            supplierName: "Fresh Farms Co.",
-            warehouseId: "wh-001",
-            warehouseName: "Central Hub Tashkent",
-            driverId: "drv-001",
-            state: "IN_TRANSIT",
-            totalAmount: 22_450,
-            orderSource: "MANUAL",
-            driverLatitude: 41.3111,
-            driverLongitude: 69.2797,
-            liveLocationAvailable: true,
-            isApproaching: true,
-            deliveryToken: "TOK-9921",
-            createdAt: "2026-03-17T08:00:00Z",
-            fiscalStatus: "FISCALIZED",
-            fiscalQr: "https://ofd.soliq.uz/check/ord-001",
-            latestFiscalReceiptId: "REC-001",
-            items: [
-                TrackingOrderItem(productId: "prod-001", productName: "Organic Whole Milk", quantity: 3, unitPrice: 3490, lineTotal: 10470),
-                TrackingOrderItem(productId: "prod-003", productName: "Free-Range Eggs", quantity: 2, unitPrice: 5990, lineTotal: 11980)
-            ],
-            routeGeometry: RouteGeometryWire(
-                routeId: "rt-001",
-                encodedPolyline: nil,
-                coordinates: [
-                    RouteGeometryCoordinate(lat: 41.3200, lng: 69.2900),
-                    RouteGeometryCoordinate(lat: 41.3150, lng: 69.2850),
-                    RouteGeometryCoordinate(lat: 41.3111, lng: 69.2797),
-                    RouteGeometryCoordinate(lat: 41.2995, lng: 69.2401)
-                ],
-                source: "mock",
-                stopCount: 2
-            )
-        ),
-        TrackingOrder(
-            orderId: "ord-003",
-            supplierId: "sup-002",
-            supplierName: "Bakery Express",
-            warehouseId: "wh-002",
-            warehouseName: "Chorsu Logistics Facility",
-            driverId: "drv-002",
-            state: "DISPATCHED",
-            totalAmount: 13_490,
-            orderSource: "AI_PREDICTED",
-            driverLatitude: 41.2858,
-            driverLongitude: 69.2035,
-            liveLocationAvailable: true,
-            isApproaching: false,
-            deliveryToken: "TOK-8842",
-            createdAt: "2026-03-17T09:15:00Z",
-            fiscalStatus: "",
-            fiscalQr: "",
-            latestFiscalReceiptId: "",
-            items: [
-                TrackingOrderItem(productId: "prod-002", productName: "Sourdough Bread", quantity: 1, unitPrice: 13490, lineTotal: 13490)
-            ],
-            routeGeometry: RouteGeometryWire(
-                routeId: "rt-002",
-                encodedPolyline: nil,
-                coordinates: [
-                    RouteGeometryCoordinate(lat: 41.2750, lng: 69.1950),
-                    RouteGeometryCoordinate(lat: 41.2858, lng: 69.2035),
-                    RouteGeometryCoordinate(lat: 41.2995, lng: 69.2401)
-                ],
-                source: "mock",
-                stopCount: 1
-            )
-        )
-    ]
-}
-
-extension ActiveFulfillmentItem {
-    static let samples: [ActiveFulfillmentItem] = [
-        ActiveFulfillmentItem(
-            orderId: "ord-001",
-            supplierId: "sup-001",
-            supplierName: "Fresh Farms Co.",
-            state: "IN_TRANSIT",
-            adjustedAmount: 22_450,
-            itemCount: 2,
-            liveLocationAvailable: true
-        ),
-        ActiveFulfillmentItem(
-            orderId: "ord-003",
-            supplierId: "sup-002",
-            supplierName: "Bakery Express",
-            state: "DISPATCHED",
-            adjustedAmount: 13_490,
-            itemCount: 1,
-            liveLocationAvailable: true
-        )
-    ]
 }

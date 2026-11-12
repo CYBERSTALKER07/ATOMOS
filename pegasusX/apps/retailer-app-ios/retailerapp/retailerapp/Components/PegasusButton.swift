@@ -24,7 +24,7 @@ struct LabButtonStyle: ButtonStyle {
             .font(.system(.subheadline, design: .rounded, weight: .bold))
             .padding(.horizontal, AppTheme.spacingXL)
             .padding(.vertical, 14)
-            .frame(maxWidth: fullWidth ? .infinity : nil)
+            .frame(maxWidth: fullWidth ? .infinity : nil, minHeight: 44)
             .foregroundStyle(foregroundColor)
             .background {
                 if variant == .primary {
@@ -106,7 +106,7 @@ struct LabButton: View {
             HStack(spacing: AppTheme.spacingSM) {
                 if let icon {
                     Image(systemName: icon)
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.system(.subheadline, weight: .semibold))
                 }
                 Text(title)
             }

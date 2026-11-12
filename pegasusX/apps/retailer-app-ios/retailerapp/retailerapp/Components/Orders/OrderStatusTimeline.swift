@@ -17,7 +17,7 @@ struct OrderStatusTimeline: View {
                         .frame(width: isActive ? 10 : 8, height: isActive ? 10 : 8)
 
                     Text(label)
-                        .font(.system(size: 8, weight: isActive ? .bold : .medium, design: .rounded))
+                        .font(.system(.caption2, design: .rounded, weight: isActive ? .bold : .medium))
                         .foregroundStyle(labelColor(isCompleted: isCompleted, isActive: isActive))
                         .lineLimit(1)
                 }

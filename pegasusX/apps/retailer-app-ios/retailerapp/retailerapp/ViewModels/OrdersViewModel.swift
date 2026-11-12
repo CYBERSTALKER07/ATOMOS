@@ -1,7 +1,9 @@
 import Foundation
+import Observation
 import SwiftData
 
 @Observable
+@MainActor
 final class OrdersViewModel {
     var allOrders: [Order] = []
     var predictions: [RetailerAIPrediction] = []
@@ -11,7 +13,21 @@ final class OrdersViewModel {
     var commandStatus: String?
     var commandSupplierId: String?
 
+    var selectedTab: OrderTab = .active
+    var selectedOrder: Order?
+    var qrOverlayOrder: Order?
+    var deliveryProposalOrder: Order?
+
     private let api = APIClient.shared
+
+    var showLoadErrorAlert: Bool {
+        get { loadError != nil }
+        set {
+            if !newValue {
+                loadError = nil
+            }
+        }
+    }
 
     var commandFilteredOrders: [Order] {
         guard let commandStatus else { return allOrders }
@@ -31,6 +47,7 @@ final class OrdersViewModel {
     }
 
     func clearCommandFilter() {
+        Haptics.light()
         commandStatus = nil
         commandSupplierId = nil
     }
@@ -58,12 +75,12 @@ final class OrdersViewModel {
             let orders: [Order] = try await api.get(path: "/v1/retailers/\(rid)/orders")
             allOrders = orders
         } catch {
-            allOrders = Order.samples
+            allOrders = []
         }
         do {
             predictions = try await api.getRetailerAIPredictions()
         } catch {
-            predictions = RetailerAIPrediction.samples
+            predictions = []
         }
     }
 
@@ -132,8 +149,10 @@ final class OrdersViewModel {
                     headers: ["Idempotency-Key": RetailerIdempotency.cancel(orderId: order.id)]
                 )
             }
+            Haptics.success()
             await loadData()
         } catch {
+            Haptics.error()
             loadError = useRequestCancel ? "Failed to request cancellation" : "Failed to cancel order"
         }
     }
@@ -144,8 +163,10 @@ final class OrdersViewModel {
         defer { orderActionPending = false }
         do {
             try await api.confirmAiOrder(orderId: orderId)
+            Haptics.success()
             await loadData()
         } catch {
+            Haptics.error()
             loadError = "Failed to confirm AI order"
         }
     }
@@ -156,8 +177,10 @@ final class OrdersViewModel {
         defer { orderActionPending = false }
         do {
             try await api.rejectAiOrder(orderId: orderId, reason: "Retailer rejected")
+            Haptics.light()
             await loadData()
         } catch {
+            Haptics.error()
             loadError = "Failed to reject AI order"
         }
     }
@@ -168,8 +191,10 @@ final class OrdersViewModel {
         defer { orderActionPending = false }
         do {
             try await api.confirmPreorder(orderId: orderId)
+            Haptics.success()
             await loadData()
         } catch {
+            Haptics.error()
             loadError = "Failed to confirm preorder"
         }
     }
@@ -183,6 +208,7 @@ final class OrdersViewModel {
             Haptics.success()
             await loadData()
         } catch {
+            Haptics.error()
             loadError = "Failed to accept delivery proposal"
         }
     }
@@ -196,6 +222,7 @@ final class OrdersViewModel {
             Haptics.light()
             await loadData()
         } catch {
+            Haptics.error()
             loadError = "Failed to reject delivery proposal"
         }
     }
@@ -215,8 +242,10 @@ final class OrdersViewModel {
         }
         do {
             try await api.editPreorder(orderId: order.id, deliveryDate: deliveryDate, items: items)
+            Haptics.success()
             await loadData()
         } catch {
+            Haptics.error()
             loadError = "Failed to edit preorder"
         }
     }

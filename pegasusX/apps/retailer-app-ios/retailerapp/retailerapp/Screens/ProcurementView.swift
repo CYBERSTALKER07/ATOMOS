@@ -1,55 +1,50 @@
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 struct ProcurementView: View {
     @Environment(CartManager.self) private var cart
     @Environment(\.modelContext) private var modelContext
     @State private var refreshCenter = RetailerRefreshCenter.shared
-    @State private var forecasts: [DemandForecast] = []
-    @State private var selectedItems: Set<String> = []
-    @State private var quantities: [String: Int] = [:]
-    @State private var isSubmitting = false
-    @State private var showSuccess = false
-    @State private var showError = false
-    @State private var errorMessage = ""
-    @State private var isLoading = false
-    @State private var products: [Product] = []
-
-    private let api = APIClient.shared
+    @State private var vm = ProcurementViewModel()
 
     var body: some View {
+        @Bindable var vm = vm
+
         VStack(spacing: 0) {
             ScrollView {
                 VStack(spacing: AppTheme.spacingLG) {
                     headerSection.slideIn(delay: 0)
                     suggestionsSection.slideIn(delay: 0.05)
 
-                    if !selectedItems.isEmpty {
+                    if !vm.selectedItems.isEmpty {
                         selectedSummary.slideIn(delay: 0.1)
                     }
                 }
                 .padding(AppTheme.spacingLG)
-                .padding(.bottom, selectedItems.isEmpty ? AppTheme.spacingXXL : 100)
+                .padding(.bottom, vm.selectedItems.isEmpty ? AppTheme.spacingXXL : 100)
             }
+            .scrollDismissesKeyboard(.interactively)
             .scrollIndicators(.hidden)
 
-            if !selectedItems.isEmpty {
+            if !vm.selectedItems.isEmpty {
                 actionBar
             }
         }
         .background(AppTheme.background)
-        .task { await loadPredictions() }
-        .task(id: refreshCenter.refreshToken) { await loadPredictions() }
-        .alert("Order Created", isPresented: $showSuccess) {
-            Button("OK") { selectedItems.removeAll(); quantities.removeAll() }
+        .task { await vm.loadPredictions() }
+        .task(id: refreshCenter.refreshToken) { await vm.loadPredictions() }
+        .alert("Order Created", isPresented: $vm.showSuccess) {
+            Button("OK") { vm.acknowledgeSuccess() }
         } message: {
             Text("mobile_retailer.ui.your_procurement_order_has_been_submitted_successfully")
         }
-        .alert("Order Failed", isPresented: $showError) {
-            Button("common.action.retry") { Task { await createOrder() } }
+        .alert("Order Failed", isPresented: $vm.showError) {
+            Button("common.action.retry") {
+                Task { await vm.createOrder(modelContext: modelContext, refreshCenter: refreshCenter) }
+            }
             Button("common.action.cancel", role: .cancel) {}
         } message: {
-            Text(errorMessage)
+            Text(vm.errorMessage)
         }
     }
 
@@ -59,7 +54,7 @@ struct ProcurementView: View {
         GradientHeaderCard(title: "AI Procurement", subtitle: "Smart suggestions based on demand analysis", icon: "sparkles") {
             HStack(spacing: AppTheme.spacingXL) {
                 VStack(spacing: 3) {
-                    Text("\(forecasts.count)")
+                    Text("\(vm.forecasts.count)")
                         .font(.system(.headline, design: .rounded, weight: .bold))
                         .foregroundStyle(AppTheme.textPrimary)
                     Text("mobile_retailer.ui.suggestions")
@@ -67,9 +62,11 @@ struct ProcurementView: View {
                         .foregroundStyle(AppTheme.textTertiary)
                 }
                 .frame(maxWidth: .infinity)
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Suggestions: \(vm.forecasts.count)")
 
                 VStack(spacing: 3) {
-                    Text("\(selectedItems.count)")
+                    Text("\(vm.selectedItems.count)")
                         .font(.system(.headline, design: .rounded, weight: .bold))
                         .foregroundStyle(AppTheme.accent)
                         .contentTransition(.numericText())
@@ -78,6 +75,8 @@ struct ProcurementView: View {
                         .foregroundStyle(AppTheme.textTertiary)
                 }
                 .frame(maxWidth: .infinity)
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Selected: \(vm.selectedItems.count)")
             }
         }
     }
@@ -89,62 +88,139 @@ struct ProcurementView: View {
             HStack {
                 HStack(spacing: AppTheme.spacingSM) {
                     Image(systemName: "lightbulb.fill")
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.subheadline.weight(.semibold))
                         .foregroundStyle(AppTheme.accent)
                     Text("mobile_retailer.ui.suggestions")
                         .font(.system(.headline, design: .rounded))
                         .foregroundStyle(AppTheme.textPrimary)
                 }
                 Spacer()
-                Button {
-                    withAnimation(AnimationConstants.express) {
-                        if selectedItems.count == forecasts.count {
-                            selectedItems.removeAll()
-                        } else {
-                            selectedItems = Set(forecasts.map(\.id))
-                            for f in forecasts { quantities[f.id] = f.predictedQuantity }
-                        }
+                if !vm.forecasts.isEmpty {
+                    Button {
+                        vm.toggleSelectAll()
+                    } label: {
+                        Text(vm.selectedItems.count == vm.forecasts.count ? "Deselect All" : "Select All")
+                            .font(.system(.caption, design: .rounded, weight: .bold))
+                            .foregroundStyle(AppTheme.accent)
+                            .pegasusMinimumHitTarget()
                     }
-                    Haptics.light()
-                } label: {
-                    Text(selectedItems.count == forecasts.count ? "Deselect All" : "Select All")
-                        .font(.system(.caption, design: .rounded, weight: .bold))
-                        .foregroundStyle(AppTheme.accent)
+                    .accessibilityLabel(vm.selectedItems.count == vm.forecasts.count ? "Deselect all suggestions" : "Select all suggestions")
                 }
             }
 
-            ForEach(Array(forecasts.enumerated()), id: \.element.id) { index, forecast in
-                suggestionCard(forecast)
-                    .staggeredSlideIn(index: index)
+            ForEach(Array(vm.forecasts.enumerated()), id: \.element.id) { index, forecast in
+                ProcurementSuggestionCardView(
+                    forecast: forecast,
+                    isSelected: vm.selectedItems.contains(forecast.id),
+                    externalQuantity: vm.quantities[forecast.id] ?? forecast.predictedQuantity,
+                    onToggleSelection: {
+                        vm.toggleSelection(for: forecast)
+                    },
+                    onUpdateQuantity: { newQty in
+                        vm.updateQuantity(for: forecast.id, quantity: newQty)
+                    }
+                )
+                .staggeredSlideIn(index: index)
             }
         }
     }
 
-    private func suggestionCard(_ forecast: DemandForecast) -> some View {
-        let isSelected = selectedItems.contains(forecast.id)
-        let qty = quantities[forecast.id] ?? forecast.predictedQuantity
+    // MARK: - Summary
 
-        return LabCard {
+    private var selectedSummary: some View {
+        LabCard {
+            HStack {
+                HStack(spacing: AppTheme.spacingSM) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(AppTheme.accent)
+                    Text(L10n.format("mobile_retailer.ui.count_items_selected", "\(vm.selectedItems.count)"))
+                        .font(.system(.subheadline, design: .rounded, weight: .medium))
+                        .foregroundStyle(AppTheme.textPrimary)
+                }
+                Spacer()
+                AnimatedNumberText(
+                    value: vm.selectedTotalUnits,
+                    font: .system(.subheadline, design: .rounded, weight: .bold),
+                    color: AppTheme.accent
+                )
+                Text("retailer_desktop.auto_order.auto_order_list.text.units")
+                    .font(.system(.caption, design: .rounded))
+                    .foregroundStyle(AppTheme.textTertiary)
+            }
+            .padding(AppTheme.spacingLG)
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("\(vm.selectedItems.count) items selected, \(vm.selectedTotalUnits) units")
+        }
+    }
+
+    // MARK: - Action Bar
+
+    private var actionBar: some View {
+        VStack(spacing: 0) {
+            Rectangle().fill(AppTheme.separator.opacity(0.3)).frame(height: AppTheme.separatorHeight)
+            HStack(spacing: AppTheme.spacingMD) {
+                LabButton("Create Order", icon: "cart.badge.plus") {
+                    Haptics.medium()
+                    Task { await vm.createOrder(modelContext: modelContext, refreshCenter: refreshCenter) }
+                }
+                .opacity(vm.isSubmitting ? 0.5 : 1)
+                .disabled(vm.isSubmitting)
+                .accessibilityLabel("Create procurement order")
+
+                LabButton("Add to Cart", variant: .secondary, icon: "cart") {
+                    vm.addToCart(cart: cart)
+                }
+                .accessibilityLabel("Add selected suggestions to cart")
+            }
+            .padding(AppTheme.spacingLG)
+            .background(.ultraThinMaterial)
+        }
+        .transition(.move(edge: .bottom).combined(with: .opacity))
+    }
+}
+
+private struct ProcurementSuggestionCardView: View {
+    let forecast: DemandForecast
+    let isSelected: Bool
+    let externalQuantity: Int
+    let onToggleSelection: () -> Void
+    let onUpdateQuantity: (Int) -> Void
+
+    @State private var localQuantity: Int
+
+    init(
+        forecast: DemandForecast,
+        isSelected: Bool,
+        externalQuantity: Int,
+        onToggleSelection: @escaping () -> Void,
+        onUpdateQuantity: @escaping (Int) -> Void
+    ) {
+        self.forecast = forecast
+        self.isSelected = isSelected
+        self.externalQuantity = externalQuantity
+        self.onToggleSelection = onToggleSelection
+        self.onUpdateQuantity = onUpdateQuantity
+        self._localQuantity = State(initialValue: externalQuantity)
+    }
+
+    var body: some View {
+        LabCard {
             VStack(alignment: .leading, spacing: AppTheme.spacingMD) {
                 HStack {
-                    Button {
-                        withAnimation(AnimationConstants.express) {
-                            if isSelected { selectedItems.remove(forecast.id) }
-                            else { selectedItems.insert(forecast.id); quantities[forecast.id] = forecast.predictedQuantity }
-                        }
-                        Haptics.light()
-                    } label: {
+                    Button(action: onToggleSelection) {
                         ZStack {
                             RoundedRectangle(cornerRadius: 6)
                                 .fill(isSelected ? AppTheme.accent : AppTheme.separator.opacity(0.3))
                                 .frame(width: 24, height: 24)
                             if isSelected {
                                 Image(systemName: "checkmark")
-                                    .font(.system(size: 12, weight: .bold))
+                                    .font(.caption.weight(.bold))
                                     .foregroundStyle(.white)
                             }
                         }
+                        .pegasusMinimumHitTarget()
                     }
+                    .accessibilityLabel(isSelected ? "Deselect \(forecast.productName)" : "Select \(forecast.productName)")
 
                     VStack(alignment: .leading, spacing: 2) {
                         Text(forecast.productName)
@@ -154,11 +230,21 @@ struct ProcurementView: View {
                             .font(.system(.caption, design: .rounded))
                             .foregroundStyle(AppTheme.textTertiary)
                     }
+                    .accessibilityElement(children: .combine)
 
                     Spacer()
 
                     if isSelected {
-                        QuantityStepper(quantity: Binding(get: { qty }, set: { quantities[forecast.id] = $0 }), compact: true)
+                        QuantityStepper(quantity: $localQuantity, compact: true)
+                            .onChange(of: localQuantity) { _, newVal in
+                                guard newVal != externalQuantity else { return }
+                                onUpdateQuantity(newVal)
+                            }
+                            .onChange(of: externalQuantity) { _, updated in
+                                if localQuantity != updated {
+                                    localQuantity = updated
+                                }
+                            }
                     } else {
                         Text(L10n.format("mobile_retailer.ui.predictedquantity_units", "\(forecast.predictedQuantity)"))
                             .font(.system(.caption, design: .rounded, weight: .bold))
@@ -179,150 +265,6 @@ struct ProcurementView: View {
                     .strokeBorder(AppTheme.accent.opacity(0.4), lineWidth: 2)
             }
         }
-    }
-
-    // MARK: - Summary
-
-    private var selectedSummary: some View {
-        LabCard {
-            HStack {
-                HStack(spacing: AppTheme.spacingSM) {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(AppTheme.accent)
-                    Text(L10n.format("mobile_retailer.ui.count_items_selected", "\(selectedItems.count)"))
-                        .font(.system(.subheadline, design: .rounded, weight: .medium))
-                        .foregroundStyle(AppTheme.textPrimary)
-                }
-                Spacer()
-                AnimatedNumberText(
-                    value: selectedItems.reduce(0) { $0 + (quantities[$1] ?? 0) },
-                    font: .system(.subheadline, design: .rounded, weight: .bold),
-                    color: AppTheme.accent
-                )
-                Text("retailer_desktop.auto_order.auto_order_list.text.units")
-                    .font(.system(.caption, design: .rounded))
-                    .foregroundStyle(AppTheme.textTertiary)
-            }
-            .padding(AppTheme.spacingLG)
-        }
-    }
-
-    // MARK: - Action Bar
-
-    private var actionBar: some View {
-        VStack(spacing: 0) {
-            Rectangle().fill(AppTheme.separator.opacity(0.3)).frame(height: AppTheme.separatorHeight)
-            HStack(spacing: AppTheme.spacingMD) {
-                LabButton("Create Order", icon: "cart.badge.plus") {
-                    Task { await createOrder() }
-                }
-                .opacity(isSubmitting ? 0.5 : 1).disabled(isSubmitting)
-
-                LabButton("Add to Cart", variant: .secondary, icon: "cart") {
-                    addToCart()
-                }
-            }
-            .padding(AppTheme.spacingLG)
-            .background(.ultraThinMaterial)
-        }
-        .transition(.move(edge: .bottom).combined(with: .opacity))
-    }
-
-    // MARK: - Actions
-
-    private func addToCart() {
-        for forecast in forecasts where selectedItems.contains(forecast.id) {
-            let qty = quantities[forecast.id] ?? forecast.predictedQuantity
-            if let product = products.first(where: { $0.id == forecast.productId }),
-               let variant = product.defaultVariant {
-                cart.add(product: product, variant: variant, quantity: qty)
-            }
-        }
-        Haptics.success()
-        withAnimation(AnimationConstants.fluid) { selectedItems.removeAll() }
-    }
-
-    private func createOrder() async {
-        isSubmitting = true
-        let rid = AuthManager.shared.currentUser?.id ?? ""
-        let orderItems = forecasts.filter { selectedItems.contains($0.id) }.map {
-            ProcurementOrderRequest.Item(productId: $0.productId, quantity: quantities[$0.id] ?? $0.predictedQuantity)
-        }
-        let body = ProcurementOrderRequest(retailerId: rid, items: orderItems)
-        let idempotencyKey = RetailerIdempotency.orderCreate(items: orderItems)
-        do {
-            let _: ProcurementOrderResponse = try await api.post(
-                path: "/v1/order/create",
-                body: body,
-                headers: ["Idempotency-Key": idempotencyKey]
-            )
-            isSubmitting = false
-            refreshCenter.trigger()
-            showSuccess = true
-        } catch let apiError as APIError {
-            isSubmitting = false
-            errorMessage = RetailerErrorSupport.message(
-                for: apiError,
-                restricted: "Procurement order access is restricted for this account.",
-                offline: "Offline mode active. Reconnect and retry procurement order.",
-                fallback: "Procurement order could not be submitted. Please try again.",
-            )
-            showError = true
-        } catch {
-            queuePendingProcurementOrder(body: body, idempotencyKey: idempotencyKey)
-            isSubmitting = false
-            errorMessage = RetailerErrorSupport.retryQueuedMessage(
-                for: error,
-                fallback: "Saved for retry. Procurement submission is degraded.",
-            )
-            showError = true
-        }
-    }
-
-    private func queuePendingProcurementOrder(body: ProcurementOrderRequest, idempotencyKey: String) {
-        guard let data = try? JSONEncoder().encode(body) else { return }
-        let pending = PendingOrder(
-            payloadJson: String(data: data, encoding: .utf8) ?? "",
-            endpoint: "/v1/order/create",
-            method: "POST",
-            idempotencyKey: idempotencyKey
-        )
-        modelContext.insert(pending)
-        try? modelContext.save()
-    }
-
-    private func loadPredictions() async {
-        isLoading = true
-        do {
-            let p: [Product] = try await api.get(path: "/v1/catalog/products")
-            products = p.isEmpty ? Product.samples : p
-        } catch {
-            products = Product.samples
-        }
-        forecasts = DemandForecast.samples
-        isLoading = false
-    }
-}
-
-struct ProcurementOrderRequest: Codable {
-    let retailerId: String
-    let items: [Item]
-    struct Item: Codable {
-        let productId: String
-        let quantity: Int
-        enum CodingKeys: String, CodingKey { case productId = "product_id"; case quantity }
-    }
-    enum CodingKeys: String, CodingKey { case retailerId = "retailer_id"; case items }
-}
-
-struct ProcurementOrderResponse: Codable {
-    let status: String
-    let orderId: String
-    let total: Int64?
-    enum CodingKeys: String, CodingKey {
-        case status
-        case orderId = "order_id"
-        case total = "total"
     }
 }
 

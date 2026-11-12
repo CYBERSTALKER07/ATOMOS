@@ -1,84 +1,31 @@
 import SwiftUI
 
-private struct SupplierDockGroup: Identifiable {
-    var id: String { supplierId }
-    let supplierId: String
-    let supplierName: String
-    let orders: [TrackingOrder]
-    let totalAmount: Int
-    let hasApproaching: Bool
-    let hasArrived: Bool
-}
-
 struct DockView: View {
-    @State private var orders: [TrackingOrder] = []
-    @State private var expandedSupplierIds: Set<String> = []
-    @State private var revealedTokenOrderIds: Set<String> = []
-    @State private var activeQrOrder: TrackingOrder?
-    @State private var autoOpenedOrderIds: Set<String> = []
-    @State private var isLoading = false
-    @State private var isRefreshing = false
-    @State private var loadError: String?
-
-    private let api = APIClient.shared
-    private let ws = RetailerWebSocket.shared
-    private let dockStates: Set<String> = [
-        "DISPATCHED", "IN_TRANSIT", "ARRIVING", "ARRIVED", "AWAITING_PAYMENT",
-    ]
-
-    private var activeOrders: [TrackingOrder] {
-        orders.filter { dockStates.contains($0.state.uppercased()) }
-    }
-
-    private var supplierGroups: [SupplierDockGroup] {
-        var map: [String: SupplierDockGroup] = [:]
-        for order in activeOrders {
-            if var group = map[order.supplierId] {
-                group = SupplierDockGroup(
-                    supplierId: group.supplierId,
-                    supplierName: group.supplierName,
-                    orders: group.orders + [order],
-                    totalAmount: group.totalAmount + order.totalAmount,
-                    hasApproaching: group.hasApproaching || order.isApproaching || order.state == "ARRIVING",
-                    hasArrived: group.hasArrived || order.state == "ARRIVED" || order.state == "AWAITING_PAYMENT"
-                )
-                map[order.supplierId] = group
-            } else {
-                map[order.supplierId] = SupplierDockGroup(
-                    supplierId: order.supplierId,
-                    supplierName: order.supplierName.isEmpty ? String(order.supplierId.prefix(8)) : order.supplierName,
-                    orders: [order],
-                    totalAmount: order.totalAmount,
-                    hasApproaching: order.isApproaching || order.state == "ARRIVING",
-                    hasArrived: order.state == "ARRIVED" || order.state == "AWAITING_PAYMENT"
-                )
-            }
-        }
-        return map.values.sorted { $0.totalAmount > $1.totalAmount }
-    }
+    @State private var vm = ArrivalViewModel()
 
     var body: some View {
+        @Bindable var vm = vm
         ScrollView {
             VStack(spacing: AppTheme.spacingLG) {
-                if let loadError, orders.isEmpty {
+                if let loadError = vm.loadError, vm.orders.isEmpty {
                     RetailerErrorView(message: loadError) {
-                        Task { await loadOrders(refreshing: true) }
+                        Task { await vm.loadOrders(refreshing: true) }
                     }
-                } else if isLoading && orders.isEmpty {
+                } else if vm.isLoading && vm.orders.isEmpty {
                     RetailerLoadingView(
-                        title: "Loading dock queue",
+                        title: "Loading Inbound Deliveries",
                         message: "Fetching inbound deliveries grouped by supplier."
                     )
-                } else if supplierGroups.isEmpty {
+                } else if vm.supplierGroups.isEmpty {
                     RetailerEmptyView(
-                        title: "Dock Queue Empty",
+                        title: "No Inbound Deliveries",
                         message: "Inbound deliveries grouped by supplier will appear here.",
                         systemImage: "shippingbox"
                     )
                     .padding(.top, AppTheme.spacingXL)
                 } else {
                     summaryRow
-                    ForEach(supplierGroups) { group in
+                    ForEach(vm.supplierGroups) { group in
                         supplierSection(group)
                     }
                 }
@@ -86,14 +33,15 @@ struct DockView: View {
             .padding(.horizontal, AppTheme.spacingLG)
             .padding(.bottom, AppTheme.spacingXXL)
         }
+        .scrollDismissesKeyboard(.interactively)
         .scrollIndicators(.hidden)
         .background(AppTheme.background)
         .task {
-            await loadOrders()
-            await observeWebSocket()
+            await vm.loadOrders()
+            await vm.observeWebSocket()
         }
-        .refreshable { await loadOrders(refreshing: true) }
-        .sheet(item: $activeQrOrder) { order in
+        .refreshable { await vm.loadOrders(refreshing: true) }
+        .sheet(item: $vm.activeQrOrder) { order in
             NavigationStack {
                 VStack(spacing: AppTheme.spacingLG) {
                     Text("mobile_retailer.ui.driver_approaching")
@@ -115,7 +63,8 @@ struct DockView: View {
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .confirmationAction) {
-                        Button("common.action.close") { activeQrOrder = nil }
+                        Button("common.action.close") { vm.activeQrOrder = nil }
+                            .pegasusMinimumHitTarget()
                     }
                 }
             }
@@ -125,9 +74,9 @@ struct DockView: View {
 
     private var summaryRow: some View {
         HStack(spacing: AppTheme.spacingSM) {
-            dockMetric(title: "Queue", value: "\(activeOrders.count)")
-            dockMetric(title: "Arrived", value: "\(activeOrders.filter { $0.state == "ARRIVED" }.count)")
-            dockMetric(title: "Approaching", value: "\(activeOrders.filter { $0.isApproaching || $0.state == "ARRIVING" }.count)")
+            dockMetric(title: "Queue", value: "\(vm.activeOrders.count)")
+            dockMetric(title: "Arrived", value: "\(vm.activeOrders.filter { $0.state == "ARRIVED" }.count)")
+            dockMetric(title: "Approaching", value: "\(vm.activeOrders.filter { $0.isApproaching || $0.state == "ARRIVING" }.count)")
         }
     }
 
@@ -144,19 +93,17 @@ struct DockView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(AppTheme.spacingMD)
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(title): \(value)")
     }
 
     private func supplierSection(_ group: SupplierDockGroup) -> some View {
-        let expanded = expandedSupplierIds.contains(group.supplierId)
+        let expanded = vm.expandedSupplierIds.contains(group.supplierId)
         return LabCard {
             VStack(alignment: .leading, spacing: AppTheme.spacingMD) {
                 Button {
                     withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                        if expanded {
-                            expandedSupplierIds.remove(group.supplierId)
-                        } else {
-                            expandedSupplierIds.insert(group.supplierId)
-                        }
+                        vm.toggleSupplierExpanded(group.supplierId)
                     }
                 } label: {
                     HStack {
@@ -176,11 +123,13 @@ struct DockView: View {
                             RetailerStatusBadge(text: "Arrived", tint: AppTheme.success)
                         }
                         Image(systemName: expanded ? "chevron.up" : "chevron.down")
-                            .font(.system(size: 12, weight: .semibold))
+                            .font(.caption.weight(.semibold))
                             .foregroundStyle(AppTheme.textTertiary)
                     }
+                    .pegasusMinimumHitTarget()
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("\(group.supplierName), \(group.orders.count) orders, \(expanded ? "expanded" : "collapsed")")
 
                 if expanded {
                     ForEach(group.orders) { order in
@@ -205,6 +154,8 @@ struct DockView: View {
                 Spacer()
                 RetailerStatusBadge(text: order.state, tint: AppTheme.statusTint(for: order.state))
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Order \(order.orderId.suffix(8)), status \(order.state), total \(order.displayTotal)")
 
             if order.isApproaching || order.state == "ARRIVING" {
                 HStack(spacing: AppTheme.spacingSM) {
@@ -216,6 +167,7 @@ struct DockView: View {
                 .padding(AppTheme.spacingSM)
                 .background(AppTheme.warningSoft.opacity(0.5))
                 .clipShape(.rect(cornerRadius: AppTheme.radiusSM))
+                .accessibilityElement(children: .combine)
             }
 
             let canReveal = !order.deliveryToken.isEmpty &&
@@ -223,22 +175,21 @@ struct DockView: View {
 
             if canReveal {
                 HStack(spacing: AppTheme.spacingSM) {
-                    Button(revealedTokenOrderIds.contains(order.orderId) ? "Hide QR" : "Reveal QR") {
-                        if revealedTokenOrderIds.contains(order.orderId) {
-                            revealedTokenOrderIds.remove(order.orderId)
-                        } else {
-                            revealedTokenOrderIds.insert(order.orderId)
-                        }
+                    Button(vm.revealedTokenOrderIds.contains(order.orderId) ? "Hide QR" : "Reveal QR") {
+                        vm.toggleRevealToken(order.orderId)
                     }
                     .font(.system(.caption, design: .rounded, weight: .bold))
                     .buttonStyle(.bordered)
+                    .pegasusMinimumHitTarget()
 
-                    if revealedTokenOrderIds.contains(order.orderId) {
+                    if vm.revealedTokenOrderIds.contains(order.orderId) {
                         Button("mobile_retailer.ui.show_fullscreen") {
-                            activeQrOrder = order
+                            Haptics.light()
+                            vm.activeQrOrder = order
                         }
                         .font(.system(.caption, design: .rounded, weight: .bold))
                         .buttonStyle(.borderedProminent)
+                        .pegasusMinimumHitTarget()
                     }
                 }
             }
@@ -246,101 +197,6 @@ struct DockView: View {
         .padding(AppTheme.spacingMD)
         .background(AppTheme.surfaceElevated.opacity(0.5))
         .clipShape(.rect(cornerRadius: AppTheme.radiusMD))
-    }
-
-    private func loadOrders(refreshing: Bool = false) async {
-        if refreshing { isRefreshing = true } else { isLoading = true }
-        loadError = nil
-        do {
-            let response: TrackingResponse = try await api.get(path: "/v1/retailer/tracking")
-            let active = response.orders.filter { !["COMPLETED", "CANCELLED"].contains($0.state.uppercased()) }
-            orders = active.isEmpty ? TrackingOrder.samples : active
-            if expandedSupplierIds.isEmpty {
-                expandedSupplierIds = Set(supplierGroups.map(\.supplierId))
-            } else {
-                let available = Set(supplierGroups.map(\.supplierId))
-                expandedSupplierIds = expandedSupplierIds.intersection(available)
-            }
-            maybeAutoOpenQr()
-        } catch {
-            orders = TrackingOrder.samples
-            if expandedSupplierIds.isEmpty {
-                expandedSupplierIds = Set(supplierGroups.map(\.supplierId))
-            }
-            loadError = nil
-        }
-        isLoading = false
-        isRefreshing = false
-    }
-
-    private func maybeAutoOpenQr() {
-        guard let candidate = activeOrders.first(where: {
-            !$0.deliveryToken.isEmpty &&
-            ($0.isApproaching || $0.state == "ARRIVED") &&
-            !autoOpenedOrderIds.contains($0.orderId)
-        }) else { return }
-
-        autoOpenedOrderIds.insert(candidate.orderId)
-        expandedSupplierIds.insert(candidate.supplierId)
-        revealedTokenOrderIds.insert(candidate.orderId)
-        activeQrOrder = candidate
-    }
-
-    private func observeWebSocket() async {
-        for await event in ws.eventStream() {
-            switch event {
-            case .driverApproaching(let orderId, let deliveryToken, _, _, _, _):
-                orders = orders.map { order in
-                    guard order.orderId == orderId else { return order }
-                    return TrackingOrder(
-                        orderId: order.orderId,
-                        supplierId: order.supplierId,
-                        supplierName: order.supplierName,
-                        warehouseId: order.warehouseId,
-                        warehouseName: order.warehouseName,
-                        driverId: order.driverId,
-                        state: order.state == "IN_TRANSIT" ? "ARRIVING" : order.state,
-                        totalAmount: order.totalAmount,
-                        orderSource: order.orderSource,
-                        driverLatitude: order.driverLatitude,
-                        driverLongitude: order.driverLongitude,
-                        liveLocationAvailable: order.liveLocationAvailable,
-                        isApproaching: true,
-                        deliveryToken: deliveryToken.isEmpty ? order.deliveryToken : deliveryToken,
-                        createdAt: order.createdAt,
-                        items: order.items
-                    )
-                }
-                maybeAutoOpenQr()
-            case .orderStatusChanged(let orderId, let newState):
-                orders = orders.map { order in
-                    guard order.orderId == orderId else { return order }
-                    return TrackingOrder(
-                        orderId: order.orderId,
-                        supplierId: order.supplierId,
-                        supplierName: order.supplierName,
-                        warehouseId: order.warehouseId,
-                        warehouseName: order.warehouseName,
-                        driverId: order.driverId,
-                        state: newState,
-                        totalAmount: order.totalAmount,
-                        orderSource: order.orderSource,
-                        driverLatitude: order.driverLatitude,
-                        driverLongitude: order.driverLongitude,
-                        liveLocationAvailable: order.liveLocationAvailable,
-                        isApproaching: order.isApproaching,
-                        deliveryToken: order.deliveryToken,
-                        createdAt: order.createdAt,
-                        items: order.items
-                    )
-                }
-            case .orderCompleted(let event):
-                orders.removeAll { $0.orderId == event.orderId }
-                if activeQrOrder?.orderId == event.orderId { activeQrOrder = nil }
-            default:
-                break
-            }
-        }
     }
 }
 

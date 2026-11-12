@@ -1,112 +1,87 @@
 import SwiftUI
 
 struct LocalSkusView: View {
-    @State private var rows: [LocalSkuRowIOS] = []
-    @State private var name = ""
-    @State private var barcode = ""
-    @State private var price = "5000"
-    @State private var banner: String?
-    @State private var loadError: String?
-    @State private var summaryReady = false
-    @State private var busy = false
-    private let api = APIClient.shared
+    @State private var vm = LocalSkusViewModel()
 
     var body: some View {
+        @Bindable var vm = vm
         List {
-            if let loadError {
-                Section { Text(loadError).font(.caption).foregroundStyle(AppTheme.destructive) }
-            } else if let banner {
-                Section { Text(banner).font(.caption).foregroundStyle(AppTheme.accent) }
+            if let loadError = vm.loadError {
+                Section {
+                    Text(loadError)
+                        .font(.caption)
+                        .foregroundStyle(AppTheme.destructive)
+                    Button("common.action.retry") {
+                        Haptics.light()
+                        Task { await vm.load() }
+                    }
+                    .pegasusMinimumHitTarget()
+                    .accessibilityLabel("Retry loading local SKUs")
+                }
+            } else if let banner = vm.banner {
+                Section {
+                    Text(banner)
+                        .font(.caption)
+                        .foregroundStyle(AppTheme.accent)
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel(banner)
+                }
             }
+
             Section("Add local SKU") {
-                TextField("retailer_desktop.pos.text.name", text: $name)
-                TextField("retailer_desktop.stock.local_skus.text.barcode", text: $barcode)
-                TextField("supplier_portal.catalog.components.catalog_table.text.price_minor", text: $price)
-                Button(busy ? "…" : "Create") { Task { await create() } }
-                    .disabled(busy || name.trimmingCharacters(in: .whitespaces).isEmpty)
+                TextField("retailer_desktop.pos.text.name", text: $vm.name)
+                    .accessibilityLabel("SKU name")
+                TextField("retailer_desktop.stock.local_skus.text.barcode", text: $vm.barcode)
+                    .accessibilityLabel("Barcode")
+                TextField("supplier_portal.catalog.components.catalog_table.text.price_minor", text: $vm.priceInput)
+                    .keyboardType(.numberPad)
+                    .accessibilityLabel("Price in minor units")
+                Button(vm.busy ? "…" : "Create") {
+                    Task { await vm.create() }
+                }
+                .pegasusMinimumHitTarget()
+                .disabled(!vm.canCreate)
+                .accessibilityLabel("Create local SKU")
             }
-            if summaryReady && loadError == nil {
+
+            if vm.summaryReady && vm.loadError == nil {
                 Section("Catalog") {
-                    if rows.isEmpty {
-                        Text("mobile_retailer.ui.no_local_skus").foregroundStyle(AppTheme.textTertiary)
+                    if vm.rows.isEmpty {
+                        Text("mobile_retailer.ui.no_local_skus")
+                            .foregroundStyle(AppTheme.textTertiary)
                     } else {
-                        ForEach(rows) { row in
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(row.name).font(.headline)
-                                Text("\(row.id) · \(row.priceMinor) \(row.currency) · \(row.active ? "active" : "inactive")")
-                                    .font(.caption)
-                                    .foregroundStyle(AppTheme.textSecondary)
-                                Button(row.active ? "Disable" : "Enable") {
-                                    Task { await toggle(row) }
+                        ForEach(vm.rows) { row in
+                            HStack(alignment: .center, spacing: AppTheme.spacingMD) {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(row.name)
+                                        .font(.headline)
+                                    Text("\(row.id) · \(row.priceMinor) \(row.currency) · \(row.active ? "active" : "inactive")")
+                                        .font(.caption)
+                                        .foregroundStyle(AppTheme.textSecondary)
                                 }
+                                .accessibilityElement(children: .combine)
+                                .accessibilityLabel("\(row.name), \(row.priceMinor) \(row.currency), \(row.active ? "active" : "inactive")")
+
+                                Spacer()
+
+                                Button(row.active ? "Disable" : "Enable") {
+                                    Task { await vm.toggle(row) }
+                                }
+                                .buttonStyle(.bordered)
+                                .pegasusMinimumHitTarget()
+                                .disabled(vm.busy)
+                                .accessibilityLabel("\(row.active ? "Disable" : "Enable") \(row.name)")
                             }
+                            .padding(.vertical, 2)
                         }
                     }
                 }
             }
         }
+        .scrollDismissesKeyboard(.interactively)
         .navigationTitle("portal.nav.local_skus")
         .navigationBarTitleDisplayMode(.inline)
-        .task { await load() }
+        .task { await vm.load() }
+        .refreshable { await vm.load() }
     }
-
-    private func load() async {
-        do {
-            let list = try await api.getLocalSkus()
-            rows = list.items.map {
-                LocalSkuRowIOS(
-                    id: $0.localSkuId,
-                    name: $0.name,
-                    priceMinor: $0.defaultPriceMinor ?? 0,
-                    currency: displayPackCurrency($0.currency),
-                    active: $0.isActive ?? true
-                )
-            }
-            banner = nil
-            loadError = nil
-            summaryReady = true
-        } catch {
-            rows = [
-                LocalSkuRowIOS(id: "sku-local-1", name: "Fresh Tandir Bread (In-store)", priceMinor: 4000, currency: "UZS", active: true),
-                LocalSkuRowIOS(id: "sku-local-2", name: "House Roasted Coffee 250g", priceMinor: 45000, currency: "UZS", active: true)
-            ]
-            loadError = nil
-            summaryReady = true
-        }
-    }
-
-    private func create() async {
-        busy = true
-        defer { busy = false }
-        do {
-            _ = try await api.createLocalSku(
-                name: name.trimmingCharacters(in: .whitespaces),
-                barcode: barcode.trimmingCharacters(in: .whitespaces),
-                priceMinor: Int64(price) ?? 0
-            )
-            name = ""
-            barcode = ""
-            banner = "Created"
-            await load()
-        } catch {
-            banner = error.localizedDescription
-        }
-    }
-
-    private func toggle(_ row: LocalSkuRowIOS) async {
-        do {
-            _ = try await api.patchLocalSku(id: row.id, isActive: !row.active)
-            await load()
-        } catch {
-            banner = error.localizedDescription
-        }
-    }
-}
-
-struct LocalSkuRowIOS: Identifiable {
-    let id: String
-    let name: String
-    let priceMinor: Int64
-    let currency: String
-    let active: Bool
 }

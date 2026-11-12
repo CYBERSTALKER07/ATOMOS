@@ -18,7 +18,7 @@ struct AutoOrderPredictionsSection: View {
                                 .frame(width: 36, height: 36)
                                 .rotationEffect(.degrees(-90))
                             Text(forecast.confidencePercent)
-                                .font(.system(size: 9, weight: .bold, design: .rounded))
+                                .font(.system(.caption2, design: .rounded, weight: .bold))
                                 .foregroundStyle(confidenceColor(forecast.confidence))
                         }
 
@@ -39,10 +39,12 @@ struct AutoOrderPredictionsSection: View {
                                 .font(.system(.headline, design: .rounded, weight: .bold))
                                 .foregroundStyle(AppTheme.accent)
                             Text("retailer_desktop.auto_order.auto_order_list.text.units")
-                                .font(.system(size: 8, weight: .medium, design: .rounded))
+                                .font(.system(.caption2, design: .rounded, weight: .medium))
                                 .foregroundStyle(AppTheme.textTertiary)
                         }
                     }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("\(forecast.productName), \(forecast.predictedQuantity) units, \(forecast.confidencePercent) confidence")
 
                     if forecast.id != forecasts.last?.id {
                         Rectangle()

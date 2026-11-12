@@ -108,7 +108,8 @@ struct ProductCardView: View {
                 appeared = true
             }
         }
-        .accessibilityLabel(product.name)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(product.name), \(product.displayPrice)")
         .accessibilityHint("Opens product details")
     }
 
@@ -117,7 +118,7 @@ struct ProductCardView: View {
             AppTheme.accentSoft.opacity(0.2)
             VStack(spacing: 6) {
                 Image(systemName: "leaf.fill")
-                    .font(.system(size: 28))
+                    .font(.title)
                     .foregroundStyle(AppTheme.accent.opacity(0.4))
                 Text(String(product.name.prefix(1)))
                     .font(.system(.title, design: .rounded, weight: .bold))
@@ -128,7 +129,7 @@ struct ProductCardView: View {
 
     private func tagPill(_ text: String, color: Color, textColor: Color) -> some View {
         Text(text)
-            .font(.system(size: 10, weight: .semibold, design: .rounded))
+            .font(.system(.caption2, design: .rounded, weight: .semibold))
             .foregroundStyle(textColor)
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
@@ -140,9 +141,14 @@ struct ProductCardView: View {
 #Preview {
     ScrollView {
         LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
-            ForEach(Product.samples) { product in
-                ProductCardView(product: product)
-            }
+            ProductCardView(product: Product(
+                id: "preview-1",
+                name: "Organic Whole Milk",
+                description: "Fresh milk",
+                nutrition: "",
+                imageURL: nil,
+                variants: [Variant(id: "v-1", size: "1L", pack: "Single", packCount: 1, weightPerUnit: "1kg", priceMinor: 12_500)]
+            ))
         }
         .padding()
     }

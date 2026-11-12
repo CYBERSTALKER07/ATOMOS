@@ -2,32 +2,22 @@ import SwiftUI
 
 struct HistoryView: View {
     @State private var refreshCenter = RetailerRefreshCenter.shared
-    @State private var orders: [Order] = []
-    @State private var isLoading = false
-    @State private var loadError = false
-    @State private var filterStatus: OrderStatus?
-
-    private let api = APIClient.shared
-
-    var filteredOrders: [Order] {
-        guard let filter = filterStatus else { return orders }
-        return orders.filter { $0.status == filter }
-    }
+    @State private var vm = HistoryViewModel()
 
     var body: some View {
         VStack(spacing: 0) {
             statusFilters
 
             ScrollView {
-                if isLoading && orders.isEmpty {
+                if vm.isLoading && vm.orders.isEmpty {
                     SkeletonOrderList()
-                } else if loadError && orders.isEmpty {
-                    ErrorStateView { await loadOrders() }
-                } else if filteredOrders.isEmpty {
+                } else if vm.loadError && vm.orders.isEmpty {
+                    ErrorStateView { await vm.loadOrders() }
+                } else if vm.filteredOrders.isEmpty {
                     emptyState
                 } else {
                     LazyVStack(spacing: AppTheme.spacingMD) {
-                        ForEach(Array(filteredOrders.enumerated()), id: \.element.id) { index, order in
+                        ForEach(Array(vm.filteredOrders.enumerated()), id: \.element.id) { index, order in
                             OrderCardView(order: order)
                                 .staggeredSlideIn(index: index)
                         }
@@ -37,12 +27,13 @@ struct HistoryView: View {
                     .padding(.bottom, AppTheme.spacingXXL)
                 }
             }
+            .scrollDismissesKeyboard(.interactively)
             .scrollIndicators(.hidden)
         }
         .background(AppTheme.background)
-        .task { await loadOrders() }
-        .task(id: refreshCenter.refreshToken) { await loadOrders() }
-        .refreshable { await loadOrders() }
+        .task { await vm.loadOrders() }
+        .task(id: refreshCenter.refreshToken) { await vm.loadOrders() }
+        .refreshable { await vm.loadOrders() }
     }
 
     // MARK: - Filters
@@ -62,24 +53,28 @@ struct HistoryView: View {
     }
 
     private func filterChip(_ title: String, status: OrderStatus?) -> some View {
-        Button {
-            withAnimation(AnimationConstants.express) { filterStatus = status }
+        let isSelected = vm.filterStatus == status
+        return Button {
+            withAnimation(AnimationConstants.express) { vm.filterStatus = status }
             Haptics.light()
         } label: {
             Text(title)
                 .font(.system(.caption, design: .rounded, weight: .semibold))
-                .foregroundStyle(filterStatus == status ? .white : AppTheme.textSecondary)
+                .foregroundStyle(isSelected ? .white : AppTheme.textSecondary)
                 .padding(.horizontal, AppTheme.spacingMD)
                 .padding(.vertical, AppTheme.spacingSM)
                 .background {
-                    if filterStatus == status {
+                    if isSelected {
                         Capsule().fill(AppTheme.accentGradient)
                     } else {
                         Capsule().fill(AppTheme.cardBackground)
                             .shadow(color: AppTheme.shadowColor, radius: 2, y: 1)
                     }
                 }
+                .pegasusMinimumHitTarget()
         }
+        .accessibilityLabel("Filter by \(title)")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
     private var emptyState: some View {
@@ -87,7 +82,9 @@ struct HistoryView: View {
             Spacer(minLength: 80)
             ZStack {
                 Circle().fill(AppTheme.accentSoft.opacity(0.3)).frame(width: 80, height: 80)
-                Image(systemName: "clock").font(.system(size: 32)).foregroundStyle(AppTheme.accent.opacity(0.4))
+                Image(systemName: "clock")
+                    .font(.title)
+                    .foregroundStyle(AppTheme.accent.opacity(0.4))
             }
             Text("mobile_retailer.ui.no_orders_found")
                 .font(.system(.headline, design: .rounded))
@@ -97,20 +94,7 @@ struct HistoryView: View {
                 .foregroundStyle(AppTheme.textTertiary)
             Spacer()
         }
-    }
-
-    private func loadOrders() async {
-        let rid = AuthManager.shared.currentUser?.id ?? ""
-        isLoading = true
-        loadError = false
-        do {
-            let r: [Order] = try await api.get(path: "/v1/retailers/\(rid)/orders")
-            orders = r.isEmpty ? Order.samples : r
-        } catch {
-            orders = Order.samples
-            loadError = false
-        }
-        isLoading = false
+        .accessibilityElement(children: .combine)
     }
 }
 

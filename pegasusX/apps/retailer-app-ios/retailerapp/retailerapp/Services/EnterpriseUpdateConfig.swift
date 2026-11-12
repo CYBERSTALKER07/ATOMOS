@@ -40,7 +40,7 @@ enum EnterpriseUpdateConfig {
 
     static let defaultManifestURL = URL(
         string: "https://storage.googleapis.com/pegasusx-ssmr-app-updates/ios/retailer/updater.json"
-    )!
+    ) ?? URL(fileURLWithPath: "/")
 
     /// App Store listing URL for production builds.
     static var storeListingURL: URL? {

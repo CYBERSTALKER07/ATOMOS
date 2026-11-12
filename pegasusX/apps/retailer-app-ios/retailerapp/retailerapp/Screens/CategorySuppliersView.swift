@@ -1,20 +1,15 @@
 import SwiftUI
 
 struct CategorySuppliersView: View {
-    @State private var refreshCenter = RetailerRefreshCenter.shared
     let category: ProductCategory
-    @State private var suppliers: [Supplier] = []
-    @State private var isLoading = false
-    @State private var errorMessage: String?
-    @State private var mySupplierIds: Set<String> = []
-    @State private var togglingIds: Set<String> = []
+    @State private var refreshCenter = RetailerRefreshCenter.shared
+    @State private var vm = CategorySuppliersViewModel()
 
-    private let api = APIClient.shared
     private let columns = [GridItem(.adaptive(minimum: 160), spacing: 14)]
 
     var body: some View {
         ScrollView {
-            if isLoading && suppliers.isEmpty {
+            if vm.isLoading && vm.suppliers.isEmpty {
                 VStack(alignment: .leading, spacing: AppTheme.spacingLG) {
                     headerSkeleton
                     skeletonGrid(cardCount: 4)
@@ -22,39 +17,39 @@ struct CategorySuppliersView: View {
                 .padding(.horizontal, AppTheme.spacingLG)
                 .padding(.top, AppTheme.spacingSM)
                 .padding(.bottom, AppTheme.spacingXXL)
-            } else if suppliers.isEmpty && !isLoading {
+            } else if vm.suppliers.isEmpty && !vm.isLoading {
                 emptyState
             } else {
                 VStack(alignment: .leading, spacing: AppTheme.spacingLG) {
-                    // Header
                     HStack(spacing: AppTheme.spacingMD) {
                         ZStack {
                             RoundedRectangle(cornerRadius: AppTheme.radiusMD)
                                 .fill(AppTheme.surfaceElevated)
                                 .frame(width: 52, height: 52)
                             Image(systemName: category.icon)
-                                .font(.system(size: 24, weight: .medium))
+                                .font(.title2.weight(.medium))
                                 .foregroundStyle(AppTheme.textPrimary)
                         }
                         VStack(alignment: .leading, spacing: 3) {
                             Text(category.name)
                                 .font(.system(.title3, design: .rounded, weight: .bold))
                                 .foregroundStyle(AppTheme.textPrimary)
-                            Text(L10n.format("mobile_retailer.ui.count_suppliers_available", "\(suppliers.count)"))
+                            Text(L10n.format("mobile_retailer.ui.count_suppliers_available", "\(vm.suppliers.count)"))
                                 .font(.system(.caption, design: .rounded))
                                 .foregroundStyle(AppTheme.textTertiary)
                         }
                         Spacer()
                     }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("\(category.name), \(vm.suppliers.count) suppliers available")
                     .slideIn(delay: 0)
 
-                    if let errorMessage, !errorMessage.isEmpty {
+                    if let errorMessage = vm.errorMessage, !errorMessage.isEmpty {
                         syncStatusBanner(errorMessage)
                     }
 
-                    // Supplier Cards
                     LazyVGrid(columns: columns, spacing: AppTheme.spacingLG) {
-                        ForEach(Array(suppliers.enumerated()), id: \.element.id) { index, supplier in
+                        ForEach(Array(vm.suppliers.enumerated()), id: \.element.id) { index, supplier in
                             NavigationLink {
                                 SupplierProductsView(supplier: supplier)
                             } label: {
@@ -70,20 +65,22 @@ struct CategorySuppliersView: View {
                 .padding(.bottom, AppTheme.spacingXXL)
             }
         }
+        .scrollDismissesKeyboard(.interactively)
         .scrollIndicators(.hidden)
         .background(AppTheme.background)
         .navigationTitle(category.name)
         .navigationBarTitleDisplayMode(.inline)
-        .task { await loadSuppliers() }
-        .task(id: refreshCenter.refreshToken) { await loadSuppliers() }
-        .refreshable { await loadSuppliers() }
+        .task { await vm.loadSuppliers(categoryId: category.id) }
+        .task(id: refreshCenter.refreshToken) { await vm.loadSuppliers(categoryId: category.id) }
+        .refreshable { await vm.loadSuppliers(categoryId: category.id) }
     }
 
     // MARK: - Supplier Card
 
     private func supplierCard(_ supplier: Supplier) -> some View {
-        VStack(alignment: .leading, spacing: AppTheme.spacingMD) {
-            // Avatar + Add button
+        let isAdded = vm.mySupplierIds.contains(supplier.id)
+
+        return VStack(alignment: .leading, spacing: AppTheme.spacingMD) {
             HStack {
                 ZStack {
                     RoundedRectangle(cornerRadius: AppTheme.radiusMD)
@@ -95,57 +92,51 @@ struct CategorySuppliersView: View {
                 }
                 Spacer()
 
-                // Add to My Suppliers
                 Button {
-                    guard !togglingIds.contains(supplier.id) else { return }
-                    Haptics.medium()
-                    withAnimation(AnimationConstants.bouncy) {
-                        if mySupplierIds.contains(supplier.id) {
-                            mySupplierIds.remove(supplier.id)
-                        } else {
-                            mySupplierIds.insert(supplier.id)
-                        }
-                    }
-                    Task { await toggleMySupplier(supplier) }
+                    Task { await vm.toggleMySupplier(supplier) }
                 } label: {
-                    Image(systemName: mySupplierIds.contains(supplier.id) ? "checkmark.circle.fill" : "plus.circle")
-                        .font(.system(size: 22, weight: .medium))
-                        .foregroundStyle(mySupplierIds.contains(supplier.id) ? AppTheme.success : AppTheme.textTertiary)
+                    Image(systemName: isAdded ? "checkmark.circle.fill" : "plus.circle")
+                        .font(.title3.weight(.medium))
+                        .foregroundStyle(isAdded ? AppTheme.success : AppTheme.textTertiary)
                         .contentTransition(.symbolEffect(.replace))
+                        .pegasusMinimumHitTarget()
                 }
-                .disabled(togglingIds.contains(supplier.id))
+                .disabled(vm.togglingIds.contains(supplier.id))
+                .accessibilityLabel(isAdded ? "Remove \(supplier.name) from My Suppliers" : "Add \(supplier.name) to My Suppliers")
             }
 
-            // Name + category
-            Text(supplier.name)
-                .font(.system(.subheadline, design: .rounded, weight: .semibold))
-                .foregroundStyle(AppTheme.textPrimary)
-                .lineLimit(1)
+            VStack(alignment: .leading, spacing: AppTheme.spacingXS) {
+                Text(supplier.name)
+                    .font(.system(.subheadline, design: .rounded, weight: .semibold))
+                    .foregroundStyle(AppTheme.textPrimary)
+                    .lineLimit(1)
 
-            if let cat = supplier.displayCategory {
-                Text(cat)
-                    .font(.system(.caption2, design: .rounded))
-                    .foregroundStyle(AppTheme.textTertiary)
-            }
+                if let cat = supplier.displayCategory {
+                    Text(cat)
+                        .font(.system(.caption2, design: .rounded))
+                        .foregroundStyle(AppTheme.textTertiary)
+                }
 
-            // Stats
-            HStack(spacing: AppTheme.spacingXS) {
-                Text(supplier.catalogSubtitle)
-                    .font(.system(.caption2, design: .rounded, weight: .medium))
-                    .foregroundStyle(AppTheme.textSecondary)
-                    .padding(.horizontal, 6).padding(.vertical, 3)
-                    .background(AppTheme.surfaceElevated)
-                    .clipShape(.capsule)
-
-                if mySupplierIds.contains(supplier.id) {
-                    Text("mobile_retailer.ui.my_supplier")
-                        .font(.system(.caption2, design: .rounded, weight: .bold))
-                        .foregroundStyle(AppTheme.success)
+                HStack(spacing: AppTheme.spacingXS) {
+                    Text(supplier.catalogSubtitle)
+                        .font(.system(.caption2, design: .rounded, weight: .medium))
+                        .foregroundStyle(AppTheme.textSecondary)
                         .padding(.horizontal, 6).padding(.vertical, 3)
-                        .background(AppTheme.success.opacity(0.1))
+                        .background(AppTheme.surfaceElevated)
                         .clipShape(.capsule)
+
+                    if isAdded {
+                        Text("mobile_retailer.ui.my_supplier")
+                            .font(.system(.caption2, design: .rounded, weight: .bold))
+                            .foregroundStyle(AppTheme.success)
+                            .padding(.horizontal, 6).padding(.vertical, 3)
+                            .background(AppTheme.success.opacity(0.1))
+                            .clipShape(.capsule)
+                    }
                 }
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("\(supplier.name), \(supplier.catalogSubtitle)\(isAdded ? ", My Supplier" : "")")
         }
         .padding(AppTheme.spacingMD)
         .background(AppTheme.cardBackground)
@@ -153,12 +144,12 @@ struct CategorySuppliersView: View {
         .shadow(color: AppTheme.shadowColor, radius: 4, x: 0, y: 2)
     }
 
-    // MARK: - Empty State
+    // MARK: - Empty State & Banner
 
     private func syncStatusBanner(_ message: String) -> some View {
         HStack(spacing: AppTheme.spacingSM) {
             Image(systemName: "exclamationmark.triangle.fill")
-                .font(.system(size: 12, weight: .semibold))
+                .font(.caption.weight(.semibold))
                 .foregroundStyle(AppTheme.warning)
             Text(message)
                 .font(.system(.caption, design: .rounded, weight: .medium))
@@ -166,10 +157,13 @@ struct CategorySuppliersView: View {
                 .lineLimit(3)
             Spacer()
             Button("common.action.retry") {
-                Task { await loadSuppliers() }
+                Haptics.light()
+                Task { await vm.loadSuppliers(categoryId: category.id) }
             }
             .font(.system(.caption, design: .rounded, weight: .semibold))
             .foregroundStyle(AppTheme.accent)
+            .pegasusMinimumHitTarget()
+            .accessibilityLabel("Retry loading category suppliers")
         }
         .padding(.horizontal, AppTheme.spacingMD)
         .padding(.vertical, AppTheme.spacingSM)
@@ -182,17 +176,22 @@ struct CategorySuppliersView: View {
             Spacer(minLength: 100)
             ZStack {
                 Circle().fill(AppTheme.surfaceElevated).frame(width: 80, height: 80)
-                Image(systemName: category.icon).font(.system(size: 32)).foregroundStyle(AppTheme.textTertiary)
+                Image(systemName: category.icon)
+                    .font(.title)
+                    .foregroundStyle(AppTheme.textTertiary)
             }
+            .accessibilityHidden(true)
+
             Text("mobile_retailer.ui.no_suppliers")
                 .font(.system(.headline, design: .rounded))
                 .foregroundStyle(AppTheme.textPrimary)
-            Text(errorMessage ?? "No suppliers found for \(category.name)")
+            Text(vm.errorMessage ?? "No suppliers found for \(category.name)")
                 .font(.system(.subheadline, design: .rounded))
                 .foregroundStyle(AppTheme.textTertiary)
                 .multilineTextAlignment(.center)
-            Button(errorMessage == nil ? "Refresh" : "Retry") {
-                Task { await loadSuppliers() }
+            Button(vm.errorMessage == nil ? "Refresh" : "Retry") {
+                Haptics.light()
+                Task { await vm.loadSuppliers(categoryId: category.id) }
             }
             .font(.system(.subheadline, design: .rounded, weight: .semibold))
             .foregroundStyle(AppTheme.cardBackground)
@@ -200,23 +199,11 @@ struct CategorySuppliersView: View {
             .padding(.vertical, AppTheme.spacingMD)
             .background(AppTheme.textPrimary)
             .clipShape(.rect(cornerRadius: AppTheme.radiusButton))
+            .pegasusMinimumHitTarget()
+            .accessibilityLabel(vm.errorMessage == nil ? "Refresh suppliers" : "Retry loading suppliers")
             Spacer()
         }
         .padding(AppTheme.spacingXL)
-    }
-
-    // MARK: - API
-
-    private func loadSuppliers() async {
-        isLoading = true
-        errorMessage = nil
-        do {
-            let result: [Supplier] = try await api.get(path: "/v1/catalog/categories/\(category.id)/suppliers")
-            suppliers = result.isEmpty ? Supplier.samples : result
-        } catch {
-            suppliers = Supplier.samples
-        }
-        isLoading = false
     }
 
     private var headerSkeleton: some View {
@@ -273,34 +260,10 @@ struct CategorySuppliersView: View {
             }
         }
     }
-
-    private func toggleMySupplier(_ supplier: Supplier) async {
-        togglingIds.insert(supplier.id)
-        let wasAdded = mySupplierIds.contains(supplier.id)
-        do {
-            let _: [String: Bool] = try await api.post(
-                path: "/v1/retailer/suppliers/\(supplier.id)/\(wasAdded ? "add" : "remove")",
-                body: ["supplier_id": supplier.id]
-            )
-            errorMessage = nil
-        } catch {
-            withAnimation(AnimationConstants.express) {
-                if wasAdded { mySupplierIds.remove(supplier.id) }
-                else { mySupplierIds.insert(supplier.id) }
-            }
-            errorMessage = RetailerErrorSupport.message(
-                for: error,
-                restricted: "Category supplier favorites access is restricted for this account.",
-                offline: "Offline mode active. Reconnect and retry category supplier favorites.",
-                fallback: "Category supplier favorites update failed. Please try again.",
-            )
-        }
-        togglingIds.remove(supplier.id)
-    }
 }
 
 #Preview {
     NavigationStack {
-        CategorySuppliersView(category: ProductCategory.samples[0])
+        CategorySuppliersView(category: ProductCategory(id: "cat-dairy", name: "Dairy", icon: "cup.and.saucer.fill", productCount: 0))
     }
 }

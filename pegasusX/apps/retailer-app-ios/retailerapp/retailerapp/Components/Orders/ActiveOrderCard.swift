@@ -10,7 +10,9 @@ struct ActiveOrderCard: View {
             HStack(alignment: .top) {
                 ZStack {
                     Circle().fill(AppTheme.success.opacity(0.1)).frame(width: 40, height: 40)
-                    Image(systemName: "shippingbox.fill").font(.system(size: 15, weight: .semibold)).foregroundStyle(AppTheme.success)
+                    Image(systemName: "shippingbox.fill")
+                        .font(.system(.subheadline, weight: .semibold))
+                        .foregroundStyle(AppTheme.success)
                 }
 
                 VStack(alignment: .leading, spacing: 2) {
@@ -31,12 +33,13 @@ struct ActiveOrderCard: View {
                 )
             }
 
-            // Order Status Timeline
             OrderStatusTimeline(currentStep: order.status.timelineStepIndex)
 
             if let eta = order.estimatedDelivery {
                 HStack(spacing: AppTheme.spacingSM) {
-                    Image(systemName: "clock").font(.system(size: 12, weight: .semibold)).foregroundStyle(AppTheme.textSecondary)
+                    Image(systemName: "clock")
+                        .font(.system(.caption, weight: .semibold))
+                        .foregroundStyle(AppTheme.textSecondary)
                     CountdownText(targetISO: eta, font: .system(.caption, design: .monospaced, weight: .bold), color: AppTheme.textPrimary)
                     Spacer()
                 }
@@ -53,13 +56,15 @@ struct ActiveOrderCard: View {
                     onDetails()
                 } label: {
                     HStack(spacing: 4) {
-                        Image(systemName: "doc.text").font(.system(size: 12, weight: .semibold))
+                        Image(systemName: "doc.text").font(.system(.caption, weight: .semibold))
                         Text("mobile_retailer.ui.details").font(.system(.caption, design: .rounded, weight: .semibold))
                     }
                     .foregroundStyle(AppTheme.textPrimary)
-                    .padding(.horizontal, AppTheme.spacingMD).padding(.vertical, AppTheme.spacingSM)
+                    .padding(.horizontal, AppTheme.spacingMD)
+                    .padding(.vertical, AppTheme.spacingSM)
                     .background(AppTheme.surfaceElevated)
                     .clipShape(.capsule)
+                    .pegasusMinimumHitTarget()
                 }
 
                 if order.status.hasDeliveryToken {
@@ -68,21 +73,24 @@ struct ActiveOrderCard: View {
                         onQR()
                     } label: {
                         HStack(spacing: 4) {
-                            Image(systemName: "qrcode").font(.system(size: 12, weight: .semibold))
+                            Image(systemName: "qrcode").font(.system(.caption, weight: .semibold))
                             Text("mobile_retailer.ui.show_qr").font(.system(.caption, design: .rounded, weight: .semibold))
                         }
                         .foregroundStyle(.white)
-                        .padding(.horizontal, AppTheme.spacingMD).padding(.vertical, AppTheme.spacingSM)
+                        .padding(.horizontal, AppTheme.spacingMD)
+                        .padding(.vertical, AppTheme.spacingSM)
                         .background(AppTheme.accent)
                         .clipShape(.capsule)
+                        .pegasusMinimumHitTarget()
                     }
                 } else {
                     HStack(spacing: 4) {
-                        Image(systemName: "qrcode").font(.system(size: 12, weight: .semibold))
+                        Image(systemName: "qrcode").font(.system(.caption, weight: .semibold))
                         Text("mobile_retailer.ui.awaiting_dispatch").font(.system(.caption, design: .rounded, weight: .semibold))
                     }
                     .foregroundStyle(AppTheme.textTertiary)
-                    .padding(.horizontal, AppTheme.spacingMD).padding(.vertical, AppTheme.spacingSM)
+                    .padding(.horizontal, AppTheme.spacingMD)
+                    .padding(.vertical, AppTheme.spacingSM)
                     .background(AppTheme.surfaceElevated)
                     .clipShape(.capsule)
                 }
@@ -93,5 +101,7 @@ struct ActiveOrderCard: View {
         .background(AppTheme.cardBackground)
         .clipShape(.rect(cornerRadius: AppTheme.radiusCard))
         .shadow(color: AppTheme.shadowColor, radius: 4, y: 2)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Order \(order.id.suffix(3)), \(order.status.displayName), \(order.displayTotal)")
     }
 }

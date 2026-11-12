@@ -4,41 +4,23 @@ struct SupplierProductsView: View {
     let supplier: Supplier
     @Environment(CartManager.self) private var cart
     @State private var refreshCenter = RetailerRefreshCenter.shared
-    @State private var products: [Product] = []
-    @State private var isLoading = false
-    @State private var errorMessage: String?
-    @State private var selectedProduct: Product?
-    @State private var autoOrderSettings: [String: Bool] = [:]
-    @State private var supplierAutoOrder = false
-    @State private var isMySupplier = false
-    @State private var isTogglingMySupplier = false
-    @State private var isTogglingSupplierAutoOrder = false
-    @State private var togglingProductIds: Set<String> = []
-
-    private let api = APIClient.shared
-
-    private var groupedProducts: [(key: String, value: [Product])] {
-        Dictionary(grouping: products) { product in
-            product.categoryName ?? supplier.displayCategory ?? "Other"
-        }
-        .sorted { $0.key.localizedCaseInsensitiveCompare($1.key) == .orderedAscending }
-    }
+    @State private var vm = SupplierProductsViewModel()
 
     var body: some View {
+        @Bindable var vm = vm
+
         ScrollView {
             VStack(spacing: AppTheme.spacingLG) {
-                // Supplier header card
                 supplierHeader
                     .slideIn(delay: 0)
 
-                if let errorMessage, !errorMessage.isEmpty {
+                if let errorMessage = vm.errorMessage, !errorMessage.isEmpty {
                     syncStatusBanner(errorMessage)
                 }
 
-                // Products list
-                if isLoading && products.isEmpty {
+                if vm.isLoading && vm.products.isEmpty {
                     loadingProductsSection
-                } else if products.isEmpty {
+                } else if vm.products.isEmpty {
                     emptyProductsSection
                 } else {
                     productsSection
@@ -48,32 +30,31 @@ struct SupplierProductsView: View {
             .padding(.top, AppTheme.spacingSM)
             .padding(.bottom, AppTheme.spacingXXL)
         }
+        .scrollDismissesKeyboard(.interactively)
         .scrollIndicators(.hidden)
         .background(AppTheme.background)
         .navigationTitle(supplier.name)
         .navigationBarTitleDisplayMode(.inline)
-        .navigationDestination(item: $selectedProduct) { product in
+        .navigationDestination(item: $vm.selectedProduct) { product in
             ProductDetailView(product: product)
         }
         .task {
             cart.supplierIsActive = supplier.isActive
-            async let fetchProducts: () = loadProducts()
-            async let fetchSettings: () = loadAutoOrderState()
-            await fetchProducts
-            await fetchSettings
+            await vm.loadProducts(supplierId: supplier.id)
+            await vm.loadAutoOrderState(supplierId: supplier.id)
         }
         .task(id: refreshCenter.refreshToken) {
-            await loadProducts()
-            await loadAutoOrderState()
+            await vm.loadProducts(supplierId: supplier.id)
+            await vm.loadAutoOrderState(supplierId: supplier.id)
         }
-        .refreshable { 
-            await loadProducts() 
-            await loadAutoOrderState()
+        .refreshable {
+            await vm.loadProducts(supplierId: supplier.id)
+            await vm.loadAutoOrderState(supplierId: supplier.id)
         }
         .task {
             for await event in RetailerWebSocket.shared.eventStream() {
                 if case .promotionChanged(let supplierId) = event, supplierId == supplier.id {
-                    await loadProducts()
+                    await vm.loadProducts(supplierId: supplier.id)
                 }
             }
         }
@@ -86,7 +67,7 @@ struct SupplierProductsView: View {
             HStack(spacing: AppTheme.spacingLG) {
                 ZStack {
                     Circle()
-                        .fill(AppTheme.accentGradient.opacity(0.1)) // Subtle gradient theme
+                        .fill(AppTheme.accentGradient.opacity(0.1))
                         .frame(width: 64, height: 64)
                     Text(supplier.initials)
                         .font(.system(.title2, design: .rounded, weight: .bold))
@@ -98,18 +79,17 @@ struct SupplierProductsView: View {
                         .font(.system(.title3, design: .rounded, weight: .bold))
                         .foregroundStyle(AppTheme.textPrimary)
                     if let cat = supplier.displayCategory {
-                        Text(cat.uppercased()) // Uppercase category for tactical feel
-                            .font(.system(size: 10, weight: .black, design: .rounded))
+                        Text(cat.uppercased())
+                            .font(.system(.caption2, design: .rounded, weight: .black))
                             .foregroundStyle(AppTheme.textTertiary)
                             .tracking(1)
                     }
 
-                    // OPEN/CLOSED status badge
                     HStack(spacing: 5) {
                         Circle()
                             .fill(supplier.isActive ? AppTheme.success : AppTheme.destructive)
                             .frame(width: 6, height: 6)
-                        Text(supplier.isActive ? "ACTIVE" : "OFFLINE") // More tactical labels
+                        Text(supplier.isActive ? "ACTIVE" : "OFFLINE")
                             .font(.system(.caption2, design: .rounded, weight: .bold))
                             .foregroundStyle(supplier.isActive ? AppTheme.success : AppTheme.destructive)
                     }
@@ -130,6 +110,8 @@ struct SupplierProductsView: View {
 
                 Spacer()
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("\(supplier.name), \(supplier.isActive ? "Active" : "Offline"), \(supplier.catalogSubtitle)")
 
             if !supplier.operatingCategoryNames.isEmpty {
                 ScrollView(.horizontal) {
@@ -148,29 +130,25 @@ struct SupplierProductsView: View {
                 .scrollIndicators(.hidden)
             }
 
-            // Add to My Suppliers button
             Button {
-                guard !isTogglingMySupplier else { return }
-                Haptics.medium()
-                withAnimation(AnimationConstants.bouncy) {
-                    isMySupplier.toggle()
-                }
-                Task { await toggleMySupplier() }
+                Task { await vm.toggleMySupplier(supplierId: supplier.id) }
             } label: {
                 HStack(spacing: AppTheme.spacingSM) {
-                    Image(systemName: isMySupplier ? "checkmark.circle.fill" : "plus.circle")
-                        .font(.system(size: 16, weight: .semibold))
+                    Image(systemName: vm.isMySupplier ? "checkmark.circle.fill" : "plus.circle")
+                        .font(.callout.weight(.semibold))
                         .contentTransition(.symbolEffect(.replace))
-                    Text(isMySupplier ? "Added to My Suppliers" : "Add to My Suppliers")
+                    Text(vm.isMySupplier ? "Added to My Suppliers" : "Add to My Suppliers")
                         .font(.system(.subheadline, design: .rounded, weight: .semibold))
                 }
-                .foregroundStyle(isMySupplier ? AppTheme.success : AppTheme.textPrimary)
+                .foregroundStyle(vm.isMySupplier ? AppTheme.success : AppTheme.textPrimary)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, AppTheme.spacingMD)
-                .background(isMySupplier ? AppTheme.success.opacity(0.1) : AppTheme.surfaceElevated)
+                .background(vm.isMySupplier ? AppTheme.success.opacity(0.1) : AppTheme.surfaceElevated)
                 .clipShape(.rect(cornerRadius: AppTheme.radiusButton))
+                .pegasusMinimumHitTarget()
             }
-            .disabled(isTogglingMySupplier)
+            .disabled(vm.isTogglingMySupplier)
+            .accessibilityLabel(vm.isMySupplier ? "Remove \(supplier.name) from My Suppliers" : "Add \(supplier.name) to My Suppliers")
         }
         .padding(AppTheme.spacingLG)
         .background(AppTheme.cardBackground)
@@ -178,53 +156,10 @@ struct SupplierProductsView: View {
         .shadow(color: AppTheme.shadowColor, radius: 4, y: 2)
     }
 
-    /* Wait for backend
-    // MARK: - Supplier Auto-Order
-
-    private var supplierAutoOrderCard: some View {
-        LabCard {
-            HStack(spacing: AppTheme.spacingMD) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: AppTheme.radiusSM)
-                        .fill(AppTheme.surfaceElevated)
-                        .frame(width: 36, height: 36)
-                    Image(systemName: "arrow.triangle.2.circlepath")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(AppTheme.textSecondary)
-                }
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("portal.nav.auto_order")
-                        .font(.system(.subheadline, design: .rounded, weight: .medium))
-                        .foregroundStyle(AppTheme.textPrimary)
-                    Text(L10n.format("mobile_retailer.ui.auto_order_all_from_name", "\(supplier.name)"))
-                        .font(.system(.caption, design: .rounded))
-                        .foregroundStyle(AppTheme.textTertiary)
-                }
-
-                Spacer()
-
-                Toggle("", isOn: Binding(
-                    get: { supplierAutoOrder },
-                    set: { newVal in
-                        guard !isTogglingSupplierAutoOrder else { return }
-                        supplierAutoOrder = newVal
-                        Task { await toggleSupplierAutoOrder() }
-                    }
-                ))
-                    .tint(AppTheme.accent)
-                    .labelsHidden()
-                    .disabled(isTogglingSupplierAutoOrder)
-            }
-            .padding(AppTheme.spacingLG)
-        }
-    }
-    */
-
     private func syncStatusBanner(_ message: String) -> some View {
         HStack(spacing: AppTheme.spacingSM) {
             Image(systemName: "exclamationmark.triangle.fill")
-                .font(.system(size: 12, weight: .semibold))
+                .font(.caption.weight(.semibold))
                 .foregroundStyle(AppTheme.warning)
             Text(message)
                 .font(.system(.caption, design: .rounded, weight: .medium))
@@ -232,13 +167,16 @@ struct SupplierProductsView: View {
                 .lineLimit(3)
             Spacer()
             Button("common.action.retry") {
+                Haptics.light()
                 Task {
-                    await loadProducts()
-                    await loadAutoOrderState()
+                    await vm.loadProducts(supplierId: supplier.id)
+                    await vm.loadAutoOrderState(supplierId: supplier.id)
                 }
             }
             .font(.system(.caption, design: .rounded, weight: .semibold))
             .foregroundStyle(AppTheme.accent)
+            .pegasusMinimumHitTarget()
+            .accessibilityLabel("Retry loading supplier products")
         }
         .padding(.horizontal, AppTheme.spacingMD)
         .padding(.vertical, AppTheme.spacingSM)
@@ -250,18 +188,20 @@ struct SupplierProductsView: View {
     // MARK: - Products List
 
     private var productsSection: some View {
-        VStack(alignment: .leading, spacing: AppTheme.spacingMD) {
+        let grouped = vm.groupedProducts(for: supplier)
+
+        return VStack(alignment: .leading, spacing: AppTheme.spacingMD) {
             HStack {
                 Text("mobile_retailer.ui.products_by_category")
                     .font(.system(.headline, design: .rounded))
                     .foregroundStyle(AppTheme.textPrimary)
                 Spacer()
-                Text(L10n.format("mobile_retailer.ui.count_items_2", "\(products.count)"))
+                Text(L10n.format("mobile_retailer.ui.count_items_2", "\(vm.products.count)"))
                     .font(.system(.caption, design: .rounded))
                     .foregroundStyle(AppTheme.textTertiary)
             }
 
-            ForEach(Array(groupedProducts.enumerated()), id: \.element.key) { groupIndex, group in
+            ForEach(Array(grouped.enumerated()), id: \.element.key) { groupIndex, group in
                 VStack(alignment: .leading, spacing: AppTheme.spacingSM) {
                     Text(group.key)
                         .font(.system(.subheadline, design: .rounded, weight: .bold))
@@ -323,18 +263,21 @@ struct SupplierProductsView: View {
                     .fill(AppTheme.surfaceElevated)
                     .frame(width: 80, height: 80)
                 Image(systemName: "shippingbox")
-                    .font(.system(size: 30, weight: .medium))
+                    .font(.title.weight(.medium))
                     .foregroundStyle(AppTheme.textTertiary)
             }
+            .accessibilityHidden(true)
+
             Text("mobile_retailer.ui.no_products_yet")
                 .font(.system(.headline, design: .rounded))
                 .foregroundStyle(AppTheme.textPrimary)
-            Text(errorMessage ?? "This supplier has no active catalog items right now.")
+            Text(vm.errorMessage ?? "This supplier has no active catalog items right now.")
                 .font(.system(.subheadline, design: .rounded))
                 .foregroundStyle(AppTheme.textTertiary)
                 .multilineTextAlignment(.center)
-            Button(errorMessage == nil ? "Refresh Catalog" : "Retry") {
-                Task { await loadProducts() }
+            Button(vm.errorMessage == nil ? "Refresh Catalog" : "Retry") {
+                Haptics.light()
+                Task { await vm.loadProducts(supplierId: supplier.id) }
             }
             .font(.system(.subheadline, design: .rounded, weight: .semibold))
             .foregroundStyle(AppTheme.cardBackground)
@@ -342,175 +285,84 @@ struct SupplierProductsView: View {
             .padding(.vertical, AppTheme.spacingMD)
             .background(AppTheme.textPrimary)
             .clipShape(.rect(cornerRadius: AppTheme.radiusButton))
+            .pegasusMinimumHitTarget()
+            .accessibilityLabel(vm.errorMessage == nil ? "Refresh catalog" : "Retry loading catalog")
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, AppTheme.spacingXL)
     }
 
     private func productRow(_ product: Product) -> some View {
-        HStack(spacing: AppTheme.spacingMD) {
-            // Product icon
-            ZStack {
-                RoundedRectangle(cornerRadius: AppTheme.radiusSM)
-                    .fill(AppTheme.surfaceElevated)
-                    .frame(width: 50, height: 50)
-                Image(systemName: "leaf.fill")
-                    .font(.system(size: 20))
-                    .foregroundStyle(AppTheme.textTertiary)
-            }
+        Button {
+            Haptics.light()
+            vm.selectedProduct = product
+        } label: {
+            HStack(spacing: AppTheme.spacingMD) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: AppTheme.radiusSM)
+                        .fill(AppTheme.surfaceElevated)
+                        .frame(width: 50, height: 50)
+                    Image(systemName: "leaf.fill")
+                        .font(.title3)
+                        .foregroundStyle(AppTheme.textTertiary)
+                }
 
-            // Info
-            VStack(alignment: .leading, spacing: 3) {
-                Text(product.name)
-                    .font(.system(.subheadline, design: .rounded, weight: .medium))
-                    .foregroundStyle(AppTheme.textPrimary)
-                    .lineLimit(1)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(product.name)
+                        .font(.system(.subheadline, design: .rounded, weight: .medium))
+                        .foregroundStyle(AppTheme.textPrimary)
+                        .lineLimit(1)
 
-                HStack(spacing: AppTheme.spacingSM) {
-                    if product.hasSaleOffer, let listPrice = product.displayListPrice {
-                        Text(listPrice)
-                            .font(.system(.caption2, design: .rounded, weight: .medium))
-                            .foregroundStyle(AppTheme.textTertiary)
-                            .strikethrough()
-                    }
-                    Text(product.displayPrice)
-                        .font(.system(.caption, design: .rounded, weight: .bold))
-                        .foregroundStyle(product.hasSaleOffer ? AppTheme.success : AppTheme.textPrimary)
+                    HStack(spacing: AppTheme.spacingSM) {
+                        if product.hasSaleOffer, let listPrice = product.displayListPrice {
+                            Text(listPrice)
+                                .font(.system(.caption2, design: .rounded, weight: .medium))
+                                .foregroundStyle(AppTheme.textTertiary)
+                                .strikethrough()
+                        }
+                        Text(product.displayPrice)
+                            .font(.system(.caption, design: .rounded, weight: .bold))
+                            .foregroundStyle(product.hasSaleOffer ? AppTheme.success : AppTheme.textPrimary)
 
-                    if let v = product.defaultVariant {
-                        Text(v.size)
-                            .font(.system(.caption2, design: .rounded))
-                            .foregroundStyle(AppTheme.textTertiary)
-                            .padding(.horizontal, 4).padding(.vertical, 1)
-                            .background(AppTheme.surfaceElevated)
-                            .clipShape(.capsule)
-                    } else if let merchandisingLabel = product.merchandisingLabel {
-                        Text(merchandisingLabel)
-                            .font(.system(.caption2, design: .rounded))
-                            .foregroundStyle(AppTheme.textTertiary)
-                            .padding(.horizontal, 4).padding(.vertical, 1)
-                            .background(AppTheme.surfaceElevated)
-                            .clipShape(.capsule)
+                        if let v = product.defaultVariant {
+                            Text(v.size)
+                                .font(.system(.caption2, design: .rounded))
+                                .foregroundStyle(AppTheme.textTertiary)
+                                .padding(.horizontal, 4).padding(.vertical, 1)
+                                .background(AppTheme.surfaceElevated)
+                                .clipShape(.capsule)
+                        } else if let merchandisingLabel = product.merchandisingLabel {
+                            Text(merchandisingLabel)
+                                .font(.system(.caption2, design: .rounded))
+                                .foregroundStyle(AppTheme.textTertiary)
+                                .padding(.horizontal, 4).padding(.vertical, 1)
+                                .background(AppTheme.surfaceElevated)
+                                .clipShape(.capsule)
+                        }
                     }
                 }
-            }
 
-            Spacer()
+                Spacer()
 
-            // Navigate to detail / Order
-            Button {
-                Haptics.light()
-                selectedProduct = product
-            } label: {
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.caption2.weight(.semibold))
                     .foregroundStyle(AppTheme.textTertiary.opacity(0.5))
             }
+            .padding(AppTheme.spacingMD)
+            .pegasusMinimumHitTarget()
+            .background(AppTheme.cardBackground)
+            .clipShape(.rect(cornerRadius: AppTheme.radiusMD))
+            .shadow(color: AppTheme.shadowColor, radius: 2, y: 1)
         }
-        .padding(AppTheme.spacingMD)
-        .background(AppTheme.cardBackground)
-        .clipShape(.rect(cornerRadius: AppTheme.radiusMD))
-        .shadow(color: AppTheme.shadowColor, radius: 2, y: 1)
-    }
-
-    // MARK: - API
-
-    private func loadProducts() async {
-        isLoading = true
-        errorMessage = nil
-        do {
-            let _: [String: String] = try await api.post(
-                path: "/v1/retailer/promotions/watch",
-                body: ["supplier_id": supplier.id]
-            )
-            let result: [Product] = try await api.get(path: "/v1/catalog/products?supplier_id=\(supplier.id)")
-            products = result
-        } catch {
-            products = Product.samples
-        }
-        isLoading = false
-    }
-
-    private func loadAutoOrderState() async {
-        do {
-            let s: AutoOrderSettings = try await api.get(path: "/v1/retailer/settings/auto-order")
-            if let sov = s.supplierOverrides.first(where: { $0.supplierID == supplier.id }) {
-                supplierAutoOrder = sov.enabled
-            }
-            for pov in s.productOverrides {
-                autoOrderSettings[pov.productID] = pov.enabled
-            }
-            errorMessage = nil
-        } catch {
-            // Keep default auto-order settings quietly in offline mode
-        }
-    }
-
-    private func toggleMySupplier() async {
-        isTogglingMySupplier = true
-        do {
-            if isMySupplier {
-                try await api.favoriteSupplier(supplierId: supplier.id)
-            } else {
-                try await api.unfavoriteSupplier(supplierId: supplier.id)
-            }
-            errorMessage = nil
-        } catch {
-            withAnimation(AnimationConstants.express) { isMySupplier.toggle() }
-            errorMessage = RetailerErrorSupport.message(
-                for: error,
-                restricted: "Supplier favorites access is restricted for this account.",
-                offline: "Offline mode active. Reconnect and retry supplier favorites.",
-                fallback: "Supplier favorites update failed. Please try again.",
-            )
-        }
-        isTogglingMySupplier = false
-    }
-
-    private func toggleSupplierAutoOrder() async {
-        isTogglingSupplierAutoOrder = true
-        do {
-            let _: [String: Bool] = try await api.patch(
-                path: "/v1/retailer/settings/auto-order/supplier/\(supplier.id)",
-                body: ["auto_order_enabled": supplierAutoOrder]
-            )
-            errorMessage = nil
-        } catch {
-            withAnimation { supplierAutoOrder.toggle() }
-            errorMessage = RetailerErrorSupport.message(
-                for: error,
-                restricted: "Supplier auto-order access is restricted for this account.",
-                offline: "Offline mode active. Reconnect and retry supplier auto-order update.",
-                fallback: "Supplier auto-order update failed. Please try again.",
-            )
-        }
-        isTogglingSupplierAutoOrder = false
-    }
-
-    private func toggleProductAutoOrder(productId: String, enabled: Bool) async {
-        togglingProductIds.insert(productId)
-        do {
-            let _: [String: Bool] = try await api.patch(
-                path: "/v1/retailer/settings/auto-order/product/\(productId)",
-                body: ["auto_order_enabled": enabled]
-            )
-            errorMessage = nil
-        } catch {
-            withAnimation { autoOrderSettings[productId] = !enabled }
-            errorMessage = RetailerErrorSupport.message(
-                for: error,
-                restricted: "Product auto-order access is restricted for this account.",
-                offline: "Offline mode active. Reconnect and retry product auto-order update.",
-                fallback: "Product auto-order update failed. Please try again.",
-            )
-        }
-        togglingProductIds.remove(productId)
+        .buttonStyle(.pressable)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(product.name), \(product.displayPrice)")
     }
 }
 
 #Preview {
     NavigationStack {
-        SupplierProductsView(supplier: Supplier.samples[0])
+        SupplierProductsView(supplier: Supplier(id: "sup-001", name: "Fresh Farms", category: "Produce"))
             .environment(CartManager())
     }
 }

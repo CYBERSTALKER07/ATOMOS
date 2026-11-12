@@ -1040,8 +1040,11 @@ final class APIClient {
     func deactivateOrgMember(userId: String) async throws -> RetailerOrgMembersResponse {
         struct Empty: Encodable {}
         // DELETE via request helper
-        let components = URLComponents(string: baseURL + "/v1/retailer/org/members/\(userId)")!
-        var request = URLRequest(url: components.url!)
+        guard let components = URLComponents(string: baseURL + "/v1/retailer/org/members/\(userId)"),
+              let url = components.url else {
+            throw APIError.invalidURL
+        }
+        var request = URLRequest(url: url)
         request.httpMethod = "DELETE"
         request.setValue("team-deact-\(userId)-\(Int(Date().timeIntervalSince1970 * 1000))", forHTTPHeaderField: "Idempotency-Key")
         if let token = authToken {
@@ -1083,8 +1086,11 @@ final class APIClient {
 
     func removeFamilyMember(memberId: String) async throws {
         // DELETE requires custom wrapper or generic empty request. Reusing existing request helper:
-        let components = URLComponents(string: baseURL + "/v1/retailer/family-members/\(memberId)")!
-        var request = URLRequest(url: components.url!)
+        guard let components = URLComponents(string: baseURL + "/v1/retailer/family-members/\(memberId)"),
+              let url = components.url else {
+            throw APIError.invalidURL
+        }
+        var request = URLRequest(url: url)
         request.httpMethod = "DELETE"
         if let token = authToken {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
@@ -1552,25 +1558,6 @@ struct RetailerPulseEvent: Codable, Identifiable {
         self.orderId = orderId
         self.manifestId = manifestId
     }
-
-    static let samples: [RetailerPulseEvent] = [
-        RetailerPulseEvent(
-            id: "evt-1",
-            kind: "DISPATCH",
-            title: "Fresh Farms Co. order #ord-001 in transit",
-            description: "Driver approaching receiving dock",
-            occurredAt: "Just now",
-            orderId: "ord-001"
-        ),
-        RetailerPulseEvent(
-            id: "evt-2",
-            kind: "ORDER",
-            title: "Bakery Express pre-order confirmed",
-            description: "Scheduled delivery for tomorrow morning",
-            occurredAt: "10m ago",
-            orderId: "ord-002"
-        )
-    ]
 }
 
 struct RetailerPulseResponse: Codable {
@@ -1718,8 +1705,6 @@ struct ControlTowerPulseWire: Decodable {
         self.ordersBySupplier = ordersBySupplier
         self.loyalty = loyalty
     }
-
-    static let sample = ControlTowerPulseWire()
 }
 
 struct ReportsTopSkuWire: Codable {

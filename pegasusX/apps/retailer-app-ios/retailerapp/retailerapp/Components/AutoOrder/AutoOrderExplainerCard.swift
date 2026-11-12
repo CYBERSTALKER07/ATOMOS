@@ -6,7 +6,7 @@ struct AutoOrderExplainerCard: View {
             VStack(alignment: .leading, spacing: AppTheme.spacingMD) {
                 HStack(spacing: AppTheme.spacingSM) {
                     Image(systemName: "info.circle.fill")
-                        .font(.system(size: 14))
+                        .font(.subheadline)
                         .foregroundStyle(AppTheme.accent)
                     Text("retailer_desktop.auto_order.text.how_it_works")
                         .font(.system(.subheadline, design: .rounded, weight: .semibold))

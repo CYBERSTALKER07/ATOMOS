@@ -19,7 +19,7 @@ struct OrderInfoCard: View {
                 HStack(spacing: 4) {
                     Circle().fill(order.isGreen ? AppTheme.success : AppTheme.textTertiary).frame(width: 6, height: 6)
                     Text(order.state.replacingOccurrences(of: "_", with: " "))
-                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                        .font(.system(.caption2, design: .rounded, weight: .bold))
                         .foregroundStyle(order.isGreen ? AppTheme.success : AppTheme.textTertiary)
                 }
                 .padding(.horizontal, 8).padding(.vertical, 4)
@@ -42,6 +42,8 @@ struct OrderInfoCard: View {
         .background(AppTheme.cardBackground)
         .clipShape(.rect(cornerRadius: AppTheme.radiusCard))
         .shadow(color: AppTheme.shadowColor, radius: AppTheme.shadowRadius, x: 0, y: AppTheme.shadowOffsetY)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(order.supplierName), \(order.state.replacingOccurrences(of: "_", with: " ")), \(order.displayTotal)")
         .onTapGesture {} // Prevent pass-through
         .gesture(DragGesture(minimumDistance: 20, coordinateSpace: .local)
             .onEnded { value in

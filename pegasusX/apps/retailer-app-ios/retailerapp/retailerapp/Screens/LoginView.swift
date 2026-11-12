@@ -4,35 +4,15 @@ import MapKit
 
 struct LoginView: View {
     @Environment(AuthManager.self) private var auth
-    @State private var phone = "+998"
-    @State private var password = ""
-    @State private var isLoginMode = true
-
-    // Registration fields
-    @State private var storeName = ""
-    @State private var ownerName = ""
-    @State private var addressText = ""
-    @State private var taxId = ""
-    @State private var receivingWindowOpen = ""
-    @State private var receivingWindowClose = ""
-    @State private var accessType = ""           // STREET_PARKING | ALLEYWAY | LOADING_DOCK
-    @State private var storageCeilingHeightText = ""
-
-    // Location state
-    @State private var latitude: Double = 0.0
-    @State private var longitude: Double = 0.0
-    @State private var locationLabel = ""
-    @State private var showLocationPicker = false
-    @State private var locating = false
-
-    @State private var locationManager = LocationManager()
+    @State private var vm = LoginViewModel()
     @FocusState private var focusedField: Field?
-    @State private var logoScale: Double = 0.5
-    @State private var formOpacity: Double = 0
 
-    enum Field: Hashable { case phone, password, storeName, ownerName, address, taxId, windowOpen, windowClose, ceilingHeight }
+    enum Field: Hashable {
+        case phone, password, storeName, ownerName, address, taxId, windowOpen, windowClose, ceilingHeight
+    }
 
     var body: some View {
+        @Bindable var vm = vm
         GeometryReader { geo in
             ZStack {
                 AppTheme.meshBackground.ignoresSafeArea()
@@ -50,7 +30,6 @@ struct LoginView: View {
                     VStack(spacing: 0) {
                         Spacer(minLength: geo.size.height * 0.08)
 
-                        // Logo
                         VStack(spacing: AppTheme.spacingMD) {
                             ZStack {
                                 Circle()
@@ -59,10 +38,10 @@ struct LoginView: View {
                                     .shadow(color: AppTheme.accent.opacity(0.3), radius: 16, y: 8)
 
                                 Image(systemName: "storefront.fill")
-                                    .font(.system(size: 32, weight: .semibold))
+                                    .font(.title.weight(.semibold))
                                     .foregroundStyle(.white)
                             }
-                            .scaleEffect(logoScale)
+                            .scaleEffect(vm.logoScale)
 
                             Text("auth.login.title")
                                 .font(.system(.largeTitle, design: .rounded, weight: .bold))
@@ -72,21 +51,14 @@ struct LoginView: View {
                                 .font(.system(.subheadline, design: .rounded, weight: .medium))
                                 .foregroundStyle(AppTheme.textTertiary)
                         }
+                        .accessibilityElement(children: .combine)
                         .padding(.bottom, AppTheme.spacingHuge)
 
-                        // Form
                         VStack(spacing: AppTheme.spacingXL) {
                             formField(
                                 label: "Phone Number",
                                 icon: "phone",
-                                text: Binding(
-                                    get: { phone },
-                                    set: { newValue in
-                                        if newValue.hasPrefix("+998") || newValue == "+99" || newValue == "+9" || newValue == "+" {
-                                            phone = newValue
-                                        }
-                                    }
-                                ),
+                                text: $vm.phoneInput,
                                 placeholder: "+998 XX XXX XX XX",
                                 field: .phone,
                                 isSecure: false,
@@ -96,19 +68,18 @@ struct LoginView: View {
                             formField(
                                 label: "Password",
                                 icon: "lock",
-                                text: $password,
+                                text: $vm.password,
                                 placeholder: "Enter your password",
                                 field: .password,
                                 isSecure: true,
                                 keyboard: .default
                             )
 
-                            // ── Registration fields ──
-                            if !isLoginMode {
+                            if !vm.isLoginMode {
                                 formField(
                                     label: "Store Name",
                                     icon: "building.2",
-                                    text: $storeName,
+                                    text: $vm.storeName,
                                     placeholder: "Your store name",
                                     field: .storeName,
                                     isSecure: false,
@@ -118,7 +89,7 @@ struct LoginView: View {
                                 formField(
                                     label: "Owner Name",
                                     icon: "person",
-                                    text: $ownerName,
+                                    text: $vm.ownerName,
                                     placeholder: "Full name of owner",
                                     field: .ownerName,
                                     isSecure: false,
@@ -128,21 +99,21 @@ struct LoginView: View {
                                 formField(
                                     label: "Store Address",
                                     icon: "mappin.and.ellipse",
-                                    text: $addressText,
+                                    text: $vm.addressText,
                                     placeholder: "Street address, city",
                                     field: .address,
                                     isSecure: false,
                                     keyboard: .default
                                 )
 
-                                // ── Location picker buttons ──
                                 HStack(spacing: AppTheme.spacingSM) {
                                     Button {
-                                        showLocationPicker = true
+                                        Haptics.light()
+                                        vm.showLocationPicker = true
                                     } label: {
                                         HStack(spacing: 6) {
                                             Image(systemName: "map")
-                                                .font(.system(size: 14, weight: .medium))
+                                                .font(.subheadline.weight(.medium))
                                             Text("mobile_retailer.ui.open_map")
                                                 .font(.system(.caption, design: .rounded, weight: .semibold))
                                         }
@@ -156,41 +127,22 @@ struct LoginView: View {
                                                 .strokeBorder(AppTheme.separator.opacity(0.5), lineWidth: 1)
                                         }
                                     }
+                                    .pegasusMinimumHitTarget()
+                                    .accessibilityLabel("Open map location picker")
 
                                     Button {
-                                        locating = true
-                                        locationManager.requestLocation()
-                                        Task {
-                                            for _ in 0..<20 {
-                                                if let loc = locationManager.lastLocation {
-                                                    latitude = loc.latitude
-                                                    longitude = loc.longitude
-                                                    let resolved = await GeocodeService.reverse(lat: loc.latitude, lng: loc.longitude)
-                                                    locationLabel = resolved ?? String(format: "%.5f, %.5f", loc.latitude, loc.longitude)
-                                                    locating = false
-                                                    return
-                                                }
-                                                try? await Task.sleep(nanoseconds: 100_000_000)
-                                            }
-                                            // Fallback for simulator or missing GPS hardware
-                                            let fallback = LocationManager.defaultLocation
-                                            latitude = fallback.latitude
-                                            longitude = fallback.longitude
-                                            let resolved = await GeocodeService.reverse(lat: fallback.latitude, lng: fallback.longitude)
-                                            locationLabel = resolved ?? "Amir Temur Square, Tashkent"
-                                            locating = false
-                                        }
+                                        Task { await vm.shareCurrentLocation() }
                                     } label: {
                                         HStack(spacing: 6) {
-                                            if locating {
+                                            if vm.locating {
                                                 ProgressView()
                                                     .scaleEffect(0.7)
                                                     .tint(AppTheme.textPrimary)
                                             } else {
                                                 Image(systemName: "location.fill")
-                                                    .font(.system(size: 14, weight: .medium))
+                                                    .font(.subheadline.weight(.medium))
                                             }
-                                            Text(locating ? "Locating..." : "Share Location")
+                                            Text(vm.locating ? "Locating..." : "Share Location")
                                                 .font(.system(.caption, design: .rounded, weight: .semibold))
                                         }
                                         .foregroundStyle(AppTheme.textPrimary)
@@ -203,26 +155,29 @@ struct LoginView: View {
                                                 .strokeBorder(AppTheme.separator.opacity(0.5), lineWidth: 1)
                                         }
                                     }
-                                    .disabled(locating)
+                                    .pegasusMinimumHitTarget()
+                                    .disabled(vm.locating)
+                                    .accessibilityLabel("Share current GPS location")
                                 }
 
-                                if !locationLabel.isEmpty {
-                                    Text(L10n.format("mobile_retailer.ui.location_locationlabel_2", "\(locationLabel)"))
+                                if !vm.locationLabel.isEmpty {
+                                    Text(L10n.format("mobile_retailer.ui.location_locationlabel_2", "\(vm.locationLabel)"))
                                         .font(.system(.caption2, design: .rounded))
                                         .foregroundStyle(AppTheme.textTertiary)
+                                        .accessibilityElement(children: .combine)
+                                        .accessibilityLabel("Selected store location: \(vm.locationLabel)")
                                 }
 
                                 formField(
                                     label: "Tax ID (optional)",
                                     icon: "doc.text",
-                                    text: $taxId,
+                                    text: $vm.taxId,
                                     placeholder: "INN / Tax identification",
                                     field: .taxId,
                                     isSecure: false,
                                     keyboard: .default
                                 )
 
-                                // ── Logistics Details ──
                                 VStack(alignment: .leading, spacing: 8) {
                                     Text("mobile_retailer.ui.receiving_window_2")
                                         .font(.system(.caption, design: .rounded, weight: .medium))
@@ -231,7 +186,7 @@ struct LoginView: View {
                                         formField(
                                             label: "Opens (HH:MM)",
                                             icon: "clock",
-                                            text: $receivingWindowOpen,
+                                            text: $vm.receivingWindowOpen,
                                             placeholder: "09:00",
                                             field: .windowOpen,
                                             isSecure: false,
@@ -240,7 +195,7 @@ struct LoginView: View {
                                         formField(
                                             label: "Closes (HH:MM)",
                                             icon: "clock.badge.xmark",
-                                            text: $receivingWindowClose,
+                                            text: $vm.receivingWindowClose,
                                             placeholder: "18:00",
                                             field: .windowClose,
                                             isSecure: false,
@@ -256,20 +211,22 @@ struct LoginView: View {
                                     HStack(spacing: 6) {
                                         ForEach([("STREET_PARKING", "Street"), ("ALLEYWAY", "Alley"), ("LOADING_DOCK", "Dock")], id: \.0) { value, label in
                                             Button {
-                                                accessType = accessType == value ? "" : value
+                                                vm.toggleAccessType(value)
                                             } label: {
                                                 Text(label)
                                                     .font(.system(.caption, design: .rounded, weight: .semibold))
                                                     .padding(.horizontal, 12)
-                                                    .padding(.vertical, 8)
-                                                    .background(accessType == value ? AppTheme.accent : AppTheme.cardBackground)
-                                                    .foregroundStyle(accessType == value ? Color.white : AppTheme.textPrimary)
+                                                    .padding(.vertical, 10)
+                                                    .background(vm.accessType == value ? AppTheme.accent : AppTheme.cardBackground)
+                                                    .foregroundStyle(vm.accessType == value ? Color.white : AppTheme.textPrimary)
                                                     .clipShape(.rect(cornerRadius: AppTheme.radiusButton))
                                                     .overlay {
                                                         RoundedRectangle(cornerRadius: AppTheme.radiusButton)
-                                                            .strokeBorder(accessType == value ? AppTheme.accent : AppTheme.separator.opacity(0.5), lineWidth: 1)
+                                                            .strokeBorder(vm.accessType == value ? AppTheme.accent : AppTheme.separator.opacity(0.5), lineWidth: 1)
                                                     }
                                             }
+                                            .pegasusMinimumHitTarget()
+                                            .accessibilityLabel("Loading access \(label)\(vm.accessType == value ? ", selected" : "")")
                                         }
                                     }
                                 }
@@ -277,7 +234,7 @@ struct LoginView: View {
                                 formField(
                                     label: "Storage Ceiling Height cm (optional)",
                                     icon: "arrow.up.to.line",
-                                    text: $storageCeilingHeightText,
+                                    text: $vm.storageCeilingHeightText,
                                     placeholder: "e.g. 300",
                                     field: .ceilingHeight,
                                     isSecure: false,
@@ -286,9 +243,8 @@ struct LoginView: View {
                             }
                         }
                         .padding(.horizontal, AppTheme.spacingXL)
-                        .opacity(formOpacity)
+                        .opacity(vm.formOpacity)
 
-                        // Error
                         if let error = auth.errorMessage {
                             HStack(spacing: AppTheme.spacingSM) {
                                 Image(systemName: "exclamationmark.triangle.fill")
@@ -299,31 +255,13 @@ struct LoginView: View {
                             .foregroundStyle(AppTheme.destructive)
                             .padding(.top, AppTheme.spacingMD)
                             .transition(.move(edge: .top).combined(with: .opacity))
+                            .accessibilityElement(children: .combine)
+                            .accessibilityLabel("Error: \(error)")
                         }
 
-                        // Primary action
                         Button {
                             focusedField = nil
-                            Task {
-                                if isLoginMode {
-                                    await auth.login(phone: phone, password: password)
-                                } else {
-                                    await auth.register(
-                                        phone: phone,
-                                        password: password,
-                                        storeName: storeName,
-                                        ownerName: ownerName,
-                                        addressText: addressText,
-                                        latitude: latitude,
-                                        longitude: longitude,
-                                        taxId: taxId.isEmpty ? nil : taxId,
-                                        receivingWindowOpen: receivingWindowOpen.isEmpty ? nil : receivingWindowOpen,
-                                        receivingWindowClose: receivingWindowClose.isEmpty ? nil : receivingWindowClose,
-                                        accessType: accessType.isEmpty ? nil : accessType,
-                                        storageCeilingHeightCM: Double(storageCeilingHeightText)
-                                    )
-                                }
-                            }
+                            Task { await vm.submit(auth: auth) }
                         } label: {
                             HStack(spacing: AppTheme.spacingSM) {
                                 if auth.isLoading {
@@ -331,9 +269,9 @@ struct LoginView: View {
                                         .tint(.white)
                                         .scaleEffect(0.8)
                                 } else {
-                                    Text(isLoginMode ? "Sign In" : "Create Account")
+                                    Text(vm.isLoginMode ? "Sign In" : "Create Account")
                                     Image(systemName: "arrow.right")
-                                        .font(.system(size: 14, weight: .semibold))
+                                        .font(.subheadline.weight(.semibold))
                                 }
                             }
                             .font(.system(.headline, design: .rounded))
@@ -342,61 +280,60 @@ struct LoginView: View {
                             .padding(.vertical, 16)
                             .background(AppTheme.accentGradient)
                             .clipShape(.rect(cornerRadius: AppTheme.radiusButton))
-                            .shadow(color: AppTheme.accent.opacity(isFormValid ? 0.35 : 0), radius: 12, y: 6)
+                            .shadow(color: AppTheme.accent.opacity(vm.isFormValid ? 0.35 : 0), radius: 12, y: 6)
                         }
-                        .disabled(!isFormValid || auth.isLoading)
-                        .opacity(isFormValid ? 1 : 0.5)
+                        .pegasusMinimumHitTarget()
+                        .disabled(!vm.isFormValid || auth.isLoading)
+                        .opacity(vm.isFormValid ? 1 : 0.5)
                         .padding(.horizontal, AppTheme.spacingXL)
                         .padding(.top, AppTheme.spacingXXL)
-                        .opacity(formOpacity)
+                        .opacity(vm.formOpacity)
+                        .accessibilityLabel(vm.isLoginMode ? "Sign In" : "Create Account")
 
-                        // Toggle mode
                         Button {
+                            Haptics.selection()
                             withAnimation(.easeInOut(duration: 0.3)) {
-                                isLoginMode.toggle()
+                                vm.isLoginMode.toggle()
                             }
                             auth.errorMessage = nil
                             focusedField = .phone
                         } label: {
-                            Text(isLoginMode ? "Don't have an account? Sign Up" : "Already have an account? Sign In")
+                            Text(vm.isLoginMode ? "Don't have an account? Sign Up" : "Already have an account? Sign In")
                                 .font(.system(.subheadline, design: .rounded))
                                 .foregroundStyle(AppTheme.textSecondary)
+                                .pegasusMinimumHitTarget()
                         }
                         .padding(.top, AppTheme.spacingMD)
+                        .accessibilityLabel(vm.isLoginMode ? "Switch to Sign Up" : "Switch to Sign In")
 
                         Spacer(minLength: AppTheme.spacingHuge)
                     }
                     .frame(minHeight: geo.size.height)
                 }
+                .scrollDismissesKeyboard(.interactively)
                 .scrollIndicators(.hidden)
             }
         }
         .defaultFocus($focusedField, .phone)
         .onAppear {
             withAnimation(AnimationConstants.hero) {
-                logoScale = 1.0
+                vm.logoScale = 1.0
             }
             withAnimation(.easeOut(duration: 0.6).delay(0.3)) {
-                formOpacity = 1.0
+                vm.formOpacity = 1.0
             }
             focusedField = .phone
         }
         .onSubmit {
             advanceFocusOrSubmit()
         }
-        .sheet(isPresented: $showLocationPicker) {
+        .sheet(isPresented: $vm.showLocationPicker) {
             LocationPickerView(
-                initialLatitude: latitude != 0 ? latitude : packMapCoordinate().lat,
-                initialLongitude: longitude != 0 ? longitude : packMapCoordinate().lng
+                initialLatitude: vm.latitude != 0 ? vm.latitude : packMapCoordinate().lat,
+                initialLongitude: vm.longitude != 0 ? vm.longitude : packMapCoordinate().lng
             ) { lat, lng, display in
-                latitude = lat
-                longitude = lng
-                locationLabel = display
-            }
-            .onDisappear {
-                Task { @MainActor in
-                    focusedField = .taxId
-                }
+                vm.setLocation(lat: lat, lng: lng, label: display)
+                focusedField = .taxId
             }
         }
     }
@@ -406,10 +343,10 @@ struct LoginView: View {
         case .phone:
             focusedField = .password
         case .password:
-            if isLoginMode {
-                if isFormValid && !auth.isLoading {
+            if vm.isLoginMode {
+                if vm.isFormValid && !auth.isLoading {
                     focusedField = nil
-                    Task { await auth.login(phone: phone, password: password) }
+                    Task { await vm.submit(auth: auth) }
                 }
             } else {
                 focusedField = .storeName
@@ -431,9 +368,15 @@ struct LoginView: View {
         }
     }
 
-    // MARK: - Form Field
-
-    private func formField(label: String, icon: String, text: Binding<String>, placeholder: String, field: Field, isSecure: Bool, keyboard: UIKeyboardType) -> some View {
+    private func formField(
+        label: String,
+        icon: String,
+        text: Binding<String>,
+        placeholder: String,
+        field: Field,
+        isSecure: Bool,
+        keyboard: UIKeyboardType
+    ) -> some View {
         VStack(alignment: .leading, spacing: AppTheme.spacingSM) {
             Text(label)
                 .font(.system(.caption, design: .rounded, weight: .bold))
@@ -442,7 +385,7 @@ struct LoginView: View {
 
             HStack(spacing: AppTheme.spacingMD) {
                 Image(systemName: icon)
-                    .font(.system(size: 16, weight: .medium))
+                    .font(.body.weight(.medium))
                     .foregroundStyle(focusedField == field ? AppTheme.accent : AppTheme.textTertiary)
                     .frame(width: 20)
 
@@ -450,6 +393,7 @@ struct LoginView: View {
                     SecureField(placeholder, text: text)
                         .font(.system(.body, design: .rounded))
                         .focused($focusedField, equals: field)
+                        .accessibilityLabel(label)
                 } else {
                     TextField(placeholder, text: text)
                         .font(.system(.body, design: .rounded))
@@ -457,6 +401,7 @@ struct LoginView: View {
                         .keyboardType(keyboard)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
+                        .accessibilityLabel(label)
                 }
             }
             .padding(AppTheme.spacingMD)
@@ -472,14 +417,6 @@ struct LoginView: View {
             .shadow(color: focusedField == field ? AppTheme.accent.opacity(0.1) : .clear, radius: 8, y: 4)
             .animation(AnimationConstants.express, value: focusedField)
         }
-    }
-
-    private var isFormValid: Bool {
-        guard phone.count >= 13, !password.isEmpty else { return false }
-        if !isLoginMode {
-            return !storeName.isEmpty && !ownerName.isEmpty && !addressText.isEmpty
-        }
-        return true
     }
 }
 

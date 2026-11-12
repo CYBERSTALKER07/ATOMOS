@@ -27,7 +27,7 @@ struct OrdersByStateView: View {
                     angularInset: 1.5
                 )
                 .foregroundStyle(stateColors[item.state] ?? .gray)
-                .cornerRadius(3)
+                .clipShape(RoundedRectangle(cornerRadius: 3, style: .continuous))
             }
             .frame(height: 200)
 

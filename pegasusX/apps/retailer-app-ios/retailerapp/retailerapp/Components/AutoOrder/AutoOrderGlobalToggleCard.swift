@@ -5,16 +5,18 @@ struct AutoOrderGlobalToggleCard: View {
     let analyticsStartDate: String?
     let onToggle: (Bool) -> Void
 
+    @State private var toggleValue = false
+
     var body: some View {
         LabCard {
             VStack(alignment: .leading, spacing: 0) {
                 HStack(spacing: AppTheme.spacingMD) {
                     ZStack {
-                        RoundedRectangle(cornerRadius: AppTheme.radiusSM)
+                        RoundedRectangle(cornerRadius: AppTheme.radiusSM, style: .continuous)
                             .fill(globalAutoOrder ? AppTheme.accent.opacity(0.15) : AppTheme.surfaceElevated)
                             .frame(width: 40, height: 40)
                         Image(systemName: "arrow.triangle.2.circlepath")
-                            .font(.system(size: 16, weight: .semibold))
+                            .font(.system(.callout, weight: .semibold))
                             .foregroundStyle(globalAutoOrder ? AppTheme.accent : AppTheme.textSecondary)
                     }
 
@@ -29,22 +31,18 @@ struct AutoOrderGlobalToggleCard: View {
 
                     Spacer()
 
-                    Toggle("", isOn: Binding(
-                        get: { globalAutoOrder },
-                        set: { newVal in
-                            globalAutoOrder = newVal
-                            onToggle(newVal)
-                        }
-                    ))
+                    Toggle("", isOn: $toggleValue)
                         .tint(AppTheme.accent)
                         .labelsHidden()
+                        .accessibilityLabel("Global Auto-Order")
                 }
+                .frame(minHeight: 44)
                 .padding(AppTheme.spacingLG)
 
                 if globalAutoOrder {
                     HStack(spacing: AppTheme.spacingSM) {
                         Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: 12))
+                            .font(.caption)
                             .foregroundStyle(AppTheme.success)
                         Text("mobile_retailer.ui.global_auto_order_active_overrides_all_supplier_product_settings")
                             .font(.system(.caption2, design: .rounded))
@@ -58,7 +56,7 @@ struct AutoOrderGlobalToggleCard: View {
                 if let dateStr = analyticsStartDate {
                     HStack(spacing: AppTheme.spacingSM) {
                         Image(systemName: "calendar.badge.clock")
-                            .font(.system(size: 12))
+                            .font(.caption)
                             .foregroundStyle(AppTheme.accent)
                         Text(L10n.format("mobile_retailer.ui.analytics_since_datestr_2", "\(dateStr)"))
                             .font(.system(.caption2, design: .rounded))
@@ -70,5 +68,19 @@ struct AutoOrderGlobalToggleCard: View {
             }
         }
         .animation(AnimationConstants.express, value: globalAutoOrder)
+        .onAppear {
+            toggleValue = globalAutoOrder
+        }
+        .onChange(of: globalAutoOrder) { _, newValue in
+            if toggleValue != newValue {
+                toggleValue = newValue
+            }
+        }
+        .onChange(of: toggleValue) { _, newValue in
+            guard newValue != globalAutoOrder else { return }
+            Haptics.selection()
+            globalAutoOrder = newValue
+            onToggle(newValue)
+        }
     }
 }

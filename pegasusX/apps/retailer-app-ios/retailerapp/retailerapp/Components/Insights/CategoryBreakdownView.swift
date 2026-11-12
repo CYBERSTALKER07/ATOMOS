@@ -25,7 +25,7 @@ struct CategoryBreakdownView: View {
                     AxisValueLabel {
                         if let v = value.as(Int.self) {
                             Text(abbreviate(v))
-                                .font(.system(size: 10, design: .rounded))
+                                .font(.system(.caption2, design: .rounded))
                         }
                     }
                 }

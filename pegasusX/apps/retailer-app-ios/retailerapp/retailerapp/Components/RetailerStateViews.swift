@@ -46,20 +46,13 @@ struct RetailerErrorView: View {
         } description: {
             Text(message)
         } actions: {
-            Button("common.action.retry", action: retry)
-                .buttonStyle(.borderedProminent)
+            Button("common.action.retry") {
+                Haptics.light()
+                retry()
+            }
+            .buttonStyle(.borderedProminent)
+            .pegasusMinimumHitTarget()
         }
         .frame(maxWidth: .infinity, minHeight: 200)
-    }
-}
-
-struct RetailerEmptyView: View {
-    let title: String
-    let message: String
-    var systemImage: String = "tray"
-
-    var body: some View {
-        ContentUnavailableView(title, systemImage: systemImage, description: Text(message))
-            .frame(maxWidth: .infinity, minHeight: 200)
     }
 }

@@ -10,7 +10,7 @@ struct AiPlannedCard: View {
             ZStack {
                 Circle().stroke(AppTheme.separator.opacity(0.3), lineWidth: 3).frame(width: 40, height: 40)
                 Text(String(item.statusLabel.prefix(7)))
-                    .font(.system(size: 8, weight: .bold, design: .rounded))
+                    .font(.system(.caption2, design: .rounded, weight: .bold))
                     .foregroundStyle(AppTheme.warning)
             }
 
@@ -37,22 +37,26 @@ struct AiPlannedCard: View {
                         onConfirm()
                     } label: {
                         Text("Confirm")
-                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                            .font(.system(.caption2, design: .rounded, weight: .bold))
                             .foregroundStyle(.white)
-                            .padding(.horizontal, 10).padding(.vertical, 5)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
                             .background(AppTheme.accent)
                             .clipShape(.capsule)
+                            .pegasusMinimumHitTarget()
                     }
                     Button {
                         Haptics.light()
                         onReject()
                     } label: {
                         Text("Reject")
-                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                            .font(.system(.caption2, design: .rounded, weight: .bold))
                             .foregroundStyle(AppTheme.destructive)
-                            .padding(.horizontal, 10).padding(.vertical, 5)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
                             .background(AppTheme.destructive.opacity(0.1))
                             .clipShape(.capsule)
+                            .pegasusMinimumHitTarget()
                     }
                 }
             }
@@ -61,5 +65,7 @@ struct AiPlannedCard: View {
         .background(AppTheme.cardBackground)
         .clipShape(.rect(cornerRadius: AppTheme.radiusCard))
         .shadow(color: AppTheme.shadowColor, radius: 3, y: 1)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(item.title), \(item.formattedTotal), \(item.statusLabel)")
     }
 }

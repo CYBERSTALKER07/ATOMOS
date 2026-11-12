@@ -1,67 +1,72 @@
 import SwiftUI
 
 struct CreditPartnersView: View {
-    @State private var relationships: [CreditRelationshipWire] = []
-    @State private var invoices: [ArInvoiceWire] = []
-    @State private var banner: String?
-    private let api = APIClient.shared
+    @State private var vm = CreditPartnersViewModel()
 
     var body: some View {
         List {
-            if let banner {
-                Section { Text(banner).font(.caption).foregroundStyle(AppTheme.accent) }
+            if let banner = vm.banner {
+                Section {
+                    Text(banner)
+                        .font(.caption)
+                        .foregroundStyle(AppTheme.accent)
+                }
             }
             Section("Trade credit partners") {
-                if relationships.isEmpty {
+                if vm.relationships.isEmpty {
                     Text("No credit relationships.")
                         .foregroundStyle(AppTheme.textSecondary)
                 } else {
-                    ForEach(relationships, id: \.supplierId) { r in
+                    ForEach(vm.relationships, id: \.supplierId) { r in
+                        let limitFormatted = RetailerMoney.formatTiyin(r.creditLimitMinor)
+                        let balanceFormatted = RetailerMoney.formatTiyin(r.currentBalanceMinor)
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(r.supplierId).font(.headline)
-                            Text(String(format: "Limit %.2f · Balance %.2f", Double(r.creditLimitMinor) / 100.0, Double(r.currentBalanceMinor) / 100.0))
+                            Text(r.supplierId)
+                                .font(.headline)
+                            Text("Limit \(limitFormatted) · Balance \(balanceFormatted)")
                                 .font(.caption)
                             Text("Terms \(r.termsDays)d\(r.onHold ? " · ON HOLD" : "")")
                                 .font(.caption2)
                                 .foregroundStyle(AppTheme.textSecondary)
                         }
+                        .padding(.vertical, 2)
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel(
+                            "Supplier \(r.supplierId), limit \(limitFormatted), balance \(balanceFormatted), terms \(r.termsDays) days\(r.onHold ? ", on hold" : "")"
+                        )
                     }
                 }
             }
             Section("Open AR invoices") {
-                if invoices.isEmpty {
+                if vm.invoices.isEmpty {
                     Text("No open invoices.")
                         .foregroundStyle(AppTheme.textSecondary)
                 } else {
-                    ForEach(invoices, id: \.invoiceId) { inv in
+                    ForEach(vm.invoices, id: \.invoiceId) { inv in
+                        let balanceFormatted = RetailerMoney.formatTiyin(inv.balanceMinor)
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(inv.invoiceId).font(.headline)
+                            Text(inv.invoiceId)
+                                .font(.headline)
                             Text("\(inv.supplierId) · \(inv.status)")
                                 .font(.caption)
-                            Text(String(format: "Balance %.2f · Due %@", Double(inv.balanceMinor) / 100.0, inv.dueAt))
+                            Text("Balance \(balanceFormatted) · Due \(inv.dueAt)")
                                 .font(.caption2)
                                 .foregroundStyle(AppTheme.textSecondary)
                         }
+                        .padding(.vertical, 2)
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel(
+                            "Invoice \(inv.invoiceId), supplier \(inv.supplierId), status \(inv.status), balance \(balanceFormatted), due \(inv.dueAt)"
+                        )
                     }
                 }
             }
         }
+        .scrollDismissesKeyboard(.interactively)
         .navigationTitle("Credit & AR")
         .navigationBarTitleDisplayMode(.inline)
-        .task { await load() }
-        .refreshable { await load() }
-    }
-
-    private func load() async {
-        do {
-            async let rels = api.getCreditRelationships()
-            async let invs = api.getArInvoices(status: "OPEN")
-            relationships = try await rels
-            invoices = try await invs
-            banner = nil
-        } catch {
-            banner = error.localizedDescription
-        }
+        .task { await vm.load() }
+        .refreshable { await vm.load() }
     }
 }
 

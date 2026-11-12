@@ -2,38 +2,29 @@ import SwiftUI
 import Network
 
 struct PosView: View {
-    @State private var registerId: String?
-    @State private var locationId: String?
-    @State private var sessionId: String?
-    @State private var cart: [PosCartLine] = []
-    @State private var sku = ""
-    @State private var priceMajor = "0"
-    @State private var qty = "1"
-    @State private var banner: String?
-    @State private var busy = false
-    @State private var lastSaleId: String?
-    @State private var pending: [PendingPosStore.Entry] = []
-    @State private var isOnline = true
-    @State private var pathMonitor = NWPathMonitor()
-    @State private var holdsEnabled = false
-    @State private var serverHolds: [PosHoldWire] = []
-    @State private var holdNote = ""
+    @State private var vm = PosViewModel()
+    @State private var network = NetworkLifecycleEngine.shared
+    private var isOnline: Bool { network.isOnline }
 
-    private let api = APIClient.shared
-    private let store = PendingPosStore.shared
-
-    private var totalMinor: Int64 {
-        cart.reduce(0) { $0 + $1.qty * $1.unitPriceMinor }
-    }
+    private var sessionId: String? { vm.sessionId }
+    private var cart: [PosCartLine] { vm.cart }
+    private var banner: String? { vm.banner }
+    private var busy: Bool { vm.busy }
+    private var lastSaleId: String? { vm.lastSaleId }
+    private var pending: [PendingPosStore.Entry] { vm.pending }
+    private var holdsEnabled: Bool { vm.holdsEnabled }
+    private var serverHolds: [PosHoldWire] { vm.serverHolds }
+    private var totalMinor: Int64 { vm.totalMinor }
 
     var body: some View {
+        @Bindable var vm = vm
         List {
             Section {
                 Text("mobile_retailer.ui.open_till_online_cash_sales_work_offline_and_sync_on_reconnect_c")
                     .font(.system(.footnote, design: .rounded))
                     .foregroundStyle(AppTheme.textSecondary)
             }
-            if !isOnline {
+            if !network.isOnline {
                 Section {
                     Text("mobile_retailer.ui.offline_cash_queue" + (pending.isEmpty ? "" : " · \(pending.count) pending"))
                         .font(.caption.weight(.semibold))
@@ -44,13 +35,8 @@ struct PosView: View {
                 Section { Text(banner).font(.caption).foregroundStyle(AppTheme.accent) }
             }
             Section("Session") {
-                if sessionId == nil {
-                    Button(busy ? "…" : (isOnline ? "Open session" : "Open needs network")) {
-                        Task { await openSession() }
-                    }
-                    .disabled(busy || !isOnline)
-                } else {
-                    Text(L10n.format("mobile_retailer.ui.open_prefix", "\(sessionId!.prefix(12))"))
+                if let sid = sessionId {
+                    Text(L10n.format("mobile_retailer.ui.open_prefix", "\(sid.prefix(12))"))
                     Button("mobile_retailer.ui.close_session") { Task { await closeSession() } }
                         .disabled(busy || !isOnline)
                     if !pending.isEmpty && isOnline {
@@ -59,6 +45,11 @@ struct PosView: View {
                         }
                         .disabled(busy)
                     }
+                } else {
+                    Button(busy ? "…" : (isOnline ? "Open session" : "Open needs network")) {
+                        Task { await openSession() }
+                    }
+                    .disabled(busy || !isOnline)
                 }
             }
             if !pending.isEmpty {
@@ -72,9 +63,9 @@ struct PosView: View {
             }
             if sessionId != nil {
                 Section("Add line") {
-                    TextField("SKU", text: $sku)
-                    TextField("retailer_desktop.pos.text.qty", text: $qty)
-                    TextField("mobile_retailer.ui.price_major", text: $priceMajor)
+                    TextField("SKU", text: $vm.sku)
+                    TextField("retailer_desktop.pos.text.qty", text: $vm.qty)
+                    TextField("mobile_retailer.ui.price_major", text: $vm.priceMajor)
                     Button("mobile_retailer.ui.add_to_cart") { addLine() }
                 }
                 Section("Cart") {
@@ -82,15 +73,15 @@ struct PosView: View {
                         HStack {
                             Text(L10n.format("mobile_retailer.ui.sku_qty", "\(line.sku)", "\(line.qty)"))
                             Spacer()
-                            Text(String(format: "%.2f", Double(line.qty * line.unitPriceMinor) / 100.0))
+                            Text(vm.formatMinor(line.qty * line.unitPriceMinor))
                         }
                     }
-                    Text(String(format: "Total %.2f", Double(totalMinor) / 100.0))
+                    Text("Total " + vm.formatMinor(totalMinor))
                         .font(.headline)
                     if holdsEnabled && isOnline {
-                        TextField("Hold note", text: $holdNote)
+                        TextField("Hold note", text: $vm.holdNote)
                         Button("Park hold") { Task { await parkHold() } }
-                            .disabled(busy || cart.isEmpty || (locationId ?? "").isEmpty)
+                            .disabled(busy || cart.isEmpty || (vm.locationId ?? "").isEmpty)
                     }
                     Button(busy ? "…" : (isOnline ? "Complete cash sale" : "Complete cash sale offline")) {
                         Task { await completeSale() }
@@ -122,269 +113,71 @@ struct PosView: View {
                 }
             }
         }
+        .scrollDismissesKeyboard(.interactively)
         .navigationTitle("POS")
         .navigationBarTitleDisplayMode(.inline)
         .task {
             await ensureRegister()
             refreshPending()
-            startNetworkMonitor()
-            if isOnline {
+            if network.isOnline {
                 await syncPending()
                 await loadServerHolds()
             }
         }
-        .onDisappear { pathMonitor.cancel() }
-    }
-
-    private func startNetworkMonitor() {
-        pathMonitor.pathUpdateHandler = { path in
-            DispatchQueue.main.async {
-                isOnline = path.status == .satisfied
-                if isOnline {
-                    Task { await syncPending() }
-                }
+        .onChange(of: network.syncEpoch) { _, _ in
+            Task {
+                await syncPending()
+                await loadServerHolds()
             }
         }
-        pathMonitor.start(queue: DispatchQueue(label: "pos.network"))
     }
 
     private func refreshPending() {
-        pending = store.active()
+        vm.refreshPending()
     }
 
     private func ensureRegister() async {
-        do {
-            let regs = try await api.getRegisters()
-            if let first = regs.items.first {
-                registerId = first.registerId
-                locationId = first.locationId
-            } else {
-                let created = try await api.createRegister(label: "Register 1")
-                registerId = created.registerId
-                locationId = created.locationId
-                banner = "Register created"
-            }
-            await loadServerHolds()
-        } catch {
-            banner = error.localizedDescription
-        }
+        await vm.ensureRegister()
     }
 
     private func loadServerHolds() async {
-        guard isOnline else { return }
-        do {
-            let list = try await api.listPosHolds(locationId: locationId)
-            holdsEnabled = true
-            serverHolds = list.items
-        } catch let APIError.serverError(statusCode, message) {
-            if statusCode == 404 || message.contains("POS_HOLDS_DISABLED") {
-                holdsEnabled = false
-                serverHolds = []
-            }
-        } catch {
-            let msg = error.localizedDescription
-            if msg.contains("404") || msg.contains("POS_HOLDS_DISABLED") {
-                holdsEnabled = false
-                serverHolds = []
-            }
-        }
-    }
-
-    private func linesFromHold(_ hold: PosHoldWire) -> [PosCartLine] {
-        (hold.cart?.lines ?? []).compactMap { line in
-            guard !line.sku.isEmpty else { return nil }
-            return PosCartLine(
-                id: line.sku,
-                sku: line.sku,
-                name: line.name ?? line.sku,
-                qty: line.qty ?? 1,
-                unitPriceMinor: line.unitPriceMinor ?? 0
-            )
-        }
+        await vm.loadServerHolds()
     }
 
     private func parkHold() async {
-        guard let registerId, let locationId, !locationId.isEmpty else {
-            banner = "Location required to park hold"
-            return
-        }
-        busy = true
-        defer { busy = false }
-        let lines = cart.map {
-            PosSaleLineWire(sku: $0.sku, name: $0.name, qty: $0.qty, unitPriceMinor: $0.unitPriceMinor)
-        }
-        do {
-            _ = try await api.parkPosHold(
-                locationId: locationId,
-                registerId: registerId,
-                lines: lines,
-                note: holdNote.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : holdNote
-            )
-            cart = []
-            holdNote = ""
-            banner = "Cart parked on server (no stock held)"
-            await loadServerHolds()
-        } catch {
-            let msg = error.localizedDescription
-            if msg.contains("404") || msg.contains("POS_HOLDS_DISABLED") {
-                holdsEnabled = false
-                banner = "Server holds disabled"
-            } else {
-                banner = msg
-            }
-        }
+        await vm.parkHold()
     }
 
     private func resumeHold(_ hold: PosHoldWire) async {
-        guard cart.isEmpty else {
-            banner = "Clear or park current cart before resuming"
-            return
-        }
-        busy = true
-        defer { busy = false }
-        do {
-            let resumed = try await api.resumePosHold(
-                holdId: hold.holdId,
-                locationId: locationId ?? hold.locationId ?? ""
-            )
-            let lines = linesFromHold(resumed)
-            cart = lines.isEmpty ? linesFromHold(hold) : lines
-            banner = "Resumed hold \(hold.holdId.prefix(8))"
-            await loadServerHolds()
-        } catch {
-            banner = error.localizedDescription
-        }
+        await vm.resumeHold(hold)
     }
 
     private func voidHold(_ hold: PosHoldWire) async {
-        busy = true
-        defer { busy = false }
-        do {
-            _ = try await api.voidPosHold(holdId: hold.holdId)
-            banner = "Hold voided"
-            await loadServerHolds()
-        } catch {
-            banner = error.localizedDescription
-        }
+        await vm.voidHold(hold)
     }
 
     private func openSession() async {
-        guard let registerId else { return }
-        guard isOnline else {
-            banner = "Open session requires network"
-            return
-        }
-        busy = true
-        defer { busy = false }
-        do {
-            let sess = try await api.openPosSession(registerId: registerId)
-            sessionId = sess.sessionId
-            cart = []
-            banner = "Session open"
-        } catch {
-            banner = error.localizedDescription
-        }
+        await vm.openSession()
     }
 
     private func closeSession() async {
-        guard let sessionId else { return }
-        let active = store.countActive(sessionId: sessionId)
-        if active > 0 {
-            banner = "Sync \(active) offline sale(s) before close"
-            return
-        }
-        guard isOnline else {
-            banner = "Close session requires network"
-            return
-        }
-        busy = true
-        defer { busy = false }
-        do {
-            _ = try await api.closePosSession(sessionId: sessionId, closingCashMinor: 0)
-            self.sessionId = nil
-            banner = "Session closed"
-        } catch {
-            banner = error.localizedDescription
-        }
+        await vm.closeSession()
     }
 
     private func addLine() {
-        let unit = Int64((Double(priceMajor) ?? 0) * 100)
-        let q = Int64(qty) ?? 1
-        guard !sku.isEmpty, q > 0 else { return }
-        if let i = cart.firstIndex(where: { $0.sku == sku }) {
-            cart[i].qty += q
-        } else {
-            cart.append(PosCartLine(id: sku, sku: sku, name: sku, qty: q, unitPriceMinor: unit))
-        }
-        sku = ""; qty = "1"
+        vm.addLine()
     }
 
     private func completeSale() async {
-        guard let sessionId else { return }
-        busy = true
-        defer { busy = false }
-        let lines = cart.map {
-            PosSaleLineWire(sku: $0.sku, name: $0.name, qty: $0.qty, unitPriceMinor: $0.unitPriceMinor)
-        }
-        if !isOnline {
-            do {
-                let entry = try store.enqueue(sessionId: sessionId, lines: lines, totalMinor: totalMinor)
-                lastSaleId = entry.clientSaleId
-                banner = "Offline \(entry.clientReceipt) · will sync"
-                cart = []
-                refreshPending()
-            } catch {
-                banner = error.localizedDescription
-            }
-            return
-        }
-        do {
-            let sale = try await api.createPosSale(
-                sessionId: sessionId,
-                lines: lines,
-                totalMinor: totalMinor,
-                origin: "online"
-            )
-            lastSaleId = sale.saleId
-            banner = "Sale \(sale.receiptNumber)"
-            cart = []
-        } catch {
-            // Network fail → queue offline cash
-            do {
-                let entry = try store.enqueue(sessionId: sessionId, lines: lines, totalMinor: totalMinor)
-                lastSaleId = entry.clientSaleId
-                banner = "Queued offline \(entry.clientReceipt)"
-                cart = []
-                refreshPending()
-            } catch {
-                banner = error.localizedDescription
-            }
-        }
+        await vm.completeSale()
     }
 
     private func syncPending() async {
-        guard isOnline else { return }
-        busy = true
-        defer { busy = false }
-        let result = await store.flush(using: api)
-        if result.flushed > 0 {
-            banner = "Synced \(result.flushed) offline sale(s)"
-        } else if result.failed > 0 {
-            banner = "\(result.failed) offline sale(s) failed"
-        }
-        refreshPending()
+        await vm.syncPending()
     }
 
     private func voidLast() async {
-        guard let lastSaleId else { return }
-        do {
-            _ = try await api.voidPosSale(saleId: lastSaleId)
-            banner = "Voided"
-            self.lastSaleId = nil
-        } catch {
-            banner = error.localizedDescription
-        }
+        await vm.voidLast()
     }
 }
 

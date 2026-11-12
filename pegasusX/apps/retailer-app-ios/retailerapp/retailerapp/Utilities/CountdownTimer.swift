@@ -8,15 +8,31 @@ final class CountdownTimer {
     var isExpired: Bool = false
 
     private var targetDate: Date?
+    private var anchorDate: Date?
+    private var anchorUptime: TimeInterval?
 
     private static let isoFormatter = ISO8601DateFormatter()
 
-    func start(from isoString: String) {
+    func start(from isoString: String, anchorNow: Date = Date(), anchorUptime: TimeInterval = ProcessInfo.processInfo.systemUptime) {
         targetDate = Self.isoFormatter.date(from: isoString)
+        anchorDate = anchorNow
+        self.anchorUptime = anchorUptime
     }
 
-    func start(from date: Date) {
+    func start(from date: Date, anchorNow: Date = Date(), anchorUptime: TimeInterval = ProcessInfo.processInfo.systemUptime) {
         targetDate = date
+        anchorDate = anchorNow
+        self.anchorUptime = anchorUptime
+    }
+
+    /// Monotonic clock update (Invariant I4): immune to user wall-clock rollback.
+    func updateMonotonic(currentUptime: TimeInterval = ProcessInfo.processInfo.systemUptime) {
+        guard let anchorDate, let anchorUptime else {
+            update(now: Date())
+            return
+        }
+        let elapsed = max(0, currentUptime - anchorUptime)
+        update(now: anchorDate.addingTimeInterval(elapsed))
     }
 
     func update(now: Date) {
@@ -47,11 +63,20 @@ struct CountdownText: View {
     var font: Font = .caption.monospacedDigit()
     var color: Color = AppTheme.textSecondary
 
+    @State private var anchorDate = Date()
+    @State private var anchorUptime = ProcessInfo.processInfo.systemUptime
+
     var body: some View {
-        TimelineView(.periodic(from: .now, by: 1.0)) { context in
-            Text(countdownString(from: context.date))
+        TimelineView(.periodic(from: .now, by: 1.0)) { _ in
+            let elapsed = max(0, ProcessInfo.processInfo.systemUptime - anchorUptime)
+            let monotonicNow = anchorDate.addingTimeInterval(elapsed)
+            Text(countdownString(from: monotonicNow))
                 .font(font)
                 .foregroundStyle(color)
+        }
+        .onAppear {
+            anchorDate = Date()
+            anchorUptime = ProcessInfo.processInfo.systemUptime
         }
     }
 

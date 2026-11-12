@@ -2,13 +2,7 @@ import SwiftUI
 
 /// Retail OS Phase 0 — store capability packs (Settings → Store capabilities).
 struct CapabilitiesView: View {
-    @State private var packs: [RetailerCapabilityPack] = []
-    @State private var loading = true
-    @State private var errorText: String?
-    @State private var banner: String?
-    @State private var busyId: String?
-
-    private let api = APIClient.shared
+    @State private var vm = CapabilitiesViewModel()
 
     var body: some View {
         List {
@@ -17,24 +11,31 @@ struct CapabilitiesView: View {
                     .font(.system(.footnote, design: .rounded))
                     .foregroundStyle(AppTheme.textSecondary)
             }
-            if let banner {
+            if let banner = vm.banner {
                 Section {
                     Text(banner)
                         .font(.system(.caption, design: .rounded))
                         .foregroundStyle(AppTheme.accent)
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel(banner)
                 }
             }
-            if loading && packs.isEmpty {
+            if vm.loading && vm.packs.isEmpty {
                 Section { ProgressView("Loading…") }
             }
-            if let errorText {
+            if let errorText = vm.errorText {
                 Section {
-                    Text(errorText).foregroundStyle(.red)
-                    Button("common.action.retry") { Task { await load() } }
+                    Text(errorText)
+                        .foregroundStyle(AppTheme.destructive)
+                    Button("common.action.retry") {
+                        Task { await vm.load() }
+                    }
+                    .pegasusMinimumHitTarget()
+                    .accessibilityLabel("Retry loading capabilities")
                 }
             }
             Section("Packs") {
-                ForEach(packs) { pack in
+                ForEach(vm.packs) { pack in
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
                             VStack(alignment: .leading, spacing: 2) {
@@ -44,6 +45,9 @@ struct CapabilitiesView: View {
                                     .font(.system(.caption2, design: .monospaced))
                                     .foregroundStyle(AppTheme.textTertiary)
                             }
+                            .accessibilityElement(children: .combine)
+                            .accessibilityLabel("\(pack.name), pack ID \(pack.id), \(pack.enabled ? "enabled" : "disabled")")
+
                             Spacer()
                             if pack.alwaysOn == true {
                                 Text("retailer_desktop.settings.capabilities.text.always_on")
@@ -51,15 +55,20 @@ struct CapabilitiesView: View {
                                     .foregroundStyle(AppTheme.textTertiary)
                             } else if pack.enabled {
                                 Button("mobile_retailer.ui.disable") {
-                                    Task { await disable(pack.id) }
+                                    Task { await vm.disable(pack.id) }
                                 }
-                                .disabled(busyId == pack.id)
+                                .buttonStyle(.bordered)
+                                .pegasusMinimumHitTarget()
+                                .disabled(vm.busyId == pack.id)
+                                .accessibilityLabel("Disable \(pack.name)")
                             } else {
                                 Button("mobile_retailer.ui.enable") {
-                                    Task { await enable(pack.id) }
+                                    Task { await vm.enable(pack.id) }
                                 }
                                 .buttonStyle(.borderedProminent)
-                                .disabled(busyId == pack.id)
+                                .pegasusMinimumHitTarget()
+                                .disabled(vm.busyId == pack.id)
+                                .accessibilityLabel("Enable \(pack.name)")
                             }
                         }
                         Text(pack.description)
@@ -75,44 +84,10 @@ struct CapabilitiesView: View {
                 }
             }
         }
+        .scrollDismissesKeyboard(.interactively)
         .navigationTitle("retailer_desktop.settings.capabilities.text.store_capabilities")
         .navigationBarTitleDisplayMode(.inline)
-        .task { await load() }
-    }
-
-    private func load() async {
-        loading = true
-        errorText = nil
-        defer { loading = false }
-        do {
-            let res = try await api.getCapabilities()
-            packs = res.packs
-        } catch {
-            errorText = error.localizedDescription
-        }
-    }
-
-    private func enable(_ id: String) async {
-        busyId = id
-        defer { busyId = nil }
-        do {
-            let res = try await api.enableCapability(packId: id, acceptSoft: true, enableDeps: true)
-            banner = res.message ?? "\(id) enabled"
-            await load()
-        } catch {
-            banner = error.localizedDescription
-        }
-    }
-
-    private func disable(_ id: String) async {
-        busyId = id
-        defer { busyId = nil }
-        do {
-            _ = try await api.disableCapability(packId: id)
-            banner = "\(id) disabled"
-            await load()
-        } catch {
-            banner = error.localizedDescription
-        }
+        .task { await vm.load() }
+        .refreshable { await vm.load() }
     }
 }

@@ -4,7 +4,8 @@ import SwiftData
 /// Drains SwiftData pending checkout/procurement mutations after reconnect.
 enum PendingOrderReplayer {
     @MainActor
-    static func flush(modelContext: ModelContext, api: APIClient = .shared) async {
+    static func flush(modelContext: ModelContext, api: APIClient? = nil) async {
+        let api = api ?? .shared
         let descriptor = FetchDescriptor<PendingOrder>(sortBy: [SortDescriptor(\.createdAt)])
         guard let pending = try? modelContext.fetch(descriptor), !pending.isEmpty else { return }
 

@@ -36,7 +36,7 @@ struct PredictionCard: View {
                                 .stroke(AppTheme.separator.opacity(0.3), lineWidth: 3)
                                 .frame(width: 44, height: 44)
                             Text(String(item.statusLabel.prefix(7)))
-                                .font(.system(size: 8, weight: .bold, design: .rounded))
+                                .font(.system(.caption2, design: .rounded, weight: .bold))
                                 .foregroundStyle(AppTheme.warning)
                         }
 
@@ -50,6 +50,7 @@ struct PredictionCard: View {
                                 .lineLimit(2)
                         }
                     }
+                    .accessibilityElement(children: .combine)
                 }
                 .buttonStyle(.plain)
 
@@ -60,25 +61,29 @@ struct PredictionCard: View {
                         .font(.system(.title3, design: .rounded, weight: .bold))
                         .foregroundStyle(AppTheme.textPrimary)
                     Text("\(item.quantity) units")
-                        .font(.system(size: 9, weight: .medium, design: .rounded))
+                        .font(.system(.caption2, design: .rounded, weight: .medium))
                         .foregroundStyle(AppTheme.textTertiary)
 
                     HStack(spacing: 8) {
                         Button {
                             guard actingId == nil else { return }
+                            Haptics.medium()
                             Task { await onConfirm(item) }
                         } label: {
                             Text("Confirm")
-                                .font(.system(size: 11, weight: .bold, design: .rounded))
+                                .font(.system(.caption, design: .rounded, weight: .bold))
+                                .pegasusMinimumHitTarget()
                         }
                         .disabled(actingId != nil)
                         Button {
                             guard actingId == nil else { return }
+                            Haptics.light()
                             Task { await onReject(item) }
                         } label: {
                             Text("Reject")
-                                .font(.system(size: 11, weight: .bold, design: .rounded))
+                                .font(.system(.caption, design: .rounded, weight: .bold))
                                 .foregroundStyle(AppTheme.destructive)
+                                .pegasusMinimumHitTarget()
                         }
                         .disabled(actingId != nil)
                     }

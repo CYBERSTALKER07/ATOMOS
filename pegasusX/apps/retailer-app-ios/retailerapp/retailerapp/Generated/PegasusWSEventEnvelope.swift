@@ -30,7 +30,19 @@ struct PegasusWSEventEnvelope {
     let totalMinor: Int?
     let vehicleID: String?
     let version: Version?
-    let warehouseID, agingBucket: String?
+    let warehouseID: String?
+    let baselineQty: Int?
+    let baselineSource, blockedReason: String?
+    let confidence: Double?
+    let confidencePct: Int?
+    let factoryID: String?
+    let highUnits: Int?
+    let insightID: String?
+    let lowUnits, networkNodes: Int?
+    let overrideID, polygonGeojson, productID, publishedBy: String?
+    let scenarioID, signalID, simulationID: String?
+    let transferRecommendations, ttlSeconds: Int?
+    let agingBucket: String?
     let amountMinor, balanceMinor: Int?
     let dueAt: String?
     let dunningStep: Int?
@@ -49,20 +61,9 @@ struct PegasusWSEventEnvelope {
     let resolutionNote, settlementMode, source, commandID: String?
     let actor, campaignID: String?
     let impactedLotCount, impactedOrderCount, impactedUnitsCount: Int?
-    let lotCode, lotID, productID, recallReason: String?
-    let severity, photoProofURL, signatureURL, sessionID: String?
-    let baselineQty: Int?
-    let baselineSource, blockedReason: String?
-    let confidence: Double?
-    let confidencePct: Int?
-    let factoryID: String?
-    let highUnits: Int?
-    let insightID: String?
-    let lowUnits, networkNodes: Int?
-    let overrideID, polygonGeojson, publishedBy, scenarioID: String?
-    let signalID, simulationID: String?
-    let transferRecommendations, ttlSeconds: Int?
-    let countryCode, phone: String?
+    let lotCode, lotID, recallReason, severity: String?
+    let photoProofURL, signatureURL, sessionID, countryCode: String?
+    let phone: String?
     let orderCount: Int?
     let orderIDS: [String]?
     let available: Bool?
@@ -102,10 +103,7 @@ struct PegasusWSEventEnvelope {
     let netPayoutMinor: Int?
     let railReference, preOrderID, barcode, handlingClass: String?
     let isActive, isHazardous, isPerishable: Bool?
-    let previousPriceMinor, priceMinor: Int?
-    let requiresColdChain: Bool?
-    let stockQuantity: Int?
-    let storageTempMaxC, storageTempMinC: Double?
+    let previousPriceMinor, priceMinor, stockQuantity: Int?
     let unit, promotionID: String?
     let retailerIDS: [String]?
     let retailerScope: String?

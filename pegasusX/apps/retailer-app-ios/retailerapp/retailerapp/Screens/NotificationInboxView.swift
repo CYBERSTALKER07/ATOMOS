@@ -1,3 +1,4 @@
+import Observation
 import SwiftUI
 
 // MARK: - Model
@@ -43,6 +44,7 @@ struct NotificationsResponse: Decodable {
 // MARK: - ViewModel
 
 @Observable
+@MainActor
 final class NotificationInboxViewModel {
     var items: [NotificationItem] = []
     var unreadCount: Int = 0
@@ -63,14 +65,14 @@ final class NotificationInboxViewModel {
             let resp: NotificationsResponse = try await api.get(
                 path: "/v1/user/notifications?limit=\(pageSize)&offset=0"
             )
-            items = resp.notifications.isEmpty ? Self.sampleNotifications : resp.notifications
-            unreadCount = resp.notifications.isEmpty ? 2 : resp.unreadCount
+            items = resp.notifications
+            unreadCount = resp.unreadCount
             hasMore = resp.hasMore
             nextOffset = resp.notifications.count
         } catch {
             if items.isEmpty {
-                items = Self.sampleNotifications
-                unreadCount = 2
+                items = []
+                unreadCount = 0
             }
         }
         isLoading = false
@@ -89,7 +91,7 @@ final class NotificationInboxViewModel {
             hasMore = resp.hasMore
             nextOffset += resp.notifications.count
         } catch {
-            // keep existing page
+            hasMore = false
         }
     }
 
@@ -118,40 +120,8 @@ final class NotificationInboxViewModel {
             )
         }
         unreadCount = 0
+        Haptics.success()
     }
-
-    static let sampleNotifications: [NotificationItem] = [
-        NotificationItem(
-            id: "notif-001",
-            type: "DELIVERY",
-            title: "Driver En Route",
-            body: "Fresh Farms Co. order #ord-001 is out for delivery with driver.",
-            payload: "{}",
-            channel: "PUSH",
-            readAt: nil,
-            createdAt: "10m ago"
-        ),
-        NotificationItem(
-            id: "notif-002",
-            type: "ORDER",
-            title: "Order Confirmed",
-            body: "Bakery Express confirmed delivery for tomorrow 09:00 AM.",
-            payload: "{}",
-            channel: "PUSH",
-            readAt: "1h ago",
-            createdAt: "1h ago"
-        ),
-        NotificationItem(
-            id: "notif-003",
-            type: "AI_RESTOCK",
-            title: "AI Restock Recommendation",
-            body: "Organic Whole Milk projected stockout in 48 hours.",
-            payload: "{}",
-            channel: "IN_APP",
-            readAt: nil,
-            createdAt: "2h ago"
-        )
-    ]
 }
 
 private struct EmptyOK: Decodable {}
@@ -164,70 +134,73 @@ struct NotificationInboxView: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        NavigationStack {
-            Group {
-                if vm.isLoading {
-                    ProgressView()
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if vm.items.isEmpty {
-                    ContentUnavailableView(
-                        "No Notifications",
-                        systemImage: "bell.slash",
-                        description: Text("mobile_retailer.ui.youll_be_notified_about_order_updates_here")
-                    )
-                } else {
-                    ResponsiveGridContentWrapper {
-                        ForEach(Array(vm.items.enumerated()), id: \.element.id) { index, notif in
-                            Button {
-                                Haptics.light()
-                                if notif.isUnread {
-                                    Task { await vm.markRead(notif.id) }
-                                }
-                            } label: {
-                                NotificationRow(notification: notif)
-                            }
-                            .buttonStyle(.pressable)
-                            .listRowBackground(notif.isUnread ? Color(.systemGray6) : Color.clear)
-                            .contentShape(Rectangle())
-                            .accessibilityHint(notif.isUnread ? "Marks notification as read" : "Notification already read")
-                            .onAppear {
-                                if index >= vm.items.count - 3 {
-                                    Task { await vm.loadMore() }
-                                }
-                            }
-                        }
-                        if vm.isLoadingMore {
-                            HStack {
-                                Spacer()
-                                ProgressView()
-                                Spacer()
-                            }
-                            .listRowBackground(Color.clear)
-                        }
-                    }
-                }
-            }
-            .navigationTitle("portal.nav.notifications")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("warehouse_portal.kpi_stat_card.text.done") { dismiss() }
-                }
-                if vm.unreadCount > 0 {
-                    ToolbarItem(placement: .topBarTrailing) {
+        Group {
+            if vm.isLoading {
+                ProgressView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if vm.items.isEmpty {
+                ContentUnavailableView(
+                    "No Notifications",
+                    systemImage: "bell.slash",
+                    description: Text("mobile_retailer.ui.youll_be_notified_about_order_updates_here")
+                )
+            } else {
+                ResponsiveGridContentWrapper {
+                    ForEach(Array(vm.items.enumerated()), id: \.element.id) { index, notif in
                         Button {
-                            Task { await vm.markAllRead() }
+                            Haptics.light()
+                            if notif.isUnread {
+                                Task { await vm.markRead(notif.id) }
+                            }
                         } label: {
-                            Label("mobile_retailer.ui.read_all", systemImage: "checkmark.circle")
-                                .labelStyle(.titleAndIcon)
-                                .font(.caption)
+                            NotificationRow(notification: notif)
+                                .pegasusMinimumHitTarget()
+                        }
+                        .buttonStyle(.pressable)
+                        .listRowBackground(notif.isUnread ? Color(.systemGray6) : Color.clear)
+                        .contentShape(Rectangle())
+                        .accessibilityHint(notif.isUnread ? "Marks notification as read" : "Notification already read")
+                        .task {
+                            if index >= vm.items.count - 3 {
+                                await vm.loadMore()
+                            }
                         }
                     }
+                    if vm.isLoadingMore {
+                        HStack {
+                            Spacer()
+                            ProgressView()
+                            Spacer()
+                        }
+                        .listRowBackground(Color.clear)
+                    }
+                }
+                .scrollDismissesKeyboard(.interactively)
+            }
+        }
+        .navigationTitle("portal.nav.notifications")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button("warehouse_portal.kpi_stat_card.text.done") { dismiss() }
+                    .pegasusMinimumHitTarget()
+            }
+            if vm.unreadCount > 0 {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        Task { await vm.markAllRead() }
+                    } label: {
+                        Label("mobile_retailer.ui.read_all", systemImage: "checkmark.circle")
+                            .labelStyle(.titleAndIcon)
+                            .font(.caption)
+                            .pegasusMinimumHitTarget()
+                    }
+                    .accessibilityLabel("Mark all notifications as read")
                 }
             }
-            .task { await vm.load() }
-            .task(id: refreshCenter.refreshToken) { await vm.load() }
         }
+        .task { await vm.load() }
+        .task(id: refreshCenter.refreshToken) { await vm.load() }
     }
 }
 
@@ -239,7 +212,7 @@ private struct NotificationRow: View {
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: typeIcon)
-                .font(.system(size: 18))
+                .font(.body.weight(.medium))
                 .foregroundStyle(notification.isUnread ? .blue : .secondary)
                 .frame(width: 24)
 
@@ -272,6 +245,8 @@ private struct NotificationRow: View {
             }
         }
         .padding(.vertical, 4)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(notification.title), \(notification.body), \(notification.isUnread ? "unread" : "read")")
     }
 
     private var typeIcon: String {

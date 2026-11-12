@@ -46,19 +46,6 @@ struct ProductCategory: Codable, Identifiable, Hashable {
     }
 }
 
-extension ProductCategory {
-    static let samples: [ProductCategory] = [
-        ProductCategory(id: "cat-001", name: "Drinks", icon: "cup.and.saucer.fill", productCount: 24),
-        ProductCategory(id: "cat-002", name: "Snacks", icon: "birthday.cake.fill", productCount: 18),
-        ProductCategory(id: "cat-003", name: "Fruits", icon: "leaf.fill", productCount: 15),
-        ProductCategory(id: "cat-004", name: "Water", icon: "drop.fill", productCount: 12),
-        ProductCategory(id: "cat-005", name: "Tea", icon: "mug.fill", productCount: 8),
-        ProductCategory(id: "cat-006", name: "Dairy", icon: "cup.and.saucer.fill", productCount: 20),
-        ProductCategory(id: "cat-007", name: "Bakery", icon: "storefront.fill", productCount: 14),
-        ProductCategory(id: "cat-008", name: "Produce", icon: "carrot.fill", productCount: 22),
-    ]
-}
-
 // MARK: - Auto-Order Settings
 
 struct SimpleAutoOrderSettings: Codable {

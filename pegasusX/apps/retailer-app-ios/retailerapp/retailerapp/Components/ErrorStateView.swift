@@ -17,7 +17,7 @@ struct ErrorStateView: View {
                     .fill(AppTheme.destructiveSoft.opacity(0.3))
                     .frame(width: 80, height: 80)
                 Image(systemName: icon)
-                    .font(.system(size: 32))
+                    .font(.title)
                     .foregroundStyle(AppTheme.destructive.opacity(0.8))
             }
             

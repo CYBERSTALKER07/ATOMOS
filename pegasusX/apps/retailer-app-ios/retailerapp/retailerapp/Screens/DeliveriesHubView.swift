@@ -9,7 +9,7 @@ enum DeliveriesHubTab: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .map: "Map"
-        case .dock: "Dock Queue"
+        case .dock: "Inbound Deliveries"
         }
     }
 }

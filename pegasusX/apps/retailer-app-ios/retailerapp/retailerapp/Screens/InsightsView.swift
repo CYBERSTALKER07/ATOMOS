@@ -5,8 +5,8 @@
 //  Expense Analytics Dashboard — Swift Charts
 //
 
-import SwiftUI
 import Charts
+import SwiftUI
 
 // MARK: - Data Models
 
@@ -24,7 +24,7 @@ struct MonthlyExpense: Codable, Identifiable {
     var shortMonth: String {
         // "2026-03" → "Mar"
         let parts = month.split(separator: "-")
-        guard parts.count == 2, let m = Int(parts[1]) else { return month }
+        guard parts.count == 2, let m = Int(parts[1]), (1...12).contains(m) else { return month }
         return Calendar.current.shortMonthSymbols[m - 1]
     }
 }
@@ -173,6 +173,7 @@ struct InsightsView: View {
                 HStack(spacing: 8) {
                     ForEach(DateRange.allCases, id: \.self) { range_ in
                         Button {
+                            Haptics.selection()
                             withAnimation(AnimationConstants.fluid) { vm.selectedRange = range_ }
                             Task { await vm.loadDetailedAnalytics() }
                         } label: {
@@ -183,7 +184,10 @@ struct InsightsView: View {
                                 .background(vm.selectedRange == range_ ? AppTheme.accent : AppTheme.surfaceElevated)
                                 .foregroundStyle(vm.selectedRange == range_ ? .white : AppTheme.textSecondary)
                                 .clipShape(.capsule)
+                                .pegasusMinimumHitTarget()
                         }
+                        .accessibilityLabel("Date range \(range_.rawValue)")
+                        .accessibilityAddTraits(vm.selectedRange == range_ ? .isSelected : [])
                     }
                     Spacer()
                 }
@@ -254,16 +258,16 @@ struct InsightsView: View {
                                 AxisValueLabel {
                                     if let v = value.as(Int.self) {
                                         Text(abbreviateAmount(v))
-                                            .font(.system(size: 10, design: .rounded))
+                                            .font(.system(.caption2, design: .rounded))
                                             .foregroundStyle(AppTheme.textTertiary)
                                     }
                                 }
                             }
                         }
                         .chartXAxis {
-                            AxisMarks { value in
+                            AxisMarks { _ in
                                 AxisValueLabel()
-                                    .font(.system(size: 10, design: .rounded))
+                                    .font(.system(.caption2, design: .rounded))
                             }
                         }
                         .frame(height: 200)
@@ -294,13 +298,13 @@ struct InsightsView: View {
                                 AxisValueLabel {
                                     if let v = value.as(Int.self) {
                                         Text(abbreviateAmount(v))
-                                            .font(.system(size: 10, design: .rounded))
+                                            .font(.system(.caption2, design: .rounded))
                                             .foregroundStyle(AppTheme.textTertiary)
                                     }
                                 }
                             }
                         }
-                        .frame(height: Double(suppliers.count * 44))
+                        .frame(height: CGFloat(suppliers.count * 44))
                     }
                     .padding(AppTheme.spacingLG)
                     .background(AppTheme.cardBackground)
@@ -332,6 +336,9 @@ struct InsightsView: View {
                                     .foregroundStyle(AppTheme.textPrimary)
                             }
                             .padding(.vertical, 6)
+                            .accessibilityElement(children: .combine)
+                            .accessibilityLabel("\(product.productName), \(product.quantity) units, \(formatAmount(product.total))")
+
                             if product.id != products.last?.id {
                                 Divider()
                             }
@@ -347,7 +354,7 @@ struct InsightsView: View {
                 if vm.analytics == nil && !vm.isLoading {
                     VStack(spacing: 16) {
                         Image(systemName: "chart.line.uptrend.xyaxis")
-                            .font(.system(size: 40))
+                            .font(.largeTitle)
                             .foregroundStyle(AppTheme.textTertiary)
                         Text("mobile_retailer.ui.no_analytics_data")
                             .font(.system(.headline, design: .rounded, weight: .semibold))
@@ -359,6 +366,7 @@ struct InsightsView: View {
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 60)
+                    .accessibilityElement(children: .combine)
                 }
 
                 // ── Advanced Insights Section ──
@@ -406,6 +414,7 @@ struct InsightsView: View {
                 Spacer(minLength: 40)
             }
         }
+        .scrollDismissesKeyboard(.interactively)
         .background(AppTheme.background)
         .task {
             await vm.loadAnalytics()
@@ -422,7 +431,7 @@ struct InsightsView: View {
     }
 
     private func formatAmount(_ value: Int) -> String {
-        value.formatted(.number.grouping(.automatic)) + ""
+        value.formatted(.number.grouping(.automatic))
     }
 
     private func abbreviateAmount(_ value: Int) -> String {
@@ -431,8 +440,6 @@ struct InsightsView: View {
         return "\(value)"
     }
 }
-
-
 
 #Preview {
     NavigationStack {

@@ -23,10 +23,13 @@ struct SetupView: View {
                             .foregroundStyle(AppTheme.destructive)
                             .multilineTextAlignment(.center)
                             .padding(.horizontal)
+                            .accessibilityElement(children: .combine)
+                            .accessibilityLabel("Error: \(error)")
                     }
                 }
                 .padding(AppTheme.spacingXL)
             }
+            .scrollDismissesKeyboard(.interactively)
             .background(AppTheme.background)
             .navigationTitle("mobile_retailer.ui.company_profile")
             .navigationBarTitleDisplayMode(.inline)
@@ -34,6 +37,8 @@ struct SetupView: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("common.action.sign_out") { auth.logout() }
                         .font(.system(.subheadline, design: .rounded, weight: .semibold))
+                        .pegasusMinimumHitTarget()
+                        .accessibilityLabel("Sign out")
                 }
             }
         }
@@ -46,7 +51,7 @@ struct SetupView: View {
                     .fill(AppTheme.accent)
                     .frame(width: 64, height: 64)
                 Image(systemName: "building.2.fill")
-                    .font(.system(size: 28, weight: .semibold))
+                    .font(.title.weight(.semibold))
                     .foregroundStyle(.white)
             }
             Text(vm.step == .tax ? "Provide your business identity" : "Where should we deliver?")
@@ -54,6 +59,7 @@ struct SetupView: View {
                 .foregroundStyle(AppTheme.textSecondary)
                 .multilineTextAlignment(.center)
         }
+        .accessibilityElement(children: .combine)
     }
 
     private var progressBar: some View {
@@ -77,6 +83,8 @@ struct SetupView: View {
                     .foregroundStyle(.white)
                     .clipShape(.rect(cornerRadius: AppTheme.radiusCard))
             }
+            .pegasusMinimumHitTarget()
+            .accessibilityLabel("Continue to delivery address step")
         }
     }
 
@@ -89,6 +97,7 @@ struct SetupView: View {
 
             HStack(spacing: 12) {
                 Button {
+                    Haptics.selection()
                     vm.step = .tax
                 } label: {
                     Text("common.action.back")
@@ -99,6 +108,8 @@ struct SetupView: View {
                         .foregroundStyle(AppTheme.textPrimary)
                         .clipShape(.rect(cornerRadius: AppTheme.radiusCard))
                 }
+                .pegasusMinimumHitTarget()
+                .accessibilityLabel("Back to tax step")
 
                 Button {
                     Task {
@@ -123,7 +134,9 @@ struct SetupView: View {
                     .foregroundStyle(.white)
                     .clipShape(.rect(cornerRadius: AppTheme.radiusCard))
                 }
+                .pegasusMinimumHitTarget()
                 .disabled(vm.isSubmitting)
+                .accessibilityLabel("Complete setup")
             }
         }
     }
@@ -146,6 +159,8 @@ struct SetupView: View {
                 RoundedRectangle(cornerRadius: AppTheme.radiusSM)
                     .stroke(AppTheme.separator.opacity(0.3), lineWidth: 1)
             )
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(title)
         }
     }
 }

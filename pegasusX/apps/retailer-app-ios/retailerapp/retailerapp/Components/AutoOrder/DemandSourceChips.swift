@@ -14,7 +14,7 @@ struct DemandSourceChips: View {
         HStack(spacing: 6) {
             ForEach(list, id: \.self) { code in
                 Text(label(for: code).uppercased())
-                    .font(.system(size: 10, weight: .semibold, design: .rounded))
+                    .font(.system(.caption2, design: .rounded, weight: .semibold))
                     .tracking(0.4)
                     .foregroundStyle(isPOS(code) ? Color(red: 0.08, green: 0.50, blue: 0.24) : AppTheme.textSecondary)
                     .padding(.horizontal, 8)

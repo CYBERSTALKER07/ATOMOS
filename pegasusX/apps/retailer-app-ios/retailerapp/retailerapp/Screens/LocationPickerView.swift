@@ -4,18 +4,11 @@ import CoreLocation
 
 struct LocationPickerView: View {
     @Environment(\.dismiss) private var dismiss
-    @State private var locationManager = LocationManager()
+    @State private var vm: LocationPickerViewModel
 
     var initialLatitude: Double
     var initialLongitude: Double
     var onConfirm: (Double, Double, String) -> Void
-
-    @State private var cameraPosition: MapCameraPosition
-    @State private var centerCoordinate: CLLocationCoordinate2D
-    @State private var addressLabel: String?
-    @State private var resolving = false
-    @State private var resolveTask: Task<Void, Never>?
-    @State private var awaitingUserLocation = false
 
     init(
         initialLatitude: Double = 0.0,
@@ -25,63 +18,51 @@ struct LocationPickerView: View {
         self.initialLatitude = initialLatitude
         self.initialLongitude = initialLongitude
         self.onConfirm = onConfirm
-
-        let coord: CLLocationCoordinate2D
-        if initialLatitude != 0 || initialLongitude != 0 {
-            coord = CLLocationCoordinate2D(latitude: initialLatitude, longitude: initialLongitude)
-        } else {
-            // Default: Tashkent city center
-            let c = packMapCoordinate()
-            coord = CLLocationCoordinate2D(latitude: c.lat, longitude: c.lng)
-        }
-        _centerCoordinate = State(initialValue: coord)
-        _cameraPosition = State(initialValue: .region(MKCoordinateRegion(
-            center: coord,
-            span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
-        )))
+        _vm = State(initialValue: LocationPickerViewModel(
+            initialLatitude: initialLatitude,
+            initialLongitude: initialLongitude
+        ))
     }
 
     var body: some View {
+        @Bindable var vm = vm
         ZStack {
-            // Map
-            Map(position: $cameraPosition) {
-                // Center pin handled as overlay
-            }
-            .mapStyle(.standard(elevation: .realistic))
-            .onMapCameraChange(frequency: .onEnd) { context in
-                centerCoordinate = context.camera.centerCoordinate
-                scheduleResolveAddress()
-            }
-            .ignoresSafeArea()
+            Map(position: $vm.cameraPosition) {}
+                .mapStyle(.standard(elevation: .realistic))
+                .onMapCameraChange(frequency: .onEnd) { context in
+                    vm.onCameraEnded(context.camera.centerCoordinate)
+                }
+                .ignoresSafeArea()
 
-            // Center pin
             VStack(spacing: 0) {
                 Image(systemName: "mappin.circle.fill")
-                    .font(.system(size: 36))
+                    .font(.largeTitle)
                     .foregroundStyle(.black)
                     .shadow(color: .black.opacity(0.3), radius: 4, y: 2)
 
                 Image(systemName: "arrowtriangle.down.fill")
-                    .font(.system(size: 10))
+                    .font(.caption2)
                     .foregroundStyle(.black)
                     .offset(y: -4)
             }
-            .offset(y: -20) // pin tip at center
+            .offset(y: -20)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
 
-            // Top bar
             VStack {
                 HStack {
                     Button {
                         dismiss()
                     } label: {
                         Image(systemName: "xmark")
-                            .font(.system(size: 16, weight: .semibold))
+                            .font(.body.weight(.semibold))
                             .foregroundStyle(AppTheme.textPrimary)
-                            .frame(width: 36, height: 36)
+                            .frame(width: 44, height: 44)
                             .background(.ultraThinMaterial)
                             .clipShape(.circle)
                     }
-                    .accessibilityLabel("Close")
+                    .pegasusMinimumHitTarget()
+                    .accessibilityLabel("Close location picker")
 
                     Spacer()
 
@@ -91,8 +72,7 @@ struct LocationPickerView: View {
 
                     Spacer()
 
-                    // Balance spacer
-                    Color.clear.frame(width: 36, height: 36)
+                    Color.clear.frame(width: 44, height: 44)
                 }
                 .padding(.horizontal, AppTheme.spacingMD)
                 .padding(.top, 8)
@@ -100,53 +80,48 @@ struct LocationPickerView: View {
                 Spacer()
             }
 
-            // My Location FAB
             VStack {
                 Spacer()
                 HStack {
                     Spacer()
                     Button {
-                        requestAndMoveToUserLocation()
+                        vm.requestAndMoveToUserLocation()
                     } label: {
                         Image(systemName: "location.fill")
-                            .font(.system(size: 18, weight: .semibold))
+                            .font(.headline.weight(.semibold))
                             .foregroundStyle(.black)
                             .frame(width: 48, height: 48)
                             .background(.white)
                             .clipShape(.circle)
                             .shadow(color: .black.opacity(0.15), radius: 8, y: 4)
                     }
-                    .accessibilityLabel("Current location")
+                    .pegasusMinimumHitTarget()
+                    .accessibilityLabel("Move map to current location")
                     .padding(.trailing, 16)
                 }
                 .padding(.bottom, 160)
             }
 
-            // Bottom panel
             VStack {
                 Spacer()
                 VStack(spacing: AppTheme.spacingSM) {
-                    Text(
-                        resolving
-                            ? "Resolving address…"
-                            : (addressLabel?.isEmpty == false ? addressLabel! : "Drag map to adjust pin position")
-                    )
+                    Text(vm.statusDisplayText)
                         .font(.system(.body, design: .rounded))
                         .foregroundStyle(AppTheme.textSecondary)
                         .multilineTextAlignment(.center)
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel("Selected location: \(vm.statusDisplayText)")
 
                     Button {
                         Task {
-                            let label = addressLabel?.isEmpty == false
-                                ? addressLabel!
-                                : (await GeocodeService.reverse(lat: centerCoordinate.latitude, lng: centerCoordinate.longitude) ?? "Pinned location")
-                            onConfirm(centerCoordinate.latitude, centerCoordinate.longitude, label)
+                            let confirmed = await vm.confirmSelection()
+                            onConfirm(confirmed.lat, confirmed.lng, confirmed.label)
                             dismiss()
                         }
                     } label: {
                         HStack(spacing: 8) {
                             Image(systemName: "checkmark")
-                                .font(.system(size: 14, weight: .semibold))
+                                .font(.subheadline.weight(.semibold))
                             Text("mobile_retailer.ui.confirm_location")
                                 .font(.system(.headline, design: .rounded))
                         }
@@ -156,6 +131,8 @@ struct LocationPickerView: View {
                         .background(AppTheme.accentGradient)
                         .clipShape(.rect(cornerRadius: AppTheme.radiusButton))
                     }
+                    .pegasusMinimumHitTarget()
+                    .accessibilityLabel("Confirm store location")
                     .padding(.top, 4)
                 }
                 .padding(AppTheme.spacingXL)
@@ -165,71 +142,12 @@ struct LocationPickerView: View {
                 .padding(.bottom, AppTheme.spacingMD)
             }
         }
-        .task { await resolveAddress() }
-        .onChange(of: locationManager.lastLocation?.latitude) { _, _ in
-            guard awaitingUserLocation, let loc = locationManager.lastLocation else { return }
-            awaitingUserLocation = false
-            withAnimation(.easeInOut(duration: 0.6)) {
-                cameraPosition = .region(MKCoordinateRegion(
-                    center: loc,
-                    span: MKCoordinateSpan(latitudeDelta: 0.005, longitudeDelta: 0.005)
-                ))
-            }
+        .task { await vm.resolveAddress() }
+        .onChange(of: vm.locationManager.lastLocation?.latitude) { _, _ in
+            vm.handleLocationChange()
         }
         .onDisappear {
-            resolveTask?.cancel()
-        }
-    }
-
-    private func scheduleResolveAddress() {
-        resolveTask?.cancel()
-        resolveTask = Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 180_000_000)
-            guard !Task.isCancelled else { return }
-            await resolveAddress()
-        }
-    }
-
-    @MainActor
-    private func resolveAddress() async {
-        resolving = true
-        defer { resolving = false }
-        let coord = centerCoordinate
-        let resolved = await GeocodeService.reverse(lat: coord.latitude, lng: coord.longitude)
-        guard !Task.isCancelled else { return }
-        addressLabel = resolved
-    }
-
-    private func requestAndMoveToUserLocation() {
-        awaitingUserLocation = true
-        locationManager.requestLocation()
-        Task {
-            for _ in 0..<20 {
-                if let loc = locationManager.lastLocation {
-                    awaitingUserLocation = false
-                    withAnimation(.easeInOut(duration: 0.6)) {
-                        cameraPosition = .region(MKCoordinateRegion(
-                            center: loc,
-                            span: MKCoordinateSpan(latitudeDelta: 0.005, longitudeDelta: 0.005)
-                        ))
-                    }
-                    centerCoordinate = loc
-                    await resolveAddress()
-                    return
-                }
-                try? await Task.sleep(nanoseconds: 100_000_000)
-            }
-            // Fallback for simulator
-            let fallback = LocationManager.defaultLocation
-            awaitingUserLocation = false
-            withAnimation(.easeInOut(duration: 0.6)) {
-                cameraPosition = .region(MKCoordinateRegion(
-                    center: fallback,
-                    span: MKCoordinateSpan(latitudeDelta: 0.005, longitudeDelta: 0.005)
-                ))
-            }
-            centerCoordinate = fallback
-            await resolveAddress()
+            vm.cancelTasks()
         }
     }
 }

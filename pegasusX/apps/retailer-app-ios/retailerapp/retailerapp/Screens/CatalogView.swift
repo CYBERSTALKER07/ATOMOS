@@ -4,43 +4,27 @@ import SwiftUI
 struct CatalogView: View {
     @Environment(CartManager.self) private var cart
     @State private var refreshCenter = RetailerRefreshCenter.shared
-    @State private var searchText = ""
-    @State private var browseMode: CatalogBrowseMode = .categories
-    @State private var categories: [ProductCategory] = []
-    @State private var products: [Product] = []
-    @State private var selectedProduct: Product?
-    @State private var isLoading = false
-    @State private var loadError: String?
-    @State private var showFullSearch = false
+    @State private var vm = CatalogViewModel()
 
     var onNavigateToSuppliers: () -> Void = {}
 
-    private let api = APIClient.shared
-
-    private var isSearching: Bool {
-        searchText.trimmingCharacters(in: .whitespacesAndNewlines).count >= 2
-    }
-
-    var filteredProducts: [Product] {
-        guard isSearching else { return [] }
-        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        return products.filter { product in
-            product.name.localizedCaseInsensitiveContains(query) ||
-            product.description.localizedCaseInsensitiveContains(query) ||
-            (product.supplierName?.localizedCaseInsensitiveContains(query) ?? false) ||
-            (product.categoryName?.localizedCaseInsensitiveContains(query) ?? false)
-        }
-    }
+    private var categories: [ProductCategory] { vm.categories }
+    private var products: [Product] { vm.products }
+    private var isLoading: Bool { vm.isLoading }
+    private var loadError: String? { vm.loadError }
+    private var isSearching: Bool { vm.isSearching }
+    private var filteredProducts: [Product] { vm.filteredProducts }
 
     var body: some View {
+        @Bindable var vm = vm
         VStack(spacing: 0) {
             // Search Bar
-            CatalogSearchBar(searchText: $searchText, showFullSearch: $showFullSearch)
+            CatalogSearchBar(searchText: $vm.searchText, showFullSearch: $vm.showFullSearch)
                 .padding(.horizontal, AppTheme.spacingLG)
                 .padding(.vertical, AppTheme.spacingSM)
 
             if !isSearching {
-                CatalogBrowseChips(browseMode: $browseMode, onNavigateToSuppliers: onNavigateToSuppliers)
+                CatalogBrowseChips(browseMode: $vm.browseMode, onNavigateToSuppliers: onNavigateToSuppliers)
                     .padding(.horizontal, AppTheme.spacingLG)
                     .padding(.bottom, AppTheme.spacingSM)
             }
@@ -61,12 +45,12 @@ struct CatalogView: View {
                     SkeletonProductGrid()
                 } else if isSearching {
                     if filteredProducts.isEmpty {
-                        CatalogNoResultsState(searchText: searchText)
+                        CatalogNoResultsState(searchText: vm.searchText)
                     } else {
-                        CatalogSearchResults(filteredProducts: filteredProducts, selectedProduct: $selectedProduct)
+                        CatalogSearchResults(filteredProducts: filteredProducts, selectedProduct: $vm.selectedProduct)
                     }
-                } else if browseMode == .allProducts {
-                    CatalogAllProductsGrid(products: products, selectedProduct: $selectedProduct)
+                } else if vm.browseMode == .allProducts {
+                    CatalogAllProductsGrid(products: products, selectedProduct: $vm.selectedProduct)
                 } else {
                     CatalogBentoGrid(categories: categories)
                 }
@@ -74,9 +58,10 @@ struct CatalogView: View {
             .scrollIndicators(.hidden)
         }
         .background(AppTheme.background)
-        .navigationDestination(item: $selectedProduct) { product in
+        .navigationDestination(item: $vm.selectedProduct) { product in
             ProductDetailView(product: product)
         }
+        .scrollDismissesKeyboard(.interactively)
         .task {
             await loadCategories()
             await loadProducts()
@@ -89,12 +74,12 @@ struct CatalogView: View {
             await loadCategories()
             await loadProducts()
         }
-        .sheet(isPresented: $showFullSearch) {
+        .sheet(isPresented: $vm.showFullSearch) {
             NavigationStack {
                 SearchView()
                     .toolbar {
                         ToolbarItem(placement: .cancellationAction) {
-                            Button("common.action.close") { showFullSearch = false }
+                            Button("common.action.close") { vm.showFullSearch = false }
                         }
                     }
             }
@@ -102,25 +87,11 @@ struct CatalogView: View {
     }
 
     private func loadCategories() async {
-        do {
-            let result: [ProductCategory] = try await api.get(path: "/v1/catalog/categories")
-            categories = result.isEmpty ? ProductCategory.samples : result
-        } catch {
-            categories = ProductCategory.samples
-        }
+        await vm.loadCategories()
     }
 
     private func loadProducts() async {
-        isLoading = true
-        do {
-            let result: [Product] = try await api.get(path: "/v1/catalog/products")
-            products = result.isEmpty ? Product.samples : result
-            loadError = nil
-        } catch {
-            products = Product.samples
-            loadError = nil
-        }
-        isLoading = false
+        await vm.loadProducts()
     }
 }
 

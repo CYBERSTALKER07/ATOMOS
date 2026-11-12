@@ -35,7 +35,7 @@ struct DailySpendingChartView: View {
             .chartXAxis {
                 AxisMarks(values: .automatic(desiredCount: 6)) { _ in
                     AxisValueLabel()
-                        .font(.system(size: 9, design: .rounded))
+                        .font(.system(.caption2, design: .rounded))
                 }
             }
         }

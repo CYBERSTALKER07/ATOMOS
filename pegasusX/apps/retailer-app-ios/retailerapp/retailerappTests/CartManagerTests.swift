@@ -10,12 +10,12 @@ struct CartManagerTests {
             imageURL: nil, variants: [makeVariant()],
             supplierID: nil, supplierName: nil, supplierCategory: nil,
             categoryID: nil, categoryName: nil, sellByBlock: false,
-            unitsPerBlock: nil, price: nil
+            unitsPerBlock: nil, priceMinor: nil
         )
     }
 
-    private func makeVariant(id: String = "v1", price: Double = 10_000) -> Variant {
-        Variant(id: id, size: "1L", pack: "Single", packCount: 1, weightPerUnit: "1000ml", price: price)
+    private func makeVariant(id: String = "v1", priceMinor: Int64 = 10_000) -> Variant {
+        Variant(id: id, size: "1L", pack: "Single", packCount: 1, weightPerUnit: "1000ml", priceMinor: priceMinor)
     }
 
     // MARK: - Initial state
@@ -24,7 +24,7 @@ struct CartManagerTests {
         let cart = CartManager()
         #expect(cart.isEmpty == true)
         #expect(cart.totalItems == 0)
-        #expect(cart.totalPrice == 0)
+        #expect(cart.totalPriceMinor == 0)
     }
 
     // MARK: - Add
@@ -52,8 +52,8 @@ struct CartManagerTests {
     @Test func add_differentVariants_separateItems() {
         let cart = CartManager()
         let product = makeProduct()
-        let v1 = makeVariant(id: "v1", price: 10_000)
-        let v2 = makeVariant(id: "v2", price: 20_000)
+        let v1 = makeVariant(id: "v1", priceMinor: 10_000)
+        let v2 = makeVariant(id: "v2", priceMinor: 20_000)
         cart.add(product: product, variant: v1)
         cart.add(product: product, variant: v2)
         #expect(cart.items.count == 2)
@@ -162,18 +162,18 @@ struct CartManagerTests {
 
     @Test func totalPrice_sumsCorrectly() {
         let cart = CartManager()
-        let v1 = makeVariant(id: "v1", price: 10_000)
-        let v2 = makeVariant(id: "v2", price: 25_000)
+        let v1 = makeVariant(id: "v1", priceMinor: 10_000)
+        let v2 = makeVariant(id: "v2", priceMinor: 25_000)
         let p1 = makeProduct(id: "p1")
         let p2 = makeProduct(id: "p2")
         cart.add(product: p1, variant: v1, quantity: 3)  // 30_000
         cart.add(product: p2, variant: v2, quantity: 2)  // 50_000
-        #expect(cart.totalPrice == 80_000)
+        #expect(cart.totalPriceMinor == 80_000)
     }
 
     @Test func displayTotal_formatsAmount() {
         let cart = CartManager()
-        let variant = makeVariant(price: 50_000)
+        let variant = makeVariant(priceMinor: 50_000)
         cart.add(product: makeProduct(), variant: variant, quantity: 2)
         // 100_000 formatted
         #expect(cart.displayTotal.contains("100"))
@@ -184,7 +184,7 @@ struct CartManagerTests {
     @Test func buildCheckoutPayload_correctStructure() {
         let cart = CartManager()
         let product = makeProduct(id: "sku-abc")
-        let variant = makeVariant(id: "v1", price: 15_000)
+        let variant = makeVariant(id: "v1", priceMinor: 15_000)
         cart.add(product: product, variant: variant, quantity: 3)
 
         let payload = cart.buildCheckoutPayload(
@@ -197,11 +197,12 @@ struct CartManagerTests {
         #expect(payload.paymentGateway == "GLOBAL_PAY")
         #expect(payload.items.count == 1)
         #expect(payload.items[0].quantity == 3)
+        #expect(payload.items[0].unitPriceUzs == 15_000)
     }
 
     @Test func buildCheckoutPayload_preservesRetailerScopeFields() {
         let cart = CartManager()
-        cart.add(product: makeProduct(id: "sku-touch"), variant: makeVariant(id: "variant-touch", price: 9_000), quantity: 1)
+        cart.add(product: makeProduct(id: "sku-touch"), variant: makeVariant(id: "variant-touch", priceMinor: 9_000), quantity: 1)
 
         let payload = cart.buildCheckoutPayload(
             retailerId: "retailer-touch",

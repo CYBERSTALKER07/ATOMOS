@@ -29,16 +29,13 @@ struct OrdersView: View {
     var initialSupplierId: String? = nil
     @State private var refreshCenter = RetailerRefreshCenter.shared
     @State private var vm = OrdersViewModel()
-    @State private var selectedTab: OrderTab = .active
-    @State private var selectedOrder: Order?
-    @State private var qrOverlayOrder: Order?
-    @State private var deliveryProposalOrder: Order?
 
     private var activeOrders: [Order] { vm.activeOrders }
     private var pendingOrders: [Order] { vm.pendingOrders }
     private var predictions: [RetailerAIPrediction] { vm.predictions }
 
     var body: some View {
+        @Bindable var vm = vm
         ZStack {
             VStack(spacing: 0) {
                 if vm.commandStatus != nil {
@@ -49,7 +46,7 @@ struct OrdersView: View {
 
                     Rectangle().fill(AppTheme.separator.opacity(0.3)).frame(height: AppTheme.separatorHeight)
 
-                    TabView(selection: $selectedTab) {
+                    TabView(selection: $vm.selectedTab) {
                         activeContent.tag(OrderTab.active)
                         pendingContent.tag(OrderTab.pending)
                         aiPlannedContent.tag(OrderTab.aiPlanned)
@@ -71,34 +68,31 @@ struct OrdersView: View {
                 await vm.flushPendingOrders(modelContext: modelContext)
             }
             .refreshable { await vm.loadData() }
-            .alert("Failed to Load", isPresented: Binding(
-                get: { vm.loadError != nil },
-                set: { if !$0 { vm.loadError = nil } }
-            )) {
+            .alert("Failed to Load", isPresented: $vm.showLoadErrorAlert) {
                 Button("common.action.retry") { Task { await vm.loadData() } }
                 Button("OK", role: .cancel) { vm.loadError = nil }
             } message: {
                 Text(vm.loadError ?? "Check your connection and try again.")
             }
-            .sheet(item: $selectedOrder) { order in
+            .sheet(item: $vm.selectedOrder) { order in
                 OrderDetailSheet(order: order)
                     .presentationDetents([.fraction(0.75)])
                     .presentationDragIndicator(.visible)
             }
-            .sheet(item: $deliveryProposalOrder) { order in
+            .sheet(item: $vm.deliveryProposalOrder) { order in
                 DeliveryProposalReviewSheet(
                     order: order,
                     isPending: vm.orderActionPending,
                     onAccept: {
                         RetailerAsync.run {
                             await vm.acceptDeliveryProposal(order.id)
-                            deliveryProposalOrder = nil
+                            vm.deliveryProposalOrder = nil
                         }
                     },
                     onReject: {
                         RetailerAsync.run {
                             await vm.rejectDeliveryProposal(order.id)
-                            deliveryProposalOrder = nil
+                            vm.deliveryProposalOrder = nil
                         }
                     }
                 )
@@ -107,15 +101,15 @@ struct OrdersView: View {
             }
 
             // Quick QR Overlay
-            if let qrOrder = qrOverlayOrder, qrOrder.status.hasDeliveryToken {
+            if let qrOrder = vm.qrOverlayOrder, qrOrder.status.hasDeliveryToken {
                 QROverlay(order: qrOrder) {
-                    withAnimation(AnimationConstants.fluid) { qrOverlayOrder = nil }
+                    withAnimation(AnimationConstants.fluid) { vm.qrOverlayOrder = nil }
                 }
                 .transition(.opacity)
                 .zIndex(200)
             }
         }
-        .animation(AnimationConstants.fluid, value: qrOverlayOrder?.id)
+        .animation(AnimationConstants.fluid, value: vm.qrOverlayOrder?.id)
     }
 
     private var commandFilterBanner: some View {
@@ -131,6 +125,7 @@ struct OrdersView: View {
             Spacer()
             Button("Clear") { vm.clearCommandFilter() }
                 .font(.footnote.bold())
+                .pegasusMinimumHitTarget()
         }
         .padding(.horizontal, AppTheme.spacingLG)
         .padding(.vertical, AppTheme.spacingSM)
@@ -165,7 +160,7 @@ struct OrdersView: View {
                                 RetailerAsync.run { await vm.editPreorder(order) }
                             } : nil,
                             onReviewDeliveryProposal: order.needsDeliveryProposalReview ? {
-                                deliveryProposalOrder = order
+                                vm.deliveryProposalOrder = order
                             } : nil
                         )
                     }
@@ -175,6 +170,7 @@ struct OrdersView: View {
                 .padding(.bottom, AppTheme.spacingHuge)
             }
         }
+        .scrollDismissesKeyboard(.interactively)
         .scrollIndicators(.hidden)
     }
 
@@ -183,22 +179,22 @@ struct OrdersView: View {
     private var topTabs: some View {
         HStack(spacing: 0) {
             ForEach(OrderTab.allCases, id: \.self) { tab in
+                let isSelected = vm.selectedTab == tab
+                let count = badgeCount(for: tab)
                 Button {
                     Haptics.light()
                     withAnimation(AnimationConstants.express) {
-                        selectedTab = tab
+                        vm.selectedTab = tab
                     }
                 } label: {
                     VStack(spacing: AppTheme.spacingSM) {
                         ZStack(alignment: .topTrailing) {
                             Image(systemName: tab.icon)
-                                .font(.system(size: 22, weight: selectedTab == tab ? .semibold : .regular))
-                            
-                            // Badge count
-                            let count = badgeCount(for: tab)
+                                .font(.title3.weight(isSelected ? .semibold : .regular))
+
                             if count > 0 {
                                 Text("\(count)")
-                                    .font(.system(size: 10, weight: .bold, design: .rounded))
+                                    .font(.system(.caption2, design: .rounded, weight: .bold))
                                     .foregroundStyle(.white)
                                     .frame(width: 16, height: 16)
                                     .background(AppTheme.destructive)
@@ -208,18 +204,21 @@ struct OrdersView: View {
                         }
 
                         Text(tab.title)
-                            .font(.system(.subheadline, design: .rounded, weight: selectedTab == tab ? .bold : .medium))
+                            .font(.system(.subheadline, design: .rounded, weight: isSelected ? .bold : .medium))
                     }
-                    .foregroundStyle(selectedTab == tab ? AppTheme.accent : AppTheme.textTertiary.opacity(0.7))
+                    .foregroundStyle(isSelected ? AppTheme.accent : AppTheme.textTertiary.opacity(0.7))
                     .frame(maxWidth: .infinity)
                     .padding(.top, AppTheme.spacingMD)
                     .padding(.bottom, AppTheme.spacingSM)
                     .overlay(alignment: .bottom) {
                         Rectangle()
-                            .fill(selectedTab == tab ? AppTheme.accent : .clear)
+                            .fill(isSelected ? AppTheme.accent : .clear)
                             .frame(height: 3)
                     }
+                    .pegasusMinimumHitTarget()
                 }
+                .accessibilityLabel("\(tab.title) orders, \(count) items")
+                .accessibilityAddTraits(isSelected ? .isSelected : [])
             }
         }
         .background(AppTheme.cardBackground)
@@ -249,8 +248,12 @@ struct OrdersView: View {
             } else {
                 LazyVStack(spacing: AppTheme.spacingMD) {
                     ForEach(Array(activeOrders.enumerated()), id: \.element.id) { index, order in
-                        ActiveOrderCard(order: order, onDetails: { selectedOrder = order }, onQR: { qrOverlayOrder = order })
-                            .staggeredSlideIn(index: index)
+                        ActiveOrderCard(
+                            order: order,
+                            onDetails: { vm.selectedOrder = order },
+                            onQR: { vm.qrOverlayOrder = order }
+                        )
+                        .staggeredSlideIn(index: index)
                     }
                 }
                 .padding(.horizontal, AppTheme.spacingLG)
@@ -258,6 +261,7 @@ struct OrdersView: View {
                 .padding(.bottom, AppTheme.spacingHuge)
             }
         }
+        .scrollDismissesKeyboard(.interactively)
         .scrollIndicators(.hidden)
     }
 
@@ -290,7 +294,7 @@ struct OrdersView: View {
                                 RetailerAsync.run { await vm.editPreorder(order) }
                             } : nil,
                             onReviewDeliveryProposal: order.needsDeliveryProposalReview ? {
-                                deliveryProposalOrder = order
+                                vm.deliveryProposalOrder = order
                             } : nil
                         )
                         .staggeredSlideIn(index: index)
@@ -301,6 +305,7 @@ struct OrdersView: View {
                 .padding(.bottom, AppTheme.spacingHuge)
             }
         }
+        .scrollDismissesKeyboard(.interactively)
         .scrollIndicators(.hidden)
     }
 
@@ -309,6 +314,7 @@ struct OrdersView: View {
     private var aiPlannedContent: some View {
         ScrollView {
             if vm.isLoading && predictions.isEmpty {
+                SkeletonOrderList()
             } else if predictions.isEmpty {
                 tabEmptyState(icon: "sparkles", title: "No pending AI preorders", message: "AI restock preorders waiting for confirm or reject will appear here")
             } else {
@@ -319,7 +325,7 @@ struct OrdersView: View {
                             onConfirm: { Task { await vm.confirmAiOrder(item.orderId) } },
                             onReject: { Task { await vm.rejectAiOrder(item.orderId) } }
                         )
-                            .staggeredSlideIn(index: index)
+                        .staggeredSlideIn(index: index)
                     }
                 }
                 .padding(.horizontal, AppTheme.spacingLG)
@@ -327,6 +333,7 @@ struct OrdersView: View {
                 .padding(.bottom, AppTheme.spacingHuge)
             }
         }
+        .scrollDismissesKeyboard(.interactively)
         .scrollIndicators(.hidden)
     }
 
@@ -337,7 +344,9 @@ struct OrdersView: View {
             Spacer(minLength: 60)
             ZStack {
                 Circle().fill(AppTheme.surfaceElevated).frame(width: 72, height: 72)
-                Image(systemName: icon).font(.system(size: 28)).foregroundStyle(AppTheme.textTertiary)
+                Image(systemName: icon)
+                    .font(.title2)
+                    .foregroundStyle(AppTheme.textTertiary)
             }
             Text(title)
                 .font(.system(.headline, design: .rounded))
@@ -349,6 +358,7 @@ struct OrdersView: View {
             Spacer()
         }
         .padding(AppTheme.spacingXL)
+        .accessibilityElement(children: .combine)
     }
 }
 

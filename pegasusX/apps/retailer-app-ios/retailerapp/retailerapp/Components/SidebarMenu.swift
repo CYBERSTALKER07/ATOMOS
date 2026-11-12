@@ -165,7 +165,7 @@ struct SidebarMenu: View {
                         .fill(isLogout ? AppTheme.destructiveSoft.opacity(0.5) : AppTheme.accentSoft.opacity(0.4))
                         .frame(width: 36, height: 36)
                     Image(systemName: destination.icon)
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(.system(.subheadline, weight: .semibold))
                         .foregroundStyle(isLogout ? AppTheme.destructive : AppTheme.accent)
                 }
 
@@ -177,10 +177,11 @@ struct SidebarMenu: View {
 
                 if !isLogout {
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(.system(.caption2, weight: .semibold))
                         .foregroundStyle(AppTheme.textTertiary.opacity(0.5))
                 }
             }
+            .frame(minHeight: 44)
             .padding(.horizontal, AppTheme.spacingMD)
             .padding(.vertical, AppTheme.spacingSM)
             .background {
@@ -190,6 +191,7 @@ struct SidebarMenu: View {
             .contentShape(RoundedRectangle(cornerRadius: AppTheme.radiusMD))
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(destination.title)
     }
 }
 
@@ -201,11 +203,10 @@ enum SidebarDestination: String, CaseIterable {
     case insights
     case autoOrder
     case futureDemand
-    case dock
+    case inbound
     case inbox
     case profile
     case settings
-    case controlTower
     case credit
     case hq
     case logout
@@ -222,11 +223,10 @@ enum SidebarDestination: String, CaseIterable {
         case .insights: "Insights"
         case .autoOrder: "Auto-Order"
         case .futureDemand: "Reorder suggestions"
-        case .dock: "Dock Queue"
+        case .inbound: "Inbound Deliveries"
         case .inbox: "Inbox"
         case .profile: "Profile"
         case .settings: "Settings"
-        case .controlTower: "Control Tower"
         case .credit: "Credit & AR"
         case .hq: "HQ multi-store"
         case .logout: "Log Out"
@@ -240,11 +240,10 @@ enum SidebarDestination: String, CaseIterable {
         case .insights: "chart.line.uptrend.xyaxis"
         case .autoOrder: "wand.and.stars"
         case .futureDemand: "sparkles"
-        case .dock: "shippingbox.and.arrow.down"
+        case .inbound: "shippingbox.and.arrow.down"
         case .inbox: "tray"
         case .profile: "person"
         case .settings: "gearshape"
-        case .controlTower: "network"
         case .credit: "creditcard"
         case .hq: "building.2"
         case .logout: "rectangle.portrait.and.arrow.right"

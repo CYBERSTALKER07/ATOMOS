@@ -81,6 +81,22 @@ enum RetailerIdempotency {
         "claim-file:\(orderId):\(stableHash(bodyFingerprint))"
     }
 
+    /// RFC 9562 UUIDv7 generator (48-bit Unix epoch ms + ver 7 + variant 0b10 + 74 random bits)
+    /// for offline outbox & POS mutation idempotency (Invariant I1).
+    static func uuidV7(timestampMs: Int64? = nil) -> String {
+        let ms = UInt64(max(0, timestampMs ?? Int64(Date().timeIntervalSince1970 * 1000))) & 0x0000_FFFF_FFFF_FFFF
+        let randA = UInt16.random(in: 0...0x0FFF)
+        let randB = UInt64.random(in: 0...0x3FFF_FFFF_FFFF_FFFF)
+
+        let p1 = UInt32((ms >> 16) & 0xFFFF_FFFF)
+        let p2 = UInt16(ms & 0xFFFF)
+        let p3 = UInt16(0x7000) | randA
+        let p4 = UInt16(0x8000) | UInt16((randB >> 48) & 0x3FFF)
+        let p5 = randB & 0x0000_FFFF_FFFF_FFFF
+
+        return String(format: "%08x-%04x-%04x-%04x-%012llx", p1, p2, p3, p4, p5)
+    }
+
     private static func stableHash(_ input: String) -> String {
         var hash: UInt32 = 2166136261
         for scalar in input.unicodeScalars {

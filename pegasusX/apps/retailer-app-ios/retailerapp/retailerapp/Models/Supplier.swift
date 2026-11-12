@@ -42,14 +42,14 @@ struct Supplier: Codable, Identifiable, Hashable {
     init(
         id: String,
         name: String,
-        logoURL: String?,
-        category: String?,
-        orderCount: Int,
+        logoURL: String? = nil,
+        category: String? = nil,
+        orderCount: Int = 0,
         productCount: Int = 0,
-        lastOrderDate: String?,
-        phone: String?,
-        email: String?,
-        address: String?,
+        lastOrderDate: String? = nil,
+        phone: String? = nil,
+        email: String? = nil,
+        address: String? = nil,
         primaryCategoryID: String? = nil,
         operatingCategoryIDs: [String] = [],
         operatingCategoryNames: [String] = [],
@@ -151,15 +151,4 @@ struct Supplier: Codable, Identifiable, Hashable {
         }
         return String(name.prefix(2)).uppercased()
     }
-}
-
-extension Supplier {
-    static let samples: [Supplier] = [
-        Supplier(id: "sup-001", name: "Coca-Cola", logoURL: nil, category: "Beverages", orderCount: 14, lastOrderDate: "2026-03-15", phone: "+998901234567", email: "sales@coca-cola.uz", address: "Tashkent, Mirzo Ulugbek 42"),
-        Supplier(id: "sup-002", name: "Nestlé", logoURL: nil, category: "Dairy", orderCount: 9, lastOrderDate: "2026-03-12", phone: "+998901234568", email: "orders@nestle.uz", address: "Tashkent, Shaykhantahur 15"),
-        Supplier(id: "sup-003", name: "PepsiCo", logoURL: nil, category: "Beverages", orderCount: 7, lastOrderDate: "2026-03-10", phone: "+998901234569", email: "b2b@pepsico.uz", address: nil),
-        Supplier(id: "sup-004", name: "Unilever", logoURL: nil, category: "Household", orderCount: 5, lastOrderDate: "2026-03-08", phone: "+998901234570", email: nil, address: nil),
-        Supplier(id: "sup-005", name: "Local Farms Co.", logoURL: nil, category: "Produce", orderCount: 11, lastOrderDate: "2026-03-14", phone: "+998901234571", email: "hello@localfarms.uz", address: "Samarkand, Registan 7"),
-        Supplier(id: "sup-006", name: "Baker's Best", logoURL: nil, category: "Bakery", orderCount: 3, lastOrderDate: "2026-03-06", phone: nil, email: nil, address: nil),
-    ]
 }
