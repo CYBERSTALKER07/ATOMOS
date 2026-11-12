@@ -17,9 +17,11 @@ class PrefsOfflineQueueStore(
     private val prefs = context.applicationContext.getSharedPreferences(prefsName, Context.MODE_PRIVATE)
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 
+    @Synchronized
     fun readPending(): List<QueuedMutation> =
         readAll().filter { it.status == OfflineHttpSemantics.STATUS_PENDING }
 
+    @Synchronized
     fun readAll(): List<QueuedMutation> {
         val raw = prefs.getString(KEY, null) ?: return emptyList()
         return runCatching {
@@ -27,6 +29,7 @@ class PrefsOfflineQueueStore(
         }.getOrDefault(emptyList())
     }
 
+    @Synchronized
     fun writeAll(items: List<QueuedMutation>) {
         prefs.edit()
             .putString(
@@ -37,6 +40,7 @@ class PrefsOfflineQueueStore(
             .apply()
     }
 
+    @Synchronized
     fun enqueue(mutation: QueuedMutation): Boolean {
         val ep = OfflineHttpSemantics.normalizeEndpoint(mutation.endpoint)
         if (catalog != null && !catalog.isOfflineEligible(ep)) {
@@ -56,10 +60,12 @@ class PrefsOfflineQueueStore(
         return true
     }
 
+    @Synchronized
     fun ack(id: String) {
         writeAll(readAll().filterNot { it.id == id })
     }
 
+    @Synchronized
     fun markDead(id: String, error: String) {
         writeAll(
             readAll().map {
@@ -76,6 +82,7 @@ class PrefsOfflineQueueStore(
         )
     }
 
+    @Synchronized
     fun bumpAttempt(id: String, error: String) {
         writeAll(
             readAll().map {

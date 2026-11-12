@@ -26,7 +26,7 @@ echo "[3/5] Writers stamp SupplierId ..."
 grep -q 'SELECT SupplierId, DriverId, StopCount' apps/backend-go/analytics/route_analytics_worker.go
 grep -q 'perf.SupplierId' apps/backend-go/analytics/route_analytics_worker.go
 grep -q 'PlatformSupplierID' apps/backend-go/demand/models.go
-grep -q 'SupplierId": ResolveSupplierID' apps/backend-go/demand/worker_weather.go
+grep -q 'SupplierId": ResolveSupplierID' apps/backend-go/demand/signals_store.go
 grep -q '"SupplierId":     adj.SupplierId' apps/backend-go/demand/worker_sensing.go
 
 echo "[4/5] Handlers / PreferTenant wiring ..."

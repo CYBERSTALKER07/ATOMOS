@@ -976,7 +976,6 @@ Provides second-by-second telematics across all proprietary and contract vehicle
 ### 6.7 AI Demand Forecasting & Recommendations Acceptance
 Leverages machine learning to optimize inventory replenishment and eliminate stock-outs.
 - **Multi-Factor Demand Sensing:** The `DemandService` background sensing worker ingests external variables:
-  - Local micro-climate and severe weather forecasts (`worker_weather.go`).
   - Regional civil service and enterprise payday schedules (`SignalPayday`).
   - Public holidays, festivals, and cultural events (`SignalEvent`).
   - Store-level register sell-through velocities (`FlywheelDemandFeed`).

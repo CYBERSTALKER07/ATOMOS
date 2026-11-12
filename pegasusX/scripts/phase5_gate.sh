@@ -20,8 +20,8 @@ grep -q 'AllowMultiSupplierRegister' apps/backend-go/bootstrap/app.go
 
 echo "[3/7] TenantContext spine (Week 1) ..."
 (cd apps/backend-go && go test ./auth/ -run 'TestTenant|TestRequireTenant|TestAttachTenant' -count=1)
-grep -q 'AttachTenantFromClaims' apps/backend-go/main.go
-grep -q 'RequireTenant' apps/backend-go/main.go
+grep -q 'AttachTenantFromClaims' apps/backend-go/http_router.go apps/backend-go/main.go
+grep -q 'RequireTenant' apps/backend-go/http_router.go apps/backend-go/main.go
 grep -q 'withPartnerTenant\|Source: "partner"' apps/backend-go/partner/auth.go
 
 echo "[4/7] Order tenant resolution + IDOR unit path (Weeks 2–3) ..."

@@ -114,7 +114,7 @@ func (e *Engine) ApplyTransition(storedToken *string, previousStatus, nextStatus
 		*storedToken = e.Mint()
 		return
 	}
-	if e.ShouldMintOnTransition(previousStatus, nextStatus) && strings.TrimSpace(*storedToken) == "" {
+	if (e.ShouldMintOnTransition(previousStatus, nextStatus) || e.statusExposesToken(nextStatus)) && strings.TrimSpace(*storedToken) == "" {
 		*storedToken = e.Mint()
 	}
 }

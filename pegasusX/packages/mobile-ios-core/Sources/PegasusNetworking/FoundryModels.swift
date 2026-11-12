@@ -247,7 +247,6 @@ public struct DVIRChecklist8Point: Codable, Sendable {
     public var wipersAndFluidsOk: Bool
     public var emergencyKitAndExtinguisherOk: Bool
     public var cargoBoxSanitationOk: Bool
-    public var reeferTempCalibratedOk: Bool
 
     public init(
         steeringAndHornOk: Bool = true,
@@ -256,8 +255,7 @@ public struct DVIRChecklist8Point: Codable, Sendable {
         lightsAndHazardsOk: Bool = true,
         wipersAndFluidsOk: Bool = true,
         emergencyKitAndExtinguisherOk: Bool = true,
-        cargoBoxSanitationOk: Bool = true,
-        reeferTempCalibratedOk: Bool = true
+        cargoBoxSanitationOk: Bool = true
     ) {
         self.steeringAndHornOk = steeringAndHornOk
         self.serviceAndParkingBrakesOk = serviceAndParkingBrakesOk
@@ -266,7 +264,6 @@ public struct DVIRChecklist8Point: Codable, Sendable {
         self.wipersAndFluidsOk = wipersAndFluidsOk
         self.emergencyKitAndExtinguisherOk = emergencyKitAndExtinguisherOk
         self.cargoBoxSanitationOk = cargoBoxSanitationOk
-        self.reeferTempCalibratedOk = reeferTempCalibratedOk
     }
 
     enum CodingKeys: String, CodingKey {
@@ -277,7 +274,6 @@ public struct DVIRChecklist8Point: Codable, Sendable {
         case wipersAndFluidsOk = "wipers_and_fluids_ok"
         case emergencyKitAndExtinguisherOk = "emergency_kit_and_extinguisher_ok"
         case cargoBoxSanitationOk = "cargo_box_sanitation_ok"
-        case reeferTempCalibratedOk = "reefer_temp_calibrated_ok"
     }
 }
 
@@ -288,13 +284,11 @@ public struct FleetDVIRInspection: Codable, Sendable {
     public let vehicleId: String
     public let driverId: String
     public let inspectionType: String
-    public let requiresColdChain: Bool
     public let checklist: DVIRChecklist8Point
     public let failedPoints: [String]?
     public let criticalDefectFound: Bool
     public let redTagApplied: Bool
     public let odometerKm: Int64
-    public let reeferTempCelsius: Double
     public let status: String?
     public let maintenanceWorkOrderId: String?
     public let preventativeServiceDue: Bool
@@ -307,13 +301,11 @@ public struct FleetDVIRInspection: Codable, Sendable {
         vehicleId: String,
         driverId: String,
         inspectionType: String = "PRE_TRIP",
-        requiresColdChain: Bool = false,
         checklist: DVIRChecklist8Point = DVIRChecklist8Point(),
         failedPoints: [String]? = nil,
         criticalDefectFound: Bool = false,
         redTagApplied: Bool = false,
         odometerKm: Int64 = 0,
-        reeferTempCelsius: Double = 0.0,
         status: String? = nil,
         maintenanceWorkOrderId: String? = nil,
         preventativeServiceDue: Bool = false,
@@ -325,13 +317,11 @@ public struct FleetDVIRInspection: Codable, Sendable {
         self.vehicleId = vehicleId
         self.driverId = driverId
         self.inspectionType = inspectionType
-        self.requiresColdChain = requiresColdChain
         self.checklist = checklist
         self.failedPoints = failedPoints
         self.criticalDefectFound = criticalDefectFound
         self.redTagApplied = redTagApplied
         self.odometerKm = odometerKm
-        self.reeferTempCelsius = reeferTempCelsius
         self.status = status
         self.maintenanceWorkOrderId = maintenanceWorkOrderId
         self.preventativeServiceDue = preventativeServiceDue
@@ -345,13 +335,11 @@ public struct FleetDVIRInspection: Codable, Sendable {
         case vehicleId = "vehicle_id"
         case driverId = "driver_id"
         case inspectionType = "inspection_type"
-        case requiresColdChain = "requires_cold_chain"
         case checklist
         case failedPoints = "failed_points"
         case criticalDefectFound = "critical_defect_found"
         case redTagApplied = "red_tag_applied"
         case odometerKm = "odometer_km"
-        case reeferTempCelsius = "reefer_temp_celsius"
         case status
         case maintenanceWorkOrderId = "maintenance_work_order_id"
         case preventativeServiceDue = "preventative_service_due"
@@ -410,34 +398,6 @@ public struct YardGateCheckEvent: Codable, Sendable {
         case sealIntact = "seal_intact"
         case assignedBaySlot = "assigned_bay_slot"
         case createdAt = "created_at"
-    }
-}
-
-public struct PredictiveReeferRequest: Codable, Sendable {
-    public let vehicleId: String
-    public let coolingRateDegPerMin: Double
-    public let minRequiredRateDegPerMin: Double
-
-    public init(vehicleId: String, coolingRateDegPerMin: Double, minRequiredRateDegPerMin: Double = 0.25) {
-        self.vehicleId = vehicleId
-        self.coolingRateDegPerMin = coolingRateDegPerMin
-        self.minRequiredRateDegPerMin = minRequiredRateDegPerMin
-    }
-
-    enum CodingKeys: String, CodingKey {
-        case vehicleId = "vehicle_id"
-        case coolingRateDegPerMin = "cooling_rate_deg_per_min"
-        case minRequiredRateDegPerMin = "min_required_rate_deg_per_min"
-    }
-}
-
-public struct PredictiveReeferResponse: Codable, Sendable {
-    public let vehicleId: String
-    public let preFailureMaintenanceHold: Bool
-
-    enum CodingKeys: String, CodingKey {
-        case vehicleId = "vehicle_id"
-        case preFailureMaintenanceHold = "pre_failure_maintenance_hold"
     }
 }
 

@@ -377,19 +377,6 @@ export interface TwinVehicleInventoryRow {
   QtyOnVehicle?: number;
 }
 
-export interface TemperatureReadingView {
-  reading_id: string;
-  manifest_id: string;
-  sensor_id?: string;
-  recorded_at: string;
-  temp_c: number;
-  lat?: number;
-  lng?: number;
-  min_c?: number;
-  max_c?: number;
-  excursion?: boolean;
-}
-
 export interface LaborZoneCapacity {
   zoneH3: string;
   date: string;

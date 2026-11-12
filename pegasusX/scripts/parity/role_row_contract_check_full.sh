@@ -14,9 +14,9 @@ trap 'rm -f "$ROUTES_TMP" "$PATHS_TMP"' EXIT
 
 # Collect registered HTTP paths from route mounts, main.go, and handler doc comments.
 grep -RhE '"/v1/[^"]+"' \
+  apps/backend-go/*.go \
   apps/backend-go/*/*.go \
   apps/backend-go/*/*/*.go \
-  apps/backend-go/main.go \
   2>/dev/null \
   | grep -v '_test.go' \
   | sed -E 's/.*"(\/v1\/[^"]+)".*/\1/' \

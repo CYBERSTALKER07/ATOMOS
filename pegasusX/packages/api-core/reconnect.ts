@@ -13,12 +13,12 @@ export function reconnectDelayMs(
   attempt: number,
   options: ReconnectBackoffOptions = {},
 ): number {
-  const baseMs = options.baseMs ?? 2_000;
-  const maxMs = options.maxMs ?? 60_000;
+  const baseMs = Math.max(100, options.baseMs ?? 2_000);
+  const maxMs = Math.max(baseMs, options.maxMs ?? 60_000);
   const cappedAttempt = Math.min(Math.max(attempt, 0), 10);
   const exp = Math.min(baseMs * 2 ** cappedAttempt, maxMs);
   const jitter = Math.floor(Math.random() * (exp / 2 + 1));
-  const backoff = exp + jitter;
+  const backoff = Math.min(exp + jitter, maxMs);
   const retryAfterMs = (options.retryAfterSeconds ?? 0) * 1_000;
   return Math.max(backoff, retryAfterMs);
 }

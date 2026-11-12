@@ -140,15 +140,11 @@ The worker runtime tier executes 24 specialized background loops (`file:///Users
     - *What it is*: Retailer predictive reordering batch worker running every 12 hours.
     - *How it works*: Evaluates retailer historical ordering cadence and generates tailored draft preorders.
     - *Why it is there*: Accelerates the B2B purchasing cycle for retail store owners.
-16. **Weather Ingestion Worker** (`runtime_workers.go:129-148`)
-    - *What it is*: Ingests 14-day weather forecasts every 6 hours.
-    - *How it works*: Fetches precipitation, temperature, and storm alerts for target delivery zones, writing forecasts into `DemandWeatherSnapshots`.
-    - *Why it is there*: Feeds environmental demand sensing models (e.g., increased beverage demand during heat waves).
-17. **Demand Density Worker** (`runtime_workers.go:151`)
+16. **Demand Density Worker** (`runtime_workers.go:151`)
     - *What it is*: Spatial order density aggregator running every 6 hours.
     - *How it works*: Groups active orders by Uber H3 resolution-9 hexagons, computing order velocity heatmaps.
     - *Why it is there*: Allows warehouse dispatchers to visualize geographic demand concentration.
-18. **Control Tower Playbook Worker** (`runtime_workers.go:156`)
+17. **Control Tower Playbook Worker** (`runtime_workers.go:156`)
     - *What it is*: Automated mitigation engine for operational anomalies.
     - *How it works*: Evaluates live system metrics against pre-configured playbooks (e.g. driver strike, severe weather delay, inventory spoilage) and triggers automated alerts.
     - *Why it is there*: Minimizes human reaction time during supply chain disruptions.

@@ -215,5 +215,5 @@ sequenceDiagram
 ### 5.2. Role Invariants Checklist
 - [x] **Zero Gate Exit Without Intact Seal**: Vehicles on active route manifests cannot exit the perimeter without a verified, matching bolt seal barcode.
 - [x] **Non-Bypassable Red-Tags**: Only certified workshop mechanics can clear a mechanical Red-Tag; drivers and dispatchers cannot override.
-- [x] **HACCP Cold-Chain Compliance**: Pre-trip reefer temperature setpoints must be verified before perishable loading.
+- [x] **HACCP Cold-Chain Compliance**: Perishable loads use the cold-chain flag. Product temperature setpoints are not part of the catalog.
 - [x] **Split Liability on Rescue**: Breakdown rescue deterministically splits cash liability between initial and rescue drivers.

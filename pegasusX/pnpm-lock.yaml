@@ -13,9 +13,6 @@ importers:
       '@pegasusx/types':
         specifier: workspace:*
         version: link:../../packages/types
-      '@pegasusx/ui-kit':
-        specifier: workspace:*
-        version: link:../../packages/ui-kit
       '@tauri-apps/api':
         specifier: ^2.11.0
         version: 2.11.0
@@ -37,6 +34,12 @@ importers:
       '@tauri-apps/plugin-updater':
         specifier: ^2.9.0
         version: 2.10.1
+      framer-motion:
+        specifier: ^12.38.0
+        version: 12.42.2(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      lucide-react:
+        specifier: ^1.7.0
+        version: 1.23.0(react@19.0.0)
       next:
         specifier: ^15.0.0
         version: 15.5.12(babel-plugin-react-compiler@1.0.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
@@ -117,24 +120,12 @@ importers:
       '@pegasusx/desktop-cache':
         specifier: workspace:*
         version: link:../../packages/desktop-cache
-      '@pegasusx/explain-ui':
-        specifier: workspace:*
-        version: link:../../packages/explain-ui
       '@pegasusx/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
-      '@pegasusx/pulse-ui':
-        specifier: workspace:*
-        version: link:../../packages/pulse-ui
       '@pegasusx/types':
         specifier: workspace:*
         version: link:../../packages/types
-      '@pegasusx/ui-kit':
-        specifier: workspace:*
-        version: link:../../packages/ui-kit
-      '@pegasusx/ui-maps':
-        specifier: workspace:*
-        version: link:../../packages/ui-maps
       '@pegasusx/ws-refresh-contract':
         specifier: workspace:*
         version: link:../../packages/ws-refresh-contract
@@ -329,24 +320,12 @@ importers:
       '@pegasusx/desktop-cache':
         specifier: workspace:*
         version: link:../../packages/desktop-cache
-      '@pegasusx/explain-ui':
-        specifier: workspace:*
-        version: link:../../packages/explain-ui
       '@pegasusx/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
-      '@pegasusx/motion-tokens':
-        specifier: workspace:*
-        version: link:../../packages/motion-tokens
-      '@pegasusx/pulse-ui':
-        specifier: workspace:*
-        version: link:../../packages/pulse-ui
       '@pegasusx/types':
         specifier: workspace:*
         version: link:../../packages/types
-      '@pegasusx/ui-kit':
-        specifier: workspace:*
-        version: link:../../packages/ui-kit
       '@tauri-apps/api':
         specifier: ^2.10.1
         version: 2.11.0
@@ -453,6 +432,15 @@ importers:
 
   apps/supplier-portal:
     dependencies:
+      '@deck.gl/geo-layers':
+        specifier: ^9.3.5
+        version: 9.3.5(@deck.gl/core@9.3.5)(@deck.gl/extensions@9.3.5(@deck.gl/core@9.3.5)(@luma.gl/core@9.3.5)(@luma.gl/engine@9.3.5(@luma.gl/core@9.3.5)(@luma.gl/shadertools@9.3.5(@luma.gl/core@9.3.5))))(@deck.gl/layers@9.3.5(@deck.gl/core@9.3.5)(@loaders.gl/core@4.4.3)(@luma.gl/core@9.3.5)(@luma.gl/engine@9.3.5(@luma.gl/core@9.3.5)(@luma.gl/shadertools@9.3.5(@luma.gl/core@9.3.5))))(@deck.gl/mesh-layers@9.3.5(@deck.gl/core@9.3.5)(@loaders.gl/core@4.4.3)(@luma.gl/core@9.3.5)(@luma.gl/engine@9.3.5(@luma.gl/core@9.3.5)(@luma.gl/shadertools@9.3.5(@luma.gl/core@9.3.5)))(@luma.gl/gltf@9.3.5(@luma.gl/core@9.3.5)(@luma.gl/engine@9.3.5(@luma.gl/core@9.3.5)(@luma.gl/shadertools@9.3.5(@luma.gl/core@9.3.5)))(@luma.gl/shadertools@9.3.5(@luma.gl/core@9.3.5)))(@luma.gl/shadertools@9.3.5(@luma.gl/core@9.3.5)))(@loaders.gl/core@4.4.3)(@luma.gl/core@9.3.5)(@luma.gl/engine@9.3.5(@luma.gl/core@9.3.5)(@luma.gl/shadertools@9.3.5(@luma.gl/core@9.3.5)))
+      '@deck.gl/layers':
+        specifier: ^9.3.5
+        version: 9.3.5(@deck.gl/core@9.3.5)(@loaders.gl/core@4.4.3)(@luma.gl/core@9.3.5)(@luma.gl/engine@9.3.5(@luma.gl/core@9.3.5)(@luma.gl/shadertools@9.3.5(@luma.gl/core@9.3.5)))
+      '@deck.gl/react':
+        specifier: ^9.3.5
+        version: 9.3.5(@deck.gl/core@9.3.5)(@deck.gl/widgets@9.3.5(@deck.gl/core@9.3.5)(@luma.gl/core@9.3.5))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       '@heroui/react':
         specifier: ^3.1.0
         version: 3.1.0(@react-spectrum/provider@3.11.1(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(tailwindcss@4.3.0)
@@ -471,27 +459,12 @@ importers:
       '@pegasusx/desktop-cache':
         specifier: workspace:*
         version: link:../../packages/desktop-cache
-      '@pegasusx/explain-ui':
-        specifier: workspace:*
-        version: link:../../packages/explain-ui
       '@pegasusx/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
-      '@pegasusx/pulse-ui':
-        specifier: workspace:*
-        version: link:../../packages/pulse-ui
       '@pegasusx/types':
         specifier: workspace:*
         version: link:../../packages/types
-      '@pegasusx/ui-charts':
-        specifier: workspace:*
-        version: link:../../packages/ui-charts
-      '@pegasusx/ui-kit':
-        specifier: workspace:*
-        version: link:../../packages/ui-kit
-      '@pegasusx/ui-maps':
-        specifier: workspace:*
-        version: link:../../packages/ui-maps
       '@pegasusx/validation':
         specifier: workspace:*
         version: link:../../packages/validation
@@ -519,6 +492,12 @@ importers:
       '@tauri-apps/plugin-updater':
         specifier: ^2.9.0
         version: 2.10.1
+      d3:
+        specifier: ^7.9.0
+        version: 7.9.0
+      deck.gl:
+        specifier: ^9.3.5
+        version: 9.3.5(@arcgis/core@4.34.8)(@luma.gl/gltf@9.3.5(@luma.gl/core@9.3.5)(@luma.gl/engine@9.3.5(@luma.gl/core@9.3.5)(@luma.gl/shadertools@9.3.5(@luma.gl/core@9.3.5)))(@luma.gl/shadertools@9.3.5(@luma.gl/core@9.3.5)))(@luma.gl/shadertools@9.3.5(@luma.gl/core@9.3.5))(@luma.gl/webgl@9.3.5(@luma.gl/core@9.3.5))(@math.gl/web-mercator@4.1.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       firebase:
         specifier: ^12.12.0
         version: 12.14.0
@@ -562,6 +541,9 @@ importers:
       '@testing-library/react':
         specifier: ^16.3.2
         version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      '@types/d3':
+        specifier: ^7.4.3
+        version: 7.4.3
       '@types/node':
         specifier: ^20.0.0
         version: 20.19.41
@@ -592,6 +574,15 @@ importers:
 
   apps/warehouse-portal:
     dependencies:
+      '@deck.gl/geo-layers':
+        specifier: ^9.3.5
+        version: 9.3.5(@deck.gl/core@9.3.5)(@deck.gl/extensions@9.3.5(@deck.gl/core@9.3.5)(@luma.gl/core@9.3.5)(@luma.gl/engine@9.3.5(@luma.gl/core@9.3.5)(@luma.gl/shadertools@9.3.5(@luma.gl/core@9.3.5))))(@deck.gl/layers@9.3.5(@deck.gl/core@9.3.5)(@loaders.gl/core@4.4.3)(@luma.gl/core@9.3.5)(@luma.gl/engine@9.3.5(@luma.gl/core@9.3.5)(@luma.gl/shadertools@9.3.5(@luma.gl/core@9.3.5))))(@deck.gl/mesh-layers@9.3.5(@deck.gl/core@9.3.5)(@loaders.gl/core@4.4.3)(@luma.gl/core@9.3.5)(@luma.gl/engine@9.3.5(@luma.gl/core@9.3.5)(@luma.gl/shadertools@9.3.5(@luma.gl/core@9.3.5)))(@luma.gl/gltf@9.3.5(@luma.gl/core@9.3.5)(@luma.gl/engine@9.3.5(@luma.gl/core@9.3.5)(@luma.gl/shadertools@9.3.5(@luma.gl/core@9.3.5)))(@luma.gl/shadertools@9.3.5(@luma.gl/core@9.3.5)))(@luma.gl/shadertools@9.3.5(@luma.gl/core@9.3.5)))(@loaders.gl/core@4.4.3)(@luma.gl/core@9.3.5)(@luma.gl/engine@9.3.5(@luma.gl/core@9.3.5)(@luma.gl/shadertools@9.3.5(@luma.gl/core@9.3.5)))
+      '@deck.gl/layers':
+        specifier: ^9.3.5
+        version: 9.3.5(@deck.gl/core@9.3.5)(@loaders.gl/core@4.4.3)(@luma.gl/core@9.3.5)(@luma.gl/engine@9.3.5(@luma.gl/core@9.3.5)(@luma.gl/shadertools@9.3.5(@luma.gl/core@9.3.5)))
+      '@deck.gl/react':
+        specifier: ^9.3.5
+        version: 9.3.5(@deck.gl/core@9.3.5)(@deck.gl/widgets@9.3.5(@deck.gl/core@9.3.5)(@luma.gl/core@9.3.5))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       '@heroui/react':
         specifier: ^3.1.0
         version: 3.1.0(@react-spectrum/provider@3.11.1(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(tailwindcss@4.3.0)
@@ -610,27 +601,12 @@ importers:
       '@pegasusx/desktop-cache':
         specifier: workspace:*
         version: link:../../packages/desktop-cache
-      '@pegasusx/explain-ui':
-        specifier: workspace:*
-        version: link:../../packages/explain-ui
       '@pegasusx/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
-      '@pegasusx/pulse-ui':
-        specifier: workspace:*
-        version: link:../../packages/pulse-ui
       '@pegasusx/types':
         specifier: workspace:*
         version: link:../../packages/types
-      '@pegasusx/ui-charts':
-        specifier: workspace:*
-        version: link:../../packages/ui-charts
-      '@pegasusx/ui-kit':
-        specifier: workspace:*
-        version: link:../../packages/ui-kit
-      '@pegasusx/ui-maps':
-        specifier: workspace:*
-        version: link:../../packages/ui-maps
       '@pegasusx/ws-refresh-contract':
         specifier: workspace:*
         version: link:../../packages/ws-refresh-contract
@@ -655,6 +631,12 @@ importers:
       '@tauri-apps/plugin-updater':
         specifier: ^2.9.0
         version: 2.10.1
+      d3:
+        specifier: ^7.9.0
+        version: 7.9.0
+      deck.gl:
+        specifier: ^9.3.5
+        version: 9.3.5(@arcgis/core@4.34.8)(@luma.gl/gltf@9.3.5(@luma.gl/core@9.3.5)(@luma.gl/engine@9.3.5(@luma.gl/core@9.3.5)(@luma.gl/shadertools@9.3.5(@luma.gl/core@9.3.5)))(@luma.gl/shadertools@9.3.5(@luma.gl/core@9.3.5)))(@luma.gl/shadertools@9.3.5(@luma.gl/core@9.3.5))(@luma.gl/webgl@9.3.5(@luma.gl/core@9.3.5))(@math.gl/web-mercator@4.1.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       firebase:
         specifier: ^12.12.0
         version: 12.14.0
@@ -704,6 +686,9 @@ importers:
       '@testing-library/react':
         specifier: ^16.3.2
         version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      '@types/d3':
+        specifier: ^7.4.3
+        version: 7.4.3
       '@types/node':
         specifier: ^20.0.0
         version: 20.19.41
@@ -11073,6 +11058,13 @@ snapshots:
       - '@75lb/nature'
       - '@loaders.gl/core'
 
+  '@deck.gl/react@9.3.5(@deck.gl/core@9.3.5)(@deck.gl/widgets@9.3.5(@deck.gl/core@9.3.5)(@luma.gl/core@9.3.5))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
+    dependencies:
+      '@deck.gl/core': 9.3.5
+      '@deck.gl/widgets': 9.3.5(@deck.gl/core@9.3.5)(@luma.gl/core@9.3.5)
+      react: 19.0.0
+      react-dom: 19.0.0(react@19.0.0)
+
   '@deck.gl/react@9.3.5(@deck.gl/core@9.3.5)(@deck.gl/widgets@9.3.5(@deck.gl/core@9.3.5)(@luma.gl/core@9.3.5))(react-dom@19.2.0(react@19.0.0))(react@19.0.0)':
     dependencies:
       '@deck.gl/core': 9.3.5
@@ -16190,6 +16182,35 @@ snapshots:
 
   decimal.js@10.6.0: {}
 
+  deck.gl@9.3.5(@arcgis/core@4.34.8)(@luma.gl/gltf@9.3.5(@luma.gl/core@9.3.5)(@luma.gl/engine@9.3.5(@luma.gl/core@9.3.5)(@luma.gl/shadertools@9.3.5(@luma.gl/core@9.3.5)))(@luma.gl/shadertools@9.3.5(@luma.gl/core@9.3.5)))(@luma.gl/shadertools@9.3.5(@luma.gl/core@9.3.5))(@luma.gl/webgl@9.3.5(@luma.gl/core@9.3.5))(@math.gl/web-mercator@4.1.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0):
+    dependencies:
+      '@deck.gl/aggregation-layers': 9.3.5(@deck.gl/core@9.3.5)(@deck.gl/layers@9.3.5(@deck.gl/core@9.3.5)(@loaders.gl/core@4.4.3)(@luma.gl/core@9.3.5)(@luma.gl/engine@9.3.5(@luma.gl/core@9.3.5)(@luma.gl/shadertools@9.3.5(@luma.gl/core@9.3.5))))(@luma.gl/core@9.3.5)(@luma.gl/engine@9.3.5(@luma.gl/core@9.3.5)(@luma.gl/shadertools@9.3.5(@luma.gl/core@9.3.5)))
+      '@deck.gl/arcgis': 9.3.5(@arcgis/core@4.34.8)(@deck.gl/core@9.3.5)(@luma.gl/core@9.3.5)(@luma.gl/engine@9.3.5(@luma.gl/core@9.3.5)(@luma.gl/shadertools@9.3.5(@luma.gl/core@9.3.5)))(@luma.gl/webgl@9.3.5(@luma.gl/core@9.3.5))
+      '@deck.gl/carto': 9.3.5(@deck.gl/aggregation-layers@9.3.5(@deck.gl/core@9.3.5)(@deck.gl/layers@9.3.5(@deck.gl/core@9.3.5)(@loaders.gl/core@4.4.3)(@luma.gl/core@9.3.5)(@luma.gl/engine@9.3.5(@luma.gl/core@9.3.5)(@luma.gl/shadertools@9.3.5(@luma.gl/core@9.3.5))))(@luma.gl/core@9.3.5)(@luma.gl/engine@9.3.5(@luma.gl/core@9.3.5)(@luma.gl/shadertools@9.3.5(@luma.gl/core@9.3.5))))(@deck.gl/core@9.3.5)(@deck.gl/extensions@9.3.5(@deck.gl/core@9.3.5)(@luma.gl/core@9.3.5)(@luma.gl/engine@9.3.5(@luma.gl/core@9.3.5)(@luma.gl/shadertools@9.3.5(@luma.gl/core@9.3.5))))(@deck.gl/geo-layers@9.3.5(@deck.gl/core@9.3.5)(@deck.gl/extensions@9.3.5(@deck.gl/core@9.3.5)(@luma.gl/core@9.3.5)(@luma.gl/engine@9.3.5(@luma.gl/core@9.3.5)(@luma.gl/shadertools@9.3.5(@luma.gl/core@9.3.5))))(@deck.gl/layers@9.3.5(@deck.gl/core@9.3.5)(@loaders.gl/core@4.4.3)(@luma.gl/core@9.3.5)(@luma.gl/engine@9.3.5(@luma.gl/core@9.3.5)(@luma.gl/shadertools@9.3.5(@luma.gl/core@9.3.5))))(@deck.gl/mesh-layers@9.3.5(@deck.gl/core@9.3.5)(@loaders.gl/core@4.4.3)(@luma.gl/core@9.3.5)(@luma.gl/engine@9.3.5(@luma.gl/core@9.3.5)(@luma.gl/shadertools@9.3.5(@luma.gl/core@9.3.5)))(@luma.gl/gltf@9.3.5(@luma.gl/core@9.3.5)(@luma.gl/engine@9.3.5(@luma.gl/core@9.3.5)(@luma.gl/shadertools@9.3.5(@luma.gl/core@9.3.5)))(@luma.gl/shadertools@9.3.5(@luma.gl/core@9.3.5)))(@luma.gl/shadertools@9.3.5(@luma.gl/core@9.3.5)))(@loaders.gl/core@4.4.3)(@luma.gl/core@9.3.5)(@luma.gl/engine@9.3.5(@luma.gl/core@9.3.5)(@luma.gl/shadertools@9.3.5(@luma.gl/core@9.3.5))))(@deck.gl/layers@9.3.5(@deck.gl/core@9.3.5)(@loaders.gl/core@4.4.3)(@luma.gl/core@9.3.5)(@luma.gl/engine@9.3.5(@luma.gl/core@9.3.5)(@luma.gl/shadertools@9.3.5(@luma.gl/core@9.3.5))))(@loaders.gl/core@4.4.3)(@luma.gl/core@9.3.5)
+      '@deck.gl/core': 9.3.5
+      '@deck.gl/extensions': 9.3.5(@deck.gl/core@9.3.5)(@luma.gl/core@9.3.5)(@luma.gl/engine@9.3.5(@luma.gl/core@9.3.5)(@luma.gl/shadertools@9.3.5(@luma.gl/core@9.3.5)))
+      '@deck.gl/geo-layers': 9.3.5(@deck.gl/core@9.3.5)(@deck.gl/extensions@9.3.5(@deck.gl/core@9.3.5)(@luma.gl/core@9.3.5)(@luma.gl/engine@9.3.5(@luma.gl/core@9.3.5)(@luma.gl/shadertools@9.3.5(@luma.gl/core@9.3.5))))(@deck.gl/layers@9.3.5(@deck.gl/core@9.3.5)(@loaders.gl/core@4.4.3)(@luma.gl/core@9.3.5)(@luma.gl/engine@9.3.5(@luma.gl/core@9.3.5)(@luma.gl/shadertools@9.3.5(@luma.gl/core@9.3.5))))(@deck.gl/mesh-layers@9.3.5(@deck.gl/core@9.3.5)(@loaders.gl/core@4.4.3)(@luma.gl/core@9.3.5)(@luma.gl/engine@9.3.5(@luma.gl/core@9.3.5)(@luma.gl/shadertools@9.3.5(@luma.gl/core@9.3.5)))(@luma.gl/gltf@9.3.5(@luma.gl/core@9.3.5)(@luma.gl/engine@9.3.5(@luma.gl/core@9.3.5)(@luma.gl/shadertools@9.3.5(@luma.gl/core@9.3.5)))(@luma.gl/shadertools@9.3.5(@luma.gl/core@9.3.5)))(@luma.gl/shadertools@9.3.5(@luma.gl/core@9.3.5)))(@loaders.gl/core@4.4.3)(@luma.gl/core@9.3.5)(@luma.gl/engine@9.3.5(@luma.gl/core@9.3.5)(@luma.gl/shadertools@9.3.5(@luma.gl/core@9.3.5)))
+      '@deck.gl/google-maps': 9.3.5(@deck.gl/core@9.3.5)(@luma.gl/core@9.3.5)(@luma.gl/webgl@9.3.5(@luma.gl/core@9.3.5))
+      '@deck.gl/json': 9.3.5(@deck.gl/core@9.3.5)
+      '@deck.gl/layers': 9.3.5(@deck.gl/core@9.3.5)(@loaders.gl/core@4.4.3)(@luma.gl/core@9.3.5)(@luma.gl/engine@9.3.5(@luma.gl/core@9.3.5)(@luma.gl/shadertools@9.3.5(@luma.gl/core@9.3.5)))
+      '@deck.gl/mapbox': 9.3.5(@deck.gl/core@9.3.5)(@luma.gl/core@9.3.5)(@math.gl/web-mercator@4.1.0)
+      '@deck.gl/mesh-layers': 9.3.5(@deck.gl/core@9.3.5)(@loaders.gl/core@4.4.3)(@luma.gl/core@9.3.5)(@luma.gl/engine@9.3.5(@luma.gl/core@9.3.5)(@luma.gl/shadertools@9.3.5(@luma.gl/core@9.3.5)))(@luma.gl/gltf@9.3.5(@luma.gl/core@9.3.5)(@luma.gl/engine@9.3.5(@luma.gl/core@9.3.5)(@luma.gl/shadertools@9.3.5(@luma.gl/core@9.3.5)))(@luma.gl/shadertools@9.3.5(@luma.gl/core@9.3.5)))(@luma.gl/shadertools@9.3.5(@luma.gl/core@9.3.5))
+      '@deck.gl/react': 9.3.5(@deck.gl/core@9.3.5)(@deck.gl/widgets@9.3.5(@deck.gl/core@9.3.5)(@luma.gl/core@9.3.5))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      '@deck.gl/widgets': 9.3.5(@deck.gl/core@9.3.5)(@luma.gl/core@9.3.5)
+      '@loaders.gl/core': 4.4.3
+      '@luma.gl/core': 9.3.5
+      '@luma.gl/engine': 9.3.5(@luma.gl/core@9.3.5)(@luma.gl/shadertools@9.3.5(@luma.gl/core@9.3.5))
+    optionalDependencies:
+      '@arcgis/core': 4.34.8
+      react: 19.0.0
+      react-dom: 19.0.0(react@19.0.0)
+    transitivePeerDependencies:
+      - '@75lb/nature'
+      - '@luma.gl/gltf'
+      - '@luma.gl/shadertools'
+      - '@luma.gl/webgl'
+      - '@math.gl/web-mercator'
+
   deck.gl@9.3.5(@arcgis/core@4.34.8)(@luma.gl/gltf@9.3.5(@luma.gl/core@9.3.5)(@luma.gl/engine@9.3.5(@luma.gl/core@9.3.5)(@luma.gl/shadertools@9.3.5(@luma.gl/core@9.3.5)))(@luma.gl/shadertools@9.3.5(@luma.gl/core@9.3.5)))(@luma.gl/shadertools@9.3.5(@luma.gl/core@9.3.5))(@luma.gl/webgl@9.3.5(@luma.gl/core@9.3.5))(@math.gl/web-mercator@4.1.0)(react-dom@19.2.0(react@19.0.0))(react@19.0.0):
     dependencies:
       '@deck.gl/aggregation-layers': 9.3.5(@deck.gl/core@9.3.5)(@deck.gl/layers@9.3.5(@deck.gl/core@9.3.5)(@loaders.gl/core@4.4.3)(@luma.gl/core@9.3.5)(@luma.gl/engine@9.3.5(@luma.gl/core@9.3.5)(@luma.gl/shadertools@9.3.5(@luma.gl/core@9.3.5))))(@luma.gl/core@9.3.5)(@luma.gl/engine@9.3.5(@luma.gl/core@9.3.5)(@luma.gl/shadertools@9.3.5(@luma.gl/core@9.3.5)))
@@ -18804,7 +18825,7 @@ snapshots:
 
   motion@12.40.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0):
     dependencies:
-      framer-motion: 12.40.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      framer-motion: 12.42.2(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       tslib: 2.8.1
     optionalDependencies:
       react: 19.0.0

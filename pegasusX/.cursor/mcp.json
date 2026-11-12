@@ -11,6 +11,12 @@
         "CYPHER_PROVIDER": "google",
         "CYPHER_MODEL": "gemini-2.0-flash"
       }
+    },
+    "mobbin": {
+      "url": "https://api.mobbin.com/mcp"
+    },
+    "21st-dev": {
+      "url": "https://21st.dev/api/mcp"
     }
   }
 }

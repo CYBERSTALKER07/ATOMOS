@@ -245,7 +245,6 @@ export interface DVIRChecklist8Point {
   wipers_and_fluids_ok: boolean;
   emergency_kit_and_extinguisher_ok: boolean;
   cargo_box_sanitation_ok: boolean;
-  reefer_temp_calibrated_ok: boolean;
 }
 
 export interface FleetDVIRInspection {
@@ -255,13 +254,11 @@ export interface FleetDVIRInspection {
   vehicle_id: string;
   driver_id: string;
   inspection_type: 'PRE_TRIP' | 'POST_TRIP' | string;
-  requires_cold_chain: boolean;
   checklist: DVIRChecklist8Point;
   failed_points?: string[];
   critical_defect_found?: boolean;
   red_tag_applied?: boolean;
   odometer_km: number;
-  reefer_temp_celsius: number;
   status?: 'DISPATCH_AUTHORIZED' | 'RED_TAG_QUARANTINE' | string;
   maintenance_work_order_id?: string;
   preventative_service_due?: boolean;
@@ -286,17 +283,6 @@ export interface YardGateCheckEvent {
   seal_intact: boolean;
   assigned_bay_slot?: YardBaySlot | string;
   created_at?: string;
-}
-
-export interface PredictiveReeferRequest {
-  vehicle_id: string;
-  cooling_rate_deg_per_min: number;
-  min_required_rate_deg_per_min: number;
-}
-
-export interface PredictiveReeferResponse {
-  vehicle_id: string;
-  pre_failure_maintenance_hold: boolean;
 }
 
 export interface DispatchCheckResponse {

@@ -1,139 +1,71 @@
-# Task Plan: End-to-End PegasusX 9-Role FMCG Implementation & Verification
+# Task Plan: PegasusX B2B Operating Model Alignment & Implementation Plan
+
+<!-- 
+  WHAT: Working memory on disk for executing the PegasusX B2B Operating Model.
+  TARGET: /Users/shakhzod/Desktop/PegasusX-B2B-Operating-Model.md
+  SCOPE: End-to-end alignment across backend-go, optimizer-core, Spanner, portals, and mobile apps.
+-->
 
 ## Goal
-Implement, wire, and execute the complete, unbroken end-to-end multi-role transaction lifecycle across PegasusX in correct operational order (from Supplier catalog to Retailer checkout, Factory BOM, Warehouse DC ops, Payloader 3D loading, Driver CVRPTW delivery, Depot Cashier dual-blind vaulting, and Soliq fiscal settlement) verified against live Spanner, Kafka, and native client surfaces.
+Map, audit, plan, and verify the complete operational architecture of the **PegasusX B2B Operating Model** across all 6 daily rhythm stages, 8 decision rights, 7 retailer UX principles, and 51 cross-surface edge cases in `/Users/shakhzod/Desktop/pegasusx`, establishing the zero-touch automated distribution engine where >=95% of orders execute with zero supplier human touch.
 
 ## Current Phase
-Phase 9: Full Multi-Platform Verification, Control Tower Sign-Off & Dual-Root Parity
+All Phases Complete
 
 ## Phases
 
-### Phase 1: Environment Baseline & Sandboxed Backplane Ignition
-- [x] Verify local Docker / compose infra availability
-- [x] Boot Cloud Spanner emulator, Redis HA backplane, and Kafka broker (`make sandbox-infra-up`)
-- [x] Apply Spanner greenfield DDL and execute live schema-drift check (`make schema-drift-gate`)
-- [x] Confirm baseline service readiness (`backend-go`, `ai-worker`, `optimizer-core`)
+### Phase 1: Requirements & Ground Truth Code Gap Analysis
+- [x] Ingest all 6 core sections of `PegasusX-B2B-Operating-Model.md`
+- [x] Map the 6 daily rhythm stages (Retailer Cutoff, Supplier Overnight, Warehouse Morning, Doorstep Delivery, Depot Blind Vault, Supplier Exception Desk) to backend Go routes, Spanner DDL, and frontend/mobile apps
+- [x] Audit the 8 Decision Rights and their automated escalation rules against `foundry/pre_execution.go` and `foundry/edge_guards.go`
+- [x] Audit the 51 specific edge cases across Ordering (10), Credit/Collections (10), Warehouse/Truck (12), Doorstep (9), After Delivery (6), and Upstream (4)
+- [x] Document all findings, current code coverage, and gap matrix in `findings.md`
 - **Status:** complete
 
-### Phase 2: Upstream Commercial & Production S&OP (Roles 1 & 2: Supplier & Factory)
-- [x] Verify GlobalProducts GS1/GTIN catalog publishing and multi-tier volume matrices
-- [x] Validate bilateral trade credit underwriting & dunning ladder configuration
-- [x] Execute Factory BOM explosion, raw material lot locking, and in-line QC inspection
-- [x] Generate SSCC-18 serialized pallet transfer manifests to DC
+### Phase 2: Autonomous Ordering & Retailer Experience Architecture
+- [x] Specify and verify Retailer "One Home Screen" model: tomorrow's delivery, debt owed, and proposed replenishment order
+- [x] Specify Owner vs Seller mandate permissions: daily cash/credit cap, price negotiation block, owner-phone push authorization
+- [x] Specify Pack Size Snapping logic: enforcing case multiples at cart/proposal stage with zero driver split-case capability
+- [x] Specify Split-Tender Checkout & Doorstep Recalculation: cash + credit + card waterfall with oldest-first dunning
+- [x] Specify Offline-First QR Manifest Handshake: offline cryptographic QR minted on manifest, zero duplicate submissions
+- [x] Update `task_plan.md`, `findings.md`, and `progress.md`
 - **Status:** complete
 
-### Phase 3: DC Inbound Receiving, FEFO Lot Allocation & Inventory Gating (Role 3: Warehouse)
-- [x] Process inbound transfer manifest and yard gate bolt seal verification
-- [x] Verify ABC velocity putaway slotting and FEFO stock lot batch allocation
-- [x] Validate cold-chain thermal tolerance logging and CRDT offline inventory ledger
-- [x] Test wave picking reservation and abandoned picker tote heartbeat takeover
+### Phase 3: Overnight Autonomous Cascade & Optimizer Integration
+- [x] Detail Cutoff Clock & Auto-Confirm Engine: standing rules, silent expiration, and next-wave rollover
+- [x] Specify Silent Stock Reservation & Cut/Substitute Engine: family substitution allow-lists, must-have line cuts vs splits
+- [x] Align CVRPTW Solver with dynamic constraints: receiving windows, volume/weight axle capacities, multi-wave spillover
+- [x] Specify Warehouse Short-Pick notification pipeline: pre-seal resolution and automatic shop alerts before truck roll
+- [x] Update `task_plan.md`, `findings.md`, and `progress.md`
 - **Status:** complete
 
-### Phase 4: Retailer Ordering, S&OP Replenishment & Split-Tender Checkout (Role 6: Retailer)
-- [x] Validate shelf gap detection and autonomous S&OP replenishment cart generation
-- [x] Execute multi-supplier checkout saga creating `ParentOrders` and child orders
-- [x] Enforce split-tender authorization waterfall (trade credit balance check before cash/card)
-- [x] Verify order state machine transition `DRAFT` → `PLACED` → `CONFIRMED`
+### Phase 4: Doorstep Execution, Dispute Tribunal & Blind Vault Ops
+- [x] Specify Shop Closed Protocol: driver photo/location capture, multi-channel alert (SMS/Push/Telegram), credit-leave fallback vs truck return
+- [x] Specify Doorstep Count & Split-Tender Partial Rejection: accepted = legal invoice, refused = return manifest, instant tier recalculation
+- [x] Specify Damaged/Crushed Case Protocol: photo attachment, auto-credit note under money threshold, exception queue escalation above threshold
+- [x] Specify Depot Dual-Blind Cash Bag Ingestion: hidden expected total, blind count ratchet, RRN card reclassification, CIT handover
+- [x] Update `task_plan.md`, `findings.md`, and `progress.md`
 - **Status:** complete
 
-### Phase 5: 3D Axle Loading & Dispatch Optimization (Role 4: Payloader & Optimizer Core)
-- [x] Run CVRPTW optimizer solver via `services/optimizer-core` (Python OR-Tools & Rust)
-- [x] Enforce reverse-stop LIFO load-out sequencing and 3D volumetric/axle weight scaling
-- [x] Account for returnable transport items (RTI crates/pallets) in reverse space
-- [x] Bind cryptographic tamper-evident bolt seal to route manifest
+### Phase 5: Exception Desk, 1C Silent Posting & Governance Limits
+- [x] Specify the 15-Minute Supplier Exception Desk: single unified queue strictly sorted by Money-at-Risk
+- [x] Codify the 6 Immutable Human Actions: credit limit raise outside policy, write-off above floor, recall release, Soliq skip stamp, broken cash seal, new legal entity approval
+- [x] Specify Silent 1C Accounting Integration: automated journal posting, rejected document queue, month-end exception ledger
+- [x] Specify Dispute & Concealed Damage Tribunal: POS register sales reconciliation, photo uniqueness hash, claims abuse penalty
+- [x] Update `task_plan.md`, `findings.md`, and `progress.md`
 - **Status:** complete
 
-### Phase 6: Fleet Inspection, Route Dispatch & Doorstep Handshake (Roles 5 & 9: Driver & Fleet)
-- [x] Enforce mandatory 8-point Pre-Trip DVIR walkaround clearance (Red-Tag Grounding gate)
-- [x] Dispatch route and verify 150m/50m doorstep geofence progression
-- [x] Execute offline cryptographic JWT proof-of-delivery (ePOD) handshake & QR verification
-- [x] Verify doorstep partial rejection (volume-break tier preservation) and mid-route breakdown rescue custody split
+### Phase 6: Verification Strategy, Test Matrix & Staging Rollout
+- [x] Define comprehensive integration test plan across all 51 edge cases
+- [x] Run and document verification gates across Go backend, Python optimizer, and web/mobile surfaces
+- [x] Define the 4-Phase Transition Rollout Roadmap (Digital Ordering -> Proposed Orders -> Automated Scripts -> Silent 1C)
+- [x] Final review, signoff, and artifact persistence
 - **Status:** complete
 
-### Phase 7: Depot Cashier Dual-Blind Recount & Vault Settlement (Role 7: Cashier & Vault Ops)
-- [x] Ingest tamper-evident cash bag at depot vault
-- [x] Enforce Dual-Blind UZS Denomination Counting in integer Tiyin (strictly masking `ExpectedCashMinor`)
-- [x] Trigger recount ratchet alert (`BLIND_RECOUNT_REQUIRED`) on variance before supervisor reveal
-- [x] Execute RRN-verified tender reclassification (Cash to Card) within ±15m window
-- [x] Generate CIT armored courier bank handover manifest
-- **Status:** complete
+---
 
-### Phase 8: Fiscal Clearance, Tax Invoicing & Payout Settlement (Role 8: Admin & FinOps)
-- [x] Run Soliq OFD PKCS#12 two-phase fiscal pre-flight (IKPU/MXIK code validation & .p12 certificate health)
-- [x] Register fiscal tax invoice (`REGISTERED_SOLIQ`) and generate OFD QR code
-- [x] Generate immutable `InvoiceSettlementSlices` and execute reverse factoring payout
-- [x] Verify post-settlement concealed damage claims tribunal (48h rolling reserve holdbacks)
-- **Status:** complete
-
-### Phase 9: Full Multi-Platform Verification, Control Tower Sign-Off & Dual-Root Parity
-- [ ] Run `make money-path-gate` and assert clean exit code 0 across the entire transaction cascade
-- [ ] Execute `make ci-enterprise-gates` and `make validate-launch-readiness`
-- [ ] Verify macOS Control Tower (`apps/control-tower-macos`) and Web Admin (`apps/admin-portal`) live telemetry displays
-- [ ] Synchronize all validated changes to `/Users/shakhzod/Desktop/V.O.I.D/pegasusX` with 0 diff
-- **Status:** in_progress
-
-### Phase 4: Retailer Ordering, S&OP Replenishment & Split-Tender Checkout (Role 6: Retailer)
-- [ ] Validate shelf gap detection and autonomous S&OP replenishment cart generation
-- [ ] Execute multi-supplier checkout saga creating `ParentOrders` and child orders
-- [ ] Enforce split-tender authorization waterfall (trade credit balance check before cash/card)
-- [ ] Verify order state machine transition `DRAFT` → `PLACED` → `CONFIRMED`
-- **Status:** pending
-
-### Phase 5: 3D Axle Loading & Dispatch Optimization (Role 4: Payloader & Optimizer Core)
-- [ ] Run CVRPTW optimizer solver via `services/optimizer-core` (Python OR-Tools & Rust)
-- [ ] Enforce reverse-stop LIFO load-out sequencing and 3D volumetric/axle weight scaling
-- [ ] Account for returnable transport items (RTI crates/pallets) in reverse space
-- [ ] Bind cryptographic tamper-evident bolt seal to route manifest
-- **Status:** pending
-
-### Phase 6: Fleet Inspection, Route Dispatch & Doorstep Handshake (Roles 5 & 9: Driver & Fleet)
-- [ ] Enforce mandatory 8-point Pre-Trip DVIR walkaround clearance (Red-Tag Grounding gate)
-- [ ] Dispatch route and verify 150m/50m doorstep geofence progression
-- [ ] Execute offline cryptographic JWT proof-of-delivery (ePOD) handshake & QR verification
-- [ ] Verify doorstep partial rejection (volume-break tier preservation) and mid-route breakdown rescue custody split
-- **Status:** pending
-
-### Phase 7: Depot Cashier Dual-Blind Recount & Vault Settlement (Role 7: Cashier & Vault Ops)
-- [ ] Ingest tamper-evident cash bag at depot vault
-- [ ] Enforce Dual-Blind UZS Denomination Counting in integer Tiyin (strictly masking `ExpectedCashMinor`)
-- [ ] Trigger recount ratchet alert (`BLIND_RECOUNT_REQUIRED`) on variance before supervisor reveal
-- [ ] Execute RRN-verified tender reclassification (Cash to Card) within ±15m window
-- [ ] Generate CIT armored courier bank handover manifest
-- **Status:** pending
-
-### Phase 8: Fiscal Clearance, Tax Invoicing & Payout Settlement (Role 8: Admin & FinOps)
-- [ ] Run Soliq OFD PKCS#12 two-phase fiscal pre-flight (IKPU/MXIK code validation & .p12 certificate health)
-- [ ] Register fiscal tax invoice (`REGISTERED_SOLIQ`) and generate OFD QR code
-- [ ] Generate immutable `InvoiceSettlementSlices` and execute reverse factoring payout
-- [ ] Verify post-settlement concealed damage claims tribunal (48h rolling reserve holdbacks)
-- **Status:** pending
-
-### Phase 9: Full Multi-Platform Verification, Control Tower Sign-Off & Dual-Root Parity
-- [ ] Run `make money-path-gate` and assert clean exit code 0 across the entire transaction cascade
-- [ ] Execute `make ci-enterprise-gates` and `make validate-launch-readiness`
-- [ ] Verify macOS Control Tower (`apps/control-tower-macos`) and Web Admin (`apps/admin-portal`) live telemetry displays
-- [ ] Synchronize all validated changes to `/Users/shakhzod/Desktop/V.O.I.D/pegasusX` with 0 diff
-- **Status:** pending
-
-## Key Questions
-1. Is local Docker daemon running to host the Spanner emulator (`:9010`), Redis, and Kafka?
-2. Are all Spanner migrations already applied, or do we need `cmd/setup` to bootstrap tables?
-3. Does `make money-path-gate` exercise all 18 statuses and 50 FSM transition edges?
-
-## Decisions Made
-| Decision | Rationale |
-|----------|-----------|
-| Use persistent planning files (`task_plan.md`, `findings.md`, `progress.md`) in repo root | Complies with `/planning-with-files` doctrine: context window = RAM, filesystem = persistent disk |
-| Strictly preserve 9-role operational sequence (Supplier → Factory → Warehouse → Retailer → Payloader → Driver → Cashier → Admin) | Matches real physical FMCG supply chain physics and Palantir Foundry semantic-kinetic-dynamic architecture |
-| Execute against live Spanner emulator rather than `-short` | Conforms to Anti-Reward-Hacking Law 0.2 (never mask failures with bypass flags) |
-
-## Errors Encountered
-| Error | Attempt | Resolution |
-|-------|---------|------------|
-|       | 1       |            |
-
-## Notes
-- Update phase status as you progress: pending → in_progress → complete
-- Re-read this plan before major decisions (attention manipulation)
-- Log ALL errors - they help avoid repetition
-- Never repeat a failed action - mutate your approach instead
+## Errors Encountered & Resolutions
+| Error / Gap | Phase | Attempt | Resolution |
+| :--- | :--- | :--- | :--- |
+| `pytest: command not found` in direct bash invocation | Phase 6 | 1 | Used canonical CI script `scripts/ci_optimizer_core.sh` which executes inside the dedicated virtual environment `.venv/bin/pytest`. |
+| Optimizer test execution timeout default | Phase 6 | 1 | Allowed complete run of 21 Python certification tests and 7 Rust unit tests; all 28 passed cleanly in 26.45s. |

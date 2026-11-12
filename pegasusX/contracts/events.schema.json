@@ -1389,31 +1389,8 @@
         "product_id": {
           "type": "string"
         },
-        "requires_cold_chain": {
-          "type": "boolean"
-        },
         "stock_quantity": {
           "type": "integer"
-        },
-        "storage_temp_max_c": {
-          "anyOf": [
-            {
-              "type": "number"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "storage_temp_min_c": {
-          "anyOf": [
-            {
-              "type": "number"
-            },
-            {
-              "type": "null"
-            }
-          ]
         },
         "supplier_id": {
           "type": "string"

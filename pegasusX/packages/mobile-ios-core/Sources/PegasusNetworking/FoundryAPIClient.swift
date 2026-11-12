@@ -209,12 +209,6 @@ public final class FoundryAPIClient: @unchecked Sendable {
         return try await execute(request)
     }
 
-    public func checkPredictiveReefer(_ req: PredictiveReeferRequest) async throws -> PredictiveReeferResponse {
-        var request = try buildRequest(path: "/v1/foundry/fleet/predictive-reefer", method: "POST")
-        request.httpBody = try encoder.encode(req)
-        return try await execute(request)
-    }
-
     public func checkVehicleDispatch(vehicleID: String) async throws -> DispatchCheckResponse {
         let request = try buildRequest(path: "/v1/foundry/fleet/vehicles/\(vehicleID)/dispatch-check", method: "GET")
         return try await execute(request)

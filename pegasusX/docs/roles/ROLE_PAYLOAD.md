@@ -201,7 +201,7 @@ The Payload service executes all mutations through transactional read-write tran
 | `Vehicles` | `VehicleId` | `PlateNumber, MaxVolumeVU, IsReefer, Status` | Truck registry, volume capacity boundaries |
 | `Drivers` | `DriverId` | `FullName, Phone, AvailabilityStatus` | Drivers assigned to manifests |
 | `SupplierUsers` | `UserId` | `Phone, PinHash, Role, Status` | Payloader dock worker authentication and permissions |
-| `Products` | `ProductId` | `HandlingClass, RequiresColdChain, StorageTempMinC, StorageTempMaxC` | Cold-chain product criteria for seal gating |
+| `Products` | `ProductId` | `HandlingClass, RequiresColdChain` | Cold-chain product flag for seal gating |
 | `OutboxEvents` | `EventId` | `AggregateType, AggregateId, Topic, Payload, CreatedAt` | Transactional outbox for guaranteed event publishing |
 
 ---
@@ -209,7 +209,7 @@ The Payload service executes all mutations through transactional read-write tran
 ## 6. Comprehensive Feature-by-Feature Breakdown
 
 ### 1. Real-Time Cold-Chain & Reefer Telemetry Monitoring
-- **Physical Seal Gate (`AssertColdChainBaselineReady`)**: Prior to sealing any manifest, the backend queries the feature flag `WMS_COLD_CHAIN_ENABLED`. If active and the manifest contains products where `RequiresColdChain = true` or storage temperature bounds are defined:
+- **Physical Seal Gate (`AssertColdChainBaselineReady`)**: Prior to sealing any manifest, the backend queries the feature flag `WMS_COLD_CHAIN_ENABLED`. If active and the manifest contains products where `RequiresColdChain = true`:
   - The system queries `TemperatureReadings WHERE ManifestId = @mid`.
   - At least one live reading must exist in the database.
   - If missing, the seal operation aborts with error `cold_chain_baseline_required`.
@@ -332,7 +332,7 @@ stateDiagram-v2
         
         state CheckColdChain {
             [*] --> InspectSensorReadings
-            InspectSensorReadings --> SensorPass : Reading in [StorageTempMinC, StorageTempMaxC]
+            InspectSensorReadings --> SensorPass : Reading recorded
             InspectSensorReadings --> SensorMissing : No Readings in TemperatureReadings
             SensorMissing --> ExcursionAlert : Abort Seal (cold_chain_baseline_required)
         }

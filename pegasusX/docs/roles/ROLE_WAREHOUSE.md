@@ -62,7 +62,7 @@ Every page in the Next.js 15 App Router (`apps/warehouse-portal/app`) is compile
 | 27 | `/payment-config` | `app/payment-config/page.tsx` | **Payment Gateway Configuration**: Cash-on-delivery limits, terminal merchant IDs, split-payment rules, payment bypass. |
 | 28 | `/pick-waves` | `app/pick-waves/page.tsx` | **Wave Picking Command Board**: Manifest-to-wave creation, S-Shape aisle routing, pick task confirmation, shortage waivers. |
 | 29 | `/preorders` | `app/preorders/page.tsx` | **Pre-Order Allocation Board**: Future-dated delivery reservations, delivery date proposal negotiation, bulk confirmation. |
-| 30 | `/products` | `app/products/page.tsx` | **Product Handling Master**: Product dimensions, volume VU, perishable flags, min/max storage temperatures. |
+| 30 | `/products` | `app/products/page.tsx` | **Product Handling Master**: Product dimensions, volume VU, perishable flags. |
 | 31 | `/profile` | `app/profile/page.tsx` | **Facility Profile & Metadata**: Warehouse geo-coordinates, operating hours, emergency contact points, license records. |
 | 32 | `/replenishment` | `app/replenishment/page.tsx` | **AI Replenishment Insights**: Machine-suggested factory transfers, safety stock reorder triggers, one-click order generation. |
 | 33 | `/returns` | `app/returns/page.tsx` | **Returns Triage & Reverse Logistics**: Dock receiving of rejected deliveries, inspection workflow (restock vs destruction write-off). |
@@ -96,7 +96,7 @@ Engineered with Kotlin 2.0, Jetpack Compose, Material 3 WindowSizeClass (adaptiv
 | 6 | `VehiclesScreen` | `ui/screens/vehicles/VehiclesScreen.kt` | Fleet truck management with capacity VU visualization. |
 | 7 | `VehicleDetailScreen` | `ui/screens/vehicles/VehicleDetailScreen.kt` | Maintenance hold and driver assignment details. |
 | 8 | `InventoryScreen` | `ui/screens/inventory/InventoryScreen.kt` | Mobile stock counter with rapid lot adjustment buttons. |
-| 9 | `ProductsScreen` | `ui/screens/products/ProductsScreen.kt` | SKU handling requirements, storage temp ranges, unit volume. |
+| 9 | `ProductsScreen` | `ui/screens/products/ProductsScreen.kt` | SKU handling requirements, unit volume. |
 | 10 | `ManifestsScreen` | `ui/screens/manifests/ManifestsScreen.kt` | Truck loading staging with manifest barcode progress. |
 | 11 | `AnalyticsScreen` | `ui/screens/analytics/AnalyticsScreen.kt` | Mobile chart grid displaying daily output and throughput rates. |
 | 12 | `CRMScreen` | `ui/screens/crm/CRMScreen.kt` | Retailer client lookup with order history and payment health. |
@@ -501,7 +501,7 @@ All state persistence is managed in Cloud Spanner with strict relational integri
 31. **`Claims`**: Delivery damage and shortage claims. Keys: `ClaimId`. Columns: `OrderId`, `RetailerId`, `SupplierId`, `ClaimType`, `Status` (`OPEN`, `APPROVED`, `REJECTED`, `SETTLED`), `TotalClaimAmountMinor`, `FiledAt`.
 32. **`DamageLines`**: Claim photographic and line item evidence. Keys: `ClaimId`, `LineId`. Columns: `SkuId`, `ClaimedQuantity`, `GcsPhotoUrlsJson`, `Notes`.
 33. **`Orders`**: Commercial retailer orders. Keys: `OrderId`. Columns: `SupplierId`, `WarehouseId`, `RetailerId`, `Status`, `ManifestId`, `TotalAmountMinor`, `VolumeVU`, `PromisedBy`, `LineItemsJson`, `TransitionActorRole`.
-34. **`Products`**: Catalog handling specifications. Keys: `ProductId`. Columns: `SupplierId`, `Name`, `UnitVolumeVU`, `HandlingClass` (`GENERAL`, `COLD_CHAIN`, `HAZARDOUS`, `PERISHABLE`), `RequiresColdChain`, `IsPerishable`, `StorageTempMinC`, `StorageTempMaxC`, `MinShelfLifeDays`.
+34. **`Products`**: Catalog handling specifications. Keys: `ProductId`. Columns: `SupplierId`, `Name`, `UnitVolumeVU`, `HandlingClass` (`GENERAL`, `COLD_CHAIN`, `HAZARDOUS`, `PERISHABLE`), `RequiresColdChain`, `IsPerishable`, `MinShelfLifeDays`.
 35. **`PaymentConfigs`**: Warehouse-level tender rules. Keys: `WarehouseId`. Columns: `AllowCash`, `AllowTerminal`, `AllowCredit`, `TerminalMerchantId`, `UpdatedAt`.
 36. **`RetailerPricingOverrides`**: Custom depot-level pricing. Keys: `WarehouseId`, `RetailerId`, `ProductId`. Columns: `OverridePriceMinor`, `EffectiveUntil`, `CreatedAt`.
 37. **`WarehouseBroadcastTemplates`**: Push message shortcuts. Keys: `TemplateId`. Columns: `WarehouseId`, `Title`, `Body`, `TargetRole`, `CreatedAt`.
@@ -553,7 +553,7 @@ Implemented in `dispatch/freeze_lock.go` and `stocklots/cold_baseline.go`:
   - `WAREHOUSE` Scope: Locks the entire depot from manual or automated dispatch.
   - `ORDER` Scope: Freezes specific orders pending address verification or credit review.
   - `DRIVER` Scope: Freezes specific drivers due to expired documents or maintenance.
-- **Cold-Chain Baseline Gate (`AssertColdChainBaselineReady`)**: For manifests transporting chilled or frozen products (`RequiresColdChain == true` or `StorageTempMinC IS NOT NULL`), the gate queries `TemperatureReadings`. If no initial probe reading is recorded for the manifest, sealing is refused with error `cold_chain_baseline_required`.
+- **Cold-Chain Baseline Gate (`AssertColdChainBaselineReady`)**: For manifests transporting products with `RequiresColdChain == true`, the gate queries `TemperatureReadings`. If no initial probe reading is recorded for the manifest, sealing is refused with error `cold_chain_baseline_required`.
 - **Excursion Auto-Quarantine**: During transport or pre-trip checks, if temperatures breach `[MinC, MaxC]`, `IngestTemperatureInTxn` automatically flags an excursion, generates a `WMS_TEMPERATURE_BREACH` event, and quarantines impacted lots.
 
 ### 5.6 Tomorrow Board & Demand Forecasting Ingestion

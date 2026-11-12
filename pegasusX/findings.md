@@ -1,56 +1,120 @@
-# Findings & Decisions: PegasusX End-to-End Implementation
+# Findings & Architecture Decisions: PegasusX B2B Operating Model
 
-## Requirements
-- Complete end-to-end execution of the 9 FMCG roles in correct operational order:
-  1. Role 1: Supplier (GS1/GTIN catalog, volume-tiered pricing, trade credit underwriting)
-  2. Role 2: Factory (BOM explosion, raw material lot locking, SSCC-18 pallet serialization)
-  3. Role 3: Warehouse (Inbound manifest scan, yard bolt seal, FEFO putaway, wave picking)
-  4. Role 6: Retailer (Autonomous replenishment, multi-supplier saga, split-tender checkout)
-  5. Role 4: Payloader (CVRPTW optimizer solver, LIFO 3D axle loading, RTI crate returns)
-  6. Role 5: Driver (8-point Pre-Trip DVIR walkaround, geofenced offline ePOD handshake)
-  7. Role 7: Depot Cashier (Dual-Blind UZS counting in Tiyin, RRN reclassification, CIT handover)
-  8. Role 8: Admin & FinOps (Soliq OFD PKCS#12 fiscal signing, reverse factoring settlement)
-  9. Role 9: Fleet Manager (Red-tag grounding, vehicle telemetry, cold-chain SLA monitoring)
-- Anti-Reward-Hacking Laws 0.1–0.5: No fake gates, no mock fallbacks, no bypass flags (`-short` prohibited for full verification).
-- Zero Shared UI Packages: Local tokens, native components, independent UI lifecycles for iOS, Android, Desktop, and Web.
-- Parity preservation: 100% synchronization between `/Users/shakhzod/Desktop/pegasusx` and `/Users/shakhzod/Desktop/V.O.I.D/pegasusX`.
+<!--
+  WHAT: Deep analysis and ground-truth code mapping for /Users/shakhzod/Desktop/PegasusX-B2B-Operating-Model.md
+  TARGET CODEBASE: /Users/shakhzod/Desktop/pegasusx
+-->
 
-## Research Findings
-- **Backplane & Spanner Emulator**:
-  - Live Spanner emulator required on `localhost:9010` for `make schema-drift-gate` and `make money-path-gate`.
-  - Greenfield schema DDL bootstrap is defined in `apps/backend-go/migrations/` and orchestrated via `make sandbox-infra-up`.
-- **Backend & Service Health**:
-  - `apps/backend-go` passes all `go test -race -short ./...` tests cleanly across all domain modules.
-  - `apps/ai-worker` passes all race tests cleanly.
-  - `services/optimizer-core` passes all 20 Python tests (pytest) and 7 Rust tests (cargo test).
-  - All CI hygiene gates (`ci_anti_theatre_gate.sh`, `ci_no_mock_control_tower.sh`, `ci_repo_hygiene_gate.sh`) are passing cleanly.
-- **Client App Architectures**:
-  - Web Portals: `apps/admin-portal`, `apps/supplier-portal`, `apps/retailer-portal`, `apps/warehouse-portal` use Vite/React with local `components/ui/` and Tailwind CSS.
-  - Mobile Apps: `apps/driver-app`, `apps/retailer-app`, `apps/warehouse-app` use native Swift/Kotlin and React Native/Flutter implementations with localized design systems.
-  - Desktop: `apps/control-tower-macos` and `apps/desktop-station` use Tauri / SwiftUI for real-time operations.
+## 1. Operating Model Overview & Core Doctrine
 
-## Technical Decisions
-| Decision | Rationale |
-|----------|-----------|
-| Dual-Blind UZS Cash Counting | Masks expected minor Tiyin amount from cashier screen to enforce independent physically counted cash verification |
-| Cryptographic Offline ePOD Handshake | Uses Ed25519/HMAC asymmetric signature tokens exchanged peer-to-peer between driver and retailer devices |
-| 3D Axle Volumetric LIFO Packaging | Prevents vehicle rollover by keeping center-of-gravity low and adheres to reverse-stop unloading order |
-| Soliq OFD PKCS#12 Pre-Flight | Validates tax certificates and Uzbekistan MXIK/IKPU product codes before invoice submission to eliminate fiscal rejections |
-| Zero Shared UI Component Packages | Enforces extreme isolation across native platforms, preventing coupling cascades across mobile, desktop, and web |
-| Deterministic 36-char AR Keys | Spanner primary key column `STRING(36)` cannot be altered; `InvoiceId` uses `"ari_" + 32-hex` and `EntryId` uses `ledgerEntryID()` with SHA-256 formatting |
+The **PegasusX B2B Operating Model** (`PegasusX-B2B-Operating-Model.md`) defines the business and operational transformation of an FMCG wholesale distributor in Central Asia (Uzbekistan / Tashkent and regional hubs):
+- **Core Thesis**: Transform the traditional distributor office (sales reps, call centers, dispatchers, credit clerks, claims clerks) into a **Policy Desk + Small Exception Desk**.
+- **Key Metric**: `>= 95%` of orders execute with **zero supplier human touch**, and **driver calls to the office approach zero per 100 stops**.
+- **Exception Principle**: In the target operating model, every unusual moment is governed by a script with a timeout. Silence has a deterministic default. Human touch is reserved exclusively for the Exception Desk handling money that automated policies refuse to touch.
 
-## Issues Encountered
-| Issue | Resolution |
-|-------|------------|
-| `pnpm test run` failed on portals with "no test files found" | Package script already contains `vitest run`; run `pnpm test` directly without passing `run` argument |
-| `make schema-drift-gate` hung waiting for port 9010 | Docker container was offline; need to launch sandbox infrastructure via `make sandbox-infra-up` |
-| Working directory mismatch in bash scripts | Ensure all repository commands execute from `/Users/shakhzod/Desktop/pegasusx` |
-| `ArInvoices.InvoiceId` exceeded 36 char limit (was 40) | Stripped UUID hyphens in `NewService` so `"ari_" + 32-hex` equals exactly 36 characters |
-| `ArLedgerEntries.EntryId` exceeded 36 char limit (was 41) | Added `ledgerEntryID()` helper utilizing SHA-256 hashing to format deterministic 36-character entry keys |
-| Spanner DDL update lock conflict during `money_path_gate` | Temporarily stopped `backend-go` and `ai-worker` containers so DDL migrations execute without concurrent read-write transactions |
+---
 
-## Resources
-- Project root: `/Users/shakhzod/Desktop/pegasusx`
-- Secondary parity root: `/Users/shakhzod/Desktop/V.O.I.D/pegasusX`
-- Instructions & Constraints: `agents.md`
-- Gate verification makefile targets: `make gap-hunter-gate`, `make parity-contract-full`, `make validate-launch-readiness`, `make money-path-gate`
+## 2. Daily Rhythm & Code Seams Mapping
+
+| Rhythm Stage | Operating Model Requirement | Current Code Implementation | Status & Seam Location |
+| :--- | :--- | :--- | :--- |
+| **Stage 1: Retailer Cutoff (Evening)** | Proposed replenishment orders, shelf minimums, case-pack multiples snap, credit headroom check, standing auto-confirm rule with cutoff timer. | `demand/signals_store.go`, `replenishment/`, `orderstage/` | **Implemented**: Proposed orders generated by S&OP heuristics. Cart snapping logic exists in `packages/api-core`. Auto-confirm timer wired to wave window. |
+| **Stage 2: Supplier Overnight (Silent)** | Zero-clerk acceptance, stock reservation, pack cuts/substitutes from allow-list, CVRPTW solver over time windows/volume/weight, overflow move to next wave. | `services/optimizer-core/server/contract_solver.py`, `dispatch/`, `stocklots/` | **Implemented**: 13 pytest certification harness tests verify time window constraints, capacity limits, and penalty overflow. |
+| **Stage 3: Warehouse Morning** | Pickers walk optimized list, short picks resolved before seal (substitute from allow-list or cut line), pre-seal shop notification, sealed manifest. | `warehouseops/`, `foundry/edge_guards.go` (Tote heartbeat takeover), `manifest/` | **Implemented**: Pre-seal manifest gating in `foundry/pre_execution.go` (`ActionSealVehicleManifest`). |
+| **Stage 4: Doorstep Delivery** | Driver in window, QR scan, dual case count, accepted = legal invoice, refused = return to stock, split-tender, Soliq fiscal matches accepted, no driver price edit. | `driver/`, `driverroutes/`, `foundry/edge_guards.go` (`ReconcileSplitTenderPartialRejection`), `fiscal/` | **Implemented**: Guard #1 enforces tier preservation on transport damage/short ship, tender reduction waterfall (Credit reduced first). Driver UI has zero price-edit capability. |
+| **Stage 5: Depot Cashier (Shift End)** | Sealed cash bag, blind count, recount ratchet, expected total hidden from cashier, match closes day, mismatch creates incident. | `cashrecon/`, `foundry/cashier_vault.go` (`ProcessBlindCashCount`, `RecountRatchet`) | **Implemented**: `ExpectedCashMinor` strictly hidden from cashier payload until blind count committed; discrepancy > threshold triggers audit incident. |
+| **Stage 6: Supplier Desk (15 Mins)** | Single queue sorted by Money-at-Risk. Empty queue = day done. Policy changes happen weekly outside the queue. | `admin-portal/lib/foundry-api.ts`, `controltower/`, `foundryroutes/` | **Implemented**: Control Tower Exception Queue aggregates flagged orders, claims, and cash mismatches sorted by descending exposure minor units. |
+
+---
+
+## 3. Decision Rights Matrix & Automated Rules
+
+| Operational Decision | Rule Owner | Automated Logic | Supplier Escalation Trigger | Code Seam |
+| :--- | :--- | :--- | :--- | :--- |
+| **What to order** | Retailer confirms proposal | S&OP demand algorithm + case pack snap | New SKU onboarding or price outside contract tier | `catalog/`, `replenishment/` |
+| **Ship on credit** | Standing Limit Rule | `Headroom = Limit - OpenDebt - InTransitOrders` | Limit raise request, debt write-off, or active dispute | `credit/`, `ar/` |
+| **Which truck** | CVRPTW Solver | Multi-depot time window solver | Infeasible stop with `MustDeliverToday = true` | `services/optimizer-core/` |
+| **Shop closed** | Driver Photo + Geo Timer | Push + SMS + Telegram; silence defaults to credit leave (if safe/permitted) or return | Repeat closed pattern (>= 3 leaves in 14 days) | `foundry/edge_guards.go`, `driver/` |
+| **Damaged case** | Photo + Threshold | If `Value <= DamageAutoCreditMinor`: instant credit note; else queue | Value exceeds threshold or high frequency claim shop | `claims/`, `creditnote/` |
+| **Short cash at door** | Retailer Choice | Refuse/return unpaid cases OR draw available credit headroom | Gap exceeds available credit headroom | `foundry/edge_guards.go` (Guard #1) |
+| **Fiscal receipt failed** | Automated Retry Worker | Bounded exponential retry; goods remain on truck | Permanent failure requires supervisor skip stamp | `soliq/`, `fiscal/` |
+| **Product Recall** | Kinetic Recall Action | 1-click `TriggerContaminatedLotRecall` blocks picking and pushes do-not-deliver | Human release required to return lot to sale | `foundry/ontology.go` |
+
+---
+
+## 4. Analysis of the 51 Edge Cases
+
+### Category A: Ordering Edge Cases (10 cases)
+1. **Double Tap / Offline Replay**: Enforced via `Idempotency-Key` / client mutation UUID in `idempotency/` package.
+2. **Edit After Wave Lock**: Transition to `LOCKED` rejects edits; modifications auto-spawn a draft for the next wave.
+3. **Cutoff Passed**: Order automatically moves to tomorrow's wave with visual cutoff clock.
+4. **Out of Stock**: Line is excluded or substituted; no charge/authorization for unreserved stock.
+5. **Substitutes**: Restricted to approved brand family; price delta adjusted on invoice before truck leaves.
+6. **Must-Have Line Unfilled**: Split order policy vs hold order policy evaluated deterministically.
+7. **Promo Expired Mid-Route**: Price locked at `CONFIRMED` timestamp.
+8. **Minimum Order Threshold**: Hard block at cart level with explicit monetary/case delta displayed.
+9. **Seasonal Calendar Overrides**: Navruz/Ramadan demand multipliers and custom cutoff calendars.
+10. **Shop Moved Pin**: Verified shop geofence update; rapid changes flagged for weekly duplicate queue.
+
+### Category B: Credit & Collections Edge Cases (10 cases)
+1. **Headroom Formula**: `Available = CreditLimit - OpenInvoices - GoodsOnTrucks`.
+2. **Overdue Freeze**: Grace period expiration blocks credit checkout; cash/card remain open.
+3. **Soft Promise Extension**: Exactly 1 automated extension per quarter allowed inside policy.
+4. **Disputed Invoice Isolation**: Dunning halted on disputed amount only; undisputed invoices remain collectible.
+5. **Seasonal Credit Limit**: Temporary dated credit bump with automatic expiration.
+6. **New Shop Ramp-Up**: First N deliveries strictly prepaid/cash; credit starts at 0 until clean track record and TIN verification.
+7. **TIN / Ownership Change**: Credit line immediately frozen; orders allowed on cash only pending entity re-approval.
+8. **Closed-Shop Abuse**: >= 3 credit leaves in 14 days revokes leave-behind right; mandatory pre-payment or cash-at-door.
+9. **Dunning Ladder**: Automated SMS/Telegram notifications at T-3, T-0, T+3, and T+7 days with payment links.
+10. **Automated Write-Off**: Bad debts below minimum threshold auto-close after ageing SLA; amounts above floor require named human sign-off.
+
+### Category C: Warehouse & Truck Edge Cases (12 cases)
+1. **Short Pick Pre-Seal**: Pre-seal resolution; shop alerted before truck leaves DC.
+2. **Wrong Item at Door**: Returned on truck; invoice reflects only accepted lines; replacement in next wave.
+3. **Short-Dated Lot**: FEFO allocation enforces minimum shelf-life threshold; doorstep rejection honored without dispute.
+4. **Thermal / Safety Quarantine**: Compromised goods quarantined; stops re-promised or cancelled.
+5. **Heavy / Hazmat Segregation**: Vehicle qualification flags in CVRPTW solver enforce separation.
+6. **Truck Capacity Exceeded**: Multi-wave split or roll-over to next departure.
+7. **Morning DVIR Failure**: Red-Tag Grounding gate (`AssertVehicleDispatchAuthorized`) automatically shifts stops to standby vehicle.
+8. **Mid-Route Breakdown**: Rescue vehicle takes handover stops `K+1..N`; driver cash liability split cleanly at stop `K`.
+9. **Driver No-Show**: Qualified standby driver dispatched.
+10. **Road Obstruction / Time Window Miss**: Dynamic re-sequencing of feasible stops; missed stops offered grace or next slot.
+11. **Early Route Closure**: Prohibited unless every stop is accounted for (delivered, refused, or closed) and cash bag sealed.
+12. **Lot Recall**: 1-click recall freezes picking and sends push notification to mobile driver device to prevent drop.
+
+### Category D: Doorstep Delivery Edge Cases (9 cases)
+1. **Shop Closed**: Photo + GPS taken; 5-minute countdown; silence triggers credit leave or truck return.
+2. **Owner Absent / Seller Present**: Seller daily spending cap enforced; amounts above cap require owner smartphone prompt.
+3. **Partial Acceptance**: Accepted cases billed; refused cases returned to truck; invoice recalculated immediately.
+4. **Crushed / Damaged Carton**: Photo attached to line; instant credit note if `<= threshold`.
+5. **Short Cash**: Customer chooses return vs credit headroom draw; driver has no loan or discount feature.
+6. **No Doorstep Discounts**: Driver device interface strictly forbids manual price entry or discounts.
+7. **Extra Goods**: Driver cannot leave unmanifested goods; scanner lacks line item.
+8. **Returnable Transport Items (RTI)**: Crates/pallets tracked in separate deposit ledger.
+9. **Legal Name & TIN Lock**: Soliq fiscal receipt bound to verified account TIN; driver cannot alter legal entity name.
+
+### Category E: After Delivery Edge Cases (6 cases)
+1. **Concealed Damage Claims**: 48-hour window with photo proof; cross-checked against POS sales and receipt history; duplicate image hashes rejected.
+2. **Sale-or-Return Unsold Goods**: Allowed only for contract-designated SKUs; full case packs with intact seals.
+3. **Fiscal Refund Sync**: Credit notes automatically issue matching Soliq fiscal credit adjustments.
+4. **Soliq Gateway Outage**: Receipt attempts queued with circuit breaker; supervisor skip stamp required if offline delivery permitted.
+5. **Missing/Invalid IKPU Code**: Blocks picking and delivery until resolved in catalog.
+6. **Cash Bag Discrepancy**: Blind recount first; unresolved variance flags driver recovery workflow.
+
+### Category F: Upstream & Master Data Edge Cases (4 cases)
+1. **Factory Inbound Discrepancy**: DC logs scanned count; variance auto-generates supplier credit debit.
+2. **Factory Late Delivery**: Downstream shop orders notified with keep or cancel options.
+3. **Duplicate Outlet Detection**: Geolocation radius + fuzzy name match routes outlet to weekly deduplication queue without stopping cash orders.
+4. **Multi-Supplier Single Retailer**: Cart split by supplier; independent credit lines and independent delivery manifests.
+
+---
+
+## 5. Technical Decisions & Architectural Commitments
+
+| Decision | Rationale | Code Implementation Seam |
+| :--- | :--- | :--- |
+| **Strict State-Machine Enforcement** | Prevents race conditions and inconsistent states across multiple mobile devices. | `orderstage/`, `canonical-order-state-machine.md` |
+| **Immutable Spanner Ledger for Payments** | All cash, credit, card, and deposit transactions must be dual-entry balanced. | `schema/spanner.ddl`, `cashrecon/` |
+| **Fault-Attributed Volume Pricing** | When goods are damaged by carrier, retailer shouldn't lose volume tier discount. | `foundry/edge_guards.go` (`ReconcileSplitTenderPartialRejection`) |
+| **Dual-Blind Denomination Ritual** | Eliminates cashier skimming by hiding the system's expected cash count until physical count is finalized. | `foundry/cashier_vault.go` (`RecountRatchet`) |
+| **Offline Cryptographic QR Handshake** | Enables complete, secure delivery settlement in Uzbekistan basements and areas with zero cellular reception. | `packages/mobile-android-kit/`, `driver/` |

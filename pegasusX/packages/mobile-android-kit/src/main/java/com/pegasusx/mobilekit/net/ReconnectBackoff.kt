@@ -11,9 +11,12 @@ object ReconnectBackoff {
         maxMs: Long = 60_000L,
         retryAfterMs: Long? = null,
     ): Long {
+        val safeBase = baseMs.coerceAtLeast(100L)
+        val safeMax = maxMs.coerceAtLeast(safeBase)
         val capped = attempt.coerceIn(0, 10)
-        val exp = min(baseMs * (1L shl capped), maxMs)
-        val jittered = exp + Random.nextLong(0, exp / 2 + 1)
+        val exp = min(safeBase * (1L shl capped), safeMax)
+        val jitterRange = maxOf(1L, exp / 2)
+        val jittered = min(exp + Random.nextLong(0, jitterRange), safeMax)
         return maxOf(jittered, retryAfterMs ?: 0L)
     }
 

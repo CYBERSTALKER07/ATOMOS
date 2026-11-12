@@ -55,9 +55,6 @@ interface FoundryApi {
     @POST("/v1/foundry/fleet/mid-route-rescue")
     suspend fun executeMidRouteRescue(@Body req: MidRouteRescueRequest): Response<MidRouteRescueResult>
 
-    @POST("/v1/foundry/fleet/predictive-reefer")
-    suspend fun checkPredictiveReefer(@Body req: PredictiveReeferRequest): Response<PredictiveReeferResponse>
-
     @GET("/v1/foundry/fleet/vehicles/{vehicleID}/dispatch-check")
     suspend fun checkVehicleDispatch(@Path("vehicleID") vehicleID: String): Response<DispatchCheckResponse>
 

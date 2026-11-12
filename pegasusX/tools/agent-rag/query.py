@@ -8,49 +8,46 @@ os.environ["TRANSFORMERS_VERBOSITY"] = "error"
 os.environ["TQDM_DISABLE"] = "1"
 os.environ["HF_HUB_OFFLINE"] = "1"
 
-import chromadb
-from chromadb.utils import embedding_functions
-
-MEMORY_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), ".agents", "memory")
+from hybrid_search import hybrid_search, find_symbol
 
 def search(query: str, layer: str = None, limit: int = 5):
-    client = chromadb.PersistentClient(path=MEMORY_DIR)
-    emb_fn = embedding_functions.SentenceTransformerEmbeddingFunction(model_name="all-MiniLM-L6-v2")
-    collection = client.get_or_create_collection(name="pegasusx_codebase", embedding_function=emb_fn)
-    
-    where_filter = {"layer": layer} if layer else None
-    results = collection.query(
-        query_texts=[query],
-        n_results=limit,
-        where=where_filter
-    )
-    
-    if not results['documents'] or not results['documents'][0]:
+    hits = hybrid_search(query, layer=layer, limit=limit)
+    if not hits:
         print("No relevant code found in the RAG database for query:", query)
         return
         
-    for i in range(len(results['documents'][0])):
-        doc = results['documents'][0][i]
-        meta = results['metadatas'][0][i]
-        dist = results['distances'][0][i]
+    for i, hit in enumerate(hits, start=1):
+        doc = hit['document']
+        meta = hit.get('metadata', {})
+        score = hit.get('rrf_score', 0.0)
         
         filepath = meta.get("file", "unknown_file")
         language = meta.get("language", "text")
         layer_name = meta.get("layer", "unknown_layer")
+        symbol = meta.get("symbol", "")
         
-        print(f"### Result {i+1} (Score: {dist:.4f})")
-        print(f"**File:** `{filepath}`")
-        print(f"**Layer:** `{layer_name}`")
+        sym_header = f" | Symbol: `{symbol}`" if symbol else ""
+        print(f"### Result {i} (RRF Score: {score:.5f})")
+        print(f"**File:** `{filepath}` | **Layer:** `{layer_name}`{sym_header}")
         print(f"```{language}\n{doc}\n```\n")
         print("-" * 60)
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("Usage: python3 query.py <search_query> [layer] [limit]")
+        print("   or: python3 query.py --symbol <symbol_name> [layer] [limit]")
         sys.exit(1)
         
-    query_text = sys.argv[1]
-    layer_filter = sys.argv[2] if len(sys.argv) > 2 and sys.argv[2] != "all" else None
-    limit_count = int(sys.argv[3]) if len(sys.argv) > 3 else 5
-    
-    search(query_text, layer_filter, limit_count)
+    if sys.argv[1] == "--symbol":
+        sym = sys.argv[2]
+        layer_filter = sys.argv[3] if len(sys.argv) > 3 and sys.argv[3] != "all" else None
+        limit_count = int(sys.argv[4]) if len(sys.argv) > 4 else 5
+        hits = find_symbol(sym, layer=layer_filter, limit=limit_count)
+        for i, hit in enumerate(hits, start=1):
+            print(f"### Symbol Match {i}: {hit['metadata'].get('file')}")
+            print(f"```{hit['metadata'].get('language')}\n{hit['document']}\n```")
+    else:
+        query_text = sys.argv[1]
+        layer_filter = sys.argv[2] if len(sys.argv) > 2 and sys.argv[2] != "all" else None
+        limit_count = int(sys.argv[3]) if len(sys.argv) > 3 else 5
+        search(query_text, layer_filter, limit_count)

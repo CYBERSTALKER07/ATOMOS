@@ -233,17 +233,8 @@
         "PX_E2E_WMS_ADJUST_APPLY_SKIPPED"
       ]
     },
-    "wms_cold_chain": {
-      "description": "§8.7 PR-6 TemperatureReadings + quarantine + TEMPERATURE_BREACH auto-raise (flag-gated WMS_COLD_CHAIN_ENABLED)",
-      "markers": [
-        "PX_E2E_WMS_COLD_CHAIN_OK",
-        "PX_E2E_WMS_COLD_CHAIN_SKIPPED",
-        "PX_E2E_WMS_COLD_CHAIN_BREACH_OK",
-        "PX_E2E_WMS_COLD_CHAIN_BREACH_SKIPPED"
-      ]
-    },
     "optimizer_constraints": {
-      "description": "§8.5 OR-Tools cold-chain vehicle filter via optimizer-core (soft-skip when sidecar absent)",
+      "description": "§8.5 OR-Tools vehicle capacity filter via optimizer-core (soft-skip when sidecar absent)",
       "markers": [
         "PX_E2E_OPTIMIZER_CONSTRAINT_OK",
         "PX_E2E_OPTIMIZER_CONSTRAINT_SKIPPED"
@@ -540,12 +531,6 @@
     "wms_adjust_apply": [
       "PX_E2E_WMS_ADJUST_APPLY_OK",
       "PX_E2E_WMS_ADJUST_APPLY_SKIPPED"
-    ],
-    "wms_cold_chain": [
-      "PX_E2E_WMS_COLD_CHAIN_OK",
-      "PX_E2E_WMS_COLD_CHAIN_SKIPPED",
-      "PX_E2E_WMS_COLD_CHAIN_BREACH_OK",
-      "PX_E2E_WMS_COLD_CHAIN_BREACH_SKIPPED"
     ],
     "optimizer_constraints": [
       "PX_E2E_OPTIMIZER_CONSTRAINT_OK",

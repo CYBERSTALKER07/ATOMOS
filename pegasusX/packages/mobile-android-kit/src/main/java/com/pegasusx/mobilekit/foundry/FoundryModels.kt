@@ -107,7 +107,6 @@ data class DVIRChecklist8Point(
     @SerialName("wipers_and_fluids_ok") val wipersAndFluidsOk: Boolean = true,
     @SerialName("emergency_kit_and_extinguisher_ok") val emergencyKitAndExtinguisherOk: Boolean = true,
     @SerialName("cargo_box_sanitation_ok") val cargoBoxSanitationOk: Boolean = true,
-    @SerialName("reefer_temp_calibrated_ok") val reeferTempCalibratedOk: Boolean = true,
 )
 
 @Serializable
@@ -118,13 +117,11 @@ data class FleetDVIRInspection(
     @SerialName("vehicle_id") val vehicleId: String,
     @SerialName("driver_id") val driverId: String,
     @SerialName("inspection_type") val inspectionType: String = "PRE_TRIP",
-    @SerialName("requires_cold_chain") val requiresColdChain: Boolean = false,
     @SerialName("checklist") val checklist: DVIRChecklist8Point = DVIRChecklist8Point(),
     @SerialName("failed_points") val failedPoints: List<String> = emptyList(),
     @SerialName("critical_defect_found") val criticalDefectFound: Boolean = false,
     @SerialName("red_tag_applied") val redTagApplied: Boolean = false,
     @SerialName("odometer_km") val odometerKm: Long = 0L,
-    @SerialName("reefer_temp_celsius") val reeferTempCelsius: Double = 0.0,
     @SerialName("status") val status: String? = null,
     @SerialName("maintenance_work_order_id") val maintenanceWorkOrderId: String? = null,
     @SerialName("preventative_service_due") val preventativeServiceDue: Boolean = false,
@@ -144,19 +141,6 @@ data class YardGateCheckEvent(
     @SerialName("seal_intact") val sealIntact: Boolean = true,
     @SerialName("assigned_bay_slot") val assignedBaySlot: String? = null,
     @SerialName("created_at") val createdAt: String? = null,
-)
-
-@Serializable
-data class PredictiveReeferRequest(
-    @SerialName("vehicle_id") val vehicleId: String,
-    @SerialName("cooling_rate_deg_per_min") val coolingRateDegPerMin: Double,
-    @SerialName("min_required_rate_deg_per_min") val minRequiredRateDegPerMin: Double = 0.25,
-)
-
-@Serializable
-data class PredictiveReeferResponse(
-    @SerialName("vehicle_id") val vehicleId: String,
-    @SerialName("pre_failure_maintenance_hold") val preFailureMaintenanceHold: Boolean,
 )
 
 @Serializable

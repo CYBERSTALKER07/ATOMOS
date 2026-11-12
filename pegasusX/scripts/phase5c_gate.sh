@@ -24,7 +24,7 @@ grep -q 'OnProductUpserted' apps/backend-go/globalproducts/service.go
 grep -q 'SetGlobalProductHook' apps/backend-go/catalog/service.go
 grep -q 'global-products' apps/backend-go/globalproductsroutes/routes.go
 grep -q 'GlobalProductsService' apps/backend-go/bootstrap/app.go
-grep -q 'globalproductsroutes.RegisterRoutes' apps/backend-go/main.go
+grep -q 'globalproductsroutes.RegisterRoutes' apps/backend-go/http_router.go apps/backend-go/main.go
 
 echo "[4/5] Unit tests + smoke wiring ..."
 (cd apps/backend-go && go test ./globalproducts/ -count=1)

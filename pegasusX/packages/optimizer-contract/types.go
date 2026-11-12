@@ -95,13 +95,12 @@ type Stop struct {
 	// get first dibs on vehicle volume in the next dispatch cycle.
 	Priority int `json:"priority,omitempty"`
 
-	// HandlingClass mirrors Products.HandlingClass (GENERAL/COLD_CHAIN/…).
+	// HandlingClass mirrors Products.HandlingClass (GENERAL/PERISHABLE/…).
 	HandlingClass string `json:"handling_class,omitempty"`
 
-	// RequiresColdChain / IsHazardous gate vehicle eligibility in OR-Tools
+	// IsHazardous gates vehicle eligibility in OR-Tools
 	// (AddAllowedVehiclesForIndex). Aggregate OR across order line items.
-	RequiresColdChain bool `json:"requires_cold_chain,omitempty"`
-	IsHazardous       bool `json:"is_hazardous,omitempty"`
+	IsHazardous bool `json:"is_hazardous,omitempty"`
 
 	// AccessRestriction is an optional opaque tag (e.g. pedestrian-only).
 	AccessRestriction string `json:"access_restriction,omitempty"`
@@ -121,9 +120,8 @@ type Vehicle struct {
 	EndLat float64 `json:"end_lat,omitempty"`
 	EndLng float64 `json:"end_lng,omitempty"`
 
-	// HasRefrigeration / HazmatCertified gate cold-chain and hazmat stops.
-	HasRefrigeration bool `json:"has_refrigeration,omitempty"`
-	HazmatCertified  bool `json:"hazmat_certified,omitempty"`
+	// HazmatCertified gates hazmat stops.
+	HazmatCertified bool `json:"hazmat_certified,omitempty"`
 
 	// ShiftStart / ShiftEnd are HH:MM wall-clock bounds (optional).
 	ShiftStart string `json:"shift_start,omitempty"`

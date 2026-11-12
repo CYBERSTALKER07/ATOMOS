@@ -236,12 +236,9 @@ export interface ProductHandlingUpdatedEvent {
   type: "PRODUCT_HANDLING_UPDATED";
   product_id: string;
   supplier_id: SupplierId;
-  handling_class: "GENERAL" | "COLD_CHAIN" | "HAZARDOUS" | "PERISHABLE";
-  requires_cold_chain: boolean;
+  handling_class: "GENERAL" | "HAZARDOUS" | "PERISHABLE";
   is_hazardous: boolean;
   is_perishable: boolean;
-  storage_temp_min_c?: number | null;
-  storage_temp_max_c?: number | null;
 }
 
 export interface OrderConditionReportedEvent {
@@ -296,12 +293,9 @@ export interface CatalogProduct {
   is_active: boolean;
   version: number;
   barcode?: string;
-  handling_class?: "GENERAL" | "COLD_CHAIN" | "HAZARDOUS" | "PERISHABLE";
-  requires_cold_chain?: boolean;
+  handling_class?: "GENERAL" | "HAZARDOUS" | "PERISHABLE";
   is_hazardous?: boolean;
   is_perishable?: boolean;
-  storage_temp_min_c?: number | null;
-  storage_temp_max_c?: number | null;
   created_at?: string;
   updated_at?: string;
 }

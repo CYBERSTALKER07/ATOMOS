@@ -258,12 +258,9 @@ export interface RetailerOrderLineItem {
   name?: string;
   quantity: number;
   unit_price_minor: number;
-  handling_class?: "GENERAL" | "COLD_CHAIN" | "HAZARDOUS" | "PERISHABLE";
-  requires_cold_chain?: boolean;
+  handling_class?: "GENERAL" | "HAZARDOUS" | "PERISHABLE";
   is_hazardous?: boolean;
   is_perishable?: boolean;
-  storage_temp_min_c?: number | null;
-  storage_temp_max_c?: number | null;
 }
 
 export interface RetailerTrackingLocation {
@@ -604,12 +601,9 @@ export interface WarehouseOrderLineItem {
   product_name?: string;
   quantity?: number;
   unit_price?: number;
-  handling_class?: "GENERAL" | "COLD_CHAIN" | "HAZARDOUS" | "PERISHABLE";
-  requires_cold_chain?: boolean;
+  handling_class?: "GENERAL" | "HAZARDOUS" | "PERISHABLE";
   is_hazardous?: boolean;
   is_perishable?: boolean;
-  storage_temp_min_c?: number | null;
-  storage_temp_max_c?: number | null;
 }
 
 export interface WarehouseOrderDetail {
