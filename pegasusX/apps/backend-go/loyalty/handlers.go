@@ -35,9 +35,13 @@ func (h *Handlers) HandleRetailerTier(w http.ResponseWriter, r *http.Request) {
 		web.JSONError(w, "retailer_scope_missing", http.StatusUnprocessableEntity)
 		return
 	}
+	if h == nil || h.Spanner == nil {
+		web.JSONError(w, "loyalty_unavailable", http.StatusServiceUnavailable)
+		return
+	}
 	sid := strings.TrimSpace(auth.PreferTenantSupplierID(r.Context(), claims.SupplierID))
-	if sid == "" || h == nil || h.Spanner == nil {
-		web.JSONResponse(w, http.StatusOK, TierView{Enrolled: false})
+	if sid == "" {
+		web.JSONError(w, "supplier_scope_missing", http.StatusUnprocessableEntity)
 		return
 	}
 	prog, err := ReadProgramStrong(r.Context(), h.Spanner, sid)
@@ -88,13 +92,17 @@ func (h *Handlers) HandleRetailerLedger(w http.ResponseWriter, r *http.Request) 
 		web.JSONError(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	rid := auth.ResolveRetailerOrgID(claims)
-	sid := strings.TrimSpace(auth.PreferTenantSupplierID(r.Context(), claims.SupplierID))
-	if rid == "" || sid == "" || h == nil || h.Spanner == nil {
-		web.JSONResponse(w, http.StatusOK, map[string]any{"entries": []LedgerEntry{}})
+	if h == nil || h.Spanner == nil {
+		web.JSONError(w, "loyalty_unavailable", http.StatusServiceUnavailable)
 		return
 	}
-	iter := h.Spanner.Single().Query(r.Context(), spanner.Statement{
+	rid := auth.ResolveRetailerOrgID(claims)
+	sid := strings.TrimSpace(auth.PreferTenantSupplierID(r.Context(), claims.SupplierID))
+	if rid == "" || sid == "" {
+		web.JSONError(w, "tenant_required", http.StatusBadRequest)
+		return
+	}
+	iter := h.Spanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(r.Context(), spanner.Statement{
 		SQL: `SELECT LedgerId, OrderId, Points, EarnBps, AmountMinor, CreatedAt
 		      FROM LoyaltyLedger WHERE SupplierId = @sid AND RetailerId = @rid
 		      ORDER BY CreatedAt DESC LIMIT 50`,
@@ -135,6 +143,10 @@ func (h *Handlers) HandleSupplierProgram(w http.ResponseWriter, r *http.Request)
 	}
 	switch r.Method {
 	case http.MethodGet:
+		if h == nil || h.Spanner == nil {
+			web.JSONError(w, "loyalty_unavailable", http.StatusServiceUnavailable)
+			return
+		}
 		prog, err := ReadProgramStrong(r.Context(), h.Spanner, sid)
 		if err != nil {
 			web.JSONError(w, "loyalty_query_failed", http.StatusInternalServerError)

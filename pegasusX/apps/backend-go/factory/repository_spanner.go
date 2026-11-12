@@ -7,10 +7,10 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
-	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
-	"google.golang.org/grpc/codes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/inventory"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/stocklots"
+	"google.golang.org/grpc/codes"
 
 	"google.golang.org/api/iterator"
 )
@@ -314,7 +314,7 @@ func (tx *spannerFactoryTx) SaveTransfer(ctx context.Context, t TransferRow) err
 	if err := tx.txn.BufferWrite([]*spanner.Mutation{mut}); err != nil {
 		return err
 	}
-	
+
 	if t.State == "COMPLETED" || t.State == "RECEIVED" {
 		return tx.autoReceiveTransfer(ctx, t.TransferID)
 	}
@@ -386,7 +386,7 @@ func (tx *spannerFactoryTx) autoReceiveTransfer(ctx context.Context, transferID 
 					return err
 				}
 			}
-			
+
 			if err := tx.txn.BufferWrite([]*spanner.Mutation{
 				spanner.UpdateMap("WarehouseSupplyRequestItems", map[string]any{
 					"RequestId":        reqID.StringVal,

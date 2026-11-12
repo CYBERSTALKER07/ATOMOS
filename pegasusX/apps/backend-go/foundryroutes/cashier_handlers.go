@@ -33,6 +33,11 @@ func (h *cashierHandler) handleStartCashierSession(w http.ResponseWriter, r *htt
 		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "invalid JSON payload"})
 		return
 	}
+	sid, ok := bindSupplierID(w, r, req.SupplierID)
+	if !ok {
+		return
+	}
+	req.SupplierID = sid
 	view, err := h.eng.StartBlindCountSession(r.Context(), req)
 	if err != nil {
 		writeError(w, err)
@@ -89,6 +94,11 @@ func (h *cashierHandler) handleCITHandover(w http.ResponseWriter, r *http.Reques
 		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "invalid JSON payload"})
 		return
 	}
+	sid, ok := bindSupplierID(w, r, req.SupplierID)
+	if !ok {
+		return
+	}
+	req.SupplierID = sid
 	entry, err := h.eng.ExecuteCITArmoredHandover(r.Context(), req)
 	if err != nil {
 		writeError(w, err)
@@ -122,7 +132,11 @@ func (h *cashierHandler) handleAMLCheck(w http.ResponseWriter, r *http.Request) 
 		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "invalid JSON payload"})
 		return
 	}
-	accum, err := h.eng.CheckAndRecordAMLCashExposure(r.Context(), req.LegalEntityTIN, req.SupplierID, req.CalendarDate, req.CashMinor)
+	sid, ok := bindSupplierID(w, r, req.SupplierID)
+	if !ok {
+		return
+	}
+	accum, err := h.eng.CheckAndRecordAMLCashExposure(r.Context(), req.LegalEntityTIN, sid, req.CalendarDate, req.CashMinor)
 	if err != nil {
 		writeError(w, err)
 		return

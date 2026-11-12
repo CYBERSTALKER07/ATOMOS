@@ -11,6 +11,7 @@ import (
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/seasonalcore"
+	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
 	"google.golang.org/api/iterator"
 )
 
@@ -91,7 +92,7 @@ func (s *Service) activeCustomOverride(ctx context.Context, supplierID string, o
 	if s == nil || s.Spanner == nil {
 		return nil, nil
 	}
-	iter := s.Spanner.Single().Query(ctx, spanner.Statement{
+	stmt := spanner.Statement{
 		SQL: `SELECT OverrideId, SupplierId, TemplateId, COALESCE(Name,''), StartDate, EndDate, IsActive,
 		             COALESCE(Multiplier, 0)
 		      FROM SeasonalTemplateOverrides
@@ -99,7 +100,13 @@ func (s *Service) activeCustomOverride(ctx context.Context, supplierID string, o
 		        AND StartDate <= @on AND EndDate >= @on
 		      ORDER BY StartDate DESC LIMIT 1`,
 		Params: map[string]any{"sid": supplierID, "on": civil.DateOf(on)},
-	})
+	}
+	var iter *spanner.RowIterator
+	if txn := spannerutils.ReadOnlyTxnFromContext(ctx); txn != nil {
+		iter = txn.Query(ctx, stmt)
+	} else {
+		iter = s.Spanner.Single().Query(ctx, stmt)
+	}
 	defer iter.Stop()
 	row, err := iter.Next()
 	if errors.Is(err, iterator.Done) {
@@ -177,14 +184,20 @@ func (s *Service) ListSeasonalOverrides(ctx context.Context, supplierID string) 
 	if s == nil || s.Spanner == nil {
 		return nil, errors.New("planning unavailable")
 	}
-	iter := s.Spanner.Single().Query(ctx, spanner.Statement{
+	stmt := spanner.Statement{
 		SQL: `SELECT OverrideId, SupplierId, TemplateId, COALESCE(Name,''), StartDate, EndDate, IsActive,
 		             COALESCE(Multiplier, 0)
 		      FROM SeasonalTemplateOverrides
 		      WHERE SupplierId = @sid AND IsActive = true
 		      ORDER BY StartDate DESC LIMIT 50`,
 		Params: map[string]any{"sid": supplierID},
-	})
+	}
+	var iter *spanner.RowIterator
+	if txn := spannerutils.ReadOnlyTxnFromContext(ctx); txn != nil {
+		iter = txn.Query(ctx, stmt)
+	} else {
+		iter = s.Spanner.Single().Query(ctx, stmt)
+	}
 	defer iter.Stop()
 	var rows []SeasonalOverrideRow
 	for {

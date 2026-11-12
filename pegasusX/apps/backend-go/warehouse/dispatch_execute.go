@@ -278,13 +278,14 @@ func (s *Service) ExecuteDispatch(ctx context.Context, req DispatchExecuteReques
 				UpdatedAt:     now,
 			})
 			batch.OrderPatches = append(batch.OrderPatches, manifest.OrderPatch{
-				OrderID:    orderID,
-				Status:     "LOADED",
-				ManifestID: manifestID,
-				DriverID:   driverID,
-				VehicleID:  vehicleID,
-				RouteID:    routeID,
-				UpdatedAt:  now,
+				OrderID:       orderID,
+				Status:        "LOADED",
+				ManifestID:    manifestID,
+				DriverID:      driverID,
+				VehicleID:     vehicleID,
+				RouteID:       routeID,
+				DeliveryToken: uuid.NewString(),
+				UpdatedAt:     now,
 			})
 			queued = append(queued, pendingEvent{
 				aggregateType: events.AggregateOrder,

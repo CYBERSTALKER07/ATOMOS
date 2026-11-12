@@ -45,7 +45,7 @@ func (s *Service) ListSupplyTransfersForDriver(ctx context.Context, driverID str
 		      LIMIT 50`,
 		Params: map[string]any{"did": strings.TrimSpace(driverID)},
 	}
-	iter := s.spannerClient.Single().Query(ctx, stmt)
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	out := make([]SupplyTransferDriverView, 0, 8)
 	for {

@@ -25,6 +25,8 @@ type Repository interface {
 	LookupActivePriceOverrides(ctx context.Context, supplierID, retailerID string, productIDs []string, now time.Time) (map[string]int64, error)
 	RedeemPromotion(ctx context.Context, promotionID string) error
 	FilterEligibleCampaignPromotions(ctx context.Context, retailerID string, promotions []Promotion) ([]Promotion, error)
+	CreateCampaign(ctx context.Context, supplierID, name string, budgetLimit int64) (string, error)
+	EnrollRetailer(ctx context.Context, campaignID, retailerID string) error
 }
 
 // SpannerRepository implements Repository.
@@ -447,4 +449,18 @@ func (r *SpannerRepository) FilterEligibleCampaignPromotions(ctx context.Context
 		filtered = append(filtered, p)
 	}
 	return filtered, nil
+}
+
+func (r *SpannerRepository) CreateCampaign(ctx context.Context, supplierID, name string, budgetLimit int64) (string, error) {
+	if r == nil || r.client == nil {
+		return "", errors.New("spanner required")
+	}
+	return CreateCampaign(ctx, r.client, supplierID, name, budgetLimit)
+}
+
+func (r *SpannerRepository) EnrollRetailer(ctx context.Context, campaignID, retailerID string) error {
+	if r == nil || r.client == nil {
+		return errors.New("spanner required")
+	}
+	return EnrollRetailer(ctx, r.client, campaignID, retailerID)
 }

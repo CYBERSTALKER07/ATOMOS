@@ -2,12 +2,15 @@ package laborcapacity
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"cloud.google.com/go/civil"
 	"cloud.google.com/go/spanner"
 	"google.golang.org/api/iterator"
 )
+
+var errSpannerRequired = errors.New("spanner required")
 
 // Service provides labor capacity operations.
 type Service struct {
@@ -21,6 +24,9 @@ func NewService(spannerClient *spanner.Client) *Service {
 
 // GetDriverScore reads the latest score for a driver.
 func (s *Service) GetDriverScore(ctx context.Context, driverID string) (*DriverScore, error) {
+	if s == nil || s.spanner == nil {
+		return nil, errSpannerRequired
+	}
 	row, err := s.spanner.Single().ReadRow(ctx, "DriverScores", spanner.Key{driverID}, []string{
 		"DriverId", "Score", "OnTimeRate", "CompletionRate", "DamageRate",
 		"ShopClosedRate", "FeedbackScore", "StopsPerHour", "WindowStart", "WindowEnd", "ComputedAt",
@@ -40,6 +46,9 @@ func (s *Service) GetDriverScore(ctx context.Context, driverID string) (*DriverS
 
 // GetZoneCapacity reads capacity for a zone on a given date.
 func (s *Service) GetZoneCapacity(ctx context.Context, zoneH3 string, date civil.Date) (*ZoneCapacity, error) {
+	if s == nil || s.spanner == nil {
+		return nil, errSpannerRequired
+	}
 	row, err := s.spanner.Single().ReadRow(ctx, "ZoneCapacity", spanner.Key{zoneH3, date}, []string{
 		"ZoneH3", "Date", "TotalCapacity", "UsedCapacity", "ComputedAt",
 	})
@@ -55,6 +64,9 @@ func (s *Service) GetZoneCapacity(ctx context.Context, zoneH3 string, date civil
 
 // SetDriverAvailability upserts a driver's availability for a day.
 func (s *Service) SetDriverAvailability(ctx context.Context, req SetAvailabilityRequest) error {
+	if s == nil || s.spanner == nil {
+		return errSpannerRequired
+	}
 	d, err := civil.ParseDate(req.Date)
 	if err != nil {
 		return err
@@ -74,6 +86,9 @@ func (s *Service) SetDriverAvailability(ctx context.Context, req SetAvailability
 
 // GetDriverAvailability reads a driver's availability for a specific date.
 func (s *Service) GetDriverAvailability(ctx context.Context, driverID string, date civil.Date) (*DriverAvailability, error) {
+	if s == nil || s.spanner == nil {
+		return nil, errSpannerRequired
+	}
 	row, err := s.spanner.Single().ReadRow(ctx, "DriverAvailability", spanner.Key{driverID, date}, []string{
 		"DriverId", "Date", "AvailableHours", "ZoneH3", "Status", "UpdatedAt",
 	})
@@ -93,12 +108,15 @@ func (s *Service) GetDriverAvailability(ctx context.Context, driverID string, da
 
 // ListZoneCapacities returns all zone capacities for a given date.
 func (s *Service) ListZoneCapacities(ctx context.Context, date civil.Date) ([]ZoneCapacity, error) {
+	if s == nil || s.spanner == nil {
+		return nil, errSpannerRequired
+	}
 	stmt := spanner.Statement{
 		SQL: `SELECT ZoneH3, Date, TotalCapacity, UsedCapacity, ComputedAt
 		      FROM ZoneCapacity WHERE Date = @Date`,
 		Params: map[string]interface{}{"Date": date},
 	}
-	iter := s.spanner.Single().Query(ctx, stmt)
+	iter := s.spanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 
 	var out []ZoneCapacity

@@ -184,7 +184,7 @@ func (s *Service) countOpenPosSessions(ctx context.Context, orgID string) (int, 
 				WHERE RetailerId = @rid AND Status = @st`,
 			Params: map[string]any{"rid": orgID, "st": PosSessionOpen},
 		}
-		iter := s.spannerClient.Single().Query(ctx, stmt)
+		iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 		defer iter.Stop()
 		row, err := iter.Next()
 		if err == iterator.Done {

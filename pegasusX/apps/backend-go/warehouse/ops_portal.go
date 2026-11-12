@@ -468,7 +468,7 @@ func (s *Service) loadOpsOrderDetailFromSpanner(ctx context.Context, warehouseID
 			"warehouseId": strings.TrimSpace(warehouseID),
 		},
 	}
-	iter := s.spannerClient.Single().Query(ctx, stmt)
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	row, err := iter.Next()
 	if err == iterator.Done {
@@ -531,7 +531,7 @@ func (s *Service) HandleOpsStaff(w http.ResponseWriter, r *http.Request) {
 				        AND SupplierRole IN ('WAREHOUSE', 'WAREHOUSE_ADMIN', 'WAREHOUSE_STAFF', 'PAYLOADER')`,
 				Params: map[string]any{"wh_id": whID},
 			}
-			iter := s.spannerClient.Single().Query(r.Context(), stmt)
+			iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(r.Context(), stmt)
 			defer iter.Stop()
 			var staff []portalStaff
 			for {
@@ -648,8 +648,8 @@ func (s *Service) HandleOpsManifests(w http.ResponseWriter, r *http.Request) {
 	if s.spannerClient != nil && !s.portalSeedEnabled() {
 		manifests, err := s.loadWarehouseManifestsFromSpanner(r.Context(), whID)
 		if err != nil {
-			s.log.WarnContext(r.Context(), "warehouse manifests query failed", "err", err, "warehouse_id", whID)
-			writeJSON(w, http.StatusOK, map[string]any{"manifests": []portalManifest{}})
+			s.log.ErrorContext(r.Context(), "warehouse manifests query failed", "err", err, "warehouse_id", whID)
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "manifests_query_failed"})
 			return
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"manifests": manifests})
@@ -671,8 +671,8 @@ func (s *Service) HandleOpsCRM(w http.ResponseWriter, r *http.Request) {
 	if s.spannerClient != nil && !s.portalSeedEnabled() {
 		retailers, err := s.loadWarehouseCRMFromSpanner(r.Context(), whID)
 		if err != nil {
-			s.log.WarnContext(r.Context(), "warehouse crm query failed", "err", err, "warehouse_id", whID)
-			writeJSON(w, http.StatusOK, map[string]any{"retailers": []portalRetailer{}})
+			s.log.ErrorContext(r.Context(), "warehouse crm query failed", "err", err, "warehouse_id", whID)
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "crm_query_failed"})
 			return
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"retailers": retailers})
@@ -690,8 +690,19 @@ func (s *Service) HandleOpsReturns(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
+	whID := warehouseIDFromRequest(r)
 	if s.spannerClient != nil && !s.portalSeedEnabled() {
-		writeJSON(w, http.StatusOK, map[string]any{"items": []portalReturnItem{}})
+		items, err := s.loadWarehouseReturnsFromSpanner(r.Context(), whID)
+		if err != nil {
+			s.log.ErrorContext(r.Context(), "warehouse returns query failed", "err", err, "warehouse_id", whID)
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "returns_query_failed"})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"items": items})
+		return
+	}
+	if !s.portalSeedEnabled() {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "spanner_required"})
 		return
 	}
 	s.ensurePortalSeed()
@@ -739,9 +750,9 @@ func (s *Service) HandleOpsAnalytics(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	var avgOrderValue float64
+	var avgOrderValue int64
 	if completedOrders > 0 {
-		avgOrderValue = float64(totalRevenue) / float64(completedOrders)
+		avgOrderValue = totalRevenue / completedOrders
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{

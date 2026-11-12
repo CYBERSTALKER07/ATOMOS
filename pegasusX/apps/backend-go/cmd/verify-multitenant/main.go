@@ -209,14 +209,13 @@ func verifyTopology(ctx context.Context, client *spanner.Client, r *Verification
 
 func verifyProductCatalog(ctx context.Context, client *spanner.Client, r *VerificationReport) error {
 	stmt := spanner.Statement{
-		SQL: `SELECT ProductId, SupplierId, Name, PriceMinor, Currency, UnitVolumeVU, HandlingClass, RequiresColdChain, IsPerishable, MinShelfLifeDays, StorageTempMinC, StorageTempMaxC, Barcode
+		SQL: `SELECT ProductId, SupplierId, Name, PriceMinor, Currency, UnitVolumeVU, HandlingClass, IsPerishable, MinShelfLifeDays, Barcode
 		      FROM Products ORDER BY SupplierId, ProductId`,
 	}
 	iter := client.Single().Query(ctx, stmt)
 	defer iter.Stop()
 
 	prodCount := 0
-	hasColdChain := false
 	hasPerishable := false
 	for {
 		row, err := iter.Next()
@@ -230,38 +229,29 @@ func verifyProductCatalog(ctx context.Context, client *spanner.Client, r *Verifi
 		var price int64
 		var minShelf spanner.NullInt64
 		var vu float64
-		var cold, per bool
-		var tMin, tMax spanner.NullFloat64
+		var per bool
 		var barcode spanner.NullString
-		if err := row.Columns(&pID, &sID, &name, &price, &curr, &vu, &hClass, &cold, &per, &minShelf, &tMin, &tMax, &barcode); err != nil {
+		if err := row.Columns(&pID, &sID, &name, &price, &curr, &vu, &hClass, &per, &minShelf, &barcode); err != nil {
 			return err
 		}
 		prodCount++
-		if cold {
-			hasColdChain = true
-		}
 		if per {
 			hasPerishable = true
-		}
-		tempStr := "N/A"
-		if tMin.Valid && tMax.Valid {
-			tempStr = fmt.Sprintf("[%.1f°C to %.1f°C]", tMin.Float64, tMax.Float64)
 		}
 		shelfDays := int64(0)
 		if minShelf.Valid {
 			shelfDays = minShelf.Int64
 		}
-		r.Details = append(r.Details, fmt.Sprintf("Product: ID=%s Supplier=%s Name=%q Price=%d %s VU=%.1f Handling=%s ColdChain=%v Perishable=%v ShelfDays=%d Temp=%s Barcode=%s",
-			pID, sID, name, price, curr, vu, hClass, cold, per, shelfDays, tempStr, barcode.StringVal))
+		r.Details = append(r.Details, fmt.Sprintf("Product: ID=%s Supplier=%s Name=%q Price=%d %s VU=%.1f Handling=%s Perishable=%v ShelfDays=%d Barcode=%s",
+			pID, sID, name, price, curr, vu, hClass, per, shelfDays, barcode.StringVal))
 		r.TotalChecksPassed++
 	}
 
-	if prodCount < 5 || !hasColdChain || !hasPerishable {
-		return fmt.Errorf("product catalog check failed: count=%d, coldChain=%v, perishable=%v", prodCount, hasColdChain, hasPerishable)
+	if prodCount < 5 || !hasPerishable {
+		return fmt.Errorf("product catalog check failed: count=%d, perishable=%v", prodCount, hasPerishable)
 	}
 	return nil
 }
-
 
 func verifyVehiclesAndDrivers(ctx context.Context, client *spanner.Client, r *VerificationReport) error {
 	// Vehicles
@@ -448,7 +438,7 @@ func verifyRoleMatrix(ctx context.Context, client *spanner.Client, r *Verificati
 func verifyTenantIsolation(ctx context.Context, client *spanner.Client, r *VerificationReport) error {
 	// 1. Primary Supplier query MUST NOT return secondary warehouse/products
 	stmtP := spanner.Statement{
-		SQL: `SELECT COUNT(1) FROM Products WHERE SupplierId = @s1 AND ProductId LIKE 'sku_sec_%'`,
+		SQL:    `SELECT COUNT(1) FROM Products WHERE SupplierId = @s1 AND ProductId LIKE 'sku_sec_%'`,
 		Params: map[string]any{"s1": PrimarySupplierID},
 	}
 	iterP := client.Single().Query(ctx, stmtP)
@@ -465,7 +455,7 @@ func verifyTenantIsolation(ctx context.Context, client *spanner.Client, r *Verif
 
 	// 2. Secondary Supplier query MUST NOT return primary products
 	stmtS := spanner.Statement{
-		SQL: `SELECT COUNT(1) FROM Products WHERE SupplierId = @s2 AND ProductId LIKE 'sku_cola_%'`,
+		SQL:    `SELECT COUNT(1) FROM Products WHERE SupplierId = @s2 AND ProductId LIKE 'sku_cola_%'`,
 		Params: map[string]any{"s2": SecondarySupplierID},
 	}
 	iterS := client.Single().Query(ctx, stmtS)
@@ -482,7 +472,7 @@ func verifyTenantIsolation(ctx context.Context, client *spanner.Client, r *Verif
 
 	// 3. Stock Lots isolation
 	stmtL := spanner.Statement{
-		SQL: `SELECT COUNT(1) FROM StockLots WHERE SupplierId = @s2 AND WarehouseId = 'wh_tashkent_central_01'`,
+		SQL:    `SELECT COUNT(1) FROM StockLots WHERE SupplierId = @s2 AND WarehouseId = 'wh_tashkent_central_01'`,
 		Params: map[string]any{"s2": SecondarySupplierID},
 	}
 	iterL := client.Single().Query(ctx, stmtL)

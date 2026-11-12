@@ -3,6 +3,7 @@ package compliance
 import (
 	"context"
 	"encoding/json"
+	"time"
 	"golang.org/x/sync/errgroup"
 
 	"cloud.google.com/go/spanner"
@@ -25,7 +26,7 @@ func (r *SpannerRepository) FetchDashboardStats(ctx context.Context, f Dashboard
 
 	// 1. Fiscalizing
 	g.Go(func() error {
-		iter := r.client.Single().Query(gCtx, spanner.Statement{
+		iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(gCtx, spanner.Statement{
 			SQL: `SELECT COUNT(*) AS cnt
 FROM Orders
 WHERE SupplierId = @supplierId
@@ -43,7 +44,7 @@ WHERE SupplierId = @supplierId
 
 	// 2. FiscalFailed
 	g.Go(func() error {
-		iter := r.client.Single().Query(gCtx, spanner.Statement{
+		iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(gCtx, spanner.Statement{
 			SQL: `SELECT COUNT(*) AS cnt
 FROM Orders
 WHERE SupplierId = @supplierId
@@ -61,7 +62,7 @@ WHERE SupplierId = @supplierId
 
 	// 3. ForceCompleted
 	g.Go(func() error {
-		iter := r.client.Single().Query(gCtx, spanner.Statement{
+		iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(gCtx, spanner.Statement{
 			SQL: `SELECT COUNT(*) AS cnt
 FROM Orders
 WHERE SupplierId = @supplierId
@@ -79,7 +80,7 @@ WHERE SupplierId = @supplierId
 
 	// 4. BuyerAcceptancePending
 	g.Go(func() error {
-		iter := r.client.Single().Query(gCtx, spanner.Statement{
+		iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(gCtx, spanner.Statement{
 			SQL: `SELECT COUNT(*) AS cnt
 FROM Orders
 WHERE SupplierId = @supplierId
@@ -98,7 +99,7 @@ WHERE SupplierId = @supplierId
 
 	// 5. BuyerAcceptanceRejected
 	g.Go(func() error {
-		iter := r.client.Single().Query(gCtx, spanner.Statement{
+		iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(gCtx, spanner.Statement{
 			SQL: `SELECT COUNT(*) AS cnt
 FROM Orders
 WHERE SupplierId = @supplierId
@@ -116,7 +117,7 @@ WHERE SupplierId = @supplierId
 
 	// 6. Claim mismatches
 	g.Go(func() error {
-		iter := r.client.Single().Query(gCtx, spanner.Statement{
+		iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(gCtx, spanner.Statement{
 			SQL: `SELECT COUNT(*) AS cnt
 FROM Claims c
 JOIN Orders o ON c.OrderId = o.OrderId
@@ -150,7 +151,7 @@ WHERE o.SupplierId = @supplierId
 
 	// 7. Credit frozen
 	g.Go(func() error {
-		iter := r.client.Single().Query(gCtx, spanner.Statement{
+		iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(gCtx, spanner.Statement{
 			SQL: `SELECT COUNT(*) AS cnt
 FROM CreditProfiles
 WHERE SupplierId = @supplierId
@@ -166,7 +167,7 @@ WHERE SupplierId = @supplierId
 
 	// 8. Open credit notes (not completed or cancelled)
 	g.Go(func() error {
-		iter := r.client.Single().Query(gCtx, spanner.Statement{
+		iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(gCtx, spanner.Statement{
 			SQL: `SELECT COUNT(*) AS cnt
 FROM CreditNotes cn
 JOIN Orders o ON cn.OrderId = o.OrderId
@@ -183,7 +184,7 @@ WHERE o.SupplierId = @supplierId
 
 	// 9. Open reverse logistics tasks (not received or closed)
 	g.Go(func() error {
-		iter := r.client.Single().Query(gCtx, spanner.Statement{
+		iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(gCtx, spanner.Statement{
 			SQL: `SELECT COUNT(*) AS cnt
 FROM ReverseLogisticsTasks rlt
 JOIN Orders o ON rlt.OrderId = o.OrderId
@@ -200,7 +201,7 @@ WHERE o.SupplierId = @supplierId
 
 	// 10. Open cash discrepancies (pending or disputed reconciliation)
 	g.Go(func() error {
-		iter := r.client.Single().Query(gCtx, spanner.Statement{
+		iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(gCtx, spanner.Statement{
 			SQL: `SELECT COUNT(*) AS cnt
 FROM CashReconciliations cr
 JOIN Drivers d ON cr.DriverId = d.DriverId
@@ -294,7 +295,7 @@ ORDER BY o.CreatedAt DESC;`,
 }
 
 func runProblemOrdersQuery(ctx context.Context, client *spanner.Client, stmt spanner.Statement) ([]ProblemOrder, error) {
-	iter := client.Single().Query(ctx, stmt)
+	iter := client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 
 	var rows []ProblemOrder
@@ -377,7 +378,7 @@ func (r *SpannerRepository) ListExceptions(ctx context.Context, f ExceptionFilte
 		Params: params,
 	}
 
-	iter := r.client.Single().Query(ctx, stmt)
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 
 	var rows []ExceptionTicket

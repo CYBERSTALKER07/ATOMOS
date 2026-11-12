@@ -34,17 +34,20 @@ func (s *Service) HandleInitiateRefund(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewDecoder(r.Body).Decode(&body)
 
 	res, err := s.InitiateRefund(r.Context(), RefundRequest{
-		OrderID:        orderID,
-		AmountMinor:    body.AmountMinor,
-		ReasonCode:     body.ReasonCode,
-		ReasonText:     body.ReasonText,
-		ActorID:        claims.Subject,
-		IdempotencyKey: body.IdempotencyKey,
+		OrderID:         orderID,
+		AmountMinor:     body.AmountMinor,
+		ReasonCode:      body.ReasonCode,
+		ReasonText:      body.ReasonText,
+		ActorID:         claims.Subject,
+		ActorSupplierID: claims.SupplierID,
+		IdempotencyKey:  body.IdempotencyKey,
 	})
 	if err != nil {
 		switch {
 		case errors.Is(err, ErrRefundExceedsCaptured), errors.Is(err, ErrRefundCreditPortion), errors.Is(err, ErrRefundOrderState):
 			writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
+		case errors.Is(err, ErrRefundForbidden):
+			writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
 		case errors.Is(err, auth.ErrMarketPackUnknown), errors.Is(err, auth.ErrMarketPackNotShipped),
 			errors.Is(err, auth.ErrPackCurrencyMismatch):
 			st, code := auth.CheckoutPackHTTPStatus(err)

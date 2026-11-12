@@ -164,7 +164,7 @@ func VerifyMDN(expectedMIC string, mdn ParsedMDN) error {
 	if want == "" || got == "" {
 		return fmt.Errorf("as2_mdn_mic_missing")
 	}
-	if !strings.EqualFold(want, got) {
+	if want != got {
 		return fmt.Errorf("as2_mdn_mic_mismatch")
 	}
 	return nil
@@ -172,10 +172,13 @@ func VerifyMDN(expectedMIC string, mdn ParsedMDN) error {
 
 func normalizeMIC(s string) string {
 	s = strings.TrimSpace(s)
-	// "base64…, sha-256" — compare digest + alg case-insensitively, collapse spaces.
+	// RFC 4130 format: "<base64-digest>, <algorithm-id>"
+	// Digest is base64 (case-sensitive); algorithm is case-insensitive.
 	parts := strings.Split(s, ",")
-	for i := range parts {
-		parts[i] = strings.TrimSpace(parts[i])
+	if len(parts) >= 2 {
+		digest := strings.TrimSpace(parts[0])
+		alg := strings.ToLower(strings.TrimSpace(parts[1]))
+		return digest + ", " + alg
 	}
-	return strings.ToLower(strings.Join(parts, ", "))
+	return s
 }

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"time"
 	"cloud.google.com/go/spanner"
 	"google.golang.org/api/iterator"
 
@@ -149,7 +150,7 @@ func (s *Service) listOpsPins(ctx context.Context, supplierID, warehouseID strin
 	if s.spannerClient == nil {
 		return []proximity.ServicePin{}, nil
 	}
-	iter := s.spannerClient.Single().Query(ctx, spanner.Statement{
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL: `SELECT WarehouseId, TargetType, TargetId, Priority
 		      FROM ServicePins WHERE SupplierId = @sid AND WarehouseId = @wid`,
 		Params: map[string]any{"sid": supplierID, "wid": warehouseID},
@@ -177,7 +178,7 @@ func (s *Service) listOpsCoverageCities(ctx context.Context, warehouseID string)
 	if s.spannerClient == nil {
 		return []order.CoverageCity{}
 	}
-	iter := s.spannerClient.Single().Query(ctx, spanner.Statement{
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL:    `SELECT CityName, Lat, Lng FROM WarehouseCoverageCities WHERE WarehouseId = @wid ORDER BY CityName`,
 		Params: map[string]any{"wid": warehouseID},
 	})
@@ -204,7 +205,7 @@ func (s *Service) listOpsCoverageCells(ctx context.Context, supplierID, warehous
 	if s.spannerClient == nil {
 		return nil
 	}
-	iter := s.spannerClient.Single().Query(ctx, spanner.Statement{
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL:    `SELECT H3Cell FROM WarehouseCoverageCells WHERE SupplierId = @sid AND WarehouseId = @wid`,
 		Params: map[string]any{"sid": supplierID, "wid": warehouseID},
 	})

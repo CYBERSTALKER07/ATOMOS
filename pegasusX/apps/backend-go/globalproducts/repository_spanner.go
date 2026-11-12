@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"time"
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
 	"google.golang.org/api/iterator"
@@ -147,7 +148,7 @@ func (r *SpannerRepository) ListAll(ctx context.Context, limit int) ([]GlobalPro
 }
 
 func (r *SpannerRepository) queryMany(ctx context.Context, stmt spanner.Statement) ([]GlobalProduct, error) {
-	iter := r.client.Single().Query(ctx, stmt)
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	var out []GlobalProduct
 	for {
@@ -238,7 +239,7 @@ func (r *SpannerRepository) ListOffersByGlobal(ctx context.Context, globalProduc
 		      FROM SupplierProductOffers WHERE GlobalProductId = @gid AND Status = @st`,
 		Params: map[string]any{"gid": globalProductID, "st": StatusLinked},
 	}
-	iter := r.client.Single().Query(ctx, stmt)
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	var out []Offer
 	for {
@@ -293,7 +294,7 @@ func (r *SpannerRepository) ListMatchQueue(ctx context.Context, status string, l
 		            FROM ProductMatchQueue WHERE SupplierId IS NOT NULL ORDER BY CreatedAt LIMIT @lim`
 		stmt.Params = map[string]any{"lim": int64(limit)}
 	}
-	iter := r.client.Single().Query(ctx, stmt)
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	var out []MatchQueueItem
 	for {

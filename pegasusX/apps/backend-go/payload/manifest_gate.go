@@ -3,6 +3,7 @@ package payload
 import (
 	"context"
 	"strings"
+	"time"
 )
 
 // ManifestGateSnapshot exposes payloader manifest state for driver ghost-stop checks.
@@ -14,7 +15,9 @@ func (s *Service) ManifestGateSnapshot(manifestID string) (state string, stopCou
 	if manifestID == "" {
 		return "", 0, 0, false
 	}
-	_ = s.hydrateFromRepo(context.Background())
+	hydrateCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	_ = s.hydrateFromRepo(hydrateCtx)
+	cancel()
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.ensureManifestStateLocked()

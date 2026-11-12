@@ -43,12 +43,7 @@ func DispatchScoreUseOSRM() bool {
 // ScoreCandidate ranks assigning `order` onto an existing route or a new route for `driver`.
 // When route is nil, scores opening a new route with driver.
 // Missing PriorityScore / DriverScore / ShopClosedRisk use neutral mid defaults.
-// Cold-chain: order.RequiresColdChain && !driver.HasRefrigeration → -1 (G6.C).
 func ScoreCandidate(route *DispatchRoute, order DispatchableOrder, driver AvailableDriver, ctx ScoreContext) float64 {
-	// G6.C: cold-chain hard refuse when vehicle lacks reefer (align with OR-Tools filter).
-	if order.RequiresColdChain && !driver.HasRefrigeration {
-		return -1
-	}
 	// Hazardous without certified cab → refuse.
 	if order.IsHazardous && !driver.HazmatCertified {
 		return -1

@@ -80,6 +80,9 @@ func (s *Service) RetailerRespondShopClosed(
 	orderID, retailerID string,
 	req RetailerShopClosedResponse,
 ) error {
+	if s == nil || s.spannerClient == nil {
+		return status.Error(codes.Unavailable, "spanner required")
+	}
 	now := s.now().UTC()
 
 	_, err := s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
@@ -129,13 +132,13 @@ func (s *Service) resolveReschedule(ctx context.Context, txn *spanner.ReadWriteT
 
 	newStatus := StatusPending
 	mutations = append(mutations, spanner.UpdateMap("Orders", map[string]any{
-		"OrderId":               order.OrderID,
-		"Status":                string(newStatus),
-		"ShopClosedResolution":  "RESCHEDULED",
-		"Version":               order.Version + 1,
-		"UpdatedAt":             now,
-		"ReceivingWindowOpen":   *req.NewWindowStart,
-		"ReceivingWindowClose":  *req.NewWindowEnd,
+		"OrderId":              order.OrderID,
+		"Status":               string(newStatus),
+		"ShopClosedResolution": "RESCHEDULED",
+		"Version":              order.Version + 1,
+		"UpdatedAt":            now,
+		"ReceivingWindowOpen":  *req.NewWindowStart,
+		"ReceivingWindowClose": *req.NewWindowEnd,
 	}))
 
 	mutations = append(mutations, spanner.InsertMap("OrderShopClosedLog", map[string]any{

@@ -809,12 +809,9 @@ CREATE TABLE Products (
   MaxStackHeight     INT64         NOT NULL DEFAULT (0),
   Barcode            STRING(32),
   HandlingClass      STRING(20)    NOT NULL DEFAULT ('GENERAL'),
-  RequiresColdChain  BOOL          NOT NULL DEFAULT (FALSE),
   IsHazardous        BOOL          NOT NULL DEFAULT (FALSE),
   IsPerishable       BOOL          NOT NULL DEFAULT (FALSE),
   MinShelfLifeDays   INT64,
-  StorageTempMinC    FLOAT64,
-  StorageTempMaxC    FLOAT64,
   IsActive           BOOL          NOT NULL DEFAULT (TRUE),
   Version            INT64         NOT NULL DEFAULT (1),
   CreatedAt          TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
@@ -1392,20 +1389,8 @@ CREATE TABLE InventoryAdjustments (
 CREATE INDEX Idx_InventoryAdjustments_ByWarehouseStatus
   ON InventoryAdjustments(WarehouseId, Status, CreatedAt DESC);
 
--- §8.7 Gate 4 PR-6: cold-chain temperature readings.
-CREATE TABLE TemperatureReadings (
-  ReadingId    STRING(36)    NOT NULL,
-  ManifestId   STRING(36)    NOT NULL,
-  SensorId     STRING(64),
-  RecordedAt   TIMESTAMP     NOT NULL,
-  TempC        FLOAT64       NOT NULL,
-  Lat          FLOAT64,
-  Lng          FLOAT64,
-  CreatedAt    TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
-) PRIMARY KEY (ReadingId);
-
-CREATE INDEX Idx_TemperatureReadings_ByManifest
-  ON TemperatureReadings(ManifestId, RecordedAt DESC);
+-- §8.7 Gate 4 PR-6 temperature readings removed. Weather ingestion and
+-- temperature control are not part of this product.
 
 -- Supplier bulk-import staging substrate (warehouse analytics anomaly queue + future session wizard).
 CREATE TABLE SupplierImportSessions (
@@ -3950,7 +3935,6 @@ CREATE TABLE FleetDVIRInspections (
   CriticalDefectFound    BOOL         NOT NULL DEFAULT (FALSE),
   RedTagApplied          BOOL         NOT NULL DEFAULT (FALSE),
   OdometerKm             INT64        NOT NULL,
-  ReeferTempCelsius      FLOAT64,
   Status                 STRING(32)   NOT NULL,
   MaintenanceWorkOrderId STRING(36),
   CreatedAt              TIMESTAMP    NOT NULL OPTIONS (allow_commit_timestamp=true),
@@ -3993,6 +3977,16 @@ CREATE TABLE OfflineQuotaLeases (
   Status                STRING(24)  NOT NULL,
   CreatedAt             TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
 ) PRIMARY KEY (LeaseId);
+
+-- 20261107_driver_command_acks.ddl
+CREATE TABLE DriverCommandAcks (
+  DriverId   STRING(36)  NOT NULL,
+  CommandId  STRING(128) NOT NULL,
+  TraceId    STRING(128),
+  EventType  STRING(64)  NOT NULL,
+  AckedAt    TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (DriverId, CommandId);
+
 
 
 

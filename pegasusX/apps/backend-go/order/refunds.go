@@ -52,15 +52,17 @@ var (
 	ErrRefundExceedsCaptured = errors.New("refund exceeds captured minus refunded")
 	ErrRefundCreditPortion   = errors.New("credit-paid portion refunds via AR adjustment, not card/cash reversal")
 	ErrRefundOrderState      = errors.New("order is not in a refundable state")
+	ErrRefundForbidden       = errors.New("forbidden: order belongs to another supplier")
 )
 
 type RefundRequest struct {
-	OrderID        string
-	AmountMinor    int64 // <=0 means full remaining refundable amount
-	ReasonCode     string
-	ReasonText     string
-	ActorID        string
-	IdempotencyKey string
+	OrderID         string
+	AmountMinor     int64 // <=0 means full remaining refundable amount
+	ReasonCode      string
+	ReasonText      string
+	ActorID         string
+	ActorSupplierID string
+	IdempotencyKey  string
 }
 
 type RefundResult struct {
@@ -81,31 +83,37 @@ func (s *Service) SetPaymentRefunder(r PaymentRefunder) {
 
 // refundableBalances computes per-method captured-minus-refunded balances.
 // REFUND legs attribute via their idempotency key prefix (refund-card: / refund-cash:).
+// PENDING refunds are deducted to prevent concurrent double-refund races.
 func refundableBalances(rows func(func(method string, amount int64, status string, idemKey string) bool) error) (card, cash, credit int64, err error) {
 	err = rows(func(method string, amount int64, status string, idemKey string) bool {
-		if status != string(PaymentStatusCaptured) {
-			return true
-		}
 		switch method {
 		case string(MethodCard):
-			card += amount
+			if status == string(PaymentStatusCaptured) {
+				card += amount
+			}
 		case string(MethodCash):
-			cash += amount
+			if status == string(PaymentStatusCaptured) {
+				cash += amount
+			}
 		case string(MethodCredit):
-			credit += amount
+			if status == string(PaymentStatusCaptured) {
+				credit += amount
+			}
 		case string(MethodRefund):
-			switch {
-			case strings.HasPrefix(idemKey, "refund-card:"):
-				card -= amount
-			case strings.HasPrefix(idemKey, "refund-cash:"):
-				cash -= amount
-			default:
-				// Legacy/unknown refund attribution: subtract from the largest
-				// remaining balance, never silently ignore the reversal.
-				if card >= cash {
+			if status == string(PaymentStatusCaptured) || status == string(PaymentStatusPending) {
+				switch {
+				case strings.HasPrefix(idemKey, "refund-card:"):
 					card -= amount
-				} else {
+				case strings.HasPrefix(idemKey, "refund-cash:"):
 					cash -= amount
+				default:
+					// Legacy/unknown refund attribution: subtract from the largest
+					// remaining balance, never silently ignore the reversal.
+					if card >= cash {
+						card -= amount
+					} else {
+						cash -= amount
+					}
 				}
 			}
 		}
@@ -158,19 +166,22 @@ func (s *Service) InitiateRefund(ctx context.Context, req RefundRequest) (Refund
 		if err != nil {
 			return fmt.Errorf("order %s: %w", orderID, err)
 		}
-		var status string
-		if err := row.Columns(&orderRow.OrderID, &orderRow.SupplierID, &orderRow.RetailerID, &status, &orderRow.TotalMinor, &orderRow.Currency); err != nil {
+		var orderStatus string
+		if err := row.Columns(&orderRow.OrderID, &orderRow.SupplierID, &orderRow.RetailerID, &orderStatus, &orderRow.TotalMinor, &orderRow.Currency); err != nil {
 			return err
+		}
+		if strings.TrimSpace(req.ActorSupplierID) != "" && orderRow.SupplierID != "" && req.ActorSupplierID != orderRow.SupplierID {
+			return ErrRefundForbidden
 		}
 		cur, curErr := auth.CoalesceCurrency(ctx, orderRow.SupplierID, orderRow.Currency)
 		if curErr != nil {
 			return curErr
 		}
 		orderRow.Currency = cur
-		switch Status(status) {
+		switch Status(orderStatus) {
 		case StatusFiscalizing, StatusDeliveredOnCredit, StatusPendingCashCollection, StatusFiscalFailed, StatusCompleted:
 		default:
-			return fmt.Errorf("%w: %s", ErrRefundOrderState, status)
+			return fmt.Errorf("%w: %s", ErrRefundOrderState, orderStatus)
 		}
 
 		iter := txn.Query(ctx, spanner.Statement{
@@ -215,7 +226,7 @@ func (s *Service) InitiateRefund(ctx context.Context, req RefundRequest) (Refund
 			method = RefundMethodCard
 		case amount <= cashBal:
 			method = RefundMethodCash
-		case amount <= cardBal+cashBal+creditBal:
+		case creditBal > 0 && amount <= cardBal+cashBal+creditBal:
 			return fmt.Errorf("%w (remaining credit-covered: %d)", ErrRefundCreditPortion, creditBal)
 		default:
 			return fmt.Errorf("%w: requested %d, refundable card=%d cash=%d", ErrRefundExceedsCaptured, amount, cardBal, cashBal)

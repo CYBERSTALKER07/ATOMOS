@@ -254,7 +254,10 @@ func subscribeRetailerRooms(ident auth.Claims, conn Connection, hubs roleHubs, u
 		if orgID != "" {
 			unsubscribes = append(unsubscribes, hubs.retailer.Subscribe("retailer:"+orgID, conn))
 			if cfg.RetailerPromoSuppliers != nil {
-				for _, supplierID := range cfg.RetailerPromoSuppliers(context.Background(), orgID) {
+				lookupCtx, cancelLookup := context.WithTimeout(context.Background(), 5*time.Second)
+				suppliers := cfg.RetailerPromoSuppliers(lookupCtx, orgID)
+				cancelLookup()
+				for _, supplierID := range suppliers {
 					room := SupplierPromoRoom(supplierID)
 					unsubscribes = append(unsubscribes, hubs.retailer.Subscribe(room, conn))
 				}
@@ -374,22 +377,30 @@ func roleHubsForIdentity(ident auth.Claims, hubs roleHubs) []*Hub {
 	}
 }
 
+const wsOpTimeout = 5 * time.Second
+
 func runConnectionLoop(req *http.Request, conn *gorillaConn, platformSvc *platform.Service, hubs roleHubs, registerDynamicUnsub func(func()), log *slog.Logger) {
 	maybeSendOutdated(req, conn, platformSvc, log)
 	done := make(chan struct{})
+	connCtx, cancelConn := context.WithCancel(context.Background())
 
-	// Touch presence on initial connect (use Background — req.Context() is
+	// Touch presence on initial connect (use bounded connCtx — req.Context() is
 	// cancelled by the HTTP server after the WebSocket upgrade completes).
-	touchIdentityPresence(context.Background(), conn, hubs)
+	initCtx, cancelInit := context.WithTimeout(connCtx, wsOpTimeout)
+	touchIdentityPresence(initCtx, conn, hubs)
+	cancelInit()
 
 	// startPingLoop(conn, done, log) // handled by writePump now
 	defer func() {
 		close(done)
+		cancelConn()
 		conn.signalClosed()
-		// Clear presence on disconnect (req.Context() is long dead here).
+		// Clear presence on disconnect with a bounded timeout.
+		clearCtx, cancelClear := context.WithTimeout(context.Background(), wsOpTimeout)
+		defer cancelClear()
 		for _, h := range roleHubsForIdentity(conn.Identity(), hubs) {
 			if h != nil {
-				h.ClearPresence(context.Background(), conn)
+				h.ClearPresence(clearCtx, conn)
 			}
 		}
 		conn.close()
@@ -397,12 +408,16 @@ func runConnectionLoop(req *http.Request, conn *gorillaConn, platformSvc *platfo
 	conn.conn.SetReadLimit(4096)
 	_ = conn.conn.SetReadDeadline(time.Now().Add(websocketPongWait))
 	conn.conn.SetPongHandler(func(string) error {
-		touchIdentityPresence(context.Background(), conn, hubs)
+		pongCtx, cancelPong := context.WithTimeout(connCtx, wsOpTimeout)
+		touchIdentityPresence(pongCtx, conn, hubs)
+		cancelPong()
 		return conn.conn.SetReadDeadline(time.Now().Add(websocketPongWait))
 	})
 	defaultPingHandler := conn.conn.PingHandler()
 	conn.conn.SetPingHandler(func(appData string) error {
-		touchIdentityPresence(context.Background(), conn, hubs)
+		pingCtx, cancelPing := context.WithTimeout(connCtx, wsOpTimeout)
+		touchIdentityPresence(pingCtx, conn, hubs)
+		cancelPing()
 		_ = conn.conn.SetReadDeadline(time.Now().Add(websocketPongWait))
 		if defaultPingHandler != nil {
 			return defaultPingHandler(appData)
@@ -420,14 +435,18 @@ func runConnectionLoop(req *http.Request, conn *gorillaConn, platformSvc *platfo
 		if !limiter.Allow() {
 			recordRateLimited()
 			log.Warn("websocket ingress rate limit exceeded", "conn_id", conn.ID())
-			sendJSONFrame(context.Background(), conn, map[string]any{
+			errCtx, cancelErr := context.WithTimeout(connCtx, wsOpTimeout)
+			sendJSONFrame(errCtx, conn, map[string]any{
 				"type":    "error",
 				"code":    "rate_limit_exceeded",
 				"message": "websocket ingress rate limit exceeded",
 			})
+			cancelErr()
 			return
 		}
-		handleClientMessage(context.Background(), rawMsg, conn, hubs, registerDynamicUnsub, log)
+		msgCtx, cancelMsg := context.WithTimeout(connCtx, wsOpTimeout)
+		handleClientMessage(msgCtx, rawMsg, conn, hubs, registerDynamicUnsub, log)
+		cancelMsg()
 	}
 }
 
@@ -459,7 +478,9 @@ func maybeSendOutdated(req *http.Request, conn *gorillaConn, platformSvc *platfo
 	if !send {
 		return
 	}
-	if err := conn.Send(context.Background(), payload); err != nil {
+	sendCtx, cancelSend := context.WithTimeout(req.Context(), wsOpTimeout)
+	defer cancelSend()
+	if err := conn.Send(sendCtx, payload); err != nil {
 		log.WarnContext(req.Context(), "outdated ws send failed", "err", err)
 	}
 }

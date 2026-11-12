@@ -8,11 +8,11 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
+	"github.com/pegasusx/pegasusx/apps/backend-go/bootstrap/memory"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
 	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/kafkautil"
 	"github.com/pegasusx/pegasusx/apps/backend-go/manifest"
-	"github.com/pegasusx/pegasusx/apps/backend-go/bootstrap/memory"
 	"github.com/pegasusx/pegasusx/apps/backend-go/notifications"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/platform"

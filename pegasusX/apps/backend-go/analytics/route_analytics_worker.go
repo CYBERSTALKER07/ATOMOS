@@ -61,15 +61,19 @@ func (w *RouteAnalyticsWorker) ComputeAndSave(ctx context.Context, routeId strin
 	}
 
 	// Manifest metadata for supplier, planned stops, driver, replans, duration bounds.
-	manifestIter := w.applier.Query(ctx, spanner.Statement{
-		SQL: `
-			SELECT SupplierId, DriverId, StopCount, ReplanCount, DispatchedAt, CompletedAt
-			FROM SupplierTruckManifests
-			WHERE RouteId = @routeId
-			ORDER BY UpdatedAt DESC LIMIT 1`,
-		Params: map[string]any{"routeId": routeId},
-	})
-	if manifestIter != nil {
+	func() {
+		manifestIter := w.applier.Query(ctx, spanner.Statement{
+			SQL: `
+				SELECT SupplierId, DriverId, StopCount, ReplanCount, DispatchedAt, CompletedAt
+				FROM SupplierTruckManifests
+				WHERE RouteId = @routeId
+				ORDER BY UpdatedAt DESC LIMIT 1`,
+			Params: map[string]any{"routeId": routeId},
+		})
+		if manifestIter == nil {
+			return
+		}
+		defer manifestIter.Stop()
 		if row, err := manifestIter.Next(); err == nil {
 			var supplier, driver spanner.NullString
 			var stopCount, replan spanner.NullInt64
@@ -87,44 +91,53 @@ func (w *RouteAnalyticsWorker) ComputeAndSave(ctx context.Context, routeId strin
 				}
 			}
 		}
-		manifestIter.Stop()
-	}
+	}()
 
 	if !perf.SupplierId.Valid || perf.SupplierId.StringVal == "" {
-		sidIter := w.applier.Query(ctx, spanner.Statement{
-			SQL:    `SELECT SupplierId FROM Orders WHERE RouteId = @routeId LIMIT 1`,
-			Params: map[string]any{"routeId": routeId},
-		})
-		if sidIter != nil {
+		func() {
+			sidIter := w.applier.Query(ctx, spanner.Statement{
+				SQL:    `SELECT SupplierId FROM Orders WHERE RouteId = @routeId LIMIT 1`,
+				Params: map[string]any{"routeId": routeId},
+			})
+			if sidIter == nil {
+				return
+			}
+			defer sidIter.Stop()
 			if row, err := sidIter.Next(); err == nil {
 				var sid string
 				if err := row.Column(0, &sid); err == nil && sid != "" {
 					perf.SupplierId = spanner.NullString{StringVal: sid, Valid: true}
 				}
 			}
-			sidIter.Stop()
-		}
+		}()
 	}
 
-	actualIter := w.applier.Query(ctx, spanner.Statement{
-		SQL:    `SELECT COUNT(*) FROM Orders WHERE RouteId = @routeId AND Status = 'COMPLETED'`,
-		Params: map[string]any{"routeId": routeId},
-	})
-	if actualIter != nil {
+	func() {
+		actualIter := w.applier.Query(ctx, spanner.Statement{
+			SQL:    `SELECT COUNT(*) FROM Orders WHERE RouteId = @routeId AND Status = 'COMPLETED'`,
+			Params: map[string]any{"routeId": routeId},
+		})
+		if actualIter == nil {
+			return
+		}
+		defer actualIter.Stop()
 		if row, err := actualIter.Next(); err == nil {
 			var cnt int64
 			if err := row.Column(0, &cnt); err == nil {
 				perf.ActualStops = spanner.NullInt64{Int64: cnt, Valid: true}
 			}
 		}
-		actualIter.Stop()
-	}
+	}()
 
-	etaIter := w.applier.Query(ctx, spanner.Statement{
-		SQL:    `SELECT MIN(WindowStart), MAX(WindowEnd) FROM RouteETAs WHERE RouteId = @routeId`,
-		Params: map[string]any{"routeId": routeId},
-	})
-	if etaIter != nil {
+	func() {
+		etaIter := w.applier.Query(ctx, spanner.Statement{
+			SQL:    `SELECT MIN(WindowStart), MAX(WindowEnd) FROM RouteETAs WHERE RouteId = @routeId`,
+			Params: map[string]any{"routeId": routeId},
+		})
+		if etaIter == nil {
+			return
+		}
+		defer etaIter.Stop()
 		if row, err := etaIter.Next(); err == nil {
 			var start, end spanner.NullTime
 			if err := row.Columns(&start, &end); err == nil && start.Valid && end.Valid {
@@ -134,8 +147,7 @@ func (w *RouteAnalyticsWorker) ComputeAndSave(ctx context.Context, routeId strin
 				}
 			}
 		}
-		etaIter.Stop()
-	}
+	}()
 
 	if !perf.ActualDurationSec.Valid && perf.PlannedDurationSec.Valid {
 		perf.ActualDurationSec = perf.PlannedDurationSec

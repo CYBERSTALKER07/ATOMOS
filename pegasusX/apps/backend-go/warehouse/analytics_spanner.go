@@ -74,9 +74,9 @@ func (s *Service) loadOpsAnalytics(ctx context.Context, warehouseID, period, sup
 		return nil, fmt.Errorf("analytics order counts: %w", err)
 	}
 
-	var avgOrderValue float64
+	var avgOrderValue int64
 	if completedOrders > 0 {
-		avgOrderValue = float64(totalRevenue) / float64(completedOrders)
+		avgOrderValue = totalRevenue / completedOrders
 	}
 
 	dailyBreakdown, err := s.loadAnalyticsDailyBreakdown(readCtx, txn, params)

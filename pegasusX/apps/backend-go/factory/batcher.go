@@ -29,10 +29,10 @@ type loadStopEntry struct {
 }
 
 type packedManifest struct {
-	Vehicle     factoryVehicle
-	Transfers   []batchableTransfer
-	UsedVU      float64
-	LoadOrder   []loadStopEntry
+	Vehicle   factoryVehicle
+	Transfers []batchableTransfer
+	UsedVU    float64
+	LoadOrder []loadStopEntry
 }
 
 // PackFFDNNLIFO is First-Fit Decreasing bin-pack, nearest-neighbor from factory origin, LIFO load.

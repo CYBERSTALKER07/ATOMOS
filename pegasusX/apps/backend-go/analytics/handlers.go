@@ -66,7 +66,7 @@ func (h *Handlers) HandleListRoutePerformance(w http.ResponseWriter, r *http.Req
 		return
 	}
 	if h == nil || h.Client == nil {
-		writeJSON(w, http.StatusOK, map[string]any{"routes": []routePerfWire{}})
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "analytics_unavailable"})
 		return
 	}
 	limit := 50
@@ -79,7 +79,7 @@ func (h *Handlers) HandleListRoutePerformance(w http.ResponseWriter, r *http.Req
 	if h.SupplierID != nil {
 		supplierID = h.SupplierID(r.Context())
 	}
-	iter := h.Client.Single().Query(r.Context(), routePerfListStmt(supplierID, limit))
+	iter := h.Client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(r.Context(), routePerfListStmt(supplierID, limit))
 	defer iter.Stop()
 
 	rows := make([]routePerfWire, 0)

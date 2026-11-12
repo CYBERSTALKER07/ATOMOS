@@ -908,12 +908,12 @@ func TestNotificationDispatcher_ProductHandlingUpdatedFansSupplierOnly(t *testin
 	})
 
 	payload, _ := json.Marshal(map[string]any{
-		"type":                events.EventProductHandlingUpdated,
-		"trace_id":            "trace-product",
-		"product_id":          "prod-1",
-		"supplier_id":         "sup-1",
-		"handling_class":      "COLD_CHAIN",
-		"requires_cold_chain": true,
+		"type":           events.EventProductHandlingUpdated,
+		"trace_id":       "trace-product",
+		"product_id":     "prod-1",
+		"supplier_id":    "sup-1",
+		"handling_class": "PERISHABLE",
+		"is_perishable":  true,
 	})
 	if err := dispatcher.HandleEvent(context.Background(), kafka.Message{Value: payload}); err != nil {
 		t.Fatalf("handle event: %v", err)

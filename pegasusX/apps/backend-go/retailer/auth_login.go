@@ -364,8 +364,10 @@ func retailerProfileConfigured(ret Retailer) bool {
 }
 
 func (s *Service) marshalMobileAuthResponse(ret Retailer) (int, []byte) {
+	authCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 	// Phase 0: bootstrap OWNER user so JWT Subject is the person id.
-	owner, err := s.EnsureOwnerUser(context.Background(), ret)
+	owner, err := s.EnsureOwnerUser(authCtx, ret)
 	if err != nil {
 		if s.log != nil {
 			s.log.Warn("owner bootstrap failed; falling back to legacy subject", "retailer_id", ret.RetailerID, "err", err)
@@ -384,9 +386,11 @@ func (s *Service) marshalMobileAuthResponse(ret Retailer) (int, []byte) {
 }
 
 func (s *Service) marshalMobileAuthResponseForUser(ret Retailer, user RetailerUser) (int, []byte) {
+	authCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 	isConfigured := retailerProfileConfigured(ret)
 	packList := []string{PackCORE}
-	if packs, err := s.LoadEnabledPacks(context.Background(), ret.RetailerID); err == nil {
+	if packs, err := s.LoadEnabledPacks(authCtx, ret.RetailerID); err == nil {
 		packList = packs.List()
 	}
 
@@ -402,10 +406,10 @@ func (s *Service) marshalMobileAuthResponseForUser(ret Retailer, user RetailerUs
 	// Phase 2: ensure primary location + attach scope/active branch to JWT.
 	var locIDs []string
 	var activeLoc string
-	if primary, err := s.EnsurePrimaryLocation(context.Background(), ret.RetailerID); err == nil {
+	if primary, err := s.EnsurePrimaryLocation(authCtx, ret.RetailerID); err == nil {
 		activeLoc = primary.LocationID
 	}
-	if bound, err := s.listUserLocationIDs(context.Background(), user.UserID); err == nil && len(bound) > 0 {
+	if bound, err := s.listUserLocationIDs(authCtx, user.UserID); err == nil && len(bound) > 0 {
 		locIDs = bound
 		if !containsString(bound, activeLoc) {
 			activeLoc = bound[0]
@@ -464,7 +468,7 @@ func (s *Service) marshalMobileAuthResponseForUser(ret Retailer, user RetailerUs
 			"role":        role,
 		},
 	}
-	if fbToken, err := auth.MintCustomToken(context.Background(), user.UserID, map[string]interface{}{
+	if fbToken, err := auth.MintCustomToken(authCtx, user.UserID, map[string]interface{}{
 		"role":             string(auth.RoleRetailer),
 		"retailer_id":      ret.RetailerID,
 		"retailer_org_id":  ret.RetailerID,

@@ -86,21 +86,12 @@ def test_multi_depot_multi_vehicle():
     assert len(resp["routes"]) >= 1
 
 
-def test_cold_chain_and_hazmat_vehicle_constraints():
-    # v1 is closer to o1 (cold) but has no refrigeration; v2 is further but has refrigeration
-    # o2 (hazmat) requires hazmat certification; only v3 has hazmat certification
+def test_hazmat_vehicle_constraints():
+    # o2 (hazmat) requires hazmat certification; only v-hazmat has hazmat certification
     req = {
         "v": "v1",
         "trace_id": "t-safety",
         "stops": [
-            {
-                "order_id": "o-cold",
-                "retailer_id": "r1",
-                "lat": 41.301,
-                "lng": 69.241,
-                "volume_vu": 10.0,
-                "requires_cold_chain": True,
-            },
             {
                 "order_id": "o-hazmat",
                 "retailer_id": "r2",
@@ -124,16 +115,6 @@ def test_cold_chain_and_hazmat_vehicle_constraints():
                 "max_volume_vu": 100.0,
                 "start_lat": 41.30,
                 "start_lng": 69.24,
-                "has_refrigeration": False,
-                "hazmat_certified": False,
-            },
-            {
-                "vehicle_id": "v-reefer",
-                "driver_id": "d2",
-                "max_volume_vu": 100.0,
-                "start_lat": 41.32,
-                "start_lng": 69.24,
-                "has_refrigeration": True,
                 "hazmat_certified": False,
             },
             {
@@ -142,13 +123,12 @@ def test_cold_chain_and_hazmat_vehicle_constraints():
                 "max_volume_vu": 100.0,
                 "start_lat": 41.33,
                 "start_lng": 69.24,
-                "has_refrigeration": False,
                 "hazmat_certified": True,
             },
         ],
     }
     resp = solve_contract(req)
-    assert resp["stats"]["stops_placed"] == 3
+    assert resp["stats"]["stops_placed"] == 2
 
     vehicle_assignments = {}
     for route in resp["routes"]:
@@ -156,8 +136,6 @@ def test_cold_chain_and_hazmat_vehicle_constraints():
         for stop in route["stops"]:
             vehicle_assignments[stop["order_id"]] = vid
 
-    # o-cold MUST be on v-reefer
-    assert vehicle_assignments["o-cold"] == "v-reefer"
     # o-hazmat MUST be on v-hazmat
     assert vehicle_assignments["o-hazmat"] == "v-hazmat"
 

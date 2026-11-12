@@ -124,7 +124,7 @@ func (c *SLOCollector) collect(ctx context.Context) {
 }
 
 func (c *SLOCollector) count(ctx context.Context, sql string) (int64, error) {
-	iter := c.client.Single().Query(ctx, spanner.Statement{SQL: sql})
+	iter := c.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{SQL: sql})
 	defer iter.Stop()
 	row, err := iter.Next()
 	if err != nil {
@@ -146,7 +146,7 @@ func (c *SLOCollector) outboxLagP99(ctx context.Context) (float64, error) {
 // ratio returns numerator/denominator, or 1.0 when there is no traffic in the
 // window (no traffic is not a breach).
 func (c *SLOCollector) ratio(ctx context.Context, sql string) (float64, error) {
-	iter := c.client.Single().Query(ctx, spanner.Statement{SQL: sql})
+	iter := c.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{SQL: sql})
 	defer iter.Stop()
 	row, err := iter.Next()
 	if err != nil {

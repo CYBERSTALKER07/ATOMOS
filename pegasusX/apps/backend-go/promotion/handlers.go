@@ -202,7 +202,15 @@ func (s *Service) HandleCheckoutQuote(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "supplier_id_and_lines_required"})
 		return
 	}
-	quote, err := s.QuoteCheckout(r.Context(), req.SupplierID, claims.Subject, req.Lines)
+	if claims.SupplierID != "" && claims.SupplierID != req.SupplierID {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
+		return
+	}
+	retailerID := claims.Subject
+	if claims.RetailerOrgID != "" {
+		retailerID = claims.RetailerOrgID
+	}
+	quote, err := s.QuoteCheckout(r.Context(), req.SupplierID, retailerID, req.Lines)
 	if err != nil {
 		if errors.Is(err, auth.ErrMarketPackUnknown) || errors.Is(err, auth.ErrMarketPackNotShipped) ||
 			errors.Is(err, auth.ErrPackGatewayForbidden) || errors.Is(err, auth.ErrPackCurrencyMismatch) {
@@ -259,12 +267,130 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 }
 // HandleCreateCampaign handles POST /v1/supplier/campaigns
 func (s *Service) HandleCreateCampaign(w http.ResponseWriter, r *http.Request) {
-	// Stub implementation
-	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+	if r.Method != http.MethodPost {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	claims, ok := auth.FromContext(r.Context())
+	if !ok || (claims.Role != auth.RoleAdmin && claims.Role != auth.RolePlatformAdmin) {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
+		return
+	}
+	supplierID := strings.TrimSpace(claims.SupplierID)
+	if supplierID == "" {
+		if sid, ok := auth.ResolveSupplierID(r.Context()); ok {
+			supplierID = sid
+		}
+	}
+	if supplierID == "" {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "supplier_scope_required"})
+		return
+	}
+	if s == nil || s.repo == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "promotion_unavailable"})
+		return
+	}
+
+	body, ok := readMutationBody(w, r, 64*1024)
+	if !ok {
+		return
+	}
+	key, handled := s.guardMutationReplay(w, r, body)
+	if handled {
+		return
+	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseMutationReplay(r.Context(), r)
+		}
+	}()
+
+	var req struct {
+		Name             string `json:"name"`
+		BudgetLimitMinor int64  `json:"budget_limit_minor"`
+	}
+	if err := json.Unmarshal(body, &req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+		return
+	}
+	req.Name = strings.TrimSpace(req.Name)
+	if req.Name == "" || req.BudgetLimitMinor <= 0 {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "name_and_budget_required"})
+		return
+	}
+	campaignID, err := s.repo.CreateCampaign(r.Context(), supplierID, req.Name, req.BudgetLimitMinor)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	respBytes, _ := json.Marshal(map[string]any{"campaign_id": campaignID, "status": CampaignStatusActive})
+	idemCommitted = true
+	s.saveMutationReplay(r.Context(), key, body, http.StatusCreated, respBytes)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	_, _ = w.Write(respBytes)
 }
 
 // HandleEnrollRetailer handles POST /v1/retailer/promotions/enroll
 func (s *Service) HandleEnrollRetailer(w http.ResponseWriter, r *http.Request) {
-	// Stub implementation
-	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+	if r.Method != http.MethodPost {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	claims, ok := auth.FromContext(r.Context())
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+		return
+	}
+	retailerID := auth.ResolveRetailerOrgID(claims)
+	if retailerID == "" {
+		retailerID = strings.TrimSpace(claims.Subject)
+	}
+	if retailerID == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "retailer_id_required"})
+		return
+	}
+	if s == nil || s.repo == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "promotion_unavailable"})
+		return
+	}
+
+	body, ok := readMutationBody(w, r, 64*1024)
+	if !ok {
+		return
+	}
+	key, handled := s.guardMutationReplay(w, r, body)
+	if handled {
+		return
+	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseMutationReplay(r.Context(), r)
+		}
+	}()
+
+	var req struct {
+		CampaignID string `json:"campaign_id"`
+	}
+	if err := json.Unmarshal(body, &req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+		return
+	}
+	req.CampaignID = strings.TrimSpace(req.CampaignID)
+	if req.CampaignID == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "campaign_id_required"})
+		return
+	}
+	if err := s.repo.EnrollRetailer(r.Context(), req.CampaignID, retailerID); err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	respBytes, _ := json.Marshal(map[string]string{"status": "ok", "campaign_id": req.CampaignID})
+	idemCommitted = true
+	s.saveMutationReplay(r.Context(), key, body, http.StatusOK, respBytes)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(respBytes)
 }

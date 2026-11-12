@@ -17,18 +17,16 @@ import (
 // OrderStatusTransition is one immutable audit row for order lifecycle changes.
 type OrderStatusTransition struct {
 	TransitionID   string         `json:"transition_id"`
-	OrderID          string         `json:"order_id"`
-	PreviousStatus   string         `json:"previous_status,omitempty"`
-	NewStatus        string         `json:"new_status"`
-	Reason           string         `json:"reason,omitempty"`
-	ActorRole        string         `json:"actor_role,omitempty"`
-	ActorID          string         `json:"actor_id,omitempty"`
-	EventKind        string         `json:"event_kind,omitempty"`
-	Metadata         map[string]any `json:"metadata,omitempty"`
-	CreatedAt        time.Time      `json:"created_at"`
+	OrderID        string         `json:"order_id"`
+	PreviousStatus string         `json:"previous_status,omitempty"`
+	NewStatus      string         `json:"new_status"`
+	Reason         string         `json:"reason,omitempty"`
+	ActorRole      string         `json:"actor_role,omitempty"`
+	ActorID        string         `json:"actor_id,omitempty"`
+	EventKind      string         `json:"event_kind,omitempty"`
+	Metadata       map[string]any `json:"metadata,omitempty"`
+	CreatedAt      time.Time      `json:"created_at"`
 }
-
-
 
 // DefaultTransitionEventKind gives a default event kind for a status.
 func DefaultTransitionEventKind(status Status) string {
@@ -62,7 +60,7 @@ func (s *Service) ListOrderTimeline(ctx context.Context, orderID string, limit i
 		      LIMIT @lim`,
 		Params: map[string]any{"oid": orderID, "lim": limit},
 	}
-	iter := s.spannerClient.Single().WithTimestampBound(spanner.MaxStaleness(15 * time.Second)).Query(ctx, stmt)
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.MaxStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	out := make([]OrderStatusTransition, 0, limit)
 	for {
@@ -74,7 +72,7 @@ func (s *Service) ListOrderTimeline(ctx context.Context, orderID string, limit i
 			return nil, err
 		}
 		var (
-			transitionID, oid, next string
+			transitionID, oid, next                string
 			prev, reason, actorRole, actorID, kind spanner.NullString
 			metaRaw                                []byte
 			createdAt                              time.Time
@@ -164,7 +162,6 @@ func assertTimelineAccess(claims auth.Claims, o Order) error {
 	}
 	return ErrOrderForbidden
 }
-
 
 // delayTransitionMetadata builds audit metadata for warehouse delay actions.
 func delayTransitionMetadata(proposedDelivery *time.Time, reason string) map[string]any {

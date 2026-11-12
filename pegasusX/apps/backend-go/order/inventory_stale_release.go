@@ -88,4 +88,3 @@ func staleReservationNowOverride() *time.Time {
 	}
 	return &t
 }
-

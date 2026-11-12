@@ -37,7 +37,7 @@ func (s *Service) loadAnalyticsOverview(ctx context.Context) (analyticsOverview,
 	}
 
 	if err := txn.Query(readCtx, spanner.Statement{
-		SQL: `SELECT COUNT(*) FROM FactoryInternalTransfers WHERE FactoryId = @fid`,
+		SQL:    `SELECT COUNT(*) FROM FactoryInternalTransfers WHERE FactoryId = @fid`,
 		Params: map[string]any{"fid": factoryID},
 	}).Do(func(row *spanner.Row) error {
 		return row.Columns(&overview.TransfersTotal)

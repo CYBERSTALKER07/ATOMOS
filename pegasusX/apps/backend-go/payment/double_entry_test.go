@@ -300,6 +300,18 @@ func TestDoubleEntry_DoorstepCashShortfall(t *testing.T) {
 	if sumDebit != 100000 || sumCredit != 100000 {
 		t.Errorf("debits (%d) != credits (%d)", sumDebit, sumCredit)
 	}
+
+	// Verify full 36-char order ID produces LedgerEntryID within Spanner limit (<= 64 chars)
+	je36, err := BuildDoorstepCashShortfallJournalEntry("ord_da76b192d19d419c805db8b49af2ae98", "sup-1", "driver-1", "UZS", 100000, 90000, time.Time{})
+	if err != nil {
+		t.Fatalf("expected valid 36-char order shortfall, got: %v", err)
+	}
+	records := je36.ToLedgerEntryRecords()
+	for _, rec := range records {
+		if len(rec.LedgerEntryID) > 64 {
+			t.Errorf("LedgerEntryID length %d exceeds Spanner limit 64: %s", len(rec.LedgerEntryID), rec.LedgerEntryID)
+		}
+	}
 }
 
 func TestDoubleEntry_ClaimDisputeSettlements(t *testing.T) {
@@ -366,4 +378,3 @@ func TestDoubleEntry_CreditNoteAdjustment(t *testing.T) {
 		t.Fatalf("expected 2 mutations, got %d", len(muts))
 	}
 }
-

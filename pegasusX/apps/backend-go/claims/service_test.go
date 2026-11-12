@@ -745,6 +745,8 @@ func TestFileRetailerClaim_EmptyCurrencyUsesPack(t *testing.T) {
 	}
 }
 
+
+
 func TestFileRetailerClaim_EmptyCurrencyPlannedFailsClosed(t *testing.T) {
 	now := time.Date(2026, 7, 28, 12, 0, 0, 0, time.UTC)
 	o := completedOrder(now)
@@ -790,3 +792,60 @@ func TestCreateFromDriverException_EmptyCurrencyUsesPack(t *testing.T) {
 		t.Fatalf("currency=%q want UZS from pack", c.Currency)
 	}
 }
+
+func TestFileRetailerClaim_ReusedPhotoEvidenceRefused(t *testing.T) {
+	now := time.Date(2026, 7, 28, 12, 0, 0, 0, time.UTC)
+	repo := NewMemoryRepository()
+	svc := NewService(Config{
+		Repo:   repo,
+		Orders: fakeOrders{ok: true, o: completedOrder(now)},
+		Now:    func() time.Time { return now },
+		NewID:  func() string { return "c1" },
+		Log:    slog.New(slog.NewTextHandler(io.Discard, nil)),
+	})
+
+	photoURI := "https://storage.googleapis.com/pegasusx-test/evidence/damaged_box.jpg"
+
+	// First claim with photo succeeds
+	_, err := svc.FileRetailerClaim(context.Background(), auth.Claims{
+		Subject: "ret-1", Role: auth.RoleRetailer,
+	}, "ord-1", FileClaimRequest{
+		ClaimType: ClaimTypeConcealedDamage,
+		LineItems: []ClaimLine{{SKU: "sku-1", Quantity: 1, Reason: "DAMAGED"}},
+		Evidences: []struct {
+			EvidenceType EvidenceType `json:"evidence_type"`
+			URI          string       `json:"uri"`
+			MimeType     string       `json:"mime_type"`
+		}{{EvidenceType: EvidencePhoto, URI: photoURI, MimeType: "image/jpeg"}},
+	})
+	if err != nil {
+		t.Fatalf("first claim should succeed: %v", err)
+	}
+
+	// Second claim with the EXACT SAME photo URI must be refused per B2B Operating Model:
+	// "A reused photo is refused."
+	svc2 := NewService(Config{
+		Repo:   repo,
+		Orders: fakeOrders{ok: true, o: completedOrder(now)},
+		Now:    func() time.Time { return now },
+		NewID:  func() string { return "c2" },
+		Log:    slog.New(slog.NewTextHandler(io.Discard, nil)),
+	})
+	_, err = svc2.FileRetailerClaim(context.Background(), auth.Claims{
+		Subject: "ret-1", Role: auth.RoleRetailer,
+	}, "ord-1", FileClaimRequest{
+		ClaimType: ClaimTypeConcealedDamage,
+		LineItems: []ClaimLine{{SKU: "sku-1", Quantity: 1, Reason: "DAMAGED"}},
+		Evidences: []struct {
+			EvidenceType EvidenceType `json:"evidence_type"`
+			URI          string       `json:"uri"`
+			MimeType     string       `json:"mime_type"`
+		}{{EvidenceType: EvidencePhoto, URI: photoURI, MimeType: "image/jpeg"}},
+	})
+	if !errors.Is(err, ErrReusedPhotoEvidence) {
+		t.Fatalf("want ErrReusedPhotoEvidence, got %v", err)
+	}
+}
+
+
+

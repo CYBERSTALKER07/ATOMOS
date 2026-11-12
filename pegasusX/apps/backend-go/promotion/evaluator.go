@@ -205,13 +205,19 @@ func promotionActiveAt(p *Promotion, now time.Time) bool {
 }
 
 func retailerEligible(p *Promotion, retailerID string) bool {
-	if p.RetailerScope == RetailerScopeAll || len(p.RetailerIDs) == 0 {
+	if p.RetailerScope == RetailerScopeAll {
 		return true
 	}
-	for _, id := range p.RetailerIDs {
-		if id == retailerID {
-			return true
+	if p.RetailerScope == RetailerScopeAllowlist {
+		if len(p.RetailerIDs) == 0 {
+			return false
 		}
+		for _, id := range p.RetailerIDs {
+			if id == retailerID {
+				return true
+			}
+		}
+		return false
 	}
 	return false
 }

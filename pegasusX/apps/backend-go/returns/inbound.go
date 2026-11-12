@@ -130,7 +130,8 @@ func (s *Service) HandleInboundList(w http.ResponseWriter, r *http.Request) {
 		sql += " AND sr.DriverId = @driver_id"
 		params["driver_id"] = driverID
 	}
-	sql += fmt.Sprintf(" ORDER BY sr.CreatedAt ASC LIMIT %d", limit)
+	params["limit"] = int64(limit)
+	sql += " ORDER BY sr.CreatedAt ASC LIMIT @limit"
 
 	rows, err := s.queryInboundRows(ctx, sql, params)
 	if err != nil {
@@ -705,7 +706,9 @@ func (s *Service) HandleReturnsHistory(w http.ResponseWriter, r *http.Request) {
 		sql += " AND o.SupplierId = @supplier_id"
 		params["supplier_id"] = supplierID
 	}
-	sql += fmt.Sprintf(" ORDER BY sr.ReceivedAt DESC LIMIT %d OFFSET %d", limit+1, offset)
+	params["limit"] = int64(limit + 1)
+	params["offset"] = int64(offset)
+	sql += " ORDER BY sr.ReceivedAt DESC LIMIT @limit OFFSET @offset"
 
 	iter := s.spanner.Single().Query(ctx, spanner.Statement{SQL: sql, Params: params})
 	defer iter.Stop()
@@ -777,7 +780,7 @@ func (s *Service) HandleDriverReturnGoods(w http.ResponseWriter, r *http.Request
 		return
 	}
 	if s.spanner == nil {
-		writeJSON(w, http.StatusOK, map[string]any{"items": []any{}, "total_units": 0})
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "returns_unavailable"})
 		return
 	}
 	claims, ok := auth.FromContext(r.Context())

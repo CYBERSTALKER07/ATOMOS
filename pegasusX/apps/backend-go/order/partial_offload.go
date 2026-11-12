@@ -240,7 +240,11 @@ func (s *Service) HandlePartialOffload(w http.ResponseWriter, r *http.Request) {
 	if current.OriginalTotalMinor <= 0 {
 		current.OriginalTotalMinor = current.TotalMinor
 	}
-	current.TotalMinor = deliveredMinor
+	if deliveredMinor > 0 && current.DeliveryFeeMinor > 0 {
+		current.TotalMinor = deliveredMinor + current.DeliveryFeeMinor
+	} else {
+		current.TotalMinor = deliveredMinor
+	}
 	current.UpdatedAt = now.UTC()
 
 	// Remaining qty → reverse logistics (SupplierReturns quarantine), same path as amend.

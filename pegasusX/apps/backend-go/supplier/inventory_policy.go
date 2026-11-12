@@ -54,7 +54,7 @@ func (s *Service) listSupplierInventoryV2(ctx context.Context, supplierID string
 		      ORDER BY si.WarehouseId, si.ProductId`,
 		Params: map[string]any{"sid": supplierID},
 	}
-	iter := s.portalSpanner.Single().Query(ctx, stmt)
+	iter := s.portalSpanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 
 	var levels []InventoryLevelView

@@ -41,7 +41,8 @@ def haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
         math.sin(d_lat / 2) ** 2
         + math.cos(lat1 * rad) * math.cos(lat2 * rad) * math.sin(d_lng / 2) ** 2
     )
-    return earth_r * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    a = min(1.0, max(0.0, a))
+    return earth_r * 2 * math.atan2(math.sqrt(a), math.sqrt(max(0.0, 1.0 - a)))
 
 
 def _parse_hh_mm(value: str) -> int | None:
@@ -125,10 +126,19 @@ def solve_contract(req: dict[str, Any]) -> dict[str, Any]:
     starts: list[int] = []
     ends: list[int] = []
     for v in vehicles_in:
-        s_lat = float(v.get("start_lat") or 0)
-        s_lng = float(v.get("start_lng") or 0)
-        e_lat = float(v.get("end_lat") or s_lat)
-        e_lng = float(v.get("end_lng") or s_lng)
+        if not isinstance(v, dict):
+            raise SolverError("BAD_REQUEST", "each vehicle entry must be an object")
+        try:
+            s_lat = float(v.get("start_lat") or 0)
+            s_lng = float(v.get("start_lng") or 0)
+            e_lat = float(v.get("end_lat") or s_lat)
+            e_lng = float(v.get("end_lng") or s_lng)
+            max_vol = float(v.get("max_volume_vu") or 0)
+            avg_spd = float(v.get("avg_speed_kmph") or 0)
+        except (TypeError, ValueError) as exc:
+            raise SolverError("BAD_REQUEST", f"invalid vehicle numeric field: {exc}") from exc
+        if not all(math.isfinite(val) for val in (s_lat, s_lng, e_lat, e_lng, max_vol, avg_spd)):
+            raise SolverError("BAD_REQUEST", "vehicle coordinates, volume, and speed must be finite numbers")
         starts.append(get_or_add_depot(s_lat, s_lng))
         ends.append(get_or_add_depot(e_lat, e_lng))
 
@@ -136,15 +146,24 @@ def solve_contract(req: dict[str, Any]) -> dict[str, Any]:
 
     stops: list[dict[str, Any]] = []
     orphans: list[dict[str, str]] = []
-    for stop in stops_in:
-        volume = float(stop.get("volume_vu") or 0)
+    for orig_idx, stop in enumerate(stops_in):
+        if not isinstance(stop, dict):
+            raise SolverError("BAD_REQUEST", "each stop entry must be an object")
+        try:
+            volume = float(stop.get("volume_vu") or 0)
+            stop_lat = float(stop.get("lat") or 0)
+            stop_lng = float(stop.get("lng") or 0)
+        except (TypeError, ValueError) as exc:
+            raise SolverError("BAD_REQUEST", f"invalid stop numeric field: {exc}") from exc
+        if not all(math.isfinite(val) for val in (volume, stop_lat, stop_lng)):
+            raise SolverError("BAD_REQUEST", "stop coordinates and volume_vu must be finite numbers")
         if volume <= 0:
             orphans.append({"order_id": str(stop.get("order_id") or ""), "reason": "non-positive volume"})
             continue
         service = int(stop.get("service_minutes") or 0)
         if service <= 0:
             service = DEFAULT_SERVICE_MINUTES
-        stops.append({**stop, "volume_vu": volume, "service_minutes": service})
+        stops.append({**stop, "lat": stop_lat, "lng": stop_lng, "volume_vu": volume, "service_minutes": service, "_orig_idx": orig_idx})
 
     if not stops:
         elapsed_ms = int((datetime.now(timezone.utc) - started).total_seconds() * 1000)
@@ -183,7 +202,7 @@ def solve_contract(req: dict[str, Any]) -> dict[str, Any]:
             for d in range(num_depots):
                 node_to_client.append(depot_to_v.get(d, 0))
             for stop in stops:
-                orig_idx = stops_in.index(stop) if stop in stops_in else 0
+                orig_idx = int(stop.get("_orig_idx", 0))
                 node_to_client.append(len(vehicles_in) + orig_idx)
 
             distance_matrix = [
@@ -310,14 +329,11 @@ def solve_contract(req: dict[str, Any]) -> dict[str, Any]:
         routing.AddDisjunction([mgr_idx], drop_penalty)
 
         stop = stops[node_index - num_depots]
-        req_cold = bool(stop.get("requires_cold_chain")) or (stop.get("handling_class") == "COLD_CHAIN")
         req_hazmat = bool(stop.get("is_hazardous")) or (stop.get("handling_class") == "HAZMAT")
 
-        if req_cold or req_hazmat:
+        if req_hazmat:
             allowed_vehicles: list[int] = []
             for v_idx, v in enumerate(vehicles_in):
-                if req_cold and not bool(v.get("has_refrigeration")):
-                    continue
                 if req_hazmat and not bool(v.get("hazmat_certified")):
                     continue
                 allowed_vehicles.append(v_idx)
@@ -382,7 +398,6 @@ def solve_contract(req: dict[str, Any]) -> dict[str, Any]:
                     "window_close": s.get("window_close") or "",
                     "service_minutes": s.get("service_minutes"),
                     "priority": int(s.get("priority") or 0),
-                    "requires_cold_chain": bool(s.get("requires_cold_chain")),
                     "is_hazardous": bool(s.get("is_hazardous")),
                 }
                 for s in ordered_stops
@@ -442,6 +457,7 @@ def solve_contract(req: dict[str, Any]) -> dict[str, Any]:
             "solver_time_limit_ms_applied": time_limit_applied,
         },
         "solver_metadata": {
+            "solver_status": "HEURISTIC",
             "solver_time_limit_ms_requested": time_limit_requested,
             "solver_time_limit_ms_applied": time_limit_applied,
             "time_limit_requested_ms": time_limit_requested,
@@ -477,6 +493,7 @@ def _empty_response(
             "solver_time_limit_ms_applied": time_limit_applied,
         },
         "solver_metadata": {
+            "solver_status": "HEURISTIC",
             "solver_time_limit_ms_requested": time_limit_requested,
             "solver_time_limit_ms_applied": time_limit_applied,
             "time_limit_requested_ms": time_limit_requested,

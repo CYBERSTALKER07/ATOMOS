@@ -26,11 +26,11 @@ type AutoOrderSettings struct {
 
 // AutoOrderShadowStats summarizes 30d shadow acceptance.
 type AutoOrderShadowStats struct {
-	ProposalCount   int64   `json:"proposal_count"`
-	MatchedOrders   int64   `json:"matched_orders"`
-	WAPE            float64 `json:"wape"`
-	UnmodifiedRate  float64 `json:"unmodified_accept_rate"`
-	WindowDays      int     `json:"window_days"`
+	ProposalCount  int64   `json:"proposal_count"`
+	MatchedOrders  int64   `json:"matched_orders"`
+	WAPE           float64 `json:"wape"`
+	UnmodifiedRate float64 `json:"unmodified_accept_rate"`
+	WindowDays     int     `json:"window_days"`
 }
 
 // SupplierOverride toggles auto-order for one supplier.

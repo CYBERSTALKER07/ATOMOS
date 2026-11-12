@@ -51,6 +51,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		rr.Get("/v1/factory/transfers", d.Service.HandleTransfers)
 		rr.Post("/v1/factory/transfers/create", d.Service.HandleTransfers)
 		rr.Get("/v1/factory/transfers/{transferID}", d.Service.HandleTransferByID)
+		rr.Post("/v1/factory/transfers/{transferID}/driver", d.Service.HandleTransferDriverUpdate)
 		rr.Post("/v1/factory/transfers/{transferID}/transition", d.Service.HandleTransferTransition)
 		rr.Get("/v1/factory/fleet", d.Service.HandleFleet)
 		rr.Get("/v1/factory/fleet/live-map", d.Service.HandleFactoryFleetLiveMap)

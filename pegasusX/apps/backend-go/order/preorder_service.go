@@ -50,14 +50,22 @@ func (s *Service) ConfirmAIOrder(ctx context.Context, retailerID string, req Con
 			return RetailerOrderLifecycleResponse{}, err
 		}
 		current.LineItems = fulfillable
-		current.TotalMinor = totalMinorForLines(fulfillable)
+		tot := totalMinorForLines(fulfillable)
+		if tot > 0 && current.DeliveryFeeMinor > 0 {
+			tot += current.DeliveryFeeMinor
+		}
+		current.TotalMinor = tot
 	} else if s.spannerClient != nil {
 		fulfillable, _, err := s.applyPreorderInventoryGuard(ctx, current.SupplierID, current.WarehouseID, current.LineItems, current.LineItems)
 		if err != nil {
 			return RetailerOrderLifecycleResponse{}, err
 		}
 		current.LineItems = fulfillable
-		current.TotalMinor = totalMinorForLines(fulfillable)
+		tot := totalMinorForLines(fulfillable)
+		if tot > 0 && current.DeliveryFeeMinor > 0 {
+			tot += current.DeliveryFeeMinor
+		}
+		current.TotalMinor = tot
 	}
 	if strings.TrimSpace(req.RequestedDeliveryDate) != "" {
 		requestedDeliveryDate, err := parseOptionalRFC3339(req.RequestedDeliveryDate)

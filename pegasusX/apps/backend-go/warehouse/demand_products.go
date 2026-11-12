@@ -134,7 +134,9 @@ func (s *Service) productDemandFromScaffold(warehouseID string, forecastDays int
 		})
 	}
 
-	inventoryList, _ := s.repo.GetInventoryList(context.Background(), warehouseID, InventoryListOptions{})
+	invCtx, cancelInv := context.WithTimeout(context.Background(), 5*time.Second)
+	inventoryList, _ := s.repo.GetInventoryList(invCtx, warehouseID, InventoryListOptions{})
+	cancelInv()
 	for sku, row := range inventoryList {
 		appendRow(sku, row.ProductName, int64(row.Quantity))
 	}
@@ -183,7 +185,7 @@ func (s *Service) demandAdjustmentsByProduct(ctx context.Context, warehouseID st
 			"date": spanner.NullDate{Valid: true, Date: today},
 		},
 	}
-	iter := s.spannerClient.Single().Query(ctx, stmt)
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	for {
 		row, err := iter.Next()
@@ -326,7 +328,7 @@ func (s *Service) activeProductsBySupplierPage(ctx context.Context, supplierID s
 			"off": int64(offset),
 		},
 	}
-	iter := s.spannerClient.Single().Query(ctx, stmt)
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 
 	var rows []catalogProduct
@@ -358,7 +360,7 @@ func (s *Service) inventoryLevelsByWarehouse(ctx context.Context, warehouseID st
 	if txn := spannerutils.ReadOnlyTxnFromContext(ctx); txn != nil {
 		iter = txn.Query(ctx, stmt)
 	} else {
-		iter = s.spannerClient.Single().Query(ctx, stmt)
+		iter = s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	}
 	defer iter.Stop()
 

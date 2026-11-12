@@ -29,7 +29,7 @@ func (s *Service) loadWarehouseManifestsFromSpanner(ctx context.Context, warehou
 		      LIMIT 100`,
 		Params: map[string]any{"wh": warehouseID},
 	}
-	iter := s.spannerClient.Single().Query(ctx, stmt)
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	out := make([]portalManifest, 0, 16)
 	for {

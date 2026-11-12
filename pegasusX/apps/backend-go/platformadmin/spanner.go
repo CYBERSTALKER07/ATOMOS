@@ -76,7 +76,7 @@ func (r *SpannerRepository) ListTenants(ctx context.Context, status string, limi
 		params["st"] = status
 	}
 	sql += ` ORDER BY UpdatedAt DESC LIMIT @lim`
-	iter := r.client.Single().Query(ctx, spanner.Statement{SQL: sql, Params: params})
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{SQL: sql, Params: params})
 	defer iter.Stop()
 	out := make([]Tenant, 0)
 	for {
@@ -115,7 +115,7 @@ func (r *SpannerRepository) ListAudit(ctx context.Context, limit int) ([]AuditRo
 	if limit <= 0 {
 		limit = 100
 	}
-	iter := r.client.Single().Query(ctx, spanner.Statement{
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL: `SELECT AuditId, ActorSubject, Action, TenantType, TenantId, DetailJson, CreatedAt
 			FROM PlatformAdminAudit ORDER BY CreatedAt DESC LIMIT @lim`,
 		Params: map[string]any{"lim": int64(limit)},
@@ -149,7 +149,7 @@ func (r *SpannerRepository) ListAuditByActor(ctx context.Context, actorSubject s
 	if limit <= 0 {
 		limit = 100
 	}
-	iter := r.client.Single().Query(ctx, spanner.Statement{
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL: `SELECT AuditId, ActorSubject, Action, TenantType, TenantId, DetailJson, CreatedAt
 			FROM PlatformAdminAudit@{FORCE_INDEX=Idx_PlatformAdminAudit_ByActorCreated}
 			WHERE ActorSubject = @actor

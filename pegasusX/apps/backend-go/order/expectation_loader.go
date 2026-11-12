@@ -27,7 +27,7 @@ func LoadDeliveryExpectations(ctx context.Context, client *spanner.Client, now t
 		      WHERE OrderId IN UNNEST(@ids)`,
 		Params: map[string]any{"ids": ids},
 	}
-	iter := client.Single().Query(ctx, stmt)
+	iter := client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	for {
 		row, err := iter.Next()

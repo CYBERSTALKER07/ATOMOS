@@ -29,15 +29,15 @@ import (
 )
 
 type kafkaConsumers struct {
-	notificationConsumer *kafka.Consumer
-	orderEventConsumer    *kafka.Consumer
+	notificationConsumer   *kafka.Consumer
+	orderEventConsumer     *kafka.Consumer
 	warehouseEventConsumer *kafka.Consumer
-	returnsEventConsumer  *kafka.Consumer
-	claimsEventConsumer   *kafka.Consumer
-	billingTierConsumer   *kafka.Consumer
-	partnerEventConsumer  *kafka.Consumer
-	twinEventConsumer     *kafka.Consumer
-	cleanup               func()
+	returnsEventConsumer   *kafka.Consumer
+	claimsEventConsumer    *kafka.Consumer
+	billingTierConsumer    *kafka.Consumer
+	partnerEventConsumer   *kafka.Consumer
+	twinEventConsumer      *kafka.Consumer
+	cleanup                func()
 }
 
 // setupKafkaConsumers initializes all domain event consumers.

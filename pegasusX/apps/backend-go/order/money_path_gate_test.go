@@ -62,19 +62,19 @@ func insertFiscalizingCardOrder(t *testing.T, ctx context.Context, client *spann
 	now := time.Now().UTC().Add(-2 * time.Minute)
 	_, err := client.Apply(ctx, []*spanner.Mutation{
 		spanner.InsertMap("Orders", map[string]any{
-			"OrderId":      orderID,
-			"RetailerId":   "ret-gate",
-			"SupplierId":   "sup-gate",
+			"OrderId":            orderID,
+			"RetailerId":         "ret-gate",
+			"SupplierId":         "sup-gate",
 			"Status":             string(StatusFiscalizing),
 			"OrderSource":        string(OrderSourceManual),
 			"ConfirmationStatus": string(ConfirmationStatusConfirmed),
 			"LineItemsJson":      []byte("[]"),
 			"FiscalStatus":       string(FiscalStatusPending),
-			"TotalMinor":   amountMinor,
-			"Currency":     "UZS",
-			"Version":      int64(1),
-			"CreatedAt":    now,
-			"UpdatedAt":    now,
+			"TotalMinor":         amountMinor,
+			"Currency":           "UZS",
+			"Version":            int64(1),
+			"CreatedAt":          now,
+			"UpdatedAt":          now,
 		}),
 		spanner.InsertMap("OrderPaymentLegs", map[string]any{
 			"OrderId":        orderID,
@@ -93,12 +93,12 @@ func insertFiscalizingCardOrder(t *testing.T, ctx context.Context, client *spann
 
 func gateOrderRecord(orderID string, amountMinor int64) Order {
 	return Order{
-		OrderID:    orderID,
-		SupplierID: "sup-gate",
-		RetailerID: "ret-gate",
-		Currency:   "UZS",
-		TotalMinor: amountMinor,
-		Status:     StatusFiscalizing,
+		OrderID:      orderID,
+		SupplierID:   "sup-gate",
+		RetailerID:   "ret-gate",
+		Currency:     "UZS",
+		TotalMinor:   amountMinor,
+		Status:       StatusFiscalizing,
 		FiscalStatus: FiscalStatusPending,
 		PendingFiscalReceipts: []FiscalReceiptRow{{
 			OrderID:     orderID,

@@ -191,3 +191,28 @@ async fn optimizer_service_concurrency_bound_backpressure() {
 
     drop(held_permit);
 }
+
+#[test]
+fn negative_or_zero_matrix_size_returns_model_invalid() {
+    for bad_size in [-5, -1, 0] {
+        let req = OptimizeVrpRequest {
+            job_id: "bad-matrix-size".into(),
+            depot_node_uuid: "depot".into(),
+            drop_off_node_uuids: vec!["n1".into()],
+            distance_matrix_km: vec![0.0, 1.0, 1.0, 0.0],
+            matrix_size: bad_size,
+            vehicles: vec![],
+            node_demands: vec![],
+            node_time_windows: vec![],
+            solver_time_limit_ms: 500,
+        };
+        let resp = vrp::solve(req);
+        assert_eq!(
+            resp.status,
+            SolverStatus::ModelInvalid as i32,
+            "matrix_size={} must return MODEL_INVALID without panicking",
+            bad_size
+        );
+    }
+}
+

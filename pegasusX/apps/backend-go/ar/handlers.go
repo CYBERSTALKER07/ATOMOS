@@ -173,6 +173,15 @@ func (s *Service) HandleInvoiceWriteOff(w http.ResponseWriter, r *http.Request) 
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invoice_id_required"})
 		return
 	}
+	existingInv, err := s.repo.GetByID(r.Context(), invoiceID)
+	if err != nil {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "invoice_not_found"})
+		return
+	}
+	if strings.TrimSpace(claims.SupplierID) != "" && existingInv.SupplierID != "" && claims.SupplierID != existingInv.SupplierID {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
+		return
+	}
 
 	var req WriteOffRequest
 	if r.Body != nil {

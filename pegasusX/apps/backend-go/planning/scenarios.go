@@ -123,7 +123,7 @@ func (s *Service) ListScenarios(ctx context.Context, supplierID string, limit in
 	if limit <= 0 || limit > 50 {
 		limit = 20
 	}
-	iter := s.Spanner.Single().Query(ctx, spanner.Statement{
+	iter := s.Spanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL: `SELECT ScenarioId, Version, Status, COALESCE(ParentScenarioId,''), COALESCE(Label,''),
 		             HorizonDays, FactoryDowntimeHours, DemandDeltaPct, ResultJSON,
 		             COALESCE(Mode,''), COALESCE(UnitValueSource,''),

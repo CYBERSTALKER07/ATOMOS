@@ -15,6 +15,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/gs1"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
 	"google.golang.org/api/iterator"
 )
 
@@ -238,7 +239,12 @@ func (s *Service) ListShipUnits(ctx context.Context, manifestID string) ([]ShipU
 			FROM ManifestShipUnits WHERE ManifestId = @mid ORDER BY Sequence`,
 		Params: map[string]any{"mid": manifestID},
 	}
-	iter := client.Single().Query(ctx, stmt)
+	var iter *spanner.RowIterator
+	if txn := spannerutils.ReadOnlyTxnFromContext(ctx); txn != nil {
+		iter = txn.Query(ctx, stmt)
+	} else {
+		iter = client.Single().Query(ctx, stmt)
+	}
 	defer iter.Stop()
 	out := make([]ShipUnit, 0)
 	for {
@@ -350,7 +356,12 @@ func (s *Service) labelGLNs(ctx context.Context, manifestID string) (fromGLN, to
 				"manifestId": manifestID,
 			},
 		}
-		iter := client.Single().Query(ctx, stmt)
+		var iter *spanner.RowIterator
+		if txn := spannerutils.ReadOnlyTxnFromContext(ctx); txn != nil {
+			iter = txn.Query(ctx, stmt)
+		} else {
+			iter = client.Single().Query(ctx, stmt)
+		}
 		defer iter.Stop()
 		row, err := iter.Next()
 		if err == nil {

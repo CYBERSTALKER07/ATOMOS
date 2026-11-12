@@ -286,7 +286,19 @@ func (s *Service) ReconcileCashBag(ctx context.Context, reconID, actor, action, 
 			updates["FinanceNote"] = financeNote
 		}
 
-		return txn.BufferWrite([]*spanner.Mutation{spanner.UpdateMap("CashReconciliations", updates)})
+		if err := txn.BufferWrite([]*spanner.Mutation{spanner.UpdateMap("CashReconciliations", updates)}); err != nil {
+			return err
+		}
+		buf := outbox.NewSpannerTxnBuffer(txn)
+		_ = outbox.EmitJSON(ctx, buf, events.AggregateDriver, dID, events.TopicExceptions, map[string]any{
+			"type":              "CASH_RECONCILIATION_RESOLVED",
+			"reconciliation_id": reconID,
+			"driver_id":         dID,
+			"status":            newStatus,
+			"resolved_by":       actor,
+			"difference_minor":  diff,
+		})
+		return buf.Flush(ctx)
 	})
 	if err != nil {
 		return nil, err
@@ -401,7 +413,7 @@ func (s *Service) HandleCashReconciliationDispute(w http.ResponseWriter, r *http
 // HandleListCashReconciliations serves GET /v1/warehouse/ops/cash-reconciliations.
 func (s *Service) HandleListCashReconciliations(w http.ResponseWriter, r *http.Request) {
 	if s.spanner == nil {
-		writeJSON(w, http.StatusOK, map[string]any{"reconciliations": []CashReconciliation{}})
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "spanner_unavailable"})
 		return
 	}
 	supplierID, ok := auth.ResolveSupplierID(r.Context())
@@ -422,7 +434,7 @@ func (s *Service) HandleListCashReconciliations(w http.ResponseWriter, r *http.R
 	}
 	sql += ` ORDER BY CreatedAt DESC LIMIT 100`
 
-	iter := s.spanner.Single().Query(r.Context(), spanner.Statement{SQL: sql, Params: params})
+	iter := s.spanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(r.Context(), spanner.Statement{SQL: sql, Params: params})
 	defer iter.Stop()
 
 	var list []CashReconciliation

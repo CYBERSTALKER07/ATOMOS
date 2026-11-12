@@ -111,7 +111,7 @@ func (s *Service) ensureProximityUnlocked(ctx context.Context, txn *spanner.Read
 			return status.Error(codes.PermissionDenied, "cannot skip proximity without supervisor token")
 		}
 		// In a real app we'd verify opts.SupervisorToken or s.auth.CanForceProximity(ctx, opts.Actor)
-		
+
 		order.ProximityUnlockedAt = ptr(time.Now().UTC())
 		order.ProximityMethod = ProximityMethodForceBypass
 	} else {
@@ -146,7 +146,7 @@ func (s *Service) ensureProximityUnlocked(ctx context.Context, txn *spanner.Read
 			"ProximityMethod":     order.ProximityMethod,
 		}),
 	}
-	
+
 	for _, e := range buf.events {
 		mutations = append(mutations, outboxMutation(e))
 	}

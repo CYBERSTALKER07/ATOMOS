@@ -185,32 +185,34 @@ func (r *SpannerRepository) ApplyAvailability(ctx context.Context, upd Availabil
 			}
 		} else {
 			// Find active shift and close it
-			activeStmt := spanner.Statement{
-				SQL:    `SELECT ShiftId, StartAt FROM DriverShifts WHERE DriverId = @id AND Status = 'ACTIVE' LIMIT 1`,
-				Params: map[string]any{"id": upd.DriverID},
-			}
-			iter := txn.Query(txnCtx, activeStmt)
-			sRow, sErr := iter.Next()
-			if sErr == nil {
-				var shiftID string
-				var startAt time.Time
-				if err := sRow.Columns(&shiftID, &startAt); err == nil {
-					durationHours := time.Since(startAt).Hours()
-					if durationHours < 0 {
-						durationHours = 0
-					}
-					mutations = append(mutations, spanner.UpdateMap("DriverShifts", map[string]any{
-						"DriverId":      upd.DriverID,
-						"ShiftId":       shiftID,
-						"Status":        "COMPLETED",
-						"EndAt":         spanner.CommitTimestamp,
-						"DurationHours": durationHours,
-						"Notes":         upd.Note,
-						"UpdatedAt":     spanner.CommitTimestamp,
-					}))
+			func() {
+				activeStmt := spanner.Statement{
+					SQL:    `SELECT ShiftId, StartAt FROM DriverShifts WHERE DriverId = @id AND Status = 'ACTIVE' LIMIT 1`,
+					Params: map[string]any{"id": upd.DriverID},
 				}
-			}
-			iter.Stop()
+				iter := txn.Query(txnCtx, activeStmt)
+				defer iter.Stop()
+				sRow, sErr := iter.Next()
+				if sErr == nil {
+					var shiftID string
+					var startAt time.Time
+					if err := sRow.Columns(&shiftID, &startAt); err == nil {
+						durationHours := time.Since(startAt).Hours()
+						if durationHours < 0 {
+							durationHours = 0
+						}
+						mutations = append(mutations, spanner.UpdateMap("DriverShifts", map[string]any{
+							"DriverId":      upd.DriverID,
+							"ShiftId":       shiftID,
+							"Status":        "COMPLETED",
+							"EndAt":         spanner.CommitTimestamp,
+							"DurationHours": durationHours,
+							"Notes":         upd.Note,
+							"UpdatedAt":     spanner.CommitTimestamp,
+						}))
+					}
+				}
+			}()
 		}
 
 		for _, e := range buf.events {

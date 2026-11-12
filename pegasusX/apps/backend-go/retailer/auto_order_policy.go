@@ -10,7 +10,7 @@ const (
 	AutoOrderModeShadow = "shadow"
 	AutoOrderModeDraft  = "draft"
 	// AutoOrderModePlace is deprecated/disallowed: auto-orders must be draft only.
-	AutoOrderModePlace  = "place"
+	AutoOrderModePlace = "place"
 )
 
 // NormalizeExecutionMode returns a canonical mode. Empty → draft (backward compat).

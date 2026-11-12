@@ -20,7 +20,6 @@ type HandlingClass string
 
 const (
 	HandlingClassGeneral    HandlingClass = "GENERAL"
-	HandlingClassColdChain  HandlingClass = "COLD_CHAIN"
 	HandlingClassHazardous  HandlingClass = "HAZARDOUS"
 	HandlingClassPerishable HandlingClass = "PERISHABLE"
 )
@@ -28,7 +27,7 @@ const (
 // Valid returns true for known handling classes.
 func (h HandlingClass) Valid() bool {
 	switch h {
-	case HandlingClassGeneral, HandlingClassColdChain, HandlingClassHazardous, HandlingClassPerishable:
+	case HandlingClassGeneral, HandlingClassHazardous, HandlingClassPerishable:
 		return true
 	}
 	return false
@@ -36,30 +35,27 @@ func (h HandlingClass) Valid() bool {
 
 // Product mirrors the Products Spanner row.
 type Product struct {
-	ProductID         string        `json:"product_id" spanner:"ProductId"`
-	SupplierID        string        `json:"supplier_id" spanner:"SupplierId"`
-	CategoryID        string        `json:"category_id" spanner:"CategoryId"`
-	Name              string        `json:"name" spanner:"Name"`
-	Description       string        `json:"description" spanner:"Description"`
-	ImageURL          string        `json:"image_url" spanner:"ImageURL"`
-	PriceMinor        int64         `json:"price_minor" spanner:"PriceMinor"`
-	Currency          string        `json:"currency" spanner:"Currency"`
-	StockQuantity     int64         `json:"stock_quantity" spanner:"StockQuantity"`
-	Unit              string        `json:"unit" spanner:"Unit"`
-	UnitVolumeVU      float64       `json:"unit_volume_vu" spanner:"UnitVolumeVU"`
-	SaleUnit          string        `json:"sale_unit" spanner:"SaleUnit"`
-	UnitsPerPack      *int64        `json:"units_per_pack,omitempty" spanner:"UnitsPerPack"`
-	Barcode           string        `json:"barcode,omitempty" spanner:"Barcode"`
-	HandlingClass     HandlingClass `json:"handling_class" spanner:"HandlingClass"`
-	RequiresColdChain bool          `json:"requires_cold_chain" spanner:"RequiresColdChain"`
-	IsHazardous       bool          `json:"is_hazardous" spanner:"IsHazardous"`
-	IsPerishable      bool          `json:"is_perishable" spanner:"IsPerishable"`
-	StorageTempMinC   *float64      `json:"storage_temp_min_c,omitempty" spanner:"StorageTempMinC"`
-	StorageTempMaxC   *float64      `json:"storage_temp_max_c,omitempty" spanner:"StorageTempMaxC"`
-	IsActive          bool          `json:"is_active" spanner:"IsActive"`
-	Version           int64         `json:"version" spanner:"Version"`
-	CreatedAt         time.Time     `json:"created_at" spanner:"CreatedAt"`
-	UpdatedAt         time.Time     `json:"updated_at" spanner:"UpdatedAt"`
+	ProductID     string        `json:"product_id" spanner:"ProductId"`
+	SupplierID    string        `json:"supplier_id" spanner:"SupplierId"`
+	CategoryID    string        `json:"category_id" spanner:"CategoryId"`
+	Name          string        `json:"name" spanner:"Name"`
+	Description   string        `json:"description" spanner:"Description"`
+	ImageURL      string        `json:"image_url" spanner:"ImageURL"`
+	PriceMinor    int64         `json:"price_minor" spanner:"PriceMinor"`
+	Currency      string        `json:"currency" spanner:"Currency"`
+	StockQuantity int64         `json:"stock_quantity" spanner:"StockQuantity"`
+	Unit          string        `json:"unit" spanner:"Unit"`
+	UnitVolumeVU  float64       `json:"unit_volume_vu" spanner:"UnitVolumeVU"`
+	SaleUnit      string        `json:"sale_unit" spanner:"SaleUnit"`
+	UnitsPerPack  *int64        `json:"units_per_pack,omitempty" spanner:"UnitsPerPack"`
+	Barcode       string        `json:"barcode,omitempty" spanner:"Barcode"`
+	HandlingClass HandlingClass `json:"handling_class" spanner:"HandlingClass"`
+	IsHazardous   bool          `json:"is_hazardous" spanner:"IsHazardous"`
+	IsPerishable  bool          `json:"is_perishable" spanner:"IsPerishable"`
+	IsActive      bool          `json:"is_active" spanner:"IsActive"`
+	Version       int64         `json:"version" spanner:"Version"`
+	CreatedAt     time.Time     `json:"created_at" spanner:"CreatedAt"`
+	UpdatedAt     time.Time     `json:"updated_at" spanner:"UpdatedAt"`
 }
 
 // Category mirrors the ProductCategories Spanner row.
@@ -106,7 +102,7 @@ func NewSpannerRepository(client *spanner.Client) *SpannerRepository {
 	return &SpannerRepository{client: client}
 }
 
-const productSelectColumns = `ProductId, SupplierId, CategoryId, Name, Description, ImageURL, PriceMinor, Currency, StockQuantity, Unit, UnitVolumeVU, SaleUnit, UnitsPerPack, Barcode, HandlingClass, RequiresColdChain, IsHazardous, IsPerishable, StorageTempMinC, StorageTempMaxC, IsActive, Version, CreatedAt, UpdatedAt`
+const productSelectColumns = `ProductId, SupplierId, CategoryId, Name, Description, ImageURL, PriceMinor, Currency, StockQuantity, Unit, UnitVolumeVU, SaleUnit, UnitsPerPack, Barcode, HandlingClass, IsHazardous, IsPerishable, IsActive, Version, CreatedAt, UpdatedAt`
 
 type spannerTxnBuffer struct {
 	events []outbox.Event
@@ -122,10 +118,9 @@ func scanProductRow(row *spanner.Row) (Product, error) {
 	var desc, imageURL spanner.NullString
 	var unitsPerPack spanner.NullInt64
 	var barcode spanner.NullString
-	var storageTempMinC, storageTempMaxC spanner.NullFloat64
 	if err := row.Columns(&p.ProductID, &p.SupplierID, &p.CategoryID, &p.Name, &desc, &imageURL,
 		&p.PriceMinor, &p.Currency, &p.StockQuantity, &p.Unit, &p.UnitVolumeVU, &p.SaleUnit, &unitsPerPack, &barcode,
-		&p.HandlingClass, &p.RequiresColdChain, &p.IsHazardous, &p.IsPerishable, &storageTempMinC, &storageTempMaxC,
+		&p.HandlingClass, &p.IsHazardous, &p.IsPerishable,
 		&p.IsActive, &p.Version, &p.CreatedAt, &p.UpdatedAt); err != nil {
 		return Product{}, fmt.Errorf("scan product row: %w", err)
 	}
@@ -141,14 +136,6 @@ func scanProductRow(row *spanner.Row) (Product, error) {
 	if unitsPerPack.Valid {
 		v := unitsPerPack.Int64
 		p.UnitsPerPack = &v
-	}
-	if storageTempMinC.Valid {
-		v := storageTempMinC.Float64
-		p.StorageTempMinC = &v
-	}
-	if storageTempMaxC.Valid {
-		v := storageTempMaxC.Float64
-		p.StorageTempMaxC = &v
 	}
 	return p, nil
 }
@@ -352,11 +339,8 @@ func (r *SpannerRepository) CreateProduct(ctx context.Context, p Product, emit f
 			"UnitsPerPack":      nullableInt64(p.UnitsPerPack),
 			"Barcode":           spanner.NullString{StringVal: p.Barcode, Valid: strings.TrimSpace(p.Barcode) != ""},
 			"HandlingClass":     normalizeHandlingClass(p.HandlingClass),
-			"RequiresColdChain": p.RequiresColdChain,
 			"IsHazardous":       p.IsHazardous,
 			"IsPerishable":      p.IsPerishable,
-			"StorageTempMinC":   nullableFloat64(p.StorageTempMinC),
-			"StorageTempMaxC":   nullableFloat64(p.StorageTempMaxC),
 			"IsActive":          p.IsActive,
 			"Version":           int64(1),
 			"CreatedAt":         spanner.CommitTimestamp,
@@ -409,11 +393,8 @@ func (r *SpannerRepository) UpdateProduct(ctx context.Context, p Product, emit f
 			"UnitsPerPack":      nullableInt64(p.UnitsPerPack),
 			"Barcode":           spanner.NullString{StringVal: p.Barcode, Valid: strings.TrimSpace(p.Barcode) != ""},
 			"HandlingClass":     normalizeHandlingClass(p.HandlingClass),
-			"RequiresColdChain": p.RequiresColdChain,
 			"IsHazardous":       p.IsHazardous,
 			"IsPerishable":      p.IsPerishable,
-			"StorageTempMinC":   nullableFloat64(p.StorageTempMinC),
-			"StorageTempMaxC":   nullableFloat64(p.StorageTempMaxC),
 			"IsActive":          p.IsActive,
 			"Version":           currentVersion + 1,
 			"UpdatedAt":         spanner.CommitTimestamp,
@@ -519,13 +500,6 @@ func normalizeSaleUnit(unit string) string {
 }
 
 func nullableInt64(v *int64) any {
-	if v == nil {
-		return nil
-	}
-	return *v
-}
-
-func nullableFloat64(v *float64) any {
 	if v == nil {
 		return nil
 	}

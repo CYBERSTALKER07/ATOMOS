@@ -42,7 +42,6 @@ type MarketPack struct {
 	BreachRadiusMeters     float64  `json:"breach_radius_meters"`
 	ShopClosedGraceMin     int64    `json:"shop_closed_grace_minutes"`
 	CashCustodyAlertHours  int64    `json:"cash_custody_alert_hours"`
-	WeatherScope           string   `json:"weather_scope,omitempty"`
 	FactorySLADefaultHours int64    `json:"factory_sla_default_hours,omitempty"`
 	LaborMaxShiftHours     int64    `json:"labor_max_shift_hours,omitempty"`
 	PayoutRail             string   `json:"payout_rail,omitempty"`
@@ -131,7 +130,6 @@ func uzMarketPack() MarketPack {
 		BreachRadiusMeters:     150,
 		ShopClosedGraceMin:     10,
 		CashCustodyAlertHours:  24,
-		WeatherScope:           "city:Tashkent",
 		FactorySLADefaultHours: 48,
 		LaborMaxShiftHours:     12,
 		PayoutRail:             "bank-file",

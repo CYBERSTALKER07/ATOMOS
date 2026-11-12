@@ -101,7 +101,7 @@ func (r *SpannerRepository) ListRegimes(ctx context.Context, countryCode string,
 			"limit":   int64(limit),
 		},
 	}
-	iter := r.client.Single().Query(ctx, stmt)
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	var regimes []TaxRegimeVersion
 	for {

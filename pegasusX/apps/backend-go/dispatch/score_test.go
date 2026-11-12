@@ -25,16 +25,12 @@ func TestScoreCandidate_DriverScoreWins(t *testing.T) {
 	}
 }
 
-func TestScoreCandidate_ColdChainRefuse(t *testing.T) {
-	order := DispatchableOrder{OrderID: "cold", VolumeVU: 10, Lat: 41.31, Lng: 69.21, RequiresColdChain: true}
-	ctx := ScoreContext{DepotLat: 41.3, DepotLng: 69.2}
-	warm := AvailableDriver{DriverID: "w", MaxVolumeVU: 100, HasRefrigeration: false}
-	reefer := AvailableDriver{DriverID: "c", MaxVolumeVU: 100, HasRefrigeration: true}
-	if ScoreCandidate(nil, order, warm, ctx) != -1 {
-		t.Fatal("cold order on non-reefer must score -1")
-	}
-	if ScoreCandidate(nil, order, reefer, ctx) <= 0 {
-		t.Fatal("cold order on reefer must score")
+func TestScoreCandidate_IgnoresRefrigeration(t *testing.T) {
+	order := DispatchableOrder{OrderID: "perishable", VolumeVU: 10, Lat: 41.31, Lng: 69.21, HandlingClass: "PERISHABLE"}
+	ctx := ScoreContext{DepotLat: 41.3, DepotLng: 69.2, CellLookup: H3CellLookup}
+	warm := AvailableDriver{DriverID: "w", MaxVolumeVU: 100}
+	if ScoreCandidate(nil, order, warm, ctx) <= 0 {
+		t.Fatal("refrigeration is not a dispatch constraint")
 	}
 }
 

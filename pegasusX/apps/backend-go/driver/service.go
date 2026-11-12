@@ -447,7 +447,7 @@ func (s *Service) HandleHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if s.historyQuery == nil {
-		writeJSON(w, http.StatusOK, map[string]any{"rows": []HistoryRow{}})
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "history_unavailable"})
 		return
 	}
 	since := s.now().Add(-driverHistoryWindow)

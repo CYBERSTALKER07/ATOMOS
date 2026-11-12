@@ -277,8 +277,8 @@ type mySoliqReceiptRequest struct {
 	LineItems      []mySoliqReceiptLineItem `json:"line_items,omitempty"`
 	IdempotencyKey string                   `json:"idempotency_key"`
 	// Corrective chain: set on refund EHF that reverses an earlier receipt.
-	CorrectsEhfID  string                   `json:"corrects_ehf_id,omitempty"`
-	CorrectReason  string                   `json:"correct_reason,omitempty"`
+	CorrectsEhfID string `json:"corrects_ehf_id,omitempty"`
+	CorrectReason string `json:"correct_reason,omitempty"`
 }
 
 type mySoliqReceiptLineItem struct {
@@ -343,7 +343,7 @@ func (p *MySoliqProvider) CreateReceipt(ctx context.Context, req FiscalCreateReq
 	if !resp.Success {
 		return FiscalCreateResult{}, fmt.Errorf("mysoliq error (code=%s): %s", resp.ErrorCode, resp.ErrorMessage)
 	}
-	
+
 	if resp.EhfID == "" {
 		return FiscalCreateResult{}, fmt.Errorf("mysoliq missing receipt_id in response")
 	}
@@ -421,6 +421,5 @@ func truncate(s string, n int) string {
 }
 
 func (p *GlobalPayReceiptProvider) GetSoliqClient() soliq.SoliqClient { return nil }
-func (PegasusReceiptProvider) GetSoliqClient() soliq.SoliqClient { return nil }
-func (multiReceiptProvider) GetSoliqClient() soliq.SoliqClient { return nil }
-
+func (PegasusReceiptProvider) GetSoliqClient() soliq.SoliqClient      { return nil }
+func (multiReceiptProvider) GetSoliqClient() soliq.SoliqClient        { return nil }

@@ -11,6 +11,9 @@ app = FastAPI(title="PegasusX Optimizer Sidecar")
 def healthz():
     return {"status": "ok"}
 
+MAX_LOCATIONS = 500
+
+
 class Location(BaseModel):
     id: str
     x: float
@@ -22,6 +25,7 @@ class PickPathRequest(BaseModel):
 
 class PickPathResponse(BaseModel):
     ordered_location_ids: List[str]
+    solver_status: str = "HEURISTIC"
 
 def create_data_model(locations: List[Location]):
     """Stores the data for the problem."""
@@ -93,15 +97,18 @@ def solve_tsp(locations: List[Location]) -> List[str]:
 
 @app.post("/pick-path", response_model=PickPathResponse)
 def get_pick_path(req: PickPathRequest):
+    if len(req.locations) > MAX_LOCATIONS:
+        raise HTTPException(status_code=400, detail=f"locations count exceeds {MAX_LOCATIONS}")
+    for loc in req.locations:
+        if not math.isfinite(loc.x) or not math.isfinite(loc.y):
+            raise HTTPException(status_code=400, detail="location coordinates must be finite numbers")
     try:
         ordered_ids = solve_tsp(req.locations)
-        return PickPathResponse(ordered_location_ids=ordered_ids)
+        return PickPathResponse(ordered_location_ids=ordered_ids, solver_status="HEURISTIC")
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
 
 class FleetLocation(BaseModel):
     id: str
@@ -124,6 +131,7 @@ class VehicleRoute(BaseModel):
 
 class FleetRouteResponse(BaseModel):
     routes: List[VehicleRoute]
+    solver_status: str = "HEURISTIC"
 
 def haversine_distance_meters(lat1: float, lon1: float, lat2: float, lon2: float) -> int:
     r = 6371000.0  # Earth radius in meters
@@ -131,7 +139,8 @@ def haversine_distance_meters(lat1: float, lon1: float, lat2: float, lon2: float
     dphi = math.radians(lat2 - lat1)
     dlambda = math.radians(lon2 - lon1)
     a = math.sin(dphi / 2.0) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2.0) ** 2
-    return int(2.0 * r * math.atan2(math.sqrt(a), math.sqrt(1.0 - a)))
+    a = min(1.0, max(0.0, a))
+    return int(2.0 * r * math.atan2(math.sqrt(a), math.sqrt(max(0.0, 1.0 - a))))
 
 def fleet_distance_metric(loc1: FleetLocation, loc2: FleetLocation) -> int:
     if -90.0 <= loc1.x <= 90.0 and -90.0 <= loc2.x <= 90.0 and -180.0 <= loc1.y <= 180.0 and -180.0 <= loc2.y <= 180.0:
@@ -181,9 +190,24 @@ def create_cvrp_data_model(req: FleetRouteRequest):
 
 @app.post("/fleet-route", response_model=FleetRouteResponse)
 def get_fleet_route(req: FleetRouteRequest):
+    if len(req.locations) > MAX_LOCATIONS:
+        raise HTTPException(status_code=400, detail=f"locations count exceeds {MAX_LOCATIONS}")
+    for loc in [req.depot] + req.locations:
+        if not math.isfinite(loc.x) or not math.isfinite(loc.y):
+            raise HTTPException(status_code=400, detail="location coordinates must be finite numbers")
+        if loc.demand_vu < 0:
+            raise HTTPException(status_code=400, detail="demand_vu must be non-negative")
+    for v in req.vehicles:
+        if v.capacity_vu <= 0:
+            raise HTTPException(status_code=400, detail="vehicle capacity_vu must be positive")
+    if req.locations and req.vehicles:
+        max_cap = max(v.capacity_vu for v in req.vehicles)
+        if any(loc.demand_vu > max_cap for loc in req.locations):
+            raise HTTPException(status_code=422, detail="stop demand exceeds maximum single vehicle capacity")
+
     try:
         if not req.locations or not req.vehicles:
-            return FleetRouteResponse(routes=[])
+            return FleetRouteResponse(routes=[], solver_status="HEURISTIC")
             
         data = create_cvrp_data_model(req)
         manager = pywrapcp.RoutingIndexManager(
@@ -220,7 +244,7 @@ def get_fleet_route(req: FleetRouteRequest):
         solution = routing.SolveWithParameters(search_parameters)
         
         if not solution:
-            raise Exception("No solution found by OR-Tools")
+            raise HTTPException(status_code=422, detail="No feasible solution found by OR-Tools")
 
         routes_map = {}
         for vehicle_idx in range(data['num_vehicles']):
@@ -243,7 +267,9 @@ def get_fleet_route(req: FleetRouteRequest):
         final_routes = [VehicleRoute(vehicle_id=vid, location_ids=lids) 
                         for vid, lids in routes_map.items() if lids]
         
-        return FleetRouteResponse(routes=final_routes)
+        return FleetRouteResponse(routes=final_routes, solver_status="HEURISTIC")
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -260,6 +286,10 @@ class DemandPredictionResponse(BaseModel):
 
 @app.post("/predict-demand", response_model=DemandPredictionResponse)
 def predict_demand(req: DemandPredictionRequest):
+    if req.current_stock < 0 or req.lead_time_days < 0:
+        raise HTTPException(status_code=400, detail="current_stock and lead_time_days must be non-negative")
+    if any(sale < 0 for sale in req.historical_daily_sales):
+        raise HTTPException(status_code=400, detail="historical_daily_sales entries must be non-negative")
     try:
         if not req.historical_daily_sales:
             return DemandPredictionResponse(sku=req.sku, optimal_reorder_qty=0, predicted_daily_burn=0.0)
@@ -281,5 +311,12 @@ def predict_demand(req: DemandPredictionRequest):
             optimal_reorder_qty=reorder_qty,
             predicted_daily_burn=avg_burn
         )
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)

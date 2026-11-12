@@ -93,7 +93,7 @@ func (s *Service) HandleEmpathyAdoption(w http.ResponseWriter, r *http.Request) 
 	adoption := EmpathyAdoption{}
 
 	count := func(sql string, params map[string]any) int64 {
-		iter := s.portalSpanner.Single().Query(ctx, spanner.Statement{SQL: sql, Params: params})
+		iter := s.portalSpanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{SQL: sql, Params: params})
 		defer iter.Stop()
 		row, err := iter.Next()
 		if err != nil {
@@ -112,7 +112,7 @@ func (s *Service) HandleEmpathyAdoption(w http.ResponseWriter, r *http.Request) 
 	)
 
 	statusSQL := `SELECT Status, COUNT(*) AS c FROM AIPredictions WHERE SupplierId = @sid GROUP BY Status`
-	iter := s.portalSpanner.Single().Query(ctx, spanner.Statement{
+	iter := s.portalSpanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL: statusSQL, Params: map[string]any{"sid": sid},
 	})
 	defer iter.Stop()

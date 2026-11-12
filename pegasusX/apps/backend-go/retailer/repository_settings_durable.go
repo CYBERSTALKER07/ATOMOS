@@ -81,7 +81,7 @@ func (s *Service) loadFavoriteSuppliersDurable(ctx context.Context, retailerID s
 			SQL:    `SELECT SupplierId, IsFavorite FROM RetailerFavoriteSuppliers WHERE RetailerId = @rid`,
 			Params: map[string]any{"rid": retailerID},
 		}
-		iter := s.spannerClient.Single().Query(ctx, stmt)
+		iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 		defer iter.Stop()
 		for {
 			row, err := iter.Next()

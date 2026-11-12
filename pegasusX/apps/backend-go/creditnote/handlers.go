@@ -98,6 +98,24 @@ func (h *Handlers) HandleCreateManual(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
+	supplierID := strings.TrimSpace(claims.SupplierID)
+	if t, ok := auth.TenantFromContext(r.Context()); ok && t.SupplierID != "" {
+		supplierID = t.SupplierID
+	}
+	if supplierID == "" && h.SupplierID != nil {
+		supplierID = strings.TrimSpace(h.SupplierID())
+	}
+	if supplierID != "" {
+		owned, err := h.Svc.OrderOwnedBySupplier(r.Context(), req.OrderId, supplierID)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "ownership_check_failed"})
+			return
+		}
+		if !owned {
+			writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
+			return
+		}
+	}
 	cn, err := h.Svc.CreateManual(r.Context(), req, claims.Subject)
 	if err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
@@ -113,6 +131,37 @@ func (h *Handlers) HandleIssue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := strings.TrimSpace(chi.URLParam(r, "id"))
+	if id == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "id_required"})
+		return
+	}
+	supplierID := strings.TrimSpace(claims.SupplierID)
+	if t, ok := auth.TenantFromContext(r.Context()); ok && t.SupplierID != "" {
+		supplierID = t.SupplierID
+	}
+	if supplierID == "" && h.SupplierID != nil {
+		supplierID = strings.TrimSpace(h.SupplierID())
+	}
+	if supplierID != "" {
+		cn, err := h.Svc.Get(r.Context(), id)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "get_credit_note_failed"})
+			return
+		}
+		if cn == nil {
+			writeJSON(w, http.StatusNotFound, map[string]string{"error": "credit_note_not_found"})
+			return
+		}
+		owned, err := h.Svc.OrderOwnedBySupplier(r.Context(), cn.OrderId, supplierID)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "ownership_check_failed"})
+			return
+		}
+		if !owned {
+			writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
+			return
+		}
+	}
 	if err := h.Svc.Issue(r.Context(), id, claims.Subject); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 		return

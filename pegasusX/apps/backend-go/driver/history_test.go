@@ -77,22 +77,21 @@ func TestHandleHistoryQueryErrorIsUnavailable(t *testing.T) {
 	}
 }
 
-func TestHandleHistoryNilQueryHonestEmpty(t *testing.T) {
+func TestHandleHistoryNilQueryUnavailable(t *testing.T) {
 	t.Parallel()
 	svc := NewService(ServiceConfig{})
 	req := httptest.NewRequest(http.MethodGet, "/v1/driver/history", nil)
 	req = req.WithContext(auth.WithClaims(req.Context(), auth.Claims{Role: auth.RoleDriver, Subject: "drv-1"}))
 	rr := httptest.NewRecorder()
 	svc.HandleHistory(rr, req)
-	if rr.Code != http.StatusOK {
-		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	if rr.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status=%d want 503 body=%s", rr.Code, rr.Body.String())
 	}
-	var body map[string]any
+	var body map[string]string
 	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
-	rows, _ := body["rows"].([]any)
-	if len(rows) != 0 {
-		t.Fatalf("rows=%v", rows)
+	if body["error"] != "history_unavailable" {
+		t.Fatalf("error=%q want history_unavailable", body["error"])
 	}
 }

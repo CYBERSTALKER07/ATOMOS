@@ -14,6 +14,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/gs1"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
 	"google.golang.org/api/iterator"
 )
 
@@ -634,7 +635,12 @@ func (s *Service) listLocations(ctx context.Context, retailerID string) ([]Retai
 			ORDER BY IsPrimary DESC, UpdatedAt DESC`,
 		Params: map[string]any{"rid": retailerID},
 	}
-	iter := s.spannerClient.Single().Query(ctx, stmt)
+	var iter *spanner.RowIterator
+	if txn := spannerutils.ReadOnlyTxnFromContext(ctx); txn != nil {
+		iter = txn.Query(ctx, stmt)
+	} else {
+		iter = s.spannerClient.Single().Query(ctx, stmt)
+	}
 	defer iter.Stop()
 	var out []RetailerLocation
 	for {

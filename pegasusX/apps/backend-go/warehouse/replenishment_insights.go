@@ -172,7 +172,7 @@ func (s *Service) listReplenishmentInsightsSpanner(ctx context.Context, warehous
 	}
 	sql += ` ORDER BY ri.CreatedAt DESC`
 
-	iter := s.spannerClient.Single().Query(ctx, spanner.Statement{SQL: sql, Params: params})
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{SQL: sql, Params: params})
 	defer iter.Stop()
 
 	rows := make([]replenishmentInsight, 0)

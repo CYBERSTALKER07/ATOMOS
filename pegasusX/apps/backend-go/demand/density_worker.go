@@ -146,7 +146,7 @@ func (s *Service) loadOrderDensity(ctx context.Context, now time.Time) ([]densit
 			},
 		},
 	}
-	iter := s.spanner.Single().Query(ctx, stmt)
+	iter := s.spanner.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 
 	var out []densityRow
@@ -185,7 +185,7 @@ func (s *Service) deriveCompetitorPressure(ctx context.Context, now time.Time) (
 		`,
 		Params: map[string]any{"Start": start},
 	}
-	iter := s.spanner.Single().Query(ctx, stmt)
+	iter := s.spanner.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 
 	var rows []flywheelPeerRow
@@ -233,12 +233,12 @@ func (s *Service) deriveCompetitorPressure(ctx context.Context, now time.Time) (
 			}
 			// Peer sell-through is much stronger → competitive pressure on this retailer.
 			meta, _ := json.Marshal(map[string]any{
-				"sku":           p.SKU,
-				"net_sold":      p.NetSold,
-				"peer_avg":      avg,
-				"peer_count":    len(peers),
-				"window_days":   densityWindowDays,
-				"source":        "flywheel_peer_skew",
+				"sku":         p.SKU,
+				"net_sold":    p.NetSold,
+				"peer_avg":    avg,
+				"peer_count":  len(peers),
+				"window_days": densityWindowDays,
+				"source":      "flywheel_peer_skew",
 			})
 			seed := fmt.Sprintf("competitor-pressure:%s:%s:%s:%s", p.SupplierID, p.RetailerID, p.SKU, now.Format("2006-01-02"))
 			id := uuid.NewMD5(uuid.NameSpaceOID, []byte(seed)).String()

@@ -35,10 +35,10 @@ func vehicleForStop(routes []optimizerRoute, orderID string) string {
 	return ""
 }
 
-// runOptimizerConstraintE2E posts a cold-chain fixture directly to optimizer-core
+// runOptimizerConstraintE2E posts a hazmat fixture directly to optimizer-core
 // when OPTIMIZER_BASE_URL is reachable. Soft-skips only when the sidecar is
 // absent (no URL/key, dial/transport failure) so heuristic-only clusters stay
-// green. Once the sidecar answers, cold-chain mis-assignment is a hard FAIL
+// green. Once the sidecar answers, constraint mis-assignment is a hard FAIL
 // (P2-1) — never papered over as SKIPPED.
 func runOptimizerConstraintE2E(ctx context.Context, cfg *bootstrap.Config) error {
 	base := strings.TrimRight(strings.TrimSpace(cfg.OptimizerBaseURL), "/")
@@ -55,13 +55,13 @@ func runOptimizerConstraintE2E(ctx context.Context, cfg *bootstrap.Config) error
 		"home_node_id": "ssmr-wh",
 		"stops": []map[string]any{
 			{
-				"order_id":            "cold-fixture-1",
-				"retailer_id":         "r1",
-				"lat":                 41.31,
-				"lng":                 69.25,
-				"volume_vu":           10.0,
-				"requires_cold_chain": true,
-				"handling_class":      "COLD_CHAIN",
+				"order_id":       "hazmat-fixture-1",
+				"retailer_id":    "r1",
+				"lat":            41.31,
+				"lng":            69.25,
+				"volume_vu":      10.0,
+				"is_hazardous":   true,
+				"handling_class": "HAZARDOUS",
 			},
 			{
 				"order_id":    "dry-fixture-2",
@@ -73,20 +73,20 @@ func runOptimizerConstraintE2E(ctx context.Context, cfg *bootstrap.Config) error
 		},
 		"vehicles": []map[string]any{
 			{
-				"vehicle_id":        "dry-truck",
-				"driver_id":         "d-dry",
-				"max_volume_vu":     100.0,
-				"start_lat":         41.30,
-				"start_lng":         69.24,
-				"has_refrigeration": false,
+				"vehicle_id":       "dry-truck",
+				"driver_id":        "d-dry",
+				"max_volume_vu":    100.0,
+				"start_lat":        41.30,
+				"start_lng":        69.24,
+				"hazmat_certified": false,
 			},
 			{
-				"vehicle_id":        "reefer",
-				"driver_id":         "d-cold",
-				"max_volume_vu":     100.0,
-				"start_lat":         41.301,
-				"start_lng":         69.241,
-				"has_refrigeration": true,
+				"vehicle_id":       "hazmat-truck",
+				"driver_id":        "d-hazmat",
+				"max_volume_vu":    100.0,
+				"start_lat":        41.301,
+				"start_lng":        69.241,
+				"hazmat_certified": true,
 			},
 		},
 		"tunables": map[string]any{"time_limit_ms": 3000},
@@ -122,15 +122,15 @@ func runOptimizerConstraintE2E(ctx context.Context, cfg *bootstrap.Config) error
 		fmt.Println("PX_E2E_OPTIMIZER_CONSTRAINT_FAIL")
 		return fmt.Errorf("optimizer constraint e2e: decode response: %w", err)
 	}
-	coldVehicle := vehicleForStop(solved.Routes, "cold-fixture-1")
-	if coldVehicle == "" {
+	hazmatVehicle := vehicleForStop(solved.Routes, "hazmat-fixture-1")
+	if hazmatVehicle == "" {
 		fmt.Println("PX_E2E_OPTIMIZER_CONSTRAINT_FAIL")
-		return fmt.Errorf("optimizer constraint e2e: cold-fixture-1 missing from routes (source=%s)", solved.Source)
+		return fmt.Errorf("optimizer constraint e2e: hazmat-fixture-1 missing from routes (source=%s)", solved.Source)
 	}
-	if coldVehicle != "reefer" {
-		// Constraint violation: cold stop on a non-reefer vehicle — hard fail (P2-1).
-		fmt.Printf("PX_E2E_OPTIMIZER_CONSTRAINT_FAIL cold_vehicle=%s want=reefer source=%s\n", coldVehicle, solved.Source)
-		return fmt.Errorf("optimizer constraint e2e: cold stop assigned to %q (want reefer)", coldVehicle)
+	if hazmatVehicle != "hazmat-truck" {
+		// Constraint violation: hazmat stop on a non-certified vehicle — hard fail (P2-1).
+		fmt.Printf("PX_E2E_OPTIMIZER_CONSTRAINT_FAIL hazmat_vehicle=%s want=hazmat-truck source=%s\n", hazmatVehicle, solved.Source)
+		return fmt.Errorf("optimizer constraint e2e: hazmat stop assigned to %q (want hazmat-truck)", hazmatVehicle)
 	}
 	fmt.Println("PX_E2E_OPTIMIZER_CONSTRAINT_OK")
 	return nil

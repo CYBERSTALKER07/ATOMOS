@@ -7,6 +7,8 @@ import (
 
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"google.golang.org/api/iterator"
 )
 
@@ -42,6 +44,9 @@ func CreateCampaign(ctx context.Context, client *spanner.Client, supplierID, nam
 	if budgetLimit <= 0 {
 		return "", errors.New("budget must be greater than 0")
 	}
+	if client == nil {
+		return "", errors.New("campaign_store_unavailable")
+	}
 
 	campaignID := uuid.New().String()
 	_, err := client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
@@ -49,7 +54,22 @@ func CreateCampaign(ctx context.Context, client *spanner.Client, supplierID, nam
 			[]string{"CampaignId", "SupplierId", "Name", "BudgetLimitMinor", "BudgetUsedMinor", "Status", "CreatedAt"},
 			[]interface{}{campaignID, supplierID, name, budgetLimit, 0, CampaignStatusActive, spanner.CommitTimestamp},
 		)
-		return txn.BufferWrite([]*spanner.Mutation{m})
+		if err := txn.BufferWrite([]*spanner.Mutation{m}); err != nil {
+			return err
+		}
+		buf := outbox.NewSpannerTxnBuffer(txn)
+		payload := map[string]any{
+			"type":               events.EventPromotionChanged,
+			"campaign_id":        campaignID,
+			"supplier_id":        supplierID,
+			"name":               name,
+			"budget_limit_minor": budgetLimit,
+			"status":             CampaignStatusActive,
+		}
+		if err := outbox.EmitJSON(ctx, buf, events.AggregatePromotion, campaignID, events.TopicMain, payload); err != nil {
+			return err
+		}
+		return buf.Flush(ctx)
 	})
 	return campaignID, err
 }
@@ -84,7 +104,21 @@ func EnrollRetailer(ctx context.Context, client *spanner.Client, campaignID, ret
 			[]string{"EnrollmentId", "CampaignId", "RetailerId", "Status", "EnrolledAt"},
 			[]interface{}{enrollmentID, campaignID, retailerID, EnrollmentStatusEnrolled, spanner.CommitTimestamp},
 		)
-		return txn.BufferWrite([]*spanner.Mutation{m})
+		if err := txn.BufferWrite([]*spanner.Mutation{m}); err != nil {
+			return err
+		}
+		buf := outbox.NewSpannerTxnBuffer(txn)
+		payload := map[string]any{
+			"type":          events.EventPromotionChanged,
+			"enrollment_id": enrollmentID,
+			"campaign_id":   campaignID,
+			"retailer_id":   retailerID,
+			"status":        EnrollmentStatusEnrolled,
+		}
+		if err := outbox.EmitJSON(ctx, buf, events.AggregatePromotion, campaignID, events.TopicMain, payload); err != nil {
+			return err
+		}
+		return buf.Flush(ctx)
 	})
 	return err
 }

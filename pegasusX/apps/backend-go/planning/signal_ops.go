@@ -48,7 +48,7 @@ func LoadSignalIngestStatus(ctx context.Context, client *spanner.Client, supplie
 		      WHERE SupplierId = @sid`,
 		Params: map[string]any{"sid": supplierID},
 	}
-	projIter := client.Single().Query(ctx, projStmt)
+	projIter := client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, projStmt)
 	defer projIter.Stop()
 	row, err := projIter.Next()
 	if err != nil && !errors.Is(err, iterator.Done) {
@@ -83,7 +83,7 @@ func LoadSignalIngestStatus(ctx context.Context, client *spanner.Client, supplie
 			"src": "signal_ingest",
 		},
 	}
-	baseIter := client.Single().Query(ctx, baselineStmt)
+	baseIter := client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, baselineStmt)
 	defer baseIter.Stop()
 	baseRow, err := baseIter.Next()
 	if err != nil && !errors.Is(err, iterator.Done) {

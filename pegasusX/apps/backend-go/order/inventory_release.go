@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 
 	"cloud.google.com/go/spanner"
+	"google.golang.org/api/iterator"
 )
 
 // ReleaseReservationsInTxn decrements QuantityReserved for each line item within an existing RW transaction.
@@ -26,35 +28,68 @@ func ReleaseReservationsForOrderInTxn(ctx context.Context, txn *spanner.ReadWrit
 	if len(lineItems) == 0 {
 		return nil
 	}
+	// Aggregate quantities by SKU to avoid double-read/overwrite issues for duplicate SKUs in a single order
+	skuQuantities := make(map[string]int64)
 	for _, item := range lineItems {
 		sku := strings.TrimSpace(item.SKU)
 		if sku == "" || item.Quantity <= 0 {
 			continue
 		}
-		row, err := txn.ReadRow(ctx, "SupplierInventoryV2",
-			spanner.Key{supplierID, warehouseID, sku},
-			[]string{"QuantityReserved"})
-		if err != nil {
-			if spanner.ErrCode(err) == 5 {
-				continue
-			}
-			return fmt.Errorf("read reserved qty %s: %w", sku, err)
+		skuQuantities[sku] += item.Quantity
+	}
+	if len(skuQuantities) == 0 {
+		return nil
+	}
+
+	skus := make([]string, 0, len(skuQuantities))
+	for sku := range skuQuantities {
+		skus = append(skus, sku)
+	}
+	sort.Strings(skus)
+	keySets := make([]spanner.KeySet, 0, len(skus))
+	for _, sku := range skus {
+		keySets = append(keySets, spanner.Key{supplierID, warehouseID, sku})
+	}
+
+	reservedBySKU := make(map[string]int64, len(skus))
+	invIter := txn.Read(ctx, "SupplierInventoryV2", spanner.KeySets(keySets...), []string{"ProductId", "QuantityReserved"})
+	defer invIter.Stop()
+	for {
+		row, err := invIter.Next()
+		if err == iterator.Done {
+			break
 		}
+		if err != nil {
+			return fmt.Errorf("read reserved qty batch: %w", err)
+		}
+		var sku string
 		var qr int64
-		if err := row.Columns(&qr); err != nil {
+		if err := row.Columns(&sku, &qr); err != nil {
 			return err
 		}
-		next := qr - item.Quantity
+		reservedBySKU[sku] = qr
+	}
+
+	var muts []*spanner.Mutation
+	for _, sku := range skus {
+		qr, exists := reservedBySKU[sku]
+		if !exists {
+			continue
+		}
+		next := qr - skuQuantities[sku]
 		if next < 0 {
 			next = 0
 		}
-		if err := txn.BufferWrite([]*spanner.Mutation{spanner.UpdateMap("SupplierInventoryV2", map[string]any{
+		muts = append(muts, spanner.UpdateMap("SupplierInventoryV2", map[string]any{
 			"SupplierId":       supplierID,
 			"WarehouseId":      warehouseID,
 			"ProductId":        sku,
 			"QuantityReserved": next,
 			"UpdatedAt":        spanner.CommitTimestamp,
-		})}); err != nil {
+		}))
+	}
+	if len(muts) > 0 {
+		if err := txn.BufferWrite(muts); err != nil {
 			return err
 		}
 	}

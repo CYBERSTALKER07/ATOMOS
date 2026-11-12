@@ -45,12 +45,16 @@ func (h *guardsHandler) handleIssueOfflineLease(w http.ResponseWriter, r *http.R
 		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "invalid JSON payload"})
 		return
 	}
+	sid, ok := bindSupplierID(w, r, req.SupplierID)
+	if !ok {
+		return
+	}
 	ttl := time.Duration(req.TTLMinutes) * time.Minute
 	lease, err := h.eng.IssueOfflineQuotaLease(
 		r.Context(),
 		req.OrderID,
 		req.DriverID,
-		req.SupplierID,
+		sid,
 		req.LegalEntityTIN,
 		req.CalendarDate,
 		req.RequestedCashMinor,
@@ -122,6 +126,11 @@ func (h *guardsHandler) handleClawbackSlice(w http.ResponseWriter, r *http.Reque
 		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "invalid JSON payload"})
 		return
 	}
+	sid, ok := bindSupplierID(w, r, req.OriginalSlice.SupplierID)
+	if !ok {
+		return
+	}
+	req.OriginalSlice.SupplierID = sid
 	slice, err := h.eng.CreatePostSettlementClawbackSlice(r.Context(), req.OriginalSlice, req.ApprovedDamageClaimMinor)
 	if err != nil {
 		writeError(w, err)
@@ -146,12 +155,16 @@ func (h *guardsHandler) handleLoad3DRTI(w http.ResponseWriter, r *http.Request) 
 		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "invalid JSON payload"})
 		return
 	}
+	sid, ok := bindSupplierID(w, r, req.SupplierID)
+	if !ok {
+		return
+	}
 	bal, err := h.eng.Validate3DLoadAndRTIReturns(
 		r.Context(),
 		req.StackLayers,
 		req.VehicleCapacityDm3,
 		req.AccountID,
-		req.SupplierID,
+		sid,
 		req.ContainerSKU,
 		req.DeliveredFullContainers,
 		req.PickedUpEmptyContainers,

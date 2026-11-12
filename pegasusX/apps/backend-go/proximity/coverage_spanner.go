@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"cloud.google.com/go/spanner"
+	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
 	"google.golang.org/api/iterator"
 )
 
@@ -27,7 +28,7 @@ func (s *CoverageStore) ListWarehouses(ctx context.Context, supplierID string) (
 	if err != nil {
 		return nil, err
 	}
-	iter := s.Client.Single().Query(ctx, spanner.Statement{
+	stmt := spanner.Statement{
 		SQL: `SELECT WarehouseId, COALESCE(CountryCode, ''), COALESCE(H3Cell, ''),
 		             Lat, Lng, IsActive, COALESCE(IsOnShift, true),
 		             COALESCE(DefaultOutOfStockPolicy, 'REJECT'),
@@ -35,7 +36,13 @@ func (s *CoverageStore) ListWarehouses(ctx context.Context, supplierID string) (
 		      FROM Warehouses
 		      WHERE SupplierId = @supplierId AND IsActive = true`,
 		Params: map[string]any{"supplierId": supplierID},
-	})
+	}
+	var iter *spanner.RowIterator
+	if txn := spannerutils.ReadOnlyTxnFromContext(ctx); txn != nil {
+		iter = txn.Query(ctx, stmt)
+	} else {
+		iter = s.Client.Single().Query(ctx, stmt)
+	}
 	defer iter.Stop()
 	out := make([]WarehouseCandidate, 0)
 	for {
@@ -77,11 +84,17 @@ func (s *CoverageStore) ListFactories(ctx context.Context, supplierID string) ([
 	if s == nil || s.Client == nil {
 		return nil, fmt.Errorf("coverage store: nil client")
 	}
-	iter := s.Client.Single().Query(ctx, spanner.Statement{
+	stmt := spanner.Statement{
 		SQL: `SELECT FactoryId, COALESCE(CountryCode, ''), Lat, Lng, IsActive
 		      FROM Factories WHERE SupplierId = @supplierId`,
 		Params: map[string]any{"supplierId": strings.TrimSpace(supplierID)},
-	})
+	}
+	var iter *spanner.RowIterator
+	if txn := spannerutils.ReadOnlyTxnFromContext(ctx); txn != nil {
+		iter = txn.Query(ctx, stmt)
+	} else {
+		iter = s.Client.Single().Query(ctx, stmt)
+	}
 	defer iter.Stop()
 	out := make([]FactoryCandidate, 0)
 	for {
@@ -114,7 +127,7 @@ func (s *CoverageStore) ListSupplyLanes(ctx context.Context, supplierID, warehou
 	if s == nil || s.Client == nil {
 		return nil, fmt.Errorf("coverage store: nil client")
 	}
-	iter := s.Client.Single().Query(ctx, spanner.Statement{
+	stmt := spanner.Statement{
 		SQL: `SELECT FactoryId, Priority, IsActive
 		      FROM SupplyLanes
 		      WHERE SupplierId = @sid AND WarehouseId = @wid`,
@@ -122,7 +135,13 @@ func (s *CoverageStore) ListSupplyLanes(ctx context.Context, supplierID, warehou
 			"sid": strings.TrimSpace(supplierID),
 			"wid": strings.TrimSpace(warehouseID),
 		},
-	})
+	}
+	var iter *spanner.RowIterator
+	if txn := spannerutils.ReadOnlyTxnFromContext(ctx); txn != nil {
+		iter = txn.Query(ctx, stmt)
+	} else {
+		iter = s.Client.Single().Query(ctx, stmt)
+	}
 	defer iter.Stop()
 	out := make([]SupplyLane, 0)
 	for {
@@ -210,10 +229,16 @@ func (s *CoverageStore) loadLocation(ctx context.Context, locationID string) (St
 }
 
 func (s *CoverageStore) loadCoverageCells(ctx context.Context, supplierID string) (map[string][]string, error) {
-	iter := s.Client.Single().Query(ctx, spanner.Statement{
+	stmt := spanner.Statement{
 		SQL:    `SELECT WarehouseId, H3Cell FROM WarehouseCoverageCells WHERE SupplierId = @sid`,
 		Params: map[string]any{"sid": supplierID},
-	})
+	}
+	var iter *spanner.RowIterator
+	if txn := spannerutils.ReadOnlyTxnFromContext(ctx); txn != nil {
+		iter = txn.Query(ctx, stmt)
+	} else {
+		iter = s.Client.Single().Query(ctx, stmt)
+	}
 	defer iter.Stop()
 	out := map[string][]string{}
 	for {
@@ -238,11 +263,17 @@ func (s *CoverageStore) ListPins(ctx context.Context, supplierID string) ([]Serv
 	if s == nil || s.Client == nil {
 		return nil, fmt.Errorf("coverage store: nil client")
 	}
-	iter := s.Client.Single().Query(ctx, spanner.Statement{
+	stmt := spanner.Statement{
 		SQL: `SELECT WarehouseId, TargetType, TargetId, Priority
 		      FROM ServicePins WHERE SupplierId = @sid`,
 		Params: map[string]any{"sid": strings.TrimSpace(supplierID)},
-	})
+	}
+	var iter *spanner.RowIterator
+	if txn := spannerutils.ReadOnlyTxnFromContext(ctx); txn != nil {
+		iter = txn.Query(ctx, stmt)
+	} else {
+		iter = s.Client.Single().Query(ctx, stmt)
+	}
 	defer iter.Stop()
 	out := make([]ServicePin, 0)
 	for {

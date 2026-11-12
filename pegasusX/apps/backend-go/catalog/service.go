@@ -301,15 +301,12 @@ func (s *Service) CreateProduct(ctx context.Context, p Product) error {
 				Type:      events.EventProductCreated,
 				Timestamp: time.Now().UTC().Format(time.RFC3339Nano),
 			},
-			ProductID:         p.ProductID,
-			SupplierID:        p.SupplierID,
-			HandlingClass:     string(p.HandlingClass),
-			RequiresColdChain: p.RequiresColdChain,
-			IsHazardous:       p.IsHazardous,
-			IsPerishable:      p.IsPerishable,
-			StorageTempMinC:   p.StorageTempMinC,
-			StorageTempMaxC:   p.StorageTempMaxC,
-			Name:              p.Name,
+			ProductID:     p.ProductID,
+			SupplierID:    p.SupplierID,
+			HandlingClass: string(p.HandlingClass),
+			IsHazardous:   p.IsHazardous,
+			IsPerishable:  p.IsPerishable,
+			Name:          p.Name,
 			CategoryID:        p.CategoryID,
 			PriceMinor:        p.PriceMinor,
 			Currency:          p.Currency,
@@ -383,11 +380,8 @@ func (s *Service) UpdateProduct(ctx context.Context, p Product) error {
 			ProductID:          p.ProductID,
 			SupplierID:         p.SupplierID,
 			HandlingClass:      string(p.HandlingClass),
-			RequiresColdChain:  p.RequiresColdChain,
 			IsHazardous:        p.IsHazardous,
 			IsPerishable:       p.IsPerishable,
-			StorageTempMinC:    p.StorageTempMinC,
-			StorageTempMaxC:    p.StorageTempMaxC,
 			Name:               p.Name,
 			CategoryID:         p.CategoryID,
 			PriceMinor:         p.PriceMinor,
@@ -412,7 +406,7 @@ func (s *Service) UpdateProduct(ctx context.Context, p Product) error {
 			}
 		}
 
-		if prev == nil || prev.HandlingClass != p.HandlingClass || prev.RequiresColdChain != p.RequiresColdChain || prev.IsHazardous != p.IsHazardous || prev.IsPerishable != p.IsPerishable {
+		if prev == nil || prev.HandlingClass != p.HandlingClass || prev.IsHazardous != p.IsHazardous || prev.IsPerishable != p.IsPerishable {
 			if err := outbox.EmitJSON(ctx, txn, events.AggregateProduct, p.ProductID, events.TopicMain, productHandlingEvent(p)); err != nil {
 				return err
 			}
@@ -453,13 +447,10 @@ func productHandlingEvent(p Product) events.ProductEvent {
 			Type:      events.EventProductHandlingUpdated,
 			Timestamp: time.Now().UTC().Format(time.RFC3339Nano),
 		},
-		ProductID:         p.ProductID,
-		SupplierID:        p.SupplierID,
-		HandlingClass:     string(p.HandlingClass),
-		RequiresColdChain: p.RequiresColdChain,
-		IsHazardous:       p.IsHazardous,
-		IsPerishable:      p.IsPerishable,
-		StorageTempMinC:   p.StorageTempMinC,
-		StorageTempMaxC:   p.StorageTempMaxC,
+		ProductID:     p.ProductID,
+		SupplierID:    p.SupplierID,
+		HandlingClass: string(p.HandlingClass),
+		IsHazardous:   p.IsHazardous,
+		IsPerishable:  p.IsPerishable,
 	}
 }

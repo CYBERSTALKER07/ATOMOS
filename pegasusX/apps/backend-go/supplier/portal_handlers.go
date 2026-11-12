@@ -1034,7 +1034,7 @@ func (s *Service) handleInventoryList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if s.inventorySvc == nil {
-		writeJSON(w, http.StatusOK, map[string]any{"items": []any{}})
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "inventory_unavailable"})
 		return
 	}
 	levels, err := s.inventorySvc.ListBySupplier(r.Context(), supplierID)

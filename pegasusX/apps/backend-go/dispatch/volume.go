@@ -60,10 +60,9 @@ func LookupProductUnitVolumes(ctx context.Context, client *spanner.Client, produ
 
 // productDispatchMeta carries catalog fields used at dispatch hydrate time.
 type productDispatchMeta struct {
-	UnitVolumeVU      float64
-	HandlingClass     string
-	RequiresColdChain bool
-	IsHazardous       bool
+	UnitVolumeVU  float64
+	HandlingClass string
+	IsHazardous   bool
 }
 
 // LookupProductDispatchMeta bulk-reads volume + handling flags for product IDs.
@@ -90,7 +89,7 @@ func LookupProductDispatchMeta(ctx context.Context, client *spanner.Client, prod
 	}
 
 	stmt := spanner.Statement{
-		SQL:    `SELECT ProductId, UnitVolumeVU, COALESCE(HandlingClass, 'GENERAL'), RequiresColdChain, IsHazardous FROM Products WHERE ProductId IN UNNEST(@ids)`,
+		SQL:    `SELECT ProductId, UnitVolumeVU, COALESCE(HandlingClass, 'GENERAL'), IsHazardous FROM Products WHERE ProductId IN UNNEST(@ids)`,
 		Params: map[string]any{"ids": unique},
 	}
 	iter := client.Single().Query(ctx, stmt)
@@ -106,7 +105,7 @@ func LookupProductDispatchMeta(ctx context.Context, client *spanner.Client, prod
 		}
 		var productID string
 		var meta productDispatchMeta
-		if err := row.Columns(&productID, &meta.UnitVolumeVU, &meta.HandlingClass, &meta.RequiresColdChain, &meta.IsHazardous); err != nil {
+		if err := row.Columns(&productID, &meta.UnitVolumeVU, &meta.HandlingClass, &meta.IsHazardous); err != nil {
 			return nil, fmt.Errorf("scan product dispatch meta: %w", err)
 		}
 		if meta.UnitVolumeVU <= 0 {
@@ -220,7 +219,7 @@ func enrichDispatchableVolumes(ctx context.Context, client *spanner.Client, rows
 	return nil
 }
 
-// applyHandlingFlags ORs cold/hazmat across line-item snapshots and product meta.
+// applyHandlingFlags ORs hazmat across line-item snapshots and product meta.
 func applyHandlingFlags(ord *DispatchableOrder, lineItemsRaw []byte, meta map[string]productDispatchMeta) {
 	if ord == nil {
 		return
@@ -229,9 +228,6 @@ func applyHandlingFlags(ord *DispatchableOrder, lineItemsRaw []byte, meta map[st
 	_ = json.Unmarshal(lineItemsRaw, &items)
 	handling := ""
 	for _, item := range items {
-		if item.RequiresColdChain {
-			ord.RequiresColdChain = true
-		}
 		if item.IsHazardous {
 			ord.IsHazardous = true
 		}
@@ -240,9 +236,6 @@ func applyHandlingFlags(ord *DispatchableOrder, lineItemsRaw []byte, meta map[st
 		}
 		sku := strings.TrimSpace(item.SKU)
 		if m, ok := meta[sku]; ok {
-			if m.RequiresColdChain {
-				ord.RequiresColdChain = true
-			}
 			if m.IsHazardous {
 				ord.IsHazardous = true
 			}
@@ -251,9 +244,7 @@ func applyHandlingFlags(ord *DispatchableOrder, lineItemsRaw []byte, meta map[st
 			}
 		}
 	}
-	if ord.RequiresColdChain && handling == "" {
-		handling = "COLD_CHAIN"
-	} else if ord.IsHazardous && handling == "" {
+	if ord.IsHazardous && handling == "" {
 		handling = "HAZARDOUS"
 	}
 	ord.HandlingClass = handling

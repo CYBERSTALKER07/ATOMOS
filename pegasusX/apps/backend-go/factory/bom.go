@@ -29,10 +29,10 @@ func (s *Service) ValidateBOMAndStartProduction(ctx context.Context, requestID, 
 			      WHERE r.RequestId = @rid`,
 			Params: map[string]any{"rid": requestID},
 		}
-		
+
 		iter := txn.Query(ctx, stmt)
 		defer iter.Stop()
-		
+
 		materialsNeeded := make(map[string]float64)
 		for {
 			row, err := iter.Next()
@@ -122,6 +122,6 @@ func (s *Service) ValidateBOMAndStartProduction(ctx context.Context, requestID, 
 	if err != nil && !errors.Is(err, ErrMaterialShortage) {
 		s.log.Error("Failed to validate BOM for production run", "request_id", requestID, "err", err)
 	}
-	
+
 	return err
 }

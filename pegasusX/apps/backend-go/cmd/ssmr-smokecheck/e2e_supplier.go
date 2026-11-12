@@ -356,7 +356,9 @@ func runSupplierImportAsyncE2E(ctx context.Context, client *http.Client, base, c
 	if status != http.StatusOK {
 		getURL := base + "/v1/supplier/inventory/imports/" + created.SessionID
 		_, sessBody, _, _ := clientDo(ctx, client, http.MethodGet, getURL, nil, cookie, "ssmr-import-async-apply-diag")
-		return fmt.Errorf("import async apply status %d body %s session %s", status, string(respBody), string(sessBody))
+		getRowsURL := base + "/v1/supplier/inventory/imports/" + created.SessionID + "/rows"
+		_, rowsBody, _, _ := clientDo(ctx, client, http.MethodGet, getRowsURL, nil, cookie, "ssmr-import-async-rows-diag")
+		return fmt.Errorf("import async apply status %d body %s session %s rows %s", status, string(respBody), string(sessBody), string(rowsBody))
 	}
 	var applied struct {
 		AppliedRows int64  `json:"applied_rows"`

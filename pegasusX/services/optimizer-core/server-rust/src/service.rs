@@ -19,7 +19,8 @@ impl Default for OptimizerService {
         let max_concurrency = std::env::var("OPTIMIZER_MAX_CONCURRENCY")
             .ok()
             .and_then(|v| v.parse::<usize>().ok())
-            .unwrap_or(4);
+            .unwrap_or(4)
+            .max(1);
         Self {
             semaphore: Arc::new(Semaphore::new(max_concurrency)),
         }
@@ -29,7 +30,7 @@ impl Default for OptimizerService {
 impl OptimizerService {
     pub fn new(max_concurrency: usize) -> Self {
         Self {
-            semaphore: Arc::new(Semaphore::new(max_concurrency)),
+            semaphore: Arc::new(Semaphore::new(max_concurrency.max(1))),
         }
     }
 

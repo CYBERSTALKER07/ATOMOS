@@ -114,17 +114,17 @@ func (s *Service) HandleHqSummary(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"retailer_id":       orgID,
-		"day":               day,
-		"location_count":    len(locs),
-		"sku_count":         len(skus),
-		"qty_sold":          qtySold,
-		"qty_voided":        qtyVoided,
-		"gross_minor":       gross,
-		"net_minor":         net,
-		"currency":          currency,
-		"honest_empty":      len(rows) == 0,
-		"pack":              PackREPORTSPRO,
+		"retailer_id":    orgID,
+		"day":            day,
+		"location_count": len(locs),
+		"sku_count":      len(skus),
+		"qty_sold":       qtySold,
+		"qty_voided":     qtyVoided,
+		"gross_minor":    gross,
+		"net_minor":      net,
+		"currency":       currency,
+		"honest_empty":   len(rows) == 0,
+		"pack":           PackREPORTSPRO,
 	})
 }
 
@@ -174,13 +174,13 @@ func (s *Service) HandleHqSalesByLocation(w http.ResponseWriter, r *http.Request
 	}
 	sort.Slice(items, func(i, j int) bool { return items[i].LocationID < items[j].LocationID })
 	writeJSON(w, http.StatusOK, map[string]any{
-		"retailer_id":    orgID,
-		"day":            day,
-		"items":          items,
-		"org_net_minor":  orgNet,
-		"sum_locations":  sumNet,
-		"balanced":       sumNet == orgNet,
-		"honest_empty":   len(items) == 0,
+		"retailer_id":   orgID,
+		"day":           day,
+		"items":         items,
+		"org_net_minor": orgNet,
+		"sum_locations": sumNet,
+		"balanced":      sumNet == orgNet,
+		"honest_empty":  len(items) == 0,
 	})
 }
 
@@ -291,15 +291,15 @@ func (s *Service) HandleHqShrinkage(w http.ResponseWriter, r *http.Request) {
 		voidMinor = gross - net
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"retailer_id":        orgID,
-		"day":                day,
-		"void_qty":           voidQty,
-		"void_value_minor":   voidMinor,
-		"gross_minor":        gross,
-		"net_minor":          net,
-		"method":             "hq_void_proxy",
-		"note":               "Shrinkage here is POS void rollup from HQ daily, not full cycle-count loss.",
-		"honest_empty":       len(rows) == 0,
+		"retailer_id":      orgID,
+		"day":              day,
+		"void_qty":         voidQty,
+		"void_value_minor": voidMinor,
+		"gross_minor":      gross,
+		"net_minor":        net,
+		"method":           "hq_void_proxy",
+		"note":             "Shrinkage here is POS void rollup from HQ daily, not full cycle-count loss.",
+		"honest_empty":     len(rows) == 0,
 	})
 }
 
@@ -375,7 +375,7 @@ func (s *Service) listHqSalesRows(ctx context.Context, retailerID, day, location
 		sql += ` AND LocationId = @lid`
 		params["lid"] = locationID
 	}
-	iter := s.spannerClient.Single().Query(ctx, spanner.Statement{SQL: sql, Params: params})
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, spanner.Statement{SQL: sql, Params: params})
 	defer iter.Stop()
 	var out []HqSalesDayDTO
 	for {

@@ -32,7 +32,7 @@ func (r *SpannerOverrideReader) Multiplier(ctx context.Context, supplierID strin
 		return BuiltinMultiplierFor(on), nil
 	}
 	on = on.UTC()
-	iter := r.Client.Single().Query(ctx, spanner.Statement{
+	iter := r.Client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL: `SELECT COALESCE(Multiplier, 0), TemplateId
 		      FROM SeasonalTemplateOverrides
 		      WHERE SupplierId = @sid AND IsActive = true

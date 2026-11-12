@@ -337,10 +337,13 @@ func (r *SpannerPolicyRepository) ListTermsBySupplier(ctx context.Context, suppl
 		limit = 100
 	}
 	stmt := spanner.Statement{
-		SQL:    fmt.Sprintf(`SELECT RetailerId, SupplierId, CreditEnabled, EnabledAt, EnabledByUserId, DisabledAt, DisabledByActor, TermsDays, GracePeriodDays, CreditLimitMinor, UseGlobalDefaults, Version, UpdatedAt FROM RetailerPaymentTerms WHERE SupplierId = @sid ORDER BY UpdatedAt DESC LIMIT %d`, limit),
-		Params: map[string]any{"sid": supplierID},
+		SQL: `SELECT RetailerId, SupplierId, CreditEnabled, EnabledAt, EnabledByUserId, DisabledAt, DisabledByActor, TermsDays, GracePeriodDays, CreditLimitMinor, UseGlobalDefaults, Version, UpdatedAt FROM RetailerPaymentTerms WHERE SupplierId = @sid ORDER BY UpdatedAt DESC LIMIT @limit`,
+		Params: map[string]any{
+			"sid":   supplierID,
+			"limit": int64(limit),
+		},
 	}
-	iter := r.client.Single().Query(ctx, stmt)
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	out := make([]RetailerPaymentTerms, 0)
 	for {
@@ -365,10 +368,13 @@ func (r *SpannerPolicyRepository) ListTermsByRetailer(ctx context.Context, retai
 		limit = 100
 	}
 	stmt := spanner.Statement{
-		SQL:    fmt.Sprintf(`SELECT RetailerId, SupplierId, CreditEnabled, EnabledAt, EnabledByUserId, DisabledAt, DisabledByActor, TermsDays, GracePeriodDays, CreditLimitMinor, UseGlobalDefaults, Version, UpdatedAt FROM RetailerPaymentTerms WHERE RetailerId = @rid ORDER BY UpdatedAt DESC LIMIT %d`, limit),
-		Params: map[string]any{"rid": retailerID},
+		SQL: `SELECT RetailerId, SupplierId, CreditEnabled, EnabledAt, EnabledByUserId, DisabledAt, DisabledByActor, TermsDays, GracePeriodDays, CreditLimitMinor, UseGlobalDefaults, Version, UpdatedAt FROM RetailerPaymentTerms WHERE RetailerId = @rid ORDER BY UpdatedAt DESC LIMIT @limit`,
+		Params: map[string]any{
+			"rid":   retailerID,
+			"limit": int64(limit),
+		},
 	}
-	iter := r.client.Single().Query(ctx, stmt)
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	out := make([]RetailerPaymentTerms, 0)
 	for {

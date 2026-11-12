@@ -3,7 +3,6 @@ package foundryroutes
 import (
 	"encoding/json"
 	"net/http"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/pegasusx/pegasusx/apps/backend-go/foundry"
@@ -21,7 +20,6 @@ func (h *fleetHandler) mountRoutes(r chi.Router) {
 	r.Post("/v1/foundry/fleet/dvir", h.handleSubmitDVIR)
 	r.Post("/v1/foundry/fleet/gate-events", h.handleGateEvent)
 	r.Post("/v1/foundry/fleet/mid-route-rescue", h.handleMidRouteRescue)
-	r.Post("/v1/foundry/fleet/predictive-reefer", h.handlePredictiveReefer)
 	r.Get("/v1/foundry/fleet/vehicles/{vehicleID}/dispatch-check", h.handleDispatchCheck)
 }
 
@@ -31,6 +29,11 @@ func (h *fleetHandler) handleSubmitDVIR(w http.ResponseWriter, r *http.Request) 
 		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "invalid JSON payload"})
 		return
 	}
+	sid, ok := bindSupplierID(w, r, req.SupplierID)
+	if !ok {
+		return
+	}
+	req.SupplierID = sid
 	res, err := h.eng.SubmitDVIRInspection(r.Context(), req)
 	if err != nil {
 		writeError(w, err)
@@ -59,6 +62,11 @@ func (h *fleetHandler) handleGateEvent(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "invalid JSON payload"})
 		return
 	}
+	sid, ok := bindSupplierID(w, r, req.SupplierID)
+	if !ok {
+		return
+	}
+	req.SupplierID = sid
 	ev, err := h.eng.RecordGateCheckEvent(r.Context(), req)
 	if err != nil {
 		writeError(w, err)
@@ -73,37 +81,17 @@ func (h *fleetHandler) handleMidRouteRescue(w http.ResponseWriter, r *http.Reque
 		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "invalid JSON payload"})
 		return
 	}
+	sid, ok := bindSupplierID(w, r, req.SupplierID)
+	if !ok {
+		return
+	}
+	req.SupplierID = sid
 	res, err := h.eng.ExecuteMidRouteBreakdownRescue(r.Context(), req)
 	if err != nil {
 		writeError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, res)
-}
-
-func (h *fleetHandler) handlePredictiveReefer(w http.ResponseWriter, r *http.Request) {
-	var req struct {
-		VehicleID                string  `json:"vehicle_id"`
-		CoolingRateDegPerMin     float64 `json:"cooling_rate_deg_per_min"`
-		MinRequiredRateDegPerMin float64 `json:"min_required_rate_deg_per_min"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "invalid JSON payload"})
-		return
-	}
-	hold, err := h.eng.EvaluatePredictiveReeferHealth(r.Context(), req.VehicleID, req.CoolingRateDegPerMin, req.MinRequiredRateDegPerMin)
-	if err != nil {
-		writeError(w, err)
-		return
-	}
-	status := http.StatusOK
-	if hold {
-		status = http.StatusConflict
-	}
-	writeJSON(w, status, map[string]any{
-		"vehicle_id":                   strings.TrimSpace(req.VehicleID),
-		"pre_failure_maintenance_hold": hold,
-	})
 }
 
 func (h *fleetHandler) handleDispatchCheck(w http.ResponseWriter, r *http.Request) {

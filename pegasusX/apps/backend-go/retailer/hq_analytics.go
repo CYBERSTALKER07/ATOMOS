@@ -268,7 +268,7 @@ func (s *Service) ListHqSalesByLocation(ctx context.Context, retailerID, day str
 		}
 		return out, nil
 	}
-	iter := s.spannerClient.Single().Query(ctx, spanner.Statement{
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, spanner.Statement{
 		SQL: `SELECT LocationId, SUM(NetMinor) FROM RetailerHqSalesDaily
 			WHERE RetailerId = @rid AND Day = @day
 			GROUP BY LocationId`,

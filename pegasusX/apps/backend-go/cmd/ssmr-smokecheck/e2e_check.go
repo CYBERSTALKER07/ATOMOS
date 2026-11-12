@@ -142,9 +142,6 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err := runWMSCycleCountsE2E(ctx, client, base, cookie, cfg); err != nil {
 		return fmt.Errorf("wms cycle counts: %w", err)
 	}
-	if err := runWMSColdChainE2E(ctx, client, base, cookie, cfg); err != nil {
-		return fmt.Errorf("wms cold chain: %w", err)
-	}
 	if err := runWarehouseOpsPolicyE2E(ctx, client, base, cookie, retailerToken, cfg); err != nil {
 		return fmt.Errorf("warehouse ops policy: %w", err)
 	}

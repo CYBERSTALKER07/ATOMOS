@@ -13,9 +13,9 @@ import (
 
 func TestResolveRetailerOrgID_StaffTokenUsesOrg(t *testing.T) {
 	c := auth.Claims{
-		Subject:       "user-staff-1",
-		Role:          auth.RoleRetailer,
-		RetailerOrgID: "ret-org-1",
+		Subject:        "user-staff-1",
+		Role:           auth.RoleRetailer,
+		RetailerOrgID:  "ret-org-1",
 		RetailerUserID: "user-staff-1",
 	}
 	if got := auth.ResolveRetailerOrgID(c); got != "ret-org-1" {

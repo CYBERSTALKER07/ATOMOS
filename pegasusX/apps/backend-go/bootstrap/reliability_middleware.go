@@ -23,10 +23,10 @@ const loadBootstrapHeader = "X-PegasusX-Load-Bootstrap"
 type reliabilityClass string
 
 const (
-	reliabilityClassOperational reliabilityClass = "operational"
-	reliabilityClassPayment     reliabilityClass = "payment"
-	reliabilityClassAuth        reliabilityClass = "auth"
-	reliabilityClassWebhook     reliabilityClass = "webhook"
+	reliabilityClassOperational     reliabilityClass = "operational"
+	reliabilityClassPayment         reliabilityClass = "payment"
+	reliabilityClassAuth            reliabilityClass = "auth"
+	reliabilityClassWebhook         reliabilityClass = "webhook"
 	reliabilityClassTelemetry       reliabilityClass = "telemetry"
 	reliabilityClassGeocode         reliabilityClass = "geocode"
 	reliabilityClassFoundryCritical reliabilityClass = "foundry_critical"

@@ -178,3 +178,33 @@ func TestRailByName_UnknownDoesNotInventBankFile(t *testing.T) {
 		t.Fatalf("sepa-file must be file-only: %v %v", r, err)
 	}
 }
+
+func TestPayoutTenantIsolationRejectsForeignSupplierID(t *testing.T) {
+	h := &Handlers{Svc: NewService(nil)}
+
+	// Session is sup-legit
+	claims := auth.Claims{
+		Role:       auth.RoleAdmin,
+		SupplierID: "sup-legit",
+		Subject:    "user-1",
+	}
+
+	// 1. HandleGenerate with foreign body supplier_id -> 403
+	body := `{"supplier_id":"sup-attacker","period_start":"2026-05-01","period_end":"2026-05-31"}`
+	reqGen := httptest.NewRequest(http.MethodPost, "/v1/supplier/payouts/batches/generate", strings.NewReader(body))
+	reqGen = reqGen.WithContext(auth.WithClaims(reqGen.Context(), claims))
+	rrGen := httptest.NewRecorder()
+	h.HandleGenerate(rrGen, reqGen)
+	if rrGen.Code != http.StatusForbidden {
+		t.Fatalf("HandleGenerate expected 403 for foreign supplier, got %d", rrGen.Code)
+	}
+
+	// 2. HandleListBatches with foreign query supplier_id -> 403
+	reqList := httptest.NewRequest(http.MethodGet, "/v1/supplier/payouts/batches?supplier_id=sup-attacker", nil)
+	reqList = reqList.WithContext(auth.WithClaims(reqList.Context(), claims))
+	rrList := httptest.NewRecorder()
+	h.HandleListBatches(rrList, reqList)
+	if rrList.Code != http.StatusForbidden {
+		t.Fatalf("HandleListBatches expected 403 for foreign supplier, got %d", rrList.Code)
+	}
+}

@@ -16,9 +16,9 @@ type DemandPredictionRequest struct {
 }
 
 type DemandPredictionResponse struct {
-	SKU                 string  `json:"sku"`
-	OptimalReorderQty   int64   `json:"optimal_reorder_qty"`
-	PredictedDailyBurn  float64 `json:"predicted_daily_burn"`
+	SKU                string  `json:"sku"`
+	OptimalReorderQty  int64   `json:"optimal_reorder_qty"`
+	PredictedDailyBurn float64 `json:"predicted_daily_burn"`
 }
 
 // PredictDemand calls the Python optimizer sidecar to compute reorder quantities.

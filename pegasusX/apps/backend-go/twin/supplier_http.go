@@ -272,7 +272,7 @@ func (r *SpannerRepository) ListActiveRouteTwinsForSupplier(ctx context.Context,
 		params["driverId"] = driverID
 	}
 
-	iter := r.client.Single().Query(ctx, spanner.Statement{SQL: sql, Params: params})
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{SQL: sql, Params: params})
 	defer iter.Stop()
 
 	var active []RouteTwin
@@ -342,7 +342,7 @@ func (r *SpannerRepository) driverProfile(ctx context.Context, driverID string) 
 }
 
 func (r *SpannerRepository) routeExceptions(ctx context.Context, supplierID, routeID string) ([]RouteException, bool, error) {
-	iter := r.client.Single().Query(ctx, spanner.Statement{
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL: `SELECT OrderId, Status FROM Orders
 		      WHERE SupplierId = @supplierId AND RouteId = @routeId
 		        AND Status IN ('SHOP_CLOSED_PENDING', 'ARRIVED_SHOP_CLOSED', 'CASH_DISPUTED')
@@ -382,7 +382,7 @@ func (r *SpannerRepository) routeExceptions(ctx context.Context, supplierID, rou
 		})
 	}
 
-	cashIter := r.client.Single().Query(ctx, spanner.Statement{
+	cashIter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL: `SELECT cr.ReconciliationId, cr.Status, cr.DifferenceMinor
 		      FROM CashReconciliations cr
 		      WHERE cr.RouteId = @routeId AND cr.Status IN ('PENDING', 'DISPUTED')

@@ -19,29 +19,29 @@ import (
 )
 
 const (
-	AssistOpen      = "OPEN"
-	AssistClaimed   = "CLAIMED"
-	AssistDone      = "DONE"
-	AssistCancelled = "CANCELLED"
+	AssistOpen              = "OPEN"
+	AssistClaimed           = "CLAIMED"
+	AssistDone              = "DONE"
+	AssistCancelled         = "CANCELLED"
 	defaultAssistSLAMinutes = 15
 )
 
 // AssistTicketDTO is a floor help ticket.
 type AssistTicketDTO struct {
-	TicketID          string `json:"ticket_id"`
-	RetailerID        string `json:"retailer_id"`
-	LocationID        string `json:"location_id"`
-	SectionID         string `json:"section_id"`
-	Note              string `json:"note"`
-	Status            string `json:"status"`
-	CreatedByUserID   string `json:"created_by_user_id"`
-	ClaimedByUserID   string `json:"claimed_by_user_id,omitempty"`
-	CompletedByUserID string `json:"completed_by_user_id,omitempty"`
-	CreatedAt            string `json:"created_at,omitempty"`
-	ClaimedAt            string `json:"claimed_at,omitempty"`
-	CompletedAt          string `json:"completed_at,omitempty"`
-	SlaDueAt             string `json:"sla_due_at,omitempty"`
-	SlaBreachNotifiedAt  string `json:"sla_breach_notified_at,omitempty"` // C4.1 idempotent SLA alert
+	TicketID            string `json:"ticket_id"`
+	RetailerID          string `json:"retailer_id"`
+	LocationID          string `json:"location_id"`
+	SectionID           string `json:"section_id"`
+	Note                string `json:"note"`
+	Status              string `json:"status"`
+	CreatedByUserID     string `json:"created_by_user_id"`
+	ClaimedByUserID     string `json:"claimed_by_user_id,omitempty"`
+	CompletedByUserID   string `json:"completed_by_user_id,omitempty"`
+	CreatedAt           string `json:"created_at,omitempty"`
+	ClaimedAt           string `json:"claimed_at,omitempty"`
+	CompletedAt         string `json:"completed_at,omitempty"`
+	SlaDueAt            string `json:"sla_due_at,omitempty"`
+	SlaBreachNotifiedAt string `json:"sla_breach_notified_at,omitempty"` // C4.1 idempotent SLA alert
 }
 
 // HandleAssistTickets serves GET/POST /v1/retailer/assist/tickets
@@ -271,10 +271,7 @@ func (s *Service) assistSLAMinutes(ctx context.Context, retailerID string) int {
 	if err != nil || cfg == nil {
 		return defaultAssistSLAMinutes
 	}
-	if v, ok := cfg["sla_minutes"].(float64); ok && v > 0 {
-		return int(v)
-	}
-	if v, ok := cfg["sla_minutes"].(int); ok && v > 0 {
+	if v, ok := packConfigInt(cfg["sla_minutes"]); ok && v > 0 {
 		return v
 	}
 	return defaultAssistSLAMinutes
@@ -447,7 +444,7 @@ func (s *Service) listAssistTickets(ctx context.Context, retailerID, locationID,
 	}
 	sql += ` ORDER BY CreatedAt DESC LIMIT @lim`
 	params["lim"] = int64(limit)
-	iter := s.spannerClient.Single().Query(ctx, spanner.Statement{SQL: sql, Params: params})
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, spanner.Statement{SQL: sql, Params: params})
 	defer iter.Stop()
 	var out []AssistTicketDTO
 	for {
@@ -486,7 +483,7 @@ func (s *Service) listAssistTicketsLegacy(ctx context.Context, retailerID, locat
 	}
 	sql += ` ORDER BY CreatedAt DESC LIMIT @lim`
 	params["lim"] = int64(limit)
-	iter := s.spannerClient.Single().Query(ctx, spanner.Statement{SQL: sql, Params: params})
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, spanner.Statement{SQL: sql, Params: params})
 	defer iter.Stop()
 	var out []AssistTicketDTO
 	for {

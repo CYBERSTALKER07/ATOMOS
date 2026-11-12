@@ -114,7 +114,6 @@ CREATE TABLE FleetDVIRInspections (
   CriticalDefectFound    BOOL         NOT NULL DEFAULT (FALSE),
   RedTagApplied          BOOL         NOT NULL DEFAULT (FALSE),
   OdometerKm             INT64        NOT NULL,
-  ReeferTempCelsius      FLOAT64,
   Status                 STRING(32)   NOT NULL,
   MaintenanceWorkOrderId STRING(36),
   CreatedAt              TIMESTAMP    NOT NULL OPTIONS (allow_commit_timestamp=true),

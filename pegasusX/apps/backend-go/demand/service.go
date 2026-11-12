@@ -63,7 +63,7 @@ func (s *Service) GetAdjustments(ctx context.Context, retailerId string, from, t
 		sql += ` AND FALSE`
 	}
 	stmt := spanner.Statement{SQL: sql, Params: params}
-	iter := s.spanner.Single().Query(ctx, stmt)
+	iter := s.spanner.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 
 	var adjs []DemandAdjustment
@@ -157,7 +157,7 @@ func (s *Service) ListSignals(ctx context.Context, filter SignalFilter) ([]Deman
 		SQL:    query,
 		Params: params,
 	}
-	iter := s.spanner.Single().Query(ctx, stmt)
+	iter := s.spanner.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 
 	var signals []DemandSignal
@@ -213,7 +213,7 @@ func (s *Service) GetSignal(ctx context.Context, id string) (*DemandSignal, erro
 		`,
 		Params: map[string]interface{}{"Id": id},
 	}
-	iter := s.spanner.Single().Query(ctx, stmt)
+	iter := s.spanner.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 
 	row, err := iter.Next()

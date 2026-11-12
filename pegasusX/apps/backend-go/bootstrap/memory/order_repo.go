@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
-	
+
 	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/retailer"
@@ -467,7 +467,7 @@ func (r *inMemoryOrderRepo) UpdateOrderWithTxn(ctx context.Context, o order.Orde
 			}
 		}
 	}
-	
+
 	if inTxn != nil {
 		if err := inTxn(ctx, nil); err != nil {
 			return err
@@ -484,7 +484,7 @@ func (r *inMemoryOrderRepo) FindSiblingDriversForOrder(ctx context.Context, orde
 func (r *inMemoryOrderRepo) FindPendingBuyerAcceptance(ctx context.Context, limit int) ([]*order.Order, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	
+
 	var res []*order.Order
 	for _, o := range r.byID {
 		if o.BuyerAcceptanceStatus == "PENDING" {

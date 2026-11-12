@@ -103,9 +103,11 @@ func (s *Service) HandleReturns(w http.ResponseWriter, r *http.Request) {
 		sql += " AND o.WarehouseId = @warehouse_id"
 		params["warehouse_id"] = whID
 	}
-	sql += fmt.Sprintf(" ORDER BY sr.CreatedAt DESC LIMIT %d OFFSET %d", limit+1, offset)
+	params["limit"] = int64(limit + 1)
+	params["offset"] = int64(offset)
+	sql += " ORDER BY sr.CreatedAt DESC LIMIT @limit OFFSET @offset"
 
-	iter := s.portalSpanner.Single().Query(ctx, spanner.Statement{SQL: sql, Params: params})
+	iter := s.portalSpanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{SQL: sql, Params: params})
 	defer iter.Stop()
 
 	rows := make([]SupplierReturnRow, 0, limit)
@@ -278,11 +280,15 @@ func (s *Service) HandleResolveReturn(w http.ResponseWriter, r *http.Request) {
 			}),
 		}
 
-		if resolution == "RETURN_TO_STOCK" && warehouseID != "" && qty > 0 && physicalStatus != "RESTOCKED" {
+		restockQty := receivedQty
+		if restockQty <= 0 {
+			restockQty = qty
+		}
+		if resolution == "RETURN_TO_STOCK" && warehouseID != "" && restockQty > 0 && physicalStatus != "RESTOCKED" {
 			if stocklots.LotsEnabled() {
 				if _, err := stocklots.CreditViaDefaultPutawayInTxn(
 					ctx, txn, supplierID, warehouseID, skuID,
-					stocklots.DefaultReturnsLocationID, "RETURNS", qty,
+					stocklots.DefaultReturnsLocationID, "RETURNS", restockQty,
 				); err != nil {
 					return err
 				}
@@ -298,7 +304,7 @@ func (s *Service) HandleResolveReturn(w http.ResponseWriter, r *http.Request) {
 						"SupplierId":       supplierID,
 						"WarehouseId":      warehouseID,
 						"ProductId":        skuID,
-						"QuantityOnHand":   qty,
+						"QuantityOnHand":   restockQty,
 						"QuantityReserved": int64(0),
 						"UpdatedAt":        spanner.CommitTimestamp,
 					}))
@@ -311,7 +317,7 @@ func (s *Service) HandleResolveReturn(w http.ResponseWriter, r *http.Request) {
 						"SupplierId":     supplierID,
 						"WarehouseId":    warehouseID,
 						"ProductId":      skuID,
-						"QuantityOnHand": onHand + qty,
+						"QuantityOnHand": onHand + restockQty,
 						"UpdatedAt":      spanner.CommitTimestamp,
 					}))
 				}

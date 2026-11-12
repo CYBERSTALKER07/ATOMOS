@@ -67,7 +67,7 @@ func (s *Service) HandleListPendingNegotiations(w http.ResponseWriter, r *http.R
 		},
 	}
 
-	iter := s.spannerClient.Single().Query(ctx, stmt)
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 
 	pending := make([]NegotiationProposalDTO, 0)

@@ -36,6 +36,11 @@ func (h *ontologyHandler) handleUpsertObject(w http.ResponseWriter, r *http.Requ
 		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "invalid JSON payload"})
 		return
 	}
+	sid, ok := bindSupplierID(w, r, req.SupplierID)
+	if !ok {
+		return
+	}
+	req.SupplierID = sid
 	obj, err := h.eng.UpsertObject(r.Context(), req)
 	if err != nil {
 		writeError(w, err)
@@ -53,6 +58,10 @@ func (h *ontologyHandler) handleGetObject(w http.ResponseWriter, r *http.Request
 		writeError(w, err)
 		return
 	}
+	if obj != nil && !objectVisible(r, obj.SupplierID) {
+		writeJSON(w, http.StatusForbidden, map[string]any{"error": "supplier_scope_mismatch"})
+		return
+	}
 	writeJSON(w, http.StatusOK, obj)
 }
 
@@ -62,6 +71,11 @@ func (h *ontologyHandler) handleLinkObjects(w http.ResponseWriter, r *http.Reque
 		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "invalid JSON payload"})
 		return
 	}
+	sid, ok := bindSupplierID(w, r, req.SupplierID)
+	if !ok {
+		return
+	}
+	req.SupplierID = sid
 	edge, err := h.eng.LinkObjects(r.Context(), req)
 	if err != nil {
 		writeError(w, err)
@@ -87,7 +101,13 @@ func (h *ontologyHandler) handleSearchAround(w http.ResponseWriter, r *http.Requ
 		writeError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"objects": objects})
+	visible := make([]*foundry.OntologyObject, 0, len(objects))
+	for _, obj := range objects {
+		if obj != nil && objectVisible(r, obj.SupplierID) {
+			visible = append(visible, obj)
+		}
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"objects": visible})
 }
 
 func (h *ontologyHandler) handleLotRecall(w http.ResponseWriter, r *http.Request) {
@@ -100,7 +120,11 @@ func (h *ontologyHandler) handleLotRecall(w http.ResponseWriter, r *http.Request
 		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "invalid JSON payload"})
 		return
 	}
-	report, err := h.eng.TriggerContaminatedLotRecall(r.Context(), req.CellID, req.SupplierID, req.RawMaterialLotID)
+	sid, ok := bindSupplierID(w, r, req.SupplierID)
+	if !ok {
+		return
+	}
+	report, err := h.eng.TriggerContaminatedLotRecall(r.Context(), req.CellID, sid, req.RawMaterialLotID)
 	if err != nil {
 		writeError(w, err)
 		return
@@ -114,6 +138,11 @@ func (h *ontologyHandler) handleExecuteAction(w http.ResponseWriter, r *http.Req
 		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "invalid JSON payload"})
 		return
 	}
+	sid, ok := bindSupplierID(w, r, req.SupplierID)
+	if !ok {
+		return
+	}
+	req.SupplierID = sid
 	rec, err := h.eng.ExecuteKineticAction(r.Context(), req, func(ctx context.Context) (map[string]any, error) {
 		return req.Parameters, nil
 	})
@@ -138,7 +167,11 @@ func (h *ontologyHandler) handleApplyScenarioPatch(w http.ResponseWriter, r *htt
 		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "invalid JSON payload"})
 		return
 	}
-	patch, err := h.eng.ApplyScenarioPatch(r.Context(), req.CellID, scenarioID, req.SupplierID, req.ObjectType, req.ObjectID, req.Operation, req.PatchProperties)
+	sid, ok := bindSupplierID(w, r, req.SupplierID)
+	if !ok {
+		return
+	}
+	patch, err := h.eng.ApplyScenarioPatch(r.Context(), req.CellID, scenarioID, sid, req.ObjectType, req.ObjectID, req.Operation, req.PatchProperties)
 	if err != nil {
 		writeError(w, err)
 		return

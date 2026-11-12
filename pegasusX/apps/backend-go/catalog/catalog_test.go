@@ -185,9 +185,7 @@ func TestCatalog_CreateProduct_StrictIdempotency(t *testing.T) {
 		"currency": "UZS",
 		"stock_quantity": 100,
 		"unit": "UNIT",
-		"handling_class": "COLD_CHAIN",
-		"storage_temp_min_c": 2.0,
-		"storage_temp_max_c": 6.0
+		"handling_class": "PERISHABLE"
 	}`)
 
 	// 1. Missing Idempotency-Key -> 400 Bad Request
@@ -225,7 +223,7 @@ func TestCatalog_CreateProduct_StrictIdempotency(t *testing.T) {
 			foundCreated = true
 			var pe events.ProductEvent
 			_ = json.Unmarshal(e.Payload, &pe)
-			if pe.ProductID != created.ProductID || pe.PriceMinor != 15000 || pe.HandlingClass != "COLD_CHAIN" {
+			if pe.ProductID != created.ProductID || pe.PriceMinor != 15000 || pe.HandlingClass != "PERISHABLE" {
 				t.Fatalf("unexpected product created event: %+v", pe)
 			}
 		}
@@ -487,6 +485,14 @@ func (r *mockPromoRepo) FilterEligibleCampaignPromotions(_ context.Context, _ st
 	return promos, nil
 }
 
+func (r *mockPromoRepo) CreateCampaign(_ context.Context, _, _ string, _ int64) (string, error) {
+	return "camp-1", nil
+}
+
+func (r *mockPromoRepo) EnrollRetailer(_ context.Context, _, _ string) error {
+	return nil
+}
+
 func TestCatalog_SingleflightCacheAndBatchedRetailerOverrides(t *testing.T) {
 	repo := newMockCatalogRepo()
 	repo.products["p1"] = Product{ProductID: "p1", SupplierID: "sup-1", CategoryID: "cat-a", Name: "SKU 1", PriceMinor: 10000, Currency: "UZS", IsActive: true}
@@ -525,3 +531,43 @@ func TestCatalog_SingleflightCacheAndBatchedRetailerOverrides(t *testing.T) {
 	}
 }
 
+func TestCatalogTenantIsolation(t *testing.T) {
+	repo := newMockCatalogRepo()
+	repo.products["p1"] = Product{ProductID: "p1", SupplierID: "sup-victim", CategoryID: "cat-a", Name: "Victim Product", PriceMinor: 10000, Currency: "UZS", IsActive: true}
+	svc := NewService(repo, nil, nil, nil, nil)
+
+	// Attacker claims sup-attacker
+	claims := auth.Claims{
+		Subject:    "attacker",
+		Role:       auth.RoleAdmin,
+		SupplierID: "sup-attacker",
+	}
+
+	// 1. ListCategories for foreign supplier -> 403
+	reqCat := httptest.NewRequest(http.MethodGet, "/v1/catalog/categories?supplier_id=sup-victim", nil)
+	reqCat = reqCat.WithContext(auth.WithClaims(reqCat.Context(), claims))
+	recCat := httptest.NewRecorder()
+	svc.HandleListCategories(recCat, reqCat)
+	if recCat.Code != http.StatusForbidden {
+		t.Fatalf("HandleListCategories expected 403, got %d", recCat.Code)
+	}
+
+	// 2. ListProducts for foreign supplier -> 403
+	reqProd := httptest.NewRequest(http.MethodGet, "/v1/catalog/products?supplier_id=sup-victim", nil)
+	reqProd = reqProd.WithContext(auth.WithClaims(reqProd.Context(), claims))
+	recProd := httptest.NewRecorder()
+	svc.HandleListProducts(recProd, reqProd)
+	if recProd.Code != http.StatusForbidden {
+		t.Fatalf("HandleListProducts expected 403, got %d", recProd.Code)
+	}
+
+	// 3. GetProduct for foreign supplier -> 403
+	reqGet := httptest.NewRequest(http.MethodGet, "/v1/catalog/products/p1", nil)
+	reqGet = reqGet.WithContext(auth.WithClaims(reqGet.Context(), claims))
+	reqGet.SetPathValue("productID", "p1")
+	recGet := httptest.NewRecorder()
+	svc.HandleGetProduct(recGet, reqGet)
+	if recGet.Code != http.StatusForbidden {
+		t.Fatalf("HandleGetProduct expected 403, got %d", recGet.Code)
+	}
+}

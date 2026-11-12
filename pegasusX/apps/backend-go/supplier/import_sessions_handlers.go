@@ -520,6 +520,7 @@ func handlePostImportMapping(repo *ImportRepository) http.HandlerFunc {
 			return
 		}
 
+		r.Body = http.MaxBytesReader(w, r.Body, 2<<20)
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
 			writeImportJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request body"})

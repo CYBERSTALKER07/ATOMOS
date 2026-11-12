@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Tuple
 from flask import Flask, request, jsonify
 
 app = Flask(__name__)
+app.config["MAX_CONTENT_LENGTH"] = 256 * 1024  # 256 KiB bounded request payload
 
 MODEL_VERSION = "CREDIT_SCORECARD_V2_CALIBRATED"
 SCORING_MODE = "CALIBRATED_LOGISTIC_SCORECARD"
@@ -29,7 +30,18 @@ def _evaluate_credit_risk(payload: Dict[str, Any]) -> Tuple[Dict[str, Any], int]
     except (TypeError, ValueError) as exc:
         return {"error": f"invalid numeric feature: {exc}"}, 400
 
-    if avg_days_to_pay < 0 or missed_payments < 0 or total_volume_millions < 0 or current_limit_uzs < 0:
+    if not math.isfinite(avg_days_to_pay) or not math.isfinite(total_volume_millions):
+        return {"error": "credit features must be finite numbers"}, 400
+
+    if (
+        avg_days_to_pay < 0
+        or missed_payments < 0
+        or total_volume_millions < 0
+        or current_limit_uzs < 0
+        or days_past_due_max < 0
+        or active_disputes < 0
+        or completed_orders < 0
+    ):
         return {"error": "credit features must be non-negative"}, 400
 
     # Calibrated log-odds scorecard for B2B FMCG retailer trade credit (Net-7 / Net-14 / Net-30):
@@ -102,7 +114,7 @@ def _evaluate_credit_risk(payload: Dict[str, Any]) -> Tuple[Dict[str, Any], int]
         # Cap single step increase to 30% of historical volume in UZS minor-equivalent
         volume_cap_uzs = int(total_volume_millions * 1_000_000 * 0.30)
         raw_increase = int(round(current_limit_uzs * multiplier))
-        suggested_increase_uzs = min(raw_increase, max(volume_cap_uzs, raw_increase))
+        suggested_increase_uzs = min(raw_increase, volume_cap_uzs) if volume_cap_uzs > 0 else 0
 
     return {
         "retailer_id": retailer_id,

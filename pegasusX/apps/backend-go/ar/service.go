@@ -644,7 +644,9 @@ func (r *SpannerRepository) GetByOrder(ctx context.Context, orderID string) (Inv
 		SQL:    `SELECT InvoiceId, SupplierId, RetailerId, OrderId, Status, PrincipalMinor, BalanceMinor, Currency, CreditLeaveAt, DueAt, TermsDays, GracePeriodDays, AgingBucket, DunningStep, Version, CreatedAt, UpdatedAt FROM ArInvoices WHERE OrderId = @oid`,
 		Params: map[string]any{"oid": orderID},
 	}
-	row, err := r.client.Single().Query(ctx, stmt).Next()
+	iter := r.client.Single().Query(ctx, stmt)
+	defer iter.Stop()
+	row, err := iter.Next()
 	if err != nil {
 		if err == iterator.Done {
 			return Invoice{}, false, nil
@@ -686,20 +688,28 @@ func (r *SpannerRepository) ListBySupplier(ctx context.Context, supplierID, stat
 }
 
 func (r *SpannerRepository) list(ctx context.Context, col, id, status string, limit int) ([]Invoice, error) {
-	if col != "SupplierId" && col != "RetailerId" {
-		return nil, fmt.Errorf("invalid ar column %q", col)
-	}
 	if limit <= 0 {
 		limit = 50
 	}
-	sql := fmt.Sprintf(`SELECT InvoiceId, SupplierId, RetailerId, OrderId, Status, PrincipalMinor, BalanceMinor, Currency, CreditLeaveAt, DueAt, TermsDays, GracePeriodDays, AgingBucket, DunningStep, Version, CreatedAt, UpdatedAt FROM ArInvoices WHERE %s = @id`, col)
-	params := map[string]any{"id": id}
+	var sql string
+	switch col {
+	case "SupplierId":
+		sql = `SELECT InvoiceId, SupplierId, RetailerId, OrderId, Status, PrincipalMinor, BalanceMinor, Currency, CreditLeaveAt, DueAt, TermsDays, GracePeriodDays, AgingBucket, DunningStep, Version, CreatedAt, UpdatedAt FROM ArInvoices WHERE SupplierId = @id`
+	case "RetailerId":
+		sql = `SELECT InvoiceId, SupplierId, RetailerId, OrderId, Status, PrincipalMinor, BalanceMinor, Currency, CreditLeaveAt, DueAt, TermsDays, GracePeriodDays, AgingBucket, DunningStep, Version, CreatedAt, UpdatedAt FROM ArInvoices WHERE RetailerId = @id`
+	default:
+		return nil, fmt.Errorf("invalid ar column %q", col)
+	}
+	params := map[string]any{
+		"id":    id,
+		"limit": int64(limit),
+	}
 	if status != "" {
 		sql += " AND Status = @st"
 		params["st"] = status
 	}
-	sql += fmt.Sprintf(" ORDER BY DueAt ASC LIMIT %d", limit)
-	iter := r.client.Single().Query(ctx, spanner.Statement{SQL: sql, Params: params})
+	sql += " ORDER BY DueAt ASC LIMIT @limit"
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{SQL: sql, Params: params})
 	defer iter.Stop()
 	out := make([]Invoice, 0)
 	for {
@@ -913,8 +923,9 @@ func (r *SpannerRepository) ListOpenForDunning(ctx context.Context, limit int) (
 		limit = 200
 	}
 	stmt := spanner.Statement{
-		SQL: fmt.Sprintf(`SELECT InvoiceId, SupplierId, RetailerId, OrderId, Status, PrincipalMinor, BalanceMinor, Currency, CreditLeaveAt, DueAt, TermsDays, GracePeriodDays, AgingBucket, DunningStep, Version, CreatedAt, UpdatedAt
-FROM ArInvoices WHERE Status IN ('OPEN','PARTIAL') ORDER BY DueAt ASC LIMIT %d`, limit),
+		SQL: `SELECT InvoiceId, SupplierId, RetailerId, OrderId, Status, PrincipalMinor, BalanceMinor, Currency, CreditLeaveAt, DueAt, TermsDays, GracePeriodDays, AgingBucket, DunningStep, Version, CreatedAt, UpdatedAt
+FROM ArInvoices WHERE Status IN ('OPEN','PARTIAL') ORDER BY DueAt ASC LIMIT @limit`,
+		Params: map[string]any{"limit": int64(limit)},
 	}
 	iter := r.client.Single().Query(ctx, stmt)
 	defer iter.Stop()
@@ -980,10 +991,13 @@ func (r *SpannerRepository) UpdateDunning(ctx context.Context, invoiceID string,
 }
 
 func (r *SpannerRepository) RecomputeAging(ctx context.Context, now time.Time, limit int) (int, error) {
+	if limit <= 0 {
+		limit = 500
+	}
 	stmt := spanner.Statement{
-		SQL: fmt.Sprintf(`SELECT InvoiceId, SupplierId, RetailerId, OrderId, DueAt, AgingBucket, Version
-		      FROM ArInvoices WHERE Status IN ('OPEN','PARTIAL') LIMIT %d`, limit),
-		Params: map[string]any{},
+		SQL: `SELECT InvoiceId, SupplierId, RetailerId, OrderId, DueAt, AgingBucket, Version
+		      FROM ArInvoices WHERE Status IN ('OPEN','PARTIAL') LIMIT @limit`,
+		Params: map[string]any{"limit": int64(limit)},
 	}
 	iter := r.client.Single().Query(ctx, stmt)
 	defer iter.Stop()

@@ -398,7 +398,7 @@ func (s *Service) listCustomBroadcastTemplates(ctx context.Context, warehouseID 
 		      LIMIT 50`,
 		Params: map[string]any{"wid": warehouseID},
 	}
-	iter := s.spannerClient.Single().Query(ctx, stmt)
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	var out []customBroadcastTemplateRow
 	for {
@@ -512,7 +512,7 @@ func (s *Service) fanDepotDrivers(ctx context.Context, warehouseID string, paylo
 			      WHERE HomeNodeType = 'WAREHOUSE' AND HomeNodeId = @wid`,
 			Params: map[string]any{"wid": warehouseID},
 		}
-		iter := s.spannerClient.Single().Query(ctx, stmt)
+		iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 		defer iter.Stop()
 		for {
 			row, err := iter.Next()
@@ -564,7 +564,7 @@ func (s *Service) fanDepotRetailers(ctx context.Context, warehouseID, supplierID
 		      LIMIT 200`,
 		Params: map[string]any{"wid": warehouseID, "since": since},
 	}
-	iter := s.spannerClient.Single().Query(ctx, stmt)
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	seen := map[string]struct{}{}
 	for {

@@ -15,6 +15,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
 	"google.golang.org/api/iterator"
 	"google.golang.org/grpc/codes"
 )
@@ -101,7 +102,13 @@ func (s *Service) listRetailerPriceOverrides(w http.ResponseWriter, r *http.Requ
 	}
 	sql += ` ORDER BY CreatedAt DESC LIMIT 500`
 
-	iter := s.portalSpanner.Single().Query(r.Context(), spanner.Statement{SQL: sql, Params: params})
+	stmt := spanner.Statement{SQL: sql, Params: params}
+	var iter *spanner.RowIterator
+	if txn := spannerutils.ReadOnlyTxnFromContext(r.Context()); txn != nil {
+		iter = txn.Query(r.Context(), stmt)
+	} else {
+		iter = s.portalSpanner.Single().Query(r.Context(), stmt)
+	}
 	defer iter.Stop()
 
 	overrides := make([]retailerPriceOverrideResponse, 0)

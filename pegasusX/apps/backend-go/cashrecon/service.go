@@ -184,3 +184,10 @@ func (s *Service) HasAcceptedReconciliation(ctx context.Context, driverID string
 	}
 	return gate.HasAcceptedReconciliation(ctx, driverID, shiftDate)
 }
+
+func (s *Service) Get(ctx context.Context, id string) (*CashReconciliation, error) {
+	if s == nil || s.repo == nil {
+		return nil, fmt.Errorf("cash reconciliation service unavailable")
+	}
+	return s.repo.GetReconciliation(ctx, id)
+}

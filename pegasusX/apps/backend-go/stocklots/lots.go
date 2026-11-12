@@ -224,7 +224,7 @@ func ListLots(ctx context.Context, client *spanner.Client, warehouseID, productI
 	sql += ` ORDER BY ExpiryDate ASC, ReceivedAt ASC LIMIT @lim`
 	params["lim"] = int64(limit)
 
-	iter := client.Single().Query(ctx, spanner.Statement{SQL: sql, Params: params})
+	iter := client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, spanner.Statement{SQL: sql, Params: params})
 	defer iter.Stop()
 	var out []StockLotView
 	for {

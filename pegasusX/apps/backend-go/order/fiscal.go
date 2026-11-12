@@ -907,24 +907,36 @@ func (s *Service) ForceCompleteOrder(ctx context.Context, claims auth.Claims, or
 			return err
 		}
 
-		if err := s.AssertMoneyCoversDelivery(ctx, orderID, 0, 0); err != nil {
-			delivered, _ := s.getDeliveredGrossMinor(ctx, orderID)
-			paid, _ := s.getCapturedPaymentMinor(ctx, orderID)
-			exceptions, _ := s.getExceptionsTotalMinor(ctx, orderID)
-			shortfall := delivered - paid - exceptions
-			if shortfall > 0 {
-				ex := SettlementException{
-					OrderID:     orderID,
-					ExceptionID: s.newID(),
-					Type:        "FORCE_COMPLETE_SHORTFALL",
-					AmountMinor: shortfall,
-					Status:      "OPEN",
-					CreatedBy:   claims.Subject,
-					CreatedAt:   now,
-				}
-				if writeErr := s.RecordSettlementException(ctx, txn, ex); writeErr != nil {
-					return writeErr
-				}
+		// Read money state inside this transaction (never Single() inside a
+		// read-write txn) and record any remaining shortfall as an exception.
+		txnOrder, found, err := s.repo.GetOrderTxn(ctx, txn, orderID)
+		if err != nil {
+			return fmt.Errorf("failed to get order: %w", err)
+		}
+		if !found {
+			return fmt.Errorf("order not found: %s", orderID)
+		}
+		delivered := deliveredGrossFromOrder(txnOrder)
+		paid, err := s.getCapturedPaymentMinorTxn(ctx, txn, orderID)
+		if err != nil {
+			return err
+		}
+		exceptions, err := s.getExceptionsTotalMinorTxn(ctx, txn, orderID)
+		if err != nil {
+			return err
+		}
+		if shortfall := delivered - paid - exceptions; shortfall > 0 {
+			ex := SettlementException{
+				OrderID:     orderID,
+				ExceptionID: s.newID(),
+				Type:        "FORCE_COMPLETE_SHORTFALL",
+				AmountMinor: shortfall,
+				Status:      "OPEN",
+				CreatedBy:   claims.Subject,
+				CreatedAt:   now,
+			}
+			if writeErr := s.RecordSettlementException(ctx, txn, ex); writeErr != nil {
+				return writeErr
 			}
 		}
 		return nil

@@ -443,7 +443,7 @@ func (s *Service) listLocalSKUs(ctx context.Context, orgID, q string, activeOnly
 		sql += ` AND IsActive = true`
 	}
 	sql += ` ORDER BY Name LIMIT 200`
-	iter := s.spannerClient.Single().Query(ctx, spanner.Statement{SQL: sql, Params: params})
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, spanner.Statement{SQL: sql, Params: params})
 	defer iter.Stop()
 	var out []LocalSKU
 	ql := strings.ToLower(strings.TrimSpace(q))

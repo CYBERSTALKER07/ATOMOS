@@ -624,7 +624,9 @@ func driverAvailabilityReader(client *spanner.Client) driver.AvailabilityReader 
 			      FROM Drivers WHERE DriverId = @id`,
 			Params: map[string]any{"id": driverID},
 		}
-		row, err := client.Single().Query(ctx, stmt).Next()
+		iter := client.Single().Query(ctx, stmt)
+		defer iter.Stop()
+		row, err := iter.Next()
 		if err == iterator.Done {
 			return true, "", "", false, nil
 		}

@@ -9,7 +9,6 @@ import (
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
 	"google.golang.org/api/iterator"
-	"google.golang.org/grpc/codes"
 )
 
 // SpannerStore persists and reads outbox events from OutboxEvents.
@@ -124,7 +123,7 @@ func (s *SpannerStore) Fetch(ctx context.Context, limit int) ([]Event, error) {
 	stmt := spanner.Statement{
 		SQL: `
 SELECT EventId, AggregateType, AggregateId, TopicName, Payload, CreatedAt, PublishedAt, SupplierId
-FROM OutboxEvents@{FORCE_INDEX=Idx_OutboxEvents_Pending_BySupplier}
+FROM OutboxEvents@{FORCE_INDEX=Idx_OutboxEvents_Pending_BySupplier,spanner_emulator.disable_query_null_filtered_index_check=true}
 WHERE UnpublishedAt IS NOT NULL
   AND (ClaimedUntil IS NULL OR ClaimedUntil < @now)
 ORDER BY CreatedAt
@@ -261,7 +260,7 @@ func (s *SpannerStore) CountUnpublished(ctx context.Context) (int64, error) {
 		return 0, fmt.Errorf("outbox spanner store: nil client")
 	}
 	stmt := spanner.Statement{
-		SQL: `SELECT COUNT(*) FROM OutboxEvents@{FORCE_INDEX=Idx_OutboxEvents_Pending_BySupplier} WHERE UnpublishedAt IS NOT NULL`,
+		SQL: `SELECT COUNT(*) FROM OutboxEvents@{FORCE_INDEX=Idx_OutboxEvents_Pending_BySupplier,spanner_emulator.disable_query_null_filtered_index_check=true} WHERE UnpublishedAt IS NOT NULL`,
 	}
 	iter := s.client.Single().Query(ctx, stmt)
 	defer iter.Stop()
@@ -359,7 +358,7 @@ func (s *SpannerStore) InspectStuck(ctx context.Context, limit int) ([]Event, er
 	stmt := spanner.Statement{
 		SQL: `
 SELECT EventId, AggregateType, AggregateId, TopicName, Payload, CreatedAt, PublishedAt, SupplierId
-FROM OutboxEvents@{FORCE_INDEX=Idx_OutboxEvents_Pending_BySupplier}
+FROM OutboxEvents@{FORCE_INDEX=Idx_OutboxEvents_Pending_BySupplier,spanner_emulator.disable_query_null_filtered_index_check=true}
 WHERE UnpublishedAt IS NOT NULL
 ORDER BY CreatedAt
 LIMIT @limit`,
@@ -433,48 +432,83 @@ func (s *SpannerStore) RecordPublishFailures(ctx context.Context, eventIDs []str
 	if len(lastErr) > 1024 {
 		lastErr = lastErr[:1024]
 	}
+	trimmedIDs := make([]string, 0, len(eventIDs))
+	seenIDs := make(map[string]struct{}, len(eventIDs))
+	keySets := make([]spanner.KeySet, 0, len(eventIDs))
+	for _, rawID := range eventIDs {
+		id := strings.TrimSpace(rawID)
+		if id == "" {
+			continue
+		}
+		if _, dup := seenIDs[id]; dup {
+			continue
+		}
+		seenIDs[id] = struct{}{}
+		trimmedIDs = append(trimmedIDs, id)
+		keySets = append(keySets, spanner.Key{id})
+	}
+	if len(trimmedIDs) == 0 {
+		return nil, nil
+	}
+
 	var deadLettered []string
 	_, err := s.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		deadLettered = deadLettered[:0]
+
+		type failureSnapshot struct {
+			eventID       string
+			aggregateType string
+			aggregateID   string
+			topicName     string
+			payload       []byte
+			createdAt     time.Time
+			attempts      int64
+			supplierID    spanner.NullString
+		}
+		byID := make(map[string]failureSnapshot, len(trimmedIDs))
+		rows := txn.Read(ctx, "OutboxEvents", spanner.KeySets(keySets...), []string{
+			"EventId", "AggregateType", "AggregateId", "TopicName", "Payload", "CreatedAt", "PublishAttempts", "SupplierId",
+		})
+		defer rows.Stop()
+		for {
+			row, readErr := rows.Next()
+			if readErr == iterator.Done {
+				break
+			}
+			if readErr != nil {
+				return fmt.Errorf("outbox spanner store: read for failure record batch: %w", readErr)
+			}
+			var snap failureSnapshot
+			if scanErr := row.Columns(
+				&snap.eventID, &snap.aggregateType, &snap.aggregateID, &snap.topicName,
+				&snap.payload, &snap.createdAt, &snap.attempts, &snap.supplierID,
+			); scanErr != nil {
+				return fmt.Errorf("outbox spanner store: scan for failure record: %w", scanErr)
+			}
+			byID[snap.eventID] = snap
+		}
+
 		var mutations []*spanner.Mutation
-		for _, id := range eventIDs {
-			id = strings.TrimSpace(id)
-			if id == "" {
+		for _, id := range trimmedIDs {
+			snap, exists := byID[id]
+			if !exists {
 				continue
 			}
-			row, readErr := txn.ReadRow(ctx, "OutboxEvents", spanner.Key{id}, []string{
-				"EventId", "AggregateType", "AggregateId", "TopicName", "Payload", "CreatedAt", "PublishAttempts", "SupplierId",
-			})
-			if readErr != nil {
-				if spanner.ErrCode(readErr) == codes.NotFound {
-					continue
-				}
-				return fmt.Errorf("outbox spanner store: read for failure record %s: %w", id, readErr)
-			}
-			var (
-				eventID, aggregateType, aggregateID, topicName string
-				payload                                      []byte
-				createdAt                                    time.Time
-				attempts                                     int64
-				supplierID                                   spanner.NullString
-			)
-			if scanErr := row.Columns(&eventID, &aggregateType, &aggregateID, &topicName, &payload, &createdAt, &attempts, &supplierID); scanErr != nil {
-				return fmt.Errorf("outbox spanner store: scan for failure record %s: %w", id, scanErr)
-			}
-			attempts++
+			attempts := snap.attempts + 1
 			if attempts >= maxAttempts {
 				storedSupplier := ""
-				if supplierID.Valid {
-					storedSupplier = supplierID.StringVal
+				if snap.supplierID.Valid {
+					storedSupplier = snap.supplierID.StringVal
 				}
-				resolvedSupplier := ResolveSupplierID(storedSupplier, payload)
+				resolvedSupplier := ResolveSupplierID(storedSupplier, snap.payload)
 
 				cols := map[string]interface{}{
-					"EventId":        eventID,
-					"AggregateType":  aggregateType,
-					"AggregateId":    aggregateID,
-					"TopicName":      topicName,
-					"Payload":        payload,
-					"CreatedAt":      createdAt.UTC(),
+					"EventId":        snap.eventID,
+					"AggregateType":  snap.aggregateType,
+					"AggregateId":    snap.aggregateID,
+					"TopicName":      snap.topicName,
+					"Payload":        snap.payload,
+					"CreatedAt":      snap.createdAt.UTC(),
 					"DeadLetteredAt": spanner.CommitTimestamp,
 					"Attempts":       attempts,
 					"LastError":      lastErr,
@@ -486,11 +520,11 @@ func (s *SpannerStore) RecordPublishFailures(ctx context.Context, eventIDs []str
 					spanner.InsertOrUpdateMap("OutboxDeadLetters", cols),
 					spanner.Delete("OutboxEvents", spanner.Key{id}),
 				)
-				deadLettered = append(deadLettered, eventID)
+				deadLettered = append(deadLettered, snap.eventID)
 				continue
 			}
 			mutations = append(mutations, spanner.UpdateMap("OutboxEvents", map[string]interface{}{
-				"EventId":         eventID,
+				"EventId":         snap.eventID,
 				"PublishAttempts": attempts,
 				"ClaimedBy":       spanner.NullString{},
 				"ClaimedUntil":    spanner.NullTime{},

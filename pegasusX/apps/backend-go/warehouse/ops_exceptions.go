@@ -77,7 +77,7 @@ func (s *Service) listManifestExceptions(ctx context.Context, warehouseID string
 		      LIMIT 100`,
 		Params: params,
 	}
-	iter := s.spannerClient.Single().Query(ctx, stmt)
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	out := make([]OpsExceptionRow, 0, 16)
 	for {
@@ -123,7 +123,7 @@ func (s *Service) listDelayedOrderExceptions(ctx context.Context, warehouseID st
 		      LIMIT 50`,
 		Params: params,
 	}
-	iter := s.spannerClient.Single().Query(ctx, stmt)
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	out := make([]OpsExceptionRow, 0, 8)
 	for {

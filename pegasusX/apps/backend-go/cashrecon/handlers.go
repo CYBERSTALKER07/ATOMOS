@@ -261,6 +261,22 @@ func (h *Handlers) HandleSupplierAccept(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	id := strings.TrimSpace(chi.URLParam(r, "id"))
+	supplierID := auth.PreferTenantSupplierID(r.Context(), strings.TrimSpace(claims.SupplierID))
+	if supplierID != "" {
+		cr, err := h.Svc.Get(r.Context(), id)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "get_reconciliation_failed"})
+			return
+		}
+		if cr == nil {
+			writeJSON(w, http.StatusNotFound, map[string]string{"error": "not_found"})
+			return
+		}
+		if cr.SupplierId != "" && cr.SupplierId != supplierID {
+			writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
+			return
+		}
+	}
 
 	bodyBytes, err := io.ReadAll(io.LimitReader(r.Body, 64*1024))
 	if err != nil {
@@ -321,6 +337,22 @@ func (h *Handlers) HandleSupplierWriteOff(w http.ResponseWriter, r *http.Request
 		return
 	}
 	id := strings.TrimSpace(chi.URLParam(r, "id"))
+	supplierID := auth.PreferTenantSupplierID(r.Context(), strings.TrimSpace(claims.SupplierID))
+	if supplierID != "" {
+		cr, err := h.Svc.Get(r.Context(), id)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "get_reconciliation_failed"})
+			return
+		}
+		if cr == nil {
+			writeJSON(w, http.StatusNotFound, map[string]string{"error": "not_found"})
+			return
+		}
+		if cr.SupplierId != "" && cr.SupplierId != supplierID {
+			writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
+			return
+		}
+	}
 
 	bodyBytes, err := io.ReadAll(io.LimitReader(r.Body, 64*1024))
 	if err != nil {

@@ -83,13 +83,17 @@ func (h *Handlers) HandleListBatches(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
-	if h == nil || h.Svc == nil || h.Svc.repo == nil {
-		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "payout_unavailable"})
-		return
-	}
 	supplierID := payoutSupplierID(r)
 	if supplierID == "" {
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": "supplier_scope_required"})
+		return
+	}
+	if qSID := strings.TrimSpace(r.URL.Query().Get("supplier_id")); qSID != "" && qSID != supplierID {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "supplier_scope_mismatch"})
+		return
+	}
+	if h == nil || h.Svc == nil || h.Svc.repo == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "payout_unavailable"})
 		return
 	}
 	rows, err := h.Svc.ListBatches(r.Context(), supplierID)
@@ -108,13 +112,17 @@ func (h *Handlers) HandleGetBatch(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
-	if h == nil || h.Svc == nil || h.Svc.repo == nil {
-		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "payout_unavailable"})
-		return
-	}
 	supplierID := payoutSupplierID(r)
 	if supplierID == "" {
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": "supplier_scope_required"})
+		return
+	}
+	if qSID := strings.TrimSpace(r.URL.Query().Get("supplier_id")); qSID != "" && qSID != supplierID {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "supplier_scope_mismatch"})
+		return
+	}
+	if h == nil || h.Svc == nil || h.Svc.repo == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "payout_unavailable"})
 		return
 	}
 	batchID := strings.TrimSpace(chi.URLParam(r, "batchID"))
@@ -159,6 +167,14 @@ func (h *Handlers) HandleGenerate(w http.ResponseWriter, r *http.Request) {
 	}
 	if supplierID == "" {
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": "supplier_scope_required"})
+		return
+	}
+	if qSID := strings.TrimSpace(r.URL.Query().Get("supplier_id")); qSID != "" && qSID != supplierID {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "supplier_scope_mismatch"})
+		return
+	}
+	if bSID := strings.TrimSpace(body.SupplierID); bSID != "" && bSID != supplierID {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "supplier_scope_mismatch"})
 		return
 	}
 	start, err1 := time.Parse("2006-01-02", strings.TrimSpace(body.PeriodStart))

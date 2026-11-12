@@ -10,6 +10,7 @@ import (
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
 	"google.golang.org/api/iterator"
 )
 
@@ -24,7 +25,12 @@ func (r *SpannerRepository) ListOrgMembers(ctx context.Context, supplierID strin
               ORDER BY UpdatedAt DESC`,
 		Params: map[string]any{"supplier_id": supplierID},
 	}
-	iter := r.client.Single().Query(ctx, stmt)
+	var iter *spanner.RowIterator
+	if txn := spannerutils.ReadOnlyTxnFromContext(ctx); txn != nil {
+		iter = txn.Query(ctx, stmt)
+	} else {
+		iter = r.client.Single().Query(ctx, stmt)
+	}
 	defer iter.Stop()
 
 	items := make([]SupplierOrgMember, 0)
@@ -189,7 +195,12 @@ func (r *SpannerRepository) ListFleetDrivers(ctx context.Context, supplierID str
               ORDER BY Phone`,
 		Params: map[string]any{"supplier_id": supplierID},
 	}
-	iter := r.client.Single().Query(ctx, stmt)
+	var iter *spanner.RowIterator
+	if txn := spannerutils.ReadOnlyTxnFromContext(ctx); txn != nil {
+		iter = txn.Query(ctx, stmt)
+	} else {
+		iter = r.client.Single().Query(ctx, stmt)
+	}
 	defer iter.Stop()
 
 	items := make([]SupplierFleetDriver, 0)
@@ -277,7 +288,12 @@ func (r *SpannerRepository) ListFleetVehicles(ctx context.Context, supplierID st
               ORDER BY LicensePlate`,
 		Params: map[string]any{"supplier_id": supplierID},
 	}
-	iter := r.client.Single().Query(ctx, stmt)
+	var iter *spanner.RowIterator
+	if txn := spannerutils.ReadOnlyTxnFromContext(ctx); txn != nil {
+		iter = txn.Query(ctx, stmt)
+	} else {
+		iter = r.client.Single().Query(ctx, stmt)
+	}
 	defer iter.Stop()
 
 	items := make([]SupplierFleetVehicle, 0)

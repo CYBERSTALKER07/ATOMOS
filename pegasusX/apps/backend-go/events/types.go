@@ -681,24 +681,21 @@ type PlanningEvent struct {
 // ProductEvent handles product lifecycle and handling classification updates.
 type ProductEvent struct {
 	BaseEvent
-	ProductID          string   `json:"product_id"`
-	SupplierID         string   `json:"supplier_id"`
-	HandlingClass      string   `json:"handling_class,omitempty"`
-	RequiresColdChain  bool     `json:"requires_cold_chain,omitempty"`
-	IsHazardous        bool     `json:"is_hazardous,omitempty"`
-	IsPerishable       bool     `json:"is_perishable,omitempty"`
-	StorageTempMinC    *float64 `json:"storage_temp_min_c,omitempty"`
-	StorageTempMaxC    *float64 `json:"storage_temp_max_c,omitempty"`
-	Name               string   `json:"name,omitempty"`
-	CategoryID         string   `json:"category_id,omitempty"`
-	PriceMinor         int64    `json:"price_minor,omitempty"`
-	PreviousPriceMinor int64    `json:"previous_price_minor,omitempty"`
-	Currency           string   `json:"currency,omitempty"`
-	StockQuantity      int64    `json:"stock_quantity,omitempty"`
-	Unit               string   `json:"unit,omitempty"`
-	Barcode            string   `json:"barcode,omitempty"`
-	IsActive           bool     `json:"is_active,omitempty"`
-	Version            int64    `json:"version,omitempty"`
+	ProductID          string `json:"product_id"`
+	SupplierID         string `json:"supplier_id"`
+	HandlingClass      string `json:"handling_class,omitempty"`
+	IsHazardous        bool   `json:"is_hazardous,omitempty"`
+	IsPerishable       bool   `json:"is_perishable,omitempty"`
+	Name               string `json:"name,omitempty"`
+	CategoryID         string `json:"category_id,omitempty"`
+	PriceMinor         int64  `json:"price_minor,omitempty"`
+	PreviousPriceMinor int64  `json:"previous_price_minor,omitempty"`
+	Currency           string `json:"currency,omitempty"`
+	StockQuantity      int64  `json:"stock_quantity,omitempty"`
+	Unit               string `json:"unit,omitempty"`
+	Barcode            string `json:"barcode,omitempty"`
+	IsActive           bool   `json:"is_active,omitempty"`
+	Version            int64  `json:"version,omitempty"`
 }
 
 // @Sync(CategoryEvent)

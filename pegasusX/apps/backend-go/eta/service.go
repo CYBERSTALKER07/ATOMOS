@@ -3,6 +3,7 @@ package eta
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -26,7 +27,7 @@ func (s *Service) GetRouteETAs(ctx context.Context, routeId string) ([]RouteETA,
 			  FROM RouteETAs WHERE RouteId = @RouteId ORDER BY Sequence`,
 		Params: map[string]interface{}{"RouteId": routeId},
 	}
-	iter := s.spanner.Single().Query(ctx, stmt)
+	iter := s.spanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 
 	var etas []RouteETA
@@ -59,7 +60,7 @@ func (s *Service) GetStopETA(ctx context.Context, stopId string) (*RouteETA, err
 			  FROM RouteETAs WHERE StopId = @StopId LIMIT 1`,
 		Params: map[string]interface{}{"StopId": stopId},
 	}
-	iter := s.spanner.Single().Query(ctx, stmt)
+	iter := s.spanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 
 	row, err := iter.Next()
@@ -101,15 +102,24 @@ func (r RecalculateRequest) EffectiveRouteID() string {
 }
 
 func (s *Service) RecalculateETAs(ctx context.Context, req RecalculateRequest) error {
-	routeID := req.EffectiveRouteID()
-	etas := CalculateETAs(req.Now, req.DriverLat, req.DriverLng, req.Profile, req.Stops, req.ShopClosedRates)
-	if len(etas) > 0 {
-		for i := range etas {
-			etas[i].RouteId = routeID
-		}
-		return s.PersistETAs(ctx, routeID, etas)
+	if s == nil || s.spanner == nil {
+		return errors.New("spanner required")
 	}
-	return nil
+	routeID := req.EffectiveRouteID()
+	if routeID == "" {
+		return errors.New("route_id_required")
+	}
+	if len(req.Stops) == 0 {
+		return errors.New("stops_required")
+	}
+	etas := CalculateETAs(req.Now, req.DriverLat, req.DriverLng, req.Profile, req.Stops, req.ShopClosedRates)
+	if len(etas) == 0 {
+		return errors.New("no_etas_calculated")
+	}
+	for i := range etas {
+		etas[i].RouteId = routeID
+	}
+	return s.PersistETAs(ctx, routeID, etas)
 }
 
 type txBuf struct {

@@ -13,12 +13,12 @@ import (
 )
 
 const (
-	CashierStatusAwaitingBlindCount1 = "AWAITING_BLIND_COUNT_1"
-	CashierStatusBlindRecountReq     = "BLIND_RECOUNT_REQUIRED"
-	CashierStatusBalanced            = "BALANCED"
-	CashierStatusToleranceVariance   = "TOLERANCE_VARIANCE"
+	CashierStatusAwaitingBlindCount1  = "AWAITING_BLIND_COUNT_1"
+	CashierStatusBlindRecountReq      = "BLIND_RECOUNT_REQUIRED"
+	CashierStatusBalanced             = "BALANCED"
+	CashierStatusToleranceVariance    = "TOLERANCE_VARIANCE"
 	CashierStatusDiscrepantQuarantine = "DISCREPANT_QUARANTINE"
-	CashierStatusRegulatoryAMLHold   = "REGULATORY_AML_HOLD"
+	CashierStatusRegulatoryAMLHold    = "REGULATORY_AML_HOLD"
 
 	VaultEntryDriverDropInflow = "DRIVER_DROP_INFLOW"
 	VaultEntryCITOutflow       = "CIT_ARMORED_OUTFLOW"
@@ -91,23 +91,23 @@ func (c *CashierBlindCountSession) PrepareForSpanner() error {
 // CashierSessionView is the safe projection returned to the Cashier UI.
 // ExpectedCashMinor and VarianceMinor remain nil until the dual-blind recount ratchet finishes.
 type CashierSessionView struct {
-	SessionID             string          `json:"session_id"`
-	SupplierID            string          `json:"supplier_id"`
-	DepotID               string          `json:"depot_id"`
-	DriverID              string          `json:"driver_id"`
-	RouteID               string          `json:"route_id"`
-	BagSealBarcode        string          `json:"bag_seal_barcode"`
-	AttemptNumber         int64           `json:"attempt_number"`
-	CountedCashMinor      int64           `json:"counted_cash_minor"`
-	ExpectedCashMinor     *int64          `json:"expected_cash_minor,omitempty"`
-	VarianceMinor         *int64          `json:"variance_minor,omitempty"`
-	Status                string          `json:"status"`
-	ClearanceTokenHash    *string         `json:"clearance_token_hash,omitempty"`
-	MicroSkimmingFlagged  bool            `json:"micro_skimming_flagged,omitempty"`
-	ErrorCode             string          `json:"error_code,omitempty"`
-	ErrorMessage          string          `json:"error_message,omitempty"`
-	CreatedAt             time.Time       `json:"created_at"`
-	ResolvedAt            *time.Time      `json:"resolved_at,omitempty"`
+	SessionID            string     `json:"session_id"`
+	SupplierID           string     `json:"supplier_id"`
+	DepotID              string     `json:"depot_id"`
+	DriverID             string     `json:"driver_id"`
+	RouteID              string     `json:"route_id"`
+	BagSealBarcode       string     `json:"bag_seal_barcode"`
+	AttemptNumber        int64      `json:"attempt_number"`
+	CountedCashMinor     int64      `json:"counted_cash_minor"`
+	ExpectedCashMinor    *int64     `json:"expected_cash_minor,omitempty"`
+	VarianceMinor        *int64     `json:"variance_minor,omitempty"`
+	Status               string     `json:"status"`
+	ClearanceTokenHash   *string    `json:"clearance_token_hash,omitempty"`
+	MicroSkimmingFlagged bool       `json:"micro_skimming_flagged,omitempty"`
+	ErrorCode            string     `json:"error_code,omitempty"`
+	ErrorMessage         string     `json:"error_message,omitempty"`
+	CreatedAt            time.Time  `json:"created_at"`
+	ResolvedAt           *time.Time `json:"resolved_at,omitempty"`
 }
 
 // StartCashierSessionRequest initializes a blind count session when scanning a driver's cash bag.

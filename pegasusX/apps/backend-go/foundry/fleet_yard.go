@@ -20,7 +20,7 @@ const (
 	DVIRStatusRedTagQuarantine   = "RED_TAG_QUARANTINE"
 )
 
-// DVIRChecklist8Point captures the mandatory 8-point Pre-Trip Digital Walkaround.
+// DVIRChecklist8Point captures the mandatory Pre-Trip Digital Walkaround.
 type DVIRChecklist8Point struct {
 	SteeringAndHornOK             bool `json:"steering_and_horn_ok"`
 	ServiceAndParkingBrakesOK     bool `json:"service_and_parking_brakes_ok"`
@@ -29,11 +29,10 @@ type DVIRChecklist8Point struct {
 	WipersAndFluidsOK             bool `json:"wipers_and_fluids_ok"`
 	EmergencyKitAndExtinguisherOK bool `json:"emergency_kit_and_extinguisher_ok"`
 	CargoBoxSanitationOK          bool `json:"cargo_box_sanitation_ok"`
-	ReeferTempCalibratedOK        bool `json:"reefer_temp_calibrated_ok"`
 }
 
-// HasCriticalDefect returns true and the list of failed safety points if any of the 8 checks fail.
-func (c DVIRChecklist8Point) HasCriticalDefect(requiresColdChain bool) (bool, []string) {
+// HasCriticalDefect returns true and the list of failed safety points if any of the checks fail.
+func (c DVIRChecklist8Point) HasCriticalDefect() (bool, []string) {
 	var failed []string
 	if !c.SteeringAndHornOK {
 		failed = append(failed, "steering_and_horn")
@@ -55,9 +54,6 @@ func (c DVIRChecklist8Point) HasCriticalDefect(requiresColdChain bool) (bool, []
 	}
 	if !c.CargoBoxSanitationOK {
 		failed = append(failed, "cargo_box_sanitation")
-	}
-	if requiresColdChain && !c.ReeferTempCalibratedOK {
-		failed = append(failed, "reefer_temp_calibrated")
 	}
 	return len(failed) > 0, failed
 }
@@ -91,12 +87,10 @@ type FleetDVIRInspection struct {
 	CriticalDefectFound    bool                `json:"critical_defect_found" spanner:"CriticalDefectFound"`
 	RedTagApplied          bool                `json:"red_tag_applied" spanner:"RedTagApplied"`
 	OdometerKm             int64               `json:"odometer_km" spanner:"OdometerKm"`
-	ReeferTempCelsius      *float64            `json:"reefer_temp_celsius,omitempty" spanner:"ReeferTempCelsius"`
 	Status                 string              `json:"status" spanner:"Status"`
 	MaintenanceWorkOrderID *string             `json:"maintenance_work_order_id,omitempty" spanner:"MaintenanceWorkOrderId"`
 	CreatedAt              time.Time           `json:"created_at" spanner:"CreatedAt"`
 	CellID                 string              `json:"cell_id,omitempty" spanner:"-"`
-	RequiresColdChain      bool                `json:"requires_cold_chain,omitempty" spanner:"-"`
 	FailedPoints           []string            `json:"failed_points,omitempty" spanner:"-"`
 	PreventativeServiceDue bool                `json:"preventative_service_due,omitempty" spanner:"-"`
 }
@@ -154,7 +148,7 @@ func (e *Engine) SubmitDVIRInspection(ctx context.Context, req FleetDVIRInspecti
 		return nil, fmt.Errorf("%w: vehicle_id and driver_id are required", ErrPreconditionFailed)
 	}
 
-	hasDefect, failedPoints := req.Checklist.HasCriticalDefect(req.RequiresColdChain)
+	hasDefect, failedPoints := req.Checklist.HasCriticalDefect()
 	status := DVIRStatusDispatchAuthorized
 	var workOrderID string
 	var woPtr *string
@@ -179,13 +173,11 @@ func (e *Engine) SubmitDVIRInspection(ctx context.Context, req FleetDVIRInspecti
 		VehicleID:              vehicleID,
 		DriverID:               driverID,
 		InspectionType:         strings.ToUpper(strings.TrimSpace(req.InspectionType)),
-		RequiresColdChain:      req.RequiresColdChain,
 		Checklist:              req.Checklist,
 		FailedPoints:           failedPoints,
 		CriticalDefectFound:    hasDefect,
 		RedTagApplied:          hasDefect,
 		OdometerKm:             req.OdometerKm,
-		ReeferTempCelsius:      req.ReeferTempCelsius,
 		Status:                 status,
 		MaintenanceWorkOrderID: woPtr,
 		PreventativeServiceDue: prevDue,
@@ -224,32 +216,6 @@ func (e *Engine) SubmitDVIRInspection(ctx context.Context, req FleetDVIRInspecti
 	return record, nil
 }
 
-// EvaluatePredictiveReeferHealth monitors compressor cooling curves and places degrading vans on hold before loading.
-func (e *Engine) EvaluatePredictiveReeferHealth(
-	ctx context.Context,
-	vehicleID string,
-	coolingRateDegPerMin float64,
-	minRequiredRateDegPerMin float64,
-) (bool, error) {
-	if err := ctx.Err(); err != nil {
-		return false, err
-	}
-	vehicleID = strings.TrimSpace(vehicleID)
-	if vehicleID == "" {
-		return false, ErrInvalidObjectIdentity
-	}
-
-	e.mu.Lock()
-	defer e.mu.Unlock()
-
-	hold := coolingRateDegPerMin < minRequiredRateDegPerMin
-	e.vehiclePredictiveHold[vehicleID] = hold
-	if hold {
-		delete(e.vehicleDriverPairing, vehicleID)
-	}
-	return hold, nil
-}
-
 // AssertVehicleDispatchAuthorized is the pre-execution gate called before Payloader loading or Driver route start.
 func (e *Engine) AssertVehicleDispatchAuthorized(ctx context.Context, vehicleID string) error {
 	if err := ctx.Err(); err != nil {
@@ -259,13 +225,6 @@ func (e *Engine) AssertVehicleDispatchAuthorized(ctx context.Context, vehicleID 
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 
-	if e.vehiclePredictiveHold[vehicleID] {
-		return &VehicleGroundedRedTagError{
-			VehicleID:       vehicleID,
-			CriticalDefects: []string{"reefer_compressor_degradation"},
-			Reason:          "vehicle is on PRE_FAILURE_MAINTENANCE_HOLD due to reefer compressor degradation",
-		}
-	}
 	insp, ok := e.dvirByVehicle[vehicleID]
 	if !ok {
 		return &VehicleGroundedRedTagError{

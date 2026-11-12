@@ -8,11 +8,11 @@ import (
 
 // Canonical Kinetic ActionType names corresponding to the 10-Step Master Operational Cascade.
 const (
-	ActionReleasePickWave     = "ACTION_RELEASE_PICK_WAVE"
-	ActionSealVehicleManifest = "ACTION_SEAL_VEHICLE_MANIFEST"
-	ActionStartDriverRoute    = "ACTION_START_DRIVER_ROUTE"
+	ActionReleasePickWave      = "ACTION_RELEASE_PICK_WAVE"
+	ActionSealVehicleManifest  = "ACTION_SEAL_VEHICLE_MANIFEST"
+	ActionStartDriverRoute     = "ACTION_START_DRIVER_ROUTE"
 	ActionCompleteDoorstepEPOD = "ACTION_COMPLETE_DOORSTEP_EPOD"
-	ActionBatchSupplierPayout = "ACTION_BATCH_SUPPLIER_PAYOUT"
+	ActionBatchSupplierPayout  = "ACTION_BATCH_SUPPLIER_PAYOUT"
 )
 
 func int64Param(params map[string]any, key string) (int64, bool) {

@@ -103,4 +103,3 @@ func TestValidateProximityVelocity(t *testing.T) {
 		t.Fatalf("expected natural GPS jitter to pass, got: %v", err)
 	}
 }
-

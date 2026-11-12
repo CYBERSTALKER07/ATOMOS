@@ -86,7 +86,7 @@ func (r *SpannerRepository) ListLatest(ctx context.Context, limit int) ([]Rate, 
 		      LIMIT @lim`,
 		Params: map[string]any{"lim": limit * 10},
 	}
-	iter := r.client.Single().Query(ctx, stmt)
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	type key struct{ b, q string }
 	latest := map[key]Rate{}

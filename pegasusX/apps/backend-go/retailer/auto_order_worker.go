@@ -28,20 +28,20 @@ type AutoOrderPlacedOrder struct {
 
 // AutoOrderRun is an audit record for one worker tick per retailer.
 type AutoOrderRun struct {
-	RunID           string                `json:"run_id"`
-	RetailerID      string                `json:"retailer_id"`
-	StartedAt       string                `json:"started_at"`
-	FinishedAt      string                `json:"finished_at,omitempty"`
-	Mode            string                `json:"mode"`
-	DraftLines      int                   `json:"draft_lines"`
-	PlacedLines     int                   `json:"placed_lines,omitempty"`
+	RunID           string                 `json:"run_id"`
+	RetailerID      string                 `json:"retailer_id"`
+	StartedAt       string                 `json:"started_at"`
+	FinishedAt      string                 `json:"finished_at,omitempty"`
+	Mode            string                 `json:"mode"`
+	DraftLines      int                    `json:"draft_lines"`
+	PlacedLines     int                    `json:"placed_lines,omitempty"`
 	PlacedOrders    []AutoOrderPlacedOrder `json:"placed_orders,omitempty"`
-	Skipped         []AutoOrderSkip       `json:"skipped"`
-	Status          string                `json:"status"`
-	Message         string                `json:"message,omitempty"`
-	Suggestions     int                   `json:"suggestions_seen"`
-	ScheduleBucket  string                `json:"schedule_bucket"`
-	CandidateSource string                `json:"candidate_source,omitempty"` // seed | reorder_suggestions | ai_predictions
+	Skipped         []AutoOrderSkip        `json:"skipped"`
+	Status          string                 `json:"status"`
+	Message         string                 `json:"message,omitempty"`
+	Suggestions     int                    `json:"suggestions_seen"`
+	ScheduleBucket  string                 `json:"schedule_bucket"`
+	CandidateSource string                 `json:"candidate_source,omitempty"` // seed | reorder_suggestions | ai_predictions
 }
 
 // AutoOrderSkip records why a candidate was not ordered.
@@ -204,7 +204,7 @@ func (s *Service) listAutoOrderRunsSpanner(ctx context.Context, orgID string, li
 			LIMIT @lim`,
 		Params: map[string]any{"rid": orgID, "lim": int64(limit)},
 	}
-	iter := s.spannerClient.Single().Query(ctx, stmt)
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	var out []AutoOrderRun
 	for {
@@ -724,7 +724,7 @@ func (s *Service) loadAutoOrderCandidatesWithSource(ctx context.Context, orgID s
 					a.qty = 1
 				}
 			}
-			
+
 			if name := strings.TrimSpace(li.Name); name != "" {
 				a.name = name
 			}

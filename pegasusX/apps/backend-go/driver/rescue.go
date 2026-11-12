@@ -124,7 +124,7 @@ func (s *Service) HandleRescueRequest(w http.ResponseWriter, r *http.Request) {
 			"warehouse_id":  outWarehouseID,
 			"supplier_id":   outSupplierID,
 		})
-		s.driverHub.Broadcast(context.Background(), "warehouse:"+outWarehouseID, payload)
+		s.driverHub.Broadcast(r.Context(), "warehouse:"+outWarehouseID, payload)
 	}
 
 	resp := map[string]string{"status": "requested", "rescue_id": rescueID}

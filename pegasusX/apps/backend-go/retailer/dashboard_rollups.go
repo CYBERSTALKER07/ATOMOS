@@ -8,6 +8,7 @@ import (
 
 	"cloud.google.com/go/spanner"
 	"google.golang.org/api/iterator"
+	"time"
 )
 
 // Same 17-key funnel as warehouse/supplier command boards.
@@ -130,7 +131,7 @@ func (s *Service) loadRetailerOrderStatusFromSpanner(ctx context.Context, retail
 		      GROUP BY SupplierId, Status`,
 		Params: map[string]any{"RetailerId": retailerID},
 	}
-	iter := s.spannerClient.Single().Query(ctx, stmt)
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	rows := make([]RetailerOrderStatusRow, 0)
 	for {

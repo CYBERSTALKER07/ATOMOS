@@ -40,6 +40,10 @@ func (s *Service) HandleGetRetailerProfile(w http.ResponseWriter, r *http.Reques
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "retailer_id_required"})
 		return
 	}
+	if s == nil || s.repo == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "credit_unavailable"})
+		return
+	}
 
 	profile, found, err := s.repo.GetProfile(r.Context(), retailerID, claims.SupplierID)
 	if err != nil {
@@ -69,6 +73,10 @@ func (s *Service) HandleListSupplierProfiles(w http.ResponseWriter, r *http.Requ
 	supplierID := strings.TrimSpace(claims.SupplierID)
 	if supplierID == "" {
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": "supplier_scope_required"})
+		return
+	}
+	if s == nil || s.repo == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "credit_unavailable"})
 		return
 	}
 	status := strings.TrimSpace(r.URL.Query().Get("status"))
@@ -130,6 +138,10 @@ func (s *Service) HandleGetScores(w http.ResponseWriter, r *http.Request) {
 	supplierID := strings.TrimSpace(claims.SupplierID)
 	if supplierID == "" {
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": "supplier_scope_required"})
+		return
+	}
+	if s == nil || s.repo == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "credit_unavailable"})
 		return
 	}
 	if !ScoringEnabled() {
@@ -200,6 +212,10 @@ func (s *Service) HandleUpsertSupplierProfile(w http.ResponseWriter, r *http.Req
 	}
 	if req.Status != "" && !req.Status.Valid() {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_status"})
+		return
+	}
+	if s == nil || s.repo == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "credit_unavailable"})
 		return
 	}
 

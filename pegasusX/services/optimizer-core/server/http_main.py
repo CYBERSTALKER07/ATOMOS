@@ -235,11 +235,21 @@ class OptimizerHandler(BaseHTTPRequestHandler):
 
         try:
             req = json.loads(raw.decode("utf-8"))
-        except json.JSONDecodeError:
+        except (json.JSONDecodeError, UnicodeDecodeError):
             _write_json(
                 self,
                 400,
                 {"v": CONTRACT_V, "trace_id": trace_id, "code": "BAD_REQUEST", "message": "invalid JSON body"},
+                headers=resp_headers,
+            )
+            METRICS.record_request(400, time.time() - start_time)
+            return
+
+        if not isinstance(req, dict):
+            _write_json(
+                self,
+                400,
+                {"v": CONTRACT_V, "trace_id": trace_id, "code": "BAD_REQUEST", "message": "JSON body must be an object"},
                 headers=resp_headers,
             )
             METRICS.record_request(400, time.time() - start_time)
@@ -375,6 +385,7 @@ class OptimizerHandler(BaseHTTPRequestHandler):
             result["stats"]["solver_time_limit_ms_requested"] = requested_time_limit_ms
             result["stats"]["solver_time_limit_ms_applied"] = applied_time_limit_ms
         result["solver_metadata"] = {
+            "solver_status": "HEURISTIC",
             "solver_time_limit_ms_requested": requested_time_limit_ms,
             "solver_time_limit_ms_applied": applied_time_limit_ms,
             "time_limit_requested_ms": requested_time_limit_ms,
@@ -400,7 +411,7 @@ def serve() -> None:
     api_key = os.getenv("INTERNAL_API_KEY", "")
     port = _env_int("OPTIMIZER_HTTP_PORT", 8082)
     timeout_sec = _env_float("OPTIMIZER_SOFT_TIMEOUT_SEC", DEFAULT_TIMEOUT_SEC)
-    max_concurrency = _env_int("OPTIMIZER_MAX_CONCURRENCY", DEFAULT_MAX_CONCURRENCY)
+    max_concurrency = max(1, _env_int("OPTIMIZER_MAX_CONCURRENCY", DEFAULT_MAX_CONCURRENCY))
     drain_timeout = _env_float("OPTIMIZER_DRAIN_TIMEOUT_SEC", 20.0)
 
     OptimizerHandler.api_key = api_key

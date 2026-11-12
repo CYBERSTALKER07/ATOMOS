@@ -3,11 +3,11 @@ package order
 import "fmt"
 
 type TransitionOpts struct {
-    Actor            string
-    Reason           string
-    PhotoURL         string    // for bypass / shop-closed evidence
-    SupervisorToken  string    // for force bypass
-    SkipProximity    bool      // only for supervised force
+	Actor           string
+	Reason          string
+	PhotoURL        string // for bypass / shop-closed evidence
+	SupervisorToken string // for force bypass
+	SkipProximity   bool   // only for supervised force
 }
 
 // ValidateStatusTransition enforces the canonical order lifecycle graph.

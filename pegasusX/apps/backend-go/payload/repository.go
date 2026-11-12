@@ -57,8 +57,8 @@ func (emptyPayloadTx) ListManifestOrders(context.Context, string) ([]ManifestOrd
 	return nil, nil
 }
 func (emptyPayloadTx) SaveManifestOrder(context.Context, ManifestOrder, int64) error { return nil }
-func (emptyPayloadTx) DeleteManifestOrder(context.Context, string, string) error { return nil }
-func (emptyPayloadTx) SaveShipUnits(context.Context, []ShipUnit) error { return nil }
+func (emptyPayloadTx) DeleteManifestOrder(context.Context, string, string) error     { return nil }
+func (emptyPayloadTx) SaveShipUnits(context.Context, []ShipUnit) error               { return nil }
 func (emptyPayloadTx) ListExceptions(context.Context) ([]ManifestException, error)   { return nil, nil }
 func (emptyPayloadTx) SaveException(context.Context, ManifestException) error        { return nil }
 func (emptyPayloadTx) UpdateOrderAssignment(context.Context, string, string, string) error {

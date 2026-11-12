@@ -224,7 +224,6 @@ func buildStops(orders []dispatch.GeoOrder) []contract.Stop {
 			ServiceMinutes:    defaultServiceMinutes,
 			Priority:          priority,
 			HandlingClass:     o.HandlingClass,
-			RequiresColdChain: o.RequiresColdChain,
 			IsHazardous:       o.IsHazardous,
 			AccessRestriction: o.AccessRestriction,
 		})
@@ -246,19 +245,18 @@ func buildVehicles(fleet []dispatch.AvailableDriver, depotLat, depotLng float64)
 			endLat, endLng = startLat, startLng
 		}
 		out = append(out, contract.Vehicle{
-			VehicleID:        v.VehicleID,
-			DriverID:         v.DriverID,
-			MaxVolumeVU:      v.MaxVolumeVU,
-			StartLat:         startLat,
-			StartLng:         startLng,
-			EndLat:           endLat,
-			EndLng:           endLng,
-			AvgSpeedKmph:     defaultAvgSpeedKmph,
-			HasRefrigeration: v.HasRefrigeration,
-			HazmatCertified:  v.HazmatCertified,
-			ShiftStart:       v.ShiftStart,
-			ShiftEnd:         v.ShiftEnd,
-			MaxRouteMinutes:  v.MaxRouteMinutes,
+			VehicleID:       v.VehicleID,
+			DriverID:        v.DriverID,
+			MaxVolumeVU:     v.MaxVolumeVU,
+			StartLat:        startLat,
+			StartLng:        startLng,
+			EndLat:          endLat,
+			EndLng:          endLng,
+			AvgSpeedKmph:    defaultAvgSpeedKmph,
+			HazmatCertified: v.HazmatCertified,
+			ShiftStart:      v.ShiftStart,
+			ShiftEnd:        v.ShiftEnd,
+			MaxRouteMinutes: v.MaxRouteMinutes,
 		})
 	}
 	return out

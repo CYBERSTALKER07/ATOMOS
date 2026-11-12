@@ -194,7 +194,7 @@ func (s *Service) listCRMRetailers(ctx context.Context, supplierID string) ([]cr
 	        GROUP BY o.RetailerId, r.Name, r.Phone, r.Email
 	        ORDER BY lifetime DESC
 	        LIMIT 200`
-	iter := s.portalSpanner.Single().Query(ctx, spanner.Statement{
+	iter := s.portalSpanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL:    sql,
 		Params: map[string]any{"sid": supplierID},
 	})
@@ -232,7 +232,7 @@ func (s *Service) loadCRMRetailerDetail(ctx context.Context, supplierID, retaile
 	          AND o.RetailerId = @rid
 	          AND o.Status != 'CANCELLED'
 	        GROUP BY o.RetailerId, r.Name, r.Phone, r.Email`
-	iter := s.portalSpanner.Single().Query(ctx, spanner.Statement{
+	iter := s.portalSpanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL:    sql,
 		Params: map[string]any{"sid": supplierID, "rid": retailerID},
 	})
@@ -259,7 +259,7 @@ func (s *Service) loadCRMRetailerDetail(ctx context.Context, supplierID, retaile
 }
 
 func (s *Service) listCRMOrders(ctx context.Context, supplierID, retailerID string) ([]crmOrder, error) {
-	iter := s.portalSpanner.Single().Query(ctx, spanner.Statement{
+	iter := s.portalSpanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL: `SELECT OrderId, Status, TotalMinor, LineItemsJson, CreatedAt
 		      FROM Orders
 		      WHERE SupplierId = @sid AND RetailerId = @rid AND Status != 'CANCELLED'

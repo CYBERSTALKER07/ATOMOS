@@ -21,7 +21,6 @@ type GeoOrder struct {
 	SplitGroupID string
 	// Handling / constraint flags aggregated from line items (OR across lines).
 	HandlingClass     string
-	RequiresColdChain bool
 	IsHazardous       bool
 	AccessRestriction string
 }
@@ -49,7 +48,6 @@ type DispatchableOrder struct {
 	VolumeSource   string  // "catalog" | "default_1_0" (honesty for preview)
 	// Handling aggregates from LineItemsJson / Products (OR across lines).
 	HandlingClass     string
-	RequiresColdChain bool
 	IsHazardous       bool
 	AccessRestriction string
 }
@@ -87,11 +85,10 @@ type AvailableDriver struct {
 	EndLat   float64
 	EndLng   float64
 	// Constraint capabilities (defaults false when Spanner columns absent).
-	HasRefrigeration bool
-	HazmatCertified  bool
-	ShiftStart       string
-	ShiftEnd         string
-	MaxRouteMinutes  int
+	HazmatCertified bool
+	ShiftStart      string
+	ShiftEnd        string
+	MaxRouteMinutes int
 }
 
 // AssignmentResult is the output of the bin-packing / optimiser pipeline.
@@ -185,7 +182,6 @@ func (o DispatchableOrder) ToGeo() GeoOrder {
 		ReceivingWindowOpen:  o.ReceivingWindowOpen,
 		ReceivingWindowClose: o.ReceivingWindowClose,
 		HandlingClass:        o.HandlingClass,
-		RequiresColdChain:    o.RequiresColdChain,
 		IsHazardous:          o.IsHazardous,
 		AccessRestriction:    o.AccessRestriction,
 	}

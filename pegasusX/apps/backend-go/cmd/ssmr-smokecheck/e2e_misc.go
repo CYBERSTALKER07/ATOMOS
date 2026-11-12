@@ -265,7 +265,7 @@ func createOrderWithQuantity(ctx context.Context, client *http.Client, base, bea
 		"lat":     cfg.DeliveryZoneCenterLat,
 		"lng":     cfg.DeliveryZoneCenterLng,
 	})
-	status, respBody, _, err := clientPost(ctx, client, base+"/v1/order/create", body, bearer, "")
+	status, respBody, _, err := clientPost(ctx, client, base+"/v1/order/create", body, bearer, fmt.Sprintf("ssmr-order-create-%d", time.Now().UnixNano()))
 	if err != nil {
 		return "", err
 	}

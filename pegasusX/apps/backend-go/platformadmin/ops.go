@@ -11,6 +11,7 @@ import (
 
 	"cloud.google.com/go/spanner"
 	"github.com/go-chi/chi/v5"
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/redis/go-redis/v9"
 	"google.golang.org/api/iterator"
@@ -59,10 +60,10 @@ func oldestUnpublishedAge(ctx context.Context, client *spanner.Client) (seconds 
 		return 0, ""
 	}
 	stmt := spanner.Statement{
-		SQL: `SELECT CreatedAt FROM OutboxEvents@{FORCE_INDEX=Idx_OutboxEvents_Pending_BySupplier}
+		SQL: `SELECT CreatedAt FROM OutboxEvents@{FORCE_INDEX=Idx_OutboxEvents_Pending_BySupplier,spanner_emulator.disable_query_null_filtered_index_check=true}
 		      WHERE UnpublishedAt IS NOT NULL ORDER BY CreatedAt ASC LIMIT 1`,
 	}
-	iter := client.Single().Query(ctx, stmt)
+	iter := client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	row, err := iter.Next()
 	if err != nil {
@@ -94,13 +95,13 @@ func (h *Handlers) HandleOutboxEvents(w http.ResponseWriter, r *http.Request) {
 	}
 	stmt := spanner.Statement{
 		SQL: `SELECT EventId, AggregateType, AggregateId, TopicName, CreatedAt
-		      FROM OutboxEvents@{FORCE_INDEX=Idx_OutboxEvents_Pending_BySupplier}
+		      FROM OutboxEvents@{FORCE_INDEX=Idx_OutboxEvents_Pending_BySupplier,spanner_emulator.disable_query_null_filtered_index_check=true}
 		      WHERE UnpublishedAt IS NOT NULL
 		      ORDER BY CreatedAt ASC
 		      LIMIT @lim`,
 		Params: map[string]interface{}{"lim": int64(lim)},
 	}
-	iter := ops.Spanner.Single().Query(r.Context(), stmt)
+	iter := ops.Spanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(r.Context(), stmt)
 	defer iter.Stop()
 	type row struct {
 		EventID       string `json:"event_id"`
@@ -159,7 +160,7 @@ func (h *Handlers) HandleOutboxDeadLetters(w http.ResponseWriter, r *http.Reques
 		      LIMIT @lim`,
 		Params: map[string]interface{}{"lim": int64(lim)},
 	}
-	iter := ops.Spanner.Single().Query(r.Context(), stmt)
+	iter := ops.Spanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(r.Context(), stmt)
 	defer iter.Stop()
 	type row struct {
 		EventID        string `json:"event_id"`
@@ -253,7 +254,7 @@ func countOutboxDeadLetters(ctx context.Context, client *spanner.Client) (int64,
 	if client == nil {
 		return 0, false
 	}
-	iter := client.Single().Query(ctx, spanner.Statement{SQL: `SELECT COUNT(*) FROM OutboxDeadLetters`})
+	iter := client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{SQL: `SELECT COUNT(*) FROM OutboxDeadLetters`})
 	defer iter.Stop()
 	row, err := iter.Next()
 	if err != nil {
@@ -394,7 +395,7 @@ func (h *Handlers) HandleListDisputes(w http.ResponseWriter, r *http.Request) {
 		      LIMIT @lim`,
 		Params: map[string]interface{}{"lim": int64(lim)},
 	}
-	iter := ops.Spanner.Single().Query(r.Context(), stmt)
+	iter := ops.Spanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(r.Context(), stmt)
 	defer iter.Stop()
 
 	type disputeRow struct {
@@ -500,7 +501,21 @@ func (h *Handlers) HandleResolveDispute(w http.ResponseWriter, r *http.Request) 
 			"Status":    targetStatus,
 			"UpdatedAt": spanner.CommitTimestamp,
 		})
-		return txn.BufferWrite([]*spanner.Mutation{mutation})
+		if err := txn.BufferWrite([]*spanner.Mutation{mutation}); err != nil {
+			return err
+		}
+		buf := outbox.NewSpannerTxnBuffer(txn)
+		payload := events.OrderEvent{
+			BaseEvent:  events.BaseEvent{Type: events.EventOrderStatusChanged, Timestamp: time.Now().UTC().Format(time.RFC3339Nano)},
+			OrderID:    orderID,
+			SupplierID: supplierID,
+			RetailerID: retailerID,
+			Status:     targetStatus,
+		}
+		if err := outbox.EmitJSON(ctx, buf, events.AggregateOrder, orderID, events.TopicMain, payload); err != nil {
+			return err
+		}
+		return buf.Flush(ctx)
 	})
 	if err != nil {
 		writeErr(w, http.StatusConflict, err.Error())

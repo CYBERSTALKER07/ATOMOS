@@ -374,7 +374,7 @@ func (s *Service) assertWarehouseOwned(ctx context.Context, supplierID, warehous
 }
 
 func (s *Service) listWarehousePins(ctx context.Context, supplierID, warehouseID string) ([]proximity.ServicePin, error) {
-	iter := s.portalSpanner.Single().Query(ctx, spanner.Statement{
+	iter := s.portalSpanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL: `SELECT WarehouseId, TargetType, TargetId, Priority
 		      FROM ServicePins WHERE SupplierId = @sid AND WarehouseId = @wid`,
 		Params: map[string]any{"sid": supplierID, "wid": warehouseID},
@@ -400,7 +400,7 @@ func (s *Service) listWarehousePins(ctx context.Context, supplierID, warehouseID
 
 func (s *Service) coverageMode(ctx context.Context, supplierID, warehouseID string, pins []proximity.ServicePin) (string, error) {
 	cells := []string{}
-	iter := s.portalSpanner.Single().Query(ctx, spanner.Statement{
+	iter := s.portalSpanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL:    `SELECT H3Cell FROM WarehouseCoverageCells WHERE SupplierId = @sid AND WarehouseId = @wid`,
 		Params: map[string]any{"sid": supplierID, "wid": warehouseID},
 	})
@@ -425,7 +425,7 @@ func (s *Service) coverageMode(ctx context.Context, supplierID, warehouseID stri
 }
 
 func (s *Service) loadCoverageCities(ctx context.Context, warehouseID string) []order.CoverageCity {
-	iter := s.portalSpanner.Single().Query(ctx, spanner.Statement{
+	iter := s.portalSpanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL:    `SELECT CityName, Lat, Lng FROM WarehouseCoverageCities WHERE WarehouseId = @wid ORDER BY CityName`,
 		Params: map[string]any{"wid": warehouseID},
 	})

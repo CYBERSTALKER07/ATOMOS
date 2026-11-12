@@ -16,8 +16,6 @@ var (
 	ErrPickWaveIncomplete = errors.New("pick_wave_incomplete")
 	// ErrLoadLedgerIncomplete is returned when durable load scan is short (G2.B).
 	ErrLoadLedgerIncomplete = errors.New("load_ledger_incomplete")
-	// ErrColdChainBaselineRequired is returned when chilled SKUs lack a bay reading (G2.C).
-	ErrColdChainBaselineRequired = errors.New("cold_chain_baseline_required")
 	// ErrLaborCapacityExceeded is returned when zone labor is overloaded (G2.C).
 	ErrLaborCapacityExceeded = errors.New("labor_capacity_exceeded")
 )

@@ -19,11 +19,11 @@ import (
 )
 
 var (
-	errRetailerMemberNotFound      = errors.New("retailer_org_member_not_found")
-	errRetailerMemberPhoneExists   = errors.New("retailer_org_member_phone_exists")
-	errRetailerMemberOwnerLocked   = errors.New("retailer_org_member_owner_locked")
-	errRetailerMemberInvalidRole   = errors.New("retailer_org_member_invalid_role")
-	errRetailerTeamPackRequired    = errors.New("retailer_team_pack_required")
+	errRetailerMemberNotFound    = errors.New("retailer_org_member_not_found")
+	errRetailerMemberPhoneExists = errors.New("retailer_org_member_phone_exists")
+	errRetailerMemberOwnerLocked = errors.New("retailer_org_member_owner_locked")
+	errRetailerMemberInvalidRole = errors.New("retailer_org_member_invalid_role")
+	errRetailerTeamPackRequired  = errors.New("retailer_team_pack_required")
 )
 
 // OrgMemberDTO is the wire shape for team roster rows.
@@ -422,7 +422,7 @@ func (s *Service) listOrgMembers(ctx context.Context, retailerID string) ([]OrgM
 			ORDER BY IsOwner DESC, UpdatedAt DESC`,
 		Params: map[string]any{"rid": retailerID},
 	}
-	iter := s.spannerClient.Single().Query(ctx, stmt)
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	var out []OrgMemberDTO
 	for {

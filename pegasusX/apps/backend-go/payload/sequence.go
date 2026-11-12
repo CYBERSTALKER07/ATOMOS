@@ -30,9 +30,9 @@ func SequenceLIFO(route VehicleRoute) []string {
 func (s *Service) HandleGetLIFOSequence(w http.ResponseWriter, r *http.Request) {
 	// Stub implementation. In production, this would fetch the VehicleRoute from Spanner or Redis
 	// and return the reversed sequence to the terminal.
-	
+
 	route := VehicleRoute{
-		VehicleID: "TRUCK_123",
+		VehicleID:   "TRUCK_123",
 		LocationIDs: []string{"STOP_1", "STOP_2", "STOP_3"},
 	}
 
@@ -40,7 +40,7 @@ func (s *Service) HandleGetLIFOSequence(w http.ResponseWriter, r *http.Request) 
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]any{
-		"vehicle_id":      route.VehicleID,
+		"vehicle_id":       route.VehicleID,
 		"loading_sequence": reversed,
 	})
 }

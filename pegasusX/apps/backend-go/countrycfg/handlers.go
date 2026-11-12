@@ -147,6 +147,10 @@ func (h *Handlers) HandleCountryOverride(w http.ResponseWriter, r *http.Request)
 			web.JSONError(w, "reason_required", http.StatusBadRequest)
 			return
 		}
+		if bodySID := strings.TrimSpace(req.SupplierID); bodySID != "" && bodySID != sid {
+			web.JSONError(w, "supplier_scope_mismatch", http.StatusForbidden)
+			return
+		}
 		if h == nil || h.Spanner == nil {
 			web.JSONError(w, "countrycfg_unavailable", http.StatusServiceUnavailable)
 			return

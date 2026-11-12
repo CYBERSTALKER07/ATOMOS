@@ -16,6 +16,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"google.golang.org/api/iterator"
 )
 
 const (
@@ -446,23 +447,67 @@ func (s *Service) HandleApproveEarlyComplete(w http.ResponseWriter, r *http.Requ
 	now := s.now()
 	approved := 0
 
+	var orderIDs []string
+	seenOrderIDs := make(map[string]struct{}, len(rec.OrderIDs))
+	orderKeySets := make([]spanner.KeySet, 0, len(rec.OrderIDs))
+	for _, rawID := range rec.OrderIDs {
+		oid := strings.TrimSpace(rawID)
+		if oid == "" {
+			continue
+		}
+		if _, dup := seenOrderIDs[oid]; dup {
+			continue
+		}
+		seenOrderIDs[oid] = struct{}{}
+		orderIDs = append(orderIDs, oid)
+		orderKeySets = append(orderKeySets, spanner.Key{oid})
+	}
+
 	_, err = s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-		for _, orderID := range rec.OrderIDs {
-			orderID = strings.TrimSpace(orderID)
-			if orderID == "" {
+		approved = 0
+		if len(orderIDs) == 0 {
+			return nil
+		}
+
+		type orderSnapshot struct {
+			status       string
+			version      int64
+			supplierID   string
+			lineItemsRaw []byte
+			warehouseID  string
+			source       string
+		}
+		byOrderID := make(map[string]orderSnapshot, len(orderIDs))
+		ordIter := txn.Read(ctx, "Orders", spanner.KeySets(orderKeySets...),
+			[]string{"OrderId", "Status", "Version", "SupplierId", "LineItemsJson", "WarehouseId", "Source"})
+		defer ordIter.Stop()
+		for {
+			row, readErr := ordIter.Next()
+			if readErr == iterator.Done {
+				break
+			}
+			if readErr != nil {
+				return readErr
+			}
+			var oid string
+			var snap orderSnapshot
+			if err := row.Columns(&oid, &snap.status, &snap.version, &snap.supplierID, &snap.lineItemsRaw, &snap.warehouseID, &snap.source); err != nil {
 				continue
 			}
-			row, err := txn.ReadRow(ctx, "Orders", spanner.Key{orderID},
-				[]string{"Status", "Version", "SupplierId", "LineItemsJson", "WarehouseId", "Source"})
-			if err != nil {
+			byOrderID[oid] = snap
+		}
+
+		for _, orderID := range orderIDs {
+			snap, exists := byOrderID[orderID]
+			if !exists {
 				continue
 			}
-			var status, oidSupplier, warehouseID, source string
-			var version int64
-			var lineItemsRaw []byte
-			if err := row.Columns(&status, &version, &oidSupplier, &lineItemsRaw, &warehouseID, &source); err != nil {
-				continue
-			}
+			status := snap.status
+			version := snap.version
+			oidSupplier := snap.supplierID
+			lineItemsRaw := snap.lineItemsRaw
+			warehouseID := snap.warehouseID
+			source := snap.source
 			if oidSupplier != supplierID {
 				continue
 			}

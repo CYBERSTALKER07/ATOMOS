@@ -98,13 +98,13 @@ func (s EnabledSet) Has(id string) bool {
 
 // EnableResult is the outcome of attempting to enable a pack.
 type EnableResult struct {
-	Status       string   `json:"status"` // OK | BLOCKED | WARN
-	PackID       string   `json:"pack_id"`
-	MissingHard  []string `json:"missing_hard_deps,omitempty"`
-	MissingSoft  []string `json:"missing_soft_deps,omitempty"`
-	EnableAll    []string `json:"enable_all,omitempty"`
-	Message      string   `json:"message,omitempty"`
-	WouldEnable  []string `json:"would_enable,omitempty"`
+	Status      string   `json:"status"` // OK | BLOCKED | WARN
+	PackID      string   `json:"pack_id"`
+	MissingHard []string `json:"missing_hard_deps,omitempty"`
+	MissingSoft []string `json:"missing_soft_deps,omitempty"`
+	EnableAll   []string `json:"enable_all,omitempty"`
+	Message     string   `json:"message,omitempty"`
+	WouldEnable []string `json:"would_enable,omitempty"`
 }
 
 // EvaluateEnable checks dependency graph for enabling packID.

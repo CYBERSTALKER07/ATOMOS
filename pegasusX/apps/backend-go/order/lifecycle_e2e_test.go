@@ -27,8 +27,8 @@ func newMockWsClient(id string, role auth.Role, subject string) *mockWsClient {
 	}
 }
 
-func (m *mockWsClient) ID() string                { return m.id }
-func (m *mockWsClient) Identity() auth.Claims     { return m.claims }
+func (m *mockWsClient) ID() string            { return m.id }
+func (m *mockWsClient) Identity() auth.Claims { return m.claims }
 func (m *mockWsClient) Send(_ context.Context, p []byte) error {
 	copied := append([]byte(nil), p...)
 	select {
@@ -56,21 +56,21 @@ func TestOrderLifecycle_CompleteEndToEnd(t *testing.T) {
 	lng := 69.279737
 
 	initOrder := Order{
-		OrderID:               orderID,
-		RetailerID:            retailerID,
-		SupplierID:            supplierID,
-		WarehouseID:           warehouseID,
-		Status:                StatusPending,
-		Currency:              "UZS",
-		TotalMinor:            15000000, // 150,000 UZS
-		Lat:                   lat,
-		Lng:                   lng,
-		H3Cell:                "872830828ffffff",
-		ReceivingWindowOpen:   "09:00",
-		ReceivingWindowClose:  "18:00",
-		Version:               1,
-		CreatedAt:             now,
-		UpdatedAt:             now,
+		OrderID:              orderID,
+		RetailerID:           retailerID,
+		SupplierID:           supplierID,
+		WarehouseID:          warehouseID,
+		Status:               StatusPending,
+		Currency:             "UZS",
+		TotalMinor:           15000000, // 150,000 UZS
+		Lat:                  lat,
+		Lng:                  lng,
+		H3Cell:               "872830828ffffff",
+		ReceivingWindowOpen:  "09:00",
+		ReceivingWindowClose: "18:00",
+		Version:              1,
+		CreatedAt:            now,
+		UpdatedAt:            now,
 	}
 
 	repo := &testRepo{

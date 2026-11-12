@@ -22,6 +22,7 @@ type Repository interface {
 	GetClaim(ctx context.Context, claimID string) (Claim, bool, error)
 	ListByOrder(ctx context.Context, orderID string) ([]Claim, error)
 	ListBySupplier(ctx context.Context, supplierID string, status Status, limit int) ([]Claim, error)
+	IsEvidenceURIReused(ctx context.Context, uri string) (bool, error)
 }
 
 // SpannerRepository is the production store.
@@ -317,6 +318,33 @@ func (r *SpannerRepository) queryClaims(ctx context.Context, stmt spanner.Statem
 	return out, nil
 }
 
+// IsEvidenceURIReused checks if the given evidence URI has already been submitted on any claim.
+func (r *SpannerRepository) IsEvidenceURIReused(ctx context.Context, uri string) (bool, error) {
+	if r == nil || r.client == nil {
+		return false, nil
+	}
+	target := strings.TrimSpace(uri)
+	if target == "" {
+		return false, nil
+	}
+	iter := r.client.Single().Query(ctx, spanner.Statement{
+		SQL:    `SELECT 1 FROM ClaimEvidences WHERE Uri = @uri LIMIT 1`,
+		Params: map[string]any{"uri": target},
+	})
+	defer iter.Stop()
+	_, err := iter.Next()
+	if err == iterator.Done {
+		return false, nil
+	}
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "ClaimEvidences") {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
+}
+
 func (r *SpannerRepository) listEvidences(ctx context.Context, claimID string) ([]Evidence, error) {
 	stmt := spanner.Statement{
 		SQL: `SELECT ClaimId, EvidenceId, EvidenceType, Uri, MimeType, CapturedAt, CapturedBy, CreatedAt
@@ -521,3 +549,23 @@ func (m *MemoryRepository) ListBySupplier(_ context.Context, supplierID string, 
 	}
 	return out, nil
 }
+
+// IsEvidenceURIReused checks if the given URI is already associated with any in-memory claim.
+func (m *MemoryRepository) IsEvidenceURIReused(_ context.Context, uri string) (bool, error) {
+	if m == nil || m.byID == nil {
+		return false, nil
+	}
+	target := strings.TrimSpace(uri)
+	if target == "" {
+		return false, nil
+	}
+	for _, c := range m.byID {
+		for _, e := range c.Evidences {
+			if strings.TrimSpace(e.URI) == target {
+				return true, nil
+			}
+		}
+	}
+	return false, nil
+}
+

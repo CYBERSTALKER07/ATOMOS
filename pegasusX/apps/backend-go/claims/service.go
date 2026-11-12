@@ -392,6 +392,23 @@ func (s *Service) FileRetailerClaim(ctx context.Context, claims auth.Claims, ord
 		return Claim{}, ErrEvidenceRequired
 	}
 
+	// B2B Operating Model Invariant: "A reused photo is refused."
+	for _, e := range req.Evidences {
+		uri := strings.TrimSpace(e.URI)
+		if uri == "" {
+			continue
+		}
+		if s.repo != nil {
+			reused, err := s.repo.IsEvidenceURIReused(ctx, uri)
+			if err != nil {
+				return Claim{}, err
+			}
+			if reused {
+				return Claim{}, ErrReusedPhotoEvidence
+			}
+		}
+	}
+
 	o, ok, err := s.orders.GetOrder(ctx, orderID)
 	if err != nil {
 		return Claim{}, err
@@ -442,6 +459,9 @@ func (s *Service) FileRetailerClaim(ctx context.Context, claims auth.Claims, ord
 	rem, err := s.GetRemainingClaimable(ctx, orderID)
 	if err != nil {
 		return Claim{}, err
+	}
+	if rem.RemainingClaimableMinor <= 0 {
+		return Claim{}, fmt.Errorf("%w: order has no remaining claimable balance", ErrPricingFailed)
 	}
 	amountMinor = CapAmount(amountMinor, rem.RemainingClaimableMinor)
 
@@ -592,6 +612,9 @@ func (s *Service) CreateFromDriverException(ctx context.Context, o OrderSnapshot
 		rem, err := s.GetRemainingClaimable(ctx, o.OrderID)
 		if err != nil {
 			return Claim{}, err
+		}
+		if rem.RemainingClaimableMinor <= 0 {
+			return Claim{}, fmt.Errorf("%w: order has no remaining claimable balance", ErrPricingFailed)
 		}
 		amount = CapAmount(total, rem.RemainingClaimableMinor)
 	}
@@ -763,7 +786,7 @@ func (s *Service) ApproveClaim(ctx context.Context, actor auth.Claims, claimID s
 	c.AmountMinor = amount
 	c.ResolutionNote = strings.TrimSpace(req.ResolutionNote)
 	c.UpdatedAt = now
-	if err := s.repo.TransitionStatus(ctx, c.ClaimID, []Status{StatusOpen, StatusUnderReview}, c, func(txn outbox.TxnBuffer) error {
+	if err := s.repo.TransitionStatus(ctx, c.ClaimID, []Status{StatusOpen}, c, func(txn outbox.TxnBuffer) error {
 		payload := map[string]any{
 			"type":            events.EventClaimUnderReview,
 			"claim_id":        c.ClaimID,

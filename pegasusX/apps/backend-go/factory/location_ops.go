@@ -212,7 +212,7 @@ func (s *Service) loadFactoryLocation(ctx context.Context, factoryID string) (fa
 		params["sid"] = supplierID
 	}
 	stmt := spanner.Statement{SQL: sql, Params: params}
-	iter := s.spannerClient.Single().Query(ctx, stmt)
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	row, err := iter.Next()
 	if err != nil {

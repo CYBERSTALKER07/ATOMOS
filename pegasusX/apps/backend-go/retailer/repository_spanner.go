@@ -12,6 +12,7 @@ import (
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
 	"github.com/pegasusx/pegasusx/packages/handoff"
 	"google.golang.org/api/iterator"
 )
@@ -331,7 +332,12 @@ func (r *SpannerRepository) ListRetailersBySupplier(ctx context.Context, supplie
 		},
 	}
 
-	iter := r.client.Single().Query(ctx, stmt)
+	var iter *spanner.RowIterator
+	if txn := spannerutils.ReadOnlyTxnFromContext(ctx); txn != nil {
+		iter = txn.Query(ctx, stmt)
+	} else {
+		iter = r.client.Single().Query(ctx, stmt)
+	}
 	defer iter.Stop()
 
 	var retailers []Retailer
@@ -502,7 +508,7 @@ func (r *SpannerRepository) attachFiscalReceipts(ctx context.Context, orders []T
 		},
 	}
 
-	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
+	iter := r.client.Single().Query(ctx, stmt)
 	defer iter.Stop()
 
 	type fiscalSnap struct {
@@ -643,7 +649,7 @@ func (r *SpannerRepository) listOrderPaymentTimeline(ctx context.Context, orderI
 		},
 	}
 
-	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
+	iter := r.client.Single().Query(ctx, stmt)
 	defer iter.Stop()
 
 	timelineByOrder := make(map[string][]trackingReceiptPaymentRecordSnapshot, len(orderIDs))
@@ -720,7 +726,7 @@ func (r *SpannerRepository) listSessionPaymentTimeline(ctx context.Context, sess
 		},
 	}
 
-	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
+	iter := r.client.Single().Query(ctx, stmt)
 	defer iter.Stop()
 
 	timelineBySession := make(map[string][]trackingReceiptPaymentRecordSnapshot, len(sessionIDs))
@@ -794,7 +800,7 @@ func (r *SpannerRepository) listOrderGatewayWebhooks(ctx context.Context, orderI
 		},
 	}
 
-	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
+	iter := r.client.Single().Query(ctx, stmt)
 	defer iter.Stop()
 
 	webhooksByOrder := make(map[string][]TrackingReceiptGatewayWebhook, len(orderIDs))
@@ -854,7 +860,12 @@ func (r *SpannerRepository) listOrderDeliveryProofs(ctx context.Context, orderID
 		},
 	}
 
-	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
+	var iter *spanner.RowIterator
+	if txn := spannerutils.ReadOnlyTxnFromContext(ctx); txn != nil {
+		iter = txn.Query(ctx, stmt)
+	} else {
+		iter = r.client.Single().Query(ctx, stmt)
+	}
 	defer iter.Stop()
 
 	proofsByOrder := make(map[string][]TrackingReceiptDeliveryProof, len(orderIDs))
@@ -930,7 +941,7 @@ func (r *SpannerRepository) listOrderChargebacks(ctx context.Context, orderIDs [
 		},
 	}
 
-	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
+	iter := r.client.Single().Query(ctx, stmt)
 	defer iter.Stop()
 
 	chargebacksByOrder := make(map[string][]TrackingReceiptChargebackRecord, len(orderIDs))
@@ -978,7 +989,7 @@ func (r *SpannerRepository) listSessionReversals(ctx context.Context, sessionIDs
 		},
 	}
 
-	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
+	iter := r.client.Single().Query(ctx, stmt)
 	defer iter.Stop()
 
 	reversalsBySession := make(map[string][]TrackingReceiptReversalRecord, len(sessionIDs))
@@ -1202,7 +1213,12 @@ func uniqueTrackingSessionIDs(sessionIDsByOrder map[string]string) []string {
 
 func (r *SpannerRepository) queryTrackingOrders(ctx context.Context, stmt spanner.Statement, op string) ([]TrackingOrder, error) {
 
-	iter := r.client.Single().Query(ctx, stmt)
+	var iter *spanner.RowIterator
+	if txn := spannerutils.ReadOnlyTxnFromContext(ctx); txn != nil {
+		iter = txn.Query(ctx, stmt)
+	} else {
+		iter = r.client.Single().Query(ctx, stmt)
+	}
 	defer iter.Stop()
 
 	orders := make([]TrackingOrder, 0, 8)

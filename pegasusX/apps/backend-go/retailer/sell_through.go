@@ -400,7 +400,7 @@ func (s *Service) ListSellThrough(ctx context.Context, retailerID, locationID, f
 	}
 	sql += ` ORDER BY Day DESC, SkuId LIMIT @lim`
 
-	iter := s.spannerClient.Single().Query(ctx, spanner.Statement{SQL: sql, Params: params})
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, spanner.Statement{SQL: sql, Params: params})
 	defer iter.Stop()
 	var out []SellThroughDayDTO
 	for {

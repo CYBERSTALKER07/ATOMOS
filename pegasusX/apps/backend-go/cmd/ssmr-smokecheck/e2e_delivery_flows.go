@@ -285,7 +285,7 @@ func runDeliveryEdgeCasesE2E(ctx context.Context, client *http.Client, base stri
 		return fmt.Errorf("issue driver jwt: %w", err)
 	}
 	arriveBody, _ := json.Marshal(map[string]string{"order_id": orderID})
-	status, respBody, _, err = clientPost(ctx, client, base+"/v1/delivery/arrive", arriveBody, driverToken, "")
+	status, respBody, _, err = clientPost(ctx, client, base+"/v1/delivery/arrive", arriveBody, driverToken, fmt.Sprintf("ssmr-arrive-%s-%d", orderID, time.Now().UnixNano()))
 	if err != nil {
 		return fmt.Errorf("delivery arrive: %w", err)
 	}

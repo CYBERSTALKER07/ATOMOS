@@ -250,6 +250,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	kafkaAuth := kafkautil.ClientAuth{Mode: cfg.KafkaAuthMode, Username: cfg.KafkaSASLUsername}
 	outboxPublisher, kafkaEnabled, kafkaCleanup, err := setupKafkaPublisher(cfg, kafkaAuth, log)
 	if err != nil {
+		cancelSweepers()
 		return nil, err
 	}
 	if kafkaCleanup != nil {
@@ -257,6 +258,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	}
 
 	if cfg.RequireInfraAdapters && spannerClient == nil && !cfg.TestingMode {
+		cancelSweepers()
 		return nil, fmt.Errorf("require infra adapters: spanner unavailable")
 	}
 	outboxRelay := outbox.NewRelay(relayStore, outboxPublisher, outbox.RelayConfig{}, log)
@@ -268,6 +270,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	supplierSeed, err := seed.EnsureSupplier(ctx, seedRepo,
 		cfg.SeedSupplierName, cfg.SeedSupplierCountry, cfg.SeedSupplierCurrency, log)
 	if err != nil {
+		cancelSweepers()
 		return nil, fmt.Errorf("seed supplier: %w", err)
 	}
 
@@ -280,6 +283,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		log.Info("retailer and supplier repositories enabled", "backend", "spanner")
 	} else {
 		if err := cfg.ensureMemoryFallbackAllowed("retailer/supplier repositories"); err != nil {
+			cancelSweepers()
 			return nil, err
 		}
 		retailerRepo = memory.NewRetailerRepo(outboxAppender)
@@ -337,7 +341,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		if globalproducts.Enabled() {
 			gpRepo := globalproducts.NewSpannerRepository(spannerClient)
 			globalProductsSvc = globalproducts.NewService(gpRepo, log)
-			if err := globalProductsSvc.EnsureBootstrap(context.Background()); err != nil {
+			if err := globalProductsSvc.EnsureBootstrap(ctx); err != nil {
 				log.Warn("global products uom seed failed", "err", err)
 			}
 			catalogSvc.SetGlobalProductHook(globalproducts.CatalogHook{Svc: globalProductsSvc})
@@ -428,9 +432,15 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		Log:                        log,
 	})
 	supplier.WireMarketProfileLookup(supplierRepo)
-	var oidcStore orgoidc.Store = orgoidc.NewMemoryStore()
+	var oidcStore orgoidc.Store
 	if spannerClient != nil {
 		oidcStore = orgoidc.NewSpannerStore(spannerClient)
+	} else {
+		if err := cfg.ensureMemoryFallbackAllowed("orgoidc store"); err != nil {
+			cancelSweepers()
+			return nil, err
+		}
+		oidcStore = orgoidc.NewMemoryStore()
 	}
 	orgOIDC := &orgoidc.Service{
 		Store:     oidcStore,
@@ -471,6 +481,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		log.Info("order repository enabled", "backend", "spanner")
 	} else {
 		if err := cfg.ensureMemoryFallbackAllowed("order repository"); err != nil {
+			cancelSweepers()
 			return nil, err
 		}
 		orderRepo = memory.NewOrderRepo(outboxAppender, &memory.RetailerReceivingWindowAdapter{Repo: retailerRepo})
@@ -482,6 +493,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		log.Info("payment repository enabled", "backend", "spanner")
 	} else {
 		if err := cfg.ensureMemoryFallbackAllowed("payment repository"); err != nil {
+			cancelSweepers()
 			return nil, err
 		}
 		paymentRepo = memory.NewPaymentRepo(outboxAppender)
@@ -503,6 +515,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		log.Info("credit repository enabled", "backend", "spanner")
 	} else {
 		if err := cfg.ensureMemoryFallbackAllowed("credit repository"); err != nil {
+			cancelSweepers()
 			return nil, err
 		}
 		creditRepo = memory.NewCreditRepo(outboxAppender)
@@ -518,6 +531,10 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		creditPolicyRepo = credit.NewSpannerPolicyRepository(spannerClient)
 		arRepo = ar.NewSpannerRepository(spannerClient)
 	} else {
+		if err := cfg.ensureMemoryFallbackAllowed("credit policy and AR repositories"); err != nil {
+			cancelSweepers()
+			return nil, err
+		}
 		creditPolicyRepo = credit.NewMemoryPolicyRepository()
 		arRepo = ar.NewMemoryRepository()
 	}
@@ -624,6 +641,10 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		claimsRepo = claims.NewSpannerRepository(spannerClient)
 		log.Info("claims repository enabled", "backend", "spanner")
 	} else {
+		if err := cfg.ensureMemoryFallbackAllowed("claims repository"); err != nil {
+			cancelSweepers()
+			return nil, err
+		}
 		claimsRepo = claims.NewMemoryRepository()
 		log.Warn("claims repository fallback enabled", "backend", "in-memory")
 	}
@@ -651,7 +672,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		orderSvc.StartDeferredPaymentSweeper(appCtx, 5*time.Minute)
 	}()
 	if spannerClient != nil {
-		if n, err := orderSvc.BackfillScheduledReservations(context.Background(), 500); err != nil {
+		if n, err := orderSvc.BackfillScheduledReservations(ctx, 500); err != nil {
 			log.Warn("scheduled reservation backfill failed", "err", err)
 		} else if n > 0 {
 			log.Info("scheduled reservation backfill complete", "orders", n)
@@ -740,6 +761,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		log.Info("factory and payload repositories enabled", "backend", "spanner")
 	} else {
 		if err := cfg.ensureMemoryFallbackAllowed("driver/factory/payload repositories"); err != nil {
+			cancelSweepers()
 			return nil, err
 		}
 		driverRepo = driver.NewInMemoryRepository()
@@ -1001,6 +1023,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	if spannerClient != nil {
 		fxRepo = fxrates.NewSpannerRepository(spannerClient)
 	} else if err := cfg.ensureMemoryFallbackAllowed("fx rates repository"); err != nil {
+		cancelSweepers()
 		return nil, err
 	}
 	fxSvc := fxrates.NewService(fxRepo)
@@ -1025,6 +1048,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		log.Info("warehouse repository enabled", "backend", "spanner")
 	} else {
 		if err := cfg.ensureMemoryFallbackAllowed("warehouse repository"); err != nil {
+			cancelSweepers()
 			return nil, err
 		}
 		warehouseRepo = warehouse.NewInMemoryRepository()
@@ -1047,16 +1071,6 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	stocklots.SetSealSoftWarnEnabled(strings.EqualFold(strings.TrimSpace(os.Getenv("WMS_SEAL_SOFT_WARN")), "true"))
 	stocklots.SetLoadLedgerEnabled(strings.EqualFold(strings.TrimSpace(os.Getenv("PAYLOAD_LOAD_LEDGER_ENABLED")), "true"))
 	stocklots.SetLaborCapacityEnforce(strings.EqualFold(strings.TrimSpace(os.Getenv("LABOR_CAPACITY_ENFORCE")), "true"))
-	stocklots.SetTemperatureBreachRaiser(func(ctx context.Context, txn *spanner.ReadWriteTransaction, args stocklots.TemperatureBreachArgs) error {
-		return orderSvc.RaiseSystemTemperatureBreachInTxn(ctx, txn, order.SystemTemperatureBreachArgs{
-			ManifestID: args.ManifestID,
-			ReadingID:  args.ReadingID,
-			TempC:      args.TempC,
-			MinC:       args.MinC,
-			MaxC:       args.MaxC,
-			OrderIDs:   args.OrderIDs,
-		})
-	})
 
 	warehouseSvc := warehouse.NewService(warehouse.ServiceConfig{
 		Repo:                 warehouseRepo,
@@ -1114,13 +1128,21 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	}
 	infraHealth := buildInfraHealthChecks(redisEnabled, cacheBackend, spannerClient)
 
-	policyRepo := platform.PolicyRepository(platform.NewMemoryPolicyRepository())
-	tokenRepo := platform.DeviceTokenRepository(platform.NewMemoryDeviceTokenRepository())
-	sessionChecker := platform.SessionChecker(platform.NoopSessionChecker{})
+	var policyRepo platform.PolicyRepository
+	var tokenRepo platform.DeviceTokenRepository
+	var sessionChecker platform.SessionChecker
 	if spannerClient != nil {
 		policyRepo = platform.NewSpannerPolicyRepository(spannerClient)
 		tokenRepo = platform.NewSpannerDeviceTokenRepository(spannerClient)
 		sessionChecker = platform.NewSpannerSessionChecker(spannerClient)
+	} else {
+		if err := cfg.ensureMemoryFallbackAllowed("platform policy/token repositories"); err != nil {
+			cancelSweepers()
+			return nil, err
+		}
+		policyRepo = platform.NewMemoryPolicyRepository()
+		tokenRepo = platform.NewMemoryDeviceTokenRepository()
+		sessionChecker = platform.NoopSessionChecker{}
 	}
 	platformSvc := platform.NewService(policyRepo, sessionChecker, log)
 	platformHandler := platform.NewHandler(platform.HandlerConfig{
@@ -1128,13 +1150,21 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		DeviceTokens: tokenRepo,
 		Log:          log,
 	})
-	var platformAdminRepo platformadmin.Repository = platformadmin.NewMemoryRepository()
-	var featureFlagRepo featureflags.Repository = featureflags.NewMemoryRepository()
-	var mfaRepo mfa.Repository = mfa.NewMemoryRepository()
+	var platformAdminRepo platformadmin.Repository
+	var featureFlagRepo featureflags.Repository
+	var mfaRepo mfa.Repository
 	if spannerClient != nil {
 		platformAdminRepo = platformadmin.NewSpannerRepository(spannerClient)
 		featureFlagRepo = featureflags.NewSpannerRepository(spannerClient)
 		mfaRepo = mfa.NewSpannerRepository(spannerClient)
+	} else {
+		if err := cfg.ensureMemoryFallbackAllowed("platformadmin/featureflags/mfa repositories"); err != nil {
+			cancelSweepers()
+			return nil, err
+		}
+		platformAdminRepo = platformadmin.NewMemoryRepository()
+		featureFlagRepo = featureflags.NewMemoryRepository()
+		mfaRepo = mfa.NewMemoryRepository()
 	}
 	platformAdminSvc := platformadmin.NewService(platformAdminRepo)
 	platformAdminSvc.OnApproved = func(ctx context.Context, tenantType, tenantID, marketCode, homeCell string) error {
@@ -1209,6 +1239,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 
 	pushBridge, err := setupPushBridge(cfg, spannerClient, tokenRepo, log)
 	if err != nil {
+		cancelSweepers()
 		return nil, err
 	}
 
@@ -1222,6 +1253,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 
 	dunningNotify, err := setupDunningNotification(spannerClient, notifSvc, pushBridge, log)
 	if err != nil {
+		cancelSweepers()
 		return nil, err
 	}
 	arDunning.SetNotify(dunningNotify)
@@ -1240,61 +1272,19 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	}
 	forecastRunner := &planning.ForecastRunner{Client: spannerClient, Log: log}
 
-	var partnerKeys partner.KeyRepository = partner.NewMemoryKeyRepository()
-	var partnerWebhooks partner.WebhookRepository = partner.NewMemoryWebhookRepository()
-	var partnerExports partner.ExportRepository = partner.NewMemoryExportRepository()
-	var partnerSftp partner.SftpConfigRepository = partner.NewMemorySftpConfigRepository()
-	var partnerEdiDocs partner.EdiDocumentRepository = partner.NewMemoryEdiDocumentRepository()
-	if spannerClient != nil {
-		partnerKeys = partner.NewSpannerKeyRepository(spannerClient)
-		partnerWebhooks = partner.NewSpannerWebhookRepository(spannerClient)
-		partnerExports = partner.NewSpannerExportRepository(spannerClient)
-		partnerSftp = partner.NewSpannerSftpConfigRepository(spannerClient)
-		partnerEdiDocs = partner.NewSpannerEdiDocumentRepository(spannerClient)
+	partnerSys, err := setupPartnerSubsystems(spannerClient, cfg, orderSvc, catalogSvc, idemStore, inventorySvc, retailerSvc, log)
+	if err != nil {
+		cancelSweepers()
+		return nil, err
 	}
-	partnerSvc := partner.NewService(partnerKeys, partnerWebhooks, orderSvc, catalogSvc, log)
-	partnerSvc.SetExportRepos(partnerExports, partnerSftp)
-	partnerSvc.SetIdempotencyStore(idemStore)
-	partnerSvc.SetInventoryService(inventorySvc)
-	if spannerClient != nil {
-		partnerSvc.SetPOSFeedSink(partner.NewSpannerPOSFeedSink(spannerClient))
-	}
-	var partnerAs2 partner.As2ConfigRepository = partner.NewMemoryAs2ConfigRepository()
-	if spannerClient != nil {
-		partnerAs2 = partner.NewSpannerAs2ConfigRepository(spannerClient)
-	}
-	partnerSvc.SetAs2Repository(partnerAs2)
-	var partnerCoa partner.CoaRepository = partner.NewMemoryCoaRepository()
-	if spannerClient != nil {
-		partnerCoa = partner.NewSpannerCoaRepository(spannerClient)
-	}
-	partnerSvc.SetCoaRepository(partnerCoa)
-	partnerDelivery := partner.NewDeliveryWorker(partnerWebhooks, log)
-	partnerExportWorker := partner.NewExportWorker(partnerExports, partnerSftp, spannerClient, log)
-	partnerExportWorker.SetCoaRepository(partnerCoa)
-	partnerEdiOut := partner.NewEdiOutboundWorker(partnerEdiDocs, partnerSftp, orderSvc, spannerClient, log)
-	partnerEdiOut.SetAs2Repository(partnerAs2)
-	partnerSvc.SetEdiRepos(partnerEdiDocs, partnerEdiOut)
-	partnerEdiIn := partner.NewEdiInboundWorker(partnerEdiDocs, partnerSftp, partnerSvc, log)
-	// G5.A shared EDI profile store (memory default; Spanner when available).
-	var partnerEdiProfiles partner.EdiProfileRepository = partner.NewMemoryEdiProfiles()
-	if spannerClient != nil {
-		partnerEdiProfiles = &partner.SpannerEdiProfiles{Client: spannerClient}
-	}
-	partnerSvc.SetEdiProfiles(partnerEdiProfiles)
-	partnerEdiIn.SetEdiProfiles(partnerEdiProfiles)
-	partnerEdiOut.SetEdiProfiles(partnerEdiProfiles)
-	partnerEdiIn.SetAckEnqueuer(partnerEdiOut)
-	partnerEdiIn.ResolveGeo = func(ctx context.Context, retailerID string) (partner.RetailerGeo, error) {
-		loc, err := retailerSvc.EnsurePrimaryLocation(ctx, retailerID)
-		if err != nil {
-			return partner.RetailerGeo{}, err
-		}
-		return partner.RetailerGeo{Lat: loc.Lat, Lng: loc.Lng, H3Cell: loc.H3Cell}, nil
-	}
-	partnerHandlers := &partner.Handlers{Svc: partnerSvc, Delivery: partnerDelivery, EdiInbound: partnerEdiIn}
-	partnerJWTSecret := partner.ResolvePartnerJWTSecret(cfg.JWTSecret)
-	partnerSvc.SetOAuthJWT(partnerJWTSecret, partner.PartnerOAuthIssuer(), partner.PartnerOAuthTTL())
+	partnerSvc := partnerSys.svc
+	partnerHandlers := partnerSys.handlers
+	partnerKeys := partnerSys.keys
+	partnerJWTSecret := partnerSys.jwtSecret
+	partnerDelivery := partnerSys.delivery
+	partnerExportWorker := partnerSys.exportWorker
+	partnerEdiIn := partnerSys.ediInbound
+	partnerEdiOut := partnerSys.ediOutbound
 
 	var consumers *kafkaConsumers
 	if kafkaEnabled && cfg.KafkaTopicMain != "" {
@@ -1305,6 +1295,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 			partnerSvc, fxSvc, telemetryHub, routingSvc, log,
 		)
 		if err != nil {
+			cancelSweepers()
 			return nil, err
 		}
 		consumers = c
@@ -1336,41 +1327,10 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	})
 	pulseHandlers := &pulse.Handlers{Service: pulseSvc}
 
-	var controlTowerSvc *controltower.Service
-	var controlTowerHandlers *controltower.Handlers
-	var controlTowerWorker *controltower.Worker
-	if spannerClient != nil {
-		ctCfg := controltower.ConfigFromEnv()
-		ctRepo := controltower.NewSpannerRepository(spannerClient)
-		cnSvc := creditNoteSvc
-		if cnSvc == nil {
-			cnSvc = creditnote.NewService(creditnote.NewSpannerRepository(spannerClient))
-		}
-		planSvc := planning.NewService(spannerClient).WithCache(cacheClient)
-		planSvc.TwinScenarioEnabled = strings.EqualFold(strings.TrimSpace(os.Getenv("TWIN_SCENARIO_ENABLED")), "true")
-		segSvc := segment.NewService(segment.NewSpannerRepository(spannerClient))
-		ctExecutor := controltower.NewActionExecutor(ctRepo, controltower.ExecutorDeps{
-			CreditNotes:   cnSvc,
-			Credit:        creditSvc,
-			Planning:      planSvc,
-			Routing:       routingSvc,
-			Notifications: notifSvc,
-			Returns:       returnsSvc,
-			Segment:       segSvc,
-			Log:           log,
-		})
-		ctEngine := controltower.NewEngine(ctRepo, ctExecutor, segSvc, ctCfg, log)
-		controlTowerSvc = controltower.NewService(ctRepo, ctEngine, ctCfg)
-		controlTowerHandlers = controltower.NewHandlers(controlTowerSvc, supplierSvc.ScopedSupplierID)
-		controlTowerWorker = controltower.NewWorker(controlTowerSvc, log, 3*time.Minute)
-		if ctCfg.Enabled {
-			log.Info("control tower playbooks enabled", "auto_execute", ctCfg.AutoExecute)
-		}
-		supplierSvc.SetControlTower(controlTowerSvc)
-		if replenishmentEngine != nil {
-			replenishmentEngine.SegmentSvc = segSvc
-		}
-	}
+	controlTowerSvc, controlTowerHandlers, controlTowerWorker := setupControlTowerSubsystem(
+		spannerClient, cacheClient, creditNoteSvc, creditSvc, routingSvc,
+		notifSvc, returnsSvc, supplierSvc, replenishmentEngine, log,
+	)
 
 	demandSvc := demand.NewService(spannerClient)
 	if demandSvc != nil {

@@ -16,6 +16,7 @@ import (
 
 // HandleCreateFactory serves POST /v1/factories
 func (s *Service) HandleCreateFactory(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		web.JSONError(w, "invalid request body", http.StatusBadRequest)
@@ -120,6 +121,7 @@ func (s *Service) HandleUpdateFactory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		web.JSONError(w, "invalid request body", http.StatusBadRequest)

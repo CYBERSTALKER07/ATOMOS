@@ -11,7 +11,6 @@ import (
 var (
 	ErrTimezoneInvalid           = errors.New("timezone_invalid")
 	ErrShopClosedGraceInvalid    = errors.New("shop_closed_grace_invalid")
-	ErrWeatherScopeUnavailable   = errors.New("weather_scope_unavailable")
 	ErrFactorySLAHoursInvalid    = errors.New("factory_sla_hours_invalid")
 	ErrLaborMaxShiftHoursInvalid = errors.New("labor_max_shift_hours_invalid")
 )
@@ -78,27 +77,6 @@ func ShopClosedGraceFromContext(ctx context.Context, supplierID string) (time.Du
 	return PackShopClosedGrace(pack)
 }
 
-// PackWeatherScope returns the shipped pack weather geo (empty on planned).
-func PackWeatherScope(pack MarketPack) (string, error) {
-	if pack.Status != MarketPackShipped {
-		return "", ErrMarketPackNotShipped
-	}
-	scope := strings.TrimSpace(pack.WeatherScope)
-	if scope == "" {
-		return "", ErrWeatherScopeUnavailable
-	}
-	return scope, nil
-}
-
-// WeatherScopeFromContext resolves weather geo from the shipped pack.
-func WeatherScopeFromContext(ctx context.Context, supplierID string) (string, error) {
-	pack, err := FiscalPackFromContext(ctx, supplierID)
-	if err != nil {
-		return "", err
-	}
-	return PackWeatherScope(pack)
-}
-
 // PackFactorySLADefaultHours returns the shipped pack default SLA window.
 func PackFactorySLADefaultHours(pack MarketPack) (float64, error) {
 	if pack.Status != MarketPackShipped {
@@ -143,7 +121,7 @@ func LaborMaxShiftHoursFromContext(ctx context.Context, supplierID string) (int6
 func TimezonePackHTTPStatus(err error) (int, string) {
 	switch {
 	case errors.Is(err, ErrTimezoneInvalid), errors.Is(err, ErrShopClosedGraceInvalid),
-		errors.Is(err, ErrWeatherScopeUnavailable), errors.Is(err, ErrFactorySLAHoursInvalid),
+		errors.Is(err, ErrFactorySLAHoursInvalid),
 		errors.Is(err, ErrLaborMaxShiftHoursInvalid):
 		return http.StatusUnprocessableEntity, err.Error()
 	default:

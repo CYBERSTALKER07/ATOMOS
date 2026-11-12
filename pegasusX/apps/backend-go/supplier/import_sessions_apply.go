@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
+	"math"
 	"sort"
 	"strconv"
 	"strings"
@@ -62,12 +64,20 @@ func (r *ImportRepository) applyImportSessionTxn(ctx context.Context, supplierID
 	if stocklots.LotsEnabled() {
 		return summary, fmt.Errorf("inventory import QoH apply forbidden when WMS_LOTS_ENABLED — use putaway / lot adjust instead of absolute SupplierInventoryV2 set")
 	}
-	affectedWarehouses := map[string]struct{}{}
-	affectedProducts := map[string]struct{}{}
-	seenRowKeys := map[string]struct{}{}
-	defaultCategoryID := ""
+	var affectedWarehouses map[string]struct{}
+	var affectedProducts map[string]struct{}
 
 	_, err := r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		// Reinitialize mutable state on every transaction attempt to ensure clean retries.
+		summary = ImportApplySummary{
+			SessionID: sessionID,
+			Status:    "APPLIED",
+		}
+		affectedWarehouses = map[string]struct{}{}
+		affectedProducts = map[string]struct{}{}
+		seenRowKeys := map[string]struct{}{}
+		defaultCategoryID := ""
+
 		sessionRow, readErr := txn.ReadRow(ctx, "SupplierImportSessions", spanner.Key{supplierID, sessionID}, []string{"status"})
 		if readErr != nil {
 			if spanner.ErrCode(readErr) == codes.NotFound {
@@ -111,11 +121,10 @@ func (r *ImportRepository) applyImportSessionTxn(ctx context.Context, supplierID
 
 		warehouseOwnerCache := make(map[string]string)
 		stmt := spanner.Statement{
-			SQL: `SELECT row_index, raw_data, cleaned_data, is_new_product
+			SQL: `SELECT row_index, raw_data, cleaned_data, validation_errors, is_new_product
 			      FROM SupplierImportStagedRows
 			      WHERE supplier_id = @supplierId
 			        AND session_id = @sessionId
-			        AND (validation_errors IS NULL OR ARRAY_LENGTH(validation_errors) = 0)
 			      ORDER BY row_index`,
 			Params: map[string]any{
 				"supplierId": supplierID,
@@ -125,6 +134,8 @@ func (r *ImportRepository) applyImportSessionTxn(ctx context.Context, supplierID
 
 		iter := txn.Query(ctx, stmt)
 		defer iter.Stop()
+
+		slog.InfoContext(ctx, "applyImportSessionTxn query executing", "supplier_id", supplierID, "session_id", sessionID)
 
 		for {
 			row, nextErr := iter.Next()
@@ -138,9 +149,14 @@ func (r *ImportRepository) applyImportSessionTxn(ctx context.Context, supplierID
 			var rowIndex int64
 			var rawDataJSON spanner.NullJSON
 			var cleanedDataJSON spanner.NullJSON
+			var validationErrors []string
 			var isNewProduct bool
-			if err := row.Columns(&rowIndex, &rawDataJSON, &cleanedDataJSON, &isNewProduct); err != nil {
+			if err := row.Columns(&rowIndex, &rawDataJSON, &cleanedDataJSON, &validationErrors, &isNewProduct); err != nil {
 				return fmt.Errorf("parse staged row for apply: %w", err)
+			}
+			slog.InfoContext(ctx, "applyImportSessionTxn row", "rowIndex", rowIndex, "errCount", len(validationErrors), "isNewProduct", isNewProduct)
+			if len(validationErrors) > 0 {
+				continue
 			}
 
 			rawData := importJSONMap(rawDataJSON)
@@ -337,6 +353,7 @@ func (r *ImportRepository) applyImportSessionTxn(ctx context.Context, supplierID
 			}
 		}
 
+		slog.InfoContext(ctx, "applyImportSessionTxn finished loop", "appliedRows", summary.AppliedRows, "supplier_id", supplierID, "session_id", sessionID)
 		if summary.AppliedRows == 0 {
 			return errImportNoApplicableRows
 		}
@@ -562,6 +579,9 @@ func importInt64Value(cleaned, raw map[string]any, keys ...string) (int64, bool)
 		}
 		if parsed, err := strconv.ParseInt(normalized, 10, 64); err == nil {
 			return parsed, true
+		}
+		if parsedFloat, err := strconv.ParseFloat(normalized, 64); err == nil {
+			return int64(math.Round(parsedFloat)), true
 		}
 	}
 	return 0, false

@@ -171,4 +171,5 @@ var (
 	ErrForbidden            = errors.New("forbidden")
 	ErrPricingFailed        = errors.New("claim_pricing_failed")
 	ErrAlreadySettled       = errors.New("claim_already_settled")
+	ErrReusedPhotoEvidence  = errors.New("reused_photo_evidence_refused")
 )

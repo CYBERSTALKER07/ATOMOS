@@ -97,7 +97,7 @@ func (r *SpannerKeyRepository) ListByTenant(ctx context.Context, tenantType, ten
 FROM PartnerApiKeys WHERE TenantType = @tt AND TenantId = @tid ORDER BY CreatedAt DESC LIMIT @lim`,
 		Params: map[string]any{"tt": tenantType, "tid": tenantID, "lim": int64(limit)},
 	}
-	iter := r.client.Single().Query(ctx, stmt)
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	out := make([]ApiKey, 0)
 	for {
@@ -416,7 +416,7 @@ WHERE a.Status = 'DEAD' AND s.TenantType = @tt AND s.TenantId = @tid
 ORDER BY a.UpdatedAt DESC LIMIT @lim`,
 		Params: map[string]any{"tt": tenantType, "tid": tenantID, "lim": int64(limit)},
 	}
-	iter := r.client.Single().Query(ctx, stmt)
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	out := make([]DeliveryAttempt, 0)
 	for {

@@ -91,10 +91,10 @@ func TestHqAPI_SalesByLocationBalanced(t *testing.T) {
 		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
 	}
 	var resp struct {
-		OrgNetMinor int64 `json:"org_net_minor"`
+		OrgNetMinor  int64 `json:"org_net_minor"`
 		SumLocations int64 `json:"sum_locations"`
-		Balanced    bool  `json:"balanced"`
-		Items       []struct {
+		Balanced     bool  `json:"balanced"`
+		Items        []struct {
 			LocationID string `json:"location_id"`
 			NetMinor   int64  `json:"net_minor"`
 		} `json:"items"`

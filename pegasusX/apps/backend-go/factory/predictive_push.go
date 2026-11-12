@@ -64,14 +64,10 @@ func PlanPredictiveTransfers(mode string, breached []breachedSKU, pick factoryPi
 
 func projectedDeficit(currentQty, safetyLevel, predictedQty int64) int64 {
 	projected := currentQty - predictedQty
-	if projected > safetyLevel {
+	if projected >= safetyLevel {
 		return 0
 	}
-	deficit := safetyLevel - projected
-	if deficit <= 0 {
-		return predictedQty
-	}
-	return deficit
+	return safetyLevel - projected
 }
 
 func (p *PlanningService) findPredictedBreaches(ctx context.Context, supplierID string, horizonDays int64) ([]breachedSKU, error) {
@@ -165,10 +161,10 @@ func (p *PlanningService) HandlePredictivePush(w http.ResponseWriter, r *http.Re
 		return
 	}
 	writePlanningJSON(w, http.StatusOK, map[string]any{
-		"transfers":    transfers,
-		"skus":         skus,
-		"source":       "MANUAL",
-		"grain":        "demand_forecast_baseline",
-		"not_from":     "AIPredictions",
+		"transfers": transfers,
+		"skus":      skus,
+		"source":    "MANUAL",
+		"grain":     "demand_forecast_baseline",
+		"not_from":  "AIPredictions",
 	})
 }

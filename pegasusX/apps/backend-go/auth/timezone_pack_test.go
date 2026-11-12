@@ -24,10 +24,6 @@ func TestPackTimezone_ShippedUZ(t *testing.T) {
 	if err != nil || grace != 10*time.Minute {
 		t.Fatalf("grace=%s err=%v", grace, err)
 	}
-	scope, err := PackWeatherScope(p)
-	if err != nil || scope != "city:Tashkent" {
-		t.Fatalf("scope=%s err=%v", scope, err)
-	}
 	hours, err := PackFactorySLADefaultHours(p)
 	if err != nil || hours != 48 {
 		t.Fatalf("sla=%v err=%v", hours, err)
@@ -49,9 +45,6 @@ func TestPackTimezone_PlannedFailsClosed(t *testing.T) {
 	if _, err := PackShopClosedGrace(p); err != ErrMarketPackNotShipped {
 		t.Fatalf("grace err=%v", err)
 	}
-	if _, err := PackWeatherScope(p); err != ErrMarketPackNotShipped {
-		t.Fatalf("weather err=%v", err)
-	}
 }
 
 func TestTimezoneFromContext_PlannedClaim(t *testing.T) {
@@ -61,9 +54,6 @@ func TestTimezoneFromContext_PlannedClaim(t *testing.T) {
 	}
 	if _, err := ShopClosedGraceFromContext(ctx, "sup-1"); err != ErrMarketPackNotShipped {
 		t.Fatalf("grace err=%v", err)
-	}
-	if _, err := WeatherScopeFromContext(ctx, "sup-1"); err != ErrMarketPackNotShipped {
-		t.Fatalf("weather err=%v", err)
 	}
 }
 

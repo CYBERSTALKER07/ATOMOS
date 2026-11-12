@@ -189,7 +189,8 @@ func (s *Service) computeScenario(ctx context.Context, supplierID string, in Sce
 }
 
 func (s *Service) storeScenarioCache(cacheKey, redisKey string, result ScenarioResult) {
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
 	s.scenarioCache.Store(cacheKey, cachedScenario{result: result, expiresAt: s.Now().Add(15 * time.Minute)})
 	if s.Cache != nil {
 		if raw, err := json.Marshal(result); err == nil {
@@ -202,7 +203,7 @@ func (s *Service) scenarioSignals(ctx context.Context, supplierID string, horizo
 	if horizonDays <= 0 {
 		horizonDays = 7
 	}
-	iter := s.Spanner.Single().Query(ctx, spanner.Statement{
+	iter := s.Spanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL:    `SELECT COUNT(*) FROM Warehouses WHERE SupplierId = @sid AND IsActive = true`,
 		Params: map[string]any{"sid": supplierID},
 	})
@@ -213,7 +214,7 @@ func (s *Service) scenarioSignals(ctx context.Context, supplierID string, horizo
 	}
 	_ = row.Columns(&warehouseCount)
 
-	iter2 := s.Spanner.Single().Query(ctx, spanner.Statement{
+	iter2 := s.Spanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL: `SELECT COUNT(*) FROM Orders WHERE SupplierId = @sid
 		      AND Status IN ('PENDING','LOADED','IN_TRANSIT')`,
 		Params: map[string]any{"sid": supplierID},
@@ -225,7 +226,7 @@ func (s *Service) scenarioSignals(ctx context.Context, supplierID string, horizo
 	}
 	_ = row2.Columns(&orderVolume)
 
-	iter3 := s.Spanner.Single().Query(ctx, spanner.Statement{
+	iter3 := s.Spanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL: `SELECT COUNT(*) FROM ReplenishmentInsights
 		      WHERE SupplierId = @sid AND UrgencyLevel = 'CRITICAL' AND Status = 'PENDING'`,
 		Params: map[string]any{"sid": supplierID},
@@ -237,7 +238,7 @@ func (s *Service) scenarioSignals(ctx context.Context, supplierID string, horizo
 	}
 	_ = row3.Columns(&criticalSKUs)
 
-	iter4 := s.Spanner.Single().Query(ctx, spanner.Statement{
+	iter4 := s.Spanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL: `SELECT COUNT(*) FROM OrderDeliveryProofs
 		      WHERE SupplierId = @sid
 		        AND CapturedAt >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL @days DAY)`,
@@ -263,7 +264,7 @@ func (s *Service) projectStockoutsWithQty(ctx context.Context, supplierID string
 	if s == nil || s.Spanner == nil || critical <= 0 {
 		return out, qty
 	}
-	iter := s.Spanner.Single().Query(ctx, spanner.Statement{
+	iter := s.Spanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL: `SELECT ProductId, COALESCE(MAX(SuggestedQuantity), 1)
 		      FROM ReplenishmentInsights
 		      WHERE SupplierId = @sid AND UrgencyLevel = 'CRITICAL' AND Status = 'PENDING'
@@ -322,7 +323,7 @@ func (s *Service) GetSAndOP(ctx context.Context, supplierID string) (SAndOPSnaps
 		return out, errors.New("planning unavailable")
 	}
 	var factoryCount int64
-	iter := s.Spanner.Single().Query(ctx, spanner.Statement{
+	iter := s.Spanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL:    `SELECT COUNT(*) FROM Factories WHERE SupplierId = @sid AND IsActive = true`,
 		Params: map[string]any{"sid": supplierID},
 	})
@@ -331,7 +332,7 @@ func (s *Service) GetSAndOP(ctx context.Context, supplierID string) (SAndOPSnaps
 		_ = row.Columns(&factoryCount)
 	}
 	var whCount int64
-	iter2 := s.Spanner.Single().Query(ctx, spanner.Statement{
+	iter2 := s.Spanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL:    `SELECT COUNT(*) FROM Warehouses WHERE SupplierId = @sid AND IsActive = true`,
 		Params: map[string]any{"sid": supplierID},
 	})
@@ -347,7 +348,7 @@ func (s *Service) GetSAndOP(ctx context.Context, supplierID string) (SAndOPSnaps
 	linesPerFactory := envInt64("SOP_LINES_PER_FACTORY", 1)
 	out.ProductionLineCount = factoryCount * linesPerFactory
 	var columnSum int64
-	iterCap := s.Spanner.Single().Query(ctx, spanner.Statement{
+	iterCap := s.Spanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL:    `SELECT COALESCE(SUM(DailyOutputCapacity), 0) FROM Factories WHERE SupplierId = @sid AND IsActive = true`,
 		Params: map[string]any{"sid": supplierID},
 	})
@@ -360,7 +361,7 @@ func (s *Service) GetSAndOP(ctx context.Context, supplierID string) (SAndOPSnaps
 	out.WarehouseOutboundCap = whCount * whOutDaily * int64(out.HorizonDays)
 
 	var projected int64
-	iter3 := s.Spanner.Single().Query(ctx, spanner.Statement{
+	iter3 := s.Spanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL: `SELECT COALESCE(SUM(ProjectedUnits), 0) FROM WarehouseSupplyRequests
 		      WHERE SupplierId = @sid AND State IN ('OPEN','SUBMITTED','IN_PROGRESS','PENDING')`,
 		Params: map[string]any{"sid": supplierID},
@@ -455,9 +456,8 @@ func (s *Service) GetKnowledgeGraph(ctx context.Context, supplierID string) (Kno
 	}
 	kg.Nodes = append(kg.Nodes, KGNode{ID: supplierID, Type: "supplier"})
 
-	addNodes := func(nodeType, table, idCol, nameCol string) error {
-		sql := fmt.Sprintf(`SELECT %s, COALESCE(%s, %s) FROM %s WHERE SupplierId = @sid`, idCol, nameCol, idCol, table)
-		iter := s.Spanner.Single().Query(ctx, spanner.Statement{SQL: sql, Params: map[string]any{"sid": supplierID}})
+	addNodes := func(nodeType, sql string) error {
+		iter := s.Spanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{SQL: sql, Params: map[string]any{"sid": supplierID}})
 		defer iter.Stop()
 		for {
 			row, err := iter.Next()
@@ -476,10 +476,10 @@ func (s *Service) GetKnowledgeGraph(ctx context.Context, supplierID string) (Kno
 		}
 		return nil
 	}
-	_ = addNodes("factory", "Factories", "FactoryId", "Name")
-	_ = addNodes("warehouse", "Warehouses", "WarehouseId", "Name")
-	_ = addNodes("driver", "Drivers", "DriverId", "Name")
-	_ = addNodes("vehicle", "Vehicles", "VehicleId", "Label")
+	_ = addNodes("factory", `SELECT FactoryId, COALESCE(Name, FactoryId) FROM Factories WHERE SupplierId = @sid`)
+	_ = addNodes("warehouse", `SELECT WarehouseId, COALESCE(Name, WarehouseId) FROM Warehouses WHERE SupplierId = @sid`)
+	_ = addNodes("driver", `SELECT DriverId, COALESCE(Name, DriverId) FROM Drivers WHERE SupplierId = @sid`)
+	_ = addNodes("vehicle", `SELECT VehicleId, COALESCE(Label, VehicleId) FROM Vehicles WHERE SupplierId = @sid`)
 	_ = s.addDriverVehicleEdges(ctx, supplierID, &kg)
 	if err := s.addRetailerNodes(ctx, supplierID, &kg); err != nil {
 		return kg, err
@@ -488,7 +488,7 @@ func (s *Service) GetKnowledgeGraph(ctx context.Context, supplierID string) (Kno
 		return kg, err
 	}
 
-	iter := s.Spanner.Single().Query(ctx, spanner.Statement{
+	iter := s.Spanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL:    `SELECT DISTINCT ProductId FROM Products WHERE SupplierId = @sid AND IsActive = true LIMIT 200`,
 		Params: map[string]any{"sid": supplierID},
 	})
@@ -511,7 +511,7 @@ func (s *Service) GetKnowledgeGraph(ctx context.Context, supplierID string) (Kno
 }
 
 func (s *Service) addDriverVehicleEdges(ctx context.Context, supplierID string, kg *KnowledgeGraph) error {
-	iter := s.Spanner.Single().Query(ctx, spanner.Statement{
+	iter := s.Spanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL: `SELECT DriverId, VehicleId FROM Drivers
 		      WHERE SupplierId = @sid AND IsActive = true AND VehicleId IS NOT NULL
 		      LIMIT 200`,
@@ -538,7 +538,7 @@ func (s *Service) addDriverVehicleEdges(ctx context.Context, supplierID string, 
 }
 
 func (s *Service) addRetailerNodes(ctx context.Context, supplierID string, kg *KnowledgeGraph) error {
-	iter := s.Spanner.Single().Query(ctx, spanner.Statement{
+	iter := s.Spanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL: `SELECT DISTINCT r.RetailerId, COALESCE(r.Name, r.RetailerId)
 		      FROM Orders o
 		      JOIN Retailers r ON o.RetailerId = r.RetailerId
@@ -565,7 +565,7 @@ func (s *Service) addRetailerNodes(ctx context.Context, supplierID string, kg *K
 }
 
 func (s *Service) addActiveOrderNodes(ctx context.Context, supplierID string, kg *KnowledgeGraph) error {
-	iter := s.Spanner.Single().Query(ctx, spanner.Statement{
+	iter := s.Spanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL: `SELECT OrderId, RetailerId, COALESCE(WarehouseId, ''), COALESCE(DriverId, ''), COALESCE(VehicleId, ''), Status
 		      FROM Orders
 		      WHERE SupplierId = @sid
@@ -638,7 +638,7 @@ func (s *Service) ReadDemandBaseline(ctx context.Context, supplierID, warehouseI
 	}
 	end := s.Now().UTC().Truncate(24 * time.Hour)
 	start := end.AddDate(0, 0, -forecastDays+1)
-	iter := s.Spanner.Single().Query(ctx, spanner.Statement{
+	iter := s.Spanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL: `SELECT ProductId, SUM(BaselineQty) FROM DemandForecastBaseline
 		      WHERE SupplierId = @sid AND WarehouseId = @wh
 		        AND ForecastDate BETWEEN @start AND @end
@@ -748,7 +748,7 @@ func (s *Service) ListActiveZoneOverrides(ctx context.Context, supplierID string
 	if s == nil || s.Spanner == nil {
 		return nil, errors.New("planning unavailable")
 	}
-	iter := s.Spanner.Single().Query(ctx, spanner.Statement{
+	iter := s.Spanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL: `SELECT OverrideId, SupplierId, COALESCE(WarehouseId,''), Action, PolygonGeoJSON, TtlExpiresAt, IsActive
 		      FROM ControlTowerZoneOverrides
 		      WHERE SupplierId = @sid AND IsActive = true AND TtlExpiresAt > CURRENT_TIMESTAMP()

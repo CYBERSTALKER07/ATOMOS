@@ -19,8 +19,8 @@ type OfflinePoDRequest struct {
 	OrderID          string   `json:"order_id"`
 	DriverID         string   `json:"driver_id"`
 	RetailerID       string   `json:"retailer_id"`
-	SignedChallenge  string   `json:"signed_challenge"`  // Driver challenge signature/token
-	SignedResponse   string   `json:"signed_response"`   // Retailer confirmation signature/token
+	SignedChallenge  string   `json:"signed_challenge"` // Driver challenge signature/token
+	SignedResponse   string   `json:"signed_response"`  // Retailer confirmation signature/token
 	AmountMinor      int64    `json:"amount_minor"`
 	OfflineTimestamp string   `json:"offline_timestamp"` // ISO8601 when physical handoff occurred
 	Latitude         *float64 `json:"latitude,omitempty"`

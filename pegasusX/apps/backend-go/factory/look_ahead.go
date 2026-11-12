@@ -6,8 +6,8 @@ import (
 )
 
 const (
-	LookAheadWindowDays    = 7
-	SafetyStockBufferPct   = 0.15
+	LookAheadWindowDays     = 7
+	SafetyStockBufferPct    = 0.15
 	FactoryClassCCapacityVU = 400.0
 )
 

@@ -60,7 +60,7 @@ func runDeviceTokenE2E(ctx context.Context, client *http.Client, base, actorToke
 
 func runRetailerReceivingWindowE2E(ctx context.Context, client *http.Client, base, retailerToken string) error {
 	updateBody := []byte(`{"receiving_window_open":"10:30","receiving_window_close":"19:45"}`)
-	status, body, _, err := clientDo(ctx, client, http.MethodPut, base+"/v1/retailer/profile", updateBody, retailerToken, "")
+	status, body, _, err := clientDo(ctx, client, http.MethodPut, base+"/v1/retailer/profile", updateBody, retailerToken, fmt.Sprintf("ssmr-retailer-receiving-window-%d", time.Now().UnixNano()))
 	if err != nil {
 		return err
 	}

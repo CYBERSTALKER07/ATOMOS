@@ -54,8 +54,8 @@ func main() {
 		os.Exit(1)
 	}
 	if len(statements) == 0 {
-		slog.Error("no ddl statements found", "path", ddlPath)
-		os.Exit(1)
+		slog.Info("no ddl statements found in file; skipping", "path", ddlPath)
+		return
 	}
 
 	admin, err := database.NewDatabaseAdminClient(ctx, spannerClientOptions(cfg)...)

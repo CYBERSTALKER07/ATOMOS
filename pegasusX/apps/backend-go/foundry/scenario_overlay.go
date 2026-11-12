@@ -175,14 +175,14 @@ func (e *Engine) ResolveObjectState(
 
 	if baseObj == nil {
 		return &OntologyObject{
-			CellID:      strings.TrimSpace(cellID),
-			ObjectType:  strings.TrimSpace(objectType),
-			ObjectID:    strings.TrimSpace(objectID),
-			SupplierID:  patch.SupplierID,
-			Version:     1,
-			Properties:  cloneMap(patch.PatchProperties),
-			ValidFrom:   patch.UpdatedAt,
-			UpdatedAt:   patch.UpdatedAt,
+			CellID:     strings.TrimSpace(cellID),
+			ObjectType: strings.TrimSpace(objectType),
+			ObjectID:   strings.TrimSpace(objectID),
+			SupplierID: patch.SupplierID,
+			Version:    1,
+			Properties: cloneMap(patch.PatchProperties),
+			ValidFrom:  patch.UpdatedAt,
+			UpdatedAt:  patch.UpdatedAt,
 		}, nil
 	}
 

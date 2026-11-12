@@ -446,21 +446,11 @@ func (s *Service) shiftsConfig(ctx context.Context, retailerID string) shiftsCon
 	if v, ok := raw["require_shift_to_open_register"].(bool); ok {
 		cfg.requireShiftToOpenRegister = v
 	}
-	if v, ok := raw["max_shift_hours"].(float64); ok && v > 0 {
-		cfg.maxShiftHours = int(v)
-	}
-	if v, ok := raw["variance_alert_minor"].(float64); ok && v >= 0 {
-		cfg.varianceAlertMinor = int64(v)
-	}
-	// JSON numbers sometimes int
-	if v, ok := raw["max_shift_hours"].(int); ok && v > 0 {
+	if v, ok := packConfigInt(raw["max_shift_hours"]); ok && v > 0 {
 		cfg.maxShiftHours = v
 	}
-	if v, ok := raw["variance_alert_minor"].(int64); ok {
+	if v, ok := packConfigInt64(raw["variance_alert_minor"]); ok && v >= 0 {
 		cfg.varianceAlertMinor = v
-	}
-	if v, ok := raw["variance_alert_minor"].(int); ok {
-		cfg.varianceAlertMinor = int64(v)
 	}
 	return cfg
 }
@@ -676,7 +666,7 @@ func (s *Service) listTimeEntries(ctx context.Context, retailerID, userID string
 	}
 	sql += ` ORDER BY ClockInAt DESC LIMIT @lim`
 	params["lim"] = int64(limit)
-	iter := s.spannerClient.Single().Query(ctx, spanner.Statement{SQL: sql, Params: params})
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, spanner.Statement{SQL: sql, Params: params})
 	defer iter.Stop()
 	var out []TimeEntryDTO
 	for {
@@ -855,7 +845,7 @@ func (s *Service) listShifts(ctx context.Context, retailerID, locationID string,
 	}
 	sql += ` ORDER BY OpenedAt DESC LIMIT @lim`
 	params["lim"] = int64(limit)
-	iter := s.spannerClient.Single().Query(ctx, spanner.Statement{SQL: sql, Params: params})
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, spanner.Statement{SQL: sql, Params: params})
 	defer iter.Stop()
 	var out []ShiftDTO
 	for {

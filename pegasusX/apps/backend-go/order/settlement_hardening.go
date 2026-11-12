@@ -132,17 +132,37 @@ func sumAmountMinorRows(iter *spanner.RowIterator) (int64, error) {
 	return total, nil
 }
 
-// getExceptionsTotalMinor sums all settlement exceptions for the order.
+// coveringExceptionsSQL selects only settlement exceptions that account for an
+// order-level shortfall (an acknowledged receivable recorded at settlement time).
+// Excluded on purpose:
+//   - CARD_CAPTURE_FAILED: a retryable capture failure — the FAILED card leg is
+//     re-captured by settleOutstandingCardPayment, so counting it would let an
+//     unpaid order pass AssertMoneyCoversDelivery and double-count on success.
+//   - CASH_DISCREPANCY: a route-level cash-recon variance attached to one
+//     arbitrary order on the route; it is not money owed on that order.
+const coveringExceptionsSQL = `SELECT AmountMinor FROM OrderSettlementExceptions
+	WHERE OrderId = @order_id AND Type IN UNNEST(@covering_types)`
+
+// coveringExceptionTypes are the settlement exception types that represent an
+// acknowledged order-level shortfall.
+var coveringExceptionTypes = []string{"CASH_SHORTFALL", "FORCE_COMPLETE_SHORTFALL"}
+
+func coveringExceptionsStatement(orderID string) spanner.Statement {
+	return spanner.Statement{
+		SQL: coveringExceptionsSQL,
+		Params: map[string]interface{}{
+			"order_id":       orderID,
+			"covering_types": coveringExceptionTypes,
+		},
+	}
+}
+
+// getExceptionsTotalMinor sums the shortfall-covering settlement exceptions for the order.
 func (s *Service) getExceptionsTotalMinor(ctx context.Context, orderID string) (int64, error) {
 	if s.spannerClient == nil {
 		return 0, nil
 	}
-	stmt := spanner.Statement{
-		SQL: `SELECT AmountMinor FROM OrderSettlementExceptions WHERE OrderId = @order_id`,
-		Params: map[string]interface{}{
-			"order_id": orderID,
-		},
-	}
+	stmt := coveringExceptionsStatement(orderID)
 	total, err := sumAmountMinorRows(s.spannerClient.Single().Query(ctx, stmt))
 	if err != nil {
 		return 0, fmt.Errorf("query exceptions: %w", err)
@@ -151,12 +171,7 @@ func (s *Service) getExceptionsTotalMinor(ctx context.Context, orderID string) (
 }
 
 func (s *Service) getExceptionsTotalMinorTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, orderID string) (int64, error) {
-	stmt := spanner.Statement{
-		SQL: `SELECT AmountMinor FROM OrderSettlementExceptions WHERE OrderId = @order_id`,
-		Params: map[string]interface{}{
-			"order_id": orderID,
-		},
-	}
+	stmt := coveringExceptionsStatement(orderID)
 	total, err := sumAmountMinorRows(txn.Query(ctx, stmt))
 	if err != nil {
 		return 0, fmt.Errorf("query exceptions: %w", err)
@@ -164,18 +179,36 @@ func (s *Service) getExceptionsTotalMinorTxn(ctx context.Context, txn *spanner.R
 	return total, nil
 }
 
+// deliveredGrossFromOrder returns the money owed for what was actually handed
+// over: delivered units at their unit price, plus the delivery fee when at
+// least one unit was delivered. Lines without an offload outcome are billed at
+// the ordered quantity; lines offloaded as NONE / RETURNED bill nothing.
 func deliveredGrossFromOrder(orderRecord Order) int64 {
 	var gross int64
 	for _, item := range orderRecord.LineItems {
-		if item.OffloadStatus == "PARTIAL" || item.DeliveredQty > 0 {
-			gross += item.DeliveredQty * item.UnitPrice
-		} else if item.OffloadStatus == "RETURNED" || item.OffloadStatus == "FULL_RETURN" {
-			// Delivered 0
-		} else {
-			gross += item.Quantity * item.UnitPrice
-		}
+		gross += deliveredLineQty(item) * item.UnitPrice
+	}
+	if gross > 0 && orderRecord.DeliveryFeeMinor > 0 {
+		gross += orderRecord.DeliveryFeeMinor
 	}
 	return gross
+}
+
+// deliveredLineQty resolves the billable delivered quantity for one line.
+func deliveredLineQty(item LineItem) int64 {
+	switch item.OffloadStatus {
+	case OffloadStatusPartial, OffloadStatusFull:
+		if item.DeliveredQty < 0 {
+			return 0
+		}
+		return item.DeliveredQty
+	case OffloadStatusNone, OffloadStatusReturned, "FULL_RETURN":
+		return 0
+	}
+	if item.DeliveredQty > 0 {
+		return item.DeliveredQty
+	}
+	return item.Quantity
 }
 
 // getDeliveredGrossMinor calculates the delivered gross using only lines with DeliveredQty > 0
@@ -237,7 +270,7 @@ func (s *Service) RecordPaymentLeg(ctx context.Context, txn *spanner.ReadWriteTr
 		if s.commissionResolver == nil {
 			return fmt.Errorf("commission resolver not configured")
 		}
-		
+
 		// Fetch order for SupplierID and Currency
 		row, err := txn.ReadRow(ctx, "Orders", spanner.Key{leg.OrderID}, []string{"SupplierId", "Currency"})
 		if err != nil {
@@ -253,7 +286,6 @@ func (s *Service) RecordPaymentLeg(ctx context.Context, txn *spanner.ReadWriteTr
 			amount = -amount
 		}
 
-		
 		sliceTime := leg.CapturedAt.Time
 		if !leg.CapturedAt.Valid || sliceTime.IsZero() {
 			if !leg.CreatedAt.IsZero() {

@@ -180,7 +180,7 @@ func (s *Service) loadFinancialsPlatformFee(ctx context.Context, warehouseID, pe
 		return 0, false
 	}
 	now := financialsPeriodStart(period, s.now().UTC())
-	iter := s.spannerClient.Single().Query(ctx, spanner.Statement{
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL: `SELECT FeeScheduleId, PerOrderMinor, GmvBps, MonthlySubscriptionMinor
 		      FROM BillingFeeSchedules
 		      WHERE (SupplierId = @sid OR SupplierId = '')

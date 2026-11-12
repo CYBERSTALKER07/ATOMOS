@@ -15,7 +15,7 @@ func (s *Service) listFinanceExceptionRows(ctx context.Context, supplierID strin
 	}
 	rows := make([]SupplierExceptionRow, 0)
 
-	fiscalIter := s.portalSpanner.Single().Query(ctx, spanner.Statement{
+	fiscalIter := s.portalSpanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL: `
 			SELECT OrderId, RetailerId, Status, UpdatedAt
 			FROM Orders
@@ -48,7 +48,7 @@ func (s *Service) listFinanceExceptionRows(ctx context.Context, supplierID strin
 	}
 	fiscalIter.Stop()
 
-	buyerIter := s.portalSpanner.Single().Query(ctx, spanner.Statement{
+	buyerIter := s.portalSpanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL: `
 			SELECT OrderId, RetailerId, Status, UpdatedAt
 			FROM Orders
@@ -81,7 +81,7 @@ func (s *Service) listFinanceExceptionRows(ctx context.Context, supplierID strin
 	}
 	buyerIter.Stop()
 
-	creditIter := s.portalSpanner.Single().Query(ctx, spanner.Statement{
+	creditIter := s.portalSpanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL: `
 			SELECT RetailerId, Status, UpdatedAt
 			FROM RetailerCreditProfiles
@@ -114,7 +114,7 @@ func (s *Service) listFinanceExceptionRows(ctx context.Context, supplierID strin
 	}
 	creditIter.Stop()
 
-	cashIter := s.portalSpanner.Single().Query(ctx, spanner.Statement{
+	cashIter := s.portalSpanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL: `
 			SELECT cr.ReconciliationId, cr.DriverId, cr.Status, cr.CreatedAt
 			FROM CashReconciliations cr
@@ -149,7 +149,7 @@ func (s *Service) listFinanceExceptionRows(ctx context.Context, supplierID strin
 	}
 	cashIter.Stop()
 
-	cnIter := s.portalSpanner.Single().Query(ctx, spanner.Statement{
+	cnIter := s.portalSpanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL: `
 			SELECT cn.CreditNoteId, cn.OrderId, cn.Status, cn.CreatedAt
 			FROM CreditNotes cn

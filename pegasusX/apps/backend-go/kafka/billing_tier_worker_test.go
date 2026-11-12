@@ -59,6 +59,54 @@ func TestBillingTierWorker_RejectsMalformedJSON(t *testing.T) {
 	}
 }
 
+func TestBillingTierWorker_AmountResolution_Offline(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name      string
+		payload   string
+		wantMinor int64
+	}{
+		{
+			name:      "decimal_19_99",
+			payload:   `{"type":"ORDER_FINALIZED","order_id":"ord-1","supplier_id":"sup-1","amount":19.99}`,
+			wantMinor: 1999,
+		},
+		{
+			name:      "decimal_0_29",
+			payload:   `{"type":"ORDER_FINALIZED","order_id":"ord-2","supplier_id":"sup-1","amount":0.29}`,
+			wantMinor: 29,
+		},
+		{
+			name:      "decimal_450_50",
+			payload:   `{"type":"ORDER_FINALIZED","order_id":"ord-3","supplier_id":"sup-1","amount":450.50}`,
+			wantMinor: 45050,
+		},
+		{
+			name:      "nested_amount_3200000",
+			payload:   `{"type":"ORDER_FINALIZED","order_id":"ord-4","supplier_id":"sup-1","amount":{"amount":3200000,"currency":"UZS"}}`,
+			wantMinor: 3200000,
+		},
+		{
+			name:      "nested_total_amount_3200000",
+			payload:   `{"type":"ORDER_FINALIZED","order_id":"ord-5","supplier_id":"sup-1","total":{"amount":3200000,"currency":"UZS"}}`,
+			wantMinor: 3200000,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, gotMinor, err := decodeOrderFinalizedBillingEvent([]byte(tc.payload))
+			if err != nil {
+				t.Fatalf("decodeOrderFinalizedBillingEvent error: %v", err)
+			}
+			if gotMinor != tc.wantMinor {
+				t.Fatalf("gotMinor = %d, want %d", gotMinor, tc.wantMinor)
+			}
+		})
+	}
+}
+
 func newSpannerTestClient(t *testing.T, ctx context.Context) *spanner.Client {
 	t.Helper()
 

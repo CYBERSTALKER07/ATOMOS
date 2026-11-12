@@ -72,6 +72,7 @@ type OrderPatch struct {
 	DriverID        string
 	VehicleID       string
 	RouteID         string
+	DeliveryToken   string
 	UpdatedAt       time.Time
 	ExpectedVersion int64 // optional optimistic gate; 0 skips check
 	Version         int64 // populated by resolveOrderPatchVersions before write
@@ -240,7 +241,7 @@ func (s *Store) ListSupplierManifests(ctx context.Context, supplierID string) ([
 			FROM SupplierTruckManifests WHERE SupplierId = @supplierId ORDER BY CreatedAt DESC`,
 		Params: map[string]any{"supplierId": supplierID},
 	}
-	iter := s.client.Single().Query(ctx, stmt)
+	iter := s.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 
 	var rows []SupplierTruckRow
@@ -532,7 +533,7 @@ func (s *Store) ListSupplierManifestOrders(ctx context.Context, manifestID strin
 			FROM ManifestOrders WHERE ManifestId = @manifestId ORDER BY SequenceIndex ASC`,
 		Params: map[string]any{"manifestId": manifestID},
 	}
-	iter := s.client.Single().Query(ctx, stmt)
+	iter := s.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 
 	var rows []SupplierManifestOrderRow
@@ -565,7 +566,7 @@ func (s *Store) ListFactoryTransfers(ctx context.Context, factoryID string) ([]F
 			FROM FactoryInternalTransfers WHERE FactoryId = @factoryId ORDER BY UpdatedAt DESC`,
 		Params: map[string]any{"factoryId": factoryID},
 	}
-	iter := s.client.Single().Query(ctx, stmt)
+	iter := s.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 
 	var rows []FactoryTransferRow
@@ -599,7 +600,7 @@ func (s *Store) ListFactoryManifests(ctx context.Context, factoryID string) ([]F
 			FROM FactoryTruckManifests WHERE FactoryId = @factoryId ORDER BY CreatedAt DESC`,
 		Params: map[string]any{"factoryId": factoryID},
 	}
-	iter := s.client.Single().Query(ctx, stmt)
+	iter := s.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 
 	var rows []FactoryTruckRow
@@ -805,6 +806,9 @@ func supplierMutations(batch *SupplierWriteBatch) ([]*spanner.Mutation, error) {
 		}
 		if p.RouteID != "" {
 			row["RouteId"] = p.RouteID
+		}
+		if p.DeliveryToken != "" {
+			row["DeliveryToken"] = p.DeliveryToken
 		}
 		if p.Version > 0 {
 			row["Version"] = p.Version

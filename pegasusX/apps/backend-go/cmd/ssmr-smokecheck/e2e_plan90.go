@@ -85,9 +85,9 @@ func runPlanningIngestE2E(ctx context.Context, client *http.Client, base, cookie
 
 func runPromoSimulateE2E(ctx context.Context, client *http.Client, base, cookie string) error {
 	reqBody, _ := json.Marshal(map[string]any{
-		"promotion_id":        "ssmr-promo-1",
-		"discount_pct":        10,
-		"expected_units":      500,
+		"promotion_id":          "ssmr-promo-1",
+		"discount_pct":          10,
+		"expected_units":        500,
 		"avg_unit_margin_minor": 1000,
 	})
 	status, body, _, err := clientPost(ctx, client, base+"/v1/supplier/planning/promotions/simulate", reqBody, cookie, fmt.Sprintf("ssmr-promo-sim-%d", time.Now().UnixNano()))
@@ -152,9 +152,9 @@ func runControlTowerOverrideE2E(ctx context.Context, client *http.Client, base, 
 		},
 	}
 	createBody, _ := json.Marshal(map[string]any{
-		"action":           "REROUTE",
-		"ttl_seconds":      600,
-		"polygon_geojson":  polygon,
+		"action":          "REROUTE",
+		"ttl_seconds":     600,
+		"polygon_geojson": polygon,
 	})
 	status, respBody, _, err := clientPost(ctx, client, base+"/v1/supplier/control-tower/zone-overrides", createBody, cookie, fmt.Sprintf("ssmr-ct-override-%d", time.Now().UnixNano()))
 	if err != nil {

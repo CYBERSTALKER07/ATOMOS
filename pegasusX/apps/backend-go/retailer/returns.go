@@ -35,7 +35,7 @@ func (r *SpannerRepository) ListReturnRequestsByRetailer(ctx context.Context, re
 		      WHERE RetailerId = @retId ORDER BY CreatedAt DESC`,
 		Params: map[string]interface{}{"retId": retailerID},
 	}
-	iter := r.client.Single().Query(ctx, stmt)
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 
 	var reqs []ReturnRequest

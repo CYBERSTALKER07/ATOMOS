@@ -143,7 +143,7 @@ func (s *Service) listShadowProposals(ctx context.Context, orgID string, limit i
 		}
 		return out, nil
 	}
-	iter := s.spannerClient.Single().Query(ctx, spanner.Statement{
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, spanner.Statement{
 		SQL: `SELECT ProposalId, RetailerId, Sku, COALESCE(SupplierId, ''), ProposedQty,
 			COALESCE(IP, 0), COALESCE(ReorderPoint, 0), COALESCE(OrderUpTo, 0),
 			COALESCE(Confidence, 0), COALESCE(Reason, ''), CAST(BucketDate AS STRING), Status,
@@ -218,7 +218,7 @@ func (s *Service) computeShadowAcceptance(ctx context.Context, orgID string, win
 		}
 		s.mu.RUnlock()
 	} else {
-		iter := s.spannerClient.Single().Query(ctx, spanner.Statement{
+		iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, spanner.Statement{
 			SQL: `SELECT Sku, ProposedQty, BucketDate
 				FROM RetailerAutoOrderShadowProposals
 				WHERE RetailerId = @rid AND BucketDate >= @from`,
@@ -255,7 +255,7 @@ func (s *Service) computeShadowAcceptance(ctx context.Context, orgID string, win
 	}
 	var lines []orderLine
 	if s.spannerClient != nil {
-		iter := s.spannerClient.Single().Query(ctx, spanner.Statement{
+		iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, spanner.Statement{
 			SQL: `SELECT LineItemsJson, CAST(DATE(CreatedAt) AS STRING)
 				FROM Orders
 				WHERE RetailerId = @rid

@@ -268,12 +268,11 @@ func TestFleetDVIRRedTagAndMidRouteBreakdownRescue(t *testing.T) {
 	// 1. Vehicle 1 fails brakes on Pre-Trip DVIR -> Red-Tag Quarantine!
 	eng.PairDriverWithVehicle("veh_broken_1", "drv_1")
 	dvirFail, err := eng.SubmitDVIRInspection(ctx, foundry.FleetDVIRInspection{
-		CellID:            "cell-uz",
-		SupplierID:        "sup_1",
-		VehicleID:         "veh_broken_1",
-		DriverID:          "drv_1",
-		RequiresColdChain: true,
-		OdometerKm:        29900,
+		CellID:     "cell-uz",
+		SupplierID: "sup_1",
+		VehicleID:  "veh_broken_1",
+		DriverID:   "drv_1",
+		OdometerKm: 29900,
 		Checklist: foundry.DVIRChecklist8Point{
 			SteeringAndHornOK:             true,
 			ServiceAndParkingBrakesOK:     false, // Brake defect!
@@ -282,7 +281,6 @@ func TestFleetDVIRRedTagAndMidRouteBreakdownRescue(t *testing.T) {
 			WipersAndFluidsOK:             true,
 			EmergencyKitAndExtinguisherOK: true,
 			CargoBoxSanitationOK:          true,
-			ReeferTempCalibratedOK:        true,
 		},
 	})
 	if err != nil {
@@ -295,14 +293,13 @@ func TestFleetDVIRRedTagAndMidRouteBreakdownRescue(t *testing.T) {
 		t.Fatalf("expected ErrVehicleRedTagged for red-tagged vehicle, got %v", err)
 	}
 
-	// 2. Rescue Vehicle 2 passes all 8 DVIR points.
+	// 2. Rescue Vehicle 2 passes all DVIR points.
 	_, err = eng.SubmitDVIRInspection(ctx, foundry.FleetDVIRInspection{
-		CellID:            "cell-uz",
-		SupplierID:        "sup_1",
-		VehicleID:         "veh_rescue_2",
-		DriverID:          "drv_2",
-		RequiresColdChain: true,
-		OdometerKm:        15000,
+		CellID:     "cell-uz",
+		SupplierID: "sup_1",
+		VehicleID:  "veh_rescue_2",
+		DriverID:   "drv_2",
+		OdometerKm: 15000,
 		Checklist: foundry.DVIRChecklist8Point{
 			SteeringAndHornOK:             true,
 			ServiceAndParkingBrakesOK:     true,
@@ -311,7 +308,6 @@ func TestFleetDVIRRedTagAndMidRouteBreakdownRescue(t *testing.T) {
 			WipersAndFluidsOK:             true,
 			EmergencyKitAndExtinguisherOK: true,
 			CargoBoxSanitationOK:          true,
-			ReeferTempCalibratedOK:        true,
 		},
 	})
 	if err != nil {
@@ -319,8 +315,7 @@ func TestFleetDVIRRedTagAndMidRouteBreakdownRescue(t *testing.T) {
 	}
 
 	// 3. Execute Mid-Route Breakdown Rescue after Stop #2.
-	// Tote 3 (chilled) suffered 65m thermal excursion (> 45m limit) -> must be quarantined!
-	// Tote 4 (ambient/within limit) transfers to Rescue Driver 2.
+	// Remaining totes transfer with their cash liability. Temperature does not quarantine cargo.
 	rescueRes, err := eng.ExecuteMidRouteBreakdownRescue(ctx, foundry.MidRouteRescueRequest{
 		CellID:               "cell-uz",
 		SupplierID:           "sup_1",
@@ -344,14 +339,14 @@ func TestFleetDVIRRedTagAndMidRouteBreakdownRescue(t *testing.T) {
 	if rescueRes.OriginalDriverLiabilityMinor != 25_000_000 {
 		t.Fatalf("expected OriginalDriverLiabilityMinor=25000000, got %d", rescueRes.OriginalDriverLiabilityMinor)
 	}
-	if rescueRes.RescueDriverLiabilityMinor != 30_000_000 {
-		t.Fatalf("expected RescueDriverLiabilityMinor=30000000, got %d", rescueRes.RescueDriverLiabilityMinor)
+	if rescueRes.RescueDriverLiabilityMinor != 50_000_000 {
+		t.Fatalf("expected RescueDriverLiabilityMinor=50000000, got %d", rescueRes.RescueDriverLiabilityMinor)
 	}
-	if len(rescueRes.QuarantinedSpoiledToteIDs) != 1 || rescueRes.QuarantinedSpoiledToteIDs[0] != "tote_3_spoiled" {
-		t.Fatalf("expected tote_3_spoiled quarantined, got %v", rescueRes.QuarantinedSpoiledToteIDs)
+	if len(rescueRes.QuarantinedSpoiledToteIDs) != 0 {
+		t.Fatalf("temperature quarantine removed, got %v", rescueRes.QuarantinedSpoiledToteIDs)
 	}
-	if len(rescueRes.TransferredToteIDs) != 1 || rescueRes.TransferredToteIDs[0] != "tote_4_ok" {
-		t.Fatalf("expected tote_4_ok transferred, got %v", rescueRes.TransferredToteIDs)
+	if len(rescueRes.TransferredToteIDs) != 2 {
+		t.Fatalf("expected both remaining totes transferred, got %v", rescueRes.TransferredToteIDs)
 	}
 }
 
@@ -900,12 +895,11 @@ func TestStructuredDomainErrorsUA1UA2UA8UA11(t *testing.T) {
 
 	// UA-8: Fleet Red-Tag Gate Rejection structured error
 	_, err = eng.SubmitDVIRInspection(ctx, foundry.FleetDVIRInspection{
-		CellID:            "cell-uz",
-		SupplierID:        "sup_1",
-		VehicleID:         "veh_ua8_defect",
-		DriverID:          "drv_ua8",
-		RequiresColdChain: false,
-		OdometerKm:        10000,
+		CellID:     "cell-uz",
+		SupplierID: "sup_1",
+		VehicleID:  "veh_ua8_defect",
+		DriverID:   "drv_ua8",
+		OdometerKm: 10000,
 		Checklist: foundry.DVIRChecklist8Point{
 			SteeringAndHornOK:             true,
 			ServiceAndParkingBrakesOK:     false, // Defect!
@@ -914,7 +908,6 @@ func TestStructuredDomainErrorsUA1UA2UA8UA11(t *testing.T) {
 			WipersAndFluidsOK:             true,
 			EmergencyKitAndExtinguisherOK: true,
 			CargoBoxSanitationOK:          true,
-			ReeferTempCalibratedOK:        true,
 		},
 	})
 	if err != nil {
@@ -960,5 +953,3 @@ func TestStructuredDomainErrorsUA1UA2UA8UA11(t *testing.T) {
 		t.Fatalf("unexpected ToteTakeoverNotPermittedError: %+v", toteErr)
 	}
 }
-
-

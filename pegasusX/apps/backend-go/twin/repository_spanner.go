@@ -3,6 +3,7 @@ package twin
 import (
 	"context"
 
+	"time"
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
@@ -24,7 +25,7 @@ func (r *SpannerRepository) GetRouteTwin(ctx context.Context, routeID string) (*
 		Params: map[string]interface{}{"routeID": routeID},
 	}
 
-	iter := r.client.Single().Query(ctx, stmt)
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	row, err := iter.Next()
 	if err == iterator.Done {
@@ -44,7 +45,7 @@ func (r *SpannerRepository) GetRouteTwin(ctx context.Context, routeID string) (*
 		Params: map[string]interface{}{"routeID": routeID},
 	}
 	var stops []StopTwin
-	stopsIter := r.client.Single().Query(ctx, stopsStmt)
+	stopsIter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stopsStmt)
 	defer stopsIter.Stop()
 	err = stopsIter.Do(func(row *spanner.Row) error {
 		var st StopTwin
@@ -86,7 +87,7 @@ func (r *SpannerRepository) ListActiveRouteTwins(ctx context.Context, zoneH3 str
 	}
 
 	var activeRoutes []RouteTwin
-	iter := r.client.Single().Query(ctx, stmt)
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	err := iter.Do(func(row *spanner.Row) error {
 		var rt RouteTwin
@@ -100,40 +101,80 @@ func (r *SpannerRepository) ListActiveRouteTwins(ctx context.Context, zoneH3 str
 		return nil, err
 	}
 
-	var routes []RouteTwinView
-	for _, rt := range activeRoutes {
-		stopsStmt := spanner.Statement{
-			SQL:    `SELECT RouteID, StopID, Sequence, Status, PredictedArrival, WindowStart, WindowEnd, DeliveredGrossMinor, RemainingGrossMinor, UpdatedAt FROM StopTwins WHERE RouteID = @routeID ORDER BY Sequence ASC`,
-			Params: map[string]interface{}{"routeID": rt.RouteID},
-		}
-		var stops []StopTwin
-		stopsIter := r.client.Single().Query(ctx, stopsStmt)
-		defer stopsIter.Stop()
-		err = stopsIter.Do(func(sRow *spanner.Row) error {
-			var st StopTwin
-			if err := sRow.ToStruct(&st); err != nil {
-				return err
-			}
-			stops = append(stops, st)
-			return nil
-		})
-		if err != nil {
-			return nil, err
-		}
-
-		inv, err := r.GetVehicleInventory(ctx, rt.RouteID)
-		if err != nil {
-			return nil, err
-		}
-
-		routes = append(routes, RouteTwinView{
-			RouteTwin: rt,
-			Stops:     stops,
-			Inventory: inv,
-		})
+	if len(activeRoutes) == 0 {
+		return nil, nil
 	}
 
-	return routes, nil
+	routeIDs := make([]string, len(activeRoutes))
+	for i, rt := range activeRoutes {
+		routeIDs[i] = rt.RouteID
+	}
+
+	stopsStmt := spanner.Statement{
+		SQL:    `SELECT RouteID, StopID, Sequence, Status, PredictedArrival, WindowStart, WindowEnd, DeliveredGrossMinor, RemainingGrossMinor, UpdatedAt FROM StopTwins WHERE RouteID IN UNNEST(@routeIDs) ORDER BY RouteID ASC, Sequence ASC`,
+		Params: map[string]interface{}{"routeIDs": routeIDs},
+	}
+	var allStops []StopTwin
+	stopsIter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stopsStmt)
+	defer stopsIter.Stop()
+	if err := stopsIter.Do(func(sRow *spanner.Row) error {
+		var st StopTwin
+		if err := sRow.ToStruct(&st); err != nil {
+			return err
+		}
+		allStops = append(allStops, st)
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	invStmt := spanner.Statement{
+		SQL:    `SELECT RouteID, Sku, QtyOnVehicle, UpdatedAt FROM VehicleInventory WHERE RouteID IN UNNEST(@routeIDs)`,
+		Params: map[string]interface{}{"routeIDs": routeIDs},
+	}
+	var allInvs []VehicleInventory
+	invIter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, invStmt)
+	defer invIter.Stop()
+	if err := invIter.Do(func(invRow *spanner.Row) error {
+		var inv VehicleInventory
+		if err := invRow.ToStruct(&inv); err != nil {
+			return err
+		}
+		allInvs = append(allInvs, inv)
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	return assembleRouteTwinViews(activeRoutes, allStops, allInvs), nil
+}
+
+func assembleRouteTwinViews(activeRoutes []RouteTwin, stops []StopTwin, invs []VehicleInventory) []RouteTwinView {
+	if len(activeRoutes) == 0 {
+		return nil
+	}
+	stopsByRoute := make(map[string][]StopTwin, len(activeRoutes))
+	for _, st := range stops {
+		stopsByRoute[st.RouteID] = append(stopsByRoute[st.RouteID], st)
+	}
+	invByRoute := make(map[string][]VehicleInventory, len(activeRoutes))
+	for _, inv := range invs {
+		invByRoute[inv.RouteID] = append(invByRoute[inv.RouteID], inv)
+	}
+
+	routes := make([]RouteTwinView, 0, len(activeRoutes))
+	for _, rt := range activeRoutes {
+		routeInv := invByRoute[rt.RouteID]
+		if routeInv == nil {
+			routeInv = []VehicleInventory{}
+		}
+		routes = append(routes, RouteTwinView{
+			RouteTwin: rt,
+			Stops:     stopsByRoute[rt.RouteID],
+			Inventory: routeInv,
+		})
+	}
+	return routes
 }
 
 func (r *SpannerRepository) GetVehicleInventory(ctx context.Context, routeID string) ([]VehicleInventory, error) {
@@ -142,7 +183,7 @@ func (r *SpannerRepository) GetVehicleInventory(ctx context.Context, routeID str
 		Params: map[string]interface{}{"routeID": routeID},
 	}
 	var invs []VehicleInventory
-	iter := r.client.Single().Query(ctx, stmt)
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	err := iter.Do(func(row *spanner.Row) error {
 		var inv VehicleInventory

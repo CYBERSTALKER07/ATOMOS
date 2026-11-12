@@ -41,7 +41,7 @@ func LoadNetworkSnapshot(ctx context.Context, client *spanner.Client, supplierID
 		return snap, fmt.Errorf("snapshot unavailable")
 	}
 
-	iter := client.Single().Query(ctx, spanner.Statement{
+	iter := client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL:    `SELECT COUNT(*) FROM Warehouses WHERE SupplierId = @sid AND IsActive = true`,
 		Params: map[string]any{"sid": supplierID},
 	})
@@ -50,7 +50,7 @@ func LoadNetworkSnapshot(ctx context.Context, client *spanner.Client, supplierID
 		_ = row.Column(0, &snap.WarehouseCount)
 	}
 
-	iterInv := client.Single().Query(ctx, spanner.Statement{
+	iterInv := client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL: `SELECT ProductId, SUM(QuantityOnHand - QuantityReserved) AS Avail
 		      FROM SupplierInventoryV2 WHERE SupplierId = @sid GROUP BY ProductId LIMIT @lim`,
 		Params: map[string]any{"sid": supplierID, "lim": snapshotMaxSKUs},
@@ -74,7 +74,7 @@ func LoadNetworkSnapshot(ctx context.Context, client *spanner.Client, supplierID
 		}
 	}
 
-	iterOrd := client.Single().Query(ctx, spanner.Statement{
+	iterOrd := client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL: `SELECT LineItemsJson FROM Orders
 		      WHERE SupplierId = @sid AND Status IN ('PENDING','LOADED','IN_TRANSIT') LIMIT 2000`,
 		Params: map[string]any{"sid": supplierID},
@@ -112,7 +112,7 @@ func LoadNetworkSnapshot(ctx context.Context, client *spanner.Client, supplierID
 		}
 	}
 
-	iterRoutes := client.Single().Query(ctx, spanner.Statement{
+	iterRoutes := client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL: `SELECT COUNT(*) FROM Routes WHERE SupplierId = @sid AND Status IN ('ACTIVE','IN_PROGRESS')`,
 		Params: map[string]any{"sid": supplierID},
 	})
@@ -146,7 +146,7 @@ func loadProductUnitValues(ctx context.Context, client *spanner.Client, supplier
 	if client == nil || strings.TrimSpace(supplierID) == "" || len(skus) == 0 {
 		return out, nil
 	}
-	iter := client.Single().Query(ctx, spanner.Statement{
+	iter := client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL:    `SELECT ProductId, PriceMinor FROM Products WHERE SupplierId = @sid AND IsActive = true`,
 		Params: map[string]any{"sid": supplierID},
 	})

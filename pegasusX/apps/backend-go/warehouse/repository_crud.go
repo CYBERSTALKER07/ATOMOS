@@ -8,6 +8,7 @@ import (
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
 	"google.golang.org/api/iterator"
 )
 
@@ -105,10 +106,16 @@ func (r *SpannerRepository) loadCoverageCities(ctx context.Context, warehouseID 
 	if r == nil || r.client == nil || strings.TrimSpace(warehouseID) == "" {
 		return nil
 	}
-	iter := r.client.Single().Query(ctx, spanner.Statement{
+	stmt := spanner.Statement{
 		SQL:    `SELECT CityName, Lat, Lng FROM WarehouseCoverageCities WHERE WarehouseId = @wid ORDER BY CityName`,
 		Params: map[string]any{"wid": warehouseID},
-	})
+	}
+	var iter *spanner.RowIterator
+	if txn := spannerutils.ReadOnlyTxnFromContext(ctx); txn != nil {
+		iter = txn.Query(ctx, stmt)
+	} else {
+		iter = r.client.Single().Query(ctx, stmt)
+	}
 	defer iter.Stop()
 	var out []order.CoverageCity
 	for {
@@ -161,7 +168,12 @@ func (r *SpannerRepository) ListWarehouses(ctx context.Context, supplierID strin
 			"offset":     offset,
 		},
 	}
-	iter := r.client.Single().Query(ctx, stmt)
+	var iter *spanner.RowIterator
+	if txn := spannerutils.ReadOnlyTxnFromContext(ctx); txn != nil {
+		iter = txn.Query(ctx, stmt)
+	} else {
+		iter = r.client.Single().Query(ctx, stmt)
+	}
 	defer iter.Stop()
 
 	var warehouses []Warehouse

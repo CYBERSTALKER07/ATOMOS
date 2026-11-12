@@ -224,6 +224,13 @@ func (s *Service) OrderOwnedBySupplier(ctx context.Context, orderID, supplierID 
 	return s.repo.OrderOwnedBySupplier(ctx, orderID, supplierID)
 }
 
+func (s *Service) Get(ctx context.Context, id string) (*CreditNote, error) {
+	if s == nil || s.repo == nil {
+		return nil, fmt.Errorf("credit note service unavailable")
+	}
+	return s.repo.GetCreditNote(ctx, id)
+}
+
 func (s *Service) ListReverseTasks(ctx context.Context, warehouseID, status string, limit int) ([]ReverseLogisticsTask, error) {
 	return s.repo.ListReverseLogisticsTasks(ctx, warehouseID, status, limit)
 }

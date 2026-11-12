@@ -2,8 +2,8 @@ package retailer
 
 import (
 	"encoding/json"
-	"net/http"
 	"github.com/go-chi/chi/v5"
+	"net/http"
 
 	"github.com/google/uuid"
 )

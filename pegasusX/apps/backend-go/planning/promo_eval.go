@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"math"
+	"math/big"
 	"strings"
+	"time"
 
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
@@ -86,11 +88,15 @@ func projectPromoPandL(in PromoSimulateInput) PromoSimulateResult {
 	if elasticity <= 0 {
 		elasticity = DefaultPromoElasticity
 	}
-	discountFactor := 1.0 - math.Min(in.DiscountPct, 90)/100.0
-	volumeLift := 1.0 + math.Min(in.DiscountPct, 50)/100.0*elasticity
+	cappedDiscountPct := math.Max(0, math.Min(in.DiscountPct, 90))
+	discountBps := int64(math.Round(cappedDiscountPct * 100))
+	volumeLift := 1.0 + math.Max(0, math.Min(in.DiscountPct, 50))/100.0*elasticity
 	projectedVolume := int64(float64(units) * volumeLift)
 	projectedRevenue := projectedVolume * margin
-	projectedMargin := int64(float64(projectedVolume) * float64(margin) * discountFactor)
+	revBig := new(big.Int).SetInt64(projectedRevenue)
+	revBig.Mul(revBig, big.NewInt(10000-discountBps))
+	revBig.Div(revBig, big.NewInt(10000))
+	projectedMargin := revBig.Int64()
 	baselineMargin := units * margin
 	marginDelta := 0.0
 	if baselineMargin > 0 {
@@ -163,7 +169,7 @@ func abs64(v int64) int64 {
 }
 
 func (s *Service) latestPromoSimulation(ctx context.Context, supplierID, promotionID string) (PromoSimulateResult, error) {
-	iter := s.Spanner.Single().Query(ctx, spanner.Statement{
+	iter := s.Spanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL: `SELECT ResultJson FROM PlanningPromoSimulations
 		      WHERE SupplierId = @sid AND PromotionId = @pid
 		      ORDER BY CreatedAt DESC LIMIT 1`,
@@ -191,7 +197,7 @@ func (s *Service) actualPromoMetrics(ctx context.Context, supplierID, promotionI
 	if promotionID == "" {
 		return 0, 0, nil
 	}
-	iter := s.Spanner.Single().Query(ctx, spanner.Statement{
+	iter := s.Spanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL: `SELECT LineItemsJson, TotalMinor
 		      FROM Orders
 		      WHERE SupplierId = @sid AND Status = 'COMPLETED'

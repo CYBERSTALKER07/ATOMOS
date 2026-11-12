@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/redis/go-redis/v9"
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/proximity"
+	"github.com/redis/go-redis/v9"
 )
 
 // SpannerWarehouseResolver resolves the nearest covering warehouse for a supplier.

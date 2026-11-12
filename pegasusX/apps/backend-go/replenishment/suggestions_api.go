@@ -11,7 +11,9 @@ import (
 
 	"cloud.google.com/go/civil"
 	"cloud.google.com/go/spanner"
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/order"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"google.golang.org/api/iterator"
 	"google.golang.org/grpc/codes"
 )
@@ -63,7 +65,7 @@ func (a *SuggestionsAPI) HandleList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if a.Spanner == nil {
-		writeJSON(w, http.StatusOK, map[string]any{"suggestions": []SuggestionRow{}})
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "suggestions_unavailable"})
 		return
 	}
 	sid := strings.TrimSpace(a.SupplierID(r))
@@ -99,8 +101,9 @@ func (a *SuggestionsAPI) HandleList(w http.ResponseWriter, r *http.Request) {
 }
 
 type dismissRequest struct {
-	RetailerID string `json:"retailer_id"`
-	Sku        string `json:"sku"`
+	RetailerID     string `json:"retailer_id"`
+	Sku            string `json:"sku"`
+	IdempotencyKey string `json:"idempotency_key,omitempty"`
 }
 
 // HandleDismiss serves POST /v1/replenishment/suggestions/dismiss.
@@ -136,13 +139,26 @@ func (a *SuggestionsAPI) HandleDismiss(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_, err := a.Spanner.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-		return txn.BufferWrite([]*spanner.Mutation{
+		if err := txn.BufferWrite([]*spanner.Mutation{
 			spanner.UpdateMap("ReorderSuggestions", map[string]any{
 				"RetailerId": req.RetailerID,
 				"Sku":        req.Sku,
 				"Status":     SuggestionStatusDismissed,
 			}),
-		})
+		}); err != nil {
+			return err
+		}
+		buf := outbox.NewSpannerTxnBuffer(txn)
+		if err := outbox.EmitJSON(ctx, buf, "ReorderSuggestion", req.RetailerID+":"+req.Sku, events.TopicMain, map[string]any{
+			"type":        "replenishment.suggestion.dismissed",
+			"supplier_id": sid,
+			"retailer_id": req.RetailerID,
+			"sku":         req.Sku,
+			"status":      SuggestionStatusDismissed,
+		}); err != nil {
+			return err
+		}
+		return buf.Flush(ctx)
 	})
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "dismiss_failed"})
@@ -152,8 +168,9 @@ func (a *SuggestionsAPI) HandleDismiss(w http.ResponseWriter, r *http.Request) {
 }
 
 type createDraftRequest struct {
-	RetailerID string `json:"retailer_id"`
-	Sku        string `json:"sku"`
+	RetailerID     string `json:"retailer_id"`
+	Sku            string `json:"sku"`
+	IdempotencyKey string `json:"idempotency_key,omitempty"`
 }
 
 type bulkCreateDraftsRequest struct {
@@ -406,13 +423,27 @@ func (a *SuggestionsAPI) createDraftFromSuggestion(ctx context.Context, supplier
 	}
 
 	_, updateErr := a.Spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-		return txn.BufferWrite([]*spanner.Mutation{
+		if err := txn.BufferWrite([]*spanner.Mutation{
 			spanner.UpdateMap("ReorderSuggestions", map[string]any{
 				"RetailerId": retailerID,
 				"Sku":        sku,
 				"Status":     SuggestionStatusConverted,
 			}),
-		})
+		}); err != nil {
+			return err
+		}
+		buf := outbox.NewSpannerTxnBuffer(txn)
+		if err := outbox.EmitJSON(ctx, buf, "ReorderSuggestion", retailerID+":"+sku, events.TopicMain, map[string]any{
+			"type":        "replenishment.suggestion.converted",
+			"supplier_id": supplierID,
+			"retailer_id": retailerID,
+			"sku":         sku,
+			"order_id":    resp.OrderID,
+			"status":      SuggestionStatusConverted,
+		}); err != nil {
+			return err
+		}
+		return buf.Flush(ctx)
 	})
 	if updateErr != nil {
 		return resp, fmt.Errorf("order_created_but_status_update_failed: %w", updateErr)

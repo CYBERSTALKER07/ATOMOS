@@ -1,40 +1,56 @@
 package optimizer
 
 import (
+	"crypto/subtle"
 	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	contract "github.com/pegasusx/pegasusx/packages/optimizer-contract"
 )
 
+const maxSolveRequestBytes = 4 << 20 // 4 MiB
+
 // Handler returns the http.HandlerFunc that mounts at contract.SolvePath.
 // It is the only optimiser-side wire surface; everything below this line is
 // pure compute. The handler enforces:
 //   - method must be POST,
-//   - X-Internal-Api-Key must equal apiKey,
-//   - request body must be valid JSON SolveRequest with V == contract.V,
+//   - X-Internal-Api-Key must equal apiKey (constant-time, fail-closed on empty apiKey),
+//   - request body is bounded to 4 MiB and must be valid JSON SolveRequest with V == contract.V,
 //   - solver runs under softTimeout; on timeout the response carries
 //     ErrCodeTimeout and the backend triggers Phase 1 fallback.
 func Handler(apiKey string, log *slog.Logger, softTimeout time.Duration) http.HandlerFunc {
+	if log == nil {
+		log = slog.Default()
+	}
 	if softTimeout <= 0 {
 		softTimeout = 2 * time.Second
 	}
+	expectedKey := strings.TrimSpace(apiKey)
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			writeErr(w, "", contract.ErrCodeBadRequest, http.StatusMethodNotAllowed,
 				"POST required")
 			return
 		}
-		if r.Header.Get(contract.AuthHeader) != apiKey {
+		providedKey := r.Header.Get(contract.AuthHeader)
+		if expectedKey == "" || len(providedKey) != len(expectedKey) || subtle.ConstantTimeCompare([]byte(providedKey), []byte(expectedKey)) != 1 {
 			writeErr(w, "", contract.ErrCodeAuth, http.StatusUnauthorized,
 				"missing or invalid internal api key")
 			return
 		}
+		r.Body = http.MaxBytesReader(w, r.Body, maxSolveRequestBytes)
 		var req contract.SolveRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			var maxBytesErr *http.MaxBytesError
+			if errors.As(err, &maxBytesErr) {
+				writeErr(w, "", contract.ErrCodeBadRequest, http.StatusRequestEntityTooLarge,
+					"request body exceeds 4 MiB limit")
+				return
+			}
 			writeErr(w, "", contract.ErrCodeBadRequest, http.StatusBadRequest,
 				"invalid JSON body")
 			return

@@ -85,10 +85,10 @@ func (s *Service) HandleLoadLedger(w http.ResponseWriter, r *http.Request) {
 		lines = stocklots.ListLoadLedgerMemory(manifestID)
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"manifest_id":          manifestID,
-		"load_ledger_enabled":  enabled,
-		"lines":                lines,
-		"complete":             loadLedgerComplete(lines),
+		"manifest_id":         manifestID,
+		"load_ledger_enabled": enabled,
+		"lines":               lines,
+		"complete":            loadLedgerComplete(lines),
 	})
 }
 
@@ -222,4 +222,3 @@ func (s *Service) HandleLoadLedgerVarianceApprove(w http.ResponseWriter, r *http
 		"reason": strings.TrimSpace(req.Reason),
 	})
 }
-

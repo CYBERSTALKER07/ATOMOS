@@ -585,7 +585,7 @@ func (s *Service) HandlePosSale(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		_ = s.syncReorderCurrentStock(r.Context(), orgID, l.Sku)
-		
+
 		// [Phase 2] Real-time Shelf Intelligence
 		onHand, _ := s.getOnHand(r.Context(), sess.LocationID, bin, l.Sku)
 		_ = s.CheckAndGenerateOOSAlerts(r.Context(), orgID, sess.LocationID, l.Sku, onHand, 10)
@@ -769,7 +769,7 @@ func (s *Service) listRegisters(ctx context.Context, retailerID, locationID stri
 		params["lid"] = locationID
 	}
 	sql += ` ORDER BY UpdatedAt DESC`
-	iter := s.spannerClient.Single().Query(ctx, spanner.Statement{SQL: sql, Params: params})
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, spanner.Statement{SQL: sql, Params: params})
 	defer iter.Stop()
 	var out []RegisterDTO
 	for {
@@ -1202,7 +1202,7 @@ func (s *Service) listSessionSales(ctx context.Context, sessionID string, limit 
 			WHERE SessionId = @sid ORDER BY CreatedAt DESC LIMIT @lim`,
 		Params: map[string]any{"sid": sessionID, "lim": int64(limit)},
 	}
-	iter := s.spannerClient.Single().Query(ctx, stmt)
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	var out []PosSaleDTO
 	for {
@@ -1266,7 +1266,7 @@ func (s *Service) listRetailerPosSales(ctx context.Context, retailerID, location
 	}
 	sql += ` ORDER BY CreatedAt DESC LIMIT @lim`
 	stmt := spanner.Statement{SQL: sql, Params: params}
-	iter := s.spannerClient.Single().Query(ctx, stmt)
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	var out []PosSaleDTO
 	for {

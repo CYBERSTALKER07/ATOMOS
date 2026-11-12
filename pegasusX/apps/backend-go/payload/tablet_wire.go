@@ -4,6 +4,7 @@ import (
 	"context"
 	"math"
 	"strings"
+	"time"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/proximity"
@@ -48,7 +49,10 @@ func buildTruckRecommendationsLocked(s *Service, order OrderRow, recs []Reassign
 			targetDriverID = manifest.DriverID
 		}
 		if (order.Lat != 0 || order.Lng != 0) && s.locations != nil && targetDriverID != "" {
-			if loc, ok, _ := s.locations.GetDriverLocation(context.Background(), targetDriverID); ok && (loc.Lat != 0 || loc.Lng != 0) {
+			locCtx, cancelLoc := context.WithTimeout(context.Background(), 2*time.Second)
+			loc, ok, _ := s.locations.GetDriverLocation(locCtx, targetDriverID)
+			cancelLoc()
+			if ok && (loc.Lat != 0 || loc.Lng != 0) {
 				distKm = proximity.HaversineDistance(order.Lat, order.Lng, loc.Lat, loc.Lng)
 			}
 		}

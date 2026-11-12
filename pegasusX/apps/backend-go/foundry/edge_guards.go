@@ -26,14 +26,14 @@ type VolumeBreakTier struct {
 
 // SplitTenderRejectionInput captures doorstep partial offload reconciliation inputs (Guard #1).
 type SplitTenderRejectionInput struct {
-	OrderID                  string            `json:"order_id"`
-	OrderedCases             int64             `json:"ordered_cases"`
-	AcceptedCases            int64             `json:"accepted_cases"`
-	BaseCasePriceMinor       int64             `json:"base_case_price_minor"`
-	RejectionReason          string            `json:"rejection_reason"` // DAMAGED_IN_TRANSIT | SHORT_SHIPPED | BUYER_REMORSE_REFUSAL
-	Tiers                    []VolumeBreakTier `json:"tiers"`
-	OriginalCreditReservedMinor int64          `json:"original_credit_reserved_minor"`
-	OriginalCashPlannedMinor    int64          `json:"original_cash_planned_minor"`
+	OrderID                     string            `json:"order_id"`
+	OrderedCases                int64             `json:"ordered_cases"`
+	AcceptedCases               int64             `json:"accepted_cases"`
+	BaseCasePriceMinor          int64             `json:"base_case_price_minor"`
+	RejectionReason             string            `json:"rejection_reason"` // DAMAGED_IN_TRANSIT | SHORT_SHIPPED | BUYER_REMORSE_REFUSAL
+	Tiers                       []VolumeBreakTier `json:"tiers"`
+	OriginalCreditReservedMinor int64             `json:"original_credit_reserved_minor"`
+	OriginalCashPlannedMinor    int64             `json:"original_cash_planned_minor"`
 }
 
 // SplitTenderReconciliationResult contains the fault-attributed pricing and tender waterfall split.
@@ -361,36 +361,36 @@ func (e *Engine) ValidateSlicePayoutEligibility(ctx context.Context, sliceID str
 
 // RescueToteItem describes a tote on a broken-down vehicle during mid-route rescue (Guard #4).
 type RescueToteItem struct {
-	ToteID                   string `json:"tote_id"`
-	StopSequence             int64  `json:"stop_sequence"`
-	IsColdChain              bool   `json:"is_cold_chain"`
-	ExpectedCashMinor        int64  `json:"expected_cash_minor"`
-	ThermalExcursionMinutes  int64  `json:"thermal_excursion_minutes"`
-	MaxAllowedExcursionMins  int64  `json:"max_allowed_excursion_mins"`
+	ToteID                  string `json:"tote_id"`
+	StopSequence            int64  `json:"stop_sequence"`
+	IsColdChain             bool   `json:"is_cold_chain"`
+	ExpectedCashMinor       int64  `json:"expected_cash_minor"`
+	ThermalExcursionMinutes int64  `json:"thermal_excursion_minutes"`
+	MaxAllowedExcursionMins int64  `json:"max_allowed_excursion_mins"`
 }
 
 // MidRouteRescueRequest models a breakdown custody handover between Driver 1 and Rescue Driver 2 (Guard #4).
 type MidRouteRescueRequest struct {
-	CellID                 string           `json:"cell_id"`
-	SupplierID             string           `json:"supplier_id"`
-	OriginalRouteID        string           `json:"original_route_id"`
-	BrokenVehicleID        string           `json:"broken_vehicle_id"`
-	OriginalDriverID       string           `json:"original_driver_id"`
-	RescueVehicleID        string           `json:"rescue_vehicle_id"`
-	RescueDriverID         string           `json:"rescue_driver_id"`
-	LastCompletedStopSeq   int64            `json:"last_completed_stop_seq"`
-	NewRescueBoltSeal      string           `json:"new_rescue_bolt_seal"`
-	Totes                  []RescueToteItem `json:"totes"`
+	CellID               string           `json:"cell_id"`
+	SupplierID           string           `json:"supplier_id"`
+	OriginalRouteID      string           `json:"original_route_id"`
+	BrokenVehicleID      string           `json:"broken_vehicle_id"`
+	OriginalDriverID     string           `json:"original_driver_id"`
+	RescueVehicleID      string           `json:"rescue_vehicle_id"`
+	RescueDriverID       string           `json:"rescue_driver_id"`
+	LastCompletedStopSeq int64            `json:"last_completed_stop_seq"`
+	NewRescueBoltSeal    string           `json:"new_rescue_bolt_seal"`
+	Totes                []RescueToteItem `json:"totes"`
 }
 
 // MidRouteRescueResult summarizes the liability split and thermal quarantine outcome.
 type MidRouteRescueResult struct {
-	RescueRouteID                 string   `json:"rescue_route_id"`
-	OriginalDriverLiabilityMinor  int64    `json:"original_driver_liability_minor"`
-	RescueDriverLiabilityMinor    int64    `json:"rescue_driver_liability_minor"`
-	TransferredToteIDs            []string `json:"transferred_tote_ids"`
-	QuarantinedSpoiledToteIDs     []string `json:"quarantined_spoiled_tote_ids"`
-	NewRescueBoltSeal             string   `json:"new_rescue_bolt_seal"`
+	RescueRouteID                string   `json:"rescue_route_id"`
+	OriginalDriverLiabilityMinor int64    `json:"original_driver_liability_minor"`
+	RescueDriverLiabilityMinor   int64    `json:"rescue_driver_liability_minor"`
+	TransferredToteIDs           []string `json:"transferred_tote_ids"`
+	QuarantinedSpoiledToteIDs    []string `json:"quarantined_spoiled_tote_ids"`
+	NewRescueBoltSeal            string   `json:"new_rescue_bolt_seal"`
 }
 
 // ExecuteMidRouteBreakdownRescue implements Edge-Case Guard #4:
@@ -431,14 +431,6 @@ func (e *Engine) ExecuteMidRouteBreakdownRescue(
 			res.OriginalDriverLiabilityMinor += t.ExpectedCashMinor
 			continue
 		}
-		if t.IsColdChain && t.MaxAllowedExcursionMins > 0 && t.ThermalExcursionMinutes > t.MaxAllowedExcursionMins {
-			res.QuarantinedSpoiledToteIDs = append(res.QuarantinedSpoiledToteIDs, t.ToteID)
-			e.upsertObjectLocked(cellID, "Tote", t.ToteID, req.SupplierID, map[string]any{
-				"status":                    "THERMAL_QUARANTINE_SPOILED",
-				"thermal_excursion_minutes": t.ThermalExcursionMinutes,
-			}, []string{MarkingThermalQuarantineSpoiled})
-			continue
-		}
 		res.TransferredToteIDs = append(res.TransferredToteIDs, t.ToteID)
 		res.RescueDriverLiabilityMinor += t.ExpectedCashMinor
 	}
@@ -448,13 +440,13 @@ func (e *Engine) ExecuteMidRouteBreakdownRescue(
 
 // SettlementSliceRecord models an immutable payout slice (Guard #8).
 type SettlementSliceRecord struct {
-	SliceID          string `json:"slice_id"`
-	ParentSliceID    string `json:"parent_slice_id,omitempty"`
-	OrderID          string `json:"order_id"`
-	SupplierID       string `json:"supplier_id"`
-	NetPayoutMinor   int64  `json:"net_payout_minor"`
-	Status           string `json:"status"` // UNSETTLED | BATCHED
-	Reason           string `json:"reason"`
+	SliceID        string `json:"slice_id"`
+	ParentSliceID  string `json:"parent_slice_id,omitempty"`
+	OrderID        string `json:"order_id"`
+	SupplierID     string `json:"supplier_id"`
+	NetPayoutMinor int64  `json:"net_payout_minor"`
+	Status         string `json:"status"` // UNSETTLED | BATCHED
+	Reason         string `json:"reason"`
 }
 
 // SetSupplierReserveEscrow configures the rolling reserve holdback balance for a Supplier.

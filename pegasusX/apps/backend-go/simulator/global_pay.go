@@ -733,7 +733,15 @@ func formatMinor(minor int64, currency string) string {
 		sums := minor / 100
 		return formatNumberSpace(sums)
 	default:
-		return fmt.Sprintf("%.2f", float64(minor)/100)
+		sign := ""
+		absMinor := minor
+		if absMinor < 0 {
+			sign = "-"
+			absMinor = -absMinor
+		}
+		whole := absMinor / 100
+		frac := absMinor % 100
+		return fmt.Sprintf("%s%d.%02d", sign, whole, frac)
 	}
 }
 

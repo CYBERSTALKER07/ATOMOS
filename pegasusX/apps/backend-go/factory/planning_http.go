@@ -25,9 +25,9 @@ func (p *PlanningService) HandleNetworkMode(w http.ResponseWriter, r *http.Reque
 	case http.MethodGet:
 		mode, _ := p.GetNetworkMode(r.Context(), supplierID)
 		writePlanningJSON(w, http.StatusOK, map[string]any{
-			"mode":              mode,
-			"supplier_id":       supplierID,
-			"planning_enabled":  PlanningEnabled(),
+			"mode":             mode,
+			"supplier_id":      supplierID,
+			"planning_enabled": PlanningEnabled(),
 		})
 	case http.MethodPut:
 		claims, ok := auth.FromContext(r.Context())
@@ -74,10 +74,10 @@ func (p *PlanningService) HandlePullMatrix(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	writePlanningJSON(w, http.StatusOK, map[string]any{
-		"status":     "completed",
-		"transfers":  transfers,
-		"skus":       skus,
-		"source":     "MANUAL",
+		"status":    "completed",
+		"transfers": transfers,
+		"skus":      skus,
+		"source":    "MANUAL",
 	})
 }
 
@@ -105,8 +105,8 @@ func (p *PlanningService) HandleKillSwitch(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	writePlanningJSON(w, http.StatusOK, map[string]any{
-		"status":             "manual_only",
+		"status":              "manual_only",
 		"cancelled_transfers": n,
-		"mode":               NetworkModeManualOnly,
+		"mode":                NetworkModeManualOnly,
 	})
 }

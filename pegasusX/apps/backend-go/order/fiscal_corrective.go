@@ -101,17 +101,17 @@ func (s *Service) GenerateCorrectiveFiscalReceipt(ctx context.Context, orderID s
 
 		buf := &spannerTxnBuffer{}
 		if err := outbox.EmitJSON(ctx, buf, events.AggregateOrder, orderID, events.TopicMain, map[string]any{
-			"type":                     events.EventFiscalReceiptSucceeded,
-			"order_id":                 orderID,
-			"attempt_id":               attemptID,
-			"supplier_id":              orderRow.SupplierID,
-			"retailer_id":              orderRow.RetailerID,
-			"status":                   FiscalAttemptSuccess,
-			"fiscal_receipt_id":        receiptID,
-			"correction_amount_minor":  req.CorrectionAmountMinor,
-			"reason_code":              reasonCode,
-			"is_corrective":            true,
-			"timestamp":                now.Format(time.RFC3339Nano),
+			"type":                    events.EventFiscalReceiptSucceeded,
+			"order_id":                orderID,
+			"attempt_id":              attemptID,
+			"supplier_id":             orderRow.SupplierID,
+			"retailer_id":             orderRow.RetailerID,
+			"status":                  FiscalAttemptSuccess,
+			"fiscal_receipt_id":       receiptID,
+			"correction_amount_minor": req.CorrectionAmountMinor,
+			"reason_code":             reasonCode,
+			"is_corrective":           true,
+			"timestamp":               now.Format(time.RFC3339Nano),
 		}); err != nil {
 			return err
 		}

@@ -119,16 +119,16 @@ func (e *OntologyGraphEdge) PrepareForSpanner() error {
 
 // RecallBlastRadiusReport summarizes all downstream entities impacted by a contaminated factory lot.
 type RecallBlastRadiusReport struct {
-	CellID                     string   `json:"cell_id"`
-	SupplierID                 string   `json:"supplier_id"`
-	ContaminatedRawMaterialLot string   `json:"contaminated_raw_material_lot"`
-	AffectedWorkOrders         []string `json:"affected_work_orders"`
-	AffectedFinishedLots       []string `json:"affected_finished_lots"`
-	QuarantinedSSCCPallets     []string `json:"quarantined_sscc_pallets"`
-	QuarantinedWarehouseTotes  []string `json:"quarantined_warehouse_totes"`
-	InTransitDriverDropBlocks  []string `json:"in_transit_driver_drop_blocks"`
+	CellID                      string   `json:"cell_id"`
+	SupplierID                  string   `json:"supplier_id"`
+	ContaminatedRawMaterialLot  string   `json:"contaminated_raw_material_lot"`
+	AffectedWorkOrders          []string `json:"affected_work_orders"`
+	AffectedFinishedLots        []string `json:"affected_finished_lots"`
+	QuarantinedSSCCPallets      []string `json:"quarantined_sscc_pallets"`
+	QuarantinedWarehouseTotes   []string `json:"quarantined_warehouse_totes"`
+	InTransitDriverDropBlocks   []string `json:"in_transit_driver_drop_blocks"`
 	RetailerReversePickupOrders []string `json:"retailer_reverse_pickup_orders"`
-	ImpactedSoliqFacturas      []string `json:"impacted_soliq_facturas"`
+	ImpactedSoliqFacturas       []string `json:"impacted_soliq_facturas"`
 }
 
 // Engine coordinates the Foundry Semantic, Kinetic, Dynamic, Cashier, Fleet, and Edge-Guard layers.
@@ -155,10 +155,10 @@ type Engine struct {
 	amlDailyExposure     map[string]int64
 	offlineLeases        map[string]*OfflineQuotaLease
 
-	dvirByVehicle        map[string]*FleetDVIRInspection
+	dvirByVehicle         map[string]*FleetDVIRInspection
 	vehiclePredictiveHold map[string]bool
-	vehicleDriverPairing map[string]string
-	gateEvents           []*YardGateCheckEvent
+	vehicleDriverPairing  map[string]string
+	gateEvents            []*YardGateCheckEvent
 
 	containerLedger      map[string]*ReturnableContainerBalance
 	supplierReserveMinor map[string]int64

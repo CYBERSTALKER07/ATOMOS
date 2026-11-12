@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -33,6 +34,8 @@ func ReserveLineItemsForOrderInTxn(
 		return nil
 	}
 	supplierID = strings.TrimSpace(supplierID)
+	warehouseID = strings.TrimSpace(warehouseID)
+	orderID = strings.TrimSpace(orderID)
 
 	// Aggregate quantities by SKU to avoid double-read/overwrite issues for duplicate SKUs
 	skuQuantities := make(map[string]int64)
@@ -43,106 +46,167 @@ func ReserveLineItemsForOrderInTxn(
 		}
 		skuQuantities[sku] += item.Quantity
 	}
+	if len(skuQuantities) == 0 {
+		return nil
+	}
 
-	for sku, quantity := range skuQuantities {
-		row, err := txn.ReadRow(ctx, "SupplierInventoryV2",
-			spanner.Key{supplierID, warehouseID, sku},
-			[]string{"QuantityOnHand", "QuantityReserved"})
-		if err != nil {
-			if spanner.ErrCode(err) == 5 {
-				return fmt.Errorf("%w: sku %s not found in warehouse %s", ErrInventoryExhausted, sku, warehouseID)
-			}
-			return fmt.Errorf("read inventory %s: %w", sku, err)
+	skus := make([]string, 0, len(skuQuantities))
+	keySets := make([]spanner.KeySet, 0, len(skuQuantities))
+	for sku := range skuQuantities {
+		skus = append(skus, sku)
+	}
+	sort.Strings(skus)
+	for _, sku := range skus {
+		keySets = append(keySets, spanner.Key{supplierID, warehouseID, sku})
+	}
+
+	type invSnapshot struct {
+		qoh int64
+		qr  int64
+	}
+	invBySKU := make(map[string]invSnapshot, len(skus))
+	invIter := txn.Read(ctx, "SupplierInventoryV2", spanner.KeySets(keySets...), []string{"ProductId", "QuantityOnHand", "QuantityReserved"})
+	defer invIter.Stop()
+	for {
+		row, err := invIter.Next()
+		if err == iterator.Done {
+			break
 		}
+		if err != nil {
+			return fmt.Errorf("read inventory batch: %w", err)
+		}
+		var sku string
 		var qoh, qr int64
-		if err := row.Columns(&qoh, &qr); err != nil {
+		if err := row.Columns(&sku, &qoh, &qr); err != nil {
 			return fmt.Errorf("decode inventory columns: %w", err)
 		}
-		if qoh-qr < quantity {
-			return fmt.Errorf("%w: sku %s has %d available, requested %d", ErrInventoryExhausted, sku, qoh-qr, quantity)
+		invBySKU[sku] = invSnapshot{qoh: qoh, qr: qr}
+	}
+
+	invMuts := make([]*spanner.Mutation, 0, len(skus))
+	for _, sku := range skus {
+		quantity := skuQuantities[sku]
+		snap, ok := invBySKU[sku]
+		if !ok {
+			return fmt.Errorf("%w: sku %s not found in warehouse %s", ErrInventoryExhausted, sku, warehouseID)
 		}
-		if err := txn.BufferWrite([]*spanner.Mutation{spanner.UpdateMap("SupplierInventoryV2", map[string]any{
+		if snap.qoh-snap.qr < quantity {
+			return fmt.Errorf("%w: sku %s has %d available, requested %d", ErrInventoryExhausted, sku, snap.qoh-snap.qr, quantity)
+		}
+		invMuts = append(invMuts, spanner.UpdateMap("SupplierInventoryV2", map[string]any{
 			"SupplierId":       supplierID,
 			"WarehouseId":      warehouseID,
 			"ProductId":        sku,
-			"QuantityReserved": qr + quantity,
+			"QuantityReserved": snap.qr + quantity,
 			"UpdatedAt":        spanner.CommitTimestamp,
-		})}); err != nil {
-			return fmt.Errorf("buffer inventory update: %w", err)
-		}
+		}))
+	}
+	if err := txn.BufferWrite(invMuts); err != nil {
+		return fmt.Errorf("buffer inventory update: %w", err)
+	}
 
-		if stocklots.EffectiveLots(ctx, warehouseID, supplierID) && orderID != "" {
-			stmt := spanner.Statement{
-				SQL: `SELECT LotId, QuantityOnHand, QuantityReserved
-				      FROM StockLots
-				      WHERE WarehouseId = @w AND ProductId = @p AND Status = 'AVAILABLE'
-				        AND QuantityOnHand - QuantityReserved > 0
-				      ORDER BY ExpiryDate ASC, ReceivedAt ASC`,
-				Params: map[string]any{"w": warehouseID, "p": sku},
-			}
-			iter := txn.Query(ctx, stmt)
-			defer iter.Stop()
-			rem := quantity
-			for {
-				if rem <= 0 {
-					break
-				}
-				row, err := iter.Next()
-				if err == iterator.Done {
-					break
-				}
-				if err != nil {
-					return fmt.Errorf("read lots for FEFO %s: %w", sku, err)
-				}
-				var lotID string
-				var lqoh, lqr int64
-				if err := row.Columns(&lotID, &lqoh, &lqr); err != nil {
-					return fmt.Errorf("decode lot for FEFO: %w", err)
-				}
-				avail := lqoh - lqr
-				if avail <= 0 {
-					continue
-				}
-				take := avail
-				if rem < take {
-					take = rem
-				}
-				rem -= take
-				muts := []*spanner.Mutation{
-					spanner.UpdateMap("StockLots", map[string]any{
-						"LotId":            lotID,
-						"QuantityReserved": lqr + take,
-						"UpdatedAt":        spanner.CommitTimestamp,
-					}),
-				}
-				if orderID != "" {
-					muts = append(muts, spanner.InsertOrUpdateMap("OrderLotReservations", map[string]any{
-						"OrderId":  orderID,
-						"LotId":    lotID,
-						"Quantity": take,
-					}))
-				}
-				if err := txn.BufferWrite(muts); err != nil {
-					return fmt.Errorf("buffer lot reserve: %w", err)
-				}
-			}
-			if rem > 0 {
-				return fmt.Errorf("%w: sku %s short by %d on lots", ErrInventoryExhausted, sku, rem)
-			}
+	if stocklots.EffectiveLots(ctx, warehouseID, supplierID) && orderID != "" {
+		if err := reserveLotsForSKUsInTxn(ctx, txn, warehouseID, orderID, skus, skuQuantities); err != nil {
+			return err
 		}
 	}
 	return nil
 }
 
-func insertStockReservationMarkerInTxn(txn *spanner.ReadWriteTransaction, orderID string) error {
+func reserveLotsForSKUsInTxn(
+	ctx context.Context,
+	txn *spanner.ReadWriteTransaction,
+	warehouseID, orderID string,
+	skus []string,
+	skuQuantities map[string]int64,
+) error {
+	stmt := spanner.Statement{
+		SQL: `SELECT ProductId, LotId, QuantityOnHand, QuantityReserved
+		      FROM StockLots
+		      WHERE WarehouseId = @w AND ProductId IN UNNEST(@skus) AND Status = 'AVAILABLE'
+		        AND QuantityOnHand - QuantityReserved > 0
+		      ORDER BY ProductId ASC, ExpiryDate ASC, ReceivedAt ASC`,
+		Params: map[string]any{"w": warehouseID, "skus": skus},
+	}
+	iter := txn.Query(ctx, stmt)
+	defer iter.Stop()
+
+	remaining := make(map[string]int64, len(skuQuantities))
+	for sku, qty := range skuQuantities {
+		remaining[sku] = qty
+	}
+
+	var muts []*spanner.Mutation
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("read lots for FEFO: %w", err)
+		}
+		var sku, lotID string
+		var lqoh, lqr int64
+		if err := row.Columns(&sku, &lotID, &lqoh, &lqr); err != nil {
+			return fmt.Errorf("decode lot for FEFO: %w", err)
+		}
+		rem := remaining[sku]
+		if rem <= 0 {
+			continue
+		}
+		avail := lqoh - lqr
+		if avail <= 0 {
+			continue
+		}
+		take := avail
+		if rem < take {
+			take = rem
+		}
+		remaining[sku] = rem - take
+		muts = append(muts,
+			spanner.UpdateMap("StockLots", map[string]any{
+				"LotId":            lotID,
+				"QuantityReserved": lqr + take,
+				"UpdatedAt":        spanner.CommitTimestamp,
+			}),
+			spanner.InsertOrUpdateMap("OrderLotReservations", map[string]any{
+				"OrderId":  orderID,
+				"LotId":    lotID,
+				"Quantity": take,
+			}),
+		)
+	}
+
+	for _, sku := range skus {
+		if rem := remaining[sku]; rem > 0 {
+			return fmt.Errorf("%w: sku %s short by %d on lots", ErrInventoryExhausted, sku, rem)
+		}
+	}
+	if len(muts) > 0 {
+		if err := txn.BufferWrite(muts); err != nil {
+			return fmt.Errorf("buffer lot reserve: %w", err)
+		}
+	}
+	return nil
+}
+
+func stockReservationMarkerMutation(orderID string) *spanner.Mutation {
 	orderID = strings.TrimSpace(orderID)
 	if orderID == "" {
 		return nil
 	}
-	return txn.BufferWrite([]*spanner.Mutation{spanner.InsertOrUpdateMap("OrderStockReservationMarkers", map[string]any{
+	return spanner.InsertOrUpdateMap("OrderStockReservationMarkers", map[string]any{
 		"OrderId":    orderID,
 		"ReservedAt": spanner.CommitTimestamp,
-	})})
+	})
+}
+
+func insertStockReservationMarkerInTxn(txn *spanner.ReadWriteTransaction, orderID string) error {
+	m := stockReservationMarkerMutation(orderID)
+	if m == nil {
+		return nil
+	}
+	return txn.BufferWrite([]*spanner.Mutation{m})
 }
 
 // BackfillScheduledReservations reserves inventory for legacy scheduled pre-orders created before at-create reservation.

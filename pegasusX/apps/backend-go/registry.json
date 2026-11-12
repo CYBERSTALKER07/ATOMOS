@@ -2599,14 +2599,6 @@
           "nullable": false
         },
         {
-          "name": "RequiresColdChain",
-          "json_name": "requires_cold_chain",
-          "json_tag": "requires_cold_chain",
-          "go_type": "bool",
-          "optional": false,
-          "nullable": false
-        },
-        {
           "name": "IsHazardous",
           "json_name": "is_hazardous",
           "json_tag": "is_hazardous",
@@ -2621,24 +2613,6 @@
           "go_type": "bool",
           "optional": false,
           "nullable": false
-        },
-        {
-          "name": "StorageTempMinC",
-          "json_name": "storage_temp_min_c",
-          "json_tag": "storage_temp_min_c,omitempty",
-          "json_omitempty": true,
-          "go_type": "*float64",
-          "optional": true,
-          "nullable": true
-        },
-        {
-          "name": "StorageTempMaxC",
-          "json_name": "storage_temp_max_c",
-          "json_tag": "storage_temp_max_c,omitempty",
-          "json_omitempty": true,
-          "go_type": "*float64",
-          "optional": true,
-          "nullable": true
         }
       ]
     },

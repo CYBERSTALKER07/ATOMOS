@@ -17,14 +17,14 @@ func (s *Service) apply(
 	s.mu.RLock()
 	snapManifests := make([]ManifestRow, len(s.manifests))
 	copy(snapManifests, s.manifests)
-	
+
 	snapManifestOrders := make(map[string][]ManifestOrder, len(s.manifestOrders))
 	for k, v := range s.manifestOrders {
 		arr := make([]ManifestOrder, len(v))
 		copy(arr, v)
 		snapManifestOrders[k] = arr
 	}
-	
+
 	snapExceptions := make([]ManifestException, len(s.exceptions))
 	copy(snapExceptions, s.exceptions)
 	s.mu.RUnlock()
@@ -43,14 +43,14 @@ func (s *Service) apply(
 		s.mu.Lock()
 		s.manifests = make([]ManifestRow, len(snapManifests))
 		copy(s.manifests, snapManifests)
-		
+
 		s.manifestOrders = make(map[string][]ManifestOrder, len(snapManifestOrders))
 		for k, v := range snapManifestOrders {
 			arr := make([]ManifestOrder, len(v))
 			copy(arr, v)
 			s.manifestOrders[k] = arr
 		}
-		
+
 		s.exceptions = make([]ManifestException, len(snapExceptions))
 		copy(s.exceptions, snapExceptions)
 		s.mu.Unlock()

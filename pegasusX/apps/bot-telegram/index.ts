@@ -201,7 +201,13 @@ if (bot) {
 }
 
 export const app = express();
-app.use(cors());
+const allowedOrigins = (process.env.CORS_ALLOWED_ORIGINS || "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+if (allowedOrigins.length > 0) {
+  app.use(cors({ origin: allowedOrigins }));
+}
 app.use(express.json({ limit: "64kb" }));
 
 app.get("/healthz", (_req: Request, res: Response) => {
@@ -215,6 +221,12 @@ app.get("/healthz", (_req: Request, res: Response) => {
 
 // REST API for Go Backend / AI Worker to Trigger Proactive Restock Messages for a real Order ID
 app.post("/trigger-restock", async (req: Request, res: Response) => {
+  const runtimeEnv = (process.env.PEGASUSX_ENV || process.env.NODE_ENV || "").trim().toLowerCase();
+  const isStrictEnv = runtimeEnv === "production" || runtimeEnv === "prod" || runtimeEnv === "staging";
+  if (!webhookSecret && isStrictEnv) {
+    res.status(503).json({ error: "webhook_secret_not_configured" });
+    return;
+  }
   if (webhookSecret) {
     const provided = req.header("X-Bot-Webhook-Secret") || "";
     if (

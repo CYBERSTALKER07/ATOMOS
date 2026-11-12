@@ -14,6 +14,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/proximity"
+	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
 	"google.golang.org/api/iterator"
 )
 
@@ -248,7 +249,7 @@ func (r *SpannerRepository) CountOrders(ctx context.Context, supplierID string) 
 		SQL:    `SELECT COUNT(*) FROM Orders WHERE SupplierId = @supplierId`,
 		Params: map[string]any{"supplierId": supplierID},
 	}
-	iter := r.client.Single().Query(ctx, stmt)
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	row, err := iter.Next()
 	if err != nil {
@@ -297,7 +298,7 @@ func (r *SpannerRepository) ListOrders(ctx context.Context, supplierID string, l
 		},
 	}
 
-	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 
 	orders := make([]SupplierOrder, 0, 8)
@@ -369,7 +370,12 @@ func (r *SpannerRepository) GetTopology(ctx context.Context, supplierID string) 
 		      ORDER BY WarehouseId`,
 		Params: map[string]any{"supplierId": supplierID},
 	}
-	warehouseIter := r.client.Single().Query(ctx, warehouseStmt)
+	var warehouseIter *spanner.RowIterator
+	if txn := spannerutils.ReadOnlyTxnFromContext(ctx); txn != nil {
+		warehouseIter = txn.Query(ctx, warehouseStmt)
+	} else {
+		warehouseIter = r.client.Single().Query(ctx, warehouseStmt)
+	}
 	defer warehouseIter.Stop()
 	for {
 		row, err := warehouseIter.Next()
@@ -458,7 +464,12 @@ func (r *SpannerRepository) GetTopology(ctx context.Context, supplierID string) 
 		      ORDER BY FactoryId`,
 		Params: map[string]any{"supplierId": supplierID},
 	}
-	factoryIter := r.client.Single().Query(ctx, factoryStmt)
+	var factoryIter *spanner.RowIterator
+	if txn := spannerutils.ReadOnlyTxnFromContext(ctx); txn != nil {
+		factoryIter = txn.Query(ctx, factoryStmt)
+	} else {
+		factoryIter = r.client.Single().Query(ctx, factoryStmt)
+	}
 	defer factoryIter.Stop()
 	for {
 		row, err := factoryIter.Next()
@@ -513,10 +524,16 @@ func (r *SpannerRepository) attachTopologyGraph(ctx context.Context, supplierID 
 	if r == nil || r.client == nil || result == nil {
 		return nil
 	}
-	cityIter := r.client.Single().Query(ctx, spanner.Statement{
+	cityStmt := spanner.Statement{
 		SQL:    `SELECT WarehouseId, CityName, Lat, Lng FROM WarehouseCoverageCities WHERE SupplierId = @sid`,
 		Params: map[string]any{"sid": supplierID},
-	})
+	}
+	var cityIter *spanner.RowIterator
+	if txn := spannerutils.ReadOnlyTxnFromContext(ctx); txn != nil {
+		cityIter = txn.Query(ctx, cityStmt)
+	} else {
+		cityIter = r.client.Single().Query(ctx, cityStmt)
+	}
 	defer cityIter.Stop()
 	cities := map[string][]order.CoverageCity{}
 	for {
@@ -535,12 +552,18 @@ func (r *SpannerRepository) attachTopologyGraph(ctx context.Context, supplierID 
 		cities[wid] = append(cities[wid], order.CoverageCity{Name: name, Lat: lat, Lng: lng})
 	}
 
-	laneIter := r.client.Single().Query(ctx, spanner.Statement{
+	laneStmt := spanner.Statement{
 		SQL: `SELECT WarehouseId, FactoryId, COALESCE(Priority, 0)
 		      FROM SupplyLanes WHERE SupplierId = @sid AND COALESCE(IsActive, true) = true
 		      ORDER BY WarehouseId, Priority, FactoryId`,
 		Params: map[string]any{"sid": supplierID},
-	})
+	}
+	var laneIter *spanner.RowIterator
+	if txn := spannerutils.ReadOnlyTxnFromContext(ctx); txn != nil {
+		laneIter = txn.Query(ctx, laneStmt)
+	} else {
+		laneIter = r.client.Single().Query(ctx, laneStmt)
+	}
 	defer laneIter.Stop()
 	lanes := map[string][]string{}
 	secondary := map[string]string{}
@@ -921,9 +944,10 @@ func (r *SpannerRepository) ReplaceTopology(ctx context.Context, supplierID stri
 
 		// Pre-flight check: prevent removing warehouses with active inventory or orders
 		whIter := txn.Query(ctx, spanner.Statement{
-			SQL: `SELECT WarehouseId FROM Warehouses WHERE SupplierId = @sid`,
+			SQL:    `SELECT WarehouseId FROM Warehouses WHERE SupplierId = @sid`,
 			Params: map[string]any{"sid": supplierID},
 		})
+		defer whIter.Stop()
 		var existingWarehouses []string
 		if err := whIter.Do(func(row *spanner.Row) error {
 			var wid string
@@ -954,10 +978,11 @@ func (r *SpannerRepository) ReplaceTopology(ctx context.Context, supplierID stri
 				      WHERE SupplierId = @sid AND WarehouseId IN UNNEST(@removed)
 				      AND (QuantityOnHand > 0 OR QuantityReserved > 0) LIMIT 1`,
 				Params: map[string]any{
-					"sid": supplierID,
+					"sid":     supplierID,
 					"removed": removedWarehouses,
 				},
 			})
+			defer invIter.Stop()
 			var hasInv bool
 			if err := invIter.Do(func(*spanner.Row) error { hasInv = true; return nil }); err != nil {
 				return fmt.Errorf("check removed warehouse inventory: %w", err)
@@ -972,10 +997,11 @@ func (r *SpannerRepository) ReplaceTopology(ctx context.Context, supplierID stri
 				      WHERE SupplierId = @sid AND WarehouseId IN UNNEST(@removed)
 				      AND Status NOT IN ('COMPLETED', 'CANCELLED', 'REJECTED') LIMIT 1`,
 				Params: map[string]any{
-					"sid": supplierID,
+					"sid":     supplierID,
 					"removed": removedWarehouses,
 				},
 			})
+			defer ordIter.Stop()
 			var hasOrd bool
 			if err := ordIter.Do(func(*spanner.Row) error { hasOrd = true; return nil }); err != nil {
 				return fmt.Errorf("check removed warehouse orders: %w", err)
@@ -1164,8 +1190,17 @@ func (r *SpannerRepository) ReplaceTopology(ctx context.Context, supplierID stri
 }
 
 func countTopologyRows(ctx context.Context, txn *spanner.ReadWriteTransaction, table string, supplierID string) (int64, error) {
+	var sqlQuery string
+	switch table {
+	case "Warehouses":
+		sqlQuery = "SELECT COUNT(1) FROM Warehouses WHERE SupplierId = @supplierId"
+	case "Factories":
+		sqlQuery = "SELECT COUNT(1) FROM Factories WHERE SupplierId = @supplierId"
+	default:
+		return 0, fmt.Errorf("unsupported topology table %q", table)
+	}
 	stmt := spanner.Statement{
-		SQL:    fmt.Sprintf("SELECT COUNT(1) FROM %s WHERE SupplierId = @supplierId", table),
+		SQL:    sqlQuery,
 		Params: map[string]any{"supplierId": supplierID},
 	}
 	iter := txn.Query(ctx, stmt)
@@ -1222,7 +1257,7 @@ func (r *SpannerRepository) CountSuppliers(ctx context.Context) (int64, error) {
 		return 0, fmt.Errorf("spanner supplier repository: nil client")
 	}
 	stmt := spanner.Statement{SQL: `SELECT COUNT(*) FROM Suppliers WHERE SupplierId IS NOT NULL`}
-	iter := r.client.Single().Query(ctx, stmt)
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	row, err := iter.Next()
 	if err != nil {

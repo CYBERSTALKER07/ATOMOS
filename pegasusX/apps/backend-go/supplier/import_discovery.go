@@ -366,23 +366,23 @@ func detectImportAnomalies(rows []map[string]any, mappings []importMappingCandid
 
 	anomalies := make([]importAnomaly, 0)
 	if priceCol, ok := targetColumn["price_minor"]; ok {
-		prices := make([]float64, 0, len(rows))
+		prices := make([]int64, 0, len(rows))
 		for _, row := range rows {
-			if value, ok := importParseNumber(row[priceCol]); ok {
+			if value, ok := importParseMinorUnits(row[priceCol]); ok {
 				prices = append(prices, value)
 			}
 		}
 		if len(prices) >= 3 {
-			sorted := append([]float64(nil), prices...)
-			sort.Float64s(sorted)
+			sorted := append([]int64(nil), prices...)
+			sort.Slice(sorted, func(i, j int) bool { return sorted[i] < sorted[j] })
 			median := sorted[len(sorted)/2]
 			if median > 0 {
 				for _, value := range prices {
-					if value >= median*10 || value <= median*0.1 {
+					if value >= median*10 || value*10 <= median {
 						anomalies = append(anomalies, importAnomaly{
 							Kind:     "PRICE_VARIANCE_EXTREME",
 							Column:   priceCol,
-							Detail:   fmt.Sprintf("price %.2f deviates more than 1000%% from median %.2f", value, median),
+							Detail:   fmt.Sprintf("price_minor %d deviates more than 1000%% from median %d", value, median),
 							Severity: "warning",
 						})
 						break
@@ -394,17 +394,21 @@ func detectImportAnomalies(rows []map[string]any, mappings []importMappingCandid
 	return anomalies
 }
 
-func importParseNumber(raw any) (float64, bool) {
+func importParseMinorUnits(raw any) (int64, bool) {
 	s := strings.TrimSpace(fmt.Sprint(raw))
 	if s == "" {
 		return 0, false
 	}
 	s = strings.ReplaceAll(s, ",", "")
-	v, err := strconv.ParseFloat(s, 64)
-	if err != nil {
-		return 0, false
+	if v, err := strconv.ParseInt(s, 10, 64); err == nil {
+		return v, true
 	}
-	return v, true
+	if idx := strings.IndexByte(s, '.'); idx > 0 {
+		if v, err := strconv.ParseInt(s[:idx], 10, 64); err == nil {
+			return v, true
+		}
+	}
+	return 0, false
 }
 
 func importNormalizeToken(input string) string {

@@ -604,7 +604,7 @@ func (s *Service) listSections(ctx context.Context, retailerID, locationID strin
 		params["lid"] = locationID
 	}
 	sql += ` ORDER BY SortOrder, Name`
-	iter := s.spannerClient.Single().Query(ctx, spanner.Statement{SQL: sql, Params: params})
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, spanner.Statement{SQL: sql, Params: params})
 	defer iter.Stop()
 	var out []SectionDTO
 	for {
@@ -639,7 +639,7 @@ func (s *Service) listSectionSkus(ctx context.Context, sectionID string) ([]stri
 		sort.Strings(out)
 		return out, nil
 	}
-	iter := s.spannerClient.Single().Query(ctx, spanner.Statement{
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, spanner.Statement{
 		SQL:    `SELECT Sku FROM RetailerSectionSkus WHERE SectionId = @sid ORDER BY Sku`,
 		Params: map[string]any{"sid": sectionID},
 	})
@@ -785,7 +785,7 @@ func (s *Service) listSectionStaff(ctx context.Context, sectionID string) ([]str
 		sort.Strings(out)
 		return out, nil
 	}
-	iter := s.spannerClient.Single().Query(ctx, spanner.Statement{
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, spanner.Statement{
 		SQL:    `SELECT UserId FROM RetailerStaffSections WHERE SectionId = @sid ORDER BY UserId`,
 		Params: map[string]any{"sid": sectionID},
 	})

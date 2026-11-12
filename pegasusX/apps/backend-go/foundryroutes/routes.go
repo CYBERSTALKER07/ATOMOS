@@ -22,15 +22,11 @@ func RegisterRoutes(r chi.Router, deps Deps) {
 		eng = foundry.NewEngine()
 	}
 
-	// 1. Semantic-Kinetic-Dynamic Triad routes
-	newOntologyHandler(eng).mountRoutes(r)
-
-	// 2. Role 7: Depot Cashier & AML Vault routes
-	newCashierHandler(eng).mountRoutes(r)
-
-	// 3. Role 9: Fleet, Yard & DVIR Red-Tag routes
-	newFleetHandler(eng).mountRoutes(r)
-
-	// 4. Cross-Role Pre-Execution Guards routes
-	newGuardsHandler(eng).mountRoutes(r)
+	r.Group(func(gr chi.Router) {
+		gr.Use(requireFoundrySession)
+		newOntologyHandler(eng).mountRoutes(gr)
+		newCashierHandler(eng).mountRoutes(gr)
+		newFleetHandler(eng).mountRoutes(gr)
+		newGuardsHandler(eng).mountRoutes(gr)
+	})
 }

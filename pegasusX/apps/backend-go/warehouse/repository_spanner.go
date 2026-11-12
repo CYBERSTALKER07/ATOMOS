@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/inventory"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
 	"github.com/pegasusx/pegasusx/apps/backend-go/stocklots"
 	"google.golang.org/api/iterator"
 )
@@ -100,7 +101,12 @@ func (r *SpannerRepository) ListSupplyRequests(ctx context.Context, warehouseID 
 		},
 	}
 
-	iter := r.client.Single().Query(ctx, stmt)
+	var iter *spanner.RowIterator
+	if txn := spannerutils.ReadOnlyTxnFromContext(ctx); txn != nil {
+		iter = txn.Query(ctx, stmt)
+	} else {
+		iter = r.client.Single().Query(ctx, stmt)
+	}
 	defer iter.Stop()
 
 	requests := make([]SupplyRequest, 0, limit)
@@ -222,7 +228,12 @@ func (r *SpannerRepository) loadSupplyRequestItems(ctx context.Context, requestI
 		      ORDER BY RequestId, ProductId`,
 		Params: map[string]any{"ids": requestIDs},
 	}
-	iter := r.client.Single().Query(ctx, stmt)
+	var iter *spanner.RowIterator
+	if txn := spannerutils.ReadOnlyTxnFromContext(ctx); txn != nil {
+		iter = txn.Query(ctx, stmt)
+	} else {
+		iter = r.client.Single().Query(ctx, stmt)
+	}
 	defer iter.Stop()
 
 	out := make(map[string][]SupplyRequestItem)
@@ -875,7 +886,12 @@ func (r *SpannerRepository) GetAutoDispatch(ctx context.Context, warehouseID str
 		SQL:    `SELECT AutoDispatchEnabled FROM Warehouses WHERE WarehouseId = @wid`,
 		Params: map[string]any{"wid": warehouseID},
 	}
-	iter := r.client.Single().Query(ctx, stmt)
+	var iter *spanner.RowIterator
+	if txn := spannerutils.ReadOnlyTxnFromContext(ctx); txn != nil {
+		iter = txn.Query(ctx, stmt)
+	} else {
+		iter = r.client.Single().Query(ctx, stmt)
+	}
 	defer iter.Stop()
 
 	row, err := iter.Next()

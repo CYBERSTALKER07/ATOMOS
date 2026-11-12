@@ -10,6 +10,7 @@ import (
 
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
+	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
 	"google.golang.org/api/iterator"
 )
 
@@ -495,7 +496,13 @@ func ListPickWaves(ctx context.Context, client *spanner.Client, warehouseID, man
 		params["st"] = strings.ToUpper(s)
 	}
 	sql += ` ORDER BY CreatedAt DESC LIMIT 100`
-	iter := client.Single().Query(ctx, spanner.Statement{SQL: sql, Params: params})
+	stmt := spanner.Statement{SQL: sql, Params: params}
+	var iter *spanner.RowIterator
+	if txn := spannerutils.ReadOnlyTxnFromContext(ctx); txn != nil {
+		iter = txn.Query(ctx, stmt)
+	} else {
+		iter = client.Single().Query(ctx, stmt)
+	}
 	defer iter.Stop()
 	var out []PickWaveView
 	for {
@@ -516,11 +523,17 @@ func ListPickWaves(ctx context.Context, client *spanner.Client, warehouseID, man
 }
 
 func listTasks(ctx context.Context, client *spanner.Client, waveID string) ([]PickTaskView, error) {
-	iter := client.Single().Query(ctx, spanner.Statement{
+	taskStmt := spanner.Statement{
 		SQL: `SELECT TaskId, OrderId, ProductId, LotId, LocationId, QuantityRequested, QuantityPicked, PickerId, Status, PickSequence
 		      FROM PickTasks WHERE WaveId = @wid ORDER BY PickSequence, TaskId`,
 		Params: map[string]any{"wid": waveID},
-	})
+	}
+	var iter *spanner.RowIterator
+	if txn := spannerutils.ReadOnlyTxnFromContext(ctx); txn != nil {
+		iter = txn.Query(ctx, taskStmt)
+	} else {
+		iter = client.Single().Query(ctx, taskStmt)
+	}
 	defer iter.Stop()
 	var out []PickTaskView
 	for {

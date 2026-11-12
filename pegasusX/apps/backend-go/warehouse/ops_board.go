@@ -150,7 +150,7 @@ func (s *Service) boardDeliverBefore(ctx context.Context, warehouseID string, da
 }
 
 func (s *Service) queryBoardOrders(ctx context.Context, stmt spanner.Statement, now time.Time) ([]OpsBoardOrder, error) {
-	iter := s.spannerClient.Single().Query(ctx, stmt)
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	out := make([]OpsBoardOrder, 0, 16)
 	for {
@@ -221,7 +221,7 @@ func (s *Service) boardManifests(ctx context.Context, warehouseID string) (board
 		      LIMIT 50`,
 		Params: map[string]any{"wh": warehouseID},
 	}
-	iter := s.spannerClient.Single().Query(ctx, stmt)
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	var out boardManifestSplit
 	for {

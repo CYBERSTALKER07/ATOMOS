@@ -69,7 +69,7 @@ func (r *SpannerRepository) ListPayers(ctx context.Context, limit, offset int) (
 			"offset": offset,
 		},
 	}
-	iter := r.client.Single().Query(ctx, stmt)
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 
 	var payers []Payer

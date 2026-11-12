@@ -7,11 +7,11 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
+	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/allocation"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/segment"
-	"github.com/google/uuid"
 	"google.golang.org/api/iterator"
 )
 
@@ -63,7 +63,7 @@ func ValidateFulfillmentForManifestTxn(ctx context.Context, txn *spanner.ReadWri
 	}
 
 	stmt := spanner.Statement{
-		SQL: `SELECT WarehouseId FROM OrderLineAllocations WHERE OrderId = @orderId`,
+		SQL:    `SELECT WarehouseId FROM OrderLineAllocations WHERE OrderId = @orderId`,
 		Params: map[string]any{"orderId": orderID},
 	}
 	iter := txn.Query(ctx, stmt)

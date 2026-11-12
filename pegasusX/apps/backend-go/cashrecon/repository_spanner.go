@@ -242,7 +242,7 @@ func (r *SpannerRepository) ListReconciliationsByStatus(ctx context.Context, sta
 	if r == nil || r.client == nil {
 		return nil, fmt.Errorf("cashrecon repository unavailable")
 	}
-	iter := r.client.Single().Query(ctx, spanner.Statement{
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL: `SELECT ReconciliationId, SupplierId, DriverId, RouteId, ShiftDate, ExpectedCashMinor, DeclaredCashMinor,
 		             DifferenceMinor, Status, DriverNote, FinanceNote, CreatedAt, ResolvedAt, ResolvedBy
 		      FROM CashReconciliations WHERE Status = @status ORDER BY CreatedAt DESC LIMIT 200`,
@@ -261,7 +261,7 @@ func (r *SpannerRepository) ListByDriver(ctx context.Context, driverID string, s
 		return nil, fmt.Errorf("driver_id required")
 	}
 	d := civil.DateOf(shiftDate.UTC())
-	iter := r.client.Single().Query(ctx, spanner.Statement{
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL: `SELECT ReconciliationId, SupplierId, DriverId, RouteId, ShiftDate, ExpectedCashMinor, DeclaredCashMinor,
 		             DifferenceMinor, Status, DriverNote, FinanceNote, CreatedAt, ResolvedAt, ResolvedBy
 		      FROM CashReconciliations
@@ -303,7 +303,7 @@ func (r *SpannerRepository) ListBySupplier(ctx context.Context, supplierID strin
 		params["status"] = string(status)
 	}
 	sql += ` ORDER BY cr.CreatedAt DESC LIMIT @limit`
-	iter := r.client.Single().Query(ctx, spanner.Statement{SQL: sql, Params: params})
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{SQL: sql, Params: params})
 	defer iter.Stop()
 	return collectReconciliations(iter)
 }

@@ -1,6 +1,7 @@
 package payment
 
 import (
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"strings"
@@ -19,26 +20,26 @@ const (
 // Standard system accounts
 const (
 	// Assets
-	AccountAccountsReceivable     = "AR:RETAILER"        // Retailer outstanding invoices
-	AccountCashInTransit          = "CASH:DRIVER"        // Driver collected cash on delivery
+	AccountAccountsReceivable       = "AR:RETAILER"        // Retailer outstanding invoices
+	AccountCashInTransit            = "CASH:DRIVER"        // Driver collected cash on delivery
 	AccountDriverReceivableVariance = "AR:DRIVER:VARIANCE" // Driver owes for cash shortage
-	AccountCashOffice             = "CASH:OFFICE"        // Physical cash vault in finance office
-	AccountCardPSPTransit         = "PSP:GATEWAY"        // In-flight funds with Payme/Click/Adyen
-	AccountBankOperating          = "BANK:OPERATING"     // Supplier bank account
+	AccountCashOffice               = "CASH:OFFICE"        // Physical cash vault in finance office
+	AccountCardPSPTransit           = "PSP:GATEWAY"        // In-flight funds with Payme/Click/Adyen
+	AccountBankOperating            = "BANK:OPERATING"     // Supplier bank account
 
 	// Liabilities
-	AccountSupplierPayable        = "AP:SUPPLIER"        // Net due to supplier
-	AccountPlatformEscrow         = "ESCROW:ORDER"       // Buyer funds held before fulfillment
-	AccountRetailerCredit         = "WALLET:RETAILER"    // Customer deposit / credit wallet
-	AccountDriverPayableVariance  = "AP:DRIVER:VARIANCE" // Surplus cash held pending investigation
+	AccountSupplierPayable       = "AP:SUPPLIER"        // Net due to supplier
+	AccountPlatformEscrow        = "ESCROW:ORDER"       // Buyer funds held before fulfillment
+	AccountRetailerCredit        = "WALLET:RETAILER"    // Customer deposit / credit wallet
+	AccountDriverPayableVariance = "AP:DRIVER:VARIANCE" // Surplus cash held pending investigation
 
 	// Equity / Revenue / Expense
-	AccountPlatformFeeRevenue     = "REV:PLATFORM:FEE"   // Pegasus platform marketplace cut
-	AccountDiscountsAndAllowances = "EXP:PROMO:DISCOUNT" // Promo code / marketing subsidy
-	AccountCashWriteOffExpense    = "EXP:CASH:WRITEOFF"  // Uncollectible cash variance written off
-	AccountCashOverShortRevenue   = "REV:CASH:OVERAGE"   // Unclaimed surplus recognized as revenue
+	AccountPlatformFeeRevenue      = "REV:PLATFORM:FEE"      // Pegasus platform marketplace cut
+	AccountDiscountsAndAllowances  = "EXP:PROMO:DISCOUNT"    // Promo code / marketing subsidy
+	AccountCashWriteOffExpense     = "EXP:CASH:WRITEOFF"     // Uncollectible cash variance written off
+	AccountCashOverShortRevenue    = "REV:CASH:OVERAGE"      // Unclaimed surplus recognized as revenue
 	AccountClaimsSettlementExpense = "EXP:CLAIMS:SETTLEMENT" // Claims dispute expense
-	AccountCreditNoteAdjustment   = "ADJ:CREDITNOTE"     // Credit note adjustment expense
+	AccountCreditNoteAdjustment    = "ADJ:CREDITNOTE"        // Credit note adjustment expense
 )
 
 // PostingDirection designates Debit or Credit in double-entry bookkeeping.
@@ -268,12 +269,12 @@ func BuildSettlementJournalEntry(
 }
 
 // BuildCashVarianceJournalEntry creates and validates a balanced JournalEntry for driver shift cash reconciliation discrepancy.
-// - Shortfall (declared < expected): Driver owes the difference.
-//   Debit: AR:DRIVER:VARIANCE (Party: DriverID)
-//   Credit: CASH:DRIVER (Party: DriverID)
-// - Overage (declared > expected): Excess physical cash handed over.
-//   Debit: CASH:DRIVER (Party: DriverID)
-//   Credit: AP:DRIVER:VARIANCE (Party: DriverID)
+//   - Shortfall (declared < expected): Driver owes the difference.
+//     Debit: AR:DRIVER:VARIANCE (Party: DriverID)
+//     Credit: CASH:DRIVER (Party: DriverID)
+//   - Overage (declared > expected): Excess physical cash handed over.
+//     Debit: CASH:DRIVER (Party: DriverID)
+//     Credit: AP:DRIVER:VARIANCE (Party: DriverID)
 func BuildCashVarianceJournalEntry(
 	reconciliationID, supplierID, driverID, routeID, currency string,
 	expectedMinor, declaredMinor int64,
@@ -480,7 +481,7 @@ func BuildDoorstepCashShortfallJournalEntry(
 	}
 
 	je := &JournalEntry{
-		EntryID:    fmt.Sprintf("jentry_doorstep_shortfall_%s", orderID),
+		EntryID:    fmt.Sprintf("jentry_shortfall_%s", orderID),
 		OrderID:    orderID,
 		SupplierID: supplierID,
 		Currency:   strings.ToUpper(currency),
@@ -543,8 +544,13 @@ func (je *JournalEntry) ToLedgerEntryRecords() []LedgerEntryRecord {
 	}
 	for idx, p := range je.Postings {
 		entryType := fmt.Sprintf("GL_%s_%s", p.Direction, strings.ReplaceAll(p.AccountCode, ":", "_"))
+		ledgerEntryID := fmt.Sprintf("%s_p%d", refID, idx)
+		if len(ledgerEntryID) > 64 {
+			h := sha256.Sum256([]byte(ledgerEntryID))
+			ledgerEntryID = fmt.Sprintf("ple_%x", h[:28]) // 4 + 56 = 60 chars <= 64
+		}
 		records = append(records, LedgerEntryRecord{
-			LedgerEntryID: fmt.Sprintf("%s_p%d", refID, idx),
+			LedgerEntryID: ledgerEntryID,
 			SessionID:     je.SessionID,
 			OrderID:       je.OrderID,
 			SupplierID:    je.SupplierID,

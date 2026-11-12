@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strings" 
+	"strings"
 	"sync"
 	"time"
 
@@ -38,7 +38,6 @@ type LoadLineSeed struct {
 	SkuID       string
 	RequiredQty int64
 }
-
 
 func memoryBlocked() error {
 	if strings.EqualFold(strings.TrimSpace(os.Getenv("PEGASUSX_ENV")), "production") ||
@@ -240,7 +239,7 @@ func ListLoadLedger(ctx context.Context, client *spanner.Client, manifestID stri
 		      FROM ManifestLoadLines WHERE ManifestId = @mid`,
 		Params: map[string]interface{}{"mid": manifestID},
 	}
-	iter := client.Single().Query(ctx, stmt)
+	iter := client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	var out []LoadLine
 	for {

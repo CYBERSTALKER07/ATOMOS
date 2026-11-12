@@ -24,6 +24,17 @@ func NewSpannerRepository(client *spanner.Client) *SpannerRepository {
 	return &SpannerRepository{client: client}
 }
 
+func canTransitionSessionStatus(cur, next string) bool {
+	if strings.EqualFold(cur, next) {
+		return false
+	}
+	// A successful session (PAID, CAPTURED, SETTLED, SUCCESS) must never regress to PENDING/FAILED.
+	if isPaymentSuccessStatus(cur) && !isPaymentSuccessStatus(next) && !strings.EqualFold(next, "REFUNDED") && !strings.EqualFold(next, "CHARGEBACK") {
+		return false
+	}
+	return true
+}
+
 type spannerTxnBuffer struct {
 	events []outbox.Event
 	audits []outbox.AuditEntry
@@ -258,7 +269,7 @@ func (r *SpannerRepository) SaveWebhook(ctx context.Context, w WebhookRecord, em
 			if err == nil && sessRow != nil {
 				var curStatus string
 				_ = sessRow.ColumnByName("Status", &curStatus)
-				if !strings.EqualFold(curStatus, w.Status) {
+				if canTransitionSessionStatus(curStatus, w.Status) {
 					mutations = append(mutations, spanner.UpdateMap("PaymentSessions", map[string]any{
 						"SessionId": w.SessionID,
 						"Status":    w.Status,
@@ -276,7 +287,7 @@ func (r *SpannerRepository) SaveWebhook(ctx context.Context, w WebhookRecord, em
 			defer iterSess.Stop()
 			if sRow, sErr := iterSess.Next(); sErr == nil {
 				var sID, sStatus string
-				if err := sRow.Columns(&sID, &sStatus); err == nil && !strings.EqualFold(sStatus, w.Status) {
+				if err := sRow.Columns(&sID, &sStatus); err == nil && canTransitionSessionStatus(sStatus, w.Status) {
 					mutations = append(mutations, spanner.UpdateMap("PaymentSessions", map[string]any{
 						"SessionId": sID,
 						"Status":    w.Status,
@@ -469,7 +480,7 @@ func (r *SpannerRepository) ListLedgerEntries(ctx context.Context, q LedgerQuery
 		whereClause,
 	)
 
-	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, spanner.Statement{
+	iter := r.client.Single().Query(ctx, spanner.Statement{
 		SQL:    sql,
 		Params: params,
 	})
@@ -573,7 +584,7 @@ func (r *SpannerRepository) SummarizeLedgerEntries(ctx context.Context, q Settle
 		whereClause,
 	)
 
-	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, spanner.Statement{
+	iter := r.client.Single().Query(ctx, spanner.Statement{
 		SQL:    sql,
 		Params: params,
 	})

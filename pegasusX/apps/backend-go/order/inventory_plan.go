@@ -31,11 +31,11 @@ func resolveOutOfStockPolicy(warehouseDefault, productOverride string) string {
 
 // InventoryCheckoutError is returned when checkout cannot proceed under warehouse policy.
 type InventoryCheckoutError struct {
-	Code          string            `json:"code"`
-	Message       string            `json:"message"`
-	OOSItems      []string          `json:"oos_items,omitempty"`
-	Shortfall     map[string]int64  `json:"shortfall,omitempty"`
-	RejectedSKUs  []string          `json:"rejected_skus,omitempty"`
+	Code         string           `json:"code"`
+	Message      string           `json:"message"`
+	OOSItems     []string         `json:"oos_items,omitempty"`
+	Shortfall    map[string]int64 `json:"shortfall,omitempty"`
+	RejectedSKUs []string         `json:"rejected_skus,omitempty"`
 }
 
 func (e *InventoryCheckoutError) Error() string {
@@ -47,11 +47,11 @@ func (e *InventoryCheckoutError) Error() string {
 
 // InventoryPlan splits requested lines into fulfillable vs backorder quantities.
 type InventoryPlan struct {
-	Fulfillable      []LineItem
-	Backorder        []LineItem
-	BackorderCount   int
-	Warnings         []StockWarning
-	AvailableStock   map[string]int64
+	Fulfillable    []LineItem
+	Backorder      []LineItem
+	BackorderCount int
+	Warnings       []StockWarning
+	AvailableStock map[string]int64
 }
 
 // StockWarning is surfaced to retailers when backorder policy allows checkout.

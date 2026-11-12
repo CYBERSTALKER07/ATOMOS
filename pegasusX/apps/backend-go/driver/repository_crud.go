@@ -144,7 +144,7 @@ func (r *SpannerRepository) ListDrivers(ctx context.Context, supplierID string, 
 			"offset":     offset,
 		},
 	}
-	iter := r.client.Single().Query(ctx, stmt)
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 
 	var drivers []Driver
@@ -233,7 +233,7 @@ func (r *SpannerRepository) ListVehicles(ctx context.Context, supplierID string,
 			"offset":     offset,
 		},
 	}
-	iter := r.client.Single().Query(ctx, stmt)
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 
 	var vehicles []Vehicle

@@ -52,7 +52,6 @@ func BuildPreview(orders []DispatchableOrder) Preview {
 			ReceivingWindowOpen:  order.ReceivingWindowOpen,
 			ReceivingWindowClose: order.ReceivingWindowClose,
 			HandlingClass:        order.HandlingClass,
-			RequiresColdChain:    order.RequiresColdChain,
 			IsHazardous:          order.IsHazardous,
 			AccessRestriction:    order.AccessRestriction,
 		})

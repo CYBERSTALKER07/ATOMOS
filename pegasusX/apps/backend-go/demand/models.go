@@ -10,7 +10,6 @@ type SignalType string
 
 const (
 	SignalHoliday            SignalType = "HOLIDAY"
-	SignalWeather            SignalType = "WEATHER"
 	SignalEvent              SignalType = "EVENT"
 	SignalPromo              SignalType = "PROMO"
 	SignalPayday             SignalType = "PAYDAY"
@@ -18,7 +17,7 @@ const (
 	SignalCompetitorPressure SignalType = "COMPETITOR_PRESSURE"
 )
 
-// PlatformSupplierID stamps global/weather signals that are not tenant-owned.
+// PlatformSupplierID stamps global signals that are not tenant-owned.
 const PlatformSupplierID = "_platform"
 
 // ResolveSupplierID returns explicit id, or PlatformSupplierID when empty.

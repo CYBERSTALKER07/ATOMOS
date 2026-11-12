@@ -215,7 +215,7 @@ func (s *Service) loadWarehouseLocation(ctx context.Context, warehouseID string)
 		      FROM Warehouses WHERE WarehouseId = @wid`,
 		Params: map[string]any{"wid": warehouseID},
 	}
-	iter := s.spannerClient.Single().Query(ctx, stmt)
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	row, err := iter.Next()
 	if err != nil {

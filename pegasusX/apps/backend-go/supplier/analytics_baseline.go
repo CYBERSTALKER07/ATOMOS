@@ -26,7 +26,7 @@ func (s *Service) mergeDemandBaselineItems(ctx context.Context, supplierID strin
 	sql += ` GROUP BY b.ProductId, p.Name
 		      ORDER BY SUM(b.BaselineQty) DESC
 		      LIMIT 100`
-	iter := s.portalSpanner.Single().Query(ctx, spanner.Statement{
+	iter := s.portalSpanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL:    sql,
 		Params: params,
 	})

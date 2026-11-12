@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
+	"strconv"
 	"strings"
 	"time"
 
@@ -57,17 +58,87 @@ func (w *BillingTierWorker) HandleEvent(ctx context.Context, msg segkafka.Messag
 // orderFinalizedBillingEvent matches the live ORDER_FINALIZED emit shape from order/service.go
 // plus legacy amount / total_minor fields.
 type orderFinalizedBillingEvent struct {
-	Type        string  `json:"type"`
-	OrderID     string  `json:"order_id"`
-	SupplierID  string  `json:"supplier_id"`
-	AmountMinor int64   `json:"amount_minor"`
-	TotalMinor  int64   `json:"total_minor"`
-	Amount      float64 `json:"amount"`
-	Currency    string  `json:"currency"`
-	Total       struct {
+	Type              string          `json:"type"`
+	OrderID           string          `json:"order_id"`
+	SupplierID        string          `json:"supplier_id"`
+	AmountMinor       int64           `json:"amount_minor"`
+	TotalMinor        int64           `json:"total_minor"`
+	LegacyAmountMinor int64           `json:"-"`
+	RawAmount         json.RawMessage `json:"amount"`
+	Currency          string          `json:"currency"`
+	Total             struct {
 		Amount   int64  `json:"amount"`
 		Currency string `json:"currency"`
 	} `json:"total"`
+}
+
+// parseLegacyDecimalAmountMinor parses a JSON numeric/string major-unit token (e.g. 450.50, 19.99, 0.29)
+// into 2-decimal int64 minor units using pure integer/string arithmetic (zero float64).
+func parseLegacyDecimalAmountMinor(raw json.RawMessage) (int64, bool) {
+	s := strings.TrimSpace(string(raw))
+	s = strings.Trim(s, `"`)
+	s = strings.TrimSpace(s)
+	if s == "" || s == "null" || strings.HasPrefix(s, "{") || strings.HasPrefix(s, "[") || strings.HasPrefix(s, "-") {
+		return 0, false
+	}
+	parts := strings.Split(s, ".")
+	if len(parts) > 2 {
+		return 0, false
+	}
+	wholeStr := parts[0]
+	if wholeStr == "" {
+		wholeStr = "0"
+	}
+	whole, err := strconv.ParseInt(wholeStr, 10, 64)
+	if err != nil || whole < 0 {
+		return 0, false
+	}
+	var fracMinor int64
+	if len(parts) == 2 {
+		fracStr := parts[1]
+		for i := 0; i < len(fracStr); i++ {
+			if fracStr[i] < '0' || fracStr[i] > '9' {
+				return 0, false
+			}
+		}
+		padded := (fracStr + "000")[:3]
+		cents, err := strconv.ParseInt(padded[:2], 10, 64)
+		if err != nil {
+			return 0, false
+		}
+		if padded[2] >= '5' {
+			cents++
+		}
+		fracMinor = cents
+	}
+	return whole*100 + fracMinor, true
+}
+
+func decodeOrderFinalizedBillingEvent(msg []byte) (orderFinalizedBillingEvent, int64, error) {
+	var event orderFinalizedBillingEvent
+	if err := json.Unmarshal(msg, &event); err != nil {
+		return event, 0, err
+	}
+	if len(event.RawAmount) > 0 {
+		if legacyMinor, ok := parseLegacyDecimalAmountMinor(event.RawAmount); ok {
+			event.LegacyAmountMinor = legacyMinor
+		} else {
+			var obj struct {
+				Amount   int64  `json:"amount"`
+				Currency string `json:"currency"`
+			}
+			if err := json.Unmarshal(event.RawAmount, &obj); err == nil {
+				if event.AmountMinor == 0 && obj.Amount > 0 {
+					event.AmountMinor = obj.Amount
+				}
+				if event.Currency == "" && obj.Currency != "" {
+					event.Currency = obj.Currency
+				}
+			}
+		}
+	}
+	minor := billing.ResolveMeterAmountMinor(event.AmountMinor, event.Total.Amount, event.TotalMinor, event.LegacyAmountMinor)
+	return event, minor, nil
 }
 
 // HandleMessage processes incoming Kafka messages for the billing tier worker.
@@ -75,14 +146,21 @@ func (w *BillingTierWorker) HandleMessage(ctx context.Context, msg []byte) error
 	if w == nil || w.MeterWorker == nil {
 		return nil
 	}
-	var event orderFinalizedBillingEvent
-	if err := json.Unmarshal(msg, &event); err != nil {
+	var envelope struct {
+		Type string `json:"type"`
+	}
+	if err := json.Unmarshal(msg, &envelope); err != nil {
 		slog.WarnContext(ctx, "failed to unmarshal billing event", "err", err)
 		return err
 	}
-
-	if event.Type != events.EventOrderFinalized {
+	if envelope.Type != events.EventOrderFinalized {
 		return nil
+	}
+
+	event, minor, err := decodeOrderFinalizedBillingEvent(msg)
+	if err != nil {
+		slog.WarnContext(ctx, "failed to unmarshal billing event", "err", err)
+		return err
 	}
 	orderID := strings.TrimSpace(event.OrderID)
 	supplierID := strings.TrimSpace(event.SupplierID)
@@ -109,7 +187,6 @@ func (w *BillingTierWorker) HandleMessage(ctx context.Context, msg []byte) error
 		source = operating
 	}
 
-	minor := billing.ResolveMeterAmountMinor(event.AmountMinor, event.Total.Amount, event.TotalMinor, event.Amount)
 	if minor <= 0 {
 		slog.DebugContext(ctx, "billing ORDER_FINALIZED non-positive amount; skipping", "order_id", orderID)
 		return nil

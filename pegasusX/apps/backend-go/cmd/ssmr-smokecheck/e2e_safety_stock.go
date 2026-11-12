@@ -68,9 +68,9 @@ func runSafetyStockE2E(
 	}()
 
 	patchBody, _ := json.Marshal(map[string]any{
-		"target_service_level":  0.98,
-		"lead_time_days":        2,
-		"lead_time_sigma_days":  1.0,
+		"target_service_level":     0.98,
+		"lead_time_days":           2,
+		"lead_time_sigma_days":     1.0,
 		"max_daily_transfer_units": 500,
 	})
 	status, respBody, _, err := clientDo(ctx, client, http.MethodPatch,
@@ -137,18 +137,18 @@ func runSafetyStockE2E(
 		d := end.AddDays(-i)
 		se := int64((i%5)*3 - 6) // varying signed errors
 		accMuts = append(accMuts, spanner.InsertOrUpdateMap("ForecastAccuracyDaily", map[string]any{
-			"SupplierId":     supplierID,
-			"ForecastDate":   d,
-			"WarehouseId":    warehouseID,
-			"ProductId":      productID,
-			"ForecastQty":    int64(10),
-			"ActualQty":      int64(10 + se),
-			"AbsError":       int64(math.Abs(float64(se))),
-			"SignedError":    se,
-			"SampleDays7":    int64(7),
-			"SampleDays28":   int64(10),
-			"AlertTs":        false,
-			"ComputedAt":     spanner.CommitTimestamp,
+			"SupplierId":   supplierID,
+			"ForecastDate": d,
+			"WarehouseId":  warehouseID,
+			"ProductId":    productID,
+			"ForecastQty":  int64(10),
+			"ActualQty":    int64(10 + se),
+			"AbsError":     int64(math.Abs(float64(se))),
+			"SignedError":  se,
+			"SampleDays7":  int64(7),
+			"SampleDays28": int64(10),
+			"AlertTs":      false,
+			"ComputedAt":   spanner.CommitTimestamp,
 		}))
 	}
 	if _, err := spannerClient.Apply(ctx, accMuts); err != nil {

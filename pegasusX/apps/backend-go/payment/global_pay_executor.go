@@ -146,8 +146,8 @@ type gpTokenResponse struct {
 // env-overridable (GLOBAL_PAY_REFUND_ACTION, default "RF") until merchant docs confirm.
 func (e *globalpayProviderExecutor) executeRefund(ctx context.Context, req ExecutionRequest) (ExecutionResult, error) {
 	if e.username == "" || e.password == "" {
-			return ExecutionResult{}, errGlobalPayUnkeyed()
-		}
+		return ExecutionResult{}, errGlobalPayUnkeyed()
+	}
 	token, err := e.authenticate(ctx)
 	if err != nil {
 		return ExecutionResult{}, err

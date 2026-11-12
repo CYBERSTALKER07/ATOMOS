@@ -19,6 +19,7 @@ import (
 
 // HandleCreateDriver serves POST /v1/drivers
 func (s *Service) HandleCreateDriver(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		web.JSONError(w, "invalid request body", http.StatusBadRequest)
@@ -124,6 +125,7 @@ func (s *Service) HandleUpdateDriver(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		web.JSONError(w, "invalid request body", http.StatusBadRequest)
@@ -219,6 +221,7 @@ func (s *Service) HandleListDrivers(w http.ResponseWriter, r *http.Request) {
 
 // HandleCreateVehicle serves POST /v1/vehicles
 func (s *Service) HandleCreateVehicle(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		web.JSONError(w, "invalid request body", http.StatusBadRequest)
@@ -306,6 +309,7 @@ func (s *Service) HandleUpdateVehicle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		web.JSONError(w, "invalid request body", http.StatusBadRequest)

@@ -1,7 +1,6 @@
 package payload
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -22,6 +21,7 @@ func (s *Service) HandleScanProgress(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	var req ScanPayload
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "invalid payload", http.StatusBadRequest)
@@ -36,7 +36,7 @@ func (s *Service) HandleScanProgress(w http.ResponseWriter, r *http.Request) {
 
 	// ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
 	// defer cancel()
-	
+
 	var newVolume int64
 	if s.cache != nil {
 		redisKey := fmt.Sprintf("{manifest:%s}:loaded_vu", manifestID)
@@ -54,7 +54,7 @@ func (s *Service) HandleScanProgress(w http.ResponseWriter, r *http.Request) {
 			"loaded_vu":   newVolume,
 		})
 		if whID := s.resolveWarehouseScope(r.Context()); whID != "" {
-			s.payloadHub.Broadcast(context.Background(), "warehouse:"+whID, payload)
+			s.payloadHub.Broadcast(r.Context(), "warehouse:"+whID, payload)
 		}
 	}
 

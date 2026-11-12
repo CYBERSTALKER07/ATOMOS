@@ -375,7 +375,7 @@ func ComputeInventoryAccuracy(ctx context.Context, client *spanner.Client, wareh
 	if client == nil {
 		return nil, fmt.Errorf("spanner unavailable")
 	}
-	iter := client.Single().Query(ctx, spanner.Statement{
+	iter := client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, spanner.Statement{
 		SQL: `SELECT ExpectedQty, VarianceQty FROM CycleCounts
 		      WHERE WarehouseId = @wid AND Status = 'SUBMITTED'`,
 		Params: map[string]any{"wid": warehouseID},
@@ -481,7 +481,7 @@ func ListCycleCounts(ctx context.Context, client *spanner.Client, warehouseID, s
 		params["st"] = strings.ToUpper(s)
 	}
 	sql += ` ORDER BY CreatedAt DESC LIMIT 200`
-	iter := client.Single().Query(ctx, spanner.Statement{SQL: sql, Params: params})
+	iter := client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, spanner.Statement{SQL: sql, Params: params})
 	defer iter.Stop()
 	var out []CycleCountView
 	for {
@@ -589,7 +589,7 @@ func ListInventoryAdjustments(ctx context.Context, client *spanner.Client, wareh
 		params["st"] = strings.ToUpper(s)
 	}
 	sql += ` ORDER BY CreatedAt DESC LIMIT 200`
-	iter := client.Single().Query(ctx, spanner.Statement{SQL: sql, Params: params})
+	iter := client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, spanner.Statement{SQL: sql, Params: params})
 	defer iter.Stop()
 	var out []InventoryAdjustmentView
 	for {

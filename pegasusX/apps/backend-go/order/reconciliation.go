@@ -10,7 +10,7 @@ import (
 
 type reconcileResolveRequest struct {
 	OrderID    string `json:"order_id"`
-	Action     string `json:"action"` // "COMPLETE" or "CANCEL"
+	Action     string `json:"action"`                // "COMPLETE" or "CANCEL"
 	ReasonCode string `json:"reason_code,omitempty"` // required for COMPLETE (ADR-009 force audit)
 }
 

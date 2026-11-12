@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
+	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
 	"google.golang.org/api/iterator"
 	"google.golang.org/grpc/codes"
 )
@@ -180,7 +181,12 @@ func (s *Service) overrideRetailersForProduct(ctx context.Context, supplierID, p
 		      WHERE SupplierId = @sid AND ProductId = @pid AND IsActive = true`,
 		Params: map[string]any{"sid": supplierID, "pid": productID},
 	}
-	iter := s.spannerClient.Single().Query(ctx, stmt)
+	var iter *spanner.RowIterator
+	if txn := spannerutils.ReadOnlyTxnFromContext(ctx); txn != nil {
+		iter = txn.Query(ctx, stmt)
+	} else {
+		iter = s.spannerClient.Single().Query(ctx, stmt)
+	}
 	defer iter.Stop()
 	out := map[string]struct{}{}
 	count := 0
@@ -212,7 +218,12 @@ func (s *Service) recentOrderRetailersForProductAtWarehouse(ctx context.Context,
 		      LIMIT 300`,
 		Params: map[string]any{"wid": warehouseID, "since": since},
 	}
-	iter := s.spannerClient.Single().Query(ctx, stmt)
+	var iter *spanner.RowIterator
+	if txn := spannerutils.ReadOnlyTxnFromContext(ctx); txn != nil {
+		iter = txn.Query(ctx, stmt)
+	} else {
+		iter = s.spannerClient.Single().Query(ctx, stmt)
+	}
 	defer iter.Stop()
 	out := map[string]struct{}{}
 	for {

@@ -78,13 +78,13 @@ func (s *Service) HandleGlobalPayWebhook(w http.ResponseWriter, r *http.Request)
 	}
 
 	// Docs-only integration requirement: Authoritative status verification
-	if req.Status == "SUCCESS" || req.Status == "SETTLED" {
+	if s.globalPayUsername != "" && s.globalPayPassword != "" && isPaymentSuccessStatus(req.Status) {
 		verifiedStatus, err := s.verifyGlobalPayPaymentStatus(r.Context(), req.TransactionID)
 		if err != nil {
 			writeJSONError(w, http.StatusBadGateway, "verification_failed", fmt.Sprintf("failed to verify payment status: %v", err), endpoint, false, "")
 			return
 		}
-		if verifiedStatus != req.Status {
+		if !isPaymentSuccessStatus(verifiedStatus) {
 			writeJSONError(w, http.StatusConflict, "status_mismatch", "webhook status does not match authoritative status", endpoint, false, "")
 			return
 		}

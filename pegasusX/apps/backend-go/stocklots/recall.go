@@ -74,9 +74,9 @@ type LotQuarantineEventView struct {
 
 // LotGenealogyView is the full traceability history for a single lot.
 type LotGenealogyView struct {
-	Lot              StockLotView             `json:"lot"`
-	QuarantineEvents []LotQuarantineEventView `json:"quarantine_events"`
-	ImpactedOrders   []RecallImpactedOrderView`json:"impacted_orders"`
+	Lot              StockLotView              `json:"lot"`
+	QuarantineEvents []LotQuarantineEventView  `json:"quarantine_events"`
+	ImpactedOrders   []RecallImpactedOrderView `json:"impacted_orders"`
 }
 
 // InitiateRecallInTxn executes a recall campaign, freezing affected lots and tracing orders.
@@ -124,13 +124,7 @@ func InitiateRecallInTxn(
 	iter := txn.Query(ctx, spanner.Statement{SQL: sql, Params: params})
 	defer iter.Stop()
 
-	type matchedLot struct {
-		lotID       string
-		warehouseID string
-		status      string
-		qoh         int64
-	}
-	var lots []matchedLot
+	var lots []recallMatchedLot
 	for {
 		row, err := iter.Next()
 		if err == iterator.Done {
@@ -146,7 +140,7 @@ func InitiateRecallInTxn(
 		if err := row.Columns(&lid, &wid, &loc, &codeNull, &qoh, &qr, &status, &exp); err != nil {
 			return nil, err
 		}
-		lots = append(lots, matchedLot{
+		lots = append(lots, recallMatchedLot{
 			lotID:       lid,
 			warehouseID: wid,
 			status:      status,
@@ -201,65 +195,9 @@ func InitiateRecallInTxn(
 	}
 
 	// Trace orders that reserved or picked these lots
-	var impactedOrders []RecallImpactedOrderView
-	orderSeen := map[string]struct{}{}
-
-	for _, lot := range lots {
-		// Trace reservations
-		resIter := txn.Query(ctx, spanner.Statement{
-			SQL:    `SELECT OrderId, Quantity FROM OrderLotReservations WHERE LotId = @lid`,
-			Params: map[string]any{"lid": lot.lotID},
-		})
-		for {
-			rRow, err := resIter.Next()
-			if err == iterator.Done {
-				break
-			}
-			if err != nil {
-				resIter.Stop()
-				return nil, err
-			}
-			var oid string
-			var qty int64
-			if err := rRow.Columns(&oid, &qty); err != nil {
-				resIter.Stop()
-				return nil, err
-			}
-			if _, exists := orderSeen[oid]; !exists {
-				orderSeen[oid] = struct{}{}
-				retID, oStatus := resolveOrderDetails(ctx, txn, oid)
-				imp := RecallImpactedOrderView{
-					CampaignID:       campaignID,
-					OrderID:          oid,
-					RetailerID:       retID,
-					WarehouseID:      lot.warehouseID,
-					LotID:            lot.lotID,
-					SKU:              req.ProductID,
-					Quantity:         qty,
-					OrderStatus:      oStatus,
-					CustomerNotified: false,
-					CreatedAt:        now.Format(time.RFC3339),
-				}
-				impactedOrders = append(impactedOrders, imp)
-
-				if err := txn.BufferWrite([]*spanner.Mutation{spanner.InsertMap("LotRecallImpactedOrders", map[string]any{
-					"CampaignId":       campaignID,
-					"OrderId":          oid,
-					"RetailerId":       retID,
-					"WarehouseId":      lot.warehouseID,
-					"LotId":            lot.lotID,
-					"Sku":              req.ProductID,
-					"Quantity":         qty,
-					"OrderStatus":      oStatus,
-					"CustomerNotified": false,
-					"CreatedAt":        spanner.CommitTimestamp,
-				})}); err != nil {
-					resIter.Stop()
-					return nil, err
-				}
-			}
-		}
-		resIter.Stop()
+	impactedOrders, err := traceImpactedRecallOrdersInTxn(ctx, txn, lots, campaignID, req.ProductID, now)
+	if err != nil {
+		return nil, err
 	}
 
 	impactedOrderCount := int64(len(impactedOrders))
@@ -330,13 +268,140 @@ func InitiateRecallInTxn(
 	}, nil
 }
 
-func resolveOrderDetails(ctx context.Context, txn *spanner.ReadWriteTransaction, orderID string) (retailerID, status string) {
-	row, err := txn.ReadRow(ctx, "Orders", spanner.Key{orderID}, []string{"RetailerId", "Status"})
-	if err != nil {
-		return "unknown", "UNKNOWN"
+type recallMatchedLot struct {
+	lotID       string
+	warehouseID string
+	status      string
+	qoh         int64
+}
+
+func traceImpactedRecallOrdersInTxn(
+	ctx context.Context,
+	txn *spanner.ReadWriteTransaction,
+	lots []recallMatchedLot,
+	campaignID, productID string,
+	now time.Time,
+) ([]RecallImpactedOrderView, error) {
+	if len(lots) == 0 {
+		return nil, nil
 	}
-	_ = row.Columns(&retailerID, &status)
-	return retailerID, status
+
+	lotIDs := make([]string, 0, len(lots))
+	warehouseByLot := make(map[string]string, len(lots))
+	for _, lot := range lots {
+		lotIDs = append(lotIDs, lot.lotID)
+		warehouseByLot[lot.lotID] = lot.warehouseID
+	}
+
+	type reservationHit struct {
+		orderID     string
+		lotID       string
+		warehouseID string
+		qty         int64
+	}
+	var hits []reservationHit
+	orderSeen := make(map[string]struct{})
+
+	resIter := txn.Query(ctx, spanner.Statement{
+		SQL: `SELECT LotId, OrderId, Quantity
+		      FROM OrderLotReservations
+		      WHERE LotId IN UNNEST(@lids)
+		      ORDER BY LotId ASC, OrderId ASC`,
+		Params: map[string]any{"lids": lotIDs},
+	})
+	defer resIter.Stop()
+	for {
+		rRow, err := resIter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		var lid, oid string
+		var qty int64
+		if err := rRow.Columns(&lid, &oid, &qty); err != nil {
+			return nil, err
+		}
+		if _, exists := orderSeen[oid]; exists {
+			continue
+		}
+		orderSeen[oid] = struct{}{}
+		hits = append(hits, reservationHit{
+			orderID:     oid,
+			lotID:       lid,
+			warehouseID: warehouseByLot[lid],
+			qty:         qty,
+		})
+	}
+	if len(hits) == 0 {
+		return nil, nil
+	}
+
+	orderKeys := make([]spanner.KeySet, 0, len(hits))
+	for _, hit := range hits {
+		orderKeys = append(orderKeys, spanner.Key{hit.orderID})
+	}
+	type orderMeta struct {
+		retailerID string
+		status     string
+	}
+	metaByOrder := make(map[string]orderMeta, len(hits))
+	ordIter := txn.Read(ctx, "Orders", spanner.KeySets(orderKeys...), []string{"OrderId", "RetailerId", "Status"})
+	defer ordIter.Stop()
+	for {
+		oRow, err := ordIter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			// Match legacy resolveOrderDetails fallback when Orders lookup fails.
+			break
+		}
+		var oid, retID, st string
+		if err := oRow.Columns(&oid, &retID, &st); err != nil {
+			continue
+		}
+		metaByOrder[oid] = orderMeta{retailerID: retID, status: st}
+	}
+
+	impactedOrders := make([]RecallImpactedOrderView, 0, len(hits))
+	muts := make([]*spanner.Mutation, 0, len(hits))
+	createdAtStr := now.Format(time.RFC3339)
+	for _, hit := range hits {
+		meta, ok := metaByOrder[hit.orderID]
+		if !ok {
+			meta = orderMeta{retailerID: "unknown", status: "UNKNOWN"}
+		}
+		impactedOrders = append(impactedOrders, RecallImpactedOrderView{
+			CampaignID:       campaignID,
+			OrderID:          hit.orderID,
+			RetailerID:       meta.retailerID,
+			WarehouseID:      hit.warehouseID,
+			LotID:            hit.lotID,
+			SKU:              productID,
+			Quantity:         hit.qty,
+			OrderStatus:      meta.status,
+			CustomerNotified: false,
+			CreatedAt:        createdAtStr,
+		})
+		muts = append(muts, spanner.InsertMap("LotRecallImpactedOrders", map[string]any{
+			"CampaignId":       campaignID,
+			"OrderId":          hit.orderID,
+			"RetailerId":       meta.retailerID,
+			"WarehouseId":      hit.warehouseID,
+			"LotId":            hit.lotID,
+			"Sku":              productID,
+			"Quantity":         hit.qty,
+			"OrderStatus":      meta.status,
+			"CustomerNotified": false,
+			"CreatedAt":        spanner.CommitTimestamp,
+		}))
+	}
+	if err := txn.BufferWrite(muts); err != nil {
+		return nil, err
+	}
+	return impactedOrders, nil
 }
 
 // QuarantineLotInTxn explicitly freezes a lot into QUARANTINE status.
@@ -538,7 +603,7 @@ func ListRecallCampaigns(ctx context.Context, client *spanner.Client, supplierID
 	sql += ` ORDER BY CreatedAt DESC LIMIT @lim`
 	params["lim"] = int64(limit)
 
-	iter := client.Single().Query(ctx, spanner.Statement{SQL: sql, Params: params})
+	iter := client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, spanner.Statement{SQL: sql, Params: params})
 	defer iter.Stop()
 
 	var out []RecallCampaignView
@@ -606,7 +671,7 @@ func GetRecallCampaign(ctx context.Context, client *spanner.Client, campaignID s
 	c.UpdatedAt = updated.UTC().Format(time.RFC3339)
 
 	// Impacted orders query
-	oIter := client.Single().Query(ctx, spanner.Statement{
+	oIter := client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, spanner.Statement{
 		SQL: `SELECT CampaignId, OrderId, RetailerId, WarehouseId, LotId, Sku, Quantity, OrderStatus, CustomerNotified, CreatedAt
 		      FROM LotRecallImpactedOrders WHERE CampaignId = @cid ORDER BY CreatedAt DESC`,
 		Params: map[string]any{"cid": campaignID},
@@ -647,7 +712,7 @@ func TraceLotGenealogy(ctx context.Context, client *spanner.Client, lotID string
 	}
 
 	// Quarantine events
-	qIter := client.Single().Query(ctx, spanner.Statement{
+	qIter := client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, spanner.Statement{
 		SQL: `SELECT EventId, LotId, WarehouseId, SupplierId, ProductId, FromStatus, ToStatus, ReasonCode, Actor, Notes, CreatedAt
 		      FROM LotQuarantineEvents WHERE LotId = @lid ORDER BY CreatedAt DESC`,
 		Params: map[string]any{"lid": lotID},
@@ -680,7 +745,7 @@ func TraceLotGenealogy(ctx context.Context, client *spanner.Client, lotID string
 	}
 
 	// Impacted/recalled orders
-	oIter := client.Single().Query(ctx, spanner.Statement{
+	oIter := client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, spanner.Statement{
 		SQL: `SELECT CampaignId, OrderId, RetailerId, WarehouseId, LotId, Sku, Quantity, OrderStatus, CustomerNotified, CreatedAt
 		      FROM LotRecallImpactedOrders WHERE LotId = @lid ORDER BY CreatedAt DESC`,
 		Params: map[string]any{"lid": lotID},

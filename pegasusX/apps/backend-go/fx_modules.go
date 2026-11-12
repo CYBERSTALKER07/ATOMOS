@@ -177,11 +177,7 @@ var HTTPModule = fx.Module("http",
 // NewHTTPServer constructs the *http.Server and registers non-blocking OnStart
 // and graceful OnStop hooks on the fx.Lifecycle.
 func NewHTTPServer(p HTTPServerParams) *http.Server {
-	srv := &http.Server{
-		Addr:              ":" + p.Config.HTTPPort,
-		Handler:           p.Router,
-		ReadHeaderTimeout: 10 * time.Second,
-	}
+	srv := newAPIHTTPServer(":"+p.Config.HTTPPort, p.Router, p.Logger)
 
 	p.Lifecycle.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {

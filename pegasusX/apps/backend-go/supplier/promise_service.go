@@ -117,7 +117,7 @@ func (s *Service) GetServicePolicy(ctx context.Context, supplierID string) (Supp
 		      WHERE SupplierId = @supplier_id`,
 		Params: map[string]any{"supplier_id": supplierID},
 	}
-	iter := s.portalSpanner.Single().Query(ctx, stmt)
+	iter := s.portalSpanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 
 	row, err := iter.Next()
@@ -547,7 +547,7 @@ func (s *Service) HandleListBreachedPromises(w http.ResponseWriter, r *http.Requ
 	}
 
 	if s.portalSpanner == nil {
-		writeJSON(w, http.StatusOK, map[string]any{"breaches": []any{}, "total": 0})
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "promises_unavailable"})
 		return
 	}
 
@@ -574,7 +574,7 @@ func (s *Service) HandleListBreachedPromises(w http.ResponseWriter, r *http.Requ
 			"limit":       int64(limit),
 		},
 	}
-	iter := s.portalSpanner.Single().Query(ctx, stmt)
+	iter := s.portalSpanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 
 	var breaches []OrderServicePromiseSnapshot

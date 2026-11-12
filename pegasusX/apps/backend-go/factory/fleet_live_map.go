@@ -106,7 +106,7 @@ func (s *Service) listFactoryFleetLiveRoutes(ctx context.Context, factoryID stri
 		Params: map[string]any{"fid": factoryID},
 	}
 	iter := s.spannerClient.Single().
-		WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).
+		WithTimestampBound(spanner.ExactStaleness(15*time.Second)).
 		Query(ctx, stmt)
 	defer iter.Stop()
 

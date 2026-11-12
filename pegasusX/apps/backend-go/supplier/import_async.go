@@ -88,10 +88,10 @@ func (r *ImportRepository) IngestImportBytes(
 		"generated_at": time.Now().UTC().Format(time.RFC3339),
 	}
 
-	if err := r.PersistDiscovery(ctx, supplierID, sessionID, nextStatus, mappingDoc, errorSummary); err != nil {
+	if err := r.SaveStagedRows(ctx, supplierID, sessionID, stagedRows); err != nil {
 		return zero, err
 	}
-	if err := r.SaveStagedRows(ctx, supplierID, sessionID, stagedRows); err != nil {
+	if err := r.PersistDiscovery(ctx, supplierID, sessionID, nextStatus, mappingDoc, errorSummary); err != nil {
 		return zero, err
 	}
 

@@ -422,9 +422,9 @@ func (s *Service) EnqueueEvent(ctx context.Context, eventID, eventType string, p
 func tenantMatchesEvent(sub WebhookSubscription, supplierID, retailerID string) bool {
 	switch sub.TenantType {
 	case TenantSupplier:
-		return strings.TrimSpace(supplierID) == "" || supplierID == sub.TenantID
+		return strings.TrimSpace(supplierID) != "" && strings.TrimSpace(supplierID) == sub.TenantID
 	case TenantRetailer:
-		return strings.TrimSpace(retailerID) == "" || retailerID == sub.TenantID
+		return strings.TrimSpace(retailerID) != "" && strings.TrimSpace(retailerID) == sub.TenantID
 	default:
 		return false
 	}

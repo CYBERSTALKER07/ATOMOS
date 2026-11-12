@@ -79,10 +79,25 @@ func (s *Service) HandleWSAck(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
-	var req struct {
-		CommandID string `json:"command_id"`
+	driverID := driverIDFromRequest(r)
+	if driverID == "" {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+		return
 	}
-	_ = json.NewDecoder(r.Body).Decode(&req)
+	body, err := readLimitedBody(r, 16*1024)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
+		return
+	}
+	var req commandAckRequest
+	if err := json.Unmarshal(body, &req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+		return
+	}
+	if err := s.recordCommandAck(r.Context(), driverID, req); err != nil {
+		writeCommandAckError(w, err)
+		return
+	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok", "command_id": strings.TrimSpace(req.CommandID)})
 }
 

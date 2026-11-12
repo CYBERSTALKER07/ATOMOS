@@ -82,10 +82,10 @@ func (s *Service) buildSupplyFulfillOptions(ctx context.Context, requestID strin
 	coLocated := coLocateFactoryID == factoryID || primaryFactoryID == factoryID
 
 	opts := SupplyFulfillOptions{
-		TransferMode: mode,
-		WarehouseID:  warehouseID,
-		WarehouseName: strings.TrimSpace(warehouseName),
-		CoLocated:    coLocated,
+		TransferMode:    mode,
+		WarehouseID:     warehouseID,
+		WarehouseName:   strings.TrimSpace(warehouseName),
+		CoLocated:       coLocated,
 		OutcomeInternal: fmt.Sprintf("Creates RECEIVED transfer — stock available at %s without driver leg", strings.TrimSpace(warehouseName)),
 		OutcomeTruck:    "Creates IN_TRANSIT transfer — assign driver on supply leg",
 	}

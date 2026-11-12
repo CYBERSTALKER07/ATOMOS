@@ -16,11 +16,7 @@ func startWorkerHealthServer(ctx context.Context, cfg *bootstrap.Config, app *bo
 	r := chi.NewRouter()
 	infraroutes.RegisterRoutes(r, app.InfraHealth)
 
-	srv := &http.Server{
-		Addr:              ":" + cfg.WorkerHTTPPort,
-		Handler:           r,
-		ReadHeaderTimeout: 10 * time.Second,
-	}
+	srv := newAPIHTTPServer(":"+cfg.WorkerHTTPPort, r, slog.Default())
 
 	go func() {
 		slog.Info("pegasusX worker health listening", "addr", srv.Addr, "run_mode", cfg.RunMode)

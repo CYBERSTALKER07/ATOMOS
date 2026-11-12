@@ -43,7 +43,7 @@ func (r *adjRepo) Get(ctx context.Context, retailerID, sku string, date time.Tim
 			"Date":       civil.DateOf(date),
 		},
 	}
-	iter := r.spanner.Single().Query(ctx, stmt)
+	iter := r.spanner.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 
 	row, err := iter.Next()
@@ -104,7 +104,7 @@ func (r *velocityRepo) Get(ctx context.Context, retailerID, sku string) (*Veloci
 			"Sku":        sku,
 		},
 	}
-	iter := r.spanner.Single().Query(ctx, stmt)
+	iter := r.spanner.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 
 	row, err := iter.Next()
@@ -143,7 +143,7 @@ func (r *velocityRepo) GetCategoryAverage(ctx context.Context, sku string) (floa
 			"Sku":   sku,
 		},
 	}
-	iter := r.spanner.Single().Query(ctx, stmt)
+	iter := r.spanner.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 
 	row, err := iter.Next()

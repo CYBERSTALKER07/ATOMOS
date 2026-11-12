@@ -239,7 +239,7 @@ func ListBins(ctx context.Context, client *spanner.Client, warehouseID string) (
 		      ORDER BY Zone, PickSequence, LocationId`,
 		Params: map[string]any{"wid": warehouseID},
 	}
-	iter := client.Single().Query(ctx, stmt)
+	iter := client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	var out []BinLocation
 	for {

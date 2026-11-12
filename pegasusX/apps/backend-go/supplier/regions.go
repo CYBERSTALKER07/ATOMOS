@@ -66,7 +66,7 @@ func (s *Service) HandleSupplierRegions(w http.ResponseWriter, r *http.Request) 
 }
 
 func (s *Service) listSupplierRegions(ctx context.Context, supplierID string) ([]supplierRegion, error) {
-	iter := s.portalSpanner.Single().Query(ctx, spanner.Statement{
+	iter := s.portalSpanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL:    `SELECT RegionId, Name, CountryCode FROM SupplierRegions WHERE SupplierId = @sid`,
 		Params: map[string]any{"sid": supplierID},
 	})

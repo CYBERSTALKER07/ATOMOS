@@ -142,9 +142,9 @@ type CLIInfraParams struct {
 	Config      *Config
 	Logger      *slog.Logger
 	KafkaAuth   kafkautil.ClientAuth
-	Brokers     []string          `name:"kafka_brokers"`
-	Cache       *cache.Cache      `optional:"true"`
-	CacheEngine cache.Backend     `optional:"true"`
+	Brokers     []string      `name:"kafka_brokers"`
+	Cache       *cache.Cache  `optional:"true"`
+	CacheEngine cache.Backend `optional:"true"`
 }
 
 // BuildCLIContainer constructs a lazy uber-go/dig container for CLI utilities

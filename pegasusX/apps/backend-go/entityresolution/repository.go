@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 
+	"time"
 	"cloud.google.com/go/spanner"
 	"google.golang.org/api/iterator"
 )
@@ -203,7 +204,7 @@ func rec(typ, id, label, search string, meta map[string]string) EntityRecord {
 }
 
 func (r *SpannerRepository) collect3(ctx context.Context, stmt spanner.Statement, typ, extraKey string) ([]EntityRecord, error) {
-	iter := r.client.Single().Query(ctx, stmt)
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	var out []EntityRecord
 	for {
@@ -223,7 +224,7 @@ func (r *SpannerRepository) collect3(ctx context.Context, stmt spanner.Statement
 }
 
 func (r *SpannerRepository) collect4(ctx context.Context, stmt spanner.Statement, typ, k1, k2 string) ([]EntityRecord, error) {
-	iter := r.client.Single().Query(ctx, stmt)
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	var out []EntityRecord
 	for {
@@ -243,7 +244,7 @@ func (r *SpannerRepository) collect4(ctx context.Context, stmt spanner.Statement
 }
 
 func (r *SpannerRepository) queryLinks(ctx context.Context, sql, supplierID, entityID string) ([]LineageLink, error) {
-	iter := r.client.Single().Query(ctx, spanner.Statement{
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL:    sql,
 		Params: map[string]any{"sid": supplierID, "eid": entityID},
 	})

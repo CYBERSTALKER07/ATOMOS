@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
+	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
 	"google.golang.org/api/iterator"
 )
 
@@ -103,7 +104,12 @@ func (r spannerExceptionRepo) List(ctx context.Context, supplierID, factoryID st
 			"factoryId":  factoryID,
 		},
 	}
-	iter := r.client.Single().Query(ctx, stmt)
+	var iter *spanner.RowIterator
+	if txn := spannerutils.ReadOnlyTxnFromContext(ctx); txn != nil {
+		iter = txn.Query(ctx, stmt)
+	} else {
+		iter = r.client.Single().Query(ctx, stmt)
+	}
 	defer iter.Stop()
 	out := make([]ManifestException, 0)
 	for {

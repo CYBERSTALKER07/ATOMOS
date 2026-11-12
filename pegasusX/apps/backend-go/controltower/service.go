@@ -42,8 +42,8 @@ func (s *Service) SkipRun(ctx context.Context, runID, actor string) error {
 }
 
 func (s *Service) ListPlaybooks(ctx context.Context, supplierID string) ([]Playbook, error) {
-	if s.repo == nil {
-		return nil, nil
+	if s == nil || s.repo == nil {
+		return nil, fmt.Errorf("repository_unavailable")
 	}
 	return s.repo.ListActivePlaybooks(ctx, supplierID)
 }
@@ -116,10 +116,16 @@ func (s *Service) DeactivatePlaybook(ctx context.Context, playbookID string) err
 }
 
 func (s *Service) ListRuns(ctx context.Context, supplierID, status string) ([]PlaybookRun, error) {
+	if s == nil || s.repo == nil {
+		return nil, fmt.Errorf("repository_unavailable")
+	}
 	return s.repo.ListRuns(ctx, supplierID, status, 100)
 }
 
 func (s *Service) ListRunsForException(ctx context.Context, exceptionID string) ([]PlaybookRun, error) {
+	if s == nil || s.repo == nil {
+		return nil, fmt.Errorf("repository_unavailable")
+	}
 	return s.repo.ListRunsForException(ctx, exceptionID)
 }
 
@@ -136,8 +142,11 @@ func (s *Service) ListSupplierIDsWithOpenExceptions(ctx context.Context) ([]stri
 
 // ListOpenScored ranks open exceptions and attaches matching playbook recommendations.
 func (s *Service) ListOpenScored(ctx context.Context, supplierID string, limit int) ([]ScoredException, error) {
-	if s == nil || s.repo == nil || !s.Enabled() {
-		return nil, nil
+	if s == nil || s.repo == nil {
+		return nil, fmt.Errorf("repository_unavailable")
+	}
+	if !s.Enabled() {
+		return nil, fmt.Errorf("playbooks_disabled")
 	}
 	if limit <= 0 {
 		limit = 50

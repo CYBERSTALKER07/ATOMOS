@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"time"
 	"cloud.google.com/go/spanner"
 	"google.golang.org/api/iterator"
 )
@@ -50,7 +51,7 @@ func CanForecast(ctx context.Context, client *spanner.Client, retailerID string)
 }
 
 func completedOrderCount(ctx context.Context, client *spanner.Client, retailerID string) (int64, error) {
-	iter := client.Single().Query(ctx, spanner.Statement{
+	iter := client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL: `SELECT COUNT(*) FROM Orders
 		      WHERE RetailerId = @rid AND Status = 'COMPLETED'`,
 		Params: map[string]any{"rid": retailerID},

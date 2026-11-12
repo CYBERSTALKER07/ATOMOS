@@ -516,10 +516,14 @@ func (s *Service) HandleCreditDelivery(w http.ResponseWriter, r *http.Request) {
 			})
 		},
 		InTxn: func(txnCtx context.Context, txn *spanner.ReadWriteTransaction) error {
-			delivered, err := s.getDeliveredGrossMinor(txnCtx, req.OrderID)
+			creditOrder, found, err := s.repo.GetOrderTxn(txnCtx, txn, req.OrderID)
 			if err != nil {
-				return err
+				return fmt.Errorf("failed to get order: %w", err)
 			}
+			if !found {
+				return fmt.Errorf("order not found: %s", req.OrderID)
+			}
+			delivered := deliveredGrossFromOrder(creditOrder)
 			leg := PaymentLeg{
 				OrderID:     req.OrderID,
 				LegID:       s.newID(),
@@ -933,7 +937,7 @@ func (s *Service) HandleSplitPayment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	req.OrderID = strings.TrimSpace(req.OrderID)
-	if req.OrderID == "" || req.CashMinor+req.CardMinor <= 0 {
+	if req.OrderID == "" || req.CashMinor < 0 || req.CardMinor < 0 || req.CashMinor+req.CardMinor <= 0 {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_split_amounts"})
 		return
 	}
@@ -947,6 +951,17 @@ func (s *Service) HandleSplitPayment(w http.ResponseWriter, r *http.Request) {
 			return status.Error(codes.NotFound, "order_not_found")
 		}
 		current = orderRow
+		if current.DriverID != claims.Subject {
+			return status.Error(codes.PermissionDenied, "forbidden")
+		}
+		switch current.Status {
+		case StatusInTransit, StatusArrived, StatusAwaitingPayment, StatusPendingCashCollection:
+		default:
+			return status.Error(codes.FailedPrecondition, "order_not_in_delivery")
+		}
+		if currency != "" && current.Currency != "" && !strings.EqualFold(currency, current.Currency) {
+			return status.Error(codes.InvalidArgument, "currency_mismatch")
+		}
 
 		outstanding := deliveredGrossFromOrder(current)
 		captured, capErr := s.getCapturedPaymentMinorTxn(ctx, txn, current.OrderID)
@@ -961,11 +976,13 @@ func (s *Service) HandleSplitPayment(w http.ResponseWriter, r *http.Request) {
 			return status.Error(codes.InvalidArgument, "split_amount_mismatch")
 		}
 
-		if currency == "" {
-			currency = current.Currency
-		}
+		currency = current.Currency
 
 		now := s.now().UTC()
+		// Only the cash portion is money in hand. The card portion is NOT
+		// recorded as captured here: CompleteOrder records it as a PENDING card
+		// leg for the remaining due and settleOutstandingCardPayment captures it
+		// with the provider, so no card money is booked without PSP confirmation.
 		if req.CashMinor > 0 {
 			if errLeg := s.RecordPaymentLeg(ctx, txn, PaymentLeg{
 				OrderID:        current.OrderID,
@@ -974,20 +991,6 @@ func (s *Service) HandleSplitPayment(w http.ResponseWriter, r *http.Request) {
 				AmountMinor:    req.CashMinor,
 				Status:         PaymentStatusCaptured,
 				IdempotencyKey: fmt.Sprintf("split-%s-cash", current.OrderID),
-				CreatedAt:      now,
-				CapturedAt:     spanner.NullTime{Time: now, Valid: true},
-			}); errLeg != nil {
-				return errLeg
-			}
-		}
-		if req.CardMinor > 0 {
-			if errLeg := s.RecordPaymentLeg(ctx, txn, PaymentLeg{
-				OrderID:        current.OrderID,
-				LegID:          uuid.New().String(),
-				Method:         MethodCard,
-				AmountMinor:    req.CardMinor,
-				Status:         PaymentStatusCaptured,
-				IdempotencyKey: fmt.Sprintf("split-%s-card", current.OrderID),
 				CreatedAt:      now,
 				CapturedAt:     spanner.NullTime{Time: now, Valid: true},
 			}); errLeg != nil {
@@ -1018,8 +1021,15 @@ func (s *Service) HandleSplitPayment(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err != nil {
-		if status.Code(err) == codes.NotFound {
+		switch status.Code(err) {
+		case codes.NotFound:
 			writeJSON(w, http.StatusNotFound, map[string]string{"error": "order_not_found"})
+			return
+		case codes.PermissionDenied:
+			writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
+			return
+		case codes.FailedPrecondition, codes.InvalidArgument:
+			writeJSON(w, http.StatusConflict, map[string]string{"error": status.Convert(err).Message()})
 			return
 		}
 		s.log.ErrorContext(r.Context(), "split payment txn failed", "err", err)

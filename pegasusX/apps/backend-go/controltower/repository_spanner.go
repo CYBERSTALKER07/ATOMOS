@@ -37,7 +37,7 @@ func (r *SpannerRepository) ListActivePlaybooks(ctx context.Context, supplierID 
 		      ORDER BY Priority DESC`,
 		Params: map[string]any{"sid": supplierID},
 	}
-	iter := r.client.Single().Query(ctx, stmt)
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	return scanPlaybooks(iter)
 }
@@ -220,7 +220,7 @@ func (r *SpannerRepository) listTicketExceptions(ctx context.Context, supplierID
 		        AND et.Status IN ('OPEN', 'ACKNOWLEDGED', 'IN_PROGRESS')`,
 		Params: map[string]any{"sid": supplierID},
 	}
-	iter := r.client.Single().Query(ctx, stmt)
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	var out []Exception
 	for {
@@ -269,7 +269,7 @@ func (r *SpannerRepository) listSettlementExceptions(ctx context.Context, suppli
 		      WHERE o.SupplierId = @sid AND e.Status = 'OPEN'`,
 		Params: map[string]any{"sid": supplierID},
 	}
-	iter := r.client.Single().Query(ctx, stmt)
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	var out []Exception
 	for {
@@ -309,7 +309,7 @@ func (r *SpannerRepository) listFiscalFailedExceptions(ctx context.Context, supp
 		        AND o.Status NOT IN ('CANCELLED', 'COMPLETED')`,
 		Params: map[string]any{"sid": supplierID},
 	}
-	iter := r.client.Single().Query(ctx, stmt)
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	var out []Exception
 	for {
@@ -351,7 +351,7 @@ func (r *SpannerRepository) listShopClosedResolvedExceptions(ctx context.Context
 		        AND o.ShopClosedResolution = 'RETURNED'`,
 		Params: map[string]any{"sid": supplierID},
 	}
-	iter := r.client.Single().Query(ctx, stmt)
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	var out []Exception
 	for {
@@ -398,7 +398,7 @@ func (r *SpannerRepository) ListSupplierIDsWithOpenExceptions(ctx context.Contex
 		      UNION
 		      SELECT DISTINCT SupplierId FROM Orders WHERE ShopClosedResolution = 'RETURNED'`,
 	}
-	iter := r.client.Single().Query(ctx, stmt)
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	var ids []string
 	for {
@@ -610,7 +610,7 @@ func (r *SpannerRepository) ListRuns(ctx context.Context, supplierID, status str
 		params["status"] = status
 	}
 	sql += " ORDER BY r.CreatedAt DESC LIMIT @limit"
-	iter := r.client.Single().Query(ctx, spanner.Statement{SQL: sql, Params: params})
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{SQL: sql, Params: params})
 	defer iter.Stop()
 	var runs []PlaybookRun
 	for {
@@ -659,7 +659,7 @@ func (r *SpannerRepository) ListRunsForException(ctx context.Context, exceptionI
 		      ORDER BY r.CreatedAt DESC`,
 		Params: map[string]any{"eid": exceptionID},
 	}
-	iter := r.client.Single().Query(ctx, stmt)
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	var runs []PlaybookRun
 	for {

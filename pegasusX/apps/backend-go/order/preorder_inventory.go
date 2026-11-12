@@ -79,7 +79,11 @@ func (s *Service) updatePreorderLines(
 		return current, err
 	}
 	current.LineItems = fulfillable
-	current.TotalMinor = totalMinorForLines(fulfillable)
+	tot := totalMinorForLines(fulfillable)
+	if tot > 0 && current.DeliveryFeeMinor > 0 {
+		tot += current.DeliveryFeeMinor
+	}
+	current.TotalMinor = tot
 	err = s.repo.UpdateOrderWithTxn(ctx, current, nil, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		return reconcilePreorderReservationsInTxn(ctx, txn, current.SupplierID, current.WarehouseID, current.Source, prevLines, fulfillable)
 	}, func(txn outbox.TxnBuffer) error {

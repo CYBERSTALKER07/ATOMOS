@@ -222,7 +222,7 @@ func (s *Service) loadActiveSignals(ctx context.Context, start time.Time, end ti
 			"End":   end,
 		},
 	}
-	iter := s.spanner.Single().Query(ctx, stmt)
+	iter := s.spanner.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 
 	var signals []DemandSignal
@@ -280,7 +280,7 @@ func (s *Service) computeBaseVelocities(ctx context.Context, now time.Time) ([]r
 			"Start": twentyEightDaysAgo,
 		},
 	}
-	iter := s.spanner.Single().Query(ctx, stmt)
+	iter := s.spanner.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 
 	byKey := map[velocityKey]retailerSkuVelocity{}
@@ -342,7 +342,7 @@ func (s *Service) loadFlywheelDailyAvg(ctx context.Context, now time.Time) (map[
 		`,
 		Params: map[string]any{"Start": start},
 	}
-	iter := s.spanner.Single().Query(ctx, stmt)
+	iter := s.spanner.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 
 	out := map[velocityKey]float64{}
@@ -387,7 +387,7 @@ func (s *Service) loadRetailerGeo(ctx context.Context, retailerIDs []string) (ma
 			`,
 			Params: map[string]interface{}{"ids": batch},
 		}
-		iter := s.spanner.Single().Query(ctx, stmt)
+		iter := s.spanner.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 		for {
 			row, err := iter.Next()
 			if err == iterator.Done {

@@ -267,9 +267,9 @@ func (s *Service) handlePosHoldResume(w http.ResponseWriter, r *http.Request) {
 	// Same location only (cross-register OK; cross-store forbidden)
 	if reqLoc == "" || hold.LocationID != reqLoc {
 		writeJSON(w, http.StatusForbidden, map[string]string{
-			"error":             "location_mismatch",
-			"code":              "HOLD_LOCATION_MISMATCH",
-			"hold_location_id":  hold.LocationID,
+			"error":               "location_mismatch",
+			"code":                "HOLD_LOCATION_MISMATCH",
+			"hold_location_id":    hold.LocationID,
 			"request_location_id": reqLoc,
 		})
 		return

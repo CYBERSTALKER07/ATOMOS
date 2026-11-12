@@ -164,7 +164,9 @@ def _route_to_dlq(producer, msg, reason: str, trace_id: str = ""):
             value=msg.value(),
             headers=dlq_headers,
         )
-        producer.flush(timeout=5.0)
+        remaining = producer.flush(timeout=5.0)
+        if isinstance(remaining, int) and remaining > 0:
+            raise RuntimeError(f"DLQ flush timed out with {remaining} undelivered message(s)")
         logger.warning(f"Routed failed message at {msg.topic()}[{msg.partition()}]@{msg.offset()} to {DLQ_TOPIC}: {reason}")
     except Exception as dlq_err:
         logger.error(f"Failed to route message to DLQ {DLQ_TOPIC}: {dlq_err}")
@@ -221,8 +223,8 @@ def start_consumer(brokers="localhost:9092", topics=None, max_retries=3):
                 try:
                     _route_to_dlq(producer, msg, f"decode_error: {decode_err}", trace_id)
                     consumer.commit(message=msg, asynchronous=False)
-                except Exception:
-                    pass
+                except Exception as dlq_err:
+                    logger.error(f"Leaving poison-pill offset uncommitted after DLQ failure: {dlq_err}")
                 continue
 
             if not trace_id:
@@ -259,7 +261,9 @@ def start_consumer(brokers="localhost:9092", topics=None, max_retries=3):
                             value=json.dumps(planned_event).encode("utf-8"),
                             headers=out_headers + [("type", b"DISPATCH_PLANNED")],
                         )
-                        producer.flush(timeout=10.0)
+                        remaining = producer.flush(timeout=10.0)
+                        if isinstance(remaining, int) and remaining > 0:
+                            raise RuntimeError(f"Kafka flush timed out with {remaining} undelivered message(s)")
                         logger.info(f"Emitted DISPATCH_PLANNED for supplier {val.get('supplier_id')}")
 
                     elif event_type in SUPPORTED_REPLAN_EVENTS:
@@ -283,7 +287,9 @@ def start_consumer(brokers="localhost:9092", topics=None, max_retries=3):
                                 value=json.dumps(replanned_event).encode("utf-8"),
                                 headers=out_headers + [("type", b"ROUTE_REPLANNED")],
                             )
-                            producer.flush(timeout=10.0)
+                            remaining = producer.flush(timeout=10.0)
+                            if isinstance(remaining, int) and remaining > 0:
+                                raise RuntimeError(f"Kafka flush timed out with {remaining} undelivered message(s)")
                             logger.info(f"Emitted ROUTE_REPLANNED for manifest {val.get('manifest_id')}")
 
                     last_err = None

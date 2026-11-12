@@ -73,83 +73,18 @@ func (r *Repository) GenerateBatchesInTxn(ctx context.Context, supplierID string
 	err := spannerutils.RunReadWriteTransaction(ctx, r.client, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		batches = nil // Reset on retry
 
-		iter := txn.Query(ctx, spanner.Statement{
-			SQL: `SELECT Currency, GrossMinor, CommissionMinor, NetPayoutMinor, SliceId
-			      FROM InvoiceSettlementSlices
-			      WHERE SupplierId = @sid AND Status = 'UNSETTLED'
-			        AND CreatedAt >= @start AND CreatedAt < @end`,
-			Params: map[string]any{"sid": supplierID, "start": start, "end": end},
-		})
-
-		sums := make(map[string]*SumLegsResult)
-		for {
-			row, e := iter.Next()
-			if e == iterator.Done {
-				break
-			}
-			if e != nil {
-				iter.Stop()
-				return e
-			}
-			var cur, sliceID string
-			var gross, comm, net int64
-			if e := row.Columns(&cur, &gross, &comm, &net, &sliceID); e != nil {
-				iter.Stop()
-				return e
-			}
-			if sums[cur] == nil {
-				sums[cur] = &SumLegsResult{Currency: cur}
-			}
-
-			if gross >= 0 {
-				sums[cur].Captured += gross
-			} else {
-				sums[cur].Refunded += -gross
-			}
-			sums[cur].Commission += comm
-			sums[cur].NetPayout += net
-			sums[cur].SliceIDs = append(sums[cur].SliceIDs, sliceID)
+		sums, err := readUnsettledSettlementSlicesInTxn(ctx, txn, supplierID, start, end)
+		if err != nil {
+			return err
 		}
-		iter.Stop()
 
 		// Fallback to OrderPaymentLegs JOIN Orders when no settlement slices
 		// were recorded for this supplier/period (e.g. legacy legs or direct leg fixtures).
 		if len(sums) == 0 {
-			legIter := txn.Query(ctx, spanner.Statement{
-				SQL: `SELECT l.Method, l.AmountMinor, o.Currency
-				      FROM OrderPaymentLegs l
-				      JOIN Orders o ON o.OrderId = l.OrderId
-				      WHERE o.SupplierId = @sid AND l.Status = 'CAPTURED'
-				        AND l.CapturedAt >= @start AND l.CapturedAt < @end`,
-				Params: map[string]any{"sid": supplierID, "start": start, "end": end},
-			})
-			for {
-				row, e := legIter.Next()
-				if e == iterator.Done {
-					break
-				}
-				if e != nil {
-					legIter.Stop()
-					return e
-				}
-				var method, cur string
-				var amount int64
-				if e := row.Columns(&method, &amount, &cur); e != nil {
-					legIter.Stop()
-					return e
-				}
-				if sums[cur] == nil {
-					sums[cur] = &SumLegsResult{Currency: cur}
-				}
-				if method == "REFUND" {
-					sums[cur].Refunded += amount
-					sums[cur].NetPayout -= amount
-				} else {
-					sums[cur].Captured += amount
-					sums[cur].NetPayout += amount
-				}
+			sums, err = readFallbackCapturedLegsInTxn(ctx, txn, supplierID, start, end)
+			if err != nil {
+				return err
 			}
-			legIter.Stop()
 		}
 
 		buf := outbox.NewSpannerTxnBuffer(txn)
@@ -221,6 +156,94 @@ func (r *Repository) GenerateBatchesInTxn(ctx context.Context, supplierID string
 	return batches, err
 }
 
+func readUnsettledSettlementSlicesInTxn(
+	ctx context.Context,
+	txn *spanner.ReadWriteTransaction,
+	supplierID string,
+	start, end time.Time,
+) (map[string]*SumLegsResult, error) {
+	iter := txn.Query(ctx, spanner.Statement{
+		SQL: `SELECT Currency, GrossMinor, CommissionMinor, NetPayoutMinor, SliceId
+		      FROM InvoiceSettlementSlices
+		      WHERE SupplierId = @sid AND Status = 'UNSETTLED'
+		        AND CreatedAt >= @start AND CreatedAt < @end`,
+		Params: map[string]any{"sid": supplierID, "start": start, "end": end},
+	})
+	defer iter.Stop()
+
+	sums := make(map[string]*SumLegsResult)
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		var cur, sliceID string
+		var gross, comm, net int64
+		if err := row.Columns(&cur, &gross, &comm, &net, &sliceID); err != nil {
+			return nil, err
+		}
+		if sums[cur] == nil {
+			sums[cur] = &SumLegsResult{Currency: cur}
+		}
+		if gross >= 0 {
+			sums[cur].Captured += gross
+		} else {
+			sums[cur].Refunded += -gross
+		}
+		sums[cur].Commission += comm
+		sums[cur].NetPayout += net
+		sums[cur].SliceIDs = append(sums[cur].SliceIDs, sliceID)
+	}
+	return sums, nil
+}
+
+func readFallbackCapturedLegsInTxn(
+	ctx context.Context,
+	txn *spanner.ReadWriteTransaction,
+	supplierID string,
+	start, end time.Time,
+) (map[string]*SumLegsResult, error) {
+	legIter := txn.Query(ctx, spanner.Statement{
+		SQL: `SELECT l.Method, l.AmountMinor, o.Currency
+		      FROM OrderPaymentLegs l
+		      JOIN Orders o ON o.OrderId = l.OrderId
+		      WHERE o.SupplierId = @sid AND l.Status = 'CAPTURED'
+		        AND l.CapturedAt >= @start AND l.CapturedAt < @end`,
+		Params: map[string]any{"sid": supplierID, "start": start, "end": end},
+	})
+	defer legIter.Stop()
+
+	sums := make(map[string]*SumLegsResult)
+	for {
+		row, err := legIter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		var method, cur string
+		var amount int64
+		if err := row.Columns(&method, &amount, &cur); err != nil {
+			return nil, err
+		}
+		if sums[cur] == nil {
+			sums[cur] = &SumLegsResult{Currency: cur}
+		}
+		if method == "REFUND" {
+			sums[cur].Refunded += amount
+			sums[cur].NetPayout -= amount
+		} else {
+			sums[cur].Captured += amount
+			sums[cur].NetPayout += amount
+		}
+	}
+	return sums, nil
+}
+
 // emitPayoutEvent buffers a payout lifecycle event. The event type is chosen by
 // the caller so the same status-transition code path can label generate /
 // export / dispatch / paid distinctly.
@@ -286,7 +309,7 @@ func (r *Repository) ListBySupplier(ctx context.Context, supplierID string) ([]B
 	if r == nil || r.client == nil {
 		return nil, fmt.Errorf("payout repository unavailable")
 	}
-	iter := r.client.Single().Query(ctx, spanner.Statement{
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL: `SELECT ` + batchColumnList() + ` FROM PayoutBatches
 		      WHERE SupplierId = @sid
 		      ORDER BY CreatedAt DESC

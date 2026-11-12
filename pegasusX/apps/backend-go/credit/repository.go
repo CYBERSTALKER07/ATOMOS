@@ -49,7 +49,9 @@ func (r *SpannerRepository) GetProfile(ctx context.Context, retailerID, supplier
 		SQL:    "SELECT " + profileSelectColumns + " FROM RetailerCreditProfiles WHERE RetailerId = @rid AND SupplierId = @sid",
 		Params: map[string]any{"rid": retailerID, "sid": supplierID},
 	}
-	row, err := r.client.Single().Query(ctx, stmt).Next()
+	iter := r.client.Single().Query(ctx, stmt)
+	defer iter.Stop()
+	row, err := iter.Next()
 	if err != nil {
 		if err == iterator.Done {
 			return Profile{}, false, nil
@@ -72,7 +74,9 @@ func (r *SpannerRepository) getProfileLegacy(ctx context.Context, retailerID, su
 		SQL:    "SELECT RetailerId, SupplierId, CreditLimitMinor, CurrentBalanceMinor, AvailableCreditMinor, RiskScore, DelinquencyCount, Status, LastEvaluatedAt, Version, CreatedAt, UpdatedAt FROM RetailerCreditProfiles WHERE RetailerId = @rid AND SupplierId = @sid",
 		Params: map[string]any{"rid": retailerID, "sid": supplierID},
 	}
-	row, err := r.client.Single().Query(ctx, stmt).Next()
+	iter := r.client.Single().Query(ctx, stmt)
+	defer iter.Stop()
+	row, err := iter.Next()
 	if err != nil {
 		if err == iterator.Done {
 			return Profile{}, false, nil
@@ -111,12 +115,15 @@ func (r *SpannerRepository) ListBySupplier(ctx context.Context, supplierID, stat
 	}
 	status = strings.ToUpper(strings.TrimSpace(status))
 	sql := "SELECT " + profileSelectColumns + " FROM RetailerCreditProfiles WHERE SupplierId = @sid"
-	params := map[string]any{"sid": supplierID}
+	params := map[string]any{
+		"sid":   supplierID,
+		"limit": int64(limit),
+	}
 	if status != "" {
 		sql += " AND Status = @status"
 		params["status"] = status
 	}
-	sql += fmt.Sprintf(" ORDER BY UpdatedAt DESC LIMIT %d", limit)
+	sql += " ORDER BY UpdatedAt DESC LIMIT @limit"
 
 	iter := r.client.Single().Query(ctx, spanner.Statement{SQL: sql, Params: params})
 	defer iter.Stop()
@@ -149,8 +156,11 @@ func (r *SpannerRepository) ListDelinquentCandidates(ctx context.Context, limit 
 	if limit > 500 {
 		limit = 500
 	}
-	sql := fmt.Sprintf("SELECT %s FROM RetailerCreditProfiles WHERE Status = 'ACTIVE' AND (DelinquencyCount > 0 OR CurrentBalanceMinor > 0) ORDER BY UpdatedAt DESC LIMIT %d", profileSelectColumns, limit)
-	iter := r.client.Single().Query(ctx, spanner.Statement{SQL: sql})
+	sql := "SELECT " + profileSelectColumns + " FROM RetailerCreditProfiles WHERE Status = 'ACTIVE' AND (DelinquencyCount > 0 OR CurrentBalanceMinor > 0) ORDER BY UpdatedAt DESC LIMIT @limit"
+	iter := r.client.Single().Query(ctx, spanner.Statement{
+		SQL:    sql,
+		Params: map[string]any{"limit": int64(limit)},
+	})
 	defer iter.Stop()
 	out := make([]Profile, 0, 16)
 	for {

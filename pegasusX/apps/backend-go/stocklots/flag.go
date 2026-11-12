@@ -96,7 +96,6 @@ func EffectiveCycleCounts(ctx context.Context, warehouseID, supplierID string) b
 	return effectiveFlag(ctx, "WMS_CYCLE_COUNTS_ENABLED", false, "SUPPLIER", supplierID)
 }
 
-
 // EffectiveLoadLedger reports durable payload load ledger (G2.B).
 func EffectiveLoadLedger(ctx context.Context, warehouseID, supplierID string) bool {
 	if LoadLedgerEnabled() {
@@ -148,7 +147,6 @@ func SetSealSoftWarnEnabled(v bool) { sealSoftWarnEnabled.Store(v) }
 
 // SealSoftWarnEnabled reports soft-warn seal mode.
 func SealSoftWarnEnabled() bool { return sealSoftWarnEnabled.Load() }
-
 
 // SetLoadLedgerEnabled toggles durable load ledger seal gate (PAYLOAD_LOAD_LEDGER_ENABLED).
 func SetLoadLedgerEnabled(v bool) { loadLedgerEnabled.Store(v) }

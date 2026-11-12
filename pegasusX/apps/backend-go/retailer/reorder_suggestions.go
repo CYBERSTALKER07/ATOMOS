@@ -3,6 +3,7 @@ package retailer
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 	"strings"
@@ -11,22 +12,23 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/replenishment"
 	"google.golang.org/api/iterator"
+	"time"
 )
 
 // RetailerReorderSuggestion is the retailer-org view of OPEN reorder rows (L3.4).
 type RetailerReorderSuggestion struct {
-	SKU              string   `json:"sku"`
-	SuggestedQty     int64    `json:"suggested_qty"`
-	AdjustedDemand   float64  `json:"adjusted_demand_per_day"`
-	CurrentStock     int64    `json:"current_stock"`
-	InFlightQty      int64    `json:"in_flight_qty"`
-	SafetyStock      float64  `json:"safety_stock,omitempty"`
-	Status           string   `json:"status"`
-	Sources          []string `json:"sources,omitempty"`
-	SellThroughVel   float64  `json:"sell_through_velocity,omitempty"`
-	BaseDemand       float64  `json:"base_demand_per_day,omitempty"`
-	SuggestedByDate  string   `json:"suggested_by_date,omitempty"`
-	ComputedAt       string   `json:"computed_at,omitempty"`
+	SKU             string   `json:"sku"`
+	SuggestedQty    int64    `json:"suggested_qty"`
+	AdjustedDemand  float64  `json:"adjusted_demand_per_day"`
+	CurrentStock    int64    `json:"current_stock"`
+	InFlightQty     int64    `json:"in_flight_qty"`
+	SafetyStock     float64  `json:"safety_stock,omitempty"`
+	Status          string   `json:"status"`
+	Sources         []string `json:"sources,omitempty"`
+	SellThroughVel  float64  `json:"sell_through_velocity,omitempty"`
+	BaseDemand      float64  `json:"base_demand_per_day,omitempty"`
+	SuggestedByDate string   `json:"suggested_by_date,omitempty"`
+	ComputedAt      string   `json:"computed_at,omitempty"`
 }
 
 // SeedReorderSuggestions injects OPEN suggestions for unit tests (memory mode).
@@ -94,7 +96,7 @@ func (s *Service) listRetailerReorderSuggestions(ctx context.Context, orgID stri
 	s.mu.RUnlock()
 
 	if s.spannerClient == nil {
-		return []RetailerReorderSuggestion{}, nil
+		return nil, errors.New("spanner required")
 	}
 
 	sql := `SELECT Sku, SuggestedQty, AdjustedDemand, CurrentStock, InFlightQty,
@@ -115,7 +117,7 @@ func (s *Service) listRetailerReorderSuggestions(ctx context.Context, orgID stri
 	}
 	sql += " ORDER BY SuggestedQty DESC LIMIT 100"
 	stmt := spanner.Statement{SQL: sql, Params: params}
-	iter := s.spannerClient.Single().Query(ctx, stmt)
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	var out []RetailerReorderSuggestion
 	for {
@@ -153,7 +155,7 @@ func (s *Service) listRetailerReorderSuggestionsLegacy(ctx context.Context, orgI
 			ORDER BY SuggestedQty DESC LIMIT 100`,
 		Params: map[string]any{"rid": orgID, "st": "OPEN"},
 	}
-	iter := s.spannerClient.Single().Query(ctx, stmt)
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	var out []RetailerReorderSuggestion
 	for {

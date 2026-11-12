@@ -57,7 +57,7 @@ func (r *SpannerRepository) ListAIRecommendations(ctx context.Context, supplierI
 		params["status"] = status
 	}
 
-	iter := r.client.Single().Query(ctx, spanner.Statement{SQL: sql, Params: params})
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{SQL: sql, Params: params})
 	defer iter.Stop()
 
 	items := make([]AIRecommendation, 0, limit)

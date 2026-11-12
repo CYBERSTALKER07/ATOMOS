@@ -74,3 +74,43 @@ func TestCanLeaveOnCredit_IgnoresRiskTier(t *testing.T) {
 		t.Fatalf("RiskTier must not gate credit leave: %v", err)
 	}
 }
+
+func TestCanLeaveOnCredit_AbuseLeavesBlocks(t *testing.T) {
+	order := &Order{
+		TotalMinor:                  1000,
+		RecentClosedShopLeavesCount: 3, // 3 leaves in 14 days
+	}
+	profile := &credit.Profile{
+		Status:           credit.StatusActive,
+		CreditLimitMinor: 10000,
+	}
+	if err := CanLeaveOnCredit(order, profile, TimeoutConfig{}); err == nil {
+		t.Fatalf("want error for 3 closed-shop credit leaves in 14 days, got nil")
+	}
+}
+
+func TestCanLeaveOnCredit_PerishableOrFrozenBlocks(t *testing.T) {
+	order := &Order{
+		TotalMinor: 1000,
+		LineItems: []LineItem{
+			{SKU: "SKU-ICE", IsPerishable: true},
+		},
+	}
+	profile := &credit.Profile{
+		Status:           credit.StatusActive,
+		CreditLimitMinor: 10000,
+	}
+	if err := CanLeaveOnCredit(order, profile, TimeoutConfig{}); err == nil {
+		t.Fatalf("want error for perishable goods left unattended, got nil")
+	}
+
+	order2 := &Order{
+		TotalMinor: 1000,
+		LineItems: []LineItem{
+			{SKU: "SKU-MEAT", HandlingClass: "FROZEN"},
+		},
+	}
+	if err := CanLeaveOnCredit(order2, profile, TimeoutConfig{}); err == nil {
+		t.Fatalf("want error for frozen goods left unattended, got nil")
+	}
+}

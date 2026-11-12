@@ -12,6 +12,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/inventory"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
 	"github.com/pegasusx/pegasusx/apps/backend-go/stocklots"
 	"github.com/pegasusx/pegasusx/apps/backend-go/supplier"
 	"google.golang.org/api/iterator"
@@ -89,7 +90,12 @@ func (s *Service) listSupplyRequestsFromSpanner(ctx context.Context) ([]SupplyRe
 			"factoryId":  factoryID,
 		},
 	}
-	iter := s.spannerClient.Single().Query(ctx, stmt)
+	var iter *spanner.RowIterator
+	if txn := spannerutils.ReadOnlyTxnFromContext(ctx); txn != nil {
+		iter = txn.Query(ctx, stmt)
+	} else {
+		iter = s.spannerClient.Single().Query(ctx, stmt)
+	}
 	defer iter.Stop()
 
 	rows := make([]SupplyRequest, 0, 16)
@@ -150,7 +156,12 @@ func (s *Service) loadSupplyRequestItems(ctx context.Context, requestIDs []strin
 		      ORDER BY RequestId, ProductId`,
 		Params: map[string]any{"ids": requestIDs},
 	}
-	iter := s.spannerClient.Single().Query(ctx, stmt)
+	var iter *spanner.RowIterator
+	if txn := spannerutils.ReadOnlyTxnFromContext(ctx); txn != nil {
+		iter = txn.Query(ctx, stmt)
+	} else {
+		iter = s.spannerClient.Single().Query(ctx, stmt)
+	}
 	defer iter.Stop()
 
 	out := make(map[string][]factorySupplyItem)

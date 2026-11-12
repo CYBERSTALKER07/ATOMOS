@@ -70,7 +70,7 @@ func (r *SpannerExportRepository) ListJobs(ctx context.Context, tenantType, tena
 	if limit <= 0 {
 		limit = 50
 	}
-	iter := r.client.Single().Query(ctx, spanner.Statement{
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL: `SELECT JobId, TenantType, TenantId, Resource, Format, Status,
 			FromDate, ToDate, ObjectPath, RowCount, Error, SftpStatus, CreatedAt, FinishedAt
 			FROM PartnerExportJobs

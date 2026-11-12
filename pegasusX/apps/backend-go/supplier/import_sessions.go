@@ -576,7 +576,7 @@ func (r *ImportRepository) ListRows(ctx context.Context, supplierID, sessionID s
 		},
 	}
 
-	iter := r.client.Single().Query(ctx, stmt)
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 
 	rows := make([]ImportStagedRowRecord, 0, limit+1)

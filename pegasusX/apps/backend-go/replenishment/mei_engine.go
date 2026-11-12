@@ -49,7 +49,7 @@ type meiTransferCandidate struct {
 	urgency           string
 	donorWarehouseID  string
 	transportCostKm   float64 // Haversine proxy between donor/receiver warehouses
-	transportCost     float64 // distance_proxy × cost_per_km + fixed handling (minor units)
+	transportCost     int64   // distance_proxy × cost_per_km + fixed handling (int64 minor units)
 	bangForBuck       float64 // urgency_weight / (1 + transportCostKm)
 	receiver          meiSkuBalance
 }
@@ -426,33 +426,33 @@ func urgencyWeight(u string) float64 {
 }
 
 // transportCostMinor = distance_km × MEIO_COST_PER_KM_MINOR + fixed handling (minor units, scoring only).
-func transportCostMinor(km float64) float64 {
+func transportCostMinor(km float64) int64 {
 	perKm := meioCostPerKmMinor()
 	fixed := meioHandlingFixedMinor()
-	if km < 0 {
+	if km < 0 || math.IsNaN(km) || math.IsInf(km, 0) {
 		km = 0
 	}
-	return km*perKm + fixed
+	return int64(math.Round(km*float64(perKm))) + fixed
 }
 
-func meioCostPerKmMinor() float64 {
+func meioCostPerKmMinor() int64 {
 	v := strings.TrimSpace(os.Getenv("MEIO_COST_PER_KM_MINOR"))
 	if v == "" {
 		return 100 // 1.00 currency unit per km default
 	}
-	n, err := strconv.ParseFloat(v, 64)
+	n, err := strconv.ParseInt(v, 10, 64)
 	if err != nil || n < 0 {
 		return 100
 	}
 	return n
 }
 
-func meioHandlingFixedMinor() float64 {
+func meioHandlingFixedMinor() int64 {
 	v := strings.TrimSpace(os.Getenv("MEIO_HANDLING_FIXED_MINOR"))
 	if v == "" {
 		return 500
 	}
-	n, err := strconv.ParseFloat(v, 64)
+	n, err := strconv.ParseInt(v, 10, 64)
 	if err != nil || n < 0 {
 		return 500
 	}

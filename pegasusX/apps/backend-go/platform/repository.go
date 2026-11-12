@@ -196,7 +196,7 @@ func (r *SpannerDeviceTokenRepository) ListTokens(ctx context.Context, actorID, 
 			WHERE ActorId = @aid AND ActorRole = @role`,
 		Params: map[string]any{"aid": actorID, "role": actorRole},
 	}
-	iter := r.client.Single().Query(ctx, stmt)
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	var tokens []string
 	for {

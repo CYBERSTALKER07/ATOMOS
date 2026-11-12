@@ -9,12 +9,23 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/foundry"
 	"github.com/pegasusx/pegasusx/apps/backend-go/foundryroutes"
 )
 
 func newTestServer() *httptest.Server {
 	r := chi.NewRouter()
+	r.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			ctx := auth.WithClaims(req.Context(), auth.Claims{
+				Subject:    "foundry-test",
+				Role:       auth.RoleAdmin,
+				SupplierID: "sup_1",
+			})
+			next.ServeHTTP(w, req.WithContext(ctx))
+		})
+	})
 	foundryroutes.RegisterRoutes(r, foundryroutes.Deps{
 		Engine: foundry.NewEngine(),
 	})
@@ -89,12 +100,11 @@ func TestFoundryRoutesEndToEnd(t *testing.T) {
 
 	// 3. Fleet DVIR Red-Tag Grounding Gate (409 Conflict when critical defect found).
 	dvirResp := postJSON(t, srv.URL+"/v1/foundry/fleet/dvir", map[string]any{
-		"cell_id":             "cell-uz",
-		"supplier_id":         "sup_1",
-		"vehicle_id":          "veh_red_1",
-		"driver_id":           "drv_9",
-		"requires_cold_chain": false,
-		"odometer_km":         40500,
+		"cell_id":     "cell-uz",
+		"supplier_id": "sup_1",
+		"vehicle_id":  "veh_red_1",
+		"driver_id":   "drv_9",
+		"odometer_km": 40500,
 		"checklist": map[string]bool{
 			"steering_and_horn_ok":              true,
 			"service_and_parking_brakes_ok":     true,
@@ -103,7 +113,6 @@ func TestFoundryRoutesEndToEnd(t *testing.T) {
 			"wipers_and_fluids_ok":              true,
 			"emergency_kit_and_extinguisher_ok": true,
 			"cargo_box_sanitation_ok":           true,
-			"reefer_temp_calibrated_ok":         true,
 		},
 	})
 	defer dvirResp.Body.Close()
@@ -162,26 +171,6 @@ func TestFoundryRoutesEndToEnd(t *testing.T) {
 	defer leaseExceed.Body.Close()
 	if leaseExceed.StatusCode != http.StatusConflict {
 		t.Fatalf("expected 409 Conflict when offline collection exceeds lease cap, got %d", leaseExceed.StatusCode)
-	}
-
-	// 6. Predictive Reefer Health & Vehicle Dispatch Check.
-	reeferHold := postJSON(t, srv.URL+"/v1/foundry/fleet/predictive-reefer", map[string]any{
-		"vehicle_id":                    "veh_reefer_slow",
-		"cooling_rate_deg_per_min":      0.15,
-		"min_required_rate_deg_per_min": 0.45,
-	})
-	defer reeferHold.Body.Close()
-	if reeferHold.StatusCode != http.StatusConflict {
-		t.Fatalf("expected 409 Conflict when reefer cooling rate degrades, got %d", reeferHold.StatusCode)
-	}
-
-	dispCheck, err := http.Get(srv.URL + "/v1/foundry/fleet/vehicles/veh_reefer_slow/dispatch-check")
-	if err != nil {
-		t.Fatalf("GET dispatch-check: %v", err)
-	}
-	defer dispCheck.Body.Close()
-	if dispCheck.StatusCode != http.StatusConflict {
-		t.Fatalf("expected 409 Conflict on dispatch-check for held reefer van, got %d", dispCheck.StatusCode)
 	}
 
 	// 7. Tote Heartbeat & Takeover (409 when active, 200 OK when stalled >= 20m).
@@ -270,12 +259,11 @@ func TestFoundryRoutesStructuredErrorsAndMutationCeiling(t *testing.T) {
 
 	// 3. UA-8: DVIR Red-Tag -> 409 Conflict with code VEHICLE_GROUNDED_RED_TAG.
 	dvirResp := postJSON(t, srv.URL+"/v1/foundry/fleet/dvir", map[string]any{
-		"cell_id":             "cell-uz",
-		"supplier_id":         "sup_1",
-		"vehicle_id":          "veh_dvir_red",
-		"driver_id":           "drv_1",
-		"requires_cold_chain": false,
-		"odometer_km":         12000,
+		"cell_id":     "cell-uz",
+		"supplier_id": "sup_1",
+		"vehicle_id":  "veh_dvir_red",
+		"driver_id":   "drv_1",
+		"odometer_km": 12000,
 		"checklist": map[string]bool{
 			"steering_and_horn_ok":              false, // Defect!
 			"service_and_parking_brakes_ok":     true,
@@ -284,7 +272,6 @@ func TestFoundryRoutesStructuredErrorsAndMutationCeiling(t *testing.T) {
 			"wipers_and_fluids_ok":              true,
 			"emergency_kit_and_extinguisher_ok": true,
 			"cargo_box_sanitation_ok":           true,
-			"reefer_temp_calibrated_ok":         true,
 		},
 	})
 	defer dvirResp.Body.Close()
@@ -323,5 +310,24 @@ func TestFoundryRoutesStructuredErrorsAndMutationCeiling(t *testing.T) {
 	}
 	if toteBody["code"] != "TOTE_TAKEOVER_NOT_PERMITTED" {
 		t.Fatalf("expected code TOTE_TAKEOVER_NOT_PERMITTED, got %v", toteBody["code"])
+	}
+}
+
+func TestFoundryTenantIsolationRejectsForeignSupplierID(t *testing.T) {
+	srv := newTestServer()
+	defer srv.Close()
+
+	// sup_1 is in JWT claims. Sending sup_2 in body must return 403 Forbidden.
+	res := postJSON(t, srv.URL+"/v1/foundry/ontology/objects", map[string]any{
+		"cell_id":     "881f1d4887fffff",
+		"supplier_id": "sup_other_attacker",
+		"object_type": "WAREHOUSE",
+		"object_id":   "wh_attack",
+		"properties":  map[string]any{"label": "Fake"},
+	})
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusForbidden {
+		t.Fatalf("expected 403 Forbidden for mismatched tenant ID, got %d", res.StatusCode)
 	}
 }

@@ -87,7 +87,7 @@ func (s *Service) HandleDispatchRuns(w http.ResponseWriter, r *http.Request) {
 	}
 	whID := warehouseIDFromRequest(r)
 	if s.spannerClient == nil {
-		writeJSON(w, http.StatusOK, map[string]any{"runs": []DispatchRunRow{}})
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "dispatch_runs_unavailable"})
 		return
 	}
 	rows, err := s.listDispatchRuns(r.Context(), whID, 50)
@@ -110,7 +110,7 @@ func (s *Service) HandleDispatchRunDetail(w http.ResponseWriter, r *http.Request
 		return
 	}
 	if s.spannerClient == nil {
-		writeJSON(w, http.StatusNotFound, map[string]string{"error": "run_not_found"})
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "dispatch_run_unavailable"})
 		return
 	}
 	row, ok, err := s.getDispatchRun(r.Context(), runID)
@@ -134,7 +134,7 @@ func (s *Service) listDispatchRuns(ctx context.Context, warehouseID string, limi
 		      LIMIT @lim`,
 		Params: map[string]any{"wh": warehouseID, "lim": int64(limit)},
 	}
-	iter := s.spannerClient.Single().Query(ctx, stmt)
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	out := make([]DispatchRunRow, 0, limit)
 	for {
@@ -161,7 +161,7 @@ func (s *Service) getDispatchRun(ctx context.Context, runID string) (DispatchRun
 		      LIMIT 1`,
 		Params: map[string]any{"id": runID},
 	}
-	iter := s.spannerClient.Single().Query(ctx, stmt)
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	row, err := iter.Next()
 	if err == iterator.Done {

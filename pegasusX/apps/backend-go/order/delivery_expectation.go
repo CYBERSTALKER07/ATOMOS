@@ -9,14 +9,14 @@ import (
 )
 
 const (
-	ExpectationKindStandard         = "STANDARD"
+	ExpectationKindStandard          = "STANDARD"
 	ExpectationKindScheduledPreorder = "SCHEDULED_PREORDER"
-	ExpectationKindExpress          = "EXPRESS"
-	ExpectationKindProposalPending  = "PROPOSAL_PENDING"
+	ExpectationKindExpress           = "EXPRESS"
+	ExpectationKindProposalPending   = "PROPOSAL_PENDING"
 
-	ExpectationUrgencyOnTrack     = "on_track"
-	ExpectationUrgencyDueSoon     = "due_soon"
-	ExpectationUrgencyOverdue     = "overdue"
+	ExpectationUrgencyOnTrack      = "on_track"
+	ExpectationUrgencyDueSoon      = "due_soon"
+	ExpectationUrgencyOverdue      = "overdue"
 	ExpectationUrgencyScheduledFar = "scheduled_far"
 )
 

@@ -101,7 +101,11 @@ func (s *Service) QuoteCheckout(ctx context.Context, supplierID, retailerID stri
 			return QuoteResult{}, fmt.Errorf("filter campaign promotions: %w", err)
 		}
 	}
-	quote, err := ApplyQuote(s.now(), supplierID, retailerID, lines, promotions)
+	quoteTime := time.Now().UTC()
+	if s != nil && s.now != nil {
+		quoteTime = s.now()
+	}
+	quote, err := ApplyQuote(quoteTime, supplierID, retailerID, lines, promotions)
 	if err != nil {
 		return QuoteResult{}, err
 	}

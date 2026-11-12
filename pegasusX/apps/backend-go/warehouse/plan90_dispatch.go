@@ -22,7 +22,7 @@ func (s *Service) demandBaselineByProduct(ctx context.Context, supplierID, wareh
 	}
 	end := time.Now().UTC().Truncate(24 * time.Hour)
 	start := end.AddDate(0, 0, -forecastDays+1)
-	iter := s.spannerClient.Single().Query(ctx, spanner.Statement{
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL: `SELECT ProductId, SUM(BaselineQty) FROM DemandForecastBaseline
 		      WHERE SupplierId = @sid AND WarehouseId = @wh
 		        AND ForecastDate BETWEEN @start AND @end
@@ -51,7 +51,7 @@ func (s *Service) loadActiveZoneOverrides(ctx context.Context, supplierID string
 	if s == nil || s.spannerClient == nil || supplierID == "" {
 		return nil, nil
 	}
-	iter := s.spannerClient.Single().Query(ctx, spanner.Statement{
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL: `SELECT OverrideId, SupplierId, COALESCE(WarehouseId,''), Action, PolygonGeoJSON
 		      FROM ControlTowerZoneOverrides
 		      WHERE SupplierId = @sid AND IsActive = true AND TtlExpiresAt > CURRENT_TIMESTAMP()`,

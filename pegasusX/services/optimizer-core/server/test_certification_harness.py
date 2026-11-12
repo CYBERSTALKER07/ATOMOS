@@ -46,16 +46,6 @@ def test_certification_fixture(path: Path):
         for route in resp["routes"]:
             assert len(route.get("stops") or []) <= cap
 
-    cold_order = expect.get("cold_order_id")
-    cold_vehicle = expect.get("cold_vehicle_id")
-    if cold_order and cold_vehicle:
-        found = None
-        for route in resp["routes"]:
-            for stop in route.get("stops") or []:
-                if stop.get("order_id") == cold_order:
-                    found = route.get("vehicle_id")
-        assert found == cold_vehicle, f"cold stop on {found!r}; orphans={orphans}"
-
     if expect.get("prefer_nearest"):
         by_vehicle = {
             r["vehicle_id"]: [s["order_id"] for s in (r.get("stops") or [])]

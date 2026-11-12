@@ -1,11 +1,9 @@
 package billing
 
-import "math"
-
 // ResolveMeterAmountMajor converts ORDER_FINALIZED amount fields to major currency units.
-// Precedence: amount_minor → nested total.amount (minor) → total_minor → legacy major amount.
-func ResolveMeterAmountMajor(amountMinor, totalNestedMinor, totalMinor int64, legacyMajor float64) float64 {
-	minor := ResolveMeterAmountMinor(amountMinor, totalNestedMinor, totalMinor, legacyMajor)
+// Precedence: amount_minor → nested total.amount (minor) → total_minor → legacy amount minor.
+func ResolveMeterAmountMajor(amountMinor, totalNestedMinor, totalMinor, legacyAmountMinor int64) float64 {
+	minor := ResolveMeterAmountMinor(amountMinor, totalNestedMinor, totalMinor, legacyAmountMinor)
 	if minor <= 0 {
 		return 0
 	}
@@ -14,7 +12,7 @@ func ResolveMeterAmountMajor(amountMinor, totalNestedMinor, totalMinor int64, le
 
 // ResolveMeterAmountMinor returns the order amount in minor units (2-decimal).
 // Precedence matches ResolveMeterAmountMajor.
-func ResolveMeterAmountMinor(amountMinor, totalNestedMinor, totalMinor int64, legacyMajor float64) int64 {
+func ResolveMeterAmountMinor(amountMinor, totalNestedMinor, totalMinor, legacyAmountMinor int64) int64 {
 	if amountMinor > 0 {
 		return amountMinor
 	}
@@ -24,8 +22,8 @@ func ResolveMeterAmountMinor(amountMinor, totalNestedMinor, totalMinor int64, le
 	if totalMinor > 0 {
 		return totalMinor
 	}
-	if legacyMajor > 0 {
-		return int64(math.Round(legacyMajor * 100.0))
+	if legacyAmountMinor > 0 {
+		return legacyAmountMinor
 	}
 	return 0
 }
