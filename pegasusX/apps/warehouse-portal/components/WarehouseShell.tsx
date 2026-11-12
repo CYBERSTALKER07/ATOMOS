@@ -1,8 +1,8 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
+import type { Route } from 'next';
 import { useEffect, useState, useRef, useMemo, useCallback, memo } from 'react';
 import Icon from './Icon';
 import { useTheme, type ThemeMode } from './ThemeProvider';
@@ -171,7 +171,7 @@ const DrawerContent = memo(function DrawerContent({
                   }}
                 >
                   <Link
-                    href={item.href as any}
+                    href={item.href as Route}
                     className={`desk-sidebar-item desk-sidebar-link${active ? ' desk-sidebar-link--active' : ''}`}
                     data-active={active ? 'true' : undefined}
                     title={isRail ? label : undefined}
@@ -420,7 +420,7 @@ export default function WarehouseShell({ children }: { children: React.ReactNode
                   {i === breadcrumbs.length - 1 ? (
                     <span className="desk-breadcrumb-current truncate">{crumb.label}</span>
                   ) : (
-                    <Link href={crumb.href as any} className="truncate">{crumb.label}</Link>
+                    <Link href={crumb.href as Route} className="truncate">{crumb.label}</Link>
                   )}
                 </span>
               ))}
@@ -531,7 +531,7 @@ export default function WarehouseShell({ children }: { children: React.ReactNode
                     <p style={{ font: 'var(--type-title)', color: 'var(--desk-text-primary)', margin: 0 }}>{t("warehouse_portal.warehouse_shell.text.warehouse_admin")}</p>
                     <p style={{ font: 'var(--type-caption-sm)', color: 'var(--desk-text-tertiary)', margin: '4px 0 0' }}>{t("warehouse_portal.warehouse_shell.text.single_tenant_control_plane")}</p>
                   </div>
-                  <Link href={"/profile" as any} className="md-menu-item" onClick={() => setProfileOpen(false)}>
+                  <Link href={"/profile" as Route} className="md-menu-item" onClick={() => setProfileOpen(false)}>
                     <Icon name="warehouse" />
                     <span>{t("portal.nav.profile")}</span>
                   </Link>
@@ -589,7 +589,7 @@ export default function WarehouseShell({ children }: { children: React.ReactNode
                     {searchResults.slice(0, 8).map(item => (
                       <Link
                         key={item.href}
-                        href={item.href as any}
+                        href={item.href as Route}
                         className="md-menu-item active-press"
                         onClick={() => { setSearchOpen(false); setSearchQuery(''); }}
                       >

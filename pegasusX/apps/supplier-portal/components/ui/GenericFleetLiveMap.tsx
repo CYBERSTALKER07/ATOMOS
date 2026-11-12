@@ -3,7 +3,7 @@
 
 import { useEffect, useMemo, useRef } from 'react';
 
-import MapGL, { Layer, NavigationControl, Source } from 'react-map-gl/maplibre';
+import MapGL, { Layer, NavigationControl, Source, type MapRef } from 'react-map-gl/maplibre';
 import maplibregl from 'maplibre-gl';
 import { useMapLibreTeardown } from './map-chrome';
 import { FLEET_ROUTE_COLORS, useAnimatedDriverMarkers } from './useAnimatedDriverMarkers';
@@ -140,7 +140,7 @@ export function GenericFleetLiveMap({
   return (
     <div className={className}>
       <MapGL
-        ref={(ref: any) => {
+        ref={(ref: MapRef | null) => {
           mapRef.current = ref?.getMap() ?? null;
         }}
         initialViewState={{

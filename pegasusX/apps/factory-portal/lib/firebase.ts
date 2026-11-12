@@ -45,15 +45,15 @@ function resolveAuthEmulatorHost(): string {
   return "http://127.0.0.1:9099";
 }
 
+const authWithEmulatorFlag = auth as typeof auth & { _emulatorConnected?: boolean };
+
 if (
   typeof window !== "undefined" &&
   shouldUseAuthEmulator() &&
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  !(auth as any)._emulatorConnected
+  !authWithEmulatorFlag._emulatorConnected
 ) {
   connectAuthEmulator(auth, resolveAuthEmulatorHost(), { disableWarnings: true });
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (auth as any)._emulatorConnected = true;
+  authWithEmulatorFlag._emulatorConnected = true;
 }
 
 export async function firebaseSignOut(): Promise<void> {

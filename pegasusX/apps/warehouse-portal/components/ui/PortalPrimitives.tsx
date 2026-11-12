@@ -46,7 +46,7 @@ export function PortalInput({
       id={id}
       className={`portal-input ${className}`.trim()}
       aria-invalid={error ? true : undefined}
-      {...(props as any)}
+      {...props}
     />
   );
 }
@@ -63,7 +63,7 @@ export function PortalSelect({
       id={id}
       className={`portal-input ${className}`.trim()}
       aria-invalid={error ? true : undefined}
-      {...(props as any)}
+      {...props}
     >
       {children}
     </select>
@@ -258,7 +258,7 @@ export function HubCard({
   description: string;
   icon?: ReactNode;
   onClick?: () => void;
-  LinkComponent?: ComponentType<any>;
+  LinkComponent?: ComponentType<{ href: string; className?: string; children?: ReactNode }>;
 }) {
   const content = (
     <>
@@ -279,7 +279,7 @@ export function HubCard({
   );
 
   if (href && LinkComponent) {
-    const Component = LinkComponent as any;
+    const Component = LinkComponent;
     return (
       <Component href={href} className="portal-hub-card">
         {content}

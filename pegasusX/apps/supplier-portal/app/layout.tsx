@@ -33,7 +33,7 @@ export default function RootLayout({
           (function(){try{var m=localStorage.getItem('pegasusx-supplier-theme');
           var d=m==='dark'||(m!=='light'&&matchMedia('(prefers-color-scheme:dark)').matches);
           var r=document.documentElement;r.classList.toggle('dark',d);r.style.colorScheme=d?'dark':'light';
-          if(window.__TAURI_INTERNALS__)r.setAttribute('data-tauri','');}catch(e){}})();
+          if(window.__TAURI_INTERNALS__)r.setAttribute('data-tauri','');}catch(e){console.warn('[theme-bootstrap]',e);}})();
         `}} />
       </head>
       <body

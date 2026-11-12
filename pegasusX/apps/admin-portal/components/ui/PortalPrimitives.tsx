@@ -46,7 +46,7 @@ export function PortalInput({
       id={id}
       className={`portal-input ${className}`.trim()}
       aria-invalid={error ? true : undefined}
-      {...(props as any)}
+      {...props}
     />
   );
 }
@@ -63,7 +63,7 @@ export function PortalSelect({
       id={id}
       className={`portal-input ${className}`.trim()}
       aria-invalid={error ? true : undefined}
-      {...(props as any)}
+      {...props}
     >
       {children}
     </select>

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import type { Route } from "next";
 import { usePortalT } from "@/lib/i18n";
 import { coverageModeLabel } from "@/lib/coverage";
 import type { SupplierTopologyWarehouse } from "@pegasusx/types";
@@ -36,7 +37,7 @@ export function WarehouseList({ warehouses, modes = {}, onAddFirst }: WarehouseL
             </div>
           </div>
           {w.warehouse_id ? (
-            <Link href={`/warehouses/${w.warehouse_id}/coverage` as any} className="md-btn md-btn-outlined px-3 py-1 text-sm shrink-0">
+            <Link href={`/warehouses/${w.warehouse_id}/coverage` as Route} className="md-btn md-btn-outlined px-3 py-1 text-sm shrink-0">
               Coverage & pins
             </Link>
           ) : null}

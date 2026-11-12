@@ -108,7 +108,8 @@ export function useManifestData({
         label: v.label || v.license_plate || v.id.slice(0, 8),
       }));
       setTrucks(attachTruckStatus(labeled, manifests));
-    } catch {
+    } catch (err) {
+      console.warn('[useManifestData] fetchTrucks failed:', err);
     } finally {
       setIsLoadingTrucks(false);
     }
@@ -143,7 +144,9 @@ export function useManifestData({
       try {
         const cachePayload = { data, timestamp: Date.now() };
         await SecureStore.setItemAsync(cacheKey, JSON.stringify(cachePayload));
-      } catch {}
+      } catch (cacheErr) {
+        console.warn('[useManifestData] Failed to cache manifest:', cacheErr);
+      }
       setOrders(data);
       const m = buildManifest(data);
       setManifest(m);
@@ -169,7 +172,9 @@ export function useManifestData({
             showToast(tx('payload.alert.cache_stale_title'), tx('payload.alert.cache_stale_body'), 'warning', 3400);
           }
         }
-      } catch {}
+      } catch (cacheErr) {
+        console.warn('[useManifestData] Failed to read cached manifest:', cacheErr);
+      }
       showToast(tx('payload.alert.manifest_fetch_failed'), e instanceof Error ? e.message : tx('common.error.unknown'), 'error');
     } finally {
       setIsLoading(false);
@@ -239,7 +244,9 @@ export function useManifestData({
           setInboundLive(false);
         }
       }
-    } catch {}
+    } catch (err) {
+      console.warn('[useManifestData] Failed to refresh manifest detail:', err);
+    }
   }, [token, activeTruck]);
 
   const refreshBatchReadyManifests = useCallback(async () => {
@@ -372,7 +379,9 @@ export function useManifestData({
             setNotifications(prev => [n, ...prev]);
             setUnreadCount(prev => prev + 1);
           }
-        } catch {}
+        } catch (err) {
+          console.warn('[useManifestData] Failed to parse WebSocket message:', err);
+        }
       };
       ws.onclose = () => {
         clearHeartbeat();

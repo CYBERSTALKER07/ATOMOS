@@ -94,9 +94,15 @@ export default function App() {
         // Restore offline queue
         const queueStr = await SecureStore.getItemAsync('offline_queue');
         if (queueStr) {
-          try { queue.setOfflineQueue(JSON.parse(queueStr)); } catch {}
+          try {
+            queue.setOfflineQueue(JSON.parse(queueStr));
+          } catch (err) {
+            console.warn('[App] Failed to restore offline_queue:', err);
+          }
         }
-      } catch {} finally {
+      } catch (err) {
+        console.warn('[App] Failed to restore persisted session:', err);
+      } finally {
         auth.setAuthLoading(false);
       }
     })();

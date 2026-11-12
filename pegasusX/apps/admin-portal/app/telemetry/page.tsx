@@ -8,12 +8,31 @@ import { CopyableId } from "@/components/ui/CopyableId";
 type SeverityLevel = "ALL" | "CRITICAL" | "ERROR" | "WARN" | "AUDIT" | "INFO";
 type RoleScope = "ALL" | "PLATFORM_ADMIN" | "SUPPLIER" | "WAREHOUSE" | "FLEET_DRIVER" | "DEPOT_CASHIER" | "RETAILER" | "YARD_SECURITY";
 
+type EntityType = "SUPPLIER" | "WAREHOUSE" | "RETAILER" | "DRIVER" | "VEHICLE" | "ORDER" | "SYSTEM";
+
+const VALID_ENTITY_TYPES: ReadonlySet<EntityType> = new Set([
+  "SUPPLIER",
+  "WAREHOUSE",
+  "RETAILER",
+  "DRIVER",
+  "VEHICLE",
+  "ORDER",
+  "SYSTEM",
+]);
+
+function normalizeEntityType(tenantType: string | undefined): EntityType {
+  if (tenantType && VALID_ENTITY_TYPES.has(tenantType as EntityType)) {
+    return tenantType as EntityType;
+  }
+  return "SYSTEM";
+}
+
 interface OperationalEvent {
   id: string;
   timestamp: string;
   severity: "CRITICAL" | "ERROR" | "WARN" | "AUDIT" | "INFO";
   role: string;
-  entityType: "SUPPLIER" | "WAREHOUSE" | "RETAILER" | "DRIVER" | "VEHICLE" | "ORDER" | "SYSTEM";
+  entityType: EntityType;
   entityId: string;
   action: string;
   summary: string;
@@ -121,7 +140,7 @@ export default function OperationalTelemetryPage() {
           timestamp: a.CreatedAt,
           severity: "AUDIT",
           role: "PLATFORM_ADMIN",
-          entityType: (a.TenantType as any) || "SYSTEM",
+          entityType: normalizeEntityType(a.TenantType),
           entityId: a.TenantID || "GLOBAL",
           action: a.Action,
           summary: `Audit mutation by ${a.ActorSubject}: ${a.Action} on ${a.TenantType}:${a.TenantID || "*"}`,

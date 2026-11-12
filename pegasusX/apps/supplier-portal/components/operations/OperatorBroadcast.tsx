@@ -3,6 +3,7 @@
 import { usePortalT } from "@/lib/i18n";
 import React from 'react';
 import Link from 'next/link';
+import type { Route } from 'next';
 import { PageSection } from '@/components/PageSection';
 import { SUPPLIER_BROADCAST_TEMPLATES } from '@pegasusx/types';
 
@@ -38,7 +39,7 @@ export function OperatorBroadcast({
     <PageSection title={t("supplier_portal.operations.operator_broadcast.text.operator_broadcast")} description={t("supplier_portal.residual.text.fan_out_a_message_to_supplier_ws_rooms_by_role")}>
       <p className="md-typescale-body-small mb-3 text-[var(--color-md-outline)]">
         Signal ingest health and planning projections live on{" "}
-        <Link href={"/settings/planning" as any} className="underline text-[var(--color-md-primary)]">
+        <Link href={"/settings/planning" as Route} className="underline text-[var(--color-md-primary)]">
           Planning settings
         </Link>
         .

@@ -179,7 +179,7 @@ export function LocationPicker({ value, onChange, label }: LocationPickerProps) 
 
   const pinned = hasValidCoordinates(value.lat, value.lng);
 
-  const handleMapClick = async (e: maplibregl.MapMouseEvent) => {
+  const handleMapClick = async (e: { lngLat: { lat: number; lng: number } }) => {
     const lat = e.lngLat.lat;
     const lng = e.lngLat.lng;
     setResolving(true);
@@ -264,8 +264,7 @@ export function LocationPicker({ value, onChange, label }: LocationPickerProps) 
           mapStyle="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
           style={{ width: '100%', height: '100%' }}
           mapLib={maplibregl}
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          onClick={(e) => void handleMapClick(e as any)}
+          onClick={(e) => void handleMapClick(e)}
           interactiveLayerIds={[]}
           cursor="crosshair"
         >

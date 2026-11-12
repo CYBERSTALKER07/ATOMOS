@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import type { Route } from "next";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { PageChrome } from "@/components/PageChrome";
@@ -133,7 +134,7 @@ export default function WarehouseCoveragePage() {
       loading={loading}
       error={error}
       actions={
-        <Link href={"/warehouses" as any} className="md-btn md-btn-outlined px-4 py-2">
+        <Link href={"/warehouses" as Route} className="md-btn md-btn-outlined px-4 py-2">
           Back to warehouses
         </Link>
       }

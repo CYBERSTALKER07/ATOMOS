@@ -65,7 +65,9 @@ export function useNotifications({ token }: { token: string | null }) {
       }
       setNotifications(items);
       setUnreadCount(unreadCount);
-    } catch {}
+    } catch (err) {
+      console.warn('[useNotifications] fetchNotifications failed:', err);
+    }
   }, [token]);
 
   const markNotifRead = useCallback(async (id: string) => {
@@ -78,7 +80,9 @@ export function useNotifications({ token }: { token: string | null }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ notification_ids: [id] }),
       });
-    } catch {}
+    } catch (err) {
+      console.warn('[useNotifications] markNotifRead failed:', err);
+    }
   }, [token]);
 
   const markAllNotifsRead = useCallback(async () => {
@@ -91,7 +95,9 @@ export function useNotifications({ token }: { token: string | null }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mark_all: true }),
       });
-    } catch {}
+    } catch (err) {
+      console.warn('[useNotifications] markAllNotifsRead failed:', err);
+    }
   }, [token]);
 
   return {

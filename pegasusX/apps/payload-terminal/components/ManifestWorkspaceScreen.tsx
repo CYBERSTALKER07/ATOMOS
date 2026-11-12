@@ -252,7 +252,7 @@ export default function ManifestWorkspaceScreen({
                 borderRadius: 3,
                 width: manifestMaxVolume > 0 ? `${Math.min((manifestVolume / manifestMaxVolume) * 100, 100)}%` : '0%',
                 backgroundColor: manifestVolume / manifestMaxVolume > 0.95 ? '#EF4444' : manifestVolume / manifestMaxVolume > 0.8 ? '#F59E0B' : T.colors.accent,
-              } as any} />
+              }} />
             </View>
             {manifestState === 'DRAFT' && (
               <Pressable

@@ -3,6 +3,7 @@
 import { usePortalT } from "@/lib/i18n";
 import type { HandoffCardMetadata } from "@pegasusx/types";
 import Link from "next/link";
+import type { Route } from "next";
 
 export function HandoffInboxCard({ handoff }: { handoff: HandoffCardMetadata }) {
   const t = usePortalT();
@@ -12,7 +13,7 @@ export function HandoffInboxCard({ handoff }: { handoff: HandoffCardMetadata }) 
       <div className="font-semibold mt-1">{handoff.title}</div>
       {handoff.subtitle ? <div className="text-sm opacity-80 mt-1">{handoff.subtitle}</div> : null}
       {handoff.primary_link ? (
-        <Link href={handoff.primary_link as any} className="portal-btn portal-btn--primary text-xs mt-2 inline-flex">
+        <Link href={handoff.primary_link as Route} className="portal-btn portal-btn--primary text-xs mt-2 inline-flex">
           {handoff.primary_cta || "Open"}
         </Link>
       ) : null}
