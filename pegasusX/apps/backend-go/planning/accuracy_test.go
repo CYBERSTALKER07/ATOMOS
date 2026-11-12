@@ -191,6 +191,29 @@ func TestRegisterAccuracyRoutesNilSafe(t *testing.T) {
 	RegisterAccuracyRoutes(newTestRouter(), nil)
 }
 
+func TestComputeSeriesMetricsFromMapMatchesComputeSeriesMetrics(t *testing.T) {
+	asOf := civil.Date{Year: 2026, Month: 8, Day: 15}
+	points := make([]SeriesPoint, 0, 35)
+	byDay := make(map[civil.Date]SeriesPoint, 35)
+	for i := 0; i < 35; i++ {
+		p := SeriesPoint{
+			Day:         asOf.AddDays(-i),
+			ForecastQty: int64(10 + (i % 5)),
+			ActualQty:   int64(9 + (i % 4)),
+		}
+		points = append(points, p)
+		byDay[p.Day] = p
+	}
+	for d := 0; d < 7; d++ {
+		day := asOf.AddDays(-d)
+		want := ComputeSeriesMetrics(points, day)
+		got := computeSeriesMetricsFromMap(byDay, day)
+		if got != want {
+			t.Fatalf("day=%s got=%+v want=%+v", day, got, want)
+		}
+	}
+}
+
 func newTestRouter() *chi.Mux {
 	return chi.NewRouter()
 }

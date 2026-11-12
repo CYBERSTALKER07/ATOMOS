@@ -2,7 +2,9 @@ package retailer
 
 import (
 	"context"
+	"fmt"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -22,6 +24,16 @@ func newEmulatorClient(t *testing.T, ctx context.Context) *spanner.Client {
 	db := os.Getenv("SPANNER_DATABASE")
 	if db == "" {
 		db = "projects/test-project/instances/test-instance/databases/test-db"
+	} else if !strings.HasPrefix(db, "projects/") {
+		proj := os.Getenv("SPANNER_PROJECT")
+		if proj == "" {
+			proj = "pegasusx-local"
+		}
+		inst := os.Getenv("SPANNER_INSTANCE")
+		if inst == "" {
+			inst = "pegasusx-instance"
+		}
+		db = fmt.Sprintf("projects/%s/instances/%s/databases/%s", proj, inst, db)
 	}
 	client, err := spanner.NewClient(ctx, db, option.WithEndpoint(host), option.WithGRPCDialOption(grpc.WithTransportCredentials(insecure.NewCredentials())), option.WithoutAuthentication())
 	if err != nil {

@@ -51,6 +51,7 @@ func newEmulatorClient(t *testing.T, ctx context.Context) *spanner.Client {
 }
 
 func TestMountDossiers(t *testing.T) {
+	t.Setenv("REQUIRE_INFRA_ADAPTERS", "false")
 	ctx := context.Background()
 	client := newEmulatorClient(t, ctx)
 	vault := storage.NewVault(client)

@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/api/iterator"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
@@ -834,33 +833,64 @@ func resolveOrderPatchVersions(ctx context.Context, txn *spanner.ReadWriteTransa
 	if txn == nil || len(patches) == 0 {
 		return nil
 	}
-	seen := make(map[string]int64, len(patches))
+	uniqueIDs := make([]string, 0, len(patches))
+	idSeen := make(map[string]struct{}, len(patches))
 	for i := range patches {
 		orderID := strings.TrimSpace(patches[i].OrderID)
 		if orderID == "" {
 			continue
 		}
-		if version, ok := seen[orderID]; ok {
+		if _, ok := idSeen[orderID]; !ok {
+			idSeen[orderID] = struct{}{}
+			uniqueIDs = append(uniqueIDs, orderID)
+		}
+	}
+	if len(uniqueIDs) == 0 {
+		return nil
+	}
+	keys := make([]spanner.Key, 0, len(uniqueIDs))
+	for _, oid := range uniqueIDs {
+		keys = append(keys, spanner.Key{oid})
+	}
+	storedByID := make(map[string]int64, len(uniqueIDs))
+	iter := txn.Read(ctx, "Orders", spanner.KeySetFromKeys(keys...), []string{"OrderId", "Version"})
+	defer iter.Stop()
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("batch read order versions: %w", err)
+		}
+		var oid string
+		var stored int64
+		if err := row.Columns(&oid, &stored); err != nil {
+			return fmt.Errorf("scan order %s version: %w", oid, err)
+		}
+		storedByID[oid] = stored
+	}
+
+	nextByID := make(map[string]int64, len(storedByID))
+	for i := range patches {
+		orderID := strings.TrimSpace(patches[i].OrderID)
+		if orderID == "" {
+			continue
+		}
+		if version, ok := nextByID[orderID]; ok {
 			patches[i].Version = version
 			continue
 		}
-		row, err := txn.ReadRow(ctx, "Orders", spanner.Key{orderID}, []string{"Version"})
-		if err != nil {
-			if spanner.ErrCode(err) == codes.NotFound {
-				patches[i].Version = -1
-				continue
-			}
-			return fmt.Errorf("read order %s version: %w", orderID, err)
-		}
-		var stored int64
-		if err := row.Columns(&stored); err != nil {
-			return fmt.Errorf("scan order %s version: %w", orderID, err)
+		stored, found := storedByID[orderID]
+		if !found {
+			patches[i].Version = -1
+			continue
 		}
 		if expected := patches[i].ExpectedVersion; expected > 0 && stored != expected {
 			return fmt.Errorf("%w: order %s expected %d got %d", ErrOrderVersionConflict, orderID, expected, stored)
 		}
 		next := stored + 1
-		seen[orderID] = next
+		nextByID[orderID] = next
 		patches[i].Version = next
 	}
 	return nil

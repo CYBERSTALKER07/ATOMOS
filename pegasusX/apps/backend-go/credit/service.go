@@ -1,14 +1,16 @@
 package credit
 
 import (
-	"errors"
-	"cloud.google.com/go/spanner"
-
+	"cmp"
 	"context"
+	"errors"
 	"fmt"
 	"os"
+	"slices"
 	"strings"
 	"time"
+
+	"cloud.google.com/go/spanner"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
@@ -374,26 +376,18 @@ func (s *Service) GetScoresForRetailers(ctx context.Context, supplierID string, 
 }
 
 func sortProfilesForCollections(list []Profile) {
-	// Priority: BLACKLISTED/FROZEN, then lower risk score (worse), then balance desc.
-	for i := 0; i < len(list); i++ {
-		for j := i + 1; j < len(list); j++ {
-			pi, pj := profilePriority(list[i]), profilePriority(list[j])
-			if pj < pi {
-				list[i], list[j] = list[j], list[i]
-				continue
-			}
-			if pj == pi {
-				// Worse (lower) score first for collections attention.
-				if list[j].RiskScore > 0 && list[i].RiskScore > 0 && list[j].RiskScore < list[i].RiskScore {
-					list[i], list[j] = list[j], list[i]
-					continue
-				}
-				if list[j].CurrentBalanceMinor > list[i].CurrentBalanceMinor {
-					list[i], list[j] = list[j], list[i]
-				}
+	// Priority: BLACKLISTED/FROZEN, then lower risk score (worse, when both > 0), then balance desc.
+	slices.SortStableFunc(list, func(a, b Profile) int {
+		if c := cmp.Compare(profilePriority(a), profilePriority(b)); c != 0 {
+			return c
+		}
+		if a.RiskScore > 0 && b.RiskScore > 0 {
+			if c := cmp.Compare(a.RiskScore, b.RiskScore); c != 0 {
+				return c
 			}
 		}
-	}
+		return cmp.Compare(b.CurrentBalanceMinor, a.CurrentBalanceMinor)
+	})
 }
 
 func profilePriority(p Profile) int {

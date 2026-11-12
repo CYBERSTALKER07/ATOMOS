@@ -36,7 +36,7 @@ func (r *SpannerRepository) UpdateKycDocumentStatus(ctx context.Context, docID s
 	}
 	m := spanner.Update("RetailerKycDocuments",
 		[]string{"DocumentId", "Status", "ReviewedAt", "ReviewedBy", "RejectionReason"},
-		[]interface{}{docID, status, spanner.CommitTimestamp, reviewedBy, reason},
+		[]interface{}{docID, status, time.Now().UTC(), reviewedBy, reason},
 	)
 	_, err := r.client.Apply(ctx, []*spanner.Mutation{m})
 	return err
@@ -49,7 +49,7 @@ func (r *SpannerRepository) ListKycDocumentsByRetailer(ctx context.Context, reta
 		      WHERE RetailerId = @retId ORDER BY SubmittedAt DESC`,
 		Params: map[string]interface{}{"retId": retailerID},
 	}
-	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
+	iter := r.client.Single().Query(ctx, stmt)
 	defer iter.Stop()
 
 	var docs []KycDocument

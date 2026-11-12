@@ -161,6 +161,19 @@ func TestListSupplierProfiles_SortsCollectionsFirst(t *testing.T) {
 	}
 }
 
+func TestSortProfilesForCollections_RiskScoreAndBalanceTieBreak(t *testing.T) {
+	list := []Profile{
+		{RetailerID: "r-hi-score", SupplierID: "s1", Status: StatusActive, CurrentBalanceMinor: 90_000, RiskScore: 80},
+		{RetailerID: "r-lo-score", SupplierID: "s1", Status: StatusActive, CurrentBalanceMinor: 10_000, RiskScore: 20},
+		{RetailerID: "r-zero-hi-bal", SupplierID: "s1", Status: StatusActive, CurrentBalanceMinor: 70_000, RiskScore: 0},
+		{RetailerID: "r-zero-lo-bal", SupplierID: "s1", Status: StatusActive, CurrentBalanceMinor: 30_000, RiskScore: 0},
+	}
+	sortProfilesForCollections(list)
+	if list[0].RetailerID != "r-lo-score" {
+		t.Fatalf("expected lowest positive risk score first, got %s", list[0].RetailerID)
+	}
+}
+
 func TestListSupplierProfiles_ScopedViaRepo(t *testing.T) {
 	repo := &testCreditRepo{
 		found: true,

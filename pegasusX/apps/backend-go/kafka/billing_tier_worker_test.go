@@ -164,8 +164,8 @@ func TestBillingTierWorker_HandleEvent_AmountExtraction(t *testing.T) {
 				"supplier_id": "%s",
 				"amount_minor": 2500000
 			}`,
-			orderID:    "ord_bt_1_" + uuid.NewString(),
-			supplierID: "sup_bt_1_" + uuid.NewString(),
+			orderID:    "ord_bt_1_" + uuid.NewString()[:27],
+			supplierID: "sup_bt_1_" + uuid.NewString()[:27],
 			wantMinor:  2500000,
 		},
 		{
@@ -176,8 +176,8 @@ func TestBillingTierWorker_HandleEvent_AmountExtraction(t *testing.T) {
 				"supplier_id": "%s",
 				"total_minor": 1750000
 			}`,
-			orderID:    "ord_bt_2_" + uuid.NewString(),
-			supplierID: "sup_bt_2_" + uuid.NewString(),
+			orderID:    "ord_bt_2_" + uuid.NewString()[:27],
+			supplierID: "sup_bt_2_" + uuid.NewString()[:27],
 			wantMinor:  1750000,
 		},
 		{
@@ -191,8 +191,8 @@ func TestBillingTierWorker_HandleEvent_AmountExtraction(t *testing.T) {
 					"currency": "UZS"
 				}
 			}`,
-			orderID:    "ord_bt_3_" + uuid.NewString(),
-			supplierID: "sup_bt_3_" + uuid.NewString(),
+			orderID:    "ord_bt_3_" + uuid.NewString()[:27],
+			supplierID: "sup_bt_3_" + uuid.NewString()[:27],
 			wantMinor:  3200000,
 		},
 		{
@@ -203,8 +203,8 @@ func TestBillingTierWorker_HandleEvent_AmountExtraction(t *testing.T) {
 				"supplier_id": "%s",
 				"amount": 450.50
 			}`,
-			orderID:    "ord_bt_4_" + uuid.NewString(),
-			supplierID: "sup_bt_4_" + uuid.NewString(),
+			orderID:    "ord_bt_4_" + uuid.NewString()[:27],
+			supplierID: "sup_bt_4_" + uuid.NewString()[:27],
 			wantMinor:  45050,
 		},
 	}

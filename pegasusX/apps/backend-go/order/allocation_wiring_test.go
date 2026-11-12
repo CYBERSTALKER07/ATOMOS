@@ -77,25 +77,46 @@ func cleanupAllocationInventory(t *testing.T, ctx context.Context, client *spann
 	})
 }
 
+func seedAllocationRetailer(t *testing.T, ctx context.Context, client *spanner.Client, retailerID string) {
+	t.Helper()
+	_, err := client.Apply(ctx, []*spanner.Mutation{
+		spanner.InsertOrUpdateMap("Retailers", map[string]any{
+			"RetailerId":  retailerID,
+			"Phone":       "+998900000001",
+			"CountryCode": "UZ",
+			"CreatedAt":   spanner.CommitTimestamp,
+		}),
+	})
+	if err != nil {
+		t.Fatalf("seed retailer %s: %v", retailerID, err)
+	}
+}
+
 func TestConfirmAndAllocate_PartialAllocation(t *testing.T) {
 	ctx := context.Background()
 	client := newSpannerIntegrationClient(t, ctx)
+	seedAllocationRetailer(t, ctx, client, "ret-1")
 	repo := NewSpannerRepository(client)
 
-	orderID := "ord-allocate-test-1"
+	orderID := "ord-partial-" + fmt.Sprintf("%d", time.Now().UnixNano())
 	supplierID := "sup-partial-1"
+	whID := "wh-partial-" + fmt.Sprintf("%d", time.Now().UnixNano())
+	seedActiveWarehouse(t, ctx, client, supplierID, whID)
+	defer func() { _, _ = client.Apply(ctx, []*spanner.Mutation{spanner.Delete("Warehouses", spanner.Key{whID})}) }()
 	now := time.Now()
 	err := repo.CreateOrder(ctx, &Order{
-		OrderID:    orderID,
-		SupplierID: supplierID,
-		Status:     StatusPending,
+		OrderID:     orderID,
+		SupplierID:  supplierID,
+		RetailerID:  "ret-1",
+		WarehouseID: whID,
+		Status:      StatusPending,
 		LineItems: []LineItem{
 			{SKU: "sku-1", Quantity: 5},
 			{SKU: "sku-2", Quantity: 2},
 		},
 		CreatedAt: now,
 		UpdatedAt: now,
-	}, nil, StockReservationOpts{})
+	}, nil, StockReservationOpts{Skip: true})
 	if err != nil {
 		t.Fatalf("failed to create order: %v", err)
 	}
@@ -126,22 +147,28 @@ func TestConfirmAndAllocate_PartialAllocation(t *testing.T) {
 func TestConfirmAndAllocate_MultiWarehouseSplits(t *testing.T) {
 	ctx := context.Background()
 	client := newSpannerIntegrationClient(t, ctx)
+	seedAllocationRetailer(t, ctx, client, "ret-1")
 	repo := NewSpannerRepository(client)
 
-	orderID := "ord-allocate-test-2"
+	orderID := "ord-split-" + fmt.Sprintf("%d", time.Now().UnixNano())
 	supplierID := "sup-split-1"
+	whID := "wh-split-" + fmt.Sprintf("%d", time.Now().UnixNano())
+	seedActiveWarehouse(t, ctx, client, supplierID, whID)
+	defer func() { _, _ = client.Apply(ctx, []*spanner.Mutation{spanner.Delete("Warehouses", spanner.Key{whID})}) }()
 	now := time.Now()
 	err := repo.CreateOrder(ctx, &Order{
-		OrderID:    orderID,
-		SupplierID: supplierID,
-		Status:     StatusPending,
+		OrderID:     orderID,
+		SupplierID:  supplierID,
+		RetailerID:  "ret-1",
+		WarehouseID: whID,
+		Status:      StatusPending,
 		LineItems: []LineItem{
 			{SKU: "sku-1", Quantity: 5},
 			{SKU: "sku-2", Quantity: 2},
 		},
 		CreatedAt: now,
 		UpdatedAt: now,
-	}, nil, StockReservationOpts{})
+	}, nil, StockReservationOpts{Skip: true})
 	if err != nil {
 		t.Fatalf("failed to create order: %v", err)
 	}
@@ -173,23 +200,28 @@ func TestConfirmAndAllocate_MultiWarehouseSplits(t *testing.T) {
 func TestConfirmAndAllocate_Success(t *testing.T) {
 	ctx := context.Background()
 	client := newSpannerIntegrationClient(t, ctx)
+	seedAllocationRetailer(t, ctx, client, "ret-1")
 	repo := NewSpannerRepository(client)
 
 	suffix := fmt.Sprintf("%d", time.Now().UnixNano())
 	supplierID := "sup-success-" + suffix
 	warehouseID := "wh-success-" + suffix
 	seedActiveWarehouse(t, ctx, client, supplierID, warehouseID)
+	whDefault := "wh-def-" + suffix
+	seedActiveWarehouse(t, ctx, client, supplierID, whDefault)
+	defer func() { _, _ = client.Apply(ctx, []*spanner.Mutation{spanner.Delete("Warehouses", spanner.Key{whDefault})}) }()
 	seedSupplierInventorySKU(t, ctx, client, supplierID, warehouseID, "sku-1", 100, 0)
 	seedSupplierInventorySKU(t, ctx, client, supplierID, warehouseID, "sku-2", 100, 0)
 	defer cleanupAllocationInventory(t, ctx, client, supplierID, warehouseID, "sku-1")
 	defer cleanupAllocationInventory(t, ctx, client, supplierID, warehouseID, "sku-2")
 
-	orderID := "ord-allocate-test-3-" + suffix
+	orderID := "ord-alloc3-" + suffix
 	now := time.Now()
 	err := repo.CreateOrder(ctx, &Order{
 		OrderID:     orderID,
 		SupplierID:  supplierID,
-		WarehouseID: "wh-default",
+		RetailerID:  "ret-1",
+		WarehouseID: whDefault,
 		Status:      StatusPending,
 		LineItems: []LineItem{
 			{SKU: "sku-1", Quantity: 5},
@@ -237,6 +269,7 @@ func TestConfirmAndAllocate_Success(t *testing.T) {
 func TestConfirmAndAllocate_ConcurrentReservation(t *testing.T) {
 	ctx := context.Background()
 	client := newSpannerIntegrationClient(t, ctx)
+	seedAllocationRetailer(t, ctx, client, "ret-1")
 	repo := NewSpannerRepository(client)
 
 	suffix := fmt.Sprintf("%d", time.Now().UnixNano())
@@ -259,6 +292,7 @@ func TestConfirmAndAllocate_ConcurrentReservation(t *testing.T) {
 		if err := repo.CreateOrder(ctx, &Order{
 			OrderID:     spec.id,
 			SupplierID:  supplierID,
+			RetailerID:  "ret-1",
 			WarehouseID: warehouseID,
 			Status:      StatusPending,
 			LineItems:   []LineItem{{SKU: sku, Quantity: spec.qty}},
@@ -292,6 +326,7 @@ func TestConfirmAndAllocate_ConcurrentReservation(t *testing.T) {
 func TestCreateOrder_LegacyFlagOffReservesAtCreate(t *testing.T) {
 	ctx := context.Background()
 	client := newSpannerIntegrationClient(t, ctx)
+	seedAllocationRetailer(t, ctx, client, "ret-1")
 	repo := NewSpannerRepository(client)
 
 	suffix := fmt.Sprintf("%d", time.Now().UnixNano())
@@ -314,6 +349,7 @@ func TestCreateOrder_LegacyFlagOffReservesAtCreate(t *testing.T) {
 	err := repo.CreateOrder(ctx, &Order{
 		OrderID:     orderID,
 		SupplierID:  supplierID,
+		RetailerID:  "ret-1",
 		WarehouseID: warehouseID,
 		Status:      StatusPending,
 		LineItems:   []LineItem{{SKU: sku, Quantity: 3}},
@@ -353,6 +389,7 @@ func TestCreateOrder_LegacyFlagOffReservesAtCreate(t *testing.T) {
 func TestPromotePreorder_AllocationRequired(t *testing.T) {
 	ctx := context.Background()
 	client := newSpannerIntegrationClient(t, ctx)
+	seedAllocationRetailer(t, ctx, client, "ret-1")
 	repo := NewSpannerRepository(client)
 
 	suffix := fmt.Sprintf("%d", time.Now().UnixNano())
@@ -368,6 +405,7 @@ func TestPromotePreorder_AllocationRequired(t *testing.T) {
 	if err := repo.CreateOrder(ctx, &Order{
 		OrderID:            orderID,
 		SupplierID:         supplierID,
+		RetailerID:         "ret-1",
 		WarehouseID:        warehouseID,
 		Status:             StatusScheduled,
 		Source:             OrderSourceManualPreorder,

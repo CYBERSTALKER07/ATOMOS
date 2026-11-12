@@ -39,7 +39,7 @@ func TestValidateFulfillmentForManifestTxn_Mismatch(t *testing.T) {
 			"Status":             string(StatusPending),
 			"OrderSource":        string(OrderSourceManual),
 			"ConfirmationStatus": string(ConfirmationStatusConfirmed),
-			"LineItemsJson":      "[]",
+			"LineItemsJson":      []byte("[]"),
 			"TotalMinor":         100,
 			"Currency":           "UZS",
 			"Version":            1,
@@ -52,7 +52,7 @@ func TestValidateFulfillmentForManifestTxn_Mismatch(t *testing.T) {
 			"WarehouseId": wh1,
 			"Sku":         "sku-1",
 			"Qty":         1,
-			"CreatedAt":   spanner.CommitTimestamp,
+			"CreatedAt":   now,
 		}),
 		spanner.InsertMap("OrderStockReservationMarkers", map[string]any{
 			"OrderId":    orderID,

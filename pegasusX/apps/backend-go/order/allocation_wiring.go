@@ -171,7 +171,7 @@ func (s *Service) allocateAndReserveInTxn(ctx context.Context, txn *spanner.Read
 			"WarehouseId": wid,
 			"Sku":         sku,
 			"Qty":         allocQty,
-			"CreatedAt":   spanner.CommitTimestamp,
+			"CreatedAt":   s.now(),
 		}
 		if dec, ok := decisionBySku[sku]; ok {
 			row["AllocationMode"] = dec.AllocationMode
@@ -205,7 +205,7 @@ func (s *Service) allocateAndReserveInTxn(ctx context.Context, txn *spanner.Read
 				"RetailerSegment": dec.RetailerSegment,
 				"SkuClass":        dec.SkuClass,
 				"RiskTier":        dec.RiskTier,
-				"CreatedAt":       spanner.CommitTimestamp,
+				"CreatedAt":       s.now(),
 			}
 			if dec.ConstraintReason != "" {
 				decisionRow["ConstraintReason"] = dec.ConstraintReason

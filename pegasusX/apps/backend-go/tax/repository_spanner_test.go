@@ -50,7 +50,7 @@ func TestTaxRepository_EndToEnd(t *testing.T) {
 	client := newEmulatorClient(t, ctx)
 	repo := tax.NewSpannerRepository(client)
 
-	country := "TZTEST"
+	country := "ZX"
 	now := time.Now().UTC()
 	regime1 := tax.TaxRegimeVersion{
 		Id:              uuid.NewString(),
@@ -67,6 +67,9 @@ func TestTaxRepository_EndToEnd(t *testing.T) {
 	// 1. Create Regime
 	err := repo.CreateRegime(ctx, regime1)
 	require.NoError(t, err)
+	t.Cleanup(func() {
+		_, _ = client.Apply(ctx, []*spanner.Mutation{spanner.Delete("TaxRegimeVersions", spanner.Key{regime1.Id})})
+	})
 
 	// 2. Get Regime
 	fetched, found, err := repo.GetRegime(ctx, regime1.Id)
@@ -86,7 +89,31 @@ func TestTaxRepository_EndToEnd(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, list, 1)
 
-	// 5. Insert Line Snapshot
+	// 5. Insert Line Snapshot (parent Orders row required by interleaved FK)
+	_, err = client.Apply(ctx, []*spanner.Mutation{
+		spanner.InsertOrUpdateMap("Orders", map[string]any{
+			"OrderId":            "order-123",
+			"SupplierId":         "sup-tax-test",
+			"RetailerId":         "ret-tax-test",
+			"Status":             "PENDING",
+			"OrderSource":        "MANUAL",
+			"ConfirmationStatus": "CONFIRMED",
+			"LineItemsJson":      []byte("[]"),
+			"TotalMinor":         11000,
+			"Currency":           "UZS",
+			"Version":            1,
+			"CreatedAt":          now,
+			"UpdatedAt":          now,
+		}),
+	})
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		_, _ = client.Apply(ctx, []*spanner.Mutation{
+			spanner.Delete("OrderLineFiscalSnapshots", spanner.Key{"order-123", "line-1"}),
+			spanner.Delete("Orders", spanner.Key{"order-123"}),
+		})
+	})
+
 	snapshot := tax.OrderLineFiscalSnapshot{
 		OrderId:     "order-123",
 		OrderLineId: "line-1",

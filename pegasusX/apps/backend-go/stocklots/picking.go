@@ -107,51 +107,82 @@ func CreatePickWaveInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction,
 		return nil, fmt.Errorf("manifest_has_no_orders")
 	}
 
+	resByOrder, err := loadOrderLotReservationsBatch(ctx, txn, orderIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	var uniqueLotIDs []string
+	lotSeen := make(map[string]struct{})
+	var fallbackOrderIDs []string
+	for _, oid := range orderIDs {
+		resRows := resByOrder[oid]
+		if len(resRows) == 0 {
+			fallbackOrderIDs = append(fallbackOrderIDs, oid)
+			continue
+		}
+		for _, rr := range resRows {
+			if _, ok := lotSeen[rr.lotID]; !ok {
+				lotSeen[rr.lotID] = struct{}{}
+				uniqueLotIDs = append(uniqueLotIDs, rr.lotID)
+			}
+		}
+	}
+
+	lotsByID, err := loadStockLotsBatch(ctx, txn, uniqueLotIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	var uniqueLocIDs []string
+	locSeen := make(map[string]struct{})
+	for _, lot := range lotsByID {
+		if lot.status != "AVAILABLE" && lot.status != "QUARANTINE" {
+			continue
+		}
+		if lid := strings.TrimSpace(lot.locationID); lid != "" {
+			if _, ok := locSeen[lid]; !ok {
+				locSeen[lid] = struct{}{}
+				uniqueLocIDs = append(uniqueLocIDs, lid)
+			}
+		}
+	}
+	locMetaByID := locationPickMetaBatch(ctx, txn, warehouseID, uniqueLocIDs)
+
+	linesByOrder, err := loadOrderLineQtysBatch(ctx, txn, fallbackOrderIDs)
+	if err != nil {
+		return nil, err
+	}
+
 	var drafts []pickTaskDraft
 	for _, oid := range orderIDs {
-		resRows, err := loadOrderLotReservations(ctx, txn, oid)
-		if err != nil {
-			return nil, err
-		}
+		resRows := resByOrder[oid]
 		if len(resRows) > 0 {
 			for _, rr := range resRows {
-				lot, err := txn.ReadRow(ctx, "StockLots", spanner.Key{rr.lotID},
-					[]string{"ProductId", "LocationId", "QuantityReserved", "Status"})
-				if err != nil {
-					if spanner.ErrCode(err) == 5 {
-						continue
-					}
-					return nil, err
+				lot, ok := lotsByID[rr.lotID]
+				if !ok {
+					continue
 				}
-				var pid, lid, st string
-				var reserved int64
-				if err := lot.Columns(&pid, &lid, &reserved, &st); err != nil {
-					return nil, err
-				}
-				if st != "AVAILABLE" && st != "QUARANTINE" {
+				if lot.status != "AVAILABLE" && lot.status != "QUARANTINE" {
 					continue
 				}
 				qty := rr.qty
-				if qty > reserved && reserved > 0 {
-					qty = reserved
+				if qty > lot.reserved && lot.reserved > 0 {
+					qty = lot.reserved
 				}
 				if qty <= 0 {
 					continue
 				}
-				seq, zone, aisle := locationPickMeta(ctx, txn, warehouseID, lid)
+				meta := locMetaByID[lot.locationID]
 				drafts = append(drafts, pickTaskDraft{
-					OrderID: oid, ProductID: pid, LotID: rr.lotID, LocationID: lid, Qty: qty, Seq: seq,
-					Zone: zone, Aisle: aisle,
+					OrderID: oid, ProductID: lot.productID, LotID: rr.lotID, LocationID: lot.locationID,
+					Qty: qty, Seq: meta.seq, Zone: meta.zone, Aisle: meta.aisle,
 				})
 			}
 			continue
 		}
-		lines, err := loadOrderLineQtys(ctx, txn, oid)
-		if err != nil {
-			return nil, err
-		}
 		// Lots off: bag-of-SKU tasks. Confirm does not deplete StockLots.
-		drafts = append(drafts, skuPickDraftsFromLines(oid, lines)...)
+		drafts = append(drafts, skuPickDraftsFromLines(oid, linesByOrder[oid])...)
 	}
 
 	if len(drafts) == 0 {
@@ -607,6 +638,151 @@ func loadManifestOrderIDs(ctx context.Context, txn *spanner.ReadWriteTransaction
 type lotResRow struct {
 	lotID string
 	qty   int64
+}
+
+type stockLotPickMeta struct {
+	productID  string
+	locationID string
+	reserved   int64
+	status     string
+}
+
+type locPickMeta struct {
+	seq   int64
+	zone  string
+	aisle string
+}
+
+func loadOrderLotReservationsBatch(ctx context.Context, txn *spanner.ReadWriteTransaction, orderIDs []string) (map[string][]lotResRow, error) {
+	out := make(map[string][]lotResRow, len(orderIDs))
+	if len(orderIDs) == 0 {
+		return out, nil
+	}
+	iter := txn.Query(ctx, spanner.Statement{
+		SQL:    `SELECT OrderId, LotId, Quantity FROM OrderLotReservations WHERE OrderId IN UNNEST(@oids)`,
+		Params: map[string]any{"oids": orderIDs},
+	})
+	defer iter.Stop()
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		var oid, lid string
+		var qty int64
+		if err := row.Columns(&oid, &lid, &qty); err != nil {
+			return nil, err
+		}
+		out[oid] = append(out[oid], lotResRow{lid, qty})
+	}
+	return out, nil
+}
+
+func loadStockLotsBatch(ctx context.Context, txn *spanner.ReadWriteTransaction, lotIDs []string) (map[string]stockLotPickMeta, error) {
+	out := make(map[string]stockLotPickMeta, len(lotIDs))
+	if len(lotIDs) == 0 {
+		return out, nil
+	}
+	keys := make([]spanner.Key, 0, len(lotIDs))
+	for _, lid := range lotIDs {
+		keys = append(keys, spanner.Key{lid})
+	}
+	iter := txn.Read(ctx, "StockLots", spanner.KeySetFromKeys(keys...),
+		[]string{"LotId", "ProductId", "LocationId", "QuantityReserved", "Status"})
+	defer iter.Stop()
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		var lid, pid, locID, st string
+		var reserved int64
+		if err := row.Columns(&lid, &pid, &locID, &reserved, &st); err != nil {
+			return nil, err
+		}
+		out[lid] = stockLotPickMeta{productID: pid, locationID: locID, reserved: reserved, status: st}
+	}
+	return out, nil
+}
+
+func loadOrderLineQtysBatch(ctx context.Context, txn *spanner.ReadWriteTransaction, orderIDs []string) (map[string][]LineQty, error) {
+	out := make(map[string][]LineQty, len(orderIDs))
+	if len(orderIDs) == 0 {
+		return out, nil
+	}
+	keys := make([]spanner.Key, 0, len(orderIDs))
+	for _, oid := range orderIDs {
+		keys = append(keys, spanner.Key{oid})
+	}
+	iter := txn.Read(ctx, "Orders", spanner.KeySetFromKeys(keys...), []string{"OrderId", "LineItemsJson"})
+	defer iter.Stop()
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		var oid string
+		var raw []byte
+		if err := row.Columns(&oid, &raw); err != nil {
+			return nil, err
+		}
+		lines, err := parseOrderLineQtys(raw)
+		if err != nil {
+			return nil, err
+		}
+		out[oid] = lines
+	}
+	return out, nil
+}
+
+func locationPickMetaBatch(ctx context.Context, txn *spanner.ReadWriteTransaction, warehouseID string, locationIDs []string) map[string]locPickMeta {
+	out := make(map[string]locPickMeta, len(locationIDs))
+	if len(locationIDs) == 0 {
+		return out
+	}
+	keys := make([]spanner.Key, 0, len(locationIDs))
+	for _, lid := range locationIDs {
+		if strings.TrimSpace(lid) != "" {
+			keys = append(keys, spanner.Key{warehouseID, lid})
+		}
+	}
+	if len(keys) == 0 {
+		return out
+	}
+	iter := txn.Read(ctx, "WarehouseLocations", spanner.KeySetFromKeys(keys...),
+		[]string{"LocationId", "PickSequence", "Zone", "Aisle"})
+	defer iter.Stop()
+	for {
+		row, err := iter.Next()
+		if err != nil {
+			break
+		}
+		var lid string
+		var seq int64
+		var z, a spanner.NullString
+		if err := row.Columns(&lid, &seq, &z, &a); err != nil {
+			continue
+		}
+		var m locPickMeta
+		m.seq = seq
+		if z.Valid {
+			m.zone = z.StringVal
+		}
+		if a.Valid {
+			m.aisle = a.StringVal
+		}
+		out[lid] = m
+	}
+	return out
 }
 
 func loadOrderLotReservations(ctx context.Context, txn *spanner.ReadWriteTransaction, orderID string) ([]lotResRow, error) {

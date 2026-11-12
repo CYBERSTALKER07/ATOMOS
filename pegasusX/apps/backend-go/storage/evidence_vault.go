@@ -176,7 +176,7 @@ func (v *Vault) SealDossier(ctx context.Context, dossierID string) error {
 
 		m := spanner.Update("EvidenceDossiers",
 			[]string{"DossierId", "Status", "SealedAt", "SealedHash"},
-			[]interface{}{dossierID, DossierStatusSealed, spanner.CommitTimestamp, sealedHash},
+			[]interface{}{dossierID, DossierStatusSealed, time.Now().UTC(), sealedHash},
 		)
 
 		return txn.BufferWrite([]*spanner.Mutation{m})

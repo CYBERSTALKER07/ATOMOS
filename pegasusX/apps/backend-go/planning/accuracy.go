@@ -110,6 +110,10 @@ func ComputeSeriesMetrics(points []SeriesPoint, asOf civil.Date) SeriesMetrics {
 	for _, p := range points {
 		byDay[p.Day] = p
 	}
+	return computeSeriesMetricsFromMap(byDay, asOf)
+}
+
+func computeSeriesMetricsFromMap(byDay map[civil.Date]SeriesPoint, asOf civil.Date) SeriesMetrics {
 	window28 := collectWindow(byDay, asOf, 28)
 	window7 := collectWindow(byDay, asOf, 7)
 
@@ -331,16 +335,15 @@ func (s *AccuracyService) RunAccuracyPass(ctx context.Context, supplierID string
 	endDay := civil.DateOf(end)
 
 	for sk, points := range series {
+		byDay := make(map[civil.Date]SeriesPoint, len(points))
+		for _, p := range points {
+			byDay[p.Day] = p
+		}
 		for d := scoreStart; !d.After(end); d = d.AddDate(0, 0, 1) {
 			day := civil.DateOf(d)
-			m := ComputeSeriesMetrics(points, day)
-			var fQty, aQty int64
-			for _, p := range points {
-				if p.Day == day {
-					fQty, aQty = p.ForecastQty, p.ActualQty
-					break
-				}
-			}
+			m := computeSeriesMetricsFromMap(byDay, day)
+			p := byDay[day]
+			fQty, aQty := p.ForecastQty, p.ActualQty
 			if fQty == 0 && aQty == 0 && m.SampleDays28 == 0 {
 				continue
 			}
