@@ -1,5 +1,5 @@
 import { View, Text, Pressable } from 'react-native';
-import { isIOS } from '../theme';
+import { isIOS, type AppTheme } from '../theme';
 import StatusBadge from './StatusBadge';
 
 export type TruckRecommendation = {
@@ -23,7 +23,7 @@ type Props = {
   index: number;
   reDispatchVolume: number;
   isReassigning: boolean;
-  theme: any;
+  theme: AppTheme;
   onReassign: (driverId: string, vehicleId: string) => void;
 };
 

@@ -51,6 +51,7 @@ export function OrderOpsCard({
   const canDelay = canDelayOverride ?? flags.canDelay;
   const canReject = canRejectOverride ?? flags.canReject;
   const canReassign = canReassignOverride ?? flags.canReassign;
+  const stopPropagation = (e: React.SyntheticEvent) => e.stopPropagation();
 
   return (
     <article
@@ -75,7 +76,13 @@ export function OrderOpsCard({
           <p className="text-xs font-mono text-[var(--muted)] mt-1 truncate">{orderId}</p>
           {meta ? <p className="text-xs text-[var(--muted)] mt-1">{meta}</p> : null}
         </div>
-        <div className="flex items-start gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+        <div
+          tabIndex={-1}
+          className="flex items-start gap-1 shrink-0"
+          onClick={stopPropagation}
+          role="button"
+          onKeyDown={stopPropagation}
+        >
           <div className="text-right mr-1">
             <p className="text-sm font-mono tabular-nums">{amountLabel}</p>
           </div>

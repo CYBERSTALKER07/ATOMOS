@@ -42,7 +42,7 @@ func (s *Service) HandleExceptionMap(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if s.portalSpanner == nil {
-		writeJSON(w, http.StatusOK, map[string]any{"cells": []ExceptionMapCell{}, "window_hours": 24})
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "exception_map_unavailable"})
 		return
 	}
 
@@ -151,7 +151,7 @@ func (s *Service) collectShopClosedBuckets(ctx context.Context, supplierID strin
 		        AND s.ResolvedAt IS NULL`,
 		Params: map[string]any{"supplierId": supplierID, "since": since},
 	}
-	iter := s.portalSpanner.Single().Query(ctx, stmt)
+	iter := s.portalSpanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	for {
 		row, err := iter.Next()
@@ -180,7 +180,7 @@ func (s *Service) collectDelayedOrderBuckets(ctx context.Context, supplierID str
 		      LIMIT 500`,
 		Params: map[string]any{"supplierId": supplierID, "since": since},
 	}
-	iter := s.portalSpanner.Single().Query(ctx, stmt)
+	iter := s.portalSpanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	now := s.now().UTC()
 	for {
@@ -231,7 +231,7 @@ func (s *Service) collectManifestExceptionBuckets(ctx context.Context, supplierI
 		SQL:    `SELECT OrderId, H3Cell FROM Orders WHERE OrderId IN UNNEST(@ids)`,
 		Params: map[string]any{"ids": orderIDs},
 	}
-	iter := s.portalSpanner.Single().Query(ctx, stmt)
+	iter := s.portalSpanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	for {
 		row, err := iter.Next()

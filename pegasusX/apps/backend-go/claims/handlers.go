@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"github.com/pegasusx/pegasusx/apps/backend-go/storage"
 )
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
@@ -38,7 +39,7 @@ func (s *Service) HandleFileOrderClaim(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 		return
 	}
-	if s.guardIdempotency(w, r, body) {
+	if s.guardIdempotencyStrict(w, r, body) {
 		return
 	}
 	var req FileClaimRequest
@@ -57,6 +58,7 @@ func (s *Service) HandleFileOrderClaim(w http.ResponseWriter, r *http.Request) {
 }
 
 // HandleApproveClaim serves POST /v1/claims/{claimID}/approve.
+// B6: HTTP Idempotency-Key guard (settlement is also domain-idempotent via chargeback id).
 func (s *Service) HandleApproveClaim(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
@@ -68,23 +70,36 @@ func (s *Service) HandleApproveClaim(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	claimID := strings.TrimSpace(chi.URLParam(r, "claimID"))
-	var req ApproveClaimRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil && r.ContentLength != 0 {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+	body, err := readLimitedBody(r, 64*1024)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 		return
+	}
+	if s.guardIdempotencyStrict(w, r, body) {
+		return
+	}
+	var req ApproveClaimRequest
+	if len(body) > 0 {
+		if err := json.Unmarshal(body, &req); err != nil {
+			s.releaseIdempotency(r.Context(), r)
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+			return
+		}
 	}
 	c, settlement, err := s.ApproveClaim(r.Context(), actor, claimID, req)
 	if err != nil {
+		s.releaseIdempotency(r.Context(), r)
 		writeClaimError(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{
+	s.writeIdempotentJSON(w, r, body, http.StatusOK, map[string]any{
 		"claim":      c,
 		"settlement": settlement,
 	})
 }
 
 // HandleRejectClaim serves POST /v1/claims/{claimID}/reject.
+// B6: HTTP Idempotency-Key guard.
 func (s *Service) HandleRejectClaim(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
@@ -96,17 +111,29 @@ func (s *Service) HandleRejectClaim(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	claimID := strings.TrimSpace(chi.URLParam(r, "claimID"))
-	var req RejectClaimRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil && r.ContentLength != 0 {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+	body, err := readLimitedBody(r, 64*1024)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 		return
+	}
+	if s.guardIdempotencyStrict(w, r, body) {
+		return
+	}
+	var req RejectClaimRequest
+	if len(body) > 0 {
+		if err := json.Unmarshal(body, &req); err != nil {
+			s.releaseIdempotency(r.Context(), r)
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+			return
+		}
 	}
 	c, err := s.RejectClaim(r.Context(), actor, claimID, req)
 	if err != nil {
+		s.releaseIdempotency(r.Context(), r)
 		writeClaimError(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, c)
+	s.writeIdempotentJSON(w, r, body, http.StatusOK, c)
 }
 
 // HandleListSupplierClaims serves GET /v1/supplier/claims?status=&limit=.
@@ -131,7 +158,8 @@ func (s *Service) HandleListSupplierClaims(w http.ResponseWriter, r *http.Reques
 			limit = n
 		}
 	}
-	list, err := s.ListSupplierClaims(r.Context(), actor, status, limit)
+	cursor := strings.TrimSpace(r.URL.Query().Get("cursor"))
+	list, nextCursor, err := s.ListSupplierClaimsPage(r.Context(), actor, status, limit, cursor)
 	if err != nil {
 		writeClaimError(w, r, err)
 		return
@@ -139,7 +167,11 @@ func (s *Service) HandleListSupplierClaims(w http.ResponseWriter, r *http.Reques
 	if list == nil {
 		list = []Claim{}
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"claims": list})
+	resp := map[string]any{"claims": list}
+	if nextCursor != "" {
+		resp["next_cursor"] = nextCursor
+	}
+	writeJSON(w, http.StatusOK, resp)
 }
 
 // HandleGetClaimEligibility serves GET /v1/orders/{orderID}/claim-eligibility.
@@ -181,6 +213,30 @@ func (s *Service) HandleListOrderClaims(w http.ResponseWriter, r *http.Request) 
 	if orderID == "" {
 		orderID = strings.TrimSpace(chi.URLParam(r, "id"))
 	}
+	cursor := strings.TrimSpace(r.URL.Query().Get("cursor"))
+	rawLimit := strings.TrimSpace(r.URL.Query().Get("limit"))
+	if cursor != "" || rawLimit != "" {
+		limit := 50
+		if rawLimit != "" {
+			if n, err := strconv.Atoi(rawLimit); err == nil && n > 0 {
+				limit = n
+			}
+		}
+		list, nextCursor, err := s.ListOrderClaimsPage(r.Context(), actor, orderID, limit, cursor)
+		if err != nil {
+			writeClaimError(w, r, err)
+			return
+		}
+		if list == nil {
+			list = []Claim{}
+		}
+		resp := map[string]any{"claims": list}
+		if nextCursor != "" {
+			resp["next_cursor"] = nextCursor
+		}
+		writeJSON(w, http.StatusOK, resp)
+		return
+	}
 	list, err := s.ListOrderClaims(r.Context(), actor, orderID)
 	if err != nil {
 		writeClaimError(w, r, err)
@@ -206,8 +262,18 @@ func writeClaimError(w http.ResponseWriter, r *http.Request, err error) {
 		writeJSON(w, http.StatusConflict, map[string]string{"error": "claim_window_expired"})
 	case errors.Is(err, ErrEvidenceRequired):
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "photo_evidence_required"})
-	case errors.Is(err, ErrInvalidEvidenceURI):
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_evidence_uri"})
+	case errors.Is(err, ErrReusedPhotoEvidence):
+		writeJSON(w, http.StatusConflict, map[string]string{"error": "reused_photo_evidence_refused"})
+	case errors.Is(err, storage.ErrInvalidUploadSize):
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_upload_size", "message": err.Error()})
+	case errors.Is(err, storage.ErrMediaStorageUnavailable):
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "media_storage_unavailable"})
+	case errors.Is(err, ErrInvalidEvidenceURI), errors.Is(err, storage.ErrInvalidEvidenceURI), errors.Is(err, ErrInvalidCursor):
+		code := "invalid_evidence_uri"
+		if errors.Is(err, ErrInvalidCursor) {
+			code = "invalid_cursor"
+		}
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": code})
 	case errors.Is(err, ErrClaimStockHoldFailed):
 		writeJSON(w, http.StatusConflict, map[string]string{"error": "claim_stock_hold_failed", "message": err.Error()})
 	case errors.Is(err, ErrInvalidClaimState):

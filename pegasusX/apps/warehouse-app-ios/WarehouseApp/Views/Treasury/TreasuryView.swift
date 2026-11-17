@@ -1,101 +1,101 @@
 import SwiftUI
 
 struct TreasuryView: View {
-    @State private var overview = TreasuryOverview.empty
-    @State private var invoices: [Invoice] = []
-    @State private var loading = true
-    @State private var error: String?
-    @State private var selectedSegment = 0
+    @State private var vm = TreasuryViewModel()
 
     private var gridMin: CGFloat { 160 }
 
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-                Picker("View", selection: $selectedSegment) {
-                    Text("Overview").tag(0)
-                    Text("Invoices").tag(1)
-                    Text("Payment").tag(2)
-                }
-                .pickerStyle(.segmented)
-                .padding()
+        @Bindable var vm = vm
+        VStack(spacing: 0) {
+            Picker("View", selection: $vm.selectedSegment) {
+                Text("portal.nav.overview").tag(0)
+                Text("warehouse_portal.treasury.text.invoices").tag(1)
+                Text("mobile_warehouse.ui.payment").tag(2)
+            }
+            .pickerStyle(.segmented)
+            .padding()
+            .onChange(of: vm.selectedSegment) { _, _ in
+                PegasusHaptics.selection()
+            }
 
-                if loading {
-                    WarehouseLoadingView(
-                        title: "Loading treasury",
-                        message: "Fetching balance, receivables, and invoice status."
-                    )
-                } else if let error {
-                    WarehouseErrorView(message: error) { load() }
-                } else {
-                    switch selectedSegment {
-                    case 0:
-                        ScrollView {
-                            VStack(alignment: .leading, spacing: LabTheme.spacingLG) {
-                                WarehouseSectionHeader(
-                                    title: "Financial overview",
-                                    subtitle: "Treasury KPIs for this warehouse"
+            if vm.loading {
+                WarehouseLoadingView(
+                    title: "Loading treasury",
+                    message: "Fetching balance, receivables, and invoice status."
+                )
+            } else if let error = vm.error {
+                WarehouseErrorView(message: error) {
+                    PegasusHaptics.light()
+                    Task { await vm.load() }
+                }
+            } else {
+                switch vm.selectedSegment {
+                case 0:
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: LabTheme.spacingLG) {
+                            WarehouseSectionHeader(
+                                title: "Financial overview",
+                                subtitle: "Treasury KPIs for this warehouse"
+                            )
+                            LazyVGrid(
+                                columns: [GridItem(.adaptive(minimum: gridMin), spacing: LabTheme.spacingMD)],
+                                spacing: LabTheme.spacingMD
+                            ) {
+                                KpiTile(
+                                    title: "Balance",
+                                    value: "\(vm.overview.balance.formatted()) \(packCurrency(MarketPackStore.pack))",
+                                    systemImage: "banknote",
+                                    tint: .accentColor
                                 )
-                                LazyVGrid(
-                                    columns: [GridItem(.adaptive(minimum: gridMin), spacing: LabTheme.spacingMD)],
-                                    spacing: LabTheme.spacingMD
-                                ) {
-                                    KpiTile(title: "Balance", value: "\(overview.balance.formatted()) UZS", systemImage: "banknote", tint: .accentColor)
-                                    KpiTile(title: "Receivable", value: "\(overview.totalReceivable.formatted()) UZS", systemImage: "arrow.down.circle", tint: LabTheme.warning)
-                                    KpiTile(title: "Collected", value: "\(overview.totalCollected.formatted()) UZS", systemImage: "checkmark.circle", tint: LabTheme.success)
-                                    KpiTile(
-                                        title: "Overdue",
-                                        value: "\(overview.overdueAmount.formatted()) UZS",
-                                        systemImage: "exclamationmark.triangle",
-                                        tint: LabTheme.destructive,
-                                        chip: overview.overdueAmount > 0 ? ("ALERT", LabTheme.destructive) : nil
-                                    )
-                                }
+                                KpiTile(
+                                    title: "Receivable",
+                                    value: "\(vm.overview.totalReceivable.formatted()) \(packCurrency(MarketPackStore.pack))",
+                                    systemImage: "arrow.down.circle",
+                                    tint: LabTheme.warning
+                                )
+                                KpiTile(
+                                    title: "Collected",
+                                    value: "\(vm.overview.totalCollected.formatted()) \(packCurrency(MarketPackStore.pack))",
+                                    systemImage: "checkmark.circle",
+                                    tint: LabTheme.success
+                                )
+                                KpiTile(
+                                    title: "Overdue",
+                                    value: "\(vm.overview.overdueAmount.formatted()) \(packCurrency(MarketPackStore.pack))",
+                                    systemImage: "exclamationmark.triangle",
+                                    tint: LabTheme.destructive,
+                                    chip: vm.overview.overdueAmount > 0 ? ("ALERT", LabTheme.destructive) : nil
+                                )
                             }
-                            .labReadableWidth()
-                            .padding()
                         }
-                    case 1:
-                        TreasuryTransactionList(invoices: invoices)
-                    default:
-                        PaymentConfigView()
+                        .labReadableWidth()
+                        .padding()
                     }
+                    .scrollDismissesKeyboard(.interactively)
+                case 1:
+                    TreasuryTransactionList(invoices: vm.invoices)
+                default:
+                    PaymentConfigView()
                 }
             }
-            .background(LabTheme.background)
-            .navigationTitle("Treasury")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Refresh", systemImage: "arrow.clockwise") { load() }
-                }
-            }
-            .task { load() }
-            .refreshable { load() }
         }
-    }
-
-    private func load() {
-        loading = true
-        error = nil
-        Task {
-            do {
-                async let invoicesResponse = WarehouseService.treasuryInvoices()
-                do {
-                    overview = try await WarehouseService.treasuryOverview()
-                } catch {
-                    let financials = try await WarehouseOperationsService.opsFinancials()
-                    overview = TreasuryOverview(
-                        balance: Int(financials.netPayout),
-                        totalReceivable: Int(financials.totalRevenue),
-                        totalCollected: Int(financials.cashCollected),
-                        overdueAmount: Int(financials.cashPending)
-                    )
+        .background(LabTheme.background)
+        .navigationTitle("portal.nav.treasury")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    PegasusHaptics.light()
+                    Task { await vm.load() }
+                } label: {
+                    Label("portal.page.orders.action.refresh", systemImage: "arrow.clockwise")
+                        .frame(minWidth: 44, minHeight: 44)
+                        .contentShape(Rectangle())
                 }
-                invoices = try await invoicesResponse.invoices
-            } catch {
-                self.error = error.localizedDescription
+                .accessibilityLabel("Refresh treasury")
             }
-            loading = false
         }
+        .task { await vm.load() }
+        .refreshable { await vm.load() }
     }
 }

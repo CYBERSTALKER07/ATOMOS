@@ -3,8 +3,8 @@ package com.pegasusx.retailer.ui.components
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import com.pegasus.design.PegasusStateKind
-import com.pegasus.design.PegasusStatePane
+import com.pegasusx.retailer.ui.design.PegasusStateKind
+import com.pegasusx.retailer.ui.design.PegasusStatePane
 
 @Composable
 fun PegasusEmptyState(

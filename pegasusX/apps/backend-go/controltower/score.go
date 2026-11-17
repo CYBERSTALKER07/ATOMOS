@@ -11,7 +11,7 @@ const (
 	scoreAmountWeight     = 40
 	scoreAgeWeightPerHour = 2
 	scoreAgeCap           = 48 // hours
-	scoreSeverityWeight   = 30
+	scoreSeverityWeight   = 60
 	scoreSegmentBoost     = 15
 )
 

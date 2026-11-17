@@ -1,0 +1,45 @@
+flowchart TD
+    subgraph C1["Council 1: Core Architecture & Data Plane (Agents 1–5)"]
+        A1["Agent 1: Spanner Multi-Region Master"]
+        A2["Agent 2: Kafka Mesh & DLQ Specialist"]
+        A3["Agent 3: CRDT Inventory Concurrency"]
+        A4["Agent 4: Redis Semaphore & Edge Gateways"]
+        A5["Agent 5: Outbox Zero-Loss Skeptic"]
+    end
+
+    subgraph C2["Council 2: Statutory & Fiscal Compliance (Agents 6–10)"]
+        A6["Agent 6: Soliq Fiscal Factura Integrator"]
+        A7["Agent 7: Multi-Tender & Settlement Auditor (No Limits Policy)"]
+        A8["Agent 8: GS1/MXIK Product Normalizer"]
+        A9["Agent 9: PKCS#12 Cert Lifecycle Guardian"]
+        A10["Agent 10: Cryptographic Audit Arbiter"]
+    end
+
+    subgraph C3["Council 3: Physical Supply Chain & Yard (Agents 11–15)"]
+        A11["Agent 11: Wave Planning & Slotting Lead"]
+        A12["Agent 12: Fleet Telematics & DVIR Guardian"]
+        A13["Agent 13: Yard ALPR & Bolt Seal Specialist"]
+        A14["Agent 14: Last-Mile H3 Routing Dispatcher"]
+        A15["Agent 15: Cross-Dock Rescue Arbiter"]
+    end
+
+    subgraph C4["Council 4: Governance, FinOps & Security (Agents 16–20)"]
+        A16["Agent 16: Tender Waterfall Econometrician"]
+        A17["Agent 17: Dual-Control Maker-Checker"]
+        A18["Agent 18: Multi-Tenant KYB Auditor"]
+        A19["Agent 19: IDOR & Attack Surface Hunter"]
+        A20["Agent 20: SRE Chaos Resilience Arbiter"]
+    end
+
+    subgraph C5["Council 5: Client Surfaces & Orchestration (Agents 21–25)"]
+        A21["Agent 21: Web Platform Lead (Next.js 15)"]
+        A22["Agent 22: macOS Native & Desktop Architect"]
+        A23["Agent 23: Mobile Kit Lead (iOS/Android)"]
+        A24["Agent 24: User Advocate across 9 Roles"]
+        A25["Agent 25: Lead Orchestrator & Arbiter"]
+    end
+
+    C1 --> C5
+    C2 --> C5
+    C3 --> C5
+    C4 --> C5

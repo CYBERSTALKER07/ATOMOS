@@ -96,12 +96,10 @@ func (s *Service) WarehouseProposeDeliveryDate(ctx context.Context, ops *auth.Wa
 	if err := assertWarehouseOrderScope(current, resolvedOps); err != nil {
 		return RetailerOrderLifecycleResponse{}, err
 	}
-	
-	loc := proximity.TashkentLocation
-	if current.Timezone != "" {
-		if l, err := time.LoadLocation(current.Timezone); err == nil {
-			loc = l
-		}
+
+	loc, locErr := resolveCalendarLocation(ctx, current.SupplierID, current.Timezone)
+	if locErr != nil {
+		return RetailerOrderLifecycleResponse{}, locErr
 	}
 
 	if err := orderEligibleForDeliveryProposal(s.now(), loc, current); err != nil {
@@ -201,7 +199,7 @@ func (s *Service) HandleWarehouseProposeDelivery(w http.ResponseWriter, r *http.
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 		return
 	}
-	if s.guardIdempotency(w, r, bodyBytes) {
+	if s.guardIdempotencyStrict(w, r, bodyBytes) {
 		return
 	}
 	idemCommitted := false

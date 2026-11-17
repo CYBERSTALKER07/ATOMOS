@@ -13,9 +13,9 @@ struct WorkflowLaunchCard: View {
         VStack(alignment: .leading, spacing: LabTheme.spacingMD) {
             Label {
                 VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
-                    Text("Operator workflows")
+                    Text("mobile_factory.ui.operator_workflows")
                         .font(.headline)
-                    Text("Warehouse demand and live manifest overrides are available in native mobile flows.")
+                    Text("mobile_factory.ui.warehouse_demand_and_live_manifest_overrides_are_available_in_na")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -24,6 +24,7 @@ struct WorkflowLaunchCard: View {
                     .font(.title3)
                     .foregroundStyle(.secondary)
             }
+            .accessibilityElement(children: .combine)
 
             WorkflowLaunchRow(
                 title: "Supply requests",
@@ -89,12 +90,20 @@ struct WorkflowLaunchRow: View {
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
+            .accessibilityElement(children: .combine)
+
             Spacer()
-            Button(actionLabel, action: onTap)
-                .buttonStyle(.borderedProminent)
+
+            Button(actionLabel) {
+                PegasusHaptics.selection()
+                onTap()
+            }
+            .buttonStyle(.borderedProminent)
+            .frame(minWidth: 44, minHeight: 44)
+            .accessibilityLabel("\(actionLabel): \(title)")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(LabTheme.spacingMD)
-        .background(LabTheme.tertiaryBackground, in: RoundedRectangle(cornerRadius: LabTheme.radiusMD))
+        .background(LabTheme.tertiaryBackground, in: RoundedRectangle(cornerRadius: LabTheme.radiusMD, style: .continuous))
     }
 }

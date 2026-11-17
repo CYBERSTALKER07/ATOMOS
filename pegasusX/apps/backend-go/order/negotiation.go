@@ -11,6 +11,7 @@ import (
 
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"github.com/pegasusx/pegasusx/apps/backend-go/drivercmd"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 )
@@ -37,17 +38,13 @@ func (s *Service) HandleProposeNegotiation(w http.ResponseWriter, r *http.Reques
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 		return
 	}
-	if s.spannerClient == nil {
-		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "negotiation_unavailable"})
-		return
-	}
 
 	body, err := readLimitedBody(r, 64*1024)
 	if err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 		return
 	}
-	if s.guardIdempotency(w, r, body) {
+	if s.guardIdempotencyStrict(w, r, body) {
 		return
 	}
 	idemCommitted := false
@@ -56,6 +53,11 @@ func (s *Service) HandleProposeNegotiation(w http.ResponseWriter, r *http.Reques
 			s.releaseIdempotency(r.Context(), r)
 		}
 	}()
+
+	if s.spannerClient == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "negotiation_unavailable"})
+		return
+	}
 
 	var req struct {
 		OrderID string                    `json:"order_id"`
@@ -186,17 +188,13 @@ func (s *Service) HandleResolveNegotiation(w http.ResponseWriter, r *http.Reques
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 		return
 	}
-	if s.spannerClient == nil {
-		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "negotiation_unavailable"})
-		return
-	}
 
 	body, err := readLimitedBody(r, 64*1024)
 	if err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 		return
 	}
-	if s.guardIdempotency(w, r, body) {
+	if s.guardIdempotencyStrict(w, r, body) {
 		return
 	}
 	idemCommitted := false
@@ -205,6 +203,11 @@ func (s *Service) HandleResolveNegotiation(w http.ResponseWriter, r *http.Reques
 			s.releaseIdempotency(r.Context(), r)
 		}
 	}()
+
+	if s.spannerClient == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "negotiation_unavailable"})
+		return
+	}
 
 	var req struct {
 		ProposalID string `json:"proposal_id"`
@@ -248,16 +251,22 @@ func (s *Service) HandleResolveNegotiation(w http.ResponseWriter, r *http.Reques
 		}
 
 		orderRow, err := txn.ReadRow(ctx, "Orders", spanner.Key{orderID},
-			[]string{"SupplierId", "RetailerId", "Version", "LineItemsJson", "Currency"})
+			[]string{"SupplierId", "RetailerId", "WarehouseId", "OrderSource", "Version", "LineItemsJson", "Currency", "TotalMinor", "DeliveryFeeMinor"})
 		if err != nil {
 			return err
 		}
-		var version int64
-		var currency string
+		var version, oldTotal int64
+		var deliveryFeeCol spanner.NullInt64
+		var currency, source string
 		var lineItemsRaw []byte
-		var supplierCol, retailerCol spanner.NullString
-		if err := orderRow.Columns(&supplierCol, &retailerCol, &version, &lineItemsRaw, &currency); err != nil {
+		var supplierCol, retailerCol, warehouseCol spanner.NullString
+		if err := orderRow.Columns(&supplierCol, &retailerCol, &warehouseCol, &source, &version, &lineItemsRaw, &currency, &oldTotal, &deliveryFeeCol); err != nil {
 			return err
+		}
+		warehouseID := warehouseCol.StringVal
+		deliveryFeeMinor := int64(0)
+		if deliveryFeeCol.Valid && deliveryFeeCol.Int64 > 0 {
+			deliveryFeeMinor = deliveryFeeCol.Int64
 		}
 		if supplierCol.Valid {
 			supplierID = supplierCol.StringVal
@@ -293,7 +302,7 @@ func (s *Service) HandleResolveNegotiation(w http.ResponseWriter, r *http.Reques
 			if err := json.Unmarshal(lineItemsRaw, &lineItems); err != nil {
 				return fmt.Errorf("parse order line items: %w", err)
 			}
-			updated, total, err := applyNegotiatedLineItems(lineItems, proposedItems)
+			updated, total, err := applyNegotiatedLineItems(lineItems, proposedItems, deliveryFeeMinor)
 			if err != nil {
 				return err
 			}
@@ -301,6 +310,16 @@ func (s *Service) HandleResolveNegotiation(w http.ResponseWriter, r *http.Reques
 			if err != nil {
 				return err
 			}
+
+			if err := ReplaceOrderReservationsInTxn(ctx, txn, supplierID, warehouseID, orderID, retailerID, OrderSource(source), lineItems, updated); err != nil {
+				return fmt.Errorf("replace inventory reservations for negotiation: %w", err)
+			}
+			if s.credit != nil {
+				if err := s.credit.AdjustReserveInTxn(ctx, txn, orderID, total); err != nil {
+					return fmt.Errorf("adjust credit reserve: %w", err)
+				}
+			}
+
 			mutations = append(mutations, spanner.UpdateMap("Orders", map[string]any{
 				"OrderId":       orderID,
 				"LineItemsJson": updatedRaw,
@@ -360,7 +379,7 @@ func (s *Service) HandleResolveNegotiation(w http.ResponseWriter, r *http.Reques
 	writeJSONBytes(w, http.StatusOK, respBytes)
 }
 
-func applyNegotiatedLineItems(existing []LineItem, proposed []ProposedNegotiationItem) ([]LineItem, int64, error) {
+func applyNegotiatedLineItems(existing []LineItem, proposed []ProposedNegotiationItem, deliveryFeeMinor ...int64) ([]LineItem, int64, error) {
 	bySKU := make(map[string]int64, len(proposed))
 	for _, p := range proposed {
 		sku := strings.TrimSpace(p.SKUID)
@@ -393,6 +412,9 @@ func applyNegotiatedLineItems(existing []LineItem, proposed []ProposedNegotiatio
 	if matched == 0 {
 		return nil, 0, errors.New("proposed skus did not match order line items")
 	}
+	if total > 0 && len(deliveryFeeMinor) > 0 && deliveryFeeMinor[0] > 0 {
+		total += deliveryFeeMinor[0]
+	}
 	return updated, total, nil
 }
 
@@ -408,6 +430,7 @@ func (s *Service) broadcastNegotiation(ctx context.Context, supplierID, retailer
 		s.retailerHub.Broadcast(ctx, "retailer:"+retailerID, raw)
 	}
 	if s.driverHub != nil && driverID != "" {
-		s.driverHub.Broadcast(ctx, "driver:"+driverID, raw)
+		driverRaw := drivercmd.PrepareAndRecordJSON(ctx, s.spannerClient, driverID, raw)
+		s.driverHub.Broadcast(ctx, "driver:"+driverID, driverRaw)
 	}
 }

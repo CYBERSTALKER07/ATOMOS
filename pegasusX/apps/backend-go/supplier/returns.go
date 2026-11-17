@@ -13,6 +13,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/stocklots"
 	"google.golang.org/api/iterator"
 	"google.golang.org/grpc/codes"
 )
@@ -102,9 +103,11 @@ func (s *Service) HandleReturns(w http.ResponseWriter, r *http.Request) {
 		sql += " AND o.WarehouseId = @warehouse_id"
 		params["warehouse_id"] = whID
 	}
-	sql += fmt.Sprintf(" ORDER BY sr.CreatedAt DESC LIMIT %d OFFSET %d", limit+1, offset)
+	params["limit"] = int64(limit + 1)
+	params["offset"] = int64(offset)
+	sql += " ORDER BY sr.CreatedAt DESC LIMIT @limit OFFSET @offset"
 
-	iter := s.portalSpanner.Single().Query(ctx, spanner.Statement{SQL: sql, Params: params})
+	iter := s.portalSpanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{SQL: sql, Params: params})
 	defer iter.Stop()
 
 	rows := make([]SupplierReturnRow, 0, limit)
@@ -277,34 +280,47 @@ func (s *Service) HandleResolveReturn(w http.ResponseWriter, r *http.Request) {
 			}),
 		}
 
-		if resolution == "RETURN_TO_STOCK" && warehouseID != "" && qty > 0 && physicalStatus != "RESTOCKED" {
-			invRow, err := txn.ReadRow(ctx, "SupplierInventoryV2",
-				spanner.Key{supplierID, warehouseID, skuID},
-				[]string{"QuantityOnHand"})
-			if err != nil {
-				if spanner.ErrCode(err) != codes.NotFound {
-					return fmt.Errorf("inventory read failed: %w", err)
-				}
-				mutations = append(mutations, spanner.InsertMap("SupplierInventoryV2", map[string]any{
-					"SupplierId":       supplierID,
-					"WarehouseId":      warehouseID,
-					"ProductId":        skuID,
-					"QuantityOnHand":   qty,
-					"QuantityReserved": int64(0),
-					"UpdatedAt":        spanner.CommitTimestamp,
-				}))
-			} else {
-				var onHand int64
-				if err := invRow.Columns(&onHand); err != nil {
+		restockQty := receivedQty
+		if restockQty <= 0 {
+			restockQty = qty
+		}
+		if resolution == "RETURN_TO_STOCK" && warehouseID != "" && restockQty > 0 && physicalStatus != "RESTOCKED" {
+			if stocklots.LotsEnabled() {
+				if _, err := stocklots.CreditViaDefaultPutawayInTxn(
+					ctx, txn, supplierID, warehouseID, skuID,
+					stocklots.DefaultReturnsLocationID, "RETURNS", restockQty,
+				); err != nil {
 					return err
 				}
-				mutations = append(mutations, spanner.UpdateMap("SupplierInventoryV2", map[string]any{
-					"SupplierId":     supplierID,
-					"WarehouseId":    warehouseID,
-					"ProductId":      skuID,
-					"QuantityOnHand": onHand + qty,
-					"UpdatedAt":      spanner.CommitTimestamp,
-				}))
+			} else {
+				invRow, err := txn.ReadRow(ctx, "SupplierInventoryV2",
+					spanner.Key{supplierID, warehouseID, skuID},
+					[]string{"QuantityOnHand"})
+				if err != nil {
+					if spanner.ErrCode(err) != codes.NotFound {
+						return fmt.Errorf("inventory read failed: %w", err)
+					}
+					mutations = append(mutations, spanner.InsertMap("SupplierInventoryV2", map[string]any{
+						"SupplierId":       supplierID,
+						"WarehouseId":      warehouseID,
+						"ProductId":        skuID,
+						"QuantityOnHand":   restockQty,
+						"QuantityReserved": int64(0),
+						"UpdatedAt":        spanner.CommitTimestamp,
+					}))
+				} else {
+					var onHand int64
+					if err := invRow.Columns(&onHand); err != nil {
+						return err
+					}
+					mutations = append(mutations, spanner.UpdateMap("SupplierInventoryV2", map[string]any{
+						"SupplierId":     supplierID,
+						"WarehouseId":    warehouseID,
+						"ProductId":      skuID,
+						"QuantityOnHand": onHand + restockQty,
+						"UpdatedAt":      spanner.CommitTimestamp,
+					}))
+				}
 			}
 		}
 

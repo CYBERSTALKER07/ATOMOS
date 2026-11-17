@@ -1,25 +1,19 @@
 import SwiftUI
 
 struct AnalyticsView: View {
-    @State private var overview = FactoryAnalyticsOverview(
-        dailyActivity: [],
-        transfersTotal: 0,
-        manifestsActive: 0,
-        exceptionQueue: 0,
-        avgLeadTimeMins: 0
-    )
-    @State private var loading = true
-    @State private var error: String?
+    @State private var vm = AnalyticsViewModel()
 
     var body: some View {
         Group {
-            if loading {
+            if vm.loading {
                 FactoryLoadingState(
                     title: "Loading analytics",
                     message: "Fetching factory throughput, manifest pressure, and exception queue."
                 )
-            } else if let error {
-                FactoryErrorView(message: error, retry: load)
+            } else if let error = vm.error {
+                FactoryErrorView(message: error) {
+                    Task { await vm.load() }
+                }
             } else {
                 ScrollView {
                     VStack(alignment: .leading, spacing: LabTheme.spacingLG) {
@@ -34,73 +28,73 @@ struct AnalyticsView: View {
                         ) {
                             KpiTile(
                                 title: "Transfers Total",
-                                value: "\(overview.transfersTotal)",
+                                value: "\(vm.overview.transfersTotal)",
                                 systemImage: "arrow.left.arrow.right",
-                                tint: .accentColor
+                                tint: .accentColor,
+                                showChevron: false
                             )
                             KpiTile(
                                 title: "Active Manifests",
-                                value: "\(overview.manifestsActive)",
+                                value: "\(vm.overview.manifestsActive)",
                                 systemImage: "list.clipboard",
-                                tint: LabTheme.warning
+                                tint: LabTheme.warning,
+                                showChevron: false
                             )
                             KpiTile(
                                 title: "Exception Queue",
-                                value: "\(overview.exceptionQueue)",
+                                value: "\(vm.overview.exceptionQueue)",
                                 systemImage: "exclamationmark.triangle",
                                 tint: LabTheme.destructive,
-                                chip: overview.exceptionQueue > 0 ? ("ALERT", LabTheme.destructive) : nil
+                                chip: vm.overview.exceptionQueue > 0 ? ("ALERT", LabTheme.destructive) : nil,
+                                showChevron: false
                             )
                             KpiTile(
                                 title: "Avg Lead Time (min)",
-                                value: String(format: "%.1f", overview.avgLeadTimeMins),
+                                value: String(format: "%.1f", vm.overview.avgLeadTimeMins),
                                 systemImage: "clock",
-                                tint: LabTheme.secondaryLabel
+                                tint: LabTheme.secondaryLabel,
+                                showChevron: false
                             )
                         }
 
-                        if !overview.dailyActivity.isEmpty {
+                        if !vm.overview.dailyActivity.isEmpty {
                             FactorySectionHeader(
                                 title: "7-day transfer activity",
                                 subtitle: "Daily transfer volume"
                             )
-                            ForEach(overview.dailyActivity, id: \.date) { day in
+                            ForEach(vm.overview.dailyActivity, id: \.date) { day in
                                 HStack {
                                     Text(day.date)
                                     Spacer()
-                                    Text("\(day.transfers) transfers")
+                                    Text(L10n.format("mobile_factory.ui.transfers_transfers", "\(day.transfers)"))
                                         .font(.subheadline.monospacedDigit())
                                 }
+                                .frame(minHeight: 44)
                                 .labCard()
+                                .accessibilityElement(children: .combine)
+                                .accessibilityLabel("\(day.date): \(day.transfers) transfers")
                             }
                         }
                     }
                     .labReadableWidth()
                     .padding()
                 }
+                .scrollDismissesKeyboard(.interactively)
             }
         }
         .background(LabTheme.background)
-        .navigationTitle("Analytics Overview")
+        .navigationTitle("mobile_factory.ui.analytics_overview")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button("Refresh", systemImage: "arrow.clockwise", action: load)
-                    .labelStyle(.iconOnly)
+                Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") {
+                    PegasusHaptics.selection()
+                    Task { await vm.load() }
+                }
+                .labelStyle(.iconOnly)
+                .frame(minWidth: 44, minHeight: 44)
+                .accessibilityLabel("Refresh analytics")
             }
         }
-        .task { load() }
-    }
-
-    private func load() {
-        loading = true
-        error = nil
-        Task {
-            do {
-                overview = try await FactoryService.analyticsOverview()
-            } catch {
-                self.error = error.localizedDescription
-            }
-            loading = false
-        }
+        .task { await vm.load() }
     }
 }

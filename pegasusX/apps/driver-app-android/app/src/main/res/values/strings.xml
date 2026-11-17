@@ -8,4 +8,15 @@
     <string name="action_scan">Scan QR</string>
     <string name="action_start_transit">Start Transit</string>
     <string name="action_end_transit">End Transit</string>
+    <string name="fiscal_retry_queued_title">SOLIQ FISCAL QUEUED</string>
+    <string name="fiscal_retry_queued_message">Cash/payment and PoD are recorded. Fiscal receipt is queued for automatic Soliq retry and SMS/Telegram QR delivery to the shop owner. You can proceed to your next stop.</string>
+    <string name="fiscal_continue_next_stop">Continue to Next Stop</string>
+    <string name="fiscal_retry_soliq_now">Retry Soliq Now</string>
+    <string name="sync_queue_escalate_support">Escalate to Support Review</string>
+    <string name="sync_queue_retry_now">Retry Now</string>
+    <string name="settings_language_title">Language / Til / Язык</string>
+    <string name="settings_language_subtitle">Select app language</string>
+    <string name="language_uz">O\'zbekcha</string>
+    <string name="language_ru">Русский</string>
+    <string name="language_en">English</string>
 </resources>

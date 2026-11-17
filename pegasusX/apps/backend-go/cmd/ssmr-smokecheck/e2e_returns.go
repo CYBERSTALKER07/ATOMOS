@@ -240,7 +240,7 @@ func runReturnGateReceiveE2E(
 	}
 	scanPayload := []byte(`{"order_id":"` + orderID + `","qr_token":"` + qrData.Token + `"}`)
 	var scanOK bool
-	for attempt := 0; attempt < 5; attempt++ {
+	for attempt := 0; attempt < 10; attempt++ {
 		status, respBody, _, err := clientDo(ctx, client, http.MethodPost, base+"/v1/delivery/scan-qr", scanPayload, driverToken, fmt.Sprintf("return-gate-scan-qr:%s:%d", orderID, attempt))
 		if err != nil {
 			return fmt.Errorf("return-gate scan qr: %w", err)
@@ -251,8 +251,8 @@ func runReturnGateReceiveE2E(
 		}
 		body := string(respBody)
 		if (status == http.StatusUnprocessableEntity || status == http.StatusConflict || status == http.StatusInternalServerError) &&
-			strings.Contains(body, "optimistic concurrency conflict") {
-			time.Sleep(200 * time.Millisecond)
+			(strings.Contains(body, "optimistic concurrency conflict") || strings.Contains(body, "request_in_progress")) {
+			time.Sleep(500 * time.Millisecond)
 			continue
 		}
 		return fmt.Errorf("return-gate scan qr status %d: %s", status, body)
@@ -290,12 +290,24 @@ func runReturnGateReceiveE2E(
 		"latitude":  cfg.DeliveryZoneCenterLat,
 		"longitude": cfg.DeliveryZoneCenterLng,
 	})
-	status, respBody, _, err = clientPost(ctx, client, base+"/v1/order/collect-cash", collectBody, driverToken, "return-gate-collect:"+orderID)
-	if err != nil {
-		return err
-	}
-	if status != http.StatusOK {
+	collectOK := false
+	for attempt := 0; attempt < 5; attempt++ {
+		status, respBody, _, err = clientPost(ctx, client, base+"/v1/order/collect-cash", collectBody, driverToken, fmt.Sprintf("return-gate-collect:%s:%d", orderID, attempt))
+		if err != nil {
+			return err
+		}
+		if status == http.StatusOK {
+			collectOK = true
+			break
+		}
+		if strings.Contains(string(respBody), "optimistic concurrency") {
+			time.Sleep(200 * time.Millisecond)
+			continue
+		}
 		return fmt.Errorf("return-gate collect cash status %d body %s", status, string(respBody))
+	}
+	if !collectOK {
+		return fmt.Errorf("return-gate collect cash failed after retries")
 	}
 
 	// ADR-009 Phase 6: return-complete is blocked while any order is FISCALIZING / FISCAL_FAILED.
@@ -418,6 +430,7 @@ func runReturnGateReceiveE2E(
 		"barcode":    barcode,
 		"qty":        rejectedQty,
 		"session_id": sessionResp.SessionID,
+		"return_id":  returnID,
 	})
 	status, respBody, _, err = clientPost(ctx, client, base+"/v1/returns/inbound/scan", scanBody, payloaderToken, "return-gate-scan:"+returnID)
 	if err != nil {
@@ -425,6 +438,13 @@ func runReturnGateReceiveE2E(
 	}
 	if status != http.StatusOK {
 		return fmt.Errorf("return-gate scan status %d body %s", status, string(respBody))
+	}
+	var scanResp struct {
+		Matched  bool   `json:"matched"`
+		ReturnID string `json:"return_id"`
+	}
+	if err := json.Unmarshal(respBody, &scanResp); err == nil && strings.TrimSpace(scanResp.ReturnID) != "" {
+		returnID = strings.TrimSpace(scanResp.ReturnID)
 	}
 
 	confirmBody, _ := json.Marshal(map[string]any{

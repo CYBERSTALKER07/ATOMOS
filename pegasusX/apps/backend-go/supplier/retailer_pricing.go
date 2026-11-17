@@ -15,6 +15,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
 	"google.golang.org/api/iterator"
 	"google.golang.org/grpc/codes"
 )
@@ -29,6 +30,7 @@ type createRetailerPriceOverrideRequest struct {
 	ProductID  string `json:"product_id"`
 	SkuID      string `json:"sku_id"`
 	Price      int64  `json:"price"`
+	Currency   string `json:"currency"`
 	Notes      string `json:"notes"`
 	ExpiresAt  string `json:"expires_at"`
 }
@@ -100,7 +102,13 @@ func (s *Service) listRetailerPriceOverrides(w http.ResponseWriter, r *http.Requ
 	}
 	sql += ` ORDER BY CreatedAt DESC LIMIT 500`
 
-	iter := s.portalSpanner.Single().Query(r.Context(), spanner.Statement{SQL: sql, Params: params})
+	stmt := spanner.Statement{SQL: sql, Params: params}
+	var iter *spanner.RowIterator
+	if txn := spannerutils.ReadOnlyTxnFromContext(r.Context()); txn != nil {
+		iter = txn.Query(r.Context(), stmt)
+	} else {
+		iter = s.portalSpanner.Single().Query(r.Context(), stmt)
+	}
 	defer iter.Stop()
 
 	overrides := make([]retailerPriceOverrideResponse, 0)
@@ -177,6 +185,24 @@ func (s *Service) createRetailerPriceOverride(w http.ResponseWriter, r *http.Req
 		return
 	}
 
+	// Resolve the supplier's canonical currency and validate the override matches.
+	supplierCurrency := s.currency
+	if supplierCurrency == "" {
+		supplierCurrency = "UZS"
+	}
+	reqCurrency := strings.ToUpper(strings.TrimSpace(req.Currency))
+	if reqCurrency == "" {
+		reqCurrency = supplierCurrency
+	}
+	if reqCurrency != supplierCurrency {
+		writeJSON(w, http.StatusBadRequest, map[string]string{
+			"error":             "currency_mismatch",
+			"supplier_currency": supplierCurrency,
+			"provided_currency": reqCurrency,
+		})
+		return
+	}
+
 	expiresAt, err := parseOptionalRFC3339(req.ExpiresAt)
 	if err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "expires_at_must_be_rfc3339"})
@@ -191,8 +217,8 @@ func (s *Service) createRetailerPriceOverride(w http.ResponseWriter, r *http.Req
 		if err := deactivateActiveOverrides(txnCtx, txn, sid, req.RetailerID, productID); err != nil {
 			return err
 		}
-		cols := []string{"OverrideId", "SupplierId", "RetailerId", "ProductId", "OverridePrice", "SetBy", "SetByRole", "IsActive", "CreatedAt", "UpdatedAt"}
-		vals := []any{overrideID, sid, req.RetailerID, productID, req.Price, setBy, setByRole, true, spanner.CommitTimestamp, spanner.CommitTimestamp}
+		cols := []string{"OverrideId", "SupplierId", "RetailerId", "ProductId", "OverridePrice", "Currency", "SetBy", "SetByRole", "IsActive", "CreatedAt", "UpdatedAt"}
+		vals := []any{overrideID, sid, req.RetailerID, productID, req.Price, reqCurrency, setBy, setByRole, true, spanner.CommitTimestamp, spanner.CommitTimestamp}
 		if strings.TrimSpace(req.Notes) != "" {
 			cols = append(cols, "Notes")
 			vals = append(vals, strings.TrimSpace(req.Notes))

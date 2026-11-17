@@ -12,7 +12,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DDL_FILE="${DDL_FILE:-$ROOT/apps/backend-go/schema/migrations/20260729_shop_closed_proximity_partial.ddl}"
 
-export SPANNER_PROJECT="${SPANNER_PROJECT:-pegasus-503013}"
+export SPANNER_PROJECT="${SPANNER_PROJECT:-pegasusx-prod-uz}"
 export SPANNER_INSTANCE="${SPANNER_INSTANCE:-pegasusx-ssmr-spanner}"
 export SPANNER_DATABASE="${SPANNER_DATABASE:-pegasusx-ssmr-db}"
 

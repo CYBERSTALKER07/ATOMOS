@@ -12,6 +12,9 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"github.com/pegasusx/pegasusx/apps/backend-go/drivercmd"
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"google.golang.org/api/iterator"
 )
 
@@ -193,7 +196,7 @@ func (s *Service) HandleWarehouseBroadcast(w http.ResponseWriter, r *http.Reques
 		targetRole = "DRIVER"
 	}
 	payload, _ := json.Marshal(map[string]any{
-		"type":         "WAREHOUSE_BROADCAST",
+		"type":         events.EventWarehouseBroadcast,
 		"title":        req.Title,
 		"body":         req.Body,
 		"target_role":  targetRole,
@@ -201,12 +204,51 @@ func (s *Service) HandleWarehouseBroadcast(w http.ResponseWriter, r *http.Reques
 		"supplier_id":  supplierID,
 		"timestamp":    s.now().UTC().Format(time.RFC3339Nano),
 	})
+	broadcastID := uuid.NewString()
+	if s.spannerClient == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "broadcast_unavailable"})
+		return
+	}
+	claims, _ := auth.FromContext(r.Context())
+	createdBy := strings.TrimSpace(claims.Subject)
+	_, err = s.spannerClient.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		buf := &spannerTxnBuffer{}
+		if err := outbox.EmitJSON(ctx, buf, events.AggregateWarehouse, whID, events.TopicMain, map[string]any{
+			"type":         events.EventWarehouseBroadcast,
+			"broadcast_id": broadcastID,
+			"title":        req.Title,
+			"body":         req.Body,
+			"target_role":  targetRole,
+			"warehouse_id": whID,
+			"supplier_id":  supplierID,
+		}); err != nil {
+			return err
+		}
+		muts := []*spanner.Mutation{spanner.InsertMap("OpsBroadcasts", map[string]any{
+			"BroadcastId": broadcastID,
+			"SupplierId":  supplierID,
+			"WarehouseId": whID,
+			"Scope":       "WAREHOUSE",
+			"Title":       req.Title,
+			"Body":        req.Body,
+			"TargetRole":  targetRole,
+			"CreatedBy":   createdBy,
+			"CreatedAt":   spanner.CommitTimestamp,
+		})}
+		muts = append(muts, outboxMutations(buf.events)...)
+		return txn.BufferWrite(muts)
+	})
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "broadcast_persist_failed"})
+		return
+	}
 	s.broadcastDepotMessage(r.Context(), whID, supplierID, targetRole, payload)
 
 	resp := map[string]any{
 		"status":       "broadcast_sent",
 		"warehouse_id": whID,
 		"supplier_id":  supplierID,
+		"broadcast_id": broadcastID,
 	}
 	respBytes, _ := json.Marshal(resp)
 	w.Header().Set("Content-Type", "application/json")
@@ -325,7 +367,7 @@ func (row customBroadcastTemplateRow) toWire() BroadcastTemplateWire {
 
 func (s *Service) resolveWarehouseSupplierID(ctx context.Context, warehouseID string) (string, error) {
 	if s.spannerClient == nil {
-		return strings.TrimSpace(s.supplierID), nil
+		return strings.TrimSpace(s.seedSupplierID), nil
 	}
 	row, err := s.spannerClient.Single().ReadRow(ctx, "Warehouses", spanner.Key{warehouseID}, []string{"SupplierId"})
 	if err != nil {
@@ -357,7 +399,7 @@ func (s *Service) listCustomBroadcastTemplates(ctx context.Context, warehouseID 
 		      LIMIT 50`,
 		Params: map[string]any{"wid": warehouseID},
 	}
-	iter := s.spannerClient.Single().Query(ctx, stmt)
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	var out []customBroadcastTemplateRow
 	for {
@@ -471,7 +513,7 @@ func (s *Service) fanDepotDrivers(ctx context.Context, warehouseID string, paylo
 			      WHERE HomeNodeType = 'WAREHOUSE' AND HomeNodeId = @wid`,
 			Params: map[string]any{"wid": warehouseID},
 		}
-		iter := s.spannerClient.Single().Query(ctx, stmt)
+		iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 		defer iter.Stop()
 		for {
 			row, err := iter.Next()
@@ -490,7 +532,8 @@ func (s *Service) fanDepotDrivers(ctx context.Context, warehouseID string, paylo
 				continue
 			}
 			seen[driverID] = struct{}{}
-			s.driverHub.Broadcast(ctx, "driver:"+driverID, payload)
+			prepared := drivercmd.PrepareAndRecordJSON(ctx, s.spannerClient, driverID, payload)
+			s.driverHub.Broadcast(ctx, "driver:"+driverID, prepared)
 		}
 	}
 	if s.opsDrivers != nil {
@@ -505,7 +548,8 @@ func (s *Service) fanDepotDrivers(ctx context.Context, warehouseID string, paylo
 					continue
 				}
 				seen[driverID] = struct{}{}
-				s.driverHub.Broadcast(ctx, "driver:"+driverID, payload)
+				prepared := drivercmd.PrepareAndRecordJSON(ctx, s.spannerClient, driverID, payload)
+				s.driverHub.Broadcast(ctx, "driver:"+driverID, prepared)
 			}
 		}
 	}
@@ -523,7 +567,7 @@ func (s *Service) fanDepotRetailers(ctx context.Context, warehouseID, supplierID
 		      LIMIT 200`,
 		Params: map[string]any{"wid": warehouseID, "since": since},
 	}
-	iter := s.spannerClient.Single().Query(ctx, stmt)
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	seen := map[string]struct{}{}
 	for {

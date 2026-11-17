@@ -4,10 +4,27 @@ struct QuickActions: View {
     let onOfflineVerifier: () -> Void
     let onSyncQueue: () -> Void
     let onEndSession: () -> Void
+    var onFleetDVIR: () -> Void = {}
+    var onMidRouteRescue: () -> Void = {}
+    var onYardGate: () -> Void = {}
+    var onSettings: () -> Void = {}
     var pendingCount: Int = 0
+    @State private var localeManager = DriverLocaleManager.shared
     
     var body: some View {
         VStack(spacing: 10) {
+            ActionRow(icon: "checkmark.shield.fill", title: "Pre-Trip DVIR Inspection", subtitle: "8-point safety checklist & Red-Tag gate") {
+                Haptics.light()
+                onFleetDVIR()
+            }
+            ActionRow(icon: "wrench.and.screwdriver.fill", title: "Mid-Route Breakdown Rescue", subtitle: "Custody transfer & thermal quarantine") {
+                Haptics.light()
+                onMidRouteRescue()
+            }
+            ActionRow(icon: "lock.shield.fill", title: "Yard Gate Check-In/Out", subtitle: "ALPR vehicle & bolt-seal verification") {
+                Haptics.light()
+                onYardGate()
+            }
             ActionRow(icon: "shield.checkered", title: "Offline Verifier", subtitle: "Hash manifest protocol") {
                 onOfflineVerifier()
             }
@@ -19,8 +36,13 @@ struct QuickActions: View {
                 Haptics.light()
                 onSyncQueue()
             }
-            ActionRow(icon: "gearshape.fill", title: "Settings", subtitle: "App configuration") {
+            ActionRow(
+                icon: "gearshape.fill",
+                title: L10n.string("mobile_driver.ui.settings"),
+                subtitle: "\(L10n.string("mobile_driver.ui.language")): \(localeManager.currentDisplayName)"
+            ) {
                 Haptics.light()
+                onSettings()
             }
             ActionRow(icon: "rectangle.portrait.and.arrow.right", title: "End Session", subtitle: "Go offline and sign out", destructive: true) {
                 Haptics.medium()
@@ -41,29 +63,32 @@ struct ActionRow: View {
         Button(action: action) {
             HStack(spacing: 14) {
                 Image(systemName: icon)
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.system(.subheadline, weight: .semibold))
                     .foregroundStyle(destructive ? LabTheme.destructive : LabTheme.fg)
                     .frame(width: 36, height: 36)
                     .background((destructive ? LabTheme.destructive : LabTheme.fg).opacity(0.06), in: .rect(cornerRadius: 10))
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(.system(.subheadline, weight: .semibold))
                         .foregroundStyle(destructive ? LabTheme.destructive : LabTheme.fg)
                     Text(subtitle)
-                        .font(.system(size: 12, weight: .medium))
+                        .font(.system(.caption, weight: .medium))
                         .foregroundStyle(LabTheme.fgSecondary)
                 }
 
                 Spacer()
 
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 11, weight: .bold))
+                    .font(.system(.caption2, weight: .bold))
                     .foregroundStyle(LabTheme.fgTertiary)
             }
             .padding(LabTheme.s16)
+            .frame(minHeight: 44)
             .labCard()
         }
         .buttonStyle(.pressable)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(title), \(subtitle)")
     }
 }

@@ -3,29 +3,74 @@ package billing
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
+	"strings"
+	"time"
 
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/gl"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"google.golang.org/api/iterator"
 )
 
 // MeterWorker handles idempotent per-order metering and dynamic fee milestone checks.
 type MeterWorker struct {
-	client *spanner.Client
+	client      *spanner.Client
+	feeResolver *FeeScheduleResolver
 }
 
 // NewMeterWorker initializes a new MeterWorker.
 func NewMeterWorker(client *spanner.Client) *MeterWorker {
+	var resolver *FeeScheduleResolver
+	if client != nil {
+		resolver = NewFeeScheduleResolver(client)
+	}
 	return &MeterWorker{
-		client: client,
+		client:      client,
+		feeResolver: resolver,
 	}
 }
 
 // ProcessOrderFinalized performs idempotent metering when an order is finalized.
 // It checks if global billing milestones are crossed and adjusts system fee rates accordingly.
-func (w *MeterWorker) ProcessOrderFinalized(ctx context.Context, orderID string, amount float64, supplierID string) error {
-	log.Printf("Metering ORDER_FINALIZED: orderID=%s amount=%.2f supplierID=%s", orderID, amount, supplierID)
+func (w *MeterWorker) ProcessOrderFinalized(ctx context.Context, orderID string, amount int64, supplierID string) error {
+	orderID = strings.TrimSpace(orderID)
+	supplierID = strings.TrimSpace(supplierID)
+	if orderID == "" || supplierID == "" {
+		return nil
+	}
+	if amount <= 0 {
+		slog.DebugContext(ctx, "metering skip ORDER_FINALIZED non-positive amount", "order_id", orderID, "amount", amount)
+		return nil
+	}
+	if w == nil || w.client == nil {
+		return fmt.Errorf("billing meter: nil spanner client")
+	}
+
+	slog.InfoContext(ctx, "metering ORDER_FINALIZED", "order_id", orderID, "amount", amount, "supplier_id", supplierID)
+
+	var feeMinor int64
+	var feeCur string
+	if w.feeResolver != nil {
+		sched, sErr := w.feeResolver.Resolve(ctx, supplierID)
+		if sErr != nil {
+			return fmt.Errorf("billing meter resolve fee schedule: %w", sErr)
+		}
+		if sched.PerOrderMinor > 0 {
+			feeMinor = sched.PerOrderMinor
+			feeCur = strings.ToUpper(strings.TrimSpace(sched.Currency))
+		}
+	}
+	if feeMinor > 0 && feeCur == "" {
+		if c, cErr := auth.CurrencyFromContext(ctx, supplierID); cErr == nil && c != "" {
+			feeCur = c
+		} else {
+			feeCur = "UZS"
+		}
+	}
 
 	_, err := w.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		// 1. Idempotency: skip when this order was already metered.
@@ -38,14 +83,14 @@ func (w *MeterWorker) ProcessOrderFinalized(ctx context.Context, orderID string,
 		iter := txn.Query(ctx, stmt)
 		defer iter.Stop()
 		if _, err := iter.Next(); err == nil {
-			log.Printf("Order %s already metered, skipping", orderID)
+			slog.DebugContext(ctx, "order already metered, skipping", "order_id", orderID)
 			return nil
 		} else if err != iterator.Done {
 			return fmt.Errorf("billing meter idempotency lookup: %w", err)
 		}
 
 		const shardID int64 = 0
-		var current float64
+		var current int64
 		row, err := txn.ReadRow(ctx, "BillingSupplierMeters", spanner.Key{supplierID, shardID}, []string{"CurrentValue"})
 		if err == nil {
 			if err := row.Column(0, &current); err != nil {
@@ -71,11 +116,39 @@ func (w *MeterWorker) ProcessOrderFinalized(ctx context.Context, orderID string,
 				"UpdatedAt":    spanner.CommitTimestamp,
 			}),
 		}
-		return txn.BufferWrite(mutations)
+		if err := txn.BufferWrite(mutations); err != nil {
+			return err
+		}
+		buf := outbox.NewSpannerTxnBuffer(txn)
+		if err := outbox.EmitJSON(ctx, buf, "BillingSupplierMeter", supplierID, events.TopicMain, map[string]any{
+			"type":          "BILLING_METER_UPDATED",
+			"supplier_id":   supplierID,
+			"order_id":      orderID,
+			"amount":        amount,
+			"current_value": current + amount,
+		}); err != nil {
+			return err
+		}
+		if feeMinor > 0 {
+			if _, glErr := gl.PostEventInTxn(ctx, txn, buf, gl.RuleEventFeePerOrder, gl.RuleEvalContext{
+				EntityID:       supplierID,
+				SupplierID:     supplierID,
+				OrderID:        orderID,
+				SourceID:       orderID,
+				Currency:       feeCur,
+				FeeMinor:       feeMinor,
+				IdempotencyKey: "gl:fee_per_order:" + orderID,
+				Memo:           "Per-order platform billing fee " + orderID,
+				OccurredAt:     time.Now().UTC(),
+			}); glErr != nil {
+				return fmt.Errorf("billing gl fee.per_order: %w", glErr)
+			}
+		}
+		return buf.Flush(ctx)
 	})
 
 	if err != nil {
-		log.Printf("Failed to process billing for order %s: %v", orderID, err)
+		slog.ErrorContext(ctx, "failed to process billing for order", "order_id", orderID, "err", err)
 		return err
 	}
 	return nil

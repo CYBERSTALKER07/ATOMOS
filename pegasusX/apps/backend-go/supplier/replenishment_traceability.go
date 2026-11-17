@@ -73,7 +73,7 @@ func (s *Service) listReplenishmentTraceability(ctx context.Context, supplierID 
 			"lim": int64(limit),
 		},
 	}
-	iter := s.portalSpanner.Single().Query(ctx, stmt)
+	iter := s.portalSpanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 
 	out := make([]replenishmentTraceRow, 0)

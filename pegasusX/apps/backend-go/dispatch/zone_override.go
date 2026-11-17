@@ -37,11 +37,11 @@ func PointInGeoJSONPolygon(geoJSON string, lat, lng float64) bool {
 
 // ZoneOverride describes an active control-tower polygon action.
 type ZoneOverride struct {
-	OverrideID string
-	SupplierID string
+	OverrideID  string
+	SupplierID  string
 	WarehouseID string
-	Action     string
-	Polygon    string
+	Action      string
+	Polygon     string
 }
 
 // ApplyZoneOverrides filters dispatchable orders based on active overrides.

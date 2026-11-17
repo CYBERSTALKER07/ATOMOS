@@ -19,15 +19,15 @@ import (
 
 // ComplianceFiscalOpenRow is one order stuck in the fiscal hard-gate.
 type ComplianceFiscalOpenRow struct {
-	OrderID       string    `json:"order_id"`
-	RetailerID    string    `json:"retailer_id"`
-	DriverID      string    `json:"driver_id,omitempty"`
-	Status        string    `json:"status"`
-	FiscalStatus  string    `json:"fiscal_status,omitempty"`
-	TotalMinor    int64     `json:"total_minor"`
-	Currency      string    `json:"currency"`
-	AttemptID     string    `json:"latest_fiscal_attempt_id,omitempty"`
-	UpdatedAt     time.Time `json:"updated_at"`
+	OrderID      string    `json:"order_id"`
+	RetailerID   string    `json:"retailer_id"`
+	DriverID     string    `json:"driver_id,omitempty"`
+	Status       string    `json:"status"`
+	FiscalStatus string    `json:"fiscal_status,omitempty"`
+	TotalMinor   int64     `json:"total_minor"`
+	Currency     string    `json:"currency"`
+	AttemptID    string    `json:"latest_fiscal_attempt_id,omitempty"`
+	UpdatedAt    time.Time `json:"updated_at"`
 }
 
 // ComplianceForceCompleteRow is a force-completed fiscal skip audit row.
@@ -47,15 +47,15 @@ type ComplianceForceCompleteRow struct {
 
 // ComplianceClaimMismatchRow flags claim vs order residual inconsistency.
 type ComplianceClaimMismatchRow struct {
-	ClaimID          string `json:"claim_id"`
-	OrderID          string `json:"order_id"`
-	RetailerID       string `json:"retailer_id"`
-	ClaimStatus      string `json:"claim_status"`
-	ClaimAmountMinor int64  `json:"claim_amount_minor"`
-	OrderTotalMinor  int64  `json:"order_total_minor"`
-	OrderStatus      string `json:"order_status"`
-	Currency         string `json:"currency"`
-	MismatchReason   string `json:"mismatch_reason"`
+	ClaimID          string    `json:"claim_id"`
+	OrderID          string    `json:"order_id"`
+	RetailerID       string    `json:"retailer_id"`
+	ClaimStatus      string    `json:"claim_status"`
+	ClaimAmountMinor int64     `json:"claim_amount_minor"`
+	OrderTotalMinor  int64     `json:"order_total_minor"`
+	OrderStatus      string    `json:"order_status"`
+	Currency         string    `json:"currency"`
+	MismatchReason   string    `json:"mismatch_reason"`
 	CreatedAt        time.Time `json:"created_at"`
 }
 
@@ -72,20 +72,20 @@ type ComplianceCreditFreezeRow struct {
 
 // ComplianceSummary is the dashboard KPI strip.
 type ComplianceSummary struct {
-	OpenFiscalCount      int `json:"open_fiscal_count"`
-	ForceCompleteCount   int `json:"force_complete_count"`
-	ClaimMismatchCount   int `json:"claim_mismatch_count"`
-	CreditFreezeCount    int `json:"credit_freeze_count"`
-	GeneratedAt          string `json:"generated_at"`
+	OpenFiscalCount    int    `json:"open_fiscal_count"`
+	ForceCompleteCount int    `json:"force_complete_count"`
+	ClaimMismatchCount int    `json:"claim_mismatch_count"`
+	CreditFreezeCount  int    `json:"credit_freeze_count"`
+	GeneratedAt        string `json:"generated_at"`
 }
 
 // ComplianceDashboardResponse is GET /v1/compliance/dashboard (combined).
 type ComplianceDashboardResponse struct {
-	Summary         ComplianceSummary             `json:"summary"`
-	OpenFiscal      []ComplianceFiscalOpenRow     `json:"open_fiscal"`
-	ForceCompletes  []ComplianceForceCompleteRow  `json:"force_completes"`
-	ClaimMismatches []ComplianceClaimMismatchRow  `json:"claim_mismatches"`
-	CreditFreezes   []ComplianceCreditFreezeRow   `json:"credit_freezes"`
+	Summary         ComplianceSummary            `json:"summary"`
+	OpenFiscal      []ComplianceFiscalOpenRow    `json:"open_fiscal"`
+	ForceCompletes  []ComplianceForceCompleteRow `json:"force_completes"`
+	ClaimMismatches []ComplianceClaimMismatchRow `json:"claim_mismatches"`
+	CreditFreezes   []ComplianceCreditFreezeRow  `json:"credit_freezes"`
 }
 
 func (s *Service) resolveComplianceSupplier(r *http.Request) (string, bool) {
@@ -98,7 +98,7 @@ func (s *Service) resolveComplianceSupplier(r *http.Request) (string, bool) {
 		supplierID = strings.TrimSpace(claims.SupplierID)
 	}
 	if supplierID == "" {
-		supplierID = strings.TrimSpace(s.supplierID)
+		supplierID = strings.TrimSpace(s.resolveSupplierScope(r.Context()))
 	}
 	return supplierID, supplierID != ""
 }
@@ -239,6 +239,7 @@ func (s *Service) HandleComplianceExport(w http.ResponseWriter, r *http.Request)
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
 	}
+	freezeCurrency, _ := auth.CurrencyFromContext(ctx, supplierID)
 
 	switch format {
 	case "csv":
@@ -279,7 +280,7 @@ func (s *Service) HandleComplianceExport(w http.ResponseWriter, r *http.Request)
 			for _, r := range dash.CreditFreezes {
 				writeCSVBucket("credit_freezes", [][]string{{
 					r.RetailerID, "", r.RetailerID, r.Status,
-					strconv.FormatInt(r.CurrentBalanceMinor, 10), "UZS", r.RiskTier, r.UpdatedAt.UTC().Format(time.RFC3339),
+					strconv.FormatInt(r.CurrentBalanceMinor, 10), freezeCurrency, r.RiskTier, r.UpdatedAt.UTC().Format(time.RFC3339),
 				}})
 			}
 		}
@@ -374,7 +375,7 @@ func (s *Service) listOpenFiscal(ctx context.Context, supplierID string, limit i
 			"lim":      int64(limit),
 		},
 	}
-	iter := s.spannerClient.Single().Query(ctx, stmt)
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	out := make([]ComplianceFiscalOpenRow, 0)
 	for {
@@ -410,7 +411,7 @@ func (s *Service) listOpenFiscalLegacy(ctx context.Context, supplierID string, l
 			"lim":      int64(limit),
 		},
 	}
-	iter := s.spannerClient.Single().Query(ctx, stmt)
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	out := make([]ComplianceFiscalOpenRow, 0)
 	for {
@@ -447,7 +448,7 @@ func (s *Service) listForceCompletes(ctx context.Context, supplierID string, lim
 			"lim": int64(limit),
 		},
 	}
-	iter := s.spannerClient.Single().Query(ctx, stmt)
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	out := make([]ComplianceForceCompleteRow, 0)
 	for {
@@ -484,7 +485,7 @@ func (s *Service) listForceCompletesFromOrders(ctx context.Context, supplierID s
 			"lim": int64(limit),
 		},
 	}
-	iter := s.spannerClient.Single().Query(ctx, stmt)
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	out := make([]ComplianceForceCompleteRow, 0)
 	for {
@@ -525,7 +526,7 @@ func (s *Service) listClaimMismatches(ctx context.Context, supplierID string, li
 			"lim":      int64(limit * 3), // Fetch more to allow in-memory filtering
 		},
 	}
-	iter := s.spannerClient.Single().Query(ctx, stmt)
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	out := make([]ComplianceClaimMismatchRow, 0)
 
@@ -547,7 +548,9 @@ func (s *Service) listClaimMismatches(ctx context.Context, supplierID string, li
 		}
 		r.OrderStatus = orderStatus
 		if r.Currency == "" {
-			r.Currency = "UZS"
+			if packCur, err := auth.CurrencyFromContext(ctx, supplierID); err == nil {
+				r.Currency = packCur
+			}
 		}
 
 		// 1. Terminal order mismatch
@@ -656,7 +659,7 @@ func (s *Service) listCreditFreezesSpanner(ctx context.Context, supplierID strin
 			"lim":      int64(limit),
 		},
 	}
-	iter := s.spannerClient.Single().Query(ctx, stmt)
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	out := make([]ComplianceCreditFreezeRow, 0)
 	for {

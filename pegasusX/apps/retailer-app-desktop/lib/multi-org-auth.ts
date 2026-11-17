@@ -3,6 +3,7 @@
  * Flag-off backends never return pending_org_select — callers still handle full path.
  */
 import { storeToken, isTauri } from "./bridge";
+import { retailerApiBaseUrl } from "./auth";
 import { clearOrgScopedState } from "./clear-org-scoped-state";
 import { setRetailerProfile } from "./retailer-profile";
 import type {
@@ -10,8 +11,6 @@ import type {
   RetailerMembershipDTO,
   RetailerMembershipsResponse,
 } from "@pegasusx/types";
-
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8180";
 
 const PENDING_TOKEN_COOKIE = "pegasus_retailer_pending_jwt";
 
@@ -22,14 +21,19 @@ export function isPendingOrgSelectResponse(
   return data.token_type === "pending_org_select";
 }
 
+function cookieSecureFlag(): string {
+  return typeof window !== "undefined" && window.location.protocol === "https:" ? "; Secure" : "";
+}
+
 export function persistFullAuthTokens(data: {
   token: string;
   refresh_token?: string;
 }): void {
   if (typeof document === "undefined") return;
-  document.cookie = `pegasus_retailer_jwt=${encodeURIComponent(data.token)}; path=/; max-age=86400; SameSite=Lax`;
+  const secureFlag = cookieSecureFlag();
+  document.cookie = `pegasus_retailer_jwt=${encodeURIComponent(data.token)}; path=/; max-age=86400; SameSite=Strict${secureFlag}`;
   if (data.refresh_token) {
-    document.cookie = `pegasus_retailer_refresh=${encodeURIComponent(data.refresh_token)}; path=/; max-age=604800; SameSite=Lax`;
+    document.cookie = `pegasus_retailer_refresh=${encodeURIComponent(data.refresh_token)}; path=/; max-age=604800; SameSite=Strict${secureFlag}`;
   }
   // Drop intermediate cookie if any
   document.cookie = `${PENDING_TOKEN_COOKIE}=; Max-Age=0; path=/`;
@@ -41,7 +45,7 @@ export function persistFullAuthTokens(data: {
 export function persistPendingOrgToken(token: string, expiresInSec = 420): void {
   if (typeof document === "undefined") return;
   const maxAge = Math.max(60, Math.min(600, expiresInSec));
-  document.cookie = `${PENDING_TOKEN_COOKIE}=${encodeURIComponent(token)}; path=/; max-age=${maxAge}; SameSite=Lax`;
+  document.cookie = `${PENDING_TOKEN_COOKIE}=${encodeURIComponent(token)}; path=/; max-age=${maxAge}; SameSite=Strict${cookieSecureFlag()}`;
   // Do not set full session cookie until select-org.
 }
 
@@ -134,7 +138,7 @@ export function readActiveOrgId(): string {
 export async function selectOrg(retailerId: string): Promise<RetailerLoginResponse> {
   const pending = readPendingOrgToken();
   if (!pending) throw new Error("pending_org_token_missing");
-  const res = await fetch(`${API}/v1/auth/retailer/select-org`, {
+  const res = await fetch(`${retailerApiBaseUrl()}/v1/auth/retailer/select-org`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -157,7 +161,7 @@ export async function switchOrg(retailerId: string): Promise<RetailerLoginRespon
   // Use full session token via cookie-backed get path
   const { getRetailerToken } = await import("./auth");
   const token = await getRetailerToken();
-  const res = await fetch(`${API}/v1/auth/retailer/switch-org`, {
+  const res = await fetch(`${retailerApiBaseUrl()}/v1/auth/retailer/switch-org`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -183,7 +187,7 @@ export async function listMemberships(): Promise<RetailerMembershipDTO[]> {
     const { getRetailerToken } = await import("./auth");
     token = await getRetailerToken();
   }
-  const res = await fetch(`${API}/v1/auth/retailer/memberships`, {
+  const res = await fetch(`${retailerApiBaseUrl()}/v1/auth/retailer/memberships`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) {

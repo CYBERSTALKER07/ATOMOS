@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { reconnectDelayMs } from '@pegasusx/api-client';
+import { reconnectDelayMs } from '@pegasusx/api-core';
 import { readTokenFromCookie, apiFetch } from './auth';
 import { runWarehouseSessionReconcile } from './session-reconcile';
 import type { HandoffCardMetadata } from '@pegasusx/types';
@@ -182,21 +182,43 @@ export function useNotifications(options?: { enabled?: boolean }) {
 
   // ── WebSocket for real-time notifications ──
   const connectWS = useCallback(() => {
-    if (!enabled || disposedRef.current) return;
-    const token = readTokenFromCookie();
-    if (!token) {
-      setWsState('offline');
-      return;
-    }
+    void (async () => {
+      if (!enabled || disposedRef.current) return;
+      const token = readTokenFromCookie();
+      if (!token) {
+        setWsState('offline');
+        return;
+      }
 
-    clearTimeout(reconnectTimer.current);
-    const isReconnect = reconnectAttemptRef.current > 0;
-    setWsState(isReconnect ? 'reconnecting' : 'connecting');
-    const wsBase = API.replace(/^http/, 'ws');
-    const url = new URL(WAREHOUSE_NOTIFICATIONS_WS_PATH, wsBase);
-    url.searchParams.set('token', token);
-    const ws = new WebSocket(url.toString());
-    wsRef.current = ws;
+      clearTimeout(reconnectTimer.current);
+      const isReconnect = reconnectAttemptRef.current > 0;
+      setWsState(isReconnect ? 'reconnecting' : 'connecting');
+
+      let wsTicket = '';
+      try {
+        const wsRes = await apiFetch('/v1/warehouse/ws-session', { method: 'GET', cache: 'no-store' });
+        const payload = (await wsRes.json().catch(() => null)) as { token?: string } | null;
+        if (wsRes.ok && typeof payload?.token === 'string' && payload.token.trim()) {
+          wsTicket = payload.token.trim();
+        }
+      } catch {
+        wsTicket = '';
+      }
+      if (disposedRef.current) return;
+      if (!wsTicket) {
+        setWsState('offline');
+        return;
+      }
+
+      const wsBase = API.replace(/^http/, 'ws');
+      const url = new URL(WAREHOUSE_NOTIFICATIONS_WS_PATH, wsBase);
+      url.searchParams.set('token', wsTicket);
+      const ws = new WebSocket(url.toString());
+      if (disposedRef.current) {
+        ws.close();
+        return;
+      }
+      wsRef.current = ws;
 
     ws.onopen = () => {
       if (disposedRef.current) return;
@@ -264,6 +286,7 @@ export function useNotifications(options?: { enabled?: boolean }) {
     };
 
     ws.onerror = () => ws.close();
+    })();
   }, [fetchInbox, enabled]);
 
   // ── Lifecycle ──

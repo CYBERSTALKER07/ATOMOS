@@ -1,58 +1,77 @@
 import SwiftUI
 
 struct PaymentConfigView: View {
-    @State private var gateways: [PaymentGateway] = []
-    @State private var loading = true
-    @State private var error: String?
+    @State private var vm = PaymentConfigViewModel()
 
     var body: some View {
         Group {
-            if loading {
+            if vm.loading {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if let error {
+            } else if let error = vm.error {
                 ContentUnavailableView {
-                    Label("Error", systemImage: "exclamationmark.triangle")
+                    Label("mobile_warehouse.ui.error", systemImage: "exclamationmark.triangle")
                 } description: {
                     Text(error)
                 } actions: {
-                    Button("Retry") { load() }
+                    Button("common.action.retry") {
+                        PegasusHaptics.light()
+                        Task { await vm.load() }
+                    }
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
                 }
-            } else if gateways.isEmpty {
-                ContentUnavailableView("No Gateways", systemImage: "creditcard", description: Text("No payment gateways configured"))
+            } else if vm.listings.isEmpty {
+                ContentUnavailableView(
+                    "No Gateways",
+                    systemImage: "creditcard",
+                    description: Text("warehouse_portal.payment_config.text.no_payment_gateways_configured")
+                )
             } else {
-                ResponsiveGridContentWrapper {
-                    ForEach(gateways) { gw in
-                    HStack {
-                        VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
-                            Text(gw.name)
-                                .font(.headline)
-                            Text(gw.provider)
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
+                List {
+                    if !vm.currency.isEmpty {
+                        Section {
+                            LabeledContent("Pack currency", value: vm.currency)
                         }
-                        Spacer()
-                        Image(systemName: gw.isActive ? "checkmark.circle.fill" : "xmark.circle")
-                            .foregroundStyle(gw.isActive ? .green : .secondary)
+                    }
+                    Section("Pack payment catalog") {
+                        ForEach(vm.listings) { listing in
+                            HStack {
+                                VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
+                                    Text(listing.code)
+                                        .font(.headline)
+                                    Text(listing.status)
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                Image(systemName: listing.selectable ? "checkmark.circle.fill" : "xmark.circle")
+                                    .foregroundStyle(listing.selectable ? .green : .secondary)
+                            }
+                            .frame(minHeight: 44)
+                            .accessibilityElement(children: .combine)
+                            .accessibilityLabel("Gateway \(listing.code), status \(listing.status), \(listing.selectable ? "selectable" : "not selectable")")
+                        }
                     }
                 }
-            }
+                .scrollDismissesKeyboard(.interactively)
             }
         }
-        .task { load() }
-    }
-
-    private func load() {
-        loading = true
-        error = nil
-        Task {
-            do {
-                let resp = try await WarehouseService.paymentConfig()
-                gateways = resp.gateways
-            } catch {
-                self.error = error.localizedDescription
+        .navigationTitle("warehouse_portal.treasury.text.payment_config")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    PegasusHaptics.light()
+                    Task { await vm.load() }
+                } label: {
+                    Label("portal.page.orders.action.refresh", systemImage: "arrow.clockwise")
+                        .frame(minWidth: 44, minHeight: 44)
+                        .contentShape(Rectangle())
+                }
+                .accessibilityLabel("Refresh payment config")
             }
-            loading = false
         }
+        .task { await vm.load() }
+        .refreshable { await vm.load() }
     }
 }

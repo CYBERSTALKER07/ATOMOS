@@ -1,0 +1,41 @@
+flowchart TD
+    subgraph Phase1["Phase 1: Account Setup, KYB & ERP Integration"]
+        S1["Submit Tenant Registration with Tax TIN (INN) & Corporate Charter"] --> S2["Configure Central Bank (CBU) Settlement Account (IBAN & MFO)"]
+        S2 --> S3["Awaiting Platform Admin Dual-Control KYB Verification"]
+        S3 --> S4["KYB Approved: Provision Supplier Admin JWT & Organization Scope"]
+        S4 --> S5["Invite Commercial, Finance & Logistics Team Members with Scoped Roles"]
+        S5 --> S6["Configure 1C:Enterprise / SAP ERP Connectors via AS2 / EDI / REST APIs"]
+    end
+
+    subgraph Phase2["Phase 2: Master Catalog, Pricing Ladders & Demand Forecasting"]
+        S6 --> T1["Upload Product Catalog: Barcodes, Case Dimensions, Shelf-Life Rules"]
+        T1 --> T2["Automated MXIK Classifier: Match 17-digit State Tax Committee Tax Codes"]
+        T2 --> T3["Configure Tiered Pricing Rules: Quantity Break Ladders & Margin Floors"]
+        T3 --> T4["Hydrate AI Demand Sensing Engine: Ingest 28-day Sales Velocity & Trends"]
+        T4 --> T5["Review Automated Reorder Points & Factory Replenishment Signals"]
+    end
+
+    subgraph Phase3["Phase 3: Order Review & Allocation (Uncapped Terms)"]
+        T5 --> U1["Receive Inbound Retailer B2B Orders via WebSocket Hub"]
+        U1 --> U2["Inspect Order Payload: SKUs, Quantities, Delivery Windows & Multi-Tender Terms"]
+        U2 --> U3["Execute Spanner Atomic Order Confirmation & Inventory Reservation (No Credit/Payment Limits)"]
+        U3 --> U4["Issue Inbound Supply Request to Manufacturing Plant or Warehouse DC"]
+    end
+
+    subgraph Phase4["Phase 4: Foundry Traceability & Recall Sandbox"]
+        U4 --> V1["Monitor Real-Time Fleet Map: Live Delivery Route Progress & Temperatures"]
+        V1 --> V2{"Lot Contamination / Quality Alert Triggered?"}
+        V2 -- "Yes (Defect Alert)" --> V3["Open Foundry Traceability Sandbox: Simulate 5-Stage Blast Radius"]
+        V3 --> V4["Identify Affected Lots, Linked In-Transit Trucks & Retail Shelves"]
+        V4 --> V5["Execute Kinetic Quarantine Action: Block WMS Dispatch & Lock Barcodes"]
+        V2 -- "No Alert (Nominal)" --> W1["Commercial Fulfillment Continues Normally"]
+        V5 --> W1
+    end
+
+    subgraph Phase5["Phase 5: Financial Settlement, Factoring & Daily Close"]
+        W1 --> W2["Ingest Delivered Order Confirmations & Electronic Proof of Delivery (EPOD)"]
+        W2 --> W3["Process Multi-Tender Waterfall: Cash Collections, Uzcard/Humo Cards, Net-30 AR"]
+        W3 --> W4["Apply Early Settlement Factoring Discount (Instant Disbursable Net Payout)"]
+        W4 --> W5["Auto-Reconcile Soliq E-Factura Tax Invoices with Corporate Ledger"]
+        W5 --> W6(["Daily Ledger Balanced & Payouts Cleared"])
+    end

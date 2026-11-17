@@ -3,6 +3,7 @@ package order
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -23,7 +24,11 @@ func (s *Service) ReleaseStaleReservations(ctx context.Context, ttl time.Duratio
 	if s == nil || s.spannerClient == nil || ttl <= 0 {
 		return 0, nil
 	}
-	cutoff := s.now().Add(-ttl)
+	now := s.now()
+	if v := staleReservationNowOverride(); v != nil {
+		now = v.UTC()
+	}
+	cutoff := now.Add(-ttl)
 	stmt := spanner.Statement{
 		SQL: `SELECT OrderId
 		      FROM Orders
@@ -70,4 +75,16 @@ func (s *Service) ReleaseStaleReservations(ctx context.Context, ttl time.Duratio
 		released++
 	}
 	return released, nil
+}
+
+func staleReservationNowOverride() *time.Time {
+	raw := strings.TrimSpace(os.Getenv("STALE_RESERVATION_SWEEPER_NOW"))
+	if raw == "" {
+		return nil
+	}
+	t, err := time.Parse(time.RFC3339, raw)
+	if err != nil {
+		return nil
+	}
+	return &t
 }

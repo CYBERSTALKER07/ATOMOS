@@ -1,26 +1,35 @@
 import SwiftUI
 
 struct FactoryMoreHubView: View {
-    var onSelect: (FactorySection) -> Void
-
     var body: some View {
         ResponsiveGridContentWrapper {
-            Section("Primary") {
-                ForEach(FactorySection.primarySections.filter { !FactorySection.compactTabs.contains($0) }) { section in
-                    Button(section.rawValue) { onSelect(section) }
+            let extraPrimary = FactorySection.primarySections.filter { !FactorySection.compactTabs.contains($0) }
+            if !extraPrimary.isEmpty {
+                Section("Primary") {
+                    ForEach(extraPrimary) { section in
+                        sectionLink(section)
+                    }
                 }
             }
             Section("Operations") {
                 ForEach(FactorySection.operationsSections) { section in
-                    Button(section.rawValue) { onSelect(section) }
+                    sectionLink(section)
                 }
             }
             Section("Intelligence") {
                 ForEach(FactorySection.intelligenceSections) { section in
-                    Button(section.rawValue) { onSelect(section) }
+                    sectionLink(section)
                 }
             }
         }
-        .navigationTitle("More")
+        .navigationTitle("mobile_factory.ui.more")
+    }
+
+    private func sectionLink(_ section: FactorySection) -> some View {
+        NavigationLink(value: section) {
+            Label(section.rawValue, systemImage: section.icon)
+                .frame(minHeight: 44, alignment: .leading)
+        }
+        .accessibilityLabel(section.rawValue)
     }
 }

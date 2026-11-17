@@ -140,7 +140,7 @@ func (s *Service) listAssistOpenPastSLA(ctx context.Context, now time.Time, limi
 		  AND SlaBreachNotifiedAt IS NULL
 		ORDER BY SlaDueAt ASC
 		LIMIT @lim`
-	iter := s.spannerClient.Single().Query(ctx, spanner.Statement{
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, spanner.Statement{
 		SQL:    sql,
 		Params: map[string]any{"st": AssistOpen, "now": now, "lim": int64(limit)},
 	})
@@ -173,7 +173,7 @@ func (s *Service) listAssistOpenPastSLALegacy(ctx context.Context, now time.Time
 		WHERE Status = @st AND SlaDueAt IS NOT NULL AND SlaDueAt < @now
 		ORDER BY SlaDueAt ASC
 		LIMIT @lim`
-	iter := s.spannerClient.Single().Query(ctx, spanner.Statement{
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, spanner.Statement{
 		SQL:    sql,
 		Params: map[string]any{"st": AssistOpen, "now": now, "lim": int64(limit)},
 	})

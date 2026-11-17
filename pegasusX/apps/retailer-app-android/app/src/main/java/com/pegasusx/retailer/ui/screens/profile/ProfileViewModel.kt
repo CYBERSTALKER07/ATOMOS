@@ -13,6 +13,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.boolean
+import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import retrofit2.HttpException
@@ -40,6 +42,19 @@ data class ProfileUiState(
     val loadIssue: ProfileLoadIssue? = null,
     val pricingRulesSummary: String? = null,
     val clientPolicyMessage: String? = null,
+    val loyaltyEnrolled: Boolean? = null,
+    val loyaltySummary: String? = null,
+    val isOwner: Boolean = false,
+    val retailerRole: String = "",
+    val selectedLanguage: com.pegasusx.retailer.data.local.RetailerLanguage =
+        com.pegasusx.retailer.data.local.RetailerLanguage.DEFAULT,
+    val workspaceMode: com.pegasusx.retailer.data.local.RetailerWorkspaceMode =
+        com.pegasusx.retailer.data.local.RetailerWorkspaceMode.FAST,
+    val showGeneralSettingsDialog: Boolean = false,
+    val telegramStatus: com.pegasusx.retailer.data.model.TelegramLinkStatusResponse? = null,
+    val telegramLinkRequest: com.pegasusx.retailer.data.model.TelegramLinkRequestResponse? = null,
+    val telegramBusy: Boolean = false,
+    val telegramError: String? = null,
 ) {
     val syncMessage: String?
         get() = when (loadIssue) {
@@ -53,20 +68,75 @@ data class ProfileUiState(
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
     private val api: PegasusApi,
-    private val tokenManager: com.pegasusx.retailer.data.local.TokenManager,
+    private val sessionContext: com.pegasusx.retailer.data.local.RetailerSessionContext,
+    private val preferencesStore: com.pegasusx.retailer.data.local.RetailerPreferencesStore,
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(ProfileUiState())
+    private val _uiState = MutableStateFlow(
+        ProfileUiState(
+            selectedLanguage = preferencesStore.getLanguage(),
+            workspaceMode = preferencesStore.getWorkspaceMode()
+                ?: com.pegasusx.retailer.data.local.RetailerWorkspaceMode.FAST,
+        ),
+    )
     val uiState: StateFlow<ProfileUiState> = _uiState.asStateFlow()
 
     init {
         _uiState.update {
             it.copy(
-                retailerName = tokenManager.getUserName() ?: "",
-                retailerId = tokenManager.getUserId() ?: "",
+                retailerName = sessionContext.getUserName() ?: "",
+                retailerId = sessionContext.getUserId() ?: "",
             )
         }
+        viewModelScope.launch {
+            preferencesStore.languageFlow.collect { lang ->
+                _uiState.update { it.copy(selectedLanguage = lang) }
+            }
+        }
+        viewModelScope.launch {
+            preferencesStore.workspaceModeFlow.collect { mode ->
+                if (mode != null) {
+                    _uiState.update { it.copy(workspaceMode = mode) }
+                }
+            }
+        }
         refresh()
+    }
+
+    fun setShowGeneralSettingsDialog(show: Boolean) {
+        _uiState.update { it.copy(showGeneralSettingsDialog = show) }
+    }
+
+    fun setLanguage(
+        context: android.content.Context?,
+        language: com.pegasusx.retailer.data.local.RetailerLanguage,
+    ) {
+        preferencesStore.setLanguage(language)
+        if (context != null) {
+            com.pegasusx.retailer.data.local.RetailerLocaleHelper.applyApplicationLocale(context, language)
+        }
+        _uiState.update { it.copy(selectedLanguage = language) }
+    }
+
+    fun setWorkspaceMode(mode: com.pegasusx.retailer.data.local.RetailerWorkspaceMode) {
+        preferencesStore.setWorkspaceMode(mode)
+        _uiState.update { it.copy(workspaceMode = mode) }
+    }
+
+    fun requestTelegramLink() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(telegramBusy = true, telegramError = null) }
+            try {
+                val res = api.requestTelegramLink(
+                    idempotencyKey = "tg-link-${sessionContext.getUserId().orEmpty()}-${System.currentTimeMillis() / 30000L}",
+                )
+                _uiState.update { it.copy(telegramLinkRequest = res, telegramBusy = false) }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _uiState.update { it.copy(telegramBusy = false, telegramError = e.message ?: "Telegram link error") }
+            }
+        }
     }
 
     fun refresh() {
@@ -91,7 +161,7 @@ class ProfileViewModel @Inject constructor(
                 nextError = resolveErrorMessage(e, nextIssue)
             }
 
-            val rid = tokenManager.getUserId()
+            val rid = sessionContext.getUserId()
             if (rid.isNullOrBlank()) {
                 if (nextIssue == null) {
                     nextIssue = ProfileLoadIssue.ERROR
@@ -121,8 +191,24 @@ class ProfileViewModel @Inject constructor(
                 if (!summary.isNullOrBlank()) {
                     _uiState.update { it.copy(pricingRulesSummary = summary) }
                 }
-            } catch (_: Exception) {
+            } catch (e: Exception) {
                 // Pricing rules are read-only and optional on partial stacks.
+            if (e is kotlinx.coroutines.CancellationException) throw e
+            }
+
+            try {
+                val tier = api.getLoyaltyTier()
+                val summary = if (!tier.enrolled) {
+                    "Not enrolled. No fake Bronze — supplier has not configured a program, or you have no points yet."
+                } else {
+                    val next = if (tier.nextTier.isNotBlank()) " · ${tier.pointsToNext} to ${tier.nextTier}" else ""
+                    "${tier.tier.ifBlank { "Member" }} · ${tier.lifetimePoints} lifetime · ${tier.availablePoints} available$next"
+                }
+                _uiState.update { it.copy(loyaltyEnrolled = tier.enrolled, loyaltySummary = summary) }
+            } catch (_: Exception) {
+                _uiState.update {
+                    it.copy(loyaltyEnrolled = false, loyaltySummary = "Loyalty unavailable")
+                }
             }
 
             try {
@@ -145,8 +231,36 @@ class ProfileViewModel @Inject constructor(
                         )
                     }
                 }
-            } catch (_: Exception) {
+            } catch (e: Exception) {
                 // Client policy is best-effort on app launch.
+            if (e is kotlinx.coroutines.CancellationException) throw e
+            }
+
+            try {
+                val me = api.getRetailerMe().jsonObject
+                val role = me["retailer_role"]?.jsonPrimitive?.contentOrNull?.trim()?.uppercase().orEmpty()
+                val ownerFlag = me["is_owner"]?.jsonPrimitive?.booleanOrNull == true || role == "OWNER"
+                val effectiveMode = com.pegasusx.retailer.util.FastHomeContractHelper.resolveEffectiveWorkspaceMode(
+                    persistedMode = preferencesStore.getWorkspaceMode(),
+                    retailerRole = role,
+                    isOwner = ownerFlag,
+                )
+                _uiState.update {
+                    it.copy(
+                        isOwner = ownerFlag,
+                        retailerRole = role,
+                        workspaceMode = effectiveMode,
+                    )
+                }
+            } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
+            }
+
+            try {
+                val tgStatus = api.getTelegramLinkStatus()
+                _uiState.update { it.copy(telegramStatus = tgStatus) }
+            } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
             }
 
             _uiState.update {

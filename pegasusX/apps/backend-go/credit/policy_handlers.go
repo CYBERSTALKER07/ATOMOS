@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -71,7 +72,7 @@ func (s *PolicyService) HandleGetCreditProgram(w http.ResponseWriter, r *http.Re
 		return
 	}
 	if !found {
-		writeJSON(w, http.StatusOK, SupplierCreditProgram{SupplierID: sid, ProgramEnabled: false, GlobalTermsDays: 30, Timezone: "Asia/Tashkent"})
+		writeJSON(w, http.StatusOK, SupplierCreditProgram{SupplierID: sid, ProgramEnabled: false, GlobalTermsDays: 30, Timezone: packCreditTimezone(r.Context(), sid)})
 		return
 	}
 	writeJSON(w, http.StatusOK, p)
@@ -85,6 +86,9 @@ func (s *PolicyService) HandleEnableCreditProgram(w http.ResponseWriter, r *http
 	}
 	claims, sid, ok := supplierScope(w, r)
 	if !ok {
+		return
+	}
+	if !requireCreditWritePerm(w, claims, auth.PermCreditLimitChange) {
 		return
 	}
 	var body struct {
@@ -145,6 +149,9 @@ func (s *PolicyService) HandleCreditProgramDefaults(w http.ResponseWriter, r *ht
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
+	if !requireCreditWritePerm(w, claims, auth.PermCreditLimitChange) {
+		return
+	}
 	var body struct {
 		GlobalTermsDays         *int64  `json:"global_terms_days"`
 		GlobalGraceDays         *int64  `json:"global_grace_days"`
@@ -175,8 +182,19 @@ func (s *PolicyService) HandleListCreditRelationships(w http.ResponseWriter, r *
 	if !ok {
 		return
 	}
-	list, err := s.ListRelationships(r.Context(), sid, 200)
+	limit := 200
+	if raw := strings.TrimSpace(r.URL.Query().Get("limit")); raw != "" {
+		if n, err := strconv.Atoi(raw); err == nil && n > 0 {
+			limit = n
+		}
+	}
+	cursor := strings.TrimSpace(r.URL.Query().Get("cursor"))
+	list, nextCursor, err := s.ListRelationshipsPage(r.Context(), sid, limit, cursor)
 	if err != nil {
+		if errors.Is(err, ErrInvalidCursor) {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_cursor"})
+			return
+		}
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal"})
 		return
 	}
@@ -186,6 +204,7 @@ func (s *PolicyService) HandleListCreditRelationships(w http.ResponseWriter, r *
 		CurrentBalanceMinor  int64  `json:"current_balance_minor,omitempty"`
 		AvailableCreditMinor int64  `json:"available_credit_minor,omitempty"`
 		ReservedMinor        int64  `json:"reserved_minor,omitempty"`
+		PrepayOnlyLocked     bool   `json:"prepay_only_locked,omitempty"`
 	}
 	out := make([]row, 0, len(list))
 	for _, t := range list {
@@ -196,17 +215,25 @@ func (s *PolicyService) HandleListCreditRelationships(w http.ResponseWriter, r *
 				rr.CurrentBalanceMinor = p.CurrentBalanceMinor
 				rr.AvailableCreditMinor = p.Available()
 				rr.ReservedMinor = p.ReservedMinor
+				rr.PrepayOnlyLocked = p.PrepayOnlyLocked
 			}
 		}
 		out = append(out, rr)
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"relationships": out})
+	resp := map[string]any{"relationships": out}
+	if nextCursor != "" {
+		resp["next_cursor"] = nextCursor
+	}
+	writeJSON(w, http.StatusOK, resp)
 }
 
 // HandleEnableCreditRelationship POST /v1/supplier/credit-relationships/{retailerId}/enable
 func (s *PolicyService) HandleEnableCreditRelationship(w http.ResponseWriter, r *http.Request) {
 	claims, sid, ok := supplierScope(w, r)
 	if !ok {
+		return
+	}
+	if !requireCreditWritePerm(w, claims, auth.PermCreditLimitChange) {
 		return
 	}
 	rid := strings.TrimSpace(chi.URLParam(r, "retailerId"))
@@ -245,6 +272,9 @@ func (s *PolicyService) HandlePatchCreditRelationshipTerms(w http.ResponseWriter
 	if !ok {
 		return
 	}
+	if !requireCreditWritePerm(w, claims, auth.PermCreditLimitChange) {
+		return
+	}
 	rid := strings.TrimSpace(chi.URLParam(r, "retailerId"))
 	var body struct {
 		TermsDays         *int64 `json:"terms_days"`
@@ -272,6 +302,9 @@ func (s *PolicyService) HandleHoldCreditRelationship(w http.ResponseWriter, r *h
 	if !ok {
 		return
 	}
+	if !requireCreditWritePerm(w, claims, auth.PermCreditLimitChange) {
+		return
+	}
 	rid := chi.URLParam(r, "retailerId")
 	if err := s.HoldRelationship(r.Context(), sid, rid, claims.Subject, string(claims.Role)); err != nil {
 		st, code := policyErrStatus(err)
@@ -285,6 +318,9 @@ func (s *PolicyService) HandleHoldCreditRelationship(w http.ResponseWriter, r *h
 func (s *PolicyService) HandleUnholdCreditRelationship(w http.ResponseWriter, r *http.Request) {
 	claims, sid, ok := supplierScope(w, r)
 	if !ok {
+		return
+	}
+	if !requireCreditWritePerm(w, claims, auth.PermCreditLimitChange) {
 		return
 	}
 	rid := chi.URLParam(r, "retailerId")
@@ -319,25 +355,40 @@ func (s *PolicyService) HandleListRetailerCreditRelationships(w http.ResponseWri
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
 		return
 	}
-	rid := claims.Subject
+	var rid string
 	if claims.Role == auth.RoleAdmin {
 		rid = strings.TrimSpace(r.URL.Query().Get("retailer_id"))
 		if rid == "" {
-			rid = claims.Subject
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "retailer_id_required"})
+			return
+		}
+	} else {
+		rid = auth.ResolveRetailerOrgID(claims)
+	}
+	limit := 100
+	if raw := strings.TrimSpace(r.URL.Query().Get("limit")); raw != "" {
+		if n, err := strconv.Atoi(raw); err == nil && n > 0 {
+			limit = n
 		}
 	}
-	list, err := s.ListRetailerRelationships(r.Context(), rid, 100)
+	cursor := strings.TrimSpace(r.URL.Query().Get("cursor"))
+	list, nextCursor, err := s.ListRetailerRelationshipsPage(r.Context(), rid, limit, cursor)
 	if err != nil {
+		if errors.Is(err, ErrInvalidCursor) {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_cursor"})
+			return
+		}
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal"})
 		return
 	}
 	type row struct {
 		RetailerPaymentTerms
-		ResolvedTerms
-		ProfileStatus        string `json:"profile_status,omitempty"`
-		AvailableCreditMinor int64  `json:"available_credit_minor,omitempty"`
-		CurrentBalanceMinor  int64  `json:"current_balance_minor,omitempty"`
-		OnHold               bool   `json:"on_hold"`
+		Resolved             ResolvedTerms `json:"resolved_terms"`
+		ProfileStatus        string        `json:"profile_status,omitempty"`
+		AvailableCreditMinor int64         `json:"available_credit_minor,omitempty"`
+		CurrentBalanceMinor  int64         `json:"current_balance_minor,omitempty"`
+		OnHold               bool          `json:"on_hold"`
+		PrepayOnlyLocked     bool          `json:"prepay_only_locked,omitempty"`
 	}
 	out := make([]row, 0, len(list))
 	for _, t := range list {
@@ -345,18 +396,23 @@ func (s *PolicyService) HandleListRetailerCreditRelationships(w http.ResponseWri
 			continue
 		}
 		resolved, _ := s.ResolveTermsFor(r.Context(), t.RetailerID, t.SupplierID)
-		rr := row{RetailerPaymentTerms: t, ResolvedTerms: resolved}
+		rr := row{RetailerPaymentTerms: t, Resolved: resolved}
 		if s.credit != nil {
 			if p, found, _ := s.credit.GetProfile(r.Context(), t.RetailerID, t.SupplierID); found {
 				rr.ProfileStatus = string(p.Status)
 				rr.AvailableCreditMinor = p.Available()
 				rr.CurrentBalanceMinor = p.CurrentBalanceMinor
 				rr.OnHold = p.Status == StatusFrozen
+				rr.PrepayOnlyLocked = p.PrepayOnlyLocked
 			}
 		}
 		out = append(out, rr)
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"relationships": out})
+	resp := map[string]any{"relationships": out}
+	if nextCursor != "" {
+		resp["next_cursor"] = nextCursor
+	}
+	writeJSON(w, http.StatusOK, resp)
 }
 
 // HandleAdminDisableRelationship POST /v1/admin/credit-relationships/{supplierId}/{retailerId}/disable
@@ -364,6 +420,9 @@ func (s *PolicyService) HandleAdminDisableRelationship(w http.ResponseWriter, r 
 	claims, ok := auth.FromContext(r.Context())
 	if !ok || claims.Role != auth.RoleAdmin {
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
+		return
+	}
+	if !requireCreditWritePerm(w, claims, auth.PermCreditLimitChange) {
 		return
 	}
 	sid := chi.URLParam(r, "supplierId")
@@ -386,6 +445,9 @@ func (s *PolicyService) HandleAdminDisableProgram(w http.ResponseWriter, r *http
 	claims, ok := auth.FromContext(r.Context())
 	if !ok || claims.Role != auth.RoleAdmin {
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
+		return
+	}
+	if !requireCreditWritePerm(w, claims, auth.PermCreditLimitChange) {
 		return
 	}
 	sid := chi.URLParam(r, "supplierId")

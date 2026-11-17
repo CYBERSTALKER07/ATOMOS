@@ -10,8 +10,11 @@ import (
 )
 
 func (s *Service) applyHandoffLifecycle(current *Order, previousStatus Status, previousDriverID string) {
-	if s == nil || current == nil || s.handoff == nil {
+	if s == nil || current == nil {
 		return
+	}
+	if s.handoff == nil {
+		s.handoff = handoff.FromEnv()
 	}
 	s.handoff.ApplyTransition(
 		&current.QRToken,

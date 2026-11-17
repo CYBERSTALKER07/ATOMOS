@@ -152,6 +152,22 @@ func (e *ActionExecutor) freezeCredit(ctx context.Context, ex Exception, actor s
 	return e.deps.Credit.UpsertProfile(ctx, profile, actor, "playbook:freeze_credit")
 }
 
+// unfreezeCredit compensates FREEZE_CREDIT when run finalize fails after freeze.
+func (e *ActionExecutor) unfreezeCredit(ctx context.Context, retailerID, supplierID, actor string) error {
+	if e == nil || e.deps.Credit == nil || retailerID == "" || supplierID == "" {
+		return nil
+	}
+	profile, found, err := e.deps.Credit.GetProfile(ctx, retailerID, supplierID)
+	if err != nil || !found {
+		return err
+	}
+	if profile.Status != credit.StatusFrozen {
+		return nil
+	}
+	profile.Status = credit.StatusActive
+	return e.deps.Credit.UpsertProfile(ctx, profile, actor, "playbook:freeze_credit_compensate")
+}
+
 func (e *ActionExecutor) applyZoneOverride(ctx context.Context, spec ActionSpec, ex Exception, actor string) error {
 	if e.deps.Planning == nil {
 		return fmt.Errorf("planning_unavailable")

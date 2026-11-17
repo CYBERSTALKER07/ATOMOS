@@ -11,7 +11,7 @@ export async function getClientPolicy(
     version,
     channel,
   });
-  return fetch(`${warehouseApiBaseUrl}/v1/platform/client-policy?${params.toString()}`, {
+  return fetch(`${warehouseApiBaseUrl()}/v1/platform/client-policy?${params.toString()}`, {
     method: 'GET',
     headers: { 'X-Trace-Id': crypto.randomUUID() },
   });

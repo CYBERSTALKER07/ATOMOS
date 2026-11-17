@@ -22,6 +22,7 @@ struct OfflineVerifierView: View {
                 .padding(.horizontal, LabTheme.s16)
                 .padding(.bottom, 40)
             }
+            .scrollDismissesKeyboard(.interactively)
             .background(LabTheme.bg)
             .navigationBarTitleDisplayMode(.inline)
         }
@@ -34,12 +35,12 @@ struct OfflineVerifierView: View {
 
     private var headerView: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("OFFLINE VERIFICATION TERMINAL")
-                .font(.system(size: 10, weight: .bold, design: .monospaced))
+            Text("mobile_driver.ui.offline_verification_terminal")
+                .font(.system(.caption2, design: .monospaced, weight: .bold))
                 .foregroundStyle(LabTheme.fgTertiary)
 
-            Text("Hash Manifest Protocol")
-                .font(.system(size: 20, weight: .bold))
+            Text("mobile_driver.ui.hash_manifest_protocol")
+                .font(.system(.title3, weight: .bold))
                 .foregroundStyle(LabTheme.fg)
         }
         .padding(.top, LabTheme.s24)
@@ -49,7 +50,7 @@ struct OfflineVerifierView: View {
 
     private var statusBar: some View {
         HStack {
-            Text("Protocol Status")
+            Text("mobile_driver.ui.protocol_status")
                 .font(.caption.weight(.medium))
                 .foregroundStyle(LabTheme.fgSecondary)
             Spacer()
@@ -79,15 +80,15 @@ struct OfflineVerifierView: View {
     private var idleCard: some View {
         VStack(spacing: 16) {
             Image(systemName: "shield.lefthalf.filled")
-                .font(.system(size: 40))
+                .font(.system(.largeTitle))
                 .foregroundStyle(LabTheme.fg)
 
-            Text("Offline cryptographic verification allows delivery confirmation without network connectivity.")
+            Text("mobile_driver.ui.offline_cryptographic_verification_allows_delivery_confirmation_")
                 .font(.subheadline)
                 .foregroundStyle(LabTheme.fgSecondary)
                 .multilineTextAlignment(.center)
 
-            Text("Download your route manifest to begin.")
+            Text("mobile_driver.ui.download_your_route_manifest_to_begin")
                 .font(.subheadline)
                 .foregroundStyle(LabTheme.fgSecondary)
 
@@ -106,7 +107,7 @@ struct OfflineVerifierView: View {
             ProgressView()
                 .controlSize(.large)
                 .tint(LabTheme.fg)
-            Text("Downloading manifest...")
+            Text("mobile_driver.ui.downloading_manifest")
                 .font(.subheadline)
                 .foregroundStyle(LabTheme.fgSecondary)
         }
@@ -119,7 +120,7 @@ struct OfflineVerifierView: View {
 
     private func readyCard(_ manifest: RouteManifest) -> some View {
         VStack(alignment: .leading, spacing: 14) {
-            Label("Manifest Loaded", systemImage: "checkmark.shield.fill")
+            Label("mobile_driver.ui.manifest_loaded", systemImage: "checkmark.shield.fill")
                 .font(.headline)
                 .foregroundStyle(LabTheme.success)
 
@@ -135,7 +136,7 @@ struct OfflineVerifierView: View {
             Button {
                 Task { await vm.syncManifest() }
             } label: {
-                Text("Re-sync Manifest")
+                Text("mobile_driver.ui.re_sync_manifest")
                     .font(.subheadline.weight(.bold))
                     .foregroundStyle(LabTheme.fgSecondary)
                     .frame(maxWidth: .infinity)
@@ -157,14 +158,14 @@ struct OfflineVerifierView: View {
             .frame(height: 300)
             .clipShape(.rect(cornerRadius: LabTheme.cardRadius))
 
-            Text("Point at retailer QR code")
+            Text("mobile_driver.ui.point_at_retailer_qr_code")
                 .font(.subheadline)
                 .foregroundStyle(LabTheme.fgSecondary)
 
             Button {
                 vm.cancelScanner()
             } label: {
-                Text("Cancel")
+                Text("common.action.cancel")
                     .font(.subheadline.weight(.bold))
                     .foregroundStyle(LabTheme.destructive)
                     .frame(maxWidth: .infinity)
@@ -179,18 +180,18 @@ struct OfflineVerifierView: View {
     private func verifiedCard(_ orderId: String) -> some View {
         VStack(spacing: 14) {
             Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 48))
+                .font(.system(.largeTitle))
                 .foregroundStyle(LabTheme.success)
 
-            Text("✓ Verified")
-                .font(.system(size: 28, weight: .bold))
+            Text("mobile_driver.ui.verified")
+                .font(.system(.title, weight: .bold))
                 .foregroundStyle(LabTheme.success)
 
             Text(orderId)
                 .font(.system(.headline, design: .monospaced))
                 .foregroundStyle(LabTheme.fg)
 
-            Text("SHA-256 match confirmed. Delivery queued for sync.")
+            Text("mobile_driver.ui.sha_256_match_confirmed_delivery_queued_for_sync")
                 .font(.subheadline)
                 .foregroundStyle(LabTheme.fgSecondary)
                 .multilineTextAlignment(.center)
@@ -210,10 +211,10 @@ struct OfflineVerifierView: View {
     private func fraudCard(_ reason: String) -> some View {
         VStack(spacing: 14) {
             Image(systemName: "exclamationmark.triangle.fill")
-                .font(.system(size: 48))
+                .font(.system(.largeTitle))
                 .foregroundStyle(LabTheme.destructive)
 
-            Text("Fraud Detected")
+            Text("mobile_driver.ui.fraud_detected")
                 .font(.title2.bold())
                 .foregroundStyle(LabTheme.destructive)
 
@@ -237,10 +238,10 @@ struct OfflineVerifierView: View {
     private func errorCard(_ reason: String) -> some View {
         VStack(spacing: 14) {
             Image(systemName: "xmark.octagon.fill")
-                .font(.system(size: 48))
+                .font(.system(.largeTitle))
                 .foregroundStyle(LabTheme.destructive)
 
-            Text("System Error")
+            Text("mobile_driver.ui.system_error")
                 .font(.title2.bold())
                 .foregroundStyle(LabTheme.destructive)
 
@@ -276,7 +277,7 @@ struct OfflineVerifierView: View {
     private func monoButton(_ title: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(title)
-                .font(.system(size: 15, weight: .bold))
+                .font(.system(.subheadline, weight: .bold))
                 .foregroundStyle(LabTheme.buttonFg)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)
@@ -288,7 +289,7 @@ struct OfflineVerifierView: View {
     private func destructiveButton(_ title: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(title)
-                .font(.system(size: 15, weight: .bold))
+                .font(.system(.subheadline, weight: .bold))
                 .foregroundStyle(.white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)
@@ -300,6 +301,9 @@ struct OfflineVerifierView: View {
 
 #Preview {
     let config = ModelConfiguration(isStoredInMemoryOnly: true)
-    let container = try! ModelContainer(for: OfflineDelivery.self, configurations: config)
-    OfflineVerifierView(modelContext: container.mainContext)
+    if let container = try? ModelContainer(for: OfflineDelivery.self, configurations: config) {
+        OfflineVerifierView(modelContext: container.mainContext)
+    } else {
+        Text("Preview unavailable: container creation failed")
+    }
 }

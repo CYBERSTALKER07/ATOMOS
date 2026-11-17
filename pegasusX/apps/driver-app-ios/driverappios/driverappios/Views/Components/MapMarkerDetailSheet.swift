@@ -20,7 +20,7 @@ struct MapMarkerDetailSheet: View {
 
     @State private var dragOffset: Double = 0
     @State private var appeared = false
-    @State private var autoHideTask: Task<Void, Never>?
+    @State private var autoHideWorkItem: DispatchWorkItem?
 
     private var distance: Double? {
         guard let loc = driverLocation else { return nil }
@@ -90,18 +90,18 @@ struct MapMarkerDetailSheet: View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(mission.order_id)
-                    .font(.system(size: 22, weight: .bold, design: .monospaced))
+                    .font(.system(.title2, design: .monospaced, weight: .bold))
                     .foregroundStyle(LabTheme.fg)
 
                 HStack(spacing: 6) {
                     Text(mission.gateway)
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(.system(.footnote, weight: .semibold))
                         .padding(.horizontal, 8)
                         .padding(.vertical, 3)
                         .background(LabTheme.fg.opacity(0.08), in: Capsule())
 
                     Text(mission.amount.formattedAmount)
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.system(.footnote, weight: .medium))
                         .foregroundStyle(LabTheme.fgSecondary)
                 }
             }
@@ -109,12 +109,13 @@ struct MapMarkerDetailSheet: View {
             Spacer()
 
             Button {
+                Haptics.light()
                 dismiss()
             } label: {
                 Image(systemName: "xmark")
-                    .font(.system(size: 11, weight: .bold))
+                    .font(.system(.caption, weight: .bold))
                     .foregroundStyle(LabTheme.fgSecondary)
-                    .frame(width: 28, height: 28)
+                    .frame(width: 44, height: 44)
                     .background(LabTheme.fg.opacity(0.06), in: Circle())
             }
             .accessibilityLabel("Close")
@@ -125,12 +126,12 @@ struct MapMarkerDetailSheet: View {
 
     private var endpointCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("DELIVERY ENDPOINT")
-                .font(.system(size: 10, weight: .bold, design: .monospaced))
+            Text("mobile_driver.ui.delivery_endpoint")
+                .font(.system(.caption2, design: .monospaced, weight: .bold))
                 .foregroundStyle(LabTheme.fgTertiary)
 
             Text(String(format: "%.4f, %.4f", mission.target_lat, mission.target_lng))
-                .font(.system(size: 16, weight: .semibold, design: .monospaced))
+                .font(.system(.callout, design: .monospaced, weight: .semibold))
                 .foregroundStyle(LabTheme.fg)
 
             HStack(spacing: 8) {
@@ -140,11 +141,11 @@ struct MapMarkerDetailSheet: View {
 
                 if let dist = distance {
                     Text(formattedDistance(dist))
-                        .font(.system(size: 13, weight: .bold, design: .monospaced))
+                        .font(.system(.footnote, design: .monospaced, weight: .bold))
                 }
 
                 Text(isInRange ? "Geofence cleared" : "Approaching target")
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.system(.footnote, weight: .medium))
                     .foregroundStyle(isInRange ? LabTheme.success : LabTheme.warning)
             }
         }
@@ -152,29 +153,29 @@ struct MapMarkerDetailSheet: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(LabTheme.fg.opacity(0.03), in: .rect(cornerRadius: LabTheme.cardRadius - 4))
         .overlay {
-            RoundedRectangle(cornerRadius: LabTheme.cardRadius - 4)
+            RoundedRectangle(cornerRadius: LabTheme.cardRadius - 4, style: .continuous)
                 .stroke(LabTheme.separator, lineWidth: 0.5)
         }
+        .accessibilityElement(children: .combine)
     }
 
     // MARK: - Action Buttons
 
     private var actionButtons: some View {
         VStack(spacing: 10) {
-            // Primary action
             Button {
                 Haptics.medium()
                 if isInRange { onScan() } else { Haptics.warning() }
             } label: {
                 HStack(spacing: 8) {
                     Image(systemName: isInRange ? "qrcode.viewfinder" : "location.north.fill")
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.system(.subheadline, weight: .semibold))
                     Text(isInRange ? "Initiate Proof of Delivery" : "Approach Target for Scan")
-                        .font(.system(size: 15, weight: .bold))
+                        .font(.system(.subheadline, weight: .bold))
                 }
                 .foregroundStyle(isInRange ? LabTheme.buttonFg : LabTheme.fgSecondary)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
+                .frame(maxWidth: .infinity, minHeight: 44)
+                .padding(.vertical, 8)
                 .background(
                     isInRange ? LabTheme.fg : LabTheme.fg.opacity(0.06),
                     in: .rect(cornerRadius: LabTheme.buttonRadius)
@@ -183,20 +184,18 @@ struct MapMarkerDetailSheet: View {
             .buttonStyle(.pressable)
             .disabled(!isInRange)
 
-            // Correction link
             Button {
                 Haptics.light()
                 onCorrection()
             } label: {
                 HStack(spacing: 6) {
                     Image(systemName: "pencil.and.list.clipboard")
-                        .font(.system(size: 12))
-                    Text("Delivery Correction")
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(.system(.caption))
+                    Text("mobile_driver.ui.delivery_correction")
+                        .font(.system(.footnote, weight: .semibold))
                 }
                 .foregroundStyle(LabTheme.fgSecondary)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
+                .frame(maxWidth: .infinity, minHeight: 44)
             }
             .buttonStyle(.pressable)
         }
@@ -206,16 +205,16 @@ struct MapMarkerDetailSheet: View {
 
     private func startAutoHide() {
         cancelAutoHide()
-        autoHideTask = Task {
-            try? await Task.sleep(nanoseconds: 5_000_000_000)
-            guard !Task.isCancelled else { return }
+        let item = DispatchWorkItem {
             dismiss()
         }
+        autoHideWorkItem = item
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0, execute: item)
     }
 
     private func cancelAutoHide() {
-        autoHideTask?.cancel()
-        autoHideTask = nil
+        autoHideWorkItem?.cancel()
+        autoHideWorkItem = nil
     }
 
     private func dismiss() {

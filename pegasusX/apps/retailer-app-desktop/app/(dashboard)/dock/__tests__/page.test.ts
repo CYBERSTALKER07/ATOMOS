@@ -18,19 +18,26 @@ const chipCfg: Record<
   ARRIVING: { color: "accent", label: "Arriving" },
   ARRIVED: { color: "success", label: "Arrived" },
   ARRIVED_SHOP_CLOSED: { color: "warning", label: "Shop Closed" },
+  SHOP_CLOSED_PENDING: { color: "warning", label: "Shop Closed" },
   AWAITING_PAYMENT: { color: "danger", label: "Awaiting Payment" },
   PENDING_CASH_COLLECTION: { color: "warning", label: "Cash Collection" },
   PENDING: { color: "default", label: "Pending" },
   PENDING_REVIEW: { color: "default", label: "Pending Review" },
   LOADED: { color: "default", label: "Loaded" },
   COMPLETED: { color: "success", label: "Completed" },
+  FISCALIZING: { color: "warning", label: "Pending fiscal" },
+  FISCAL_FAILED: { color: "danger", label: "Fiscal failed" },
   CANCELLED: { color: "danger", label: "Cancelled" },
   CANCEL_REQUESTED: { color: "danger", label: "Cancel Requested" },
   NO_CAPACITY: { color: "danger", label: "No Capacity" },
   SCHEDULED: { color: "default", label: "Scheduled" },
   AUTO_ACCEPTED: { color: "default", label: "Auto-Accepted" },
+  BACKORDERED: { color: "default", label: "Backordered" },
+  DELAYED: { color: "default", label: "Delayed" },
   QUARANTINE: { color: "danger", label: "Quarantined" },
   DELIVERED_ON_CREDIT: { color: "success", label: "Delivered (Credit)" },
+  RECONCILIATION_REQUIRED: { color: "warning", label: "Reconciliation Required" },
+  SYNC_CONFLICT: { color: "danger", label: "Disputed - Pending Review" },
 };
 
 function formatAmount(amount: number): string {
@@ -75,7 +82,16 @@ function groupBySupplier(activeOrders: TrackingOrder[]): SupplierGroup[] {
     group.orders.push(order);
     group.totalAmount += order.total_amount;
     if (order.is_approaching || order.state === "ARRIVING") group.hasApproaching = true;
-    if (order.state === "ARRIVED" || order.state === "AWAITING_PAYMENT") group.hasArrived = true;
+    if (
+      order.state === "ARRIVED" ||
+      order.state === "AWAITING_PAYMENT" ||
+      order.state === "PENDING_CASH_COLLECTION" ||
+      order.state === "DELIVERED_ON_CREDIT" ||
+      order.state === "ARRIVED_SHOP_CLOSED" ||
+      order.state === "SHOP_CLOSED_PENDING"
+    ) {
+      group.hasArrived = true;
+    }
   }
   return Array.from(map.values()).sort((a, b) => {
     if (a.hasArrived !== b.hasArrived) return a.hasArrived ? -1 : 1;

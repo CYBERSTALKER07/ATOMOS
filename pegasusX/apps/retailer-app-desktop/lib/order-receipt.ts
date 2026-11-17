@@ -32,8 +32,15 @@ export async function openTrackingReceipt(order: {
 }): Promise<void> {
   const qr = (order.fiscal_qr || "").trim();
   if (qr) {
-    window.open(qr, "_blank", "noopener,noreferrer");
-    return;
+    try {
+      const parsed = new URL(qr);
+      if (parsed.protocol === "https:" || parsed.protocol === "http:") {
+        window.open(parsed.toString(), "_blank", "noopener,noreferrer");
+        return;
+      }
+    } catch {
+      /* fall through to authenticated receipt */
+    }
   }
   await openRetailerOrderReceipt(order.order_id, "html");
 }

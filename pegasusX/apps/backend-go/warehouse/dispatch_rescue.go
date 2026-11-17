@@ -7,9 +7,12 @@ import (
 	"net/http"
 	"sort"
 
+	"time"
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
+	"github.com/pegasusx/pegasusx/apps/backend-go/drivercmd"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 )
 
 type RescuePreviewRequest struct {
@@ -63,7 +66,7 @@ func (s *Service) HandleOpsDispatchRescuePreview(w http.ResponseWriter, r *http.
 		SQL: `SELECT SUM(VolumeVU) FROM Orders WHERE DriverId = @did AND Status IN ('LOADED', 'IN_TRANSIT', 'ARRIVED', 'DISPATCHED', 'ARRIVING', 'EN_ROUTE', 'AWAITING_PAYMENT', 'PENDING_CASH_COLLECTION')`,
 		Params: map[string]any{"did": brokenDriver.DriverID},
 	}
-	iter := s.spannerClient.Single().Query(r.Context(), stmt)
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(r.Context(), stmt)
 	row, err := iter.Next()
 	iter.Stop()
 	if err == nil {
@@ -198,14 +201,14 @@ func (s *Service) HandleOpsDispatchRescuePropose(w http.ResponseWriter, r *http.
 		ev.Type = "RESCUE_PROPOSED"
 		evJSON, _ := json.Marshal(ev)
 
-		m := spanner.InsertMap("OutboxEvents", map[string]any{
-			"EventId":       uuid.NewString(),
-			"AggregateType": events.AggregateWarehouse,
-			"AggregateId":   whID,
-			"TopicName":     events.TopicMain,
-			"Payload":       string(evJSON),
-			"CreatedAt":     spanner.CommitTimestamp,
-		})
+		m := spanner.InsertMap("OutboxEvents", outbox.EventRowMap(outbox.Event{
+			EventID:       uuid.NewString(),
+			AggregateType: events.AggregateWarehouse,
+			AggregateID:   whID,
+			TopicName:     events.TopicMain,
+			Payload:       evJSON,
+			SupplierID:    sid,
+		}))
 		return txn.BufferWrite([]*spanner.Mutation{m})
 	})
 
@@ -213,6 +216,19 @@ func (s *Service) HandleOpsDispatchRescuePropose(w http.ResponseWriter, r *http.
 		s.log.ErrorContext(r.Context(), "rescue propose failed", "err", err)
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "rescue_proposal_failed"})
 		return
+	}
+
+	if s.driverHub != nil && req.RescueDriverID != "" {
+		wsPayload, _ := json.Marshal(map[string]any{
+			"type":             "RESCUE_PROPOSED",
+			"rescue_id":        req.RescueID,
+			"broken_driver_id": req.BrokenDriverID,
+			"rescue_driver_id": req.RescueDriverID,
+			"warehouse_id":     whID,
+			"supplier_id":      sid,
+		})
+		wsPayload = drivercmd.PrepareAndRecordJSON(r.Context(), s.spannerClient, req.RescueDriverID, wsPayload)
+		s.driverHub.Broadcast(r.Context(), "driver:"+req.RescueDriverID, wsPayload)
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{

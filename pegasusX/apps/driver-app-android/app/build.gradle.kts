@@ -19,7 +19,8 @@ val localProps = Properties().also { props ->
 }
 val devHost: String = localProps.getProperty("dev.host", "10.0.2.2")
 val mapsApiKey: String = localProps.getProperty("MAPS_API_KEY", "")
-val prodApiBaseUrl: String = localProps.getProperty("prod.api.base.url", "https://api.pegasus.uz")
+val prodApiBaseUrl: String = localProps.getProperty("prod.api.base.url", "https://api.pegasusx.app")
+val prodApiSpkiPins: String = localProps.getProperty("prod.api.spki.pins", System.getenv("PEGASUSX_API_TLS_SPKI_PINS") ?: "")
 val quicktypeBinary: String = localProps.getProperty("quicktype.path", "quicktype")
 
 val contractsSchemaFile = rootProject.file("../../contracts/events.schema.json")
@@ -99,6 +100,14 @@ if (wsCodegenEnabled) {
 }
 
 android {
+
+    // pegasusx-i18n-generated: shared en/ru/uz string catalogs
+    sourceSets {
+        getByName("main") {
+            res.srcDir(rootProject.file("../../packages/i18n/generated/android"))
+        }
+    }
+
     namespace = "com.pegasusx.driver"
     compileSdk = 35
 
@@ -106,12 +115,13 @@ android {
         applicationId = "com.pegasusx.driver"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.0.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         buildConfigField("String", "API_BASE_URL", "\"http://$devHost:8180\"")
+        buildConfigField("String", "API_TLS_SPKI_PINS", "\"\"")
         buildConfigField("boolean", "FIREBASE_AUTH_EMULATOR", firebaseAuthEmulator.toString())
         buildConfigField("String", "FIREBASE_AUTH_EMULATOR_HOST", "\"$firebaseAuthEmulatorHost\"")
         manifestPlaceholders["mapsApiKey"] = mapsApiKey
@@ -149,6 +159,7 @@ android {
                 "proguard-rules.pro"
             )
             buildConfigField("String", "API_BASE_URL", "\"$prodApiBaseUrl\"")
+            buildConfigField("String", "API_TLS_SPKI_PINS", "\"$prodApiSpkiPins\"")
         }
     }
 
@@ -168,7 +179,6 @@ android {
 dependencies {
     val composeBom = platform("androidx.compose:compose-bom:2024.12.01")
     implementation(composeBom)
-    implementation(project(":mobile-design"))
 
     // Compose
     implementation("androidx.compose.ui:ui")

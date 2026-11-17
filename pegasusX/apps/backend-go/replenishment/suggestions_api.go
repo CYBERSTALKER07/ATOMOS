@@ -11,7 +11,9 @@ import (
 
 	"cloud.google.com/go/civil"
 	"cloud.google.com/go/spanner"
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/order"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"google.golang.org/api/iterator"
 	"google.golang.org/grpc/codes"
 )
@@ -24,27 +26,30 @@ const (
 
 // SuggestionRow is the wire shape for reorder suggestions.
 type SuggestionRow struct {
-	RetailerID       string   `json:"retailer_id"`
-	RetailerName     string   `json:"retailer_name,omitempty"`
-	Sku              string   `json:"sku"`
-	SkuName          string   `json:"sku_name,omitempty"`
-	SuggestedQty     int64    `json:"suggested_qty"`
-	AdjustedDemand   float64  `json:"adjusted_demand_per_day"`
-	CurrentStock     int64    `json:"current_stock"`
-	InFlightQty      int64    `json:"in_flight_qty"`
-	SuggestedByDate  string   `json:"suggested_by_date"`
-	Status           string   `json:"status"`
-	ComputedAt       string   `json:"computed_at"`
-	Sources          []string `json:"sources,omitempty"`
-	SellThroughVel   float64  `json:"sell_through_velocity,omitempty"`
-	BaseDemand       float64  `json:"base_demand_per_day,omitempty"`
+	SuggestionID    string   `json:"suggestion_id"`
+	RetailerID      string   `json:"retailer_id"`
+	RetailerName    string   `json:"retailer_name,omitempty"`
+	Sku             string   `json:"sku"`
+	SkuName         string   `json:"sku_name,omitempty"`
+	SuggestedQty    int64    `json:"suggested_qty"`
+	AdjustedDemand  float64  `json:"adjusted_demand_per_day"`
+	CurrentStock    int64    `json:"current_stock"`
+	InFlightQty     int64    `json:"in_flight_qty"`
+	SafetyStock     float64  `json:"safety_stock"`
+	SuggestedByDate string   `json:"suggested_by_date"`
+	Status          string   `json:"status"`
+	ComputedAt      string   `json:"computed_at"`
+	Sources         []string `json:"sources,omitempty"`
+	SellThroughVel  float64  `json:"sell_through_velocity,omitempty"`
+	BaseDemand      float64  `json:"base_demand_per_day,omitempty"`
 }
 
 // SuggestionsAPI serves supplier-portal reorder suggestion endpoints.
 type SuggestionsAPI struct {
-	Spanner     *spanner.Client
-	Orders      *order.Service
-	SupplierID  func(r *http.Request) string
+	Spanner    *spanner.Client
+	Orders     *order.Service
+	SupplierID func(r *http.Request) string
+	memStore   *MemorySuggestionStore
 }
 
 func NewSuggestionsAPI(client *spanner.Client, orders *order.Service, supplierID func(r *http.Request) string) *SuggestionsAPI {
@@ -62,7 +67,7 @@ func (a *SuggestionsAPI) HandleList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if a.Spanner == nil {
-		writeJSON(w, http.StatusOK, map[string]any{"suggestions": []SuggestionRow{}})
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "suggestions_unavailable"})
 		return
 	}
 	sid := strings.TrimSpace(a.SupplierID(r))
@@ -98,8 +103,9 @@ func (a *SuggestionsAPI) HandleList(w http.ResponseWriter, r *http.Request) {
 }
 
 type dismissRequest struct {
-	RetailerID string `json:"retailer_id"`
-	Sku        string `json:"sku"`
+	RetailerID     string `json:"retailer_id"`
+	Sku            string `json:"sku"`
+	IdempotencyKey string `json:"idempotency_key,omitempty"`
 }
 
 // HandleDismiss serves POST /v1/replenishment/suggestions/dismiss.
@@ -135,13 +141,26 @@ func (a *SuggestionsAPI) HandleDismiss(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_, err := a.Spanner.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-		return txn.BufferWrite([]*spanner.Mutation{
+		if err := txn.BufferWrite([]*spanner.Mutation{
 			spanner.UpdateMap("ReorderSuggestions", map[string]any{
 				"RetailerId": req.RetailerID,
 				"Sku":        req.Sku,
 				"Status":     SuggestionStatusDismissed,
 			}),
-		})
+		}); err != nil {
+			return err
+		}
+		buf := outbox.NewSpannerTxnBuffer(txn)
+		if err := outbox.EmitJSON(ctx, buf, "ReorderSuggestion", req.RetailerID+":"+req.Sku, events.TopicMain, map[string]any{
+			"type":        "replenishment.suggestion.dismissed",
+			"supplier_id": sid,
+			"retailer_id": req.RetailerID,
+			"sku":         req.Sku,
+			"status":      SuggestionStatusDismissed,
+		}); err != nil {
+			return err
+		}
+		return buf.Flush(ctx)
 	})
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "dismiss_failed"})
@@ -151,8 +170,9 @@ func (a *SuggestionsAPI) HandleDismiss(w http.ResponseWriter, r *http.Request) {
 }
 
 type createDraftRequest struct {
-	RetailerID string `json:"retailer_id"`
-	Sku        string `json:"sku"`
+	RetailerID     string `json:"retailer_id"`
+	Sku            string `json:"sku"`
+	IdempotencyKey string `json:"idempotency_key,omitempty"`
 }
 
 type bulkCreateDraftsRequest struct {
@@ -250,14 +270,14 @@ func (a *SuggestionsAPI) HandleBulkCreateDrafts(w http.ResponseWriter, r *http.R
 }
 
 var (
-	errSuggestionNotFound       = errors.New("suggestion_not_found")
-	errRetailerNotLinked        = errors.New("retailer_not_linked")
-	errRetailerLocationMissing  = errors.New("retailer_location_missing")
+	errSuggestionNotFound      = errors.New("suggestion_not_found")
+	errRetailerNotLinked       = errors.New("retailer_not_linked")
+	errRetailerLocationMissing = errors.New("retailer_location_missing")
 )
 
 func (a *SuggestionsAPI) listSuggestions(ctx context.Context, supplierID, retailerID, status, skuSearch string, sourceFilter []string) ([]SuggestionRow, error) {
 	sql := `SELECT rs.RetailerId, rs.Sku, rs.SuggestedQty, rs.AdjustedDemand, rs.CurrentStock,
-	               rs.InFlightQty, rs.SuggestedByDate, rs.ComputedAt, rs.Status,
+	               rs.InFlightQty, rs.SafetyStock, rs.SuggestedByDate, rs.ComputedAt, rs.Status,
 	               r.Name AS RetailerName, p.Name AS SkuName,
 	               rs.SourcesJson, rs.SellThroughVel, rs.BaseDemand
 	        FROM ReorderSuggestions rs
@@ -291,7 +311,7 @@ func (a *SuggestionsAPI) listSuggestions(ctx context.Context, supplierID, retail
 	}
 	sql += " ORDER BY rs.ComputedAt DESC LIMIT 500"
 
-	iter := a.Spanner.Single().Query(ctx, spanner.Statement{SQL: sql, Params: params})
+	iter := a.Spanner.Single().WithTimestampBound(spanner.StrongRead()).Query(ctx, spanner.Statement{SQL: sql, Params: params})
 	defer iter.Stop()
 
 	var rows []SuggestionRow
@@ -307,19 +327,23 @@ func (a *SuggestionsAPI) listSuggestions(ctx context.Context, supplierID, retail
 		var suggestedBy civil.Date
 		var computedAt time.Time
 		var retailerName, skuName, sourcesJSON spanner.NullString
-		var stVel, baseDem spanner.NullFloat64
+		var stVel, baseDem, safetyStock spanner.NullFloat64
 		if err := row.Columns(
 			&sr.RetailerID, &sr.Sku, &sr.SuggestedQty, &sr.AdjustedDemand, &sr.CurrentStock,
-			&sr.InFlightQty, &suggestedBy, &computedAt, &sr.Status, &retailerName, &skuName,
+			&sr.InFlightQty, &safetyStock, &suggestedBy, &computedAt, &sr.Status, &retailerName, &skuName,
 			&sourcesJSON, &stVel, &baseDem,
 		); err != nil {
-			// Pre-migration schema without L3.3 columns
+			// Pre-migration schema without L3.3 / SafetyStock column order
 			if err2 := row.Columns(
 				&sr.RetailerID, &sr.Sku, &sr.SuggestedQty, &sr.AdjustedDemand, &sr.CurrentStock,
 				&sr.InFlightQty, &suggestedBy, &computedAt, &sr.Status, &retailerName, &skuName,
 			); err2 != nil {
 				return nil, err
 			}
+		}
+		sr.SuggestionID = sr.RetailerID + ":" + sr.Sku
+		if safetyStock.Valid {
+			sr.SafetyStock = safetyStock.Float64
 		}
 		sr.SuggestedByDate = suggestedBy.String()
 		sr.ComputedAt = computedAt.UTC().Format(time.RFC3339Nano)
@@ -348,7 +372,7 @@ func (a *SuggestionsAPI) retailerLinkedToSupplier(ctx context.Context, supplierI
 	if retailerID == "" {
 		return false
 	}
-	iter := a.Spanner.Single().Query(ctx, spanner.Statement{
+	iter := a.Spanner.Single().WithTimestampBound(spanner.StrongRead()).Query(ctx, spanner.Statement{
 		SQL: `SELECT 1 FROM Orders WHERE SupplierId = @supplierId AND RetailerId = @retailerId LIMIT 1`,
 		Params: map[string]interface{}{
 			"supplierId": supplierID,
@@ -402,13 +426,27 @@ func (a *SuggestionsAPI) createDraftFromSuggestion(ctx context.Context, supplier
 	}
 
 	_, updateErr := a.Spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-		return txn.BufferWrite([]*spanner.Mutation{
+		if err := txn.BufferWrite([]*spanner.Mutation{
 			spanner.UpdateMap("ReorderSuggestions", map[string]any{
 				"RetailerId": retailerID,
 				"Sku":        sku,
 				"Status":     SuggestionStatusConverted,
 			}),
-		})
+		}); err != nil {
+			return err
+		}
+		buf := outbox.NewSpannerTxnBuffer(txn)
+		if err := outbox.EmitJSON(ctx, buf, "ReorderSuggestion", retailerID+":"+sku, events.TopicMain, map[string]any{
+			"type":        "replenishment.suggestion.converted",
+			"supplier_id": supplierID,
+			"retailer_id": retailerID,
+			"sku":         sku,
+			"order_id":    resp.OrderID,
+			"status":      SuggestionStatusConverted,
+		}); err != nil {
+			return err
+		}
+		return buf.Flush(ctx)
 	})
 	if updateErr != nil {
 		return resp, fmt.Errorf("order_created_but_status_update_failed: %w", updateErr)

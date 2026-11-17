@@ -46,7 +46,7 @@ fun BillingScreen(
             OutlinedTextField(accountNumber, { accountNumber = it }, label = { Text("Account number") }, modifier = Modifier.fillMaxWidth())
             OutlinedTextField(swiftBic, { swiftBic = it }, label = { Text("SWIFT/BIC") }, modifier = Modifier.fillMaxWidth())
             if (error != null) {
-                Text(error!!, color = MaterialTheme.colorScheme.error)
+                Text(error.orEmpty(), color = MaterialTheme.colorScheme.error)
             }
             Button(
                 onClick = {

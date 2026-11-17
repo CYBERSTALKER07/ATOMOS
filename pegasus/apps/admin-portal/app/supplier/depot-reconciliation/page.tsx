@@ -7,7 +7,7 @@ import Icon from '@/components/Icon';
 import { useToast } from '@/components/Toast';
 import { buildSupplierDepotReconciliationIdempotencyKey } from '../_shared/idempotency';
 
-/* ─── Types ───────────────────────────────────────────────── */
+/* --- Types ------------------------------------------------- */
 
 interface QuarantineLineItem {
   line_item_id: string;
@@ -31,7 +31,7 @@ interface QuarantineVehicle {
   orders: QuarantineOrder[];
 }
 
-/* ─── Helpers ─────────────────────────────────────────────── */
+/* --- Helpers ----------------------------------------------- */
 
 function formatAmount(amount: number): string {
   return new Intl.NumberFormat('en-US').format(amount);
@@ -41,7 +41,7 @@ function shortId(id: string): string {
   return '#' + id.slice(-6).toUpperCase();
 }
 
-/* ─── Main Page ───────────────────────────────────────────── */
+/* --- Main Page --------------------------------------------- */
 
 export default function DepotReconciliationPage() {
   const token = useToken();
@@ -100,7 +100,7 @@ export default function DepotReconciliationPage() {
     }
   }
 
-  /* ─── Loading ─────────────────────────────────────────── */
+  /* --- Loading ------------------------------------------- */
   if (loading) {
     return (
       <div className="flex flex-col gap-4 p-6">
@@ -112,7 +112,7 @@ export default function DepotReconciliationPage() {
     );
   }
 
-  /* ─── Error ───────────────────────────────────────────── */
+  /* --- Error --------------------------------------------- */
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center gap-4 p-12 text-center">
@@ -123,7 +123,7 @@ export default function DepotReconciliationPage() {
     );
   }
 
-  /* ─── Empty ───────────────────────────────────────────── */
+  /* --- Empty --------------------------------------------- */
   if (vehicles.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center gap-4 p-12 text-center">
@@ -136,7 +136,7 @@ export default function DepotReconciliationPage() {
     );
   }
 
-  /* ─── Main ────────────────────────────────────────────── */
+  /* --- Main ---------------------------------------------- */
   return (
     <div className="p-6 flex flex-col gap-6 max-w-5xl">
       <div className="flex items-center justify-between">
@@ -166,7 +166,7 @@ export default function DepotReconciliationPage() {
   );
 }
 
-/* ─── Vehicle Card ────────────────────────────────────────── */
+/* --- Vehicle Card ------------------------------------------ */
 
 function VehicleCard({
   vehicle,
@@ -242,7 +242,7 @@ function VehicleCard({
   );
 }
 
-/* ─── Order Section ───────────────────────────────────────── */
+/* --- Order Section ----------------------------------------- */
 
 function OrderSection({
   order,

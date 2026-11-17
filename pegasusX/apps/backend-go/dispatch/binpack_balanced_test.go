@@ -50,7 +50,7 @@ func TestBinPack_FallbackToSmallestTruckButPreserveRetailer(t *testing.T) {
 	}
 
 	result := BinPack(orders, fleet, H3CellLookup)
-	
+
 	for _, route := range result.Routes {
 		if route.DriverID == "small" {
 			if route.LoadedVolume > 30*TetrisBuffer {

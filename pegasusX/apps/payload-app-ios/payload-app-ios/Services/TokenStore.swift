@@ -34,6 +34,7 @@ final class TokenStore {
         warehouseName = read(.warehouseName)
         firebaseToken = read(.firebaseToken)
         refreshToken = read(.refreshToken)
+        CellTokenCache.token = token ?? ""
     }
 
     func saveSession(from resp: LoginResponse) {
@@ -48,6 +49,7 @@ final class TokenStore {
         if let fb = resp.firebaseToken { write(.firebaseToken, value: fb) }
 
         token = resp.token
+        CellTokenCache.token = resp.token
         name = resp.name
         supplierId = resp.supplierId
         warehouseId = resp.warehouseId
@@ -120,7 +122,7 @@ final class TokenStore {
             kSecAttrAccount: account,
             kSecAttrService: serviceName,
             kSecValueData: Data(value.utf8),
-            kSecAttrAccessible: kSecAttrAccessibleAfterFirstUnlock,
+            kSecAttrAccessible: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
         ]
         SecItemAdd(q as CFDictionary, nil)
     }

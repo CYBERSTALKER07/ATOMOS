@@ -1,155 +1,118 @@
 import SwiftUI
 
 struct TransferListView: View {
-    @State private var realtimeClient = FactoryRealtimeClient()
-    @State private var transfers: [Transfer] = []
-    @State private var loading = true
-    @State private var error: String?
-    @State private var selectedFilter = "ALL"
-    @State private var selectedTransferID: String?
-    @State private var showCreateTransfer = false
-
-    private let filters = ["ALL", "DRAFT", "APPROVED", "LOADING", "DISPATCHED", "IN_TRANSIT", "ARRIVED", "RECEIVED", "CANCELLED"]
-
-    private var selectedTransfer: Transfer? {
-        transfers.first { $0.id == selectedTransferID }
-    }
+    var initialFilter: String? = nil
+    @State private var vm = TransferListViewModel()
 
     var body: some View {
-        NavigationSplitView {
-            VStack(spacing: 0) {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: LabTheme.spacingSM) {
-                        ForEach(filters, id: \.self) { filter in
-                            Button {
-                                selectedFilter = filter
-                            } label: {
-                                Text(filter)
-                                    .font(.footnote.bold())
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 6)
-                                    .background(selectedFilter == filter ? LabTheme.label : Color.clear, in: Capsule())
-                                    .foregroundStyle(selectedFilter == filter ? Color(.systemBackground) : LabTheme.label)
-                                    .overlay(Capsule().stroke(.quaternary))
-                            }
-                            .buttonStyle(PressableButtonStyle())
-                        }
-                    }
-                    .padding(.horizontal)
-                    .padding(.vertical, LabTheme.spacingSM)
-                }
+        @Bindable var vm = vm
 
-                Divider()
-
-                if loading && transfers.isEmpty {
-                    FactoryLoadingView(
-                        title: "Loading transfers",
-                        message: "Fetching the factory transfer queue and lifecycle states."
-                    )
-                } else if let error {
-                    FactoryErrorView(message: error) {
-                        Task { await load() }
-                    }
-                } else if transfers.isEmpty {
-                    FactoryStateView(
-                        kind: selectedFilter == "ALL" ? .empty : .noResults,
-                        headline: selectedFilter == "ALL" ? "No transfers" : "No \(selectedFilter) transfers",
-                        message: selectedFilter == "ALL"
-                            ? "There are no transfers in the factory queue right now."
-                            : "Adjust the filter or wait for the next queue refresh.",
-                        actionTitle: selectedFilter == "ALL" ? nil : "Show All",
-                        action: selectedFilter == "ALL" ? nil : { selectedFilter = "ALL" }
-                    )
-                } else {
-                    List(selection: $selectedTransferID) {
-                        Section {
-                            TransferListSummary(count: transfers.count, selectedFilter: selectedFilter)
-                                .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
-                                .listRowBackground(Color.clear)
+        VStack(spacing: 0) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: LabTheme.spacingSM) {
+                    ForEach(TransferListViewModel.filters, id: \.self) { filter in
+                        let selected = vm.selectedFilter == filter
+                        Button {
+                            PegasusHaptics.selection()
+                            vm.selectedFilter = filter
+                        } label: {
+                            Text(filter)
+                                .font(.footnote.bold())
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .frame(minWidth: 44, minHeight: 44)
+                                .background(selected ? LabTheme.label : Color.clear, in: Capsule())
+                                .foregroundStyle(selected ? Color(.systemBackground) : LabTheme.label)
+                                .overlay(Capsule().stroke(.quaternary))
                         }
+                        .buttonStyle(PressableButtonStyle())
+                        .accessibilityLabel("Filter transfers by \(filter)")
+                        .accessibilityAddTraits(selected ? .isSelected : [])
+                    }
+                }
+                .padding(.horizontal)
+                .padding(.vertical, LabTheme.spacingSM)
+            }
 
-                        Section {
-                            ForEach(transfers) { transfer in
-                                TransferRow(transfer: transfer)
-                                    .tag(transfer.id)
-                            }
-                        }
-                    }
-                }
-            }
-            .background(LabTheme.background)
-            .navigationTitle("Transfers")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Create", systemImage: "plus") {
-                        showCreateTransfer = true
-                    }
-                    .labelStyle(.iconOnly)
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Refresh", systemImage: "arrow.clockwise") {
-                        Task { await load() }
-                    }
-                    .labelStyle(.iconOnly)
-                }
-            }
-            .sheet(isPresented: $showCreateTransfer) {
-                CreateTransferView { transferId in
-                    selectedTransferID = transferId
-                    Task { await load() }
-                }
-            }
-        } detail: {
-            if let transfer = selectedTransfer {
-                TransferDetailView(transferId: transfer.id)
-            } else {
-                ContentUnavailableView(
-                    "Select a Transfer",
-                    systemImage: "arrow.left.arrow.right",
-                    description: Text("Choose a transfer from the list.")
+            Divider()
+
+            if vm.loading && vm.transfers.isEmpty {
+                FactoryLoadingView(
+                    title: "Loading transfers",
+                    message: "Fetching the factory transfer queue and lifecycle states."
                 )
+            } else if let error = vm.error {
+                FactoryErrorView(message: error) {
+                    Task { await vm.load() }
+                }
+            } else if vm.transfers.isEmpty {
+                FactoryStateView(
+                    kind: vm.selectedFilter == "ALL" ? .empty : .noResults,
+                    headline: vm.selectedFilter == "ALL" ? "No transfers" : "No \(vm.selectedFilter) transfers",
+                    message: vm.selectedFilter == "ALL"
+                        ? "There are no transfers in the factory queue right now."
+                        : "Adjust the filter or wait for the next queue refresh.",
+                    actionTitle: vm.selectedFilter == "ALL" ? nil : "Show All",
+                    action: vm.selectedFilter == "ALL" ? nil : { vm.selectedFilter = "ALL" }
+                )
+            } else {
+                List {
+                    Section {
+                        TransferListSummary(count: vm.transfers.count, selectedFilter: vm.selectedFilter)
+                            .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
+                            .listRowBackground(Color.clear)
+                    }
+
+                    Section {
+                        ForEach(vm.transfers) { transfer in
+                            NavigationLink {
+                                TransferDetailView(transferId: transfer.id)
+                            } label: {
+                                TransferRow(transfer: transfer)
+                            }
+                        }
+                    }
+                }
+                .scrollDismissesKeyboard(.interactively)
             }
         }
-        .task(id: selectedFilter) { await load() }
-        .onAppear {
-            realtimeClient.connect(
-                onStateChange: { _ in },
-                onEvent: { event in
-                    guard let eventType = event.eventType else { return }
-                    guard eventType == .transferUpdate || eventType == .manifestUpdate else { return }
-                    Task { await load(silent: true) }
+        .background(LabTheme.background)
+        .navigationTitle("portal.nav.transfers")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("mobile_factory.ui.create", systemImage: "plus") {
+                    PegasusHaptics.selection()
+                    vm.showCreateTransfer = true
                 }
-            )
+                .labelStyle(.iconOnly)
+                .frame(minWidth: 44, minHeight: 44)
+                .accessibilityLabel("Create transfer")
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") {
+                    PegasusHaptics.selection()
+                    Task { await vm.load() }
+                }
+                .labelStyle(.iconOnly)
+                .frame(minWidth: 44, minHeight: 44)
+                .accessibilityLabel("Refresh transfers")
+            }
+        }
+        .sheet(isPresented: $vm.showCreateTransfer) {
+            CreateTransferView { transferId in
+                vm.selectedTransferID = transferId
+                Task { await vm.load() }
+            }
+        }
+        .task(id: initialFilter) {
+            vm.applyInitialFilter(initialFilter)
+        }
+        .task(id: vm.selectedFilter) {
+            vm.startRealtime()
+            await vm.load()
         }
         .onDisappear {
-            realtimeClient.disconnect()
-        }
-    }
-
-    @MainActor
-    private func load(silent: Bool = false) async {
-        if !silent {
-            loading = true
-        }
-        error = nil
-
-        do {
-            let state = selectedFilter == "ALL" ? nil : selectedFilter
-            let response = try await FactoryService.transfers(state: state)
-            transfers = response.transfers
-
-            if let selectedTransferID, transfers.contains(where: { $0.id == selectedTransferID }) {
-                self.selectedTransferID = selectedTransferID
-            } else {
-                selectedTransferID = transfers.first?.id
-            }
-        } catch {
-            self.error = error.localizedDescription
-        }
-
-        if !silent {
-            loading = false
+            vm.stopRealtime()
         }
     }
 }
-

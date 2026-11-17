@@ -85,9 +85,16 @@ enum SupplierOperationsService {
         var body: [String: String] = [:]
         if let note, !note.isEmpty { body["note"] = note }
         if let creditNoteId, !creditNoteId.isEmpty { body["credit_note_id"] = creditNoteId }
+        let key = SupplierIdempotencyKeys.exceptionResolve(
+            scopeId: await SupplierIdempotencyKeys.supplierScopeId(),
+            kind: kind,
+            id: id,
+            creditNoteId: creditNoteId ?? ""
+        )
         try await APIClient.shared.postVoid(
             "v1/supplier/exceptions/\(kind)/\(id)/resolve",
-            body: body
+            body: body,
+            idempotencyKey: key
         )
     }
 
@@ -103,9 +110,14 @@ enum SupplierOperationsService {
         struct Body: Encodable {
             let preferences: [NotificationPreferenceRow]
         }
+        let key = SupplierIdempotencyKeys.notificationPreferencesPatch(
+            scopeId: await SupplierIdempotencyKeys.supplierScopeId(),
+            payloadFingerprint: SupplierIdempotencyKeys.encodedPayload(preferences)
+        )
         try await APIClient.shared.patchVoid(
             "v1/user/notification-preferences",
-            body: Body(preferences: preferences)
+            body: Body(preferences: preferences),
+            idempotencyKey: key
         )
     }
 
@@ -267,7 +279,15 @@ enum SupplierOperationsService {
     }
 
     static func updateTopology(_ request: SupplierTopologyUpdateRequest) async throws -> SupplierTopologyResponse {
-        try await APIClient.shared.put("v1/supplier/topology", body: request)
+        let key = SupplierIdempotencyKeys.topologyPut(
+            scopeId: await SupplierIdempotencyKeys.supplierScopeId(),
+            payloadFingerprint: SupplierIdempotencyKeys.encodedPayload(request)
+        )
+        return try await APIClient.shared.put(
+            "v1/supplier/topology",
+            body: request,
+            idempotencyKey: key
+        )
     }
 
     static func supplyLanes() async throws -> [SupplierSupplyLaneRow] {
@@ -318,6 +338,145 @@ enum SupplierOperationsService {
         )
     }
 
+    static func crmRetailers() async throws -> [SupplierCRMRetailer] {
+        let resp: SupplierCRMListResponse = try await APIClient.shared.get("v1/supplier/crm/retailers")
+        return resp.retailers
+    }
+
+    static func crmRetailer(_ retailerId: String) async throws -> SupplierCRMRetailerDetail {
+        try await APIClient.shared.get("v1/supplier/crm/retailers/\(retailerId)")
+    }
+
+    static func networkMode() async throws -> NetworkModeResponse {
+        try await APIClient.shared.get("v1/supplier/network-mode")
+    }
+
+    static func putNetworkMode(_ body: NetworkModeUpdateRequest, idempotencyKey: String) async throws -> NetworkModeUpdateResponse {
+        try await APIClient.shared.put(
+            "v1/supplier/network-mode",
+            body: body,
+            idempotencyKey: idempotencyKey
+        )
+    }
+
+    static func planningPullMatrix(idempotencyKey: String) async throws -> PullMatrixResponse {
+        struct EmptyBody: Encodable {}
+        return try await APIClient.shared.post(
+            "v1/supplier/planning/pull-matrix",
+            body: EmptyBody(),
+            idempotencyKey: idempotencyKey
+        )
+    }
+
+    static func planningSparsity(retailerId: String) async throws -> SparsityGateResult {
+        try await APIClient.shared.get("v1/supplier/planning/sparsity/\(retailerId)")
+    }
+
+    static func planningPredictivePush(idempotencyKey: String) async throws -> PredictivePushResponse {
+        struct EmptyBody: Encodable {}
+        return try await APIClient.shared.post(
+            "v1/supplier/planning/predictive-push",
+            body: EmptyBody(),
+            idempotencyKey: idempotencyKey
+        )
+    }
+
+    static func loyaltyProgram() async throws -> LoyaltyProgram {
+        try await APIClient.shared.get("v1/supplier/loyalty/program")
+    }
+
+    static func patchLoyaltyProgram(_ body: LoyaltyProgram, idempotencyKey: String) async throws -> LoyaltyProgram {
+        try await APIClient.shared.patch(
+            "v1/supplier/loyalty/program",
+            body: body,
+            idempotencyKey: idempotencyKey
+        )
+    }
+
+    static func resolveEntity(_ body: EntityResolutionResolveRequest) async throws -> EntityResolutionResolveResponse {
+        try await APIClient.shared.post("v1/supplier/entity-resolution/resolve", body: body)
+    }
+
+    static func explainEntity(_ body: EntityResolutionExplainRequest) async throws -> EntityResolutionExplainResponse {
+        try await APIClient.shared.post("v1/supplier/entity-resolution/explain", body: body)
+    }
+
+    static func planningKillSwitch(_ body: KillSwitchRequest, idempotencyKey: String) async throws -> KillSwitchResponse {
+        try await APIClient.shared.post(
+            "v1/supplier/planning/kill-switch",
+            body: body,
+            idempotencyKey: idempotencyKey
+        )
+    }
+
+    static func payoutRail() async throws -> PayoutRailInfo {
+        try await APIClient.shared.get("v1/supplier/payouts/rail")
+    }
+
+    static func payoutPolicy() async throws -> SupplierPayoutPolicy {
+        try await APIClient.shared.get("v1/supplier/payout-policy")
+    }
+
+    static func patchPayoutPolicy(_ body: SupplierPayoutPolicyPatch) async throws -> SupplierPayoutPolicy {
+        let key = SupplierIdempotencyKeys.payoutPolicyPatch(
+            scopeId: await SupplierIdempotencyKeys.supplierScopeId(),
+            payloadFingerprint: SupplierIdempotencyKeys.encodedPayload(body)
+        )
+        return try await APIClient.shared.patch(
+            "v1/supplier/payout-policy",
+            body: body,
+            idempotencyKey: key
+        )
+    }
+
+    static func scoredExceptions(limit: Int = 50) async throws -> [ScoredException] {
+        let resp: ScoredExceptionsResponse = try await APIClient.shared.get(
+            "v1/control-tower/exceptions/scored",
+            query: ["limit": String(limit)]
+        )
+        return resp.exceptions
+    }
+
+    static func playbooks() async throws -> [ControlTowerPlaybook] {
+        let resp: ControlTowerPlaybooksResponse = try await APIClient.shared.get("v1/control-tower/playbooks")
+        return resp.playbooks
+    }
+
+    static func payoutBatches() async throws -> [PayoutBatch] {
+        let resp: PayoutBatchListResponse = try await APIClient.shared.get("v1/supplier/payouts/batches")
+        return resp.batches
+    }
+
+    static func generatePayoutBatch(_ body: PayoutBatchGenerateRequest, idempotencyKey: String) async throws -> PayoutBatchGenerateResponse {
+        try await APIClient.shared.post(
+            "v1/supplier/payouts/batches",
+            body: body,
+            idempotencyKey: idempotencyKey
+        )
+    }
+
+    static func exportPayoutBatch(_ batchId: String, idempotencyKey: String) async throws -> String {
+        try await APIClient.shared.postText(
+            "v1/supplier/payouts/batches/\(batchId)/export",
+            idempotencyKey: idempotencyKey
+        )
+    }
+
+    static func markPayoutBatchPaid(_ batchId: String, idempotencyKey: String) async throws -> PayoutMarkPaidResponse {
+        try await APIClient.shared.postEmpty(
+            "v1/supplier/payouts/batches/\(batchId)/mark-paid",
+            idempotencyKey: idempotencyKey
+        )
+    }
+
+    static func dispatchPayoutBatch(_ batchId: String, live: Bool, idempotencyKey: String) async throws -> PayoutDispatchResponse {
+        try await APIClient.shared.post(
+            "v1/supplier/payouts/batches/\(batchId)/dispatch",
+            body: PayoutDispatchRequest(live: live),
+            idempotencyKey: idempotencyKey
+        )
+    }
+
     static func seasonalOverrides() async throws -> SeasonalTemplatesResponse {
         try await APIClient.shared.get("v1/supplier/planning/seasonal-overrides")
     }
@@ -326,6 +485,18 @@ enum SupplierOperationsService {
         try await APIClient.shared.post(
             "v1/supplier/planning/seasonal-overrides",
             body: request,
+            idempotencyKey: idempotencyKey
+        )
+    }
+
+    static func returnPolicy() async throws -> SupplierReturnPolicy {
+        try await APIClient.shared.get("v1/supplier/return-policy")
+    }
+
+    static func putReturnPolicy(_ body: SupplierReturnPolicy, idempotencyKey: String) async throws -> SupplierReturnPolicy {
+        try await APIClient.shared.put(
+            "v1/supplier/return-policy",
+            body: body,
             idempotencyKey: idempotencyKey
         )
     }
@@ -480,8 +651,11 @@ enum SupplierOperationsService {
         return resp.items
     }
 
-    static func triggerReplenishment() async throws -> SupplierReplenishmentTriggerResponse {
-        try await APIClient.shared.postEmpty("v1/supplier/replenishment/trigger")
+    static func triggerReplenishment(idempotencyKey: String) async throws -> SupplierReplenishmentTriggerResponse {
+        try await APIClient.shared.postEmpty(
+            "v1/supplier/replenishment/trigger",
+            idempotencyKey: idempotencyKey
+        )
     }
 
     static func createFleetDriver(_ request: FleetDriverCreateRequest, idempotencyKey: String) async throws -> FleetDriversResponse {
@@ -611,12 +785,12 @@ enum SupplierOperationsService {
         return resp.claims
     }
 
-    static func approveClaim(claimId: String, request: ApproveClaimRequest) async throws -> ApproveClaimResponse {
-        try await APIClient.shared.post("v1/claims/\(claimId)/approve", body: request)
+    static func approveClaim(claimId: String, request: ApproveClaimRequest, idempotencyKey: String) async throws -> ApproveClaimResponse {
+        try await APIClient.shared.post("v1/claims/\(claimId)/approve", body: request, idempotencyKey: idempotencyKey)
     }
 
-    static func rejectClaim(claimId: String, request: RejectClaimRequest) async throws -> SupplierClaim {
-        try await APIClient.shared.post("v1/claims/\(claimId)/reject", body: request)
+    static func rejectClaim(claimId: String, request: RejectClaimRequest, idempotencyKey: String) async throws -> SupplierClaim {
+        try await APIClient.shared.post("v1/claims/\(claimId)/reject", body: request, idempotencyKey: idempotencyKey)
     }
 
     static func listClaimChargebacks(limit: Int = 100, orderId: String? = nil) async throws -> ClaimChargebacksResponse {
@@ -627,9 +801,6 @@ enum SupplierOperationsService {
         return try await APIClient.shared.get("v1/supplier/claim-chargebacks", query: query)
     }
 
-    static func inventoryAudit() async throws -> [String: String] { // placeholder
-        try await APIClient.shared.get("v1/supplier/inventory/audit")
-    }
 
     static func vetOrder(body: [String: String], idempotencyKey: String) async throws {
         try await APIClient.shared.postVoid("v1/supplier/orders/vet", body: body, idempotencyKey: idempotencyKey)

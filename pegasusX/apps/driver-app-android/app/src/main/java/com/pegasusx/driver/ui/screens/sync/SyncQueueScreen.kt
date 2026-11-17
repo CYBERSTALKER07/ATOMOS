@@ -1,7 +1,8 @@
 package com.pegasusx.driver.ui.screens.sync
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -21,12 +22,13 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.pegasusx.driver.data.model.PendingMutationEntity
 import com.pegasusx.driver.ui.theme.PegasusSpacing
+import com.pegasusx.driver.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -41,10 +44,11 @@ fun SyncQueueScreen(
     onBack: (() -> Unit)? = null,
     viewModel: SyncQueueViewModel = hiltViewModel(),
 ) {
-    val pending by viewModel.pending.collectAsState()
-    val dead by viewModel.dead.collectAsState()
-    val flushing by viewModel.flushing.collectAsState()
-    val status by viewModel.statusMessage.collectAsState()
+    val pending by viewModel.pending.collectAsStateWithLifecycle()
+    val dead by viewModel.dead.collectAsStateWithLifecycle()
+    val flushing by viewModel.flushing.collectAsStateWithLifecycle()
+    val escalating by viewModel.escalating.collectAsStateWithLifecycle()
+    val status by viewModel.statusMessage.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
@@ -77,7 +81,7 @@ fun SyncQueueScreen(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        "${pending.size} pending · ${dead.size} dead-letter",
+                        stringResource(R.string.mobile_driver_ui_size_pending_size_2_dead_letter, pending.size, dead.size),
                         style = MaterialTheme.typography.titleSmall,
                     )
                     Button(onClick = { viewModel.flushNow() }, enabled = !flushing && pending.isNotEmpty()) {
@@ -109,7 +113,15 @@ fun SyncQueueScreen(
                 ) {
                     Text("Dead letter", style = MaterialTheme.typography.titleMedium)
                     if (dead.isNotEmpty()) {
-                        TextButton(onClick = { viewModel.dismissDead() }) { Text("Dismiss all") }
+                        TextButton(
+                            onClick = { viewModel.escalateDeadToSupport() },
+                            enabled = !escalating,
+                        ) {
+                            Text(
+                                if (escalating) "Escalating…"
+                                else stringResource(R.string.sync_queue_escalate_support),
+                            )
+                        }
                     }
                 }
             }
@@ -119,7 +131,11 @@ fun SyncQueueScreen(
                 }
             } else {
                 items(dead, key = { it.id }) { row ->
-                    MutationCard(row, dead = true)
+                    MutationCard(
+                        row = row,
+                        dead = true,
+                        onRetryNow = { viewModel.retryDeadItem(row) },
+                    )
                 }
             }
         }
@@ -127,18 +143,22 @@ fun SyncQueueScreen(
 }
 
 @Composable
-private fun MutationCard(row: PendingMutationEntity, dead: Boolean = false) {
+private fun MutationCard(
+    row: PendingMutationEntity,
+    dead: Boolean = false,
+    onRetryNow: (() -> Unit)? = null,
+) {
     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(PegasusSpacing.s16)) {
             Text(row.endpoint, style = MaterialTheme.typography.titleSmall)
             Text(
-                "Order ${row.orderId.ifBlank { "—" }} · attempts ${row.attemptCount}",
+                stringResource(R.string.mobile_driver_ui_order_ifblank_attempts_attemptcount, row.orderId.ifBlank { "—" }, row.attemptCount),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             if (row.clientTimestampIso.isNotBlank()) {
                 Text(
-                    "client_ts ${row.clientTimestampIso}",
+                    stringResource(R.string.mobile_driver_ui_client_ts_clienttimestampiso, row.clientTimestampIso),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -149,6 +169,12 @@ private fun MutationCard(row: PendingMutationEntity, dead: Boolean = false) {
                     style = MaterialTheme.typography.bodySmall,
                     color = if (dead) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+            }
+            if (dead && onRetryNow != null) {
+                Spacer(Modifier.height(8.dp))
+                OutlinedButton(onClick = onRetryNow) {
+                    Text(stringResource(R.string.sync_queue_retry_now))
+                }
             }
         }
     }

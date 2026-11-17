@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import com.pegasusx.supplier.ui.design.CellPinInterceptor
 import com.pegasusx.supplier.BuildConfig
 import dagger.Module
 import dagger.Provides
@@ -11,6 +12,8 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import kotlinx.serialization.json.Json
+import okhttp3.CertificatePinner
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.Interceptor
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -79,6 +82,86 @@ private class AuthInterceptor : Interceptor {
     }
 }
 
+internal fun configuredCertificatePinner(baseUrl: String, pinsCsv: String): CertificatePinner? {
+    val parsed = baseUrl.trim().toHttpUrlOrNull() ?: return null
+    if (!parsed.isHttps) return null
+    val host = parsed.host.lowercase()
+    if (host == "localhost" || host == "127.0.0.1" || host == "10.0.2.2" || host == "::1") {
+        return null
+    }
+    val pins = pinsCsv.split(',').map { it.trim() }.filter { it.startsWith("sha256/") }
+    if (pins.isEmpty()) return null
+    val builder = CertificatePinner.Builder()
+    for (pin in pins) {
+        builder.add(host, pin)
+    }
+    return builder.build()
+}
+
+private class TokenRefreshAuthenticator(
+    private val json: Json,
+    private val baseUrl: String,
+) : okhttp3.Authenticator {
+    private val refreshClient = OkHttpClient.Builder()
+        .connectTimeout(10, TimeUnit.SECONDS)
+        .readTimeout(10, TimeUnit.SECONDS)
+        .apply {
+            configuredCertificatePinner(baseUrl, BuildConfig.API_TLS_SPKI_PINS)
+                ?.let { certificatePinner(it) }
+        }
+        .build()
+
+    @Synchronized
+    override fun authenticate(route: okhttp3.Route?, response: okhttp3.Response): okhttp3.Request? {
+        if (response.code != 401) return null
+        if (response.request.header("X-Refresh-Attempted") != null) {
+            TokenHolder.clear()
+            return null
+        }
+        val currentToken = TokenHolder.token
+        val requestToken = response.request.header("Authorization")?.removePrefix("Bearer ")?.trim()
+        if (!currentToken.isNullOrBlank() && !requestToken.isNullOrBlank() && currentToken != requestToken) {
+            return response.request.newBuilder()
+                .header("Authorization", "Bearer $currentToken")
+                .header("X-Refresh-Attempted", "true")
+                .build()
+        }
+        val refresh = TokenHolder.refreshToken ?: return null
+        val body = json.encodeToString(
+            kotlinx.serialization.serializer(),
+            mapOf("refresh_token" to refresh),
+        )
+        val mediaType = "application/json; charset=utf-8".toMediaType()
+        val refreshRequest = okhttp3.Request.Builder()
+            .url("${baseUrl}v1/auth/supplier/refresh")
+            .post(okhttp3.RequestBody.Companion.create(mediaType, body))
+            .build()
+
+        return try {
+            val refreshResponse = refreshClient.newCall(refreshRequest).execute()
+            if (!refreshResponse.isSuccessful) {
+                refreshResponse.close()
+                TokenHolder.clear()
+                return null
+            }
+            val responseBody = refreshResponse.body?.string() ?: return null
+            val obj = json.parseToJsonElement(responseBody) as? kotlinx.serialization.json.JsonObject ?: return null
+            val newToken = (obj["token"] as? kotlinx.serialization.json.JsonPrimitive)?.content?.takeIf { it.isNotBlank() } ?: return null
+            val newRefresh = (obj["refresh_token"] as? kotlinx.serialization.json.JsonPrimitive)?.content
+            TokenHolder.token = newToken
+            if (!newRefresh.isNullOrBlank()) {
+                TokenHolder.refreshToken = newRefresh
+            }
+            response.request.newBuilder()
+                .header("Authorization", "Bearer $newToken")
+                .header("X-Refresh-Attempted", "true")
+                .build()
+        } catch (_: Exception) {
+            null
+        }
+    }
+}
+
 @Module
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
@@ -94,12 +177,20 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideOkHttpClient(): OkHttpClient =
+    fun provideOkHttpClient(json: Json): OkHttpClient =
         OkHttpClient.Builder()
+            .apply {
+                configuredCertificatePinner(BuildConfig.API_BASE_URL, BuildConfig.API_TLS_SPKI_PINS)
+                    ?.let { certificatePinner(it) }
+            }
+            .addInterceptor(com.pegasusx.supplier.ui.design.CellPinInterceptor(BuildConfig.API_BASE_URL) { TokenHolder.token })
             .addInterceptor(AuthInterceptor())
+            .addInterceptor(com.pegasusx.supplier.ui.design.PegasusHttpResilienceInterceptor())
+            .authenticator(TokenRefreshAuthenticator(json, BASE_URL))
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
+            .pingInterval(25, TimeUnit.SECONDS)
             .build()
 
     @Provides

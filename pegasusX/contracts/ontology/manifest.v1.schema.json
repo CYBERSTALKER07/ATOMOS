@@ -1,0 +1,164 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pegasusx.dev/contracts/ontology/manifest.v1.schema.json",
+  "title": "ManifestOntologyObjectV1",
+  "description": "Outbound truck loading and delivery manifest.",
+  "x-ontology-version": "1.0.0",
+  "x-schema-version": "v1",
+  "x-object-type": "Manifest",
+  "x-primary-key": [
+    "cell_id",
+    "object_type",
+    "object_id"
+  ],
+  "x-default-security-markings": [],
+  "x-allowed-link-types": [
+    "supplies",
+    "stocks",
+    "ordered",
+    "shipped_on",
+    "owes",
+    "substitutes",
+    "recalled_with"
+  ],
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "cell_id",
+    "object_type",
+    "object_id",
+    "supplier_id",
+    "version",
+    "properties",
+    "valid_from",
+    "updated_at"
+  ],
+  "properties": {
+    "cell_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Cell/region partition coordinate"
+    },
+    "object_type": {
+      "type": "string",
+      "const": "Manifest"
+    },
+    "object_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Unique entity identifier within cell+type"
+    },
+    "supplier_id": {
+      "type": "string",
+      "description": "Tenant supplier identifier"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Monotonic optimistic-concurrency version"
+    },
+    "security_markings": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "MARKING:FINANCE_ONLY",
+          "MARKING:PII",
+          "MARKING:AML_INVESTIGATION",
+          "MARKING:DISCREPANT_QUARANTINE",
+          "MARKING:THERMAL_QUARANTINE_SPOILED",
+          "MARKING:MICRO_SKIMMING_SUSPECT",
+          "MARKING:LOT_RECALL_QUARANTINE"
+        ]
+      },
+      "uniqueItems": true,
+      "description": "Data governance & quarantine markings"
+    },
+    "valid_from": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "properties": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "manifest_id": {
+          "type": "string",
+          "description": "Manifest UUID"
+        },
+        "supplier_id": {
+          "type": "string",
+          "description": "Supplier ID"
+        },
+        "warehouse_id": {
+          "type": "string",
+          "description": "Origin warehouse ID"
+        },
+        "route_id": {
+          "type": "string",
+          "description": "Planned route ID"
+        },
+        "truck_id": {
+          "type": "string",
+          "description": "Truck/vehicle UUID"
+        },
+        "vehicle_id": {
+          "type": "string",
+          "description": "Vehicle UUID"
+        },
+        "driver_id": {
+          "type": "string",
+          "description": "Driver UUID"
+        },
+        "pick_wave_id": {
+          "type": "string",
+          "description": "Associated PickWave UUID"
+        },
+        "state": {
+          "type": "string",
+          "description": "Manifest lifecycle state"
+        },
+        "status": {
+          "type": "string",
+          "description": "Alias for manifest state"
+        },
+        "stop_count": {
+          "type": "integer",
+          "description": "Total planned stops"
+        },
+        "replan_count": {
+          "type": "integer",
+          "description": "Number of mid-route replans"
+        },
+        "replan_reason": {
+          "type": "string",
+          "description": "Last replan reason"
+        },
+        "total_volume_vu": {
+          "type": "number",
+          "description": "Loaded volumetric units"
+        },
+        "max_volume_vu": {
+          "type": "number",
+          "description": "Vehicle max volumetric capacity"
+        },
+        "sealed_at": {
+          "type": "string",
+          "description": "RFC3339 seal timestamp"
+        },
+        "dispatched_at": {
+          "type": "string",
+          "description": "RFC3339 dispatch timestamp"
+        },
+        "completed_at": {
+          "type": "string",
+          "description": "RFC3339 completion timestamp"
+        }
+      }
+    }
+  }
+}

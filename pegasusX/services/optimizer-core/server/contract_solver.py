@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import math
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from ortools.constraint_solver import pywrapcp
@@ -19,6 +19,7 @@ DEFAULT_AVG_SPEED_KMPH = 30.0
 DEFAULT_MAX_STOPS = 25
 DEFAULT_TIME_LIMIT_MS = 2_000
 MAX_TIME_LIMIT_MS = 60_000
+DEFAULT_VEHICLE_FIXED_COST_M = 40_000
 SCALE_FACTOR = 10_000
 
 _HH_MM = re.compile(r"^(\d{1,2}):(\d{2})$")
@@ -40,7 +41,8 @@ def haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
         math.sin(d_lat / 2) ** 2
         + math.cos(lat1 * rad) * math.cos(lat2 * rad) * math.sin(d_lng / 2) ** 2
     )
-    return earth_r * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    a = min(1.0, max(0.0, a))
+    return earth_r * 2 * math.atan2(math.sqrt(a), math.sqrt(max(0.0, 1.0 - a)))
 
 
 def _parse_hh_mm(value: str) -> int | None:
@@ -57,11 +59,58 @@ def _parse_hh_mm(value: str) -> int | None:
     return hours * 60 + minutes
 
 
+def _parse_time_val(val: Any) -> int | None:
+    if val is None:
+        return None
+    if isinstance(val, (int, float)):
+        return int(val) if val >= 0 else None
+    s = str(val).strip()
+    if not s:
+        return None
+    if s.isdigit():
+        return int(s)
+    return _parse_hh_mm(s)
+
+
+def _is_cold_chain_required(stop: dict[str, Any]) -> bool:
+    if bool(stop.get("requires_cold_chain")):
+        return True
+    handling = str(stop.get("handling_class") or "").upper()
+    if handling in ("COLD_CHAIN", "CHILLED", "FROZEN", "REFRIGERATED"):
+        return True
+    tz = str(stop.get("temp_zone") or stop.get("temperature_band") or "").upper()
+    if tz and tz not in ("AMBIENT", "DRY", "NONE", "STANDARD"):
+        return True
+    return False
+
+
+def _vehicle_supports_cold_chain(v: dict[str, Any], stop: dict[str, Any]) -> bool:
+    stop_tz = str(stop.get("temp_zone") or stop.get("temperature_band") or "").upper()
+    v_tzs_raw = v.get("temp_zones")
+    v_tzs: set[str] = set()
+    if v_tzs_raw:
+        if isinstance(v_tzs_raw, str):
+            v_tzs = {z.strip().upper() for z in v_tzs_raw.split(",") if z.strip()}
+        elif isinstance(v_tzs_raw, (list, tuple, set)):
+            v_tzs = {str(z).strip().upper() for z in v_tzs_raw if str(z).strip()}
+
+    if stop_tz and stop_tz not in ("AMBIENT", "DRY", "NONE", "STANDARD"):
+        if v_tzs:
+            return stop_tz in v_tzs
+
+    if bool(v.get("cold_chain_capable")):
+        return True
+    if v_tzs and any(z in ("COLD", "CHILLED", "FROZEN", "REFRIGERATED", "COLD_CHAIN") for z in v_tzs):
+        return True
+    return False
+
+
 def _resolve_tunables(raw: dict[str, Any] | None) -> dict[str, float | int]:
     out: dict[str, float | int] = {
         "tetris_buffer": DEFAULT_TETRIS_BUFFER,
         "max_stops_per_route": DEFAULT_MAX_STOPS,
         "time_limit_ms": DEFAULT_TIME_LIMIT_MS,
+        "vehicle_fixed_cost_m": DEFAULT_VEHICLE_FIXED_COST_M,
     }
     if not raw:
         return out
@@ -71,6 +120,13 @@ def _resolve_tunables(raw: dict[str, Any] | None) -> dict[str, float | int]:
     max_stops = int(raw.get("max_stops_per_route") or 0)
     if max_stops > 0:
         out["max_stops_per_route"] = max_stops
+    time_limit = int(raw.get("time_limit_ms") or 0)
+    if time_limit > 0:
+        out["time_limit_ms"] = min(time_limit, MAX_TIME_LIMIT_MS)
+    if "vehicle_fixed_cost_m" in raw and raw.get("vehicle_fixed_cost_m") is not None:
+        fixed_cost = int(raw.get("vehicle_fixed_cost_m") or 0)
+        if fixed_cost >= 0:
+            out["vehicle_fixed_cost_m"] = fixed_cost
     return out
 
 
@@ -84,50 +140,136 @@ def _travel_minutes(distance_m: int, speed_kmph: float) -> int:
 
 
 def solve_contract(req: dict[str, Any]) -> dict[str, Any]:
-    started = datetime.utcnow()
+    started = datetime.now(timezone.utc)
     trace_id = str(req.get("trace_id") or "")
     stops_in = list(req.get("stops") or [])
     vehicles_in = list(req.get("vehicles") or [])
     tunables = _resolve_tunables(req.get("tunables"))
+
+    raw_tunables = req.get("tunables") if isinstance(req.get("tunables"), dict) else {}
+    req_time_limit = int(raw_tunables.get("time_limit_ms") or DEFAULT_TIME_LIMIT_MS)
+    if req_time_limit <= 0:
+        req_time_limit = DEFAULT_TIME_LIMIT_MS
+    time_limit_requested = int(req.get("_time_limit_ms_requested") or req_time_limit)
+    time_limit_applied = int(req.get("_time_limit_ms_applied") or int(tunables["time_limit_ms"]))
 
     if not vehicles_in:
         raise SolverError("EMPTY_FLEET", "fleet is empty")
     if not stops_in:
         raise SolverError("BAD_REQUEST", "stops slice is empty")
 
-    depot_lat = float(vehicles_in[0].get("start_lat") or 0)
-    depot_lng = float(vehicles_in[0].get("start_lng") or 0)
+    depot_nodes: list[tuple[float, float]] = []
+    depot_map: dict[tuple[float, float], int] = {}
+
+    def get_or_add_depot(lat: float, lng: float) -> int:
+        coord = (round(lat, 6), round(lng, 6))
+        if coord not in depot_map:
+            idx = len(depot_nodes)
+            depot_map[coord] = idx
+            depot_nodes.append((lat, lng))
+        return depot_map[coord]
+
+    starts: list[int] = []
+    ends: list[int] = []
+    for v in vehicles_in:
+        if not isinstance(v, dict):
+            raise SolverError("BAD_REQUEST", "each vehicle entry must be an object")
+        try:
+            s_lat = float(v.get("start_lat") or 0)
+            s_lng = float(v.get("start_lng") or 0)
+            e_lat = float(v.get("end_lat") or s_lat)
+            e_lng = float(v.get("end_lng") or s_lng)
+            max_vol = float(v.get("max_volume_vu") or 0)
+            avg_spd = float(v.get("avg_speed_kmph") or 0)
+        except (TypeError, ValueError) as exc:
+            raise SolverError("BAD_REQUEST", f"invalid vehicle numeric field: {exc}") from exc
+        if not all(math.isfinite(val) for val in (s_lat, s_lng, e_lat, e_lng, max_vol, avg_spd)):
+            raise SolverError("BAD_REQUEST", "vehicle coordinates, volume, and speed must be finite numbers")
+        starts.append(get_or_add_depot(s_lat, s_lng))
+        ends.append(get_or_add_depot(e_lat, e_lng))
+
+    num_depots = len(depot_nodes)
 
     stops: list[dict[str, Any]] = []
     orphans: list[dict[str, str]] = []
-    for stop in stops_in:
-        volume = float(stop.get("volume_vu") or 0)
+    for orig_idx, stop in enumerate(stops_in):
+        if not isinstance(stop, dict):
+            raise SolverError("BAD_REQUEST", "each stop entry must be an object")
+        try:
+            volume = float(stop.get("volume_vu") or 0)
+            stop_lat = float(stop.get("lat") or 0)
+            stop_lng = float(stop.get("lng") or 0)
+        except (TypeError, ValueError) as exc:
+            raise SolverError("BAD_REQUEST", f"invalid stop numeric field: {exc}") from exc
+        if not all(math.isfinite(val) for val in (volume, stop_lat, stop_lng)):
+            raise SolverError("BAD_REQUEST", "stop coordinates and volume_vu must be finite numbers")
         if volume <= 0:
             orphans.append({"order_id": str(stop.get("order_id") or ""), "reason": "non-positive volume"})
             continue
         service = int(stop.get("service_minutes") or 0)
         if service <= 0:
             service = DEFAULT_SERVICE_MINUTES
-        stops.append({**stop, "volume_vu": volume, "service_minutes": service})
+        stops.append({**stop, "lat": stop_lat, "lng": stop_lng, "volume_vu": volume, "service_minutes": service, "_orig_idx": orig_idx})
 
     if not stops:
-        elapsed_ms = int((datetime.utcnow() - started).total_seconds() * 1000)
-        return _empty_response(trace_id, len(stops_in), orphans, elapsed_ms)
+        elapsed_ms = int((datetime.now(timezone.utc) - started).total_seconds() * 1000)
+        return _empty_response(
+            trace_id,
+            len(stops_in),
+            orphans,
+            elapsed_ms,
+            time_limit_requested,
+            time_limit_applied,
+        )
 
-    node_coords = [(depot_lat, depot_lng)]
+    node_coords = list(depot_nodes)
     for stop in stops:
         node_coords.append((float(stop["lat"]), float(stop["lng"])))
 
     size = len(node_coords)
-    distance_matrix = [
-        [
-            _scaled_distance_m(node_coords[i][0], node_coords[i][1], node_coords[j][0], node_coords[j][1])
-            for j in range(size)
-        ]
-        for i in range(size)
-    ]
+    raw_matrix = req.get("distance_matrix_m")
+    matrix_loaded = False
+    if isinstance(raw_matrix, list) and len(raw_matrix) > 0 and all(isinstance(row, list) for row in raw_matrix):
+        # Case A: matrix matches node_coords (size x size)
+        if len(raw_matrix) == size and all(len(row) == size for row in raw_matrix):
+            distance_matrix = [
+                [max(1, int(raw_matrix[i][j])) if i != j else 0 for j in range(size)]
+                for i in range(size)
+            ]
+            matrix_loaded = True
+        # Case B: matrix matches (len(vehicles_in) + len(stops_in)) per optimizer-contract specification
+        elif len(raw_matrix) == len(vehicles_in) + len(stops_in) and all(len(row) == len(vehicles_in) + len(stops_in) for row in raw_matrix):
+            depot_to_v: dict[int, int] = {}
+            for v_idx, d_idx in enumerate(starts):
+                if d_idx not in depot_to_v:
+                    depot_to_v[d_idx] = v_idx
 
-    demands = [0]
+            node_to_client: list[int] = []
+            for d in range(num_depots):
+                node_to_client.append(depot_to_v.get(d, 0))
+            for stop in stops:
+                orig_idx = int(stop.get("_orig_idx", 0))
+                node_to_client.append(len(vehicles_in) + orig_idx)
+
+            distance_matrix = [
+                [
+                    max(1, int(raw_matrix[node_to_client[i]][node_to_client[j]])) if i != j else 0
+                    for j in range(size)
+                ]
+                for i in range(size)
+            ]
+            matrix_loaded = True
+
+    if not matrix_loaded:
+        distance_matrix = [
+            [
+                _scaled_distance_m(node_coords[i][0], node_coords[i][1], node_coords[j][0], node_coords[j][1])
+                for j in range(size)
+            ]
+            for i in range(size)
+        ]
+
+    demands = [0] * num_depots
     for stop in stops:
         demands.append(max(1, int(stop["volume_vu"] * SCALE_FACTOR)))
 
@@ -139,7 +281,7 @@ def solve_contract(req: dict[str, Any]) -> dict[str, Any]:
         float(v.get("avg_speed_kmph") or 0) or DEFAULT_AVG_SPEED_KMPH for v in vehicles_in
     ]
 
-    manager = pywrapcp.RoutingIndexManager(size, len(vehicles_in), 0)
+    manager = pywrapcp.RoutingIndexManager(size, len(vehicles_in), starts, ends)
     routing = pywrapcp.RoutingModel(manager)
 
     def distance_callback(from_index: int, to_index: int) -> int:
@@ -149,6 +291,8 @@ def solve_contract(req: dict[str, Any]) -> dict[str, Any]:
 
     distance_idx = routing.RegisterTransitCallback(distance_callback)
     routing.SetArcCostEvaluatorOfAllVehicles(distance_idx)
+    # Priority 1: Minimize active vehicle count (< drop_penalty = 100_000 so stops are never dropped just to save a vehicle).
+    routing.SetFixedCostOfAllVehicles(int(tunables["vehicle_fixed_cost_m"]))
 
     def demand_callback(from_index: int) -> int:
         from_node = manager.IndexToNode(from_index)
@@ -157,24 +301,23 @@ def solve_contract(req: dict[str, Any]) -> dict[str, Any]:
     demand_idx = routing.RegisterUnaryTransitCallback(demand_callback)
     routing.AddDimensionWithVehicleCapacity(demand_idx, 0, vehicle_caps, True, "Capacity")
 
-    # Per-vehicle travel time in minutes (must not reuse the meters cost callback).
-    time_callback_indices: list[int] = []
-    for vehicle_index, speed in enumerate(vehicle_speeds):
-        def make_time_cb(veh_idx: int = vehicle_index, spd: float = speed):
-            def time_callback(from_index: int, to_index: int) -> int:
-                from_node = manager.IndexToNode(from_index)
-                to_node = manager.IndexToNode(to_index)
-                travel = _travel_minutes(distance_matrix[from_node][to_node], spd)
-                # Service time is paid when leaving a customer node.
-                if from_node != 0:
-                    travel += int(stops[from_node - 1]["service_minutes"])
-                return travel
+    max_stops = int(tunables["max_stops_per_route"])
 
-            return time_callback
+    def stop_count_callback(from_index: int) -> int:
+        from_node = manager.IndexToNode(from_index)
+        return 1 if from_node >= num_depots else 0
 
-        time_callback_indices.append(routing.RegisterTransitCallback(make_time_cb()))
+    stop_count_idx = routing.RegisterUnaryTransitCallback(stop_count_callback)
+    routing.AddDimensionWithVehicleCapacity(
+        stop_count_idx,
+        0,
+        [max(1, max_stops)] * len(vehicles_in),
+        True,
+        "StopCount",
+    )
 
-    time_windows: list[tuple[int, int] | None] = [None]
+    # Only parse and register time-window callbacks when at least one stop carries a window.
+    time_windows: list[tuple[int, int] | None] = [None] * num_depots
     has_time_windows = False
     for stop in stops:
         open_min = _parse_hh_mm(str(stop.get("window_open") or ""))
@@ -185,30 +328,114 @@ def solve_contract(req: dict[str, Any]) -> dict[str, Any]:
         else:
             time_windows.append(None)
 
-    if has_time_windows:
+    has_vehicle_time_limits = any(
+        bool(v.get("max_route_minutes")) or bool(v.get("shift_start")) or bool(v.get("shift_end"))
+        for v in vehicles_in
+    )
+
+    if has_time_windows or has_vehicle_time_limits:
+        # Per-vehicle travel time in minutes, deduplicated across vehicles sharing the same speed.
+        speed_cb_cache: dict[float, int] = {}
+        time_callback_indices: list[int] = []
+        for speed in vehicle_speeds:
+            speed_key = round(speed, 3)
+            cb_idx = speed_cb_cache.get(speed_key)
+            if cb_idx is None:
+                def make_time_cb(spd: float = speed):
+                    def time_callback(from_index: int, to_index: int) -> int:
+                        from_node = manager.IndexToNode(from_index)
+                        to_node = manager.IndexToNode(to_index)
+                        travel = _travel_minutes(distance_matrix[from_node][to_node], spd)
+                        # Service time is paid when leaving a customer node.
+                        if from_node >= num_depots:
+                            travel += int(stops[from_node - num_depots]["service_minutes"])
+                        return travel
+
+                    return time_callback
+
+                cb_idx = routing.RegisterTransitCallback(make_time_cb())
+                speed_cb_cache[speed_key] = cb_idx
+            time_callback_indices.append(cb_idx)
+
         max_horizon = 24 * 60
         for tw in time_windows:
             if tw is not None:
                 max_horizon = max(max_horizon, tw[1] + DEFAULT_SERVICE_MINUTES)
+        for v in vehicles_in:
+            s_end = _parse_time_val(v.get("shift_end"))
+            if s_end is not None and s_end > max_horizon:
+                max_horizon = s_end
+            s_start = _parse_time_val(v.get("shift_start"))
+            m_dur = _parse_time_val(v.get("max_route_minutes"))
+            if s_start is not None and m_dur is not None and (s_start + m_dur) > max_horizon:
+                max_horizon = s_start + m_dur
+
         routing.AddDimensionWithVehicleTransits(
             time_callback_indices, 30, max_horizon, False, "Time"
         )
         time_dim = routing.GetDimensionOrDie("Time")
-        for node_index in range(1, size):
+        # Priority 2: Balanced time-window adherence and compact route span.
+        time_dim.SetSpanCostCoefficientForAllVehicles(10)
+        for node_index in range(num_depots, size):
             tw = time_windows[node_index]
             if tw is None:
                 continue
             manager_index = manager.NodeToIndex(node_index)
-            service = int(stops[node_index - 1]["service_minutes"])
-            time_dim.CumulVar(manager_index).SetRange(tw[0], max(tw[0], tw[1] - service))
+            service = int(stops[node_index - num_depots]["service_minutes"])
+            hard_upper = max(tw[0], tw[1] - service)
+            time_dim.CumulVar(manager_index).SetRange(tw[0], hard_upper)
+            soft_upper = max(tw[0], hard_upper - min(10, (hard_upper - tw[0]) // 4))
+            if soft_upper < hard_upper:
+                time_dim.SetCumulVarSoftUpperBound(manager_index, soft_upper, 50)
+
+        # Enforce per-vehicle shift and route duration bounds
+        for v_idx, v in enumerate(vehicles_in):
+            start_cumul = time_dim.CumulVar(routing.Start(v_idx))
+            end_cumul = time_dim.CumulVar(routing.End(v_idx))
+
+            s_start = _parse_time_val(v.get("shift_start"))
+            s_end = _parse_time_val(v.get("shift_end"))
+            max_dur = _parse_time_val(v.get("max_route_minutes"))
+
+            if s_start is not None and s_start > 0:
+                start_cumul.SetMin(s_start)
+            if s_end is not None and s_end > 0:
+                end_cumul.SetMax(s_end)
+            if max_dur is not None and max_dur > 0:
+                routing.solver().Add(end_cumul - start_cumul <= max_dur)
+                if s_start is not None and s_start > 0:
+                    effective_end = s_start + max_dur
+                    if s_end is not None and s_end > 0:
+                        effective_end = min(s_end, effective_end)
+                    end_cumul.SetMax(effective_end)
+                elif s_end is not None and s_end > 0:
+                    end_cumul.SetMax(s_end)
+                else:
+                    end_cumul.SetMax(max_dur)
 
     # Drop infeasible stops individually instead of collapsing the whole model.
-    # Penalty high enough that assignment is preferred when feasible.
-    drop_penalty = 100_000
-    for node_index in range(1, size):
-        routing.AddDisjunction([manager.NodeToIndex(node_index)], drop_penalty)
+    # Keep disjunction penalty dominant over vehicle fixed cost and regional arcs so
+    # reachable stops are never dropped merely to reduce travel distance.
+    base_drop_penalty = max(10_000_000, int(tunables["vehicle_fixed_cost_m"]) * 100)
+    for node_index in range(num_depots, size):
+        mgr_idx = manager.NodeToIndex(node_index)
+        stop = stops[node_index - num_depots]
+        prio_bonus = max(0, min(100, int(stop.get("priority") or 0))) * 100_000
+        routing.AddDisjunction([mgr_idx], base_drop_penalty + prio_bonus)
 
-    max_stops = int(tunables["max_stops_per_route"])
+        req_hazmat = bool(stop.get("is_hazardous")) or (stop.get("handling_class") == "HAZMAT")
+        req_cold = _is_cold_chain_required(stop)
+
+        if req_hazmat or req_cold:
+            allowed_vehicles: list[int] = []
+            for v_idx, v in enumerate(vehicles_in):
+                if req_hazmat and not bool(v.get("hazmat_certified")):
+                    continue
+                if req_cold and not _vehicle_supports_cold_chain(v, stop):
+                    continue
+                allowed_vehicles.append(v_idx)
+            # Allowed values include -1 so node can be dropped via disjunction if no feasible vehicle
+            routing.VehicleVar(mgr_idx).SetValues([-1] + allowed_vehicles)
 
     search = pywrapcp.DefaultRoutingSearchParameters()
     search.first_solution_strategy = (
@@ -217,7 +444,7 @@ def solve_contract(req: dict[str, Any]) -> dict[str, Any]:
     search.local_search_metaheuristic = (
         routing_enums_pb2.LocalSearchMetaheuristic.GUIDED_LOCAL_SEARCH
     )
-    time_limit_ms = min(max(1, DEFAULT_TIME_LIMIT_MS), MAX_TIME_LIMIT_MS)
+    time_limit_ms = min(max(1, int(tunables["time_limit_ms"])), MAX_TIME_LIMIT_MS)
     search.time_limit.FromMilliseconds(time_limit_ms)
 
     solution = routing.SolveWithParameters(search)
@@ -231,7 +458,6 @@ def solve_contract(req: dict[str, Any]) -> dict[str, Any]:
             total_vu = 0.0
             distance_m = 0
             duration_min = 0
-            prev_node = 0
             while not routing.IsEnd(index):
                 node_index = manager.IndexToNode(index)
                 next_index = solution.Value(routing.NextVar(index))
@@ -240,14 +466,12 @@ def solve_contract(req: dict[str, Any]) -> dict[str, Any]:
                 duration_min += _travel_minutes(
                     distance_matrix[node_index][next_node], vehicle_speeds[vehicle_index]
                 )
-                if node_index != 0:
-                    stop = stops[node_index - 1]
+                if node_index >= num_depots:
+                    stop = stops[node_index - num_depots]
                     ordered_stops.append(stop)
                     total_vu += float(stop["volume_vu"])
                     duration_min += int(stop["service_minutes"])
-                prev_node = node_index
                 index = next_index
-                _ = prev_node
             if not ordered_stops:
                 continue
             if len(ordered_stops) > max_stops:
@@ -271,6 +495,7 @@ def solve_contract(req: dict[str, Any]) -> dict[str, Any]:
                     "window_close": s.get("window_close") or "",
                     "service_minutes": s.get("service_minutes"),
                     "priority": int(s.get("priority") or 0),
+                    "is_hazardous": bool(s.get("is_hazardous")),
                 }
                 for s in ordered_stops
             ]
@@ -293,12 +518,22 @@ def solve_contract(req: dict[str, Any]) -> dict[str, Any]:
             )
 
     assigned_ids = {s.get("order_id") for r in routes for s in r["stops"]}
+    stop_cap_saturated = (
+        bool(routes)
+        and len(routes) == len(vehicles_in)
+        and all(len(r["stops"]) >= max_stops for r in routes)
+    )
     for stop in stops:
         oid = str(stop.get("order_id") or "")
         if oid and oid not in assigned_ids and not any(o["order_id"] == oid for o in orphans):
-            orphans.append({"order_id": oid, "reason": "unassigned"})
+            orphans.append(
+                {
+                    "order_id": oid,
+                    "reason": "max_stops_per_route" if stop_cap_saturated else "unassigned",
+                }
+            )
 
-    elapsed_ms = int((datetime.utcnow() - started).total_seconds() * 1000)
+    elapsed_ms = int((datetime.now(timezone.utc) - started).total_seconds() * 1000)
     util_sum = sum(float(r["util_pct"]) for r in routes)
     avg_util = util_sum / len(routes) if routes else 0.0
     return {
@@ -315,12 +550,27 @@ def solve_contract(req: dict[str, Any]) -> dict[str, Any]:
             "vehicles_used": len(routes),
             "avg_utilisation_pct": avg_util,
             "two_opt_improvement_pct": 0.0,
+            "solver_time_limit_ms_requested": time_limit_requested,
+            "solver_time_limit_ms_applied": time_limit_applied,
+        },
+        "solver_metadata": {
+            "solver_status": "HEURISTIC",
+            "solver_time_limit_ms_requested": time_limit_requested,
+            "solver_time_limit_ms_applied": time_limit_applied,
+            "time_limit_requested_ms": time_limit_requested,
+            "time_limit_applied_ms": time_limit_applied,
+            "clamped": time_limit_requested > time_limit_applied,
         },
     }
 
 
 def _empty_response(
-    trace_id: str, considered: int, orphans: list[dict[str, str]], elapsed_ms: int
+    trace_id: str,
+    considered: int,
+    orphans: list[dict[str, str]],
+    elapsed_ms: int,
+    time_limit_requested: int = DEFAULT_TIME_LIMIT_MS,
+    time_limit_applied: int = DEFAULT_TIME_LIMIT_MS,
 ) -> dict[str, Any]:
     return {
         "v": CONTRACT_V,
@@ -336,5 +586,15 @@ def _empty_response(
             "vehicles_used": 0,
             "avg_utilisation_pct": 0.0,
             "two_opt_improvement_pct": 0.0,
+            "solver_time_limit_ms_requested": time_limit_requested,
+            "solver_time_limit_ms_applied": time_limit_applied,
+        },
+        "solver_metadata": {
+            "solver_status": "HEURISTIC",
+            "solver_time_limit_ms_requested": time_limit_requested,
+            "solver_time_limit_ms_applied": time_limit_applied,
+            "time_limit_requested_ms": time_limit_requested,
+            "time_limit_applied_ms": time_limit_applied,
+            "clamped": time_limit_requested > time_limit_applied,
         },
     }

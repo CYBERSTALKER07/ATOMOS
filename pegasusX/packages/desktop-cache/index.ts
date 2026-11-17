@@ -3,7 +3,16 @@ export {
   isDesktopCacheAvailable,
   withDatabase,
 } from "./db";
-export { cacheDelete, cacheGet, cacheSet } from "./kv";
+export {
+  DEFAULT_CACHE_MAX_AGE_MS,
+  cacheClearAll,
+  cacheClearPrefix,
+  cacheDelete,
+  cacheGet,
+  cacheSet,
+  scopedCacheKey,
+  type CacheGetOptions,
+} from "./kv";
 export {
   enqueuePendingCheckout,
   isRetryableCheckoutError,
@@ -15,6 +24,7 @@ export {
   type PendingCheckout,
 } from "./pending-checkout";
 export {
+  SYNCING_LEASE_MS,
   clearParkedPosCart,
   countActivePendingPosSales,
   countPendingForSession,
@@ -29,3 +39,10 @@ export {
   type PendingPosSale,
   type PendingPosSaleStatus,
 } from "./pending-pos-sales";
+export {
+  deleteCommand,
+  getPendingCommands,
+  insertPendingCommand,
+  markCommandFailed,
+  type PendingCommand,
+} from "./pending-commands";

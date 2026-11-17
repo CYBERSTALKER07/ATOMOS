@@ -120,6 +120,7 @@ func lookupShopClosedRisk(ctx context.Context, client *spanner.Client, retailerI
 		        COUNT(*) AS total_n
 		      FROM Orders
 		      WHERE RetailerId IN UNNEST(@ids)
+		        AND COALESCE(OrderSource, '') != 'MIGRATION'
 		        AND Status IN ('DELIVERED', 'DELIVERED_ON_CREDIT', 'FISCALIZED', 'ARRIVED_SHOP_CLOSED')
 		      GROUP BY RetailerId`,
 		Params: map[string]any{"ids": retailerIDs},

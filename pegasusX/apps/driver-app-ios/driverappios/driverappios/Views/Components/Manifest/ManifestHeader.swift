@@ -7,19 +7,19 @@ struct ManifestHeader: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(loadingMode ? "LOADING SEQUENCE" : "UPCOMING")
-                .font(.system(size: 10, weight: .heavy, design: .monospaced))
+                .font(.system(.caption2, design: .monospaced, weight: .heavy))
                 .foregroundStyle(loadingMode ? LabTheme.fg : LabTheme.fgTertiary)
                 .tracking(1.2)
             
             HStack(alignment: .top) {
                 HStack(alignment: .firstTextBaseline, spacing: 10) {
                     Text(loadingMode ? "Loading Manifest" : "Route Manifest")
-                        .font(.system(size: 28, weight: .bold))
+                        .font(.system(.title, weight: .bold))
                         .foregroundStyle(LabTheme.fg)
                     
                     if pendingMissionsCount > 0 {
                         Text("\(pendingMissionsCount)")
-                            .font(.system(size: 12, weight: .bold))
+                            .font(.system(.caption, weight: .bold))
                             .foregroundStyle(LabTheme.buttonFg)
                             .frame(width: 24, height: 24)
                             .background(LabTheme.fg, in: Circle())
@@ -27,8 +27,8 @@ struct ManifestHeader: View {
                 }
                 Spacer()
                 VStack(alignment: .trailing, spacing: 4) {
-                    Text("Loading Mode")
-                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                    Text("mobile_driver.ui.loading_mode")
+                        .font(.system(.caption2, design: .monospaced, weight: .bold))
                         .foregroundStyle(loadingMode ? LabTheme.fg : LabTheme.fgTertiary)
                         .tracking(0.8)
                     Toggle("", isOn: $loadingMode)

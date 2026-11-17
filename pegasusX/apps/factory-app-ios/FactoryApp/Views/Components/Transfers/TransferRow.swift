@@ -4,12 +4,15 @@ struct TransferRow: View {
     let transfer: Transfer
 
     var body: some View {
+        let destination = transfer.warehouseName.isEmpty ? String(transfer.warehouseId.prefix(8)) : transfer.warehouseName
+        let priorityLabel = transfer.priority.isEmpty ? "STANDARD" : transfer.priority
+
         VStack(alignment: .leading, spacing: LabTheme.spacingSM) {
             HStack(alignment: .top, spacing: LabTheme.spacingMD) {
                 VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
-                    Text(transfer.warehouseName.isEmpty ? String(transfer.warehouseId.prefix(8)) : transfer.warehouseName)
+                    Text(destination)
                         .font(.subheadline.bold())
-                    Text("Transfer \(transfer.id.prefix(8))")
+                    Text(L10n.format("mobile_factory.ui.transfer_prefix", "\(transfer.id.prefix(8))"))
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -17,7 +20,7 @@ struct TransferRow: View {
                 VStack(alignment: .trailing, spacing: LabTheme.spacingXS) {
                     FactoryStatusBadge(text: transfer.state)
                     FactoryStatusBadge(
-                        text: transfer.priority.isEmpty ? "STANDARD" : transfer.priority,
+                        text: priorityLabel,
                         emphasized: false
                     )
                 }
@@ -29,5 +32,8 @@ struct TransferRow: View {
             }
         }
         .padding(.vertical, LabTheme.spacingXS)
+        .frame(minHeight: 44)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Transfer \(transfer.id.prefix(8)) to \(destination), status \(transfer.state), \(transfer.totalItems) items")
     }
 }

@@ -1,137 +1,93 @@
 import SwiftUI
 
 struct OrgFleetView: View {
-    @State private var tab = 0
-    @State private var loading = true
-    @State private var error: String?
-    @State private var topology: SupplierTopologyResponse?
-    @State private var drivers: [FleetDriver] = []
-    @State private var vehicles: [FleetVehicle] = []
-    @State private var orgMembers: [SupplierOrgMember] = []
-    @State private var showDriverSheet = false
-    @State private var showVehicleSheet = false
-    @State private var showOrgSheet = false
-    @State private var showEditMemberSheet = false
-    @State private var editingMember: SupplierOrgMember?
-    @State private var memberActionId: String?
+    @State private var viewModel = OrgFleetViewModel()
 
     var body: some View {
+        @Bindable var vm = viewModel
         Group {
-            if loading {
-                SupplierLoadingView(title: "Loading org & fleet…")
-            } else if let error {
-                SupplierErrorView(message: error) { Task { await reload() } }
+            if viewModel.loading && viewModel.topology == nil && viewModel.drivers.isEmpty && viewModel.vehicles.isEmpty && viewModel.orgMembers.isEmpty {
+                SupplierLoadingView(title: "mobile_supplier.loading.org_fleet")
+            } else if let error = viewModel.error, viewModel.topology == nil && viewModel.drivers.isEmpty && viewModel.vehicles.isEmpty && viewModel.orgMembers.isEmpty {
+                SupplierErrorView(message: error) { Task { await viewModel.reload(silent: true) } }
             } else {
                 VStack(spacing: 0) {
                     MetricsOverviewView(
-                        driversCount: drivers.count,
-                        vehiclesCount: vehicles.count,
-                        orgMembersCount: orgMembers.count,
-                        topology: topology
+                        driversCount: viewModel.drivers.count,
+                        vehiclesCount: viewModel.vehicles.count,
+                        orgMembersCount: viewModel.orgMembers.count,
+                        topology: viewModel.topology
                     )
                     .padding(.top)
 
-                    Picker("Section", selection: $tab) {
-                        Text("Drivers (\(drivers.count))").tag(0)
-                        Text("Vehicles (\(vehicles.count))").tag(1)
-                        Text("Org (\(orgMembers.count))").tag(2)
+                    Picker("mobile_supplier.chrome.section", selection: $vm.tab) {
+                        Text(L10n.format("mobile_supplier.ui.drivers_count", "\(viewModel.drivers.count)")).tag(0)
+                        Text(L10n.format("mobile_supplier.ui.vehicles_count", "\(viewModel.vehicles.count)")).tag(1)
+                        Text(L10n.format("mobile_supplier.ui.org_count", "\(viewModel.orgMembers.count)")).tag(2)
                     }
                     .pickerStyle(.segmented)
                     .padding()
 
-                    switch tab {
+                    switch viewModel.tab {
                     case 0:
-                        DriverListView(drivers: drivers, topology: topology)
+                        DriverListView(drivers: viewModel.drivers, topology: viewModel.topology)
                     case 1:
-                        VehicleListView(vehicles: vehicles, topology: topology)
+                        VehicleListView(vehicles: viewModel.vehicles, topology: viewModel.topology)
                     default:
                         OrgMemberListView(
-                            orgMembers: orgMembers,
-                            editingMember: $editingMember,
-                            showEditMemberSheet: $showEditMemberSheet,
-                            memberActionId: $memberActionId,
-                            deactivateAction: deactivateMember
+                            orgMembers: viewModel.orgMembers,
+                            editingMember: $vm.editingMember,
+                            showEditMemberSheet: $vm.showEditMemberSheet,
+                            memberActionId: $vm.memberActionId,
+                            deactivateAction: { userId in
+                                await viewModel.deactivateMember(userId)
+                            }
                         )
                     }
                 }
             }
         }
         .background(SupplierTheme.background)
-        .navigationTitle("Org & fleet")
+        .navigationTitle("mobile_supplier.ui.org_and_fleet")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                Button("Add") {
-                    switch tab {
-                    case 0: showDriverSheet = true
-                    case 1: showVehicleSheet = true
-                    default: showOrgSheet = true
-                    }
+                Button("mobile_supplier.ui.add") {
+                    viewModel.openCreateForCurrentTab()
                 }
             }
         }
-        .task { await reload() }
-        .sheet(isPresented: $showDriverSheet) {
-            if let topology {
-                CreateDriverSheet(topology: topology, vehicles: vehicles) {
-                    showDriverSheet = false
-                    Task { await reload() }
+        .task { await viewModel.reload() }
+        .sheet(isPresented: $vm.showDriverSheet) {
+            if let topology = viewModel.topology {
+                CreateDriverSheet(topology: topology, vehicles: viewModel.vehicles) {
+                    viewModel.showDriverSheet = false
+                    Task { await viewModel.reload(silent: true) }
                 }
             }
         }
-        .sheet(isPresented: $showVehicleSheet) {
-            if let topology {
+        .sheet(isPresented: $vm.showVehicleSheet) {
+            if let topology = viewModel.topology {
                 CreateVehicleSheet(topology: topology) {
-                    showVehicleSheet = false
-                    Task { await reload() }
+                    viewModel.showVehicleSheet = false
+                    Task { await viewModel.reload(silent: true) }
                 }
             }
         }
-        .sheet(isPresented: $showOrgSheet) {
-            if let topology {
+        .sheet(isPresented: $vm.showOrgSheet) {
+            if let topology = viewModel.topology {
                 CreateOrgMemberSheet(topology: topology) {
-                    showOrgSheet = false
-                    Task { await reload() }
+                    viewModel.showOrgSheet = false
+                    Task { await viewModel.reload(silent: true) }
                 }
             }
         }
-        .sheet(isPresented: $showEditMemberSheet) {
-            if let editingMember {
+        .sheet(isPresented: $vm.showEditMemberSheet) {
+            if let editingMember = viewModel.editingMember {
                 EditOrgMemberSheet(member: editingMember) {
-                    showEditMemberSheet = false
-                    Task { await reload() }
+                    viewModel.showEditMemberSheet = false
+                    Task { await viewModel.reload(silent: true) }
                 }
             }
-        }
-    }
-
-    private func reload() async {
-        loading = true
-        error = nil
-        defer { loading = false }
-        do {
-            async let topo = SupplierOperationsService.topology()
-            async let driverResp = SupplierService.fleetDrivers()
-            async let vehicleResp = SupplierService.fleetVehicles()
-            async let orgResp = SupplierOperationsService.orgMembers()
-            topology = try await topo
-            drivers = try await driverResp
-            vehicles = try await vehicleResp
-            orgMembers = try await orgResp
-        } catch {
-            self.error = error.localizedDescription
-        }
-    }
-
-    private func deactivateMember(_ userId: String) async {
-        memberActionId = userId
-        defer { memberActionId = nil }
-        do {
-            orgMembers = try await SupplierOperationsService.deactivateOrgMember(
-                userId,
-                idempotencyKey: SupplierIdempotencyKeys.orgMemberDeactivate(scopeId: SupplierIdempotencyKeys.supplierScopeId(), userId: userId)
-            )
-        } catch {
-            self.error = error.localizedDescription
         }
     }
 }

@@ -43,7 +43,8 @@ fun StaffScreen(
         scope.launch {
             try {
                 val resp = api.getStaff()
-                if (resp.isSuccessful && resp.body() != null) staff = resp.body()!!.staff
+                val respBody = resp.body()
+                if (resp.isSuccessful && respBody != null) staff = respBody.staff
                 else if (!silent) error = "Failed (${resp.code()})"
             } catch (e: Exception) {
                 if (!silent) error = e.message ?: "Network error"
@@ -97,7 +98,7 @@ fun StaffScreen(
                 Column {
                     Text("One-time PIN — save it now:")
                     Spacer(Modifier.height(PegasusSpacing.md))
-                    Text(createdPin!!, style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary)
+                    Text(createdPin.orEmpty(), style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary)
                 }
             },
             confirmButton = { TextButton(onClick = { createdPin = null }) { Text("Done") } },
@@ -137,7 +138,7 @@ private fun CreateStaffDialog(
                 OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Name") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(value = phone, onValueChange = { phone = it }, label = { Text("Phone") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(value = role, onValueChange = { role = it }, label = { Text("Role") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                if (error != null) Text(error!!, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                if (error != null) Text(error.orEmpty(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
             }
         },
         confirmButton = {
@@ -150,7 +151,7 @@ private fun CreateStaffDialog(
                                 CreateStaffRequest(name = name, phone = phone, role = role),
                                 WarehouseIdempotencyKeys.createStaff(phone),
                             )
-                            if (resp.isSuccessful && resp.body() != null) onCreated(resp.body()!!.pin)
+                            if (resp.isSuccessful && resp.body() != null) resp.body()?.pin?.let(onCreated)
                             else error = "Failed (${resp.code()})"
                         } catch (e: Exception) { error = e.message ?: "Error" }
                         finally { submitting = false }

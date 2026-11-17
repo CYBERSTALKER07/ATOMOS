@@ -44,6 +44,16 @@ func (s *Service) HandleSupplierRefresh(w http.ResponseWriter, r *http.Request) 
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": "invalid_refresh_scope"})
 		return
 	}
+	if rerr := auth.ValidateAndRotateRefreshClaims(r.Context(), claims, 0); rerr != nil {
+		code := http.StatusUnauthorized
+		if rerr.Error() == "revocation_store_unavailable" {
+			code = http.StatusServiceUnavailable
+		}
+		writeJSON(w, code, map[string]string{"error": rerr.Error()})
+		return
+	}
+	claims.JTI = ""
+	claims.TokenUse = auth.TokenUseFull
 
 	token, err := auth.Issue(claims, auth.IssueOptions{
 		Secret: s.jwtSecret,
@@ -55,11 +65,16 @@ func (s *Service) HandleSupplierRefresh(w http.ResponseWriter, r *http.Request) 
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "issue_token_failed"})
 		return
 	}
+	newRefresh, err := s.issueRefreshTokenForClaims(claims)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "issue_refresh_failed"})
+		return
+	}
 	auth.SetSessionCookie(w, token, s.jwtTTL, s.cookieSecure)
 
 	writeJSON(w, http.StatusOK, map[string]string{
 		"token":         token,
-		"refresh_token": refresh,
+		"refresh_token": newRefresh,
 		"supplier_id":   claims.SupplierID,
 	})
 }
@@ -69,12 +84,25 @@ func (s *Service) issueRefreshToken(supplierID string, isConfigured bool) (strin
 	if supplierID == "" {
 		supplierID = s.supplierID
 	}
-	return auth.Issue(auth.Claims{
+	return s.issueRefreshTokenForClaims(auth.Claims{
 		Subject:      supplierID,
 		Role:         auth.RoleAdmin,
 		SupplierID:   supplierID,
 		IsConfigured: isConfigured,
-	}, auth.IssueOptions{
+	})
+}
+
+func (s *Service) issueRefreshTokenForClaims(claims auth.Claims) (string, error) {
+	if strings.TrimSpace(claims.SupplierID) == "" {
+		claims.SupplierID = s.supplierID
+	}
+	if strings.TrimSpace(claims.Subject) == "" {
+		claims.Subject = claims.SupplierID
+	}
+	if claims.Role == "" {
+		claims.Role = auth.RoleAdmin
+	}
+	return auth.Issue(claims, auth.IssueOptions{
 		Secret: s.jwtSecret,
 		Issuer: s.jwtIssuer,
 		TTL:    7 * 24 * time.Hour,

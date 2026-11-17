@@ -1,0 +1,39 @@
+{
+  "id": "capacity_overflow",
+  "expect": {
+    "max_placed": 1,
+    "min_orphans": 1
+  },
+  "request": {
+    "v": "v1",
+    "trace_id": "cert-cap",
+    "supplier_id": "s1",
+    "home_node_id": "wh1",
+    "stops": [
+      {
+        "order_id": "big-1",
+        "retailer_id": "r1",
+        "lat": 41.31,
+        "lng": 69.25,
+        "volume_vu": 80.0
+      },
+      {
+        "order_id": "big-2",
+        "retailer_id": "r2",
+        "lat": 41.32,
+        "lng": 69.26,
+        "volume_vu": 80.0
+      }
+    ],
+    "vehicles": [
+      {
+        "vehicle_id": "small",
+        "driver_id": "d1",
+        "max_volume_vu": 100.0,
+        "start_lat": 41.30,
+        "start_lng": 69.24
+      }
+    ],
+    "tunables": { "time_limit_ms": 3000 }
+  }
+}

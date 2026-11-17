@@ -1,25 +1,27 @@
 "use client";
 
+import Link from "next/link";
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from "react";
 import { useSupplierSessionReconcile } from "@/lib/use-supplier-session-reconcile";
 import { supplierFetch } from "@/lib/auth";
 import { createSupplierApi } from "@/lib/api";
 import { PageChrome } from "@/components/PageChrome";
-import { BulkImportWizard } from "@/components/BulkImportWizard";
 import type { CatalogProduct, CatalogCategory, CreateProductFormState } from "./components/types";
 import { ALLOWED_IMAGE_TYPES, MAX_IMAGE_SIZE } from "./components/types";
 import { CreateProductForm } from "./components/CreateProductForm";
+import { sessionPackCurrency } from "@pegasusx/api-core";
 import { CatalogTable } from "./components/CatalogTable";
 
 export default function CatalogPage() {
+  const t = usePortalT();
   const [products, setProducts] = useState<CatalogProduct[]>([]);
   const [categories, setCategories] = useState<CatalogCategory[]>([]);
-  const [currency, setCurrency] = useState("UZS");
+  const [currency, setCurrency] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
   const [showCreate, setShowCreate] = useState(false);
-  const [showBulkImport, setShowBulkImport] = useState(false);
 
   const load = useCallback(async () => {
     setError(null);
@@ -27,7 +29,7 @@ export default function CatalogPage() {
     try {
       const api = createSupplierApi();
       const profile = await api.getSupplierProfile();
-      setCurrency(profile.currency || "UZS");
+      setCurrency(profile.currency || sessionPackCurrency());
 
       const [productsRes, categoriesRes] = await Promise.all([
         supplierFetch("/v1/catalog/products"),
@@ -41,7 +43,7 @@ export default function CatalogPage() {
       setProducts(Array.isArray(rows) ? rows : []);
       setCategories(Array.isArray(cats) ? cats : []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load catalog");
+      setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.failed_to_load_catalog"));
     } finally {
       setLoading(false);
     }
@@ -157,20 +159,19 @@ export default function CatalogPage() {
   return (
     <PageChrome
       icon="catalog"
-      title="Catalog"
-      description="Create products and set volumetric units (VU) for warehouse dispatch capacity."
+      title={t("portal.nav.catalog")}
+      description={t("supplier_portal.residual.text.create_products_and_set_volumetric_units_vu_for_warehouse_dispat")}
       loading={loading}
       error={error}
       empty={!showCreate && products.length === 0}
       actions={
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setShowBulkImport(true)}
+          <Link
+            href="/migrations?domain=products_prices"
             className="md-btn md-btn-outlined md-typescale-label-large px-4 py-2"
           >
-            Bulk import
-          </button>
+            {t("supplier_portal.migrations.title")}
+          </Link>
           <button
             type="button"
             onClick={() => setShowCreate(value => !value)}
@@ -181,15 +182,6 @@ export default function CatalogPage() {
         </div>
       }
     >
-      <BulkImportWizard
-        isOpen={showBulkImport}
-        onClose={() => setShowBulkImport(false)}
-        onImport={(rows) => {
-          // Future integration: send rows to API
-          setShowBulkImport(false);
-          alert(`Successfully initiated import for ${rows.length} products`);
-        }}
-      />
       
       {showCreate && (
         <CreateProductForm

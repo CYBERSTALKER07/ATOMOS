@@ -1,6 +1,6 @@
 import { Modal, View, Text, FlatList, Pressable } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { isIOS } from '../theme';
+import { isIOS, type AppTheme } from '../theme';
 import PayloadStatePanel from './PayloadStatePanel';
 
 export type NotifItem = {
@@ -15,7 +15,7 @@ export type NotifItem = {
 export interface NotificationsSheetProps {
   visible: boolean;
   onClose: () => void;
-  theme: any;
+  theme: AppTheme;
   notifications: NotifItem[];
   unreadCount: number;
   onMarkAllRead: () => void;

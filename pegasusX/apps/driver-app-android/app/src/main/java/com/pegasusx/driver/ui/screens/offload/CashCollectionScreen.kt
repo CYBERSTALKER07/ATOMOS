@@ -1,5 +1,7 @@
 package com.pegasusx.driver.ui.screens.offload
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.foundation.background
@@ -27,7 +29,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -46,6 +48,7 @@ import com.pegasusx.driver.ui.theme.LocalPegasusColors
 import com.pegasusx.driver.ui.theme.StatusGreen
 import com.pegasusx.driver.ui.theme.StatusRed
 import com.pegasusx.driver.ui.theme.formattedAmount
+import com.pegasusx.driver.R
 
 @Composable
 fun CashCollectionScreen(
@@ -53,7 +56,7 @@ fun CashCollectionScreen(
     onSplitPayment: ((orderId: String, amount: Long) -> Unit)? = null,
     viewModel: CashCollectionViewModel = hiltViewModel()
 ) {
-    val state by viewModel.state.collectAsState()
+    val state by viewModel.state.collectAsStateWithLifecycle()
     val lab = LocalPegasusColors.current
     var showExitConfirm by remember { mutableStateOf(false) }
     var backConfirmed by remember { mutableStateOf(false) }
@@ -102,8 +105,10 @@ fun CashCollectionScreen(
             CashFiscalPhase.FISCAL_FAILED -> {
                 com.pegasusx.driver.ui.screens.offload.components.FiscalFailedView(
                     error = state.error,
+                    statusNotice = state.statusNotice,
                     isCompleting = state.isCompleting,
-                    onRetryFiscal = { viewModel.retryFiscal() }
+                    onRetryFiscal = { viewModel.retryFiscal() },
+                    onContinueNextStop = { viewModel.continueNextStop() },
                 )
             }
             else -> {
@@ -136,7 +141,7 @@ fun CashCollectionScreen(
                     else -> ""
                 }
                 Text(
-                    "You received ${state.amountReceivedMinor.formattedAmount()} from the retailer " +
+                    stringResource(R.string.mobile_driver_ui_you_received_formattedamount_from_the_retailer, state.amountReceivedMinor.formattedAmount()) +
                         "(expected ${state.amount.formattedAmount()}).$varianceNote " +
                         "Payment will be captured and a fiscal receipt requested for the received amount."
                 )

@@ -19,8 +19,9 @@ val localProps = Properties().also { props ->
 }
 val devHost: String = localProps.getProperty("dev.host", "10.0.2.2")
 val mapsApiKey: String = localProps.getProperty("MAPS_API_KEY", "")
-val prodApiBaseUrl: String = localProps.getProperty("prod.api.base.url", "https://api.pegasus.uz")
-val prodWsBaseUrl: String = localProps.getProperty("prod.ws.base.url", "wss://api.pegasus.uz")
+val prodApiBaseUrl: String = localProps.getProperty("prod.api.base.url", "https://api.pegasusx.app")
+val prodApiSpkiPins: String = localProps.getProperty("prod.api.spki.pins", System.getenv("PEGASUSX_API_TLS_SPKI_PINS") ?: "")
+val prodWsBaseUrl: String = localProps.getProperty("prod.ws.base.url", "wss://api.pegasusx.app")
 val quicktypeBinary: String = localProps.getProperty("quicktype.path", "quicktype")
 
 val contractsSchemaFile = rootProject.file("../../contracts/events.schema.json")
@@ -100,6 +101,14 @@ if (wsCodegenEnabled) {
 }
 
 android {
+
+    // pegasusx-i18n-generated: shared en/ru/uz string catalogs
+    sourceSets {
+        getByName("main") {
+            res.srcDir(rootProject.file("../../packages/i18n/generated/android"))
+        }
+    }
+
     namespace = "com.pegasusx.retailer"
     compileSdk = 35
 
@@ -107,11 +116,12 @@ android {
         applicationId = "com.pegasusx.retailer"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.0.1"
 
         manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
         buildConfigField("String", "BASE_URL", "\"http://$devHost:8180/\"")
+        buildConfigField("String", "API_TLS_SPKI_PINS", "\"\"")
         buildConfigField("String", "WS_URL", "\"ws://$devHost:8180/\"")
         buildConfigField("boolean", "FIREBASE_AUTH_EMULATOR", firebaseAuthEmulator.toString())
         buildConfigField("String", "FIREBASE_AUTH_EMULATOR_HOST", "\"$firebaseAuthEmulatorHost\"")
@@ -146,6 +156,7 @@ android {
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             buildConfigField("String", "BASE_URL", "\"${prodApiBaseUrl.trimEnd('/')}/\"")
+            buildConfigField("String", "API_TLS_SPKI_PINS", "\"$prodApiSpkiPins\"")
             buildConfigField("String", "WS_URL", "\"${prodWsBaseUrl.trimEnd('/')}/\"")
         }
     }
@@ -179,12 +190,12 @@ dependencies {
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.core:core-splashscreen:1.0.1")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
     implementation("androidx.activity:activity-compose:1.9.3")
 
     // Compose BOM
     implementation(platform("androidx.compose:compose-bom:2024.12.01"))
-    implementation(project(":mobile-design"))
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")

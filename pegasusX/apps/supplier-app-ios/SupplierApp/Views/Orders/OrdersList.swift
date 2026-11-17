@@ -6,15 +6,15 @@ struct OrdersList: View {
 
     var body: some View {
         Group {
-            if vm.loading {
+            if vm.loading && vm.orders.isEmpty {
                 SupplierLoadingView(
-                    title: "Loading orders",
-                    message: "Fetching your supplier order queue."
+                    title: "mobile_supplier.loading.orders",
+                    message: "mobile_supplier.loading.orders_message"
                 )
-            } else if let error = vm.error {
+            } else if let error = vm.error, vm.orders.isEmpty {
                 SupplierErrorView(message: error) { Task { await vm.load() } }
             } else if vm.orders.isEmpty {
-                SupplierEmptyView(title: "No orders", message: "Nothing in this queue.")
+                SupplierEmptyView(title: "mobile_supplier.empty.no_orders", message: "mobile_supplier.empty.nothing_in_queue")
             } else {
                 if horizontalSizeClass == .regular {
                     List(vm.orders, selection: $vm.selection) { order in
@@ -31,6 +31,18 @@ struct OrdersList: View {
                     }
                     .listStyle(.insetGrouped)
                 }
+            }
+        }
+        .safeAreaInset(edge: .top) {
+            if let notice = vm.notice, !notice.isEmpty, vm.error == nil, !vm.loading {
+                Text(notice)
+                    .font(.footnote)
+                    .foregroundStyle(.primary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal)
+                    .padding(.vertical, 8)
+                    .background(.yellow.opacity(0.25))
+                    .accessibilityLabel(notice)
             }
         }
         .refreshable { await vm.load(silent: true) }

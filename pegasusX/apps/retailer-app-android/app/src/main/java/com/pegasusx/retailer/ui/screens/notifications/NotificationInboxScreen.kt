@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.screens.notifications
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 
@@ -49,18 +51,21 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import java.time.Duration
 import java.time.Instant
+import com.pegasusx.retailer.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -68,7 +73,7 @@ fun NotificationInboxScreen(
     onBack: () -> Unit,
     viewModel: NotificationInboxViewModel = hiltViewModel(),
 ) {
-    val state by viewModel.uiState.collectAsState()
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
@@ -84,11 +89,14 @@ fun NotificationInboxScreen(
                 }
             },
             actions = {
-                IconButton(onClick = { viewModel.refresh() }) {
+                IconButton(
+                    onClick = { viewModel.refresh() },
+                    modifier = Modifier.semantics { contentDescription = "Refresh notifications" }
+                ) {
                     if (state.isRefreshing) {
                         CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
                     } else {
-                        Icon(Icons.Outlined.SyncAlt, contentDescription = "Refresh notifications")
+                        Icon(Icons.Outlined.SyncAlt, contentDescription = stringResource(R.string.mobile_retailer_ui_refresh_notifications))
                     }
                 }
                 if (state.unreadCount > 0) {

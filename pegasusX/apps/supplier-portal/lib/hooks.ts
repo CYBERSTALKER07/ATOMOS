@@ -1,43 +1,28 @@
-import { useState, useEffect, useCallback } from "react";
+import { useCallback } from "react";
 import { supplierFetch } from "./auth";
+import { useEnterpriseSWR } from "./enterprise-swr";
 
-export function useLiveData<T>(path: string) {
-  const [data, setData] = useState<T | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
-
-  const fetcher = useCallback(async (isRefresh = false) => {
-    if (isRefresh) {
-      setIsRefreshing(true);
-    } else {
-      setLoading(true);
+export function useLiveData<T>(path: string, interval = 0) {
+  const fetcher = useCallback(async (p: string, signal?: AbortSignal) => {
+    const res = await supplierFetch(p, { signal });
+    if (!res.ok) {
+      throw new Error(`Error: ${res.status} ${res.statusText}`);
     }
-    setError(null);
-    try {
-      const res = await supplierFetch(path);
-      if (!res.ok) {
-        throw new Error(`Error: ${res.status} ${res.statusText}`);
-      }
-      const json = await res.json();
-      setData(json);
-    } catch (err: any) {
-      setError(err);
-    } finally {
-      setLoading(false);
-      setIsRefreshing(false);
-    }
-  }, [path]);
+    return (await res.json()) as T;
+  }, []);
 
-  useEffect(() => {
-    void fetcher();
-  }, [fetcher]);
+  const swr = useEnterpriseSWR<T>(path, fetcher, { interval });
+
+  const mutate = useCallback(async () => {
+    await swr.revalidate();
+  }, [swr.revalidate]);
 
   return {
-    data,
-    loading,
-    error,
-    isRefreshing,
-    mutate: () => fetcher(true)
+    data: swr.data,
+    loading: swr.isLoading,
+    error: swr.error,
+    isRefreshing: swr.isRevalidating,
+    mutate,
   };
 }
+

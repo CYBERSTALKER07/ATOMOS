@@ -1,0 +1,182 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pegasusx.dev/contracts/ontology/proposal.v1.schema.json",
+  "title": "ProposalOntologyObjectV1",
+  "description": "AI/driver/financial proposal awaiting review or execution.",
+  "x-ontology-version": "1.0.0",
+  "x-schema-version": "v1",
+  "x-object-type": "Proposal",
+  "x-primary-key": [
+    "cell_id",
+    "object_type",
+    "object_id"
+  ],
+  "x-default-security-markings": [],
+  "x-allowed-link-types": [
+    "supplies",
+    "stocks",
+    "ordered",
+    "shipped_on",
+    "owes",
+    "substitutes",
+    "recalled_with"
+  ],
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "cell_id",
+    "object_type",
+    "object_id",
+    "supplier_id",
+    "version",
+    "properties",
+    "valid_from",
+    "updated_at"
+  ],
+  "properties": {
+    "cell_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Cell/region partition coordinate"
+    },
+    "object_type": {
+      "type": "string",
+      "const": "Proposal"
+    },
+    "object_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Unique entity identifier within cell+type"
+    },
+    "supplier_id": {
+      "type": "string",
+      "description": "Tenant supplier identifier"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Monotonic optimistic-concurrency version"
+    },
+    "security_markings": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "MARKING:FINANCE_ONLY",
+          "MARKING:PII",
+          "MARKING:AML_INVESTIGATION",
+          "MARKING:DISCREPANT_QUARANTINE",
+          "MARKING:THERMAL_QUARANTINE_SPOILED",
+          "MARKING:MICRO_SKIMMING_SUSPECT",
+          "MARKING:LOT_RECALL_QUARANTINE"
+        ]
+      },
+      "uniqueItems": true,
+      "description": "Data governance & quarantine markings"
+    },
+    "valid_from": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "properties": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "proposal_id": {
+          "type": "string",
+          "description": "Proposal UUID"
+        },
+        "proposal_kind": {
+          "type": "string",
+          "description": "AUTO_ORDER_SHADOW | NEGOTIATION | REPLENISHMENT | FINANCIAL_DRAFT | CONTROL_TOWER"
+        },
+        "supplier_id": {
+          "type": "string",
+          "description": "Supplier ID"
+        },
+        "retailer_id": {
+          "type": "string",
+          "description": "Retailer ID"
+        },
+        "order_id": {
+          "type": "string",
+          "description": "Related Order UUID"
+        },
+        "driver_id": {
+          "type": "string",
+          "description": "Proposing driver ID"
+        },
+        "warehouse_id": {
+          "type": "string",
+          "description": "Target warehouse ID"
+        },
+        "product_id": {
+          "type": "string",
+          "description": "Product UUID"
+        },
+        "sku": {
+          "type": "string",
+          "description": "SKU code"
+        },
+        "status": {
+          "type": "string",
+          "description": "PENDING | PENDING_APPROVAL | APPROVED | REJECTED | EXPIRED"
+        },
+        "current_stock": {
+          "type": "integer",
+          "description": "Current warehouse stock units"
+        },
+        "suggested_quantity": {
+          "type": "integer",
+          "description": "Suggested replenishment quantity"
+        },
+        "proposed_qty": {
+          "type": "integer",
+          "description": "Proposed unit quantity"
+        },
+        "proposed_amount_minor": {
+          "type": "integer",
+          "description": "Proposed monetary adjustment/value (int64 minor units; zero floats)"
+        },
+        "proposed_price_minor": {
+          "type": "integer",
+          "description": "Proposed unit price (int64 minor units; zero floats)"
+        },
+        "urgency_level": {
+          "type": "string",
+          "description": "LOW | MEDIUM | HIGH | CRITICAL"
+        },
+        "currency": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 8,
+          "description": "ISO 4217 currency code"
+        },
+        "reason_code": {
+          "type": "string",
+          "description": "Proposal reason code"
+        },
+        "resolution": {
+          "type": "string",
+          "description": "Resolution summary"
+        },
+        "resolved_by": {
+          "type": "string",
+          "description": "Approver/reviewer actor ID"
+        },
+        "resolved_at": {
+          "type": "string",
+          "description": "RFC3339 resolution timestamp"
+        },
+        "expires_at": {
+          "type": "string",
+          "description": "RFC3339 expiration timestamp"
+        }
+      }
+    }
+  }
+}

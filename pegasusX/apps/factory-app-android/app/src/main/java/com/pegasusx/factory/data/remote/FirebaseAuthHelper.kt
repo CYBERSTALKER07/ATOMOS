@@ -41,12 +41,17 @@ object FirebaseAuthHelper {
                 FirebaseAuth.getInstance().useEmulator(BuildConfig.FIREBASE_AUTH_EMULATOR_HOST, 9099)
             }
             initialized = true
-            Log.d(
-                TAG,
-                "Firebase Auth initialized (emulator=${BuildConfig.FIREBASE_AUTH_EMULATOR})",
-            )
+            if (BuildConfig.DEBUG) {
+                Log.d(
+                    TAG,
+                    "Firebase Auth initialized (emulator=${BuildConfig.FIREBASE_AUTH_EMULATOR})",
+                )
+            }
         } catch (e: Exception) {
-            Log.w(TAG, "Firebase Auth init failed (non-fatal): ${e.message}")
+            if (!BuildConfig.DEBUG) {
+                throw IllegalStateException("Firebase configuration is missing in release build", e)
+            }
+            Log.w(TAG, "Firebase Auth init failed (non-fatal in dev): ${e.message}")
         }
     }
 
@@ -109,7 +114,8 @@ object FirebaseAuthHelper {
         resetFlow()
         try {
             FirebaseAuth.getInstance().signOut()
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+        if (e is kotlinx.coroutines.CancellationException) throw e
         }
     }
 }

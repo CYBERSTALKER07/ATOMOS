@@ -28,7 +28,7 @@ struct OperationsBroadcastForm: View {
             }
             Section {
                 if templates.isEmpty {
-                    Text("No templates available.")
+                    Text("mobile_warehouse.ui.no_templates_available")
                         .foregroundStyle(.secondary)
                 } else {
                     ScrollView(.horizontal, showsIndicators: false) {
@@ -43,6 +43,8 @@ struct OperationsBroadcastForm: View {
                                     }
                                     .buttonStyle(.bordered)
                                     .font(.caption)
+                                    .frame(minHeight: 44)
+                                    .contentShape(Rectangle())
 
                                     if template.source == "custom" {
                                         Button(role: .destructive) {
@@ -52,6 +54,9 @@ struct OperationsBroadcastForm: View {
                                         }
                                         .buttonStyle(.borderless)
                                         .font(.caption)
+                                        .frame(minWidth: 44, minHeight: 44)
+                                        .contentShape(Rectangle())
+                                        .accessibilityLabel("Delete template \(template.title)")
                                     }
                                 }
                             }
@@ -64,21 +69,23 @@ struct OperationsBroadcastForm: View {
                 WarehouseSectionHeader(title: "Send depot broadcast")
             }
             Section {
-                TextField("Effective date (optional)", text: $templateDate)
+                TextField("warehouse_portal.residual.text.effective_date_optional", text: $templateDate)
                     .textInputAutocapitalization(.never)
-                TextField("Custom reason (optional)", text: $customReason)
-                TextField("Title", text: $title)
+                TextField("warehouse_portal.residual.text.custom_reason_optional", text: $customReason)
+                TextField("supplier_portal.admin.control_center.field.title", text: $title)
                 Picker("Target role", selection: $broadcastRole) {
                     ForEach(broadcastRoles, id: \.self) { role in
                         Text(role).tag(role)
                     }
                 }
-                TextField("Message", text: $bodyText, axis: .vertical)
+                TextField("warehouse_portal.residual.text.message", text: $bodyText, axis: .vertical)
                     .lineLimit(4...8)
                 Toggle("Save as custom template for this depot", isOn: $saveAsTemplate)
                 Button(broadcasting || savingTemplate ? "Sending…" : "Send broadcast") {
                     Task { await onSendBroadcast() }
                 }
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
                 .disabled(
                     broadcasting || savingTemplate
                         || title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty

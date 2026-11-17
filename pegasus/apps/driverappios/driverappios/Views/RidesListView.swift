@@ -94,6 +94,7 @@ struct RidesListView: View {
                                                 .frame(width: 32, height: 32)
                                                 .background(LabTheme.fg.opacity(0.06), in: Circle())
                                         }
+                                        .accessibilityLabel("Move order up")
                                         .disabled(index == 0)
 
                                         Button {
@@ -105,6 +106,7 @@ struct RidesListView: View {
                                                 .frame(width: 32, height: 32)
                                                 .background(LabTheme.fg.opacity(0.06), in: Circle())
                                         }
+                                        .accessibilityLabel("Move order down")
                                         .disabled(index == displayMissions.count - 1)
                                     }
                                 }
@@ -134,6 +136,7 @@ struct RidesListView: View {
                         .background(LabTheme.destructive, in: Circle())
                         .shadow(color: LabTheme.destructive.opacity(0.3), radius: 8, y: 4)
                 }
+                .accessibilityLabel("Report issue or early complete")
                 .padding(24)
             }
         }

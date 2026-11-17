@@ -50,3 +50,11 @@ func TestEventConsumer_ClaimFiledMissingSkipped(t *testing.T) {
 		t.Fatalf("handle: %v", err)
 	}
 }
+
+func TestEventConsumer_NilServiceDoesNotAck(t *testing.T) {
+	c := &EventConsumer{}
+	err := c.HandleEvent(context.Background(), kafka.Message{Value: []byte(`{"type":"CLAIM_FILED"}`)})
+	if err == nil {
+		t.Fatal("nil service must not ack the message")
+	}
+}

@@ -13,146 +13,113 @@ struct CreateSupplyRequestSheet: View {
     let onCreate: (SupplyRequestFormData) -> Void
 
     @Environment(\.dismiss) private var dismiss
-    @State private var factoryId = ""
-    @State private var priority = "NORMAL"
-    @State private var notes = ""
-    @State private var useForecast = true
-    @State private var deliveryDate = Date()
-    @State private var includeDeliveryDate = false
-    @State private var forecast: [DemandForecastProduct] = []
-    @State private var forecastLoading = false
-    @State private var manualItems: [ManualSupplyLine] = [ManualSupplyLine()]
+    @State private var vm = CreateSupplyRequestViewModel()
 
     var body: some View {
+        @Bindable var vm = vm
         NavigationStack {
             Form {
-                TextField("Factory ID", text: $factoryId)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-
-                Toggle("Requested delivery date", isOn: $includeDeliveryDate)
-                if includeDeliveryDate {
-                    DatePicker("Delivery date", selection: $deliveryDate, displayedComponents: .date)
+                if vm.factoryLocked {
+                    LabeledContent("warehouse_portal.supply_requests.new.text.factory_id", value: vm.factoryId)
+                    Text("Nearest factory from the engine.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } else {
+                    TextField("warehouse_portal.supply_requests.new.text.factory_id", text: $vm.factoryId)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
                 }
 
-                Toggle("Use AI demand forecast", isOn: $useForecast)
+                Toggle("Requested delivery date", isOn: $vm.includeDeliveryDate)
+                    .onChange(of: vm.includeDeliveryDate) { _, _ in
+                        PegasusHaptics.selection()
+                    }
+                if vm.includeDeliveryDate {
+                    DatePicker("Delivery date", selection: $vm.deliveryDate, displayedComponents: .date)
+                }
 
-                Picker("Priority", selection: $priority) {
-                    Text("Normal").tag("NORMAL")
-                    Text("Urgent").tag("URGENT")
-                    Text("Critical").tag("CRITICAL")
+                Toggle("Use AI demand forecast", isOn: $vm.useForecast)
+                    .onChange(of: vm.useForecast) { _, _ in
+                        PegasusHaptics.selection()
+                    }
+
+                Picker("Priority", selection: $vm.priority) {
+                    Text("mobile_warehouse.ui.normal").tag("NORMAL")
+                    Text("mobile_warehouse.ui.urgent").tag("URGENT")
+                    Text("mobile_warehouse.ui.critical").tag("CRITICAL")
                 }
                 .pickerStyle(.segmented)
+                .onChange(of: vm.priority) { _, _ in
+                    PegasusHaptics.selection()
+                }
 
-                if useForecast {
+                if vm.useForecast {
                     Section("Demand forecast (7-day)") {
-                        if forecastLoading {
+                        if vm.forecastLoading {
                             ProgressView()
-                        } else if forecast.isEmpty {
-                            Text("No forecast data available")
+                        } else if vm.forecast.isEmpty {
+                            Text("mobile_warehouse.ui.no_forecast_data_available")
                                 .foregroundStyle(.secondary)
                         } else {
-                            ForEach(forecast, id: \.productId) { product in
+                            ForEach(vm.forecast, id: \.productId) { product in
                                 VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
                                     Text(product.productName.isEmpty ? String(product.productId.prefix(8)) : product.productName)
                                         .font(.subheadline.weight(.semibold))
-                                    Text("Stock \(product.currentStock) · recommended \(product.recommendedQty)")
+                                    Text(L10n.format("mobile_warehouse.ui.stock_currentstock_recommended_recommendedqty", "\(product.currentStock)", "\(product.recommendedQty)"))
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                 }
+                                .frame(minHeight: 44)
+                                .accessibilityElement(children: .combine)
+                                .accessibilityLabel("\(product.productName.isEmpty ? product.productId : product.productName), current stock \(product.currentStock), recommended \(product.recommendedQty)")
                             }
                         }
                     }
                 } else {
                     Section("Manual items") {
-                        ForEach($manualItems) { $line in
+                        ForEach($vm.manualItems) { $line in
                             HStack(spacing: LabTheme.spacingSM) {
-                                TextField("Product ID", text: $line.productId)
+                                TextField("factory_portal.analytics.text.product_id", text: $line.productId)
                                     .textInputAutocapitalization(.never)
-                                TextField("Qty", text: $line.quantity)
+                                TextField("retailer_desktop.pos.text.qty", text: $line.quantity)
                                     .keyboardType(.numberPad)
                                     .frame(width: 72)
                             }
                         }
-                        Button("Add item", systemImage: "plus") {
-                            manualItems.append(ManualSupplyLine())
+                        Button("mobile_warehouse.ui.add_item", systemImage: "plus") {
+                            PegasusHaptics.light()
+                            vm.addManualLine()
                         }
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
                     }
                 }
 
-                TextField("Notes", text: $notes, axis: .vertical)
+                TextField("factory_portal.transfers._id_.text.notes", text: $vm.notes, axis: .vertical)
                     .lineLimit(3...5)
             }
-            .navigationTitle("New Supply Request")
+            .scrollDismissesKeyboard(.interactively)
+            .navigationTitle("warehouse_portal.supply_requests.new.text.new_supply_request")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button("common.action.cancel") { dismiss() }
+                        .frame(minWidth: 44, minHeight: 44)
+                        .contentShape(Rectangle())
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Submit") { submit() }
-                        .disabled(!canSubmit)
+                    Button("warehouse_portal.cycle_counts.text.submit") {
+                        PegasusHaptics.light()
+                        onCreate(vm.buildFormData())
+                    }
+                    .disabled(!vm.canSubmit)
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
                 }
             }
-            .task(id: useForecast) {
-                if useForecast { await loadForecast() }
+            .task { await vm.loadEngineFactory() }
+            .task(id: vm.useForecast) {
+                if vm.useForecast { await vm.loadForecast() }
             }
         }
     }
-
-    private var canSubmit: Bool {
-        guard !factoryId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return false }
-        if useForecast { return true }
-        return manualItems.contains { line in
-            !line.productId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-            (Int(line.quantity) ?? 0) > 0
-        }
-    }
-
-    private func loadForecast() async {
-        forecastLoading = true
-        defer { forecastLoading = false }
-        do {
-            let response = try await WarehouseService.demandForecast(days: 7)
-            forecast = response.products
-        } catch {
-            forecast = []
-        }
-    }
-
-    private func submit() {
-        let deliveryISO: String? = includeDeliveryDate
-            ? ISO8601DateFormatter().string(from: deliveryDate)
-            : nil
-        let items: [CreateWarehouseSupplyRequestItem]
-        if useForecast {
-            items = []
-        } else {
-            items = manualItems.compactMap { line in
-                let pid = line.productId.trimmingCharacters(in: .whitespacesAndNewlines)
-                guard let qty = Int(line.quantity), !pid.isEmpty, qty > 0 else { return nil }
-                return CreateWarehouseSupplyRequestItem(
-                    productId: pid,
-                    requestedQuantity: qty,
-                    recommendedQty: qty,
-                    unitVolumeVu: 0
-                )
-            }
-        }
-        onCreate(
-            SupplyRequestFormData(
-                factoryId: factoryId.trimmingCharacters(in: .whitespacesAndNewlines),
-                priority: priority,
-                notes: notes.trimmingCharacters(in: .whitespacesAndNewlines),
-                useDemandForecast: useForecast,
-                requestedDeliveryDate: deliveryISO,
-                items: items
-            )
-        )
-    }
-}
-
-private struct ManualSupplyLine: Identifiable {
-    let id = UUID()
-    var productId = ""
-    var quantity = ""
 }

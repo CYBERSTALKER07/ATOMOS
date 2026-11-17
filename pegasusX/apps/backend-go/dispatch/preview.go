@@ -51,6 +51,9 @@ func BuildPreview(orders []DispatchableOrder) Preview {
 			Volume:               order.VolumeVU,
 			ReceivingWindowOpen:  order.ReceivingWindowOpen,
 			ReceivingWindowClose: order.ReceivingWindowClose,
+			HandlingClass:        order.HandlingClass,
+			IsHazardous:          order.IsHazardous,
+			AccessRestriction:    order.AccessRestriction,
 		})
 	}
 

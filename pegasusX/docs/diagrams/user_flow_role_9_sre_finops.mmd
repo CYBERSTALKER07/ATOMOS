@@ -1,0 +1,45 @@
+flowchart TD
+    subgraph Phase1["Phase 1: Workstation Provisioning, Enclave Keyring & Cloud IAM"]
+        O1["Build & Install Pegasus Control Tower Native macOS App / Tauri 2 Desktop"] --> O2["Enroll Hardware YubiKey: Store Cryptographic Secrets in macOS Keychain"]
+        O2 --> O3["Bind Multi-Cloud IAM Roles: Google Cloud Spanner, AWS S3, Azure Gateway"]
+        O3 --> O4["Connect Native Swift App to Control Tower WebSocket Streaming Gateway"]
+        O4 --> O5["Initialize macOS MenuBarExtra System Status Popover Indicator"]
+    end
+
+    subgraph Phase2["Phase 2: Continuous MenuBar Telemetry & Multi-Cell EKG Profiling"]
+        O5 --> P1["Monitor System Status Pill in macOS Menu Bar (Green / Yellow / Red)"]
+        P1 --> P2["Open Executive Control Tower: Visualize Tashkent, Samarqand & Fergana Cells"]
+        P2 --> P3["Inspect Multi-Region Cloud Spanner P99 Latency & Transaction Abort Rates"]
+        P3 --> P4{"Spanner Read Latency P99 < 10ms?"}
+        P4 -- "Latency Spiking > 15ms" --> P5["Dynamically Reconfigure Stale-Read Max Staleness Window (15s)"]
+        P4 -- "Healthy < 5ms" --> P6["Verify Redis Semaphore Gateway Permitter Utilization (< 80%)"]
+        P5 --> P6
+    end
+
+    subgraph Phase3["Phase 3: Kafka Partition Lag & Distributed Worker Saturation"]
+        P6 --> Q1["Query Kafka Mesh Consumer Lag Matrix across Core Topics"]
+        Q1 --> Q2["Inspect Worker Pool Goroutine Saturation & Memory Footprint"]
+        Q2 --> Q3{"Consumer Partition Lag Exceeds SLA Threshold (> 500 msgs)?"}
+        Q3 -- "Lag Growing" --> Q4["Scale AI Worker / Outbox Processing Pods via Kubernetes HPA"]
+        Q3 -- "Nominal Lag" --> Q5["Inspect Outbox Publication Stream & Dead-Letter Queue (DLQ)"]
+        Q4 --> Q5
+    end
+
+    subgraph Phase4["Phase 4: Dead-Letter Queue Triage & Safe In-Order Replay"]
+        Q5 --> R1["Query Cloud Spanner OutboxDeadLetters Table"]
+        R1 --> R2{"Poison Messages Present in DLQ?"}
+        R2 -- "Yes (DLQ Backlog > 0)" --> R3["Trigger Native Desktop Diagnostic Bundle Export (diagnosis.tar.gz)"]
+        R3 --> R4["Inspect Failure Stack Trace, Corrupted Payload & Target Topic"]
+        R4 --> R5["Execute Safe Atomic In-Order Replay Tooling (cmd/replay-dlq)"]
+        R2 -- "No DLQ Messages (Clean)" --> R6["Validate Multi-Cell Consensus & Quorum Sync"]
+        R5 --> R6
+    end
+
+    subgraph Phase5["Phase 5: Tenant-Attributed Cloud Spend & FinOps Waterfall"]
+        R6 --> S1["Ingest Cloud Billing Exports: GCP Spanner, Network Egress, Cloud Run"]
+        S1 --> S2["Execute FinOps Cost Attribution Algorithm across Suppliers & Hubs"]
+        S2 --> S3["Calculate Unit Economics: Cloud Cost per Order (Target < 120 UZS)"]
+        S3 --> S4["Reconcile Dynamic Platform Fee Inflow against Infrastructure Burn Rate"]
+        S4 --> S5["Export Monthly SLA Guarantee & Infrastructure Capacity Plan"]
+        S5 --> S6(["Platform Reliability & Financial Health Certified"])
+    end

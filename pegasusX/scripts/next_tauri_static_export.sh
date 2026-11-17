@@ -14,16 +14,14 @@ STASH=""
 cleanup() {
   if [[ -n "$STASH" && -d "$STASH" ]]; then
     rm -rf "$API_DIR"
-    mv "$STASH" "$API_DIR"
+    mv "$STASH" "app/"
   fi
 }
 trap cleanup EXIT
 
 if [[ -d "$API_DIR" ]] && compgen -G "$API_DIR/**/*" >/dev/null 2>&1; then
-  STASH="$(mktemp -d)"
-  # move contents via renaming the folder
-  mv "$API_DIR" "$STASH/api"
-  mkdir -p "$API_DIR"
+  STASH="$(mktemp -d)/api"
+  mv "$API_DIR" "$STASH"
 fi
 
 export TAURI_BUILD=1

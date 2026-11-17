@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"cloud.google.com/go/civil"
 	"cloud.google.com/go/spanner"
 	"google.golang.org/api/iterator"
 )
@@ -13,7 +14,7 @@ func (s *Service) mergeDemandBaselineItems(ctx context.Context, supplierID strin
 	if s == nil || s.portalSpanner == nil || supplierID == "" {
 		return items
 	}
-	day := now.UTC().Truncate(24 * time.Hour)
+	day := civil.DateOf(now.UTC())
 	sql := `SELECT b.ProductId, COALESCE(p.Name, b.ProductId), SUM(b.BaselineQty), AVG(b.Confidence)
 		      FROM DemandForecastBaseline b
 		      LEFT JOIN Products p ON b.ProductId = p.ProductId
@@ -26,7 +27,7 @@ func (s *Service) mergeDemandBaselineItems(ctx context.Context, supplierID strin
 	sql += ` GROUP BY b.ProductId, p.Name
 		      ORDER BY SUM(b.BaselineQty) DESC
 		      LIMIT 100`
-	iter := s.portalSpanner.Single().Query(ctx, spanner.Statement{
+	iter := s.portalSpanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL:    sql,
 		Params: params,
 	})

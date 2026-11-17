@@ -11,11 +11,11 @@ import (
 	"strings"
 	"time"
 
+	"cloud.google.com/go/spanner"
 	"github.com/go-chi/chi/v5"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
-	"github.com/pegasusx/pegasusx/apps/backend-go/proximity"
 )
 
 type warehouseOrderMutationRequest struct {
@@ -43,7 +43,7 @@ func (s *Service) WarehouseMarkDelayed(ctx context.Context, ops *auth.WarehouseO
 		default:
 			return "", fmt.Errorf("%w: %s cannot be delayed", ErrInvalidStatusTransition, current.Status)
 		}
-	}, false, delayMeta)
+	}, true, delayMeta)
 }
 
 // WarehouseRejectOrder hard-cancels an order scoped to the warehouse (origin rejection).
@@ -120,7 +120,10 @@ func (s *Service) warehouseTransition(
 	prevStatus := current.Status
 	current.Status = nextStatus
 	current.UpdatedAt = s.now()
+
+	var prevManifestID string
 	if clearAssignment {
+		prevManifestID = current.ManifestID
 		current.ManifestID = ""
 		current.DriverID = ""
 		current.VehicleID = ""
@@ -132,7 +135,33 @@ func (s *Service) warehouseTransition(
 		actorID = ops.WarehouseID
 	}
 
-	err = s.repo.UpdateOrder(ctx, current, nil, func(txn outbox.TxnBuffer) error {
+	inTxn := func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		if prevManifestID != "" {
+			stmt := spanner.Statement{
+				SQL: `UPDATE SupplierTruckManifests 
+				      SET StopCount = StopCount - 1,
+				          TotalVolumeVU = TotalVolumeVU - COALESCE((SELECT VolumeVU FROM ManifestOrders WHERE ManifestId = @mid AND OrderId = @oid), 0)
+				      WHERE ManifestId = @mid`,
+				Params: map[string]any{"mid": prevManifestID, "oid": current.OrderID},
+			}
+			if _, err := txn.Update(ctx, stmt); err != nil {
+				return err
+			}
+			if err := txn.BufferWrite([]*spanner.Mutation{
+				spanner.Delete("ManifestOrders", spanner.Key{prevManifestID, current.OrderID}),
+			}); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	current.TransitionReason = reason
+	current.TransitionActorRole = string(auth.RoleWarehouse)
+	current.TransitionActorID = actorID
+	current.TransitionMetadata = transitionMeta
+
+	err = s.repo.UpdateOrderWithTxn(ctx, current, nil, inTxn, func(txn outbox.TxnBuffer) error {
 		if nextStatus == StatusCancelled && current.Source == OrderSourceManualPreorder {
 			return emitPreorderEvent(ctx, txn, events.EventPreOrderCancelled, current, string(auth.RoleWarehouse), actorID)
 		}
@@ -158,7 +187,6 @@ func (s *Service) warehouseTransition(
 	}
 
 	s.afterOrderMutation(ctx, current)
-	s.recordStatusTransitionFromOrder(current, prevStatus, reason, string(auth.RoleWarehouse), actorID, "", transitionMeta)
 	return nil
 }
 
@@ -185,11 +213,9 @@ func (s *Service) WarehouseEditPreorder(ctx context.Context, ops *auth.Warehouse
 	if current.Source != OrderSourceManualPreorder || current.Status != StatusScheduled {
 		return RetailerOrderLifecycleResponse{}, ErrInvalidStatusTransition
 	}
-	loc := proximity.TashkentLocation
-	if current.Timezone != "" {
-		if l, err := time.LoadLocation(current.Timezone); err == nil {
-			loc = l
-		}
+	loc, locErr := resolveCalendarLocation(ctx, current.SupplierID, current.Timezone)
+	if locErr != nil {
+		return RetailerOrderLifecycleResponse{}, locErr
 	}
 	if PreorderEditLocked(s.now(), loc, current) {
 		return RetailerOrderLifecycleResponse{}, fmt.Errorf("%w: warehouse preorder edit locked", ErrInvalidStatusTransition)
@@ -204,23 +230,33 @@ func (s *Service) WarehouseEditPreorder(ctx context.Context, ops *auth.Warehouse
 			Reason:               strings.TrimSpace(reason),
 		})
 	}
-	lineItems, total, err := s.normalizeAndQuoteLineItems(ctx, req.LineItems, nil)
+	lineItems, _, err := s.normalizeAndQuoteLineItems(ctx, req.LineItems, nil)
 	if err != nil {
 		return RetailerOrderLifecycleResponse{}, err
 	}
-	current.LineItems = lineItems
-	current.TotalMinor = total
+	if err := s.validateOrderPackMultiples(ctx, lineItems); err != nil {
+		return RetailerOrderLifecycleResponse{}, err
+	}
+	if req.AutoConfirmOptIn != nil {
+		current.AutoConfirmOptIn = *req.AutoConfirmOptIn
+	}
+	if current.OriginalTotalMinor == 0 {
+		current.OriginalTotalMinor = current.TotalMinor
+	}
 	current.WarehouseNotes = strings.TrimSpace(reason)
 	current.UpdatedAt = s.now()
 	actorID := strings.TrimSpace(resolvedOps.Subject)
 	if actorID == "" {
 		actorID = resolvedOps.WarehouseID
 	}
-	if err := s.repo.UpdateOrder(ctx, current, nil, func(txn outbox.TxnBuffer) error {
-		return emitPreorderEvent(ctx, txn, events.EventPreOrderEdited, current, "WAREHOUSE_ADMIN", actorID)
-	}); err != nil {
+
+	updatedOrder, err := s.updatePreorderLines(ctx, current, lineItems, func(txn outbox.TxnBuffer, updated Order) error {
+		return emitPreorderEvent(ctx, txn, events.EventPreOrderEdited, updated, "WAREHOUSE_ADMIN", actorID)
+	})
+	if err != nil {
 		return RetailerOrderLifecycleResponse{}, err
 	}
+	current = updatedOrder
 	s.afterOrderMutation(ctx, current)
 	return lifecycleResponse(current, current.Version+1, false), nil
 }
@@ -249,6 +285,7 @@ func (s *Service) ListWarehousePreordersForOps(ctx context.Context, ops *auth.Wa
 type warehousePreorderEditBody struct {
 	LineItems             []LineItem `json:"line_items"`
 	RequestedDeliveryDate string     `json:"requested_delivery_date"`
+	AutoConfirmOptIn      *bool      `json:"auto_confirm_opt_in,omitempty"`
 	Reason                string     `json:"reason"`
 }
 
@@ -289,7 +326,7 @@ func (s *Service) HandleWarehouseEditPreorder(w http.ResponseWriter, r *http.Req
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 		return
 	}
-	if s.guardIdempotency(w, r, bodyBytes) {
+	if s.guardIdempotencyStrict(w, r, bodyBytes) {
 		return
 	}
 	idemCommitted := false
@@ -307,6 +344,7 @@ func (s *Service) HandleWarehouseEditPreorder(w http.ResponseWriter, r *http.Req
 		OrderID:               orderID,
 		LineItems:             body.LineItems,
 		RequestedDeliveryDate: body.RequestedDeliveryDate,
+		AutoConfirmOptIn:      body.AutoConfirmOptIn,
 	}, body.Reason)
 	if err != nil {
 		mapWarehouseOrderMutationError(w, r, orderID, err)
@@ -415,7 +453,7 @@ func (s *Service) HandleWarehouseMarkDelayed(w http.ResponseWriter, r *http.Requ
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 		return
 	}
-	if s.guardIdempotency(w, r, bodyBytes) {
+	if s.guardIdempotencyStrict(w, r, bodyBytes) {
 		return
 	}
 	idemCommitted := false
@@ -455,7 +493,7 @@ func (s *Service) HandleWarehouseRejectOrder(w http.ResponseWriter, r *http.Requ
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 		return
 	}
-	if s.guardIdempotency(w, r, bodyBytes) {
+	if s.guardIdempotencyStrict(w, r, bodyBytes) {
 		return
 	}
 	idemCommitted := false
@@ -498,7 +536,7 @@ func (s *Service) HandleWarehousePayloadOverflow(w http.ResponseWriter, r *http.
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 		return
 	}
-	if s.guardIdempotency(w, r, bodyBytes) {
+	if s.guardIdempotencyStrict(w, r, bodyBytes) {
 		return
 	}
 	idemCommitted := false
@@ -522,6 +560,9 @@ func (s *Service) HandleWarehousePayloadOverflow(w http.ResponseWriter, r *http.
 }
 
 func mapWarehouseOrderMutationError(w http.ResponseWriter, r *http.Request, orderID string, err error) {
+	if writePackValidationOrMetadataError(w, err) {
+		return
+	}
 	switch {
 	case errors.Is(err, ErrOrderNotFound):
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": "order_not_found", "order_id": orderID})

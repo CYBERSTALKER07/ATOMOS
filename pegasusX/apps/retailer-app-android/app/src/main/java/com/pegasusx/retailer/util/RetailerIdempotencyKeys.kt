@@ -4,12 +4,16 @@ import com.pegasusx.retailer.data.model.ProcurementOrderItem
 
 /** Deterministic idempotency keys — aligned with @pegasusx/api-client idempotency.ts */
 object RetailerIdempotencyKeys {
-    fun orderCreate(items: List<ProcurementOrderItem>): String {
+    fun orderCreate(
+        items: List<ProcurementOrderItem>,
+        autoConfirmOptIn: Boolean = false,
+    ): String {
         val fingerprint = items
-            .map { "${it.productId}:${it.quantity}" }
+            .map { "${it.productId}:${it.quantity}:${if (it.mustHave) 1 else 0}:${if (it.allowSubstitutes) 1 else 0}" }
             .sorted()
             .joinToString("|")
-        return "retailer-procurement:$fingerprint"
+        val suffix = if (autoConfirmOptIn) ":auto" else ""
+        return "retailer-procurement:$fingerprint$suffix"
     }
 
     fun confirmCash(orderId: String): String = "retailer-confirm-cash:$orderId"
@@ -29,6 +33,17 @@ object RetailerIdempotencyKeys {
     fun cancel(orderId: String): String = "retailer-cancel:$orderId"
 
     fun setup(retailerId: String): String = "retailer-setup:$retailerId"
+
+    fun taxIdentity(retailerId: String, fingerprint: String): String =
+        "retailer-tax-identity:$retailerId:${stableHash(fingerprint)}"
+
+    fun nasiyaAcknowledge(invoiceId: String): String = "nasiya-opening-ack:$invoiceId"
+
+    fun nasiyaDispute(invoiceId: String, reason: String): String =
+        "nasiya-opening-dispute:$invoiceId:${stableHash(reason)}"
+
+    fun joinRequestDecide(requestId: String, decision: String): String =
+        "retailer-join-decide:$requestId:${decision.lowercase()}"
 
     fun editPreorder(orderId: String): String = "retailer-edit-preorder:$orderId"
 

@@ -1,0 +1,174 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pegasusx.dev/contracts/ontology/supplier.v1.schema.json",
+  "title": "SupplierOntologyObjectV1",
+  "description": "Wholesale supplier tenant root node.",
+  "x-ontology-version": "1.0.0",
+  "x-schema-version": "v1",
+  "x-object-type": "Supplier",
+  "x-primary-key": [
+    "cell_id",
+    "object_type",
+    "object_id"
+  ],
+  "x-default-security-markings": [],
+  "x-allowed-link-types": [
+    "supplies",
+    "stocks",
+    "ordered",
+    "shipped_on",
+    "owes",
+    "substitutes",
+    "recalled_with"
+  ],
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "cell_id",
+    "object_type",
+    "object_id",
+    "supplier_id",
+    "version",
+    "properties",
+    "valid_from",
+    "updated_at"
+  ],
+  "properties": {
+    "cell_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Cell/region partition coordinate"
+    },
+    "object_type": {
+      "type": "string",
+      "const": "Supplier"
+    },
+    "object_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Unique entity identifier within cell+type"
+    },
+    "supplier_id": {
+      "type": "string",
+      "description": "Tenant supplier identifier"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Monotonic optimistic-concurrency version"
+    },
+    "security_markings": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "MARKING:FINANCE_ONLY",
+          "MARKING:PII",
+          "MARKING:AML_INVESTIGATION",
+          "MARKING:DISCREPANT_QUARANTINE",
+          "MARKING:THERMAL_QUARANTINE_SPOILED",
+          "MARKING:MICRO_SKIMMING_SUSPECT",
+          "MARKING:LOT_RECALL_QUARANTINE"
+        ]
+      },
+      "uniqueItems": true,
+      "description": "Data governance & quarantine markings"
+    },
+    "valid_from": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "properties": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "supplier_id": {
+          "type": "string",
+          "description": "Supplier UUID"
+        },
+        "name": {
+          "type": "string",
+          "description": "Supplier display name"
+        },
+        "country_code": {
+          "type": "string",
+          "description": "ISO 3166-1 alpha-2 country code"
+        },
+        "currency": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 8,
+          "description": "ISO 4217 currency code"
+        },
+        "is_configured": {
+          "type": "boolean",
+          "description": "Onboarding configuration complete"
+        },
+        "is_registered": {
+          "type": "boolean",
+          "description": "KYB registration complete"
+        },
+        "region_id": {
+          "type": "string",
+          "description": "Primary operating region ID"
+        },
+        "market_code": {
+          "type": "string",
+          "description": "Market vertical code"
+        },
+        "home_cell": {
+          "type": "string",
+          "description": "Primary Spanner/cell routing identifier"
+        },
+        "tax_id": {
+          "type": "string",
+          "description": "Supplier tax identification number (PII)"
+        },
+        "normalized_tax_id": {
+          "type": "string",
+          "description": "Canonicalized INN/TIN (PII)"
+        },
+        "gln": {
+          "type": "string",
+          "description": "GS1 Global Location Number"
+        },
+        "phone": {
+          "type": "string",
+          "description": "Primary supplier contact phone (PII)"
+        },
+        "email": {
+          "type": "string",
+          "description": "Primary supplier contact email (PII)"
+        },
+        "contact_name": {
+          "type": "string",
+          "description": "Primary supplier contact name (PII)"
+        },
+        "fleet_vehicle_count": {
+          "type": "integer",
+          "description": "Declared fleet vehicle count"
+        },
+        "fleet_max_vu": {
+          "type": "integer",
+          "description": "Declared fleet capacity in volumetric units"
+        },
+        "factory_count": {
+          "type": "integer",
+          "description": "Declared factory count"
+        },
+        "payment_acceptor": {
+          "type": "string",
+          "description": "Settlement acceptor mode"
+        },
+        "status": {
+          "type": "string",
+          "description": "Supplier lifecycle status"
+        }
+      }
+    }
+  }
+}

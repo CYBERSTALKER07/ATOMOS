@@ -51,8 +51,16 @@ func main() {
 	defer client.Close()
 
 	store := manifest.NewStore(client)
+	googleRoutes := routing.NewGoogleRoutesClient(cfg.GoogleMapsAPIKey, "", nil)
 	osrmClient := routing.NewOSRMClient(cfg.RoutingOSRMURL, nil)
-	store.SetGeometryBuilder(routing.NewGeometryBuilder(osrmClient))
+	store.SetGeometryBuilder(routing.NewGeometryBuilder(
+		googleRoutes,
+		osrmClient,
+		routing.ParseRoutingProviderMode(cfg.RoutingProvider),
+	))
+	if googleRoutes != nil {
+		slog.Info("Google Routes geometry enabled", "provider_mode", cfg.RoutingProvider)
+	}
 	if osrmClient != nil {
 		slog.Info("OSRM routing enabled", "base_url", cfg.RoutingOSRMURL)
 	}

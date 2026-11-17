@@ -1,46 +1,41 @@
 import SwiftUI
 
 struct ClaimChargebacksView: View {
-    @State private var items: [PaymentLedgerEntry] = []
-    @State private var orderFilter = ""
-    @State private var loading = true
-    @State private var error: String?
-
-    private var total: Int64 {
-        items.reduce(0) { $0 + $1.amountMinor }
-    }
+    @State private var viewModel = ClaimChargebacksViewModel()
 
     var body: some View {
+        @Bindable var vm = viewModel
         List {
             Section {
-                TextField("Filter order id", text: $orderFilter)
+                TextField("supplier_portal.chargebacks.claims.text.filter_order_id", text: $vm.orderFilter)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
-                Button("Refresh") { Task { await load() } }
-                Text("\(items.count) rows · total \(total) minor")
+                Button("portal.page.orders.action.refresh") { Task { await viewModel.load() } }
+                    .frame(minHeight: 44)
+                Text(L10n.format("mobile_supplier.ui.count_rows_total_total_minor", "\(viewModel.items.count)", MissingNumber.label(viewModel.total)))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
 
-            if loading {
-                Section { ProgressView("Loading…") }
-            } else if let error {
+            if viewModel.loading && viewModel.items.isEmpty {
+                Section { ProgressView("mobile_supplier.loading.generic") }
+            } else if let error = viewModel.error, viewModel.items.isEmpty {
                 Section {
-                    Text(error).foregroundStyle(.red)
-                    Button("Retry") { Task { await load() } }
+                    Text(error).foregroundStyle(SupplierTheme.destructive)
+                    Button("common.action.retry") { Task { await viewModel.load() } }
                 }
-            } else if items.isEmpty {
+            } else if viewModel.items.isEmpty {
                 Section {
-                    Text("No claim chargebacks yet. Approve a claim to create chargeback_clm_* ledger rows.")
+                    Text("mobile_supplier.ui.no_claim_chargebacks_yet_approve_a_claim_to_create_chargeback_cl")
                         .foregroundStyle(.secondary)
                 }
             } else {
-                Section("Claim chargebacks") {
-                    ForEach(items) { row in
+                Section("portal.nav.claim_chargebacks") {
+                    ForEach(viewModel.items) { row in
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("\(row.amountMinor) \(row.currency.isEmpty ? "UZS" : row.currency)")
+                            Text(Self.formatChargebackRowAmount(row.amountMinor, currency: row.currency))
                                 .font(.subheadline.weight(.semibold))
-                            Text("Order \(row.orderId ?? "—")")
+                            Text(L10n.format("mobile_supplier.ui.order_orderid_2", "\(row.orderId ?? "—")"))
                                 .font(.caption)
                             if let ref = row.referenceId {
                                 Text(ref).font(.caption2.monospaced()).foregroundStyle(.secondary)
@@ -53,28 +48,19 @@ struct ClaimChargebacksView: View {
                                 .foregroundStyle(.tertiary)
                         }
                         .padding(.vertical, 2)
+                        .accessibilityElement(children: .combine)
                     }
                 }
             }
         }
-        .navigationTitle("Claim chargebacks")
-        .refreshable { await load() }
-        .task { await load() }
+        .scrollDismissesKeyboard(.interactively)
+        .navigationTitle("portal.nav.claim_chargebacks")
+        .refreshable { await viewModel.load(silent: true) }
+        .task { await viewModel.load() }
     }
 
-    private func load() async {
-        loading = true
-        error = nil
-        defer { loading = false }
-        do {
-            let resp = try await SupplierOperationsService.listClaimChargebacks(
-                limit: 100,
-                orderId: orderFilter.trimmingCharacters(in: .whitespacesAndNewlines)
-            )
-            items = resp.items
-        } catch {
-            self.error = error.localizedDescription
-            items = []
-        }
+    static func formatChargebackRowAmount(_ amountMinor: Int64?, currency: String?) -> String {
+        guard let amountMinor else { return MissingNumber.label(nil as Int64?) }
+        return MoneyFormat.minor(amountMinor, currency: displayPackCurrency(currency))
     }
 }

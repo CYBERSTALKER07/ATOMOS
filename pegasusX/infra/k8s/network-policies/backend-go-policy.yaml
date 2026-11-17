@@ -1,0 +1,125 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: backend-go-network-policy
+  namespace: pegasusx
+  labels:
+    app: backend-go
+    app.kubernetes.io/part-of: pegasusx
+    security.pegasusx.io/tier: zero-trust
+spec:
+  podSelector:
+    matchLabels:
+      app: backend-go
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # 1. Allow HTTP/WS ingress on port 8080 from ingress controllers, GCLB health checks, and sibling cell pods
+    - from:
+        - podSelector: {}
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+        - ipBlock:
+            cidr: 130.211.0.0/22
+        - ipBlock:
+            cidr: 35.191.0.0/16
+      ports:
+        - protocol: TCP
+          port: 8080
+    # 2. Allow Prometheus scraper on port 8080
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: gke-gmp-system
+      ports:
+        - protocol: TCP
+          port: 8080
+  egress:
+    # 1. DNS Resolution (kube-system)
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # 2. Allow call to optimizer-core on port 8082 and OSRM routing engine on port 5000
+    - to:
+        - podSelector:
+            matchLabels:
+              app: optimizer-core
+      ports:
+        - protocol: TCP
+          port: 8082
+    - to:
+        - podSelector:
+            matchLabels:
+              app: osrm
+      ports:
+        - protocol: TCP
+          port: 5000
+    # 3. Allow Redis in cluster or GCP Memorystore private RFC1918 VPC CIDRs
+    - to:
+        - ipBlock:
+            cidr: 10.0.0.0/8
+        - ipBlock:
+            cidr: 172.16.0.0/12
+        - ipBlock:
+            cidr: 192.168.0.0/16
+      ports:
+        - protocol: TCP
+          port: 6379
+        - protocol: TCP
+          port: 6378
+    # 4. Allow Kafka in cluster or Managed Kafka private VPC CIDRs
+    - to:
+        - podSelector:
+            matchLabels:
+              app: kafka
+        - ipBlock:
+            cidr: 10.0.0.0/8
+        - ipBlock:
+            cidr: 172.16.0.0/12
+        - ipBlock:
+            cidr: 192.168.0.0/16
+      ports:
+        - protocol: TCP
+          port: 9092
+        - protocol: TCP
+          port: 29092
+    # 5. Allow Google Cloud APIs & external rails (Spanner, GCS, KMS, FCM, MySoliq/Didox, PSPs) via public HTTPS + PGA VIPs
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 169.254.0.0/16
+              - 127.0.0.0/8
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+        - ipBlock:
+            cidr: 199.36.153.4/30
+        - ipBlock:
+            cidr: 199.36.153.8/30
+      ports:
+        - protocol: TCP
+          port: 443
+    - to:
+        - ipBlock:
+            cidr: 10.0.0.0/8
+        - ipBlock:
+            cidr: 172.16.0.0/12
+        - ipBlock:
+            cidr: 192.168.0.0/16
+      ports:
+        - protocol: TCP
+          port: 9010
+        - protocol: TCP
+          port: 9020

@@ -22,19 +22,32 @@ var errImportAlreadyClaimed = errors.New("import session already claimed")
 
 // ImportIngestSummary is the durable outcome of discovery + staging for one import body.
 type ImportIngestSummary struct {
-	Status             string
-	RowsStaged         int
-	SuggestedMappings  int
-	ValidRows          int
-	InvalidRows        int
-	DiscoveryModel     string
-	LowConfidence      bool
+	Status            string
+	RowsStaged        int
+	SuggestedMappings int
+	ValidRows         int
+	InvalidRows       int
+	DiscoveryModel    string
+	LowConfidence     bool
 }
 
-// IngestImportBytes runs deterministic discovery and stages rows for an import session.
+// IngestImportBytes runs deterministic discovery and stages rows for an import body,
+// sniffing container magic bytes (.xlsx, .xls, csv, tsv, xml, json) automatically.
 func (r *ImportRepository) IngestImportBytes(
 	ctx context.Context,
 	supplierID, sessionID string,
+	body []byte,
+	delimiter rune,
+	warehouseIDs map[string]struct{},
+) (ImportIngestSummary, error) {
+	return r.IngestImportArtifact(ctx, supplierID, sessionID, "", body, delimiter, warehouseIDs)
+}
+
+// IngestImportArtifact sniffs the artifact bytes against optional fileName, streams all
+// sheets/rows without a 10k row cap, validates topology, and stages rows into Spanner.
+func (r *ImportRepository) IngestImportArtifact(
+	ctx context.Context,
+	supplierID, sessionID, fileName string,
 	body []byte,
 	delimiter rune,
 	warehouseIDs map[string]struct{},
@@ -47,19 +60,21 @@ func (r *ImportRepository) IngestImportBytes(
 		return zero, errors.New("import_empty")
 	}
 
-	outcome, _, rows, discoverErr := discoverImportDelimited(body, delimiter)
+	outcome, _, rows, discoverErr := discoverImportArtifact(fileName, body, delimiter)
 	if discoverErr != nil {
 		return zero, discoverErr
 	}
 	if len(rows) == 0 {
 		return zero, fmt.Errorf("import_empty")
 	}
-	if len(rows) > importDiscoveryMaxRows {
-		return zero, fmt.Errorf("import_too_many_rows")
-	}
 
+	activeProducts, batchLoadErr := r.LoadActiveProductIDSet(ctx, supplierID)
 	productCache := map[string]bool{}
 	productExists := func(productID string) bool {
+		if batchLoadErr == nil {
+			_, ok := activeProducts[strings.TrimSpace(productID)]
+			return ok
+		}
 		if cached, ok := productCache[productID]; ok {
 			return cached
 		}
@@ -88,10 +103,17 @@ func (r *ImportRepository) IngestImportBytes(
 		"generated_at": time.Now().UTC().Format(time.RFC3339),
 	}
 
-	if err := r.PersistDiscovery(ctx, supplierID, sessionID, nextStatus, mappingDoc, errorSummary); err != nil {
-		return zero, err
+	const legacyStageChunkSize = 2500
+	for start := 0; start < len(stagedRows); start += legacyStageChunkSize {
+		end := start + legacyStageChunkSize
+		if end > len(stagedRows) {
+			end = len(stagedRows)
+		}
+		if err := r.SaveStagedRows(ctx, supplierID, sessionID, stagedRows[start:end]); err != nil {
+			return zero, err
+		}
 	}
-	if err := r.SaveStagedRows(ctx, supplierID, sessionID, stagedRows); err != nil {
+	if err := r.PersistDiscovery(ctx, supplierID, sessionID, nextStatus, mappingDoc, errorSummary); err != nil {
 		return zero, err
 	}
 
@@ -195,7 +217,7 @@ func (r *ImportRepository) LoadWarehouseIDSet(ctx context.Context, supplierID st
 		      WHERE SupplierId = @supplierId`,
 		Params: map[string]any{"supplierId": supplierID},
 	}
-	iter := r.client.Single().Query(ctx, stmt)
+	iter := r.client.Single().WithTimestampBound(spanner.StrongRead()).Query(ctx, stmt)
 	defer iter.Stop()
 
 	ids := map[string]struct{}{}
@@ -219,6 +241,43 @@ func (r *ImportRepository) LoadWarehouseIDSet(ctx context.Context, supplierID st
 	return ids, nil
 }
 
+// LoadActiveProductIDSet loads all active product ids owned by supplierID in one strong read
+// to avoid N+1 point lookups on >10k-row workbooks.
+func (r *ImportRepository) LoadActiveProductIDSet(ctx context.Context, supplierID string) (map[string]struct{}, error) {
+	if r == nil || r.client == nil {
+		return nil, errors.New("spanner unavailable")
+	}
+	ro := r.client.ReadOnlyTransaction()
+	defer ro.Close()
+	iter := ro.Query(ctx, spanner.Statement{
+		SQL: `SELECT ProductId
+		      FROM Products
+		      WHERE SupplierId = @supplierId AND IsActive = TRUE`,
+		Params: map[string]any{"supplierId": supplierID},
+	})
+	defer iter.Stop()
+
+	ids := map[string]struct{}{}
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, fmt.Errorf("query supplier active products: %w", err)
+		}
+		var productID string
+		if err := row.Columns(&productID); err != nil {
+			return nil, fmt.Errorf("scan product id: %w", err)
+		}
+		productID = strings.TrimSpace(productID)
+		if productID != "" {
+			ids[productID] = struct{}{}
+		}
+	}
+	return ids, nil
+}
+
 // ImportObjectOpener resolves supplier import objects from GCS or a local dev root.
 type ImportObjectOpener struct {
 	bucket    string
@@ -232,7 +291,9 @@ func NewImportObjectOpenerFromEnv(ctx context.Context) (*ImportObjectOpener, err
 		bucket:    strings.TrimSpace(os.Getenv("GCS_BUCKET_NAME")),
 		localRoot: strings.TrimSpace(os.Getenv("IMPORT_LOCAL_FILE_ROOT")),
 	}
-	if opener.bucket != "" {
+	// Local root is the sandbox/emulator plane. Skip GCS so discovery cannot
+	// hang on a real bucket that is not the live import path.
+	if opener.localRoot == "" && opener.bucket != "" {
 		client, err := storage.NewClient(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("init gcs client: %w", err)
@@ -260,24 +321,32 @@ func (o *ImportObjectOpener) ReadObject(ctx context.Context, gcsPath string) ([]
 		return nil, errors.New("object path is empty")
 	}
 
+	if o.localRoot != "" {
+		localPath := filepath.Join(o.localRoot, filepath.FromSlash(path))
+		if body, err := os.ReadFile(localPath); err == nil {
+			return body, nil
+		} else if o.client == nil || o.bucket == "" {
+			return nil, err
+		}
+	}
+
 	if o.client != nil && o.bucket != "" {
 		rc, err := o.client.Bucket(o.bucket).Object(path).NewReader(ctx)
 		if err == nil {
 			defer rc.Close()
 			return io.ReadAll(rc)
 		}
-	}
-
-	if o.localRoot != "" {
-		localPath := filepath.Join(o.localRoot, filepath.FromSlash(path))
-		return os.ReadFile(localPath)
+		if o.localRoot == "" {
+			return nil, err
+		}
 	}
 
 	return nil, fmt.Errorf("import object %q is not available (configure GCS_BUCKET_NAME or IMPORT_LOCAL_FILE_ROOT)", path)
 }
 
 // ProcessImportUploaded handles INVENTORY_IMPORT_UPLOADED for async GCS/local discovery.
-func (r *ImportRepository) ProcessImportUploaded(ctx context.Context, opener *ImportObjectOpener, supplierID, sessionID, gcsPath string) error {
+// warehouseIDs is the wizard topology set when the portal already loaded it; empty falls back to Warehouses.
+func (r *ImportRepository) ProcessImportUploaded(ctx context.Context, opener *ImportObjectOpener, supplierID, sessionID, gcsPath string, warehouseIDs map[string]struct{}) error {
 	acquired, err := r.MarkSessionDiscovering(ctx, supplierID, sessionID)
 	if err != nil {
 		return err
@@ -286,27 +355,29 @@ func (r *ImportRepository) ProcessImportUploaded(ctx context.Context, opener *Im
 		return nil
 	}
 
-	body, readErr := opener.ReadObject(ctx, gcsPath)
-	if readErr != nil {
-		reason := fmt.Sprintf("sample read failed: %v", readErr)
+	fail := func(reason string) error {
 		if markErr := r.MarkSessionImportFailed(ctx, supplierID, sessionID, reason); markErr != nil {
 			return markErr
 		}
 		return nil
+	}
+
+	body, readErr := opener.ReadObject(ctx, gcsPath)
+	if readErr != nil {
+		return fail(fmt.Sprintf("sample read failed: %v", readErr))
 	}
 
 	delimiter := detectImportDelimiter(gcsPath, body)
-	warehouseIDs, topoErr := r.LoadWarehouseIDSet(ctx, supplierID)
-	if topoErr != nil {
-		return topoErr
+	if len(warehouseIDs) == 0 {
+		loaded, topoErr := r.LoadWarehouseIDSet(ctx, supplierID)
+		if topoErr != nil {
+			return fail(fmt.Sprintf("load warehouses failed: %v", topoErr))
+		}
+		warehouseIDs = loaded
 	}
 
-	if _, ingestErr := r.IngestImportBytes(ctx, supplierID, sessionID, body, delimiter, warehouseIDs); ingestErr != nil {
-		reason := fmt.Sprintf("discovery failed: %v", ingestErr)
-		if markErr := r.MarkSessionImportFailed(ctx, supplierID, sessionID, reason); markErr != nil {
-			return markErr
-		}
-		return nil
+	if _, ingestErr := r.IngestImportArtifact(ctx, supplierID, sessionID, gcsPath, body, delimiter, warehouseIDs); ingestErr != nil {
+		return fail(fmt.Sprintf("discovery failed: %v", ingestErr))
 	}
 	return nil
 }

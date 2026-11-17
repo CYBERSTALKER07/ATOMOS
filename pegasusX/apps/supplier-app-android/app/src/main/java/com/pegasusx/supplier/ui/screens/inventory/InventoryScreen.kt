@@ -6,10 +6,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.pegasus.design.showFullScreenLoading
-import com.pegasus.design.PegasusLoadingState
-import com.pegasus.design.PegasusStateKind
-import com.pegasus.design.PegasusStatePane
+import com.pegasusx.supplier.ui.design.showFullScreenLoading
+import com.pegasusx.supplier.ui.design.PegasusLoadingState
+import com.pegasusx.supplier.ui.design.PegasusStateKind
+import com.pegasusx.supplier.ui.design.PegasusStatePane
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import com.pegasusx.supplier.ui.viewmodel.InventoryViewModel
 
@@ -28,7 +28,7 @@ fun InventoryScreen(
                 state.error != null && state.items.isEmpty() -> PegasusStatePane(
                     kind = PegasusStateKind.Error,
                     headline = "Inventory unavailable",
-                    body = state.error!!,
+                    body = state.error.orEmpty(),
                     actionLabel = "Retry",
                     onAction = { viewModel.load() },
                 )

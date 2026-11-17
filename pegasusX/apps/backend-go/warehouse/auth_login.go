@@ -50,6 +50,10 @@ func (s *Service) HandleWarehouseLogin(w http.ResponseWriter, r *http.Request) {
 	var lookupPhone string
 
 	idToken := strings.TrimSpace(req.IDToken)
+	if idToken != "" && s.firebaseVerifier == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": auth.FirebaseLoginUnavailable})
+		return
+	}
 	if idToken != "" && s.firebaseVerifier != nil {
 		fbClaims, err := s.firebaseVerifier.VerifyIDToken(r.Context(), idToken)
 		if err != nil {
@@ -111,7 +115,7 @@ func (s *Service) HandleWarehouseLogin(w http.ResponseWriter, r *http.Request) {
 
 	supplierID := strings.TrimSpace(staff.SupplierID)
 	if supplierID == "" {
-		supplierID = s.supplierID
+		supplierID = s.resolveSupplierScope(r.Context())
 	}
 
 	isConfigured := false
@@ -221,7 +225,7 @@ func verifyWarehouseStaffSecret(storedHash, secret string) bool {
 	if strings.HasPrefix(storedHash, "$2a$") || strings.HasPrefix(storedHash, "$2b$") || strings.HasPrefix(storedHash, "$2y$") {
 		return bcrypt.CompareHashAndPassword([]byte(storedHash), []byte(secret)) == nil
 	}
-	return storedHash == secret
+	return false
 }
 
 // HandleWarehouseRefresh re-issues access tokens from a refresh JWT.
@@ -259,6 +263,16 @@ func (s *Service) HandleWarehouseRefresh(w http.ResponseWriter, r *http.Request)
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": "invalid_refresh_scope"})
 		return
 	}
+	if rerr := auth.ValidateAndRotateRefreshClaims(r.Context(), claims, 0); rerr != nil {
+		code := http.StatusUnauthorized
+		if rerr.Error() == "revocation_store_unavailable" {
+			code = http.StatusServiceUnavailable
+		}
+		writeJSON(w, code, map[string]string{"error": rerr.Error()})
+		return
+	}
+	claims.JTI = ""
+	claims.TokenUse = auth.TokenUseFull
 
 	claims.IsConfigured = s.warehouseIsConfigured(r.Context(), claims.HomeNodeID)
 

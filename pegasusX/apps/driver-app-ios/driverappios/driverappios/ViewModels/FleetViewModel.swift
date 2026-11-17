@@ -4,7 +4,6 @@
 //
 
 import CoreLocation
-import Combine
 import SwiftUI
 
 @Observable
@@ -55,6 +54,7 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
     // Rescue Flow
     var showRescueProposalAlert = false
     var pendingRescueId: String?
+    var pendingBrokenDriverId: String?
 
     /// Orders that have already been auto-transitioned to ARRIVED (one-shot guard)
     private var arrivedIds: Set<String> = []
@@ -66,6 +66,7 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
     private let maxTrailPoints = 60
     private let locationInterpolator = LocationInterpolator()
     private var interpolationTask: Task<Void, Never>?
+    private var socketRefreshTask: Task<Void, Never>?
 
     // MARK: - Services
 
@@ -143,21 +144,31 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
         locationManager.delegate = self
         locationManager.desiredAccuracy = kCLLocationAccuracyBestForNavigation
         locationManager.distanceFilter = 10
+        let defaultLoc = Self.warehouseCenter
+        self.location = defaultLoc
+        self.displayLocation = defaultLoc
+        Self.lastKnownLocation = defaultLoc
+        if locationManager.authorizationStatus == .notDetermined {
+            locationManager.requestWhenInUseAuthorization()
+        } else if locationManager.authorizationStatus == .authorizedWhenInUse || locationManager.authorizationStatus == .authorizedAlways {
+            locationManager.startUpdatingLocation()
+        }
         ProfileService.shared.startPolling()
         Task { await loadEarningsAndHistory() }
     }
 
     func loadEarningsAndHistory() async {
-        do {
-            earnings = try await APIClient.shared.getEarnings()
-        } catch {
-            print("[FleetViewModel] earnings load failed: \(error)")
+        async let earningsTask = APIClient.shared.getEarnings()
+        async let historyTask = APIClient.shared.getDriverHistory()
+        if let fetchedEarnings = try? await earningsTask {
+            earnings = fetchedEarnings
+        } else {
+            earnings = nil
         }
-        do {
-            let history = try await APIClient.shared.getDriverHistory()
-            historyRows = history.rows
-        } catch {
-            print("[FleetViewModel] history load failed: \(error)")
+        if let fetchedHistory = try? await historyTask {
+            historyRows = fetchedHistory.rows
+        } else {
+            historyRows = []
         }
     }
 
@@ -169,6 +180,7 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
         if event.type == "RESCUE_PROPOSED" {
             if let rescueId = event.rescueId {
                 self.pendingRescueId = rescueId
+                self.pendingBrokenDriverId = event.brokenDriverId
                 self.showRescueProposalAlert = true
                 Haptics.heavy()
             }
@@ -176,9 +188,12 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
         }
 
         guard DriverWsRefresh.shouldRefreshManifest(eventType: event.type) else { return }
-        Task {
-            await loadMissions(silent: true)
-            lastRealtimeRefreshAt = Date()
+        socketRefreshTask?.cancel()
+        socketRefreshTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: 180_000_000) // 180ms burst coalescing window
+            guard !Task.isCancelled, let self else { return }
+            await self.loadMissions(silent: true)
+            self.lastRealtimeRefreshAt = Date()
         }
     }
 
@@ -209,8 +224,8 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
                 )
             }
         } catch {
-            missions = []
             orders = []
+            missions = []
         }
 
         deriveTruckStatus()
@@ -309,6 +324,16 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
         if let cue = navigationCue, shouldAnnounceManeuverAdvance(previousIndex: previousIndex, nextIndex: navigationStepIndex) {
             navigationVoiceAnnouncer.announce(cue)
         }
+
+        let progress = routeSteps.isEmpty ? 0.0 : Double(navigationStepIndex) / Double(routeSteps.count)
+        let etaMinutes = max(1, Int((navigationCue?.distanceM ?? 500) / 400))
+        DriverLiveActivityManager.shared.updateNavigationState(
+            cue: navigationCue,
+            etaMinutes: etaMinutes,
+            progress: progress,
+            currentStepIndex: navigationStepIndex + 1,
+            totalSteps: routeSteps.count
+        )
     }
 
     func startLocationInterpolation() {
@@ -343,6 +368,19 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
         refreshPlannedRoute()
         Task { await loadRouteGeometry() }
         showMarkerSheet = true
+
+        let dest = activeOrder?.retailerName ?? "Destination"
+        let items = activeOrder?.items.count ?? 1
+        let amount = Int64(activeOrder?.totalAmount ?? mission.amount)
+        DriverLiveActivityManager.shared.startNavigationActivity(
+            orderId: mission.order_id,
+            routeId: mission.route_id ?? "",
+            destinationName: dest,
+            totalItems: items,
+            totalAmountMinor: amount,
+            initialCue: navigationCue,
+            totalSteps: routeSteps.count
+        )
     }
 
     func markCompleted(_ orderId: String) {
@@ -358,6 +396,7 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
             activeOrder = nil
             showMarkerSheet = false
             refreshPlannedRoute()
+            DriverLiveActivityManager.shared.endActivity(status: "COMPLETED")
         }
     }
 
@@ -393,6 +432,7 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
                 gateExplain = nil
             } catch {
                 // Graceful degradation — allow depart if gate check fails
+                print("[FleetViewModel] manifest gate check soft-failed: \(error.localizedDescription)")
             }
         }
 
@@ -416,13 +456,14 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
         Haptics.heavy()
 
         do {
-            // Phase 6 soft-freeze: block local UX when open fiscal exists.
+            // Non-blocking fiscal: trust server cash_bag_frozen flag instead of blocking on retry-queued receipts.
             if let snap = try? await APIClient.shared.getOpenFiscal(),
-               snap.cashBagFrozen || snap.openFiscalCount > 0 {
-                deliveryEdgeMessage = "Cash bag frozen: \(snap.openFiscalCount) order(s) still fiscalizing. Retry fiscal or call supervisor."
+               snap.cashBagFrozen {
+                deliveryEdgeMessage = "Cash bag frozen: \(snap.openFiscalCount) order(s) have uncollected cash or missing PoD before closing shift."
                 return
             }
             _ = try await APIClient.shared.returnComplete(truckId: vehicleId)
+            DriverLiveActivityManager.shared.endActivity(status: "COMPLETED")
             truckStatus = "AVAILABLE"
             isReturning = false
             returnGoodsLines = []
@@ -501,10 +542,12 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
 
     func acceptRescue() async {
         guard let rescueId = pendingRescueId else { return }
+        let brokenDriverId = pendingBrokenDriverId ?? ""
         do {
-            try await fleetService.respondRescue(rescueId: rescueId, accept: true)
+            try await fleetService.respondRescue(rescueId: rescueId, brokenDriverId: brokenDriverId, accept: true)
             self.showRescueProposalAlert = false
             self.pendingRescueId = nil
+            self.pendingBrokenDriverId = nil
             await loadMissions(silent: false)
         } catch {
             print("Failed to accept rescue: \(error)")
@@ -513,10 +556,12 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
 
     func rejectRescue() async {
         guard let rescueId = pendingRescueId else { return }
+        let brokenDriverId = pendingBrokenDriverId ?? ""
         do {
-            try await fleetService.respondRescue(rescueId: rescueId, accept: false)
+            try await fleetService.respondRescue(rescueId: rescueId, brokenDriverId: brokenDriverId, accept: false)
             self.showRescueProposalAlert = false
             self.pendingRescueId = nil
+            self.pendingBrokenDriverId = nil
         } catch {
             print("Failed to reject rescue: \(error)")
         }
@@ -524,11 +569,17 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
 
     // MARK: - Delivery-edge APIs
 
-    func markCreditDelivery(orderId: String, photoProofUrl: String? = nil) async {
+    func markCreditDelivery(
+        orderId: String,
+        photoProofUrl: String? = nil,
+        signatureUrl: String? = nil,
+        photoLocalPath: String? = nil,
+        signatureLocalPath: String? = nil
+    ) async {
         deliveryEdgeError = nil
         deliveryEdgeMessage = nil
         do {
-            let resp = try await fleetService.markCreditDelivery(orderId: orderId, photoProofUrl: photoProofUrl)
+            let resp = try await fleetService.markCreditDelivery(orderId: orderId, photoProofUrl: photoProofUrl, signatureUrl: signatureUrl)
             if let due = resp["due_at"], !due.isEmpty {
                 deliveryEdgeMessage = "Credit delivery recorded · due \(due)"
             } else {
@@ -599,7 +650,9 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
                 if let idx = orders.firstIndex(where: { $0.id == updated.id }) {
                     orders[idx] = updated
                 }
-            } catch { }
+            } catch {
+                print("[FleetViewModel] legacyStartTransit order=\(order.id) failed: \(error.localizedDescription)")
+            }
         }
         isTelemetryLive = true
         deriveTruckStatus()
@@ -669,9 +722,11 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
     // MARK: - Location
 
     func requestLocationPermission() {
-    locationManager.requestAlwaysAuthorization()
-    locationManager.allowsBackgroundLocationUpdates = true
-    locationManager.showsBackgroundLocationIndicator = true
+        locationManager.requestWhenInUseAuthorization()
+        locationManager.requestAlwaysAuthorization()
+        locationManager.allowsBackgroundLocationUpdates = true
+        locationManager.showsBackgroundLocationIndicator = true
+        locationManager.startUpdatingLocation()
     }
 
     func distanceToMission(_ mission: Mission) -> Double? {
@@ -688,7 +743,10 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
     // MARK: - CLLocationManagerDelegate
 
     nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        guard let loc = locations.last else { return }
+        guard let loc = locations.last,
+              loc.horizontalAccuracy >= 0,
+              loc.horizontalAccuracy <= 1500,
+              abs(loc.timestamp.timeIntervalSinceNow) <= 120 else { return }
         Task { @MainActor in
             self.location = loc.coordinate
             if loc.course >= 0 {
@@ -748,6 +806,10 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
     nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         Task { @MainActor in
             self.gpsError = error.localizedDescription
+            if self.location == nil {
+                self.location = Self.warehouseCenter
+                self.displayLocation = Self.warehouseCenter
+            }
         }
     }
 

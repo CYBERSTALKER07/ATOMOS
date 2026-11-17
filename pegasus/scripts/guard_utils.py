@@ -9,13 +9,34 @@ import subprocess
 from pathlib import Path
 
 
+def _effective_repo_root(repo_root: Path) -> Path:
+    if (repo_root / ".git").exists():
+        return repo_root
+    script_repo_root = Path(__file__).resolve().parents[1]
+    if (script_repo_root / ".git").exists():
+        return script_repo_root
+    if (repo_root.parent / ".git").exists():
+        return repo_root.parent
+    return repo_root
+
+
 def run_cmd(cmd: list[str], cwd: Path, allow_fail: bool = False) -> tuple[int, str, str]:
+    effective_cwd = _effective_repo_root(cwd)
+    normalized_cmd: list[str] = []
+    for arg in cmd:
+        if arg.startswith("pegasus/scripts/") and not (effective_cwd / arg).exists():
+            stripped = arg[len("pegasus/") :]
+            if (effective_cwd / stripped).exists():
+                normalized_cmd.append(stripped)
+                continue
+        normalized_cmd.append(arg)
+
     env = dict(os.environ)
     env.setdefault("GIT_CONFIG_GLOBAL", os.devnull)
 
     proc = subprocess.run(
-        cmd,
-        cwd=str(cwd),
+        normalized_cmd,
+        cwd=str(effective_cwd),
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
@@ -24,7 +45,7 @@ def run_cmd(cmd: list[str], cwd: Path, allow_fail: bool = False) -> tuple[int, s
     )
     if proc.returncode != 0 and not allow_fail:
         raise RuntimeError(
-            f"command failed ({proc.returncode}): {' '.join(cmd)}\n{proc.stderr.strip()}"
+            f"command failed ({proc.returncode}): {' '.join(normalized_cmd)}\n{proc.stderr.strip()}"
         )
     return proc.returncode, proc.stdout, proc.stderr
 
@@ -37,14 +58,16 @@ def normalize_sha(value: str | None) -> str | None:
 
 
 def ensure_git_repo(repo_root: Path) -> None:
-    if not (repo_root / ".git").exists():
+    effective_root = _effective_repo_root(repo_root)
+    if not (effective_root / ".git").exists():
         raise RuntimeError(f"repo root does not contain .git: {repo_root}")
 
 
 def fetch_commit_if_missing(repo_root: Path, sha: str) -> None:
+    effective_root = _effective_repo_root(repo_root)
     code, _, _ = run_cmd(
         ["git", "cat-file", "-e", f"{sha}^{{commit}}"],
-        cwd=repo_root,
+        cwd=effective_root,
         allow_fail=True,
     )
     if code == 0:
@@ -52,12 +75,13 @@ def fetch_commit_if_missing(repo_root: Path, sha: str) -> None:
 
     run_cmd(
         ["git", "fetch", "--no-tags", "--depth=1", "origin", sha],
-        cwd=repo_root,
+        cwd=effective_root,
         allow_fail=True,
     )
 
 
 def changed_files(repo_root: Path, base_sha: str | None, head_sha: str | None) -> list[str]:
+    repo_root = _effective_repo_root(repo_root)
     normalized_base = normalize_sha(base_sha)
     normalized_head = normalize_sha(head_sha) or "HEAD"
 
@@ -111,10 +135,20 @@ def changed_files(repo_root: Path, base_sha: str | None, head_sha: str | None) -
 
 
 def match_any(path: str, patterns: list[str]) -> bool:
-    return any(fnmatch.fnmatch(path, pattern) for pattern in patterns)
+    candidates = {path}
+    if path.startswith("pegasus/"):
+        candidates.add(path[len("pegasus/") :])
+    else:
+        candidates.add(f"pegasus/{path}")
+    return any(
+        fnmatch.fnmatch(candidate, pattern)
+        for candidate in candidates
+        for pattern in patterns
+    )
 
 
 def iter_repo_files(repo_root: Path) -> list[str]:
+    repo_root = _effective_repo_root(repo_root)
     out: list[str] = []
     for path in repo_root.rglob("*"):
         if not path.is_file():
@@ -167,6 +201,7 @@ def added_lines_for_file(
     base_sha: str | None,
     head_sha: str | None,
 ) -> list[tuple[int, str]]:
+    repo_root = _effective_repo_root(repo_root)
     normalized_base = normalize_sha(base_sha)
     normalized_head = normalize_sha(head_sha) or "HEAD"
 

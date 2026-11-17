@@ -1,5 +1,7 @@
 package com.pegasusx.factory.ui.screens.insights
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.lazy.grid.items
 
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -20,12 +22,13 @@ import androidx.compose.ui.unit.dp
 import com.pegasusx.factory.data.model.Insight
 import com.pegasusx.factory.data.remote.FactoryApi
 import com.pegasusx.factory.data.remote.FactoryRealtimeEventType
-import com.pegasus.design.PegasusLoadingState
-import com.pegasus.design.PegasusStateKind
-import com.pegasus.design.PegasusStatePane
+import com.pegasusx.factory.ui.design.PegasusLoadingState
+import com.pegasusx.factory.ui.design.PegasusStateKind
+import com.pegasusx.factory.ui.design.PegasusStatePane
 import com.pegasusx.factory.ui.realtime.FactoryRealtimeReloadEffect
 import com.pegasusx.factory.ui.theme.*
 import kotlinx.coroutines.launch
+import com.pegasusx.factory.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,7 +50,7 @@ fun InsightsScreen(
             try {
                 val resp = api.getInsights()
                 if (resp.isSuccessful && resp.body() != null) {
-                    insights = resp.body()!!.insights
+                    resp.body()?.let { insights = it.insights }
                 } else {
                     error = "Failed (${resp.code()})"
                 }
@@ -87,7 +90,7 @@ fun InsightsScreen(
     ) { innerPadding ->
         when {
             loading && insights.isEmpty() -> PegasusLoadingState(
-                title = "Loading insights",
+                title = stringResource(R.string.mobile_factory_ui_loading_insights),
                 body = "Fetching replenishment pressure and restock signals for this factory.",
                 modifier = Modifier
                     .fillMaxSize()
@@ -96,7 +99,7 @@ fun InsightsScreen(
             error != null -> PegasusStatePane(
                 kind = PegasusStateKind.Error,
                 headline = "Unable to load insights",
-                body = error!!,
+                body = error.orEmpty(),
                 actionLabel = "Retry",
                 onAction = { load() },
                 modifier = Modifier

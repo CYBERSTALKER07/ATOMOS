@@ -10,13 +10,18 @@ struct OrgMemberListView: View {
     var body: some View {
         Group {
             if orgMembers.isEmpty {
-                SupplierEmptyView(title: "No org members", message: "Create warehouse, factory, or payload staff.")
+                SupplierEmptyView(title: "mobile_supplier.empty.no_org_members", message: "mobile_supplier.empty.org_members_message")
             } else {
                 ResponsiveGridContentWrapper {
                     ForEach(orgMembers) { member in
                         VStack(alignment: .leading) {
                             Text(member.name).font(.headline)
-                            Text("\(member.supplierRole) · \(member.phone) · \(member.isActive ? "Active" : "Inactive")")
+                            Text(L10n.format(
+                                "mobile_supplier.chrome.member_line",
+                                member.supplierRole,
+                                member.phone,
+                                member.isActive ? L10n.format("mobile_supplier.chrome.active") : L10n.format("mobile_supplier.chrome.inactive")
+                            ))
                                 .font(.caption).foregroundStyle(.secondary)
                         }
                         .contentShape(Rectangle())
@@ -29,7 +34,7 @@ struct OrgMemberListView: View {
                                 Button(role: .destructive) {
                                     Task { await deactivateAction(member.userId) }
                                 } label: {
-                                    Text("Deactivate")
+                                    Text("supplier_portal.demand.signals.text.deactivate")
                                 }
                                 .disabled(memberActionId == member.userId)
                             }

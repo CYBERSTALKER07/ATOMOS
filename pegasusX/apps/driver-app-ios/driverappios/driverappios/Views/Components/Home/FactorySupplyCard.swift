@@ -10,19 +10,19 @@ struct FactorySupplyCard: View {
         } label: {
             HStack(spacing: 14) {
                 Image(systemName: "shippingbox.fill")
-                    .font(.system(size: 22, weight: .semibold))
+                    .font(.system(.title2, weight: .semibold))
                     .foregroundStyle(LabTheme.fg)
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("Supply transfers")
-                        .font(.system(size: 16, weight: .bold))
+                    Text("mobile_driver.ui.supply_transfers")
+                        .font(.system(.callout, weight: .bold))
                         .foregroundStyle(LabTheme.fg)
                     Text("\(TokenStore.shared.factoryName ?? "Factory depot") → warehouse legs")
-                        .font(.system(size: 12, weight: .medium))
+                        .font(.system(.caption, weight: .medium))
                         .foregroundStyle(LabTheme.fgSecondary)
                 }
                 Spacer()
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 13, weight: .bold))
+                    .font(.system(.footnote, weight: .bold))
                     .foregroundStyle(LabTheme.fgTertiary)
             }
             .padding(LabTheme.s16)

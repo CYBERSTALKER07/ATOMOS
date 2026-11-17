@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.promotions
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,19 +32,20 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import com.pegasus.design.RealtimeRefreshEffect
-import com.pegasus.design.showFullScreenLoading
+import com.pegasusx.supplier.ui.design.RealtimeRefreshEffect
+import com.pegasusx.supplier.ui.design.showFullScreenLoading
 import com.pegasusx.supplier.data.model.PromoSimulateInput
 import com.pegasusx.supplier.data.model.PromoSimulateResult
 import com.pegasusx.supplier.data.model.SupplierPromotion
 import com.pegasusx.supplier.data.model.SupplierPromotionUpsertRequest
 import com.pegasusx.supplier.data.remote.SupplierApi
 import com.pegasusx.supplier.data.remote.SupplierRealtimeSignals
-import com.pegasus.design.PegasusLoadingState
-import com.pegasus.design.PegasusStateKind
-import com.pegasus.design.PegasusStatePane
+import com.pegasusx.supplier.ui.design.PegasusLoadingState
+import com.pegasusx.supplier.ui.design.PegasusStateKind
+import com.pegasusx.supplier.ui.design.PegasusStatePane
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
+import com.pegasusx.supplier.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -93,7 +96,7 @@ fun PromotionsScreen(api: SupplierApi, realtimeSignals: SupplierRealtimeSignals)
         topBar = { TopAppBar(title = { Text("Promotions") }) },
         floatingActionButton = {
             FloatingActionButton(onClick = { showCreate = true }) {
-                Icon(Icons.Default.Add, contentDescription = "Create promotion")
+                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.mobile_supplier_ui_create_promotion))
             }
         },
     ) { padding ->
@@ -103,7 +106,7 @@ fun PromotionsScreen(api: SupplierApi, realtimeSignals: SupplierRealtimeSignals)
                 error != null -> PegasusStatePane(
                     kind = PegasusStateKind.Error,
                     headline = "Promotions unavailable",
-                    body = error!!,
+                    body = error.orEmpty(),
                 )
                 promotions.isEmpty() -> PegasusStatePane(
                     kind = PegasusStateKind.Empty,
@@ -120,13 +123,27 @@ fun PromotionsScreen(api: SupplierApi, realtimeSignals: SupplierRealtimeSignals)
                             supportingContent = {
                                 val sim = simResults[promo.promotionId]
                                 Column {
+                                    val discountLabel = com.pegasusx.supplier.ui.design.formatMinorDecimal(
+                                        minor = promo.discountBps,
+                                        decimalPlaces = 2,
+                                        groupSeparator = null,
+                                    )
                                     Text(
-                                        "${promo.discountBps / 100.0}% · ${promo.scopeType} · ${promo.retailerScope}" +
-                                            if (promo.isActive) "" else " · inactive",
+                                        stringResource(
+                                            R.string.mobile_supplier_ui_n_0_scopetype_retailerscope,
+                                            discountLabel,
+                                            promo.scopeType,
+                                            promo.retailerScope,
+                                        ) + if (promo.isActive) "" else " · inactive",
                                     )
                                     sim?.let {
                                         Text(
-                                            "P&L sandbox: ${it.projectedVolume} units · margin ${it.projectedMarginMinor / 100.0} (${it.marginDeltaPct}%)",
+                                            stringResource(
+                                                R.string.mobile_supplier_ui_p_l_sandbox_projectedvolume_units_margin_n_0_margindeltapct,
+                                                it.projectedVolume,
+                                                com.pegasusx.supplier.ui.design.formatTiyinFixed(it.projectedMarginMinor),
+                                                it.marginDeltaPct,
+                                            ),
                                             style = MaterialTheme.typography.bodySmall,
                                         )
                                     }
@@ -140,10 +157,18 @@ fun PromotionsScreen(api: SupplierApi, realtimeSignals: SupplierRealtimeSignals)
                                             scope.launch {
                                                 simulatingId = promo.promotionId
                                                 runCatching {
+                                                    @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+                                                    val discountPctLiteral = kotlinx.serialization.json.JsonUnquotedLiteral(
+                                                        com.pegasusx.supplier.ui.design.formatMinorDecimal(
+                                                            minor = promo.discountBps,
+                                                            decimalPlaces = 2,
+                                                            groupSeparator = null,
+                                                        ),
+                                                    )
                                                     api.simulatePromotionPandL(
                                                         PromoSimulateInput(
                                                             promotionId = promo.promotionId,
-                                                            discountPct = promo.discountBps / 100.0,
+                                                            discountPct = discountPctLiteral,
                                                             expectedUnits = 500,
                                                             avgUnitMarginMinor = 1000,
                                                         ),

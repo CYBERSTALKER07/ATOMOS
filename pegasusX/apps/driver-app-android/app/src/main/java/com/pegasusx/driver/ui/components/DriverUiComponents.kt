@@ -1,11 +1,14 @@
 package com.pegasusx.driver.ui.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.animation.core.EaseInOut
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -24,6 +27,7 @@ import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -38,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pegasusx.driver.ui.theme.PegasusSpacing
 import java.util.Locale
+import com.pegasusx.driver.R
 
 object DriverSpacing {
     val xs = PegasusSpacing.s4
@@ -54,35 +59,46 @@ fun DriverKpiTile(
     modifier: Modifier = Modifier,
     icon: ImageVector? = null,
 ) {
-    Surface(
-        color = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(20.dp),
+    OutlinedCard(
         modifier = modifier,
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
     ) {
         Column(
             Modifier.padding(DriverSpacing.lg),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             if (icon != null) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(16.dp),
-                )
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                    modifier = Modifier.size(36.dp),
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
+                }
             }
             Text(
-                label,
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Black,
-                fontFamily = FontFamily.Monospace,
+                label.uppercase(),
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Monospace,
+                    letterSpacing = 1.1.sp,
+                ),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
                 value,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                fontFamily = FontFamily.Monospace,
+                style = MaterialTheme.typography.titleLarge.copy(
+                    fontWeight = FontWeight.Black,
+                    fontFamily = FontFamily.Monospace,
+                ),
             )
         }
     }
@@ -101,25 +117,37 @@ fun DriverMetricTile(
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         if (icon != null) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(16.dp),
-            )
+            Surface(
+                shape = RoundedCornerShape(10.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                modifier = Modifier.size(32.dp),
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(16.dp),
+                    )
+                }
+            }
         }
         Text(
             text = value,
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            fontFamily = FontFamily.Monospace,
+            style = MaterialTheme.typography.titleLarge.copy(
+                fontWeight = FontWeight.Black,
+                fontFamily = FontFamily.Monospace,
+            ),
             color = MaterialTheme.colorScheme.onSurface,
             maxLines = 1,
         )
         Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Medium,
+            text = label.uppercase(),
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontWeight = FontWeight.Bold,
+                fontFamily = FontFamily.Monospace,
+                letterSpacing = 1.sp,
+            ),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
@@ -290,7 +318,11 @@ fun DriverTodayKpiCard(
     revenueIcon: ImageVector,
     modifier: Modifier = Modifier,
 ) {
-    ElevatedCard(modifier = modifier.fillMaxWidth()) {
+    OutlinedCard(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+    ) {
         Column(modifier = Modifier.padding(DriverSpacing.lg + 4.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -298,9 +330,12 @@ fun DriverTodayKpiCard(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = "Today",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
+                    text = stringResource(R.string.portal_page_dashboard_range_today).uppercase(),
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Black,
+                        fontFamily = FontFamily.Monospace,
+                        letterSpacing = 1.1.sp,
+                    ),
                 )
                 Text(
                     text = dateLabel,
@@ -313,21 +348,21 @@ fun DriverTodayKpiCard(
             Spacer(Modifier.size(14.dp))
             Row(modifier = Modifier.fillMaxWidth()) {
                 DriverMetricTile(
-                    label = "Pending",
+                    label = stringResource(R.string.supplier_portal_residual_text_pending),
                     value = "$pending",
                     icon = pendingIcon,
                     modifier = Modifier.weight(1f),
                 )
                 DriverKpiDivider()
                 DriverMetricTile(
-                    label = "Done",
+                    label = stringResource(R.string.warehouse_portal_kpi_stat_card_text_done),
                     value = "$completed",
                     icon = completedIcon,
                     modifier = Modifier.weight(1f),
                 )
                 DriverKpiDivider()
                 DriverMetricTile(
-                    label = "Revenue",
+                    label = stringResource(R.string.warehouse_portal_analytics_text_revenue),
                     value = revenueLabel,
                     icon = revenueIcon,
                     modifier = Modifier.weight(1f),

@@ -85,9 +85,9 @@ func runPlanningIngestE2E(ctx context.Context, client *http.Client, base, cookie
 
 func runPromoSimulateE2E(ctx context.Context, client *http.Client, base, cookie string) error {
 	reqBody, _ := json.Marshal(map[string]any{
-		"promotion_id":        "ssmr-promo-1",
-		"discount_pct":        10,
-		"expected_units":      500,
+		"promotion_id":          "ssmr-promo-1",
+		"discount_pct":          10,
+		"expected_units":        500,
 		"avg_unit_margin_minor": 1000,
 	})
 	status, body, _, err := clientPost(ctx, client, base+"/v1/supplier/planning/promotions/simulate", reqBody, cookie, fmt.Sprintf("ssmr-promo-sim-%d", time.Now().UnixNano()))
@@ -152,9 +152,9 @@ func runControlTowerOverrideE2E(ctx context.Context, client *http.Client, base, 
 		},
 	}
 	createBody, _ := json.Marshal(map[string]any{
-		"action":           "REROUTE",
-		"ttl_seconds":      600,
-		"polygon_geojson":  polygon,
+		"action":          "REROUTE",
+		"ttl_seconds":     600,
+		"polygon_geojson": polygon,
 	})
 	status, respBody, _, err := clientPost(ctx, client, base+"/v1/supplier/control-tower/zone-overrides", createBody, cookie, fmt.Sprintf("ssmr-ct-override-%d", time.Now().UnixNano()))
 	if err != nil {
@@ -198,12 +198,75 @@ func runScenarioSandboxE2E(ctx context.Context, client *http.Client, base, cooki
 	}
 	var result struct {
 		ScenarioID string `json:"scenario_id"`
+		Status     string `json:"status"`
 	}
 	if err := json.Unmarshal(body, &result); err != nil {
 		return err
 	}
 	if result.ScenarioID == "" {
 		return fmt.Errorf("scenario missing id: %s", string(body))
+	}
+
+	status, body, _, err = clientDo(ctx, client, http.MethodGet, base+"/v1/supplier/planning/scenarios", nil, cookie, "")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("scenario list status %d body %s", status, string(body))
+	}
+
+	cloneBody, _ := json.Marshal(map[string]any{"demand_delta_pct": 15, "label": "ssmr-clone"})
+	status, body, _, err = clientPost(
+		ctx, client,
+		base+"/v1/supplier/planning/scenarios/"+result.ScenarioID+"/clone",
+		cloneBody, cookie, fmt.Sprintf("ssmr-scenario-clone-%d", time.Now().UnixNano()),
+	)
+	if err != nil {
+		return err
+	}
+	if status != http.StatusCreated && status != http.StatusOK {
+		return fmt.Errorf("scenario clone status %d body %s", status, string(body))
+	}
+	var cloned struct {
+		ScenarioID string `json:"scenario_id"`
+	}
+	if err := json.Unmarshal(body, &cloned); err != nil || cloned.ScenarioID == "" {
+		return fmt.Errorf("scenario clone missing id: %s", string(body))
+	}
+
+	cmpBody, _ := json.Marshal(map[string]any{"scenario_ids": []string{result.ScenarioID, cloned.ScenarioID}})
+	status, body, _, err = clientPost(
+		ctx, client,
+		base+"/v1/supplier/planning/scenarios/compare",
+		cmpBody, cookie, fmt.Sprintf("ssmr-scenario-compare-%d", time.Now().UnixNano()),
+	)
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("scenario compare status %d body %s", status, string(body))
+	}
+
+	status, body, _, err = clientPost(
+		ctx, client,
+		base+"/v1/supplier/planning/scenarios/"+cloned.ScenarioID+"/publish",
+		[]byte("{}"), cookie, fmt.Sprintf("ssmr-scenario-publish-%d", time.Now().UnixNano()),
+	)
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("scenario publish status %d body %s", status, string(body))
+	}
+	var published struct {
+		Status  string `json:"status"`
+		Version int64  `json:"version"`
+	}
+	if err := json.Unmarshal(body, &published); err != nil {
+		return err
+	}
+	if published.Status != "PUBLISHED" || published.Version < 1 {
+		return fmt.Errorf("scenario publish unexpected: %s", string(body))
 	}
 	return nil
 }

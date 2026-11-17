@@ -66,7 +66,7 @@ func (r *SpannerRepository) ListPreferencesForPrincipal(ctx context.Context, pri
 			FROM NotificationPreferences WHERE PrincipalId = @pid`,
 		Params: map[string]any{"pid": principalID},
 	}
-	iter := r.client.Single().Query(ctx, stmt)
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	var out []NotificationPreference
 	for {

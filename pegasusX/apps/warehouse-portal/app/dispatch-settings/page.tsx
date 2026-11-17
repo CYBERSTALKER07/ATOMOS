@@ -1,7 +1,8 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from 'react';
-import { ApiError, warehouseDispatchSettingsKey } from '@pegasusx/api-client';
+import { ApiError, warehouseDispatchSettingsKey } from '@pegasusx/api-core';
 import type { WarehouseDispatchPreview } from '@pegasusx/types';
 import { warehouseApi } from '@/lib/warehouse-api';
 import { warehouseHomeNodeId } from '@/lib/warehouse-scope';
@@ -12,6 +13,7 @@ import { PageChrome } from '@/components/PageChrome';
 type DispatchPreviewState = Partial<WarehouseDispatchPreview> & { error?: string };
 
 export default function DispatchSettingsPage() {
+  const t = usePortalT();
   const [autoDispatchEnabled, setAutoDispatchEnabled] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -80,8 +82,8 @@ export default function DispatchSettingsPage() {
     <PageTransition>
       <PageChrome
         icon="settings"
-        title="Dispatch settings"
-        description="Configure warehouse auto-dispatch policy for this node."
+        title={t("warehouse_portal.dispatch_settings.text.dispatch_settings")}
+        description={t("warehouse_portal.residual.text.configure_warehouse_auto_dispatch_policy_for_this_node")}
         loading={loading}
         error={loadError}
         actions={
@@ -107,7 +109,7 @@ export default function DispatchSettingsPage() {
         <div className="rounded-xl border border-(--border) p-4" style={{ background: 'var(--background)' }}>
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h2 className="text-sm font-semibold">Auto dispatch</h2>
+              <h2 className="text-sm font-semibold">{t("warehouse_portal.dispatch_settings.text.auto_dispatch")}</h2>
               <p className="mt-1 text-sm text-(--muted)">
                 When enabled, the warehouse auto-dispatch worker commits optimizer assignments on a timed cadence without manual confirmation.
               </p>
@@ -118,7 +120,7 @@ export default function DispatchSettingsPage() {
               onClick={() => void handleToggle(!(autoDispatchEnabled ?? false))}
               className={`relative h-8 w-14 rounded-full transition-colors disabled:opacity-50 ${autoDispatchEnabled ? 'bg-(--accent)' : 'bg-(--border)'}`}
               aria-pressed={autoDispatchEnabled ?? false}
-              aria-label="Toggle auto dispatch"
+              aria-label={t("warehouse_portal.dispatch_settings.text.toggle_auto_dispatch")}
             >
               <span
                 className={`absolute top-1 h-6 w-6 rounded-full bg-white transition-transform ${autoDispatchEnabled ? 'left-7' : 'left-1'}`}
@@ -140,18 +142,18 @@ export default function DispatchSettingsPage() {
               </div>
               <div className="flex-1 overflow-y-auto px-6 py-2 text-sm text-[var(--muted)]">
                 {previewLoading ? (
-                  <p>Loading impact preview...</p>
+                  <p>{t("warehouse_portal.dispatch_settings.text.loading_impact_preview")}</p>
                 ) : previewData?.error ? (
                   <p className="text-(--error)">{previewData.error}</p>
                 ) : (
                   <div className="space-y-4">
-                    <p>Enabling auto dispatch will immediately schedule available drivers. Based on the current queue:</p>
+                    <p>{t("warehouse_portal.dispatch_settings.text.enabling_auto_dispatch_will_immediately_schedule_available_drive")}</p>
                     <ul className="list-disc pl-5">
                       <li>{previewData?.undispatched_orders?.length || 0} orders waiting</li>
                       <li>{previewData?.available_drivers?.length || 0} drivers available</li>
                       <li>{previewData?.window_constrained_count || 0} constrained by delivery windows</li>
                     </ul>
-                    <p>Are you sure you want to enable auto dispatch?</p>
+                    <p>{t("warehouse_portal.dispatch_settings.text.are_you_sure_you_want_to_enable_auto_dispatch")}</p>
                   </div>
                 )}
               </div>

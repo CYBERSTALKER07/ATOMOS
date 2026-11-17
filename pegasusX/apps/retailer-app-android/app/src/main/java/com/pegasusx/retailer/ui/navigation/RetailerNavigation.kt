@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -22,7 +23,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -63,12 +64,14 @@ import com.pegasusx.retailer.ui.screens.profile.ProfileScreen
 import com.pegasusx.retailer.ui.screens.profile.FamilyMembersScreen
 import com.pegasusx.retailer.ui.screens.profile.SavedCardsScreen
 import com.pegasusx.retailer.ui.screens.settings.CapabilitiesScreen
+import com.pegasusx.retailer.ui.screens.settings.OwnerApprovalsScreen
 import com.pegasusx.retailer.ui.screens.settings.TeamScreen
 import com.pegasusx.retailer.ui.screens.settings.LocationsScreen
 import com.pegasusx.retailer.ui.screens.settings.StoreStockScreen
 import com.pegasusx.retailer.ui.screens.settings.PosScreen
 import com.pegasusx.retailer.ui.screens.settings.ShiftsScreen
 import com.pegasusx.retailer.ui.screens.settings.SectionsScreen
+import com.pegasusx.retailer.ui.screens.settings.PlanogramScreen
 import com.pegasusx.retailer.ui.screens.settings.ReportsScreen
 import com.pegasusx.retailer.ui.screens.settings.AssistScreen
 import com.pegasusx.retailer.ui.screens.settings.LocalSkusScreen
@@ -96,9 +99,9 @@ fun RetailerNavigation(
     navigationViewModel: NavigationViewModel = hiltViewModel(),
 ) {
     val navController = rememberNavController()
-    val navState by navigationViewModel.uiState.collectAsState()
+    val navState by navigationViewModel.uiState.collectAsStateWithLifecycle()
     val cartViewModel: CartViewModel = hiltViewModel()
-    val cartState by cartViewModel.uiState.collectAsState()
+    val cartState by cartViewModel.uiState.collectAsStateWithLifecycle()
     var currentTab by rememberSaveable { mutableStateOf(PegasusTab.HOME) }
     val cartBadge = cartState.totalItems
 
@@ -233,16 +236,28 @@ fun RetailerNavigation(
                 )
             },
             bottomBar = {
-                Column {
-                    // Floating active orders bar above bottom nav
-                    FloatingActiveOrdersBar(
-                        visible = showFloatingBar && navState.activeOrderCount > 0,
-                        orderCount = navState.activeOrderCount,
-                        statusText = navState.floatingStatusText,
-                        totalDisplay = navState.floatingTotalDisplay,
-                        countdownIso = navState.floatingCountdownIso,
-                        onClick = { showActiveDeliveries = true },
-                    )
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    // Floating active orders bar above bottom nav (centered on tablets)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = if (isCompact) 0.dp else 16.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Box(modifier = Modifier.widthIn(max = 600.dp).fillMaxWidth()) {
+                            FloatingActiveOrdersBar(
+                                visible = showFloatingBar && navState.activeOrderCount > 0,
+                                orderCount = navState.activeOrderCount,
+                                statusText = navState.floatingStatusText,
+                                totalDisplay = navState.floatingTotalDisplay,
+                                countdownIso = navState.floatingCountdownIso,
+                                onClick = { showActiveDeliveries = true },
+                            )
+                        }
+                    }
                     if (isCompact) {
                         PegasusBottomBar(
                             currentTab = currentTab,
@@ -381,6 +396,15 @@ fun RetailerNavigation(
                             onQuickReorder = { product ->
                                 navController.navigate("PRODUCT_DETAIL/${Uri.encode(product.id)}")
                             },
+                            onOpenCredit = { navController.navigate("CREDIT") },
+                            onOpenOwnerApprovals = { navController.navigate("OWNER_APPROVALS") },
+                        )
+                    }
+                }
+                composable("CREDIT") {
+                    Box(Modifier.fillMaxSize()) {
+                        com.pegasusx.retailer.ui.screens.credit.CreditScreen(
+                            onNavigateBack = { navController.popBackStack() },
                         )
                     }
                 }
@@ -421,14 +445,24 @@ fun RetailerNavigation(
                             onFamilyMembersClick = { navController.navigate("FAMILY_MEMBERS") },
                             onCapabilitiesClick = { navController.navigate("CAPABILITIES") },
                             onTeamClick = { navController.navigate("TEAM") },
+                            onOwnerApprovalsClick = { navController.navigate("OWNER_APPROVALS") },
                             onLocationsClick = { navController.navigate("LOCATIONS") },
                             onStoreStockClick = { navController.navigate("STORE_STOCK") },
                             onLocalSkusClick = { navController.navigate("LOCAL_SKUS") },
                             onPosClick = { navController.navigate("POS") },
                             onShiftsClick = { navController.navigate("SHIFTS") },
                             onSectionsClick = { navController.navigate("SECTIONS") },
+                            onPlanogramsClick = { navController.navigate("PLANOGRAM") },
                             onReportsClick = { navController.navigate("REPORTS_PRO") },
                             onAssistClick = { navController.navigate("ASSIST") },
+                        )
+                    }
+                }
+                composable("PLANOGRAM") {
+                    Box(Modifier.fillMaxSize()) {
+                        PlanogramScreen(
+                            onNavigateBack = { navController.popBackStack() },
+                            onNavigateToStoreStock = { navController.navigate("STORE_STOCK") },
                         )
                     }
                 }
@@ -484,7 +518,15 @@ fun RetailerNavigation(
                 }
                 composable("TEAM") {
                     Box(Modifier.fillMaxSize()) {
-                        TeamScreen(onNavigateBack = { navController.popBackStack() })
+                        TeamScreen(
+                            onNavigateBack = { navController.popBackStack() },
+                            onNavigateToApprovals = { navController.navigate("OWNER_APPROVALS") },
+                        )
+                    }
+                }
+                composable("OWNER_APPROVALS") {
+                    Box(Modifier.fillMaxSize()) {
+                        OwnerApprovalsScreen(onNavigateBack = { navController.popBackStack() })
                     }
                 }
                 composable("FAMILY_MEMBERS") {
@@ -752,12 +794,12 @@ fun RetailerNavigation(
                 alert = shopClosedAlert,
                 isSubmitting = shopClosedSubmitting,
                 errorMessage = shopClosedError,
-                onRespond = { option ->
+                onRespond = { option, photoUrl ->
                     if (shopClosedSubmitting) return@ShopClosedSheet
                     shopClosedSubmitting = true
                     shopClosedError = null
                     coroutineScope.launch {
-                        val result = navigationViewModel.respondToShopClosed(shopClosedAlert.orderId, option)
+                        val result = navigationViewModel.respondToShopClosed(shopClosedAlert.orderId, option, photoUrl)
                         shopClosedSubmitting = false
                         if (result.isFailure) {
                             shopClosedError = result.exceptionOrNull()?.message ?: "Could not submit response"

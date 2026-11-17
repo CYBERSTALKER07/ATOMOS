@@ -16,15 +16,28 @@ struct ClientPolicyBanner: View {
                         .font(.subheadline)
                         .foregroundStyle(.primary)
                 }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("\(force ? "Required update" : "Update available"): \(message)")
+
                 if onUpdate != nil {
-                    HStack {
+                    HStack(spacing: 12) {
                         Spacer()
                         if !force, let onDismiss {
-                            Button("Later", action: onDismiss)
-                                .buttonStyle(.borderless)
+                            Button {
+                                PegasusHaptics.light()
+                                onDismiss()
+                            } label: {
+                                Text("mobile_payload.ui.later")
+                                    .frame(minWidth: 44, minHeight: 44)
+                            }
+                            .buttonStyle(.borderless)
                         }
-                        Button(force ? "Update now" : "Update") {
+                        Button {
+                            PegasusHaptics.medium()
                             onUpdate?()
+                        } label: {
+                            Text(force ? "Update now" : "Update")
+                                .frame(minWidth: 44, minHeight: 44)
                         }
                         .buttonStyle(.borderedProminent)
                     }
@@ -33,7 +46,7 @@ struct ClientPolicyBanner: View {
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background((force ? Color.orange : Color.accentColor).opacity(0.12))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
     }
 }

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 
-// ── Types ─────────────────────────────────────────────────────────────────
+// -- Types -----------------------------------------------------------------
 
 interface DayWindow {
   open: string;   // "HH:MM"
@@ -23,7 +23,7 @@ interface Props {
   onChange: (json: string) => void;
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────
+// -- Helpers ---------------------------------------------------------------
 
 const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
 const LABELS: Record<string, string> = {
@@ -61,7 +61,7 @@ export function serializeSchedule(envelope: ScheduleEnvelope): string {
   return JSON.stringify({ is_24h: envelope.is_24h, schedules: clean });
 }
 
-// ── Component ─────────────────────────────────────────────────────────────
+// -- Component -------------------------------------------------------------
 
 export default function OperatingScheduleEditor({ value, onChange }: Props) {
   const [envelope, setEnvelope] = useState<ScheduleEnvelope>(() => parseSchedule(value));
@@ -178,7 +178,10 @@ export default function OperatingScheduleEditor({ value, onChange }: Props) {
               </span>
             ) : (
               <>
+                <label htmlFor={`schedule-${day}-open`} className="sr-only">{LABELS[day]} open time</label>
                 <input
+                  id={`schedule-${day}-open`}
+                  aria-label={`${LABELS[day]} open time`}
                   type="time"
                   value={schedule[day]?.open || ''}
                   onChange={e => updateTime(day, 'open', e.target.value)}
@@ -186,7 +189,10 @@ export default function OperatingScheduleEditor({ value, onChange }: Props) {
                   style={fieldStyle}
                 />
                 <span className="md-typescale-label-small" style={{ color: 'var(--muted)' }}>to</span>
+                <label htmlFor={`schedule-${day}-close`} className="sr-only">{LABELS[day]} close time</label>
                 <input
+                  id={`schedule-${day}-close`}
+                  aria-label={`${LABELS[day]} close time`}
                   type="time"
                   value={schedule[day]?.close || ''}
                   onChange={e => updateTime(day, 'close', e.target.value)}

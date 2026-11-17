@@ -1,10 +1,11 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import type { ReactNode } from "react";
 import Icon from "./Icon";
 import EmptyState from "./EmptyState";
 import { PageSkeleton } from "./Skeleton";
-import { PageChrome as KitPageChrome } from "@pegasusx/ui-kit/portal";
+import { PageChrome as KitPageChrome } from "@/components/ui/PageChrome";
 
 type PageChromeProps = {
   title: string;
@@ -29,9 +30,10 @@ export function PageChrome({
   skeletonVariant = "dashboard",
   error,
   empty,
-  emptyMessage = "No data yet.",
+  emptyMessage,
   children,
 }: PageChromeProps) {
+  const t = usePortalT();
   return (
     <KitPageChrome
       title={title}
@@ -42,8 +44,8 @@ export function PageChrome({
       error={error}
       empty={empty}
       renderLoading={() => <PageSkeleton variant={skeletonVariant} />}
-      renderError={(message) => <EmptyState variant="error" headline="Unable to load" body={message} />}
-      renderEmpty={() => <EmptyState variant="no-data" headline={emptyMessage} />}
+      renderError={(message) => <EmptyState variant="error" headline={t("factory_portal.residual.text.unable_to_load")} body={message} />}
+      renderEmpty={() => <EmptyState variant="no-data" headline={emptyMessage ?? t("factory_portal.residual.text.no_data_yet")} />}
     >
       {children}
     </KitPageChrome>

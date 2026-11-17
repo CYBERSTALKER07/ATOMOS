@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.automirrored.filled.ListAlt
@@ -49,9 +51,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
-import com.pegasus.design.PegasusCollapsibleRail
-import com.pegasus.design.PegasusRailGroup
-import com.pegasus.design.PegasusRailItem
+import com.pegasusx.driver.ui.design.PegasusCollapsibleRail
+import com.pegasusx.driver.ui.design.PegasusRailGroup
+import com.pegasusx.driver.ui.design.PegasusRailItem
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import com.pegasusx.driver.ui.theme.MotionTokens
 
@@ -139,12 +141,16 @@ fun MainTabView(
                     bottomChrome(selectedTab, openMapTab, activeRideBar) { selectedTab = it }
                 }
             } else if (selectedTab != AppTab.MAP) {
-                Column(
+                Box(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
-                        .fillMaxWidth(),
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp, start = 16.dp, end = 16.dp),
+                    contentAlignment = Alignment.BottomCenter
                 ) {
-                    activeRideBar?.invoke(openMapTab)
+                    Box(modifier = Modifier.widthIn(max = 600.dp).fillMaxWidth()) {
+                        activeRideBar?.invoke(openMapTab)
+                    }
                 }
             }
         }

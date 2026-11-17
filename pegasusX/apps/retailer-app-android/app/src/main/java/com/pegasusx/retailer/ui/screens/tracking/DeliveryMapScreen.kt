@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.screens.tracking
 
+import androidx.compose.ui.res.stringResource
+
 import android.Manifest
 import android.content.pm.PackageManager
 import android.graphics.Color as AndroidColor
@@ -51,7 +53,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -85,16 +87,17 @@ import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
 import com.pegasusx.retailer.data.model.TrackingOrder
 import com.pegasusx.retailer.ui.components.RetailerListCard
-import com.pegasus.design.PegasusLoadingState
-import com.pegasus.design.PegasusRuntimeBanner
-import com.pegasus.design.PegasusRuntimeTone
-import com.pegasus.design.PegasusStateKind
-import com.pegasus.design.PegasusStatePane
+import com.pegasusx.retailer.ui.design.PegasusLoadingState
+import com.pegasusx.retailer.ui.design.PegasusRuntimeBanner
+import com.pegasusx.retailer.ui.design.PegasusRuntimeTone
+import com.pegasusx.retailer.ui.design.PegasusStateKind
+import com.pegasusx.retailer.ui.design.PegasusStatePane
 import com.pegasusx.retailer.ui.screens.tracking.components.OrderInfoCard
 import com.pegasusx.retailer.ui.screens.tracking.components.RecentReceiptsStrip
 import com.pegasusx.retailer.ui.screens.tracking.components.FiscalReceiptQROverlay
 import com.pegasusx.retailer.ui.screens.tracking.components.TrackingMap
 import kotlinx.coroutines.launch
+import com.pegasusx.retailer.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -104,7 +107,7 @@ fun DeliveryMapScreen(
     embedded: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
-    val uiState by viewModel.state.collectAsState()
+    val uiState by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
@@ -128,8 +131,8 @@ fun DeliveryMapScreen(
     val visibleOrders = uiState.visibleOrders
     var selectedOrder by remember { mutableStateOf<TrackingOrder?>(null) }
 
-    // Default center: Tashkent
-    val defaultPosition = LatLng(41.2995, 69.2401)
+    val packCenter = com.pegasusx.retailer.ui.design.sessionMapCenter()
+    val defaultPosition = LatLng(packCenter?.lat ?: 0.0, packCenter?.lng ?: 0.0)
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(defaultPosition, 12f)
     }
@@ -163,12 +166,12 @@ fun DeliveryMapScreen(
                 title = { Text("Delivery Tracking") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                     }
                 },
                 actions = {
                     IconButton(onClick = viewModel::refresh) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                        Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.portal_page_orders_action_refresh))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(

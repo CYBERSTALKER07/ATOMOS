@@ -5,13 +5,16 @@ enum SupplierPortalLinks {
     static var baseURL: URL {
         let raw = ProcessInfo.processInfo.environment["PEGASUS_PORTAL_HOST"] ?? "localhost:3000"
         if raw.hasPrefix("http://") || raw.hasPrefix("https://") {
-            return URL(string: raw.trimmingCharacters(in: CharacterSet(charactersIn: "/")))!
+            let trimmed = raw.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+            return SupplierURL.parse(trimmed) ?? SupplierURL.portalDefault
         }
-        return URL(string: "http://\(raw)")!
+        return SupplierURL.parse("http://\(raw)") ?? SupplierURL.portalDefault
     }
 
     static func url(for feature: SupplierPortalFeature) -> URL {
-        var components = URLComponents(url: baseURL, resolvingAgainstBaseURL: false)!
+        guard var components = URLComponents(url: baseURL, resolvingAgainstBaseURL: false) else {
+            return baseURL
+        }
         let trimmed = feature.portalPath.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         components.path = trimmed.isEmpty ? "/" : "/\(trimmed)"
         return components.url ?? baseURL

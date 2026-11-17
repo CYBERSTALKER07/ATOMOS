@@ -1,0 +1,101 @@
+# P12-C / P15: monthly platform billing. Do NOT apply until P15 owner apply.
+# Hits POST /v1/admin/billing/run-monthly (PLATFORM_ADMIN + MFA step-up).
+# Token is ops-owned (GSM). Zero fee schedules skip — no silent charges.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: pegasusx-billing-monthly
+  namespace: pegasusx
+  annotations:
+    pegasusx.dev/apply: "P15-not-applied"
+spec:
+  schedule: "15 6 1 * *" # 06:15 UTC on the 1st — previous month is complete
+  startingDeadlineSeconds: 600
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 6
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 900
+      ttlSecondsAfterFinished: 3600
+      template:
+        metadata:
+          labels:
+            app: pegasusx-billing-monthly
+            cost-center: platform-engineering
+            workload-tier: batch-cron
+            pricing-model: spot
+        spec:
+          serviceAccountName: billing-cron-sa
+          automountServiceAccountToken: false
+          priorityClassName: pegasusx-batch-spot
+          terminationGracePeriodSeconds: 30
+          restartPolicy: OnFailure
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 100
+            runAsGroup: 101
+            fsGroup: 101
+            seccompProfile:
+              type: RuntimeDefault
+          tolerations:
+            - key: "cloud.google.com/gke-spot"
+              operator: "Equal"
+              value: "true"
+              effect: "NoSchedule"
+          affinity:
+            nodeAffinity:
+              preferredDuringSchedulingIgnoredDuringExecution:
+                - weight: 100
+                  preference:
+                    matchExpressions:
+                      - key: cloud.google.com/gke-spot
+                        operator: In
+                        values:
+                          - "true"
+          containers:
+            - name: billing-run
+              image: curlimages/curl:8.10.1
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop:
+                    - ALL
+              envFrom:
+                - configMapRef:
+                    name: backend-go-config
+              env:
+                - name: BILLING_ADMIN_TOKEN
+                  valueFrom:
+                    secretKeyRef:
+                      name: backend-go-secrets
+                      key: PLATFORM_ADMIN_BILLING_TOKEN
+                      optional: false
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -e
+                  if [ -z "$BILLING_ADMIN_TOKEN" ]; then
+                    echo "PLATFORM_ADMIN_BILLING_TOKEN unset; skip (P15 ops residual)"
+                    exit 1
+                  fi
+                  curl -fsS -X POST \
+                    -H "Authorization: Bearer $BILLING_ADMIN_TOKEN" \
+                    -H "Content-Type: application/json" \
+                    http://backend-go.pegasusx.svc.cluster.local/v1/admin/billing/run-monthly
+              volumeMounts:
+                - name: tmp
+                  mountPath: /tmp
+              resources:
+                requests:
+                  cpu: "50m"
+                  memory: "64Mi"
+                limits:
+                  cpu: "200m"
+                  memory: "128Mi"
+          volumes:
+            - name: tmp
+              emptyDir: {}

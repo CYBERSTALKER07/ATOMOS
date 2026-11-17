@@ -13,7 +13,7 @@ struct VehiclesList: View {
                         VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
                             Text(vehicle.label.isEmpty ? vehicle.licensePlate : vehicle.label)
                                 .font(.headline)
-                            Text("\(vehicle.vehicleClass) · \(vehicle.capacityVu) VU")
+                            Text(L10n.format("mobile_warehouse.ui.vehicleclass_capacityvu_vu", "\(vehicle.vehicleClass)", "\(vehicle.capacityVu)"))
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                             Text(vehicle.assignedDriverName ?? "Unassigned")
@@ -32,6 +32,10 @@ struct VehiclesList: View {
                             .padding(.vertical, LabTheme.spacingXS)
                             .background(.quaternary, in: Capsule())
                     }
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("\(vehicle.label.isEmpty ? vehicle.licensePlate : vehicle.label), class \(vehicle.vehicleClass), \(vehicle.capacityVu) VU, \(vehicle.assignedDriverName ?? "Unassigned"), \(vehicle.isActive ? (vehicle.status.isEmpty ? "AVAILABLE" : vehicle.status) : "UNAVAILABLE")")
                 }
             }
         }

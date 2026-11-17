@@ -110,8 +110,7 @@ class AuthViewModel @Inject constructor(
             tokenManager.saveUserName(user.name)
         }
         if (response.firebaseToken.isNotBlank()) {
-            val fbIdToken = com.pegasusx.retailer.data.auth.FirebaseAuthHelper.exchangeCustomToken(response.firebaseToken)
-            if (fbIdToken != null) tokenManager.saveFirebaseIdToken(fbIdToken)
+            com.pegasusx.retailer.data.auth.FirebaseAuthHelper.exchangeCustomToken(response.firebaseToken)
         }
         _uiState.value = _uiState.value.copy(
             isLoading = false,
@@ -234,8 +233,9 @@ class AuthViewModel @Inject constructor(
                             idempotencyKey = RetailerIdempotencyKeys.setup(userId),
                         )
                     }
-                } catch (_: Exception) {
+                } catch (e: Exception) {
                     // Registration already captured core profile; setup is additive best-effort.
+                if (e is kotlinx.coroutines.CancellationException) throw e
                 }
             } catch (e: Exception) {
                 val issue = resolveLoadIssue(e)

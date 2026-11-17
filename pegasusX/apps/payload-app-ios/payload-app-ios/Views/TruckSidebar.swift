@@ -1,29 +1,41 @@
 import SwiftUI
 
 struct TruckSidebar: View {
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Bindable var viewModel: HomeViewModel
     @Binding var isExpanded: Bool
 
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                if isExpanded {
-                    Text("VEHICLES")
-                        .font(.system(size: 13, weight: .bold, design: .monospaced))
-                        .foregroundStyle(TermTheme.secondary)
+                if isExpanded || horizontalSizeClass == .compact {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("MANIFEST BOARD")
+                            .font(.system(.footnote, design: .monospaced, weight: .bold))
+                            .foregroundStyle(TermTheme.secondary)
+                        Text("DRAFT · LOADING · SEALED · DISPATCHED")
+                            .font(.system(.caption2, design: .monospaced, weight: .bold))
+                            .foregroundStyle(TermTheme.tertiary)
+                    }
+                    .accessibilityElement(children: .combine)
                 }
                 Spacer(minLength: 0)
-                Button {
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                        isExpanded.toggle()
+                if horizontalSizeClass == .regular {
+                    Button {
+                        PegasusHaptics.selection()
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                            isExpanded.toggle()
+                        }
+                    } label: {
+                        Image(systemName: "sidebar.left")
+                            .foregroundStyle(TermTheme.secondary)
+                            .frame(minWidth: 44, minHeight: 44)
                     }
-                } label: {
-                    Image(systemName: "sidebar.left")
-                        .foregroundStyle(TermTheme.secondary)
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(isExpanded ? "Collapse vehicle sidebar" : "Expand vehicle sidebar")
                 }
-                .buttonStyle(.plain)
             }
-            .padding(.horizontal, isExpanded ? 16 : 12)
+            .padding(.horizontal, (isExpanded || horizontalSizeClass == .compact) ? 16 : 12)
             .padding(.top, 8)
 
             Group {
@@ -40,13 +52,13 @@ struct TruckSidebar: View {
                         tone: .warning
                     )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if isExpanded {
+                } else if isExpanded || horizontalSizeClass == .compact {
                     expandedTruckList
                 } else {
                     collapsedTruckRail
                 }
             }
-            if let err = viewModel.error, isExpanded {
+            if let err = viewModel.error, (isExpanded || horizontalSizeClass == .compact) {
                 Text(err)
                     .font(.footnote)
                     .foregroundStyle(.red)
@@ -64,8 +76,12 @@ struct TruckSidebar: View {
                             title: "BATCH FINALIZE",
                             subtitle: "\(viewModel.batchReadyManifestIds.count) trucks ready to seal"
                         )
-                        Button(viewModel.batchSealing ? "Finalizing…" : "Seal all trucks") {
+                        Button {
+                            PegasusHaptics.heavy()
                             Task { await viewModel.finalizeBatchSeal() }
+                        } label: {
+                            Text(viewModel.batchSealing ? "Finalizing…" : "Seal all trucks")
+                                .frame(maxWidth: .infinity, minHeight: 44)
                         }
                         .buttonStyle(.borderedProminent)
                         .disabled(viewModel.batchSealing)
@@ -83,12 +99,39 @@ struct TruckSidebar: View {
                     .padding(.vertical, 4)
                 }
             }
-            List(viewModel.trucks, selection: Binding(
-                get: { viewModel.selectedTruckId },
-                set: { id in if let id { Task { await viewModel.selectTruck(id) } } }
-            )) { truck in
-                TruckRow(truck: truck)
-                    .tag(truck.id)
+            List(selection: $viewModel.sidebarSelectionId) {
+                ForEach(ManifestBoard.group(viewModel.trucks), id: \.state) { column in
+                    Section(column.trucks.isEmpty ? "\(column.state) · empty" : "\(column.state) · \(column.trucks.count)") {
+                        if column.trucks.isEmpty {
+                            Text("No \(column.state.lowercased()) manifests")
+                                .font(.caption)
+                                .foregroundStyle(TermTheme.tertiary)
+                        } else {
+                            ForEach(column.trucks) { truck in
+                                NavigationLink(value: truck.id) {
+                                    TruckRow(truck: truck)
+                                }
+                                .tag(truck.id)
+                            }
+                        }
+                    }
+                }
+                if !ManifestBoard.unassigned(viewModel.trucks).isEmpty {
+                    Section("NO OPEN MANIFEST") {
+                        ForEach(ManifestBoard.unassigned(viewModel.trucks)) { truck in
+                            NavigationLink(value: truck.id) {
+                                TruckRow(truck: truck)
+                            }
+                            .tag(truck.id)
+                        }
+                    }
+                }
+            }
+            .scrollDismissesKeyboard(.interactively)
+            .onChange(of: viewModel.sidebarSelectionId) { _, nextId in
+                guard let nextId, nextId != viewModel.selectedTruckId else { return }
+                PegasusHaptics.selection()
+                Task { await viewModel.selectTruck(nextId) }
             }
             .refreshable { await viewModel.refreshTrucks() }
         }
@@ -100,17 +143,20 @@ struct TruckSidebar: View {
                 ForEach(viewModel.trucks) { truck in
                     let selected = viewModel.selectedTruckId == truck.id
                     Button {
+                        PegasusHaptics.selection()
                         Task { await viewModel.selectTruck(truck.id) }
                     } label: {
                         Image(systemName: "truck.box.fill")
-                            .font(.system(size: 20, weight: selected ? .bold : .regular))
+                            .font(.system(.title3, weight: selected ? .bold : .regular))
                             .foregroundStyle(selected ? TermTheme.accent : TermTheme.secondary)
-                            .frame(width: 44, height: 44)
+                            .frame(minWidth: 44, minHeight: 44)
                             .background(
                                 RoundedRectangle(cornerRadius: 10, style: .continuous)
                                     .fill(selected ? TermTheme.accent.opacity(0.12) : Color.clear)
                             )
                     }
+                    .accessibilityLabel("Select truck \(truck.label ?? truck.licensePlate ?? truck.id)")
+                    .accessibilityAddTraits(selected ? [.isSelected] : [])
                     .buttonStyle(.plain)
                 }
             }
@@ -128,23 +174,26 @@ struct TruckRow: View {
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
                     .fill(TermTheme.accent.opacity(0.06))
                     .frame(width: 48, height: 48)
-                
+
                 Image(systemName: "truck.box.fill")
-                    .font(.system(size: 20, weight: .bold))
+                    .font(.system(.title3, weight: .bold))
                     .foregroundStyle(TermTheme.accent)
             }
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(displayLabel.uppercased())
-                    .font(.system(size: 16, weight: .black, design: .monospaced))
+                    .font(.system(.callout, design: .monospaced, weight: .black))
                     .foregroundStyle(TermTheme.accent)
-                
+
                 Text(subtitle.uppercased())
-                    .font(.system(size: 11, weight: .bold, design: .monospaced))
+                    .font(.system(.caption, design: .monospaced, weight: .bold))
                     .foregroundStyle(TermTheme.secondary)
             }
         }
+        .frame(minHeight: 48)
         .padding(.vertical, 8)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(displayLabel), \(subtitle)")
     }
 
     private var displayLabel: String {
@@ -154,8 +203,14 @@ struct TruckRow: View {
     }
 
     private var subtitle: String {
-        [truck.licensePlate, truck.vehicleClass]
+        var parts = [truck.licensePlate, truck.vehicleClass]
             .compactMap { $0?.isEmpty == false ? $0 : nil }
-            .joined(separator: " — ")
+        if let status = truck.truckStatus, ManifestBoard.isBoardState(status) {
+            parts.append(status)
+        }
+        if let max = truck.maxVolumeVu, max > 0 {
+            parts.append(String(format: "%.0f/%.0f VU", truck.usedVolumeVu ?? 0, max))
+        }
+        return parts.joined(separator: " — ")
     }
 }

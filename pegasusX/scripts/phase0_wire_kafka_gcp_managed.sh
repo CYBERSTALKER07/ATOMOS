@@ -8,11 +8,11 @@
 # Usage:
 #   bash scripts/phase0_wire_kafka_gcp_managed.sh
 #   # or override:
-#   CLUSTER=pegasusx-staging-kafka LOCATION=asia-south1 PROJECT=pegasus-503013 \
+#   CLUSTER=pegasusx-staging-kafka LOCATION=asia-south1 PROJECT=pegasusx-prod-uz \
 #     bash scripts/phase0_wire_kafka_gcp_managed.sh
 set -euo pipefail
 
-PROJECT="${PROJECT:-pegasus-503013}"
+PROJECT="${PROJECT:-pegasusx-prod-uz}"
 LOCATION="${LOCATION:-asia-south1}"
 CLUSTER="${CLUSTER:-pegasusx-staging-kafka}"
 PREFIX="${SECRET_PREFIX:-pegasusx-staging}"

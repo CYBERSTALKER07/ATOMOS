@@ -22,7 +22,9 @@ import com.pegasusx.factory.ui.theme.PegasusSpacing
 fun SupplyBoard(
     requests: List<SupplyRequest>,
     transitioningId: String?,
+    qcById: Map<String, String> = emptyMap(),
     onAction: (SupplyRequest, String) -> Unit,
+    onQC: (SupplyRequest, String) -> Unit = { _, _ -> },
 ) {
     val lanes = boardLanes
     Row(
@@ -42,6 +44,9 @@ fun SupplyBoard(
                         Column(Modifier.padding(PegasusSpacing.md), verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
                             Text(request.warehouseId.take(8), style = MaterialTheme.typography.titleSmall)
                             Text(request.priority, style = MaterialTheme.typography.bodySmall)
+                            qcById[request.id]?.takeIf { it.isNotBlank() }?.let {
+                                Text("QC $it", style = MaterialTheme.typography.labelSmall)
+                            }
                             actionsForState(request.state).forEach { spec ->
                                 FilledTonalButton(
                                     onClick = { onAction(request, spec.action) },
@@ -49,6 +54,16 @@ fun SupplyBoard(
                                     modifier = Modifier.fillMaxWidth(),
                                 ) { Text(spec.label) }
                             }
+                            FilledTonalButton(
+                                onClick = { onQC(request, "PASS") },
+                                enabled = transitioningId != request.id,
+                                modifier = Modifier.fillMaxWidth(),
+                            ) { Text("PASS") }
+                            FilledTonalButton(
+                                onClick = { onQC(request, "FAIL") },
+                                enabled = transitioningId != request.id,
+                                modifier = Modifier.fillMaxWidth(),
+                            ) { Text("FAIL") }
                         }
                     }
                 }

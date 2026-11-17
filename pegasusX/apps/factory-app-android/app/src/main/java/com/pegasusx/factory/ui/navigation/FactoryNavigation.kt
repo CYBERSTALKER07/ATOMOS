@@ -19,6 +19,7 @@ import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -31,6 +32,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.pegasusx.factory.network.NetworkLifecycleEngine
 import com.pegasusx.factory.ui.components.FactoryBottomBar
 import com.pegasusx.factory.ui.components.FactoryNavigationDrawer
 import com.pegasusx.factory.ui.screens.more.FactoryMoreHubScreen
@@ -51,6 +53,7 @@ import com.pegasusx.factory.ui.screens.manifest.ManifestListScreen
 import com.pegasusx.factory.ui.screens.exceptions.ManifestExceptionsScreen
 import com.pegasusx.factory.ui.screens.notifications.NotificationInboxScreen
 import com.pegasusx.factory.ui.screens.override.PayloadOverrideScreen
+import com.pegasusx.factory.ui.screens.payload.PayloadLoadScreen
 import com.pegasusx.factory.ui.screens.setup.LocationSetupScreen
 import com.pegasusx.factory.ui.screens.staff.StaffScreen
 import com.pegasusx.factory.ui.screens.staff.StaffDetailScreen
@@ -64,7 +67,11 @@ object FactoryRoutes {
     const val DASHBOARD = "dashboard"
     const val LOADING_BAY = "loading_bay"
     const val TRANSFERS = "transfers"
+    const val TRANSFERS_ROUTE = "transfers?state={state}"
     const val TRANSFER_DETAIL = "transfers/{id}"
+
+    fun transfers(state: String? = null): String =
+        if (state.isNullOrBlank()) TRANSFERS else "$TRANSFERS?state=${android.net.Uri.encode(state)}"
     const val TRANSFER_CREATE = "transfers/create"
     const val FLEET = "fleet"
     const val STAFF = "staff"
@@ -74,6 +81,7 @@ object FactoryRoutes {
     const val ANALYTICS = "analytics"
     const val SUPPLY_REQUESTS = "supply_requests"
     const val PAYLOAD_OVERRIDE = "payload_override"
+    const val PAYLOAD_LOAD = "payload_load"
     const val MANIFEST_EXCEPTIONS = "manifest_exceptions"
     const val MANIFESTS = "manifests"
     const val MANIFEST_DETAIL = "manifests/{id}"
@@ -106,7 +114,9 @@ fun FactoryNavigation(
         else -> FactoryRoutes.DASHBOARD
     }
     val context = LocalContext.current
-    var networkAvailable by remember { mutableStateOf(true) }
+    val isOnline by NetworkLifecycleEngine.shared.isOnline.collectAsStateWithLifecycle()
+    val syncEpoch by NetworkLifecycleEngine.shared.syncEpoch.collectAsStateWithLifecycle()
+    val networkAvailable = isOnline
     val useDrawer = windowSizeClass.widthSizeClass != WindowWidthSizeClass.Compact
     var isRailExpanded by remember { mutableStateOf(true) }
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -147,31 +157,6 @@ fun FactoryNavigation(
         TokenHolder.clear()
         navController.navigate(FactoryRoutes.LOGIN) {
             popUpTo(0) { inclusive = true }
-        }
-    }
-
-    DisposableEffect(context) {
-        val mainHandler = Handler(Looper.getMainLooper())
-        val connectivityManager = context.getSystemService(ConnectivityManager::class.java)
-        val request = NetworkRequest.Builder()
-            .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-            .build()
-        val callback = object : ConnectivityManager.NetworkCallback() {
-            override fun onAvailable(network: Network) {
-                mainHandler.post {
-                    if (!networkAvailable) { /* per-screen refresh */ }
-                    networkAvailable = true
-                }
-            }
-
-            override fun onLost(network: Network) {
-                mainHandler.post { networkAvailable = false }
-            }
-        }
-
-        runCatching { connectivityManager?.registerNetworkCallback(request, callback) }
-        onDispose {
-            runCatching { connectivityManager?.unregisterNetworkCallback(callback) }
         }
     }
 
@@ -237,12 +222,22 @@ fun FactoryNavigation(
                 )
             }
 
-            composable(FactoryRoutes.TRANSFERS) {
+            composable(
+                route = FactoryRoutes.TRANSFERS_ROUTE,
+                arguments = listOf(
+                    navArgument("state") {
+                        type = NavType.StringType
+                        defaultValue = ""
+                    },
+                ),
+            ) { entry ->
+                val state = entry.arguments?.getString("state").orEmpty()
                 TransferListScreen(
                     api = api,
                     onTransferClick = { id -> navController.navigate(FactoryRoutes.transferDetail(id)) },
                     onCreateTransfer = { navController.navigate(FactoryRoutes.TRANSFER_CREATE) },
                     onBack = requireBack(FactoryRoutes.TRANSFERS),
+                    initialState = state.takeIf { it.isNotBlank() },
                 )
             }
 
@@ -310,6 +305,13 @@ fun FactoryNavigation(
                     api = api,
                     onManifestClick = { id -> navController.navigate(FactoryRoutes.manifestDetail(id)) },
                     onBack = requireBack(FactoryRoutes.MANIFESTS),
+                )
+            }
+
+            composable(FactoryRoutes.PAYLOAD_LOAD) {
+                PayloadLoadScreen(
+                    api = api,
+                    onBack = requireBack(FactoryRoutes.PAYLOAD_LOAD),
                 )
             }
 

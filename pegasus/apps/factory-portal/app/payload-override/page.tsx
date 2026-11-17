@@ -447,11 +447,16 @@ export default function PayloadOverridePage() {
         )}
 
         {rebalanceModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setRebalanceModal(null)}>
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            <button
+              type="button"
+              aria-label="Close modal overlay"
+              className="fixed inset-0 bg-black/40 cursor-default border-0"
+              onClick={() => setRebalanceModal(null)}
+            />
             <div
-              className="rounded-2xl p-6 w-full max-w-md space-y-4"
+              className="relative z-10 rounded-2xl p-6 w-full max-w-md space-y-4"
               style={{ background: 'var(--color-md-surface-container-high)' }}
-              onClick={(event) => event.stopPropagation()}
             >
               <h2 className="text-lg font-semibold">Move Transfer</h2>
               <p className="text-sm" style={{ color: 'var(--color-md-on-surface-variant)' }}>

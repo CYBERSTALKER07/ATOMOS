@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"cloud.google.com/go/civil"
 	"cloud.google.com/go/spanner"
 	"google.golang.org/api/iterator"
 )
@@ -44,7 +45,8 @@ func AggregateDemandConfidence(ctx context.Context, client *spanner.Client, supp
 		return FallbackDemandConfidence(q.FallbackQty, q.SourceHint, q.PredictionCount), nil
 	}
 
-	day := q.ForecastDate.UTC().Truncate(24 * time.Hour)
+	dayTime := q.ForecastDate.UTC().Truncate(24 * time.Hour)
+	day := civil.DateOf(dayTime)
 	sql := `SELECT
 		COALESCE(SUM(BaselineQty), 0),
 		COALESCE(SUM(COALESCE(LowUnits, BaselineQty)), 0),
@@ -86,8 +88,31 @@ func AggregateDemandConfidence(ctx context.Context, client *spanner.Client, supp
 		return FallbackDemandConfidence(q.FallbackQty, q.SourceHint, q.PredictionCount), nil
 	}
 	src := NormalizeBaselineSource(baselineSource.StringVal, q.SourceHint)
-	if confidencePct <= 0 {
-		confidencePct = defaultConfidencePct(src, q.PredictionCount)
+	// §8.4: prefer measured WAPE28 → empirical ConfidencePct; no magic {65,72,75}.
+	wh := ""
+	if q.Granularity == "regional" {
+		wh = strings.TrimSpace(q.WarehouseID)
+	}
+	if wape, sample, ok, werr := LoadLatestSeriesWape28(ctx, client, supplierID, wh, dayTime); werr == nil && ok {
+		if pct, have := ConfidencePctFromWape(wape, sample); have {
+			confidencePct = pct
+		} else if confidencePct <= 0 {
+			return ForecastConfidence{
+				LowUnits:       low,
+				HighUnits:      high,
+				BaselineSource: src,
+				BlockedReason:  "insufficient_history",
+				Label:          "insufficient_history",
+			}, nil
+		}
+	} else if confidencePct <= 0 {
+		return ForecastConfidence{
+			LowUnits:       low,
+			HighUnits:      high,
+			BaselineSource: src,
+			BlockedReason:  "insufficient_history",
+			Label:          "insufficient_history",
+		}, nil
 	}
 	if low <= 0 || high <= 0 {
 		spread := int64(math.Max(1, math.Round(float64(mid)*0.1)))
@@ -171,11 +196,11 @@ func ProductForecastBreakdown(ctx context.Context, client *spanner.Client, suppl
 	if client == nil || supplierID == "" || productID == "" {
 		return nil
 	}
-	day = day.UTC().Truncate(24 * time.Hour)
+	cDay := civil.DateOf(day.UTC())
 	sql := `SELECT BaselineQty, LowUnits, HighUnits, ConfidencePct, Confidence, BaselineSource, Source, BlockedReason
 		FROM DemandForecastBaseline
 		WHERE SupplierId = @sid AND ForecastDate = @day AND ProductId = @pid`
-	params := map[string]any{"sid": supplierID, "day": day, "pid": productID}
+	params := map[string]any{"sid": supplierID, "day": cDay, "pid": productID}
 	if strings.TrimSpace(warehouseID) != "" {
 		sql += ` AND WarehouseId = @wh`
 		params["wh"] = strings.TrimSpace(warehouseID)
@@ -218,6 +243,16 @@ func ProductForecastBreakdown(ctx context.Context, client *spanner.Client, suppl
 		out["confidence_pct"] = confidencePct.Int64
 	} else if confidence > 0 {
 		out["confidence_pct"] = int64(math.Round(confidence * 100))
+	}
+	if wape, sample, ok, werr := LoadLatestSeriesWape28(ctx, client, supplierID, warehouseID, day); werr == nil && ok {
+		if pct, have := ConfidencePctFromWape(wape, sample); have {
+			out["confidence_pct"] = pct
+			delete(out, "blocked_reason")
+			out["label"] = "standard"
+		} else if _, has := out["confidence_pct"]; !has {
+			out["blocked_reason"] = "insufficient_history"
+			out["label"] = "insufficient_history"
+		}
 	}
 	return out
 }

@@ -1,5 +1,8 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
+import type { HistorySeries } from "@pegasusx/types";
+import { guardHistorySeries } from "@pegasusx/types";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import Icon from "./Icon";
@@ -14,7 +17,7 @@ type KpiStatCardProps = {
   bay?: "ops" | "inventory" | "fleet" | "finance";
   className?: string;
   align?: "start" | "center";
-  sparkline?: number[];
+  spark?: HistorySeries | null;
 };
 
 function Sparkline({ data }: { data: number[] }) {
@@ -52,8 +55,10 @@ export function KpiStatCard({
   bay = "ops",
   className = "",
   align = "start",
-  sparkline,
+  spark,
 }: KpiStatCardProps) {
+  const t = usePortalT();
+  const liveSpark = guardHistorySeries(spark);
   const body = (
     <>
       <div className={`flex items-center justify-between gap-2 ${align === "center" ? "w-full" : ""}`}>
@@ -64,8 +69,8 @@ export function KpiStatCard({
         ) : (
           <span />
         )}
-        {flag === "alert" ? <span className="wh-kpi-flag wh-kpi-flag--alert">Alert</span> : null}
-        {flag === "ok" ? <span className="wh-kpi-flag wh-kpi-flag--ok">Done</span> : null}
+        {flag === "alert" ? <span className="wh-kpi-flag wh-kpi-flag--alert">{t("warehouse_portal.kpi_stat_card.text.alert")}</span> : null}
+        {flag === "ok" ? <span className="wh-kpi-flag wh-kpi-flag--ok">{t("warehouse_portal.kpi_stat_card.text.done")}</span> : null}
       </div>
       <div className={`mt-2 flex items-end justify-between ${align === "center" ? "w-full flex-col items-center" : ""}`}>
         <div>
@@ -77,11 +82,11 @@ export function KpiStatCard({
             </p>
           ) : null}
         </div>
-        {sparkline && (
+        {liveSpark ? (
           <div className="text-(--accent) shrink-0 ml-2">
-            <Sparkline data={sparkline} />
+            <Sparkline data={liveSpark.points} />
           </div>
-        )}
+        ) : null}
       </div>
     </>
   );

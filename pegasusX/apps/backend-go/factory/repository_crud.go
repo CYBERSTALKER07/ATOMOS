@@ -11,17 +11,19 @@ import (
 
 // Factory represents the factory entity.
 type Factory struct {
-	FactoryID  string    `json:"factory_id" spanner:"FactoryId"`
-	SupplierID string    `json:"supplier_id" spanner:"SupplierId"`
-	Name       string    `json:"name" spanner:"Name"`
-	Lat        *float64  `json:"lat,omitempty" spanner:"Lat"`
-	Lng        *float64  `json:"lng,omitempty" spanner:"Lng"`
-	H3Cell     *string   `json:"h3_cell,omitempty" spanner:"H3Cell"`
-	Address    *string   `json:"address,omitempty" spanner:"Address"`
-	PlaceID    *string   `json:"place_id,omitempty" spanner:"PlaceId"`
-	IsActive   bool      `json:"is_active" spanner:"IsActive"`
-	CreatedAt  time.Time `json:"created_at" spanner:"CreatedAt"`
-	UpdatedAt  time.Time `json:"updated_at" spanner:"UpdatedAt"`
+	FactoryID           string    `json:"factory_id" spanner:"FactoryId"`
+	SupplierID          string    `json:"supplier_id" spanner:"SupplierId"`
+	Name                string    `json:"name" spanner:"Name"`
+	Lat                 *float64  `json:"lat,omitempty" spanner:"Lat"`
+	Lng                 *float64  `json:"lng,omitempty" spanner:"Lng"`
+	H3Cell              *string   `json:"h3_cell,omitempty" spanner:"H3Cell"`
+	Address             *string   `json:"address,omitempty" spanner:"Address"`
+	PlaceID             *string   `json:"place_id,omitempty" spanner:"PlaceId"`
+	IsActive            bool      `json:"is_active" spanner:"IsActive"`
+	DailyOutputCapacity int64     `json:"daily_output_capacity" spanner:"DailyOutputCapacity"`
+	CountryCode         string    `json:"country_code,omitempty" spanner:"CountryCode"`
+	CreatedAt           time.Time `json:"created_at" spanner:"CreatedAt"`
+	UpdatedAt           time.Time `json:"updated_at" spanner:"UpdatedAt"`
 }
 
 // CreateFactory inserts a new factory record and emits a FACTORY_CREATED event atomically.
@@ -50,7 +52,7 @@ func (r *SpannerRepository) CreateFactory(ctx context.Context, f Factory, emit f
 func (r *SpannerRepository) GetFactory(ctx context.Context, factoryID string) (Factory, error) {
 	row, err := r.client.Single().ReadRow(ctx, "Factories", spanner.Key{factoryID}, []string{
 		"FactoryId", "SupplierId", "Name", "Lat", "Lng", "H3Cell", "Address", "PlaceId",
-		"IsActive", "CreatedAt", "UpdatedAt",
+		"IsActive", "DailyOutputCapacity", "CountryCode", "CreatedAt", "UpdatedAt",
 	})
 	if err != nil {
 		return Factory{}, err
@@ -93,7 +95,7 @@ func (r *SpannerRepository) ListFactories(ctx context.Context, supplierID string
 			"offset":     offset,
 		},
 	}
-	iter := r.client.Single().Query(ctx, stmt)
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 
 	var factories []Factory

@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -36,6 +38,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pegasusx.retailer.data.model.CustomerStage
 import com.pegasusx.retailer.data.model.Order
 import com.pegasusx.retailer.data.model.OrderStatus
 import com.pegasusx.retailer.ui.theme.PillShape
@@ -55,6 +58,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.pegasusx.retailer.data.model.ClaimEligibility
+import com.pegasusx.retailer.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -89,7 +93,7 @@ fun OrderDetailSheet(
                     Text("Keep Order")
                 }
             },
-            title = { Text("Cancel Order #${order.id.takeLast(3)}") },
+            title = { Text(stringResource(R.string.mobile_retailer_ui_cancel_order_takelast, order.id.takeLast(3))) },
             text = { Text("Are you sure? This order cannot be reinstated once cancelled.") },
         )
     }
@@ -186,11 +190,33 @@ fun OrderDetailSheetContent(
                 ) {
                     Column {
                         Text(
-                            "Order #${order.id.takeLast(3)}",
+                            stringResource(R.string.mobile_retailer_ui_order_takelast, order.id.takeLast(3)),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                         )
                         OrderStatusBadge(order.status, modifier = Modifier.padding(top = 6.dp))
+                        if (order.isMigrationOrigin) {
+                            Text(
+                                text = stringResource(R.string.mobile_retailer_nasiya_opening_migration_badge),
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                color = com.pegasusx.retailer.ui.theme.StatusOrange,
+                                modifier = Modifier
+                                    .padding(top = 4.dp)
+                                    .background(
+                                        com.pegasusx.retailer.ui.theme.StatusOrange.copy(alpha = 0.14f),
+                                        RoundedCornerShape(6.dp),
+                                    )
+                                    .padding(horizontal = 8.dp, vertical = 3.dp),
+                            )
+                        }
+                        if (order.autoConfirmOptIn) {
+                            Text(
+                                "Auto-confirm opt-in enabled",
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(top = 4.dp),
+                            )
+                        }
                     }
                     Text(
                         order.displayTotal,
@@ -246,32 +272,79 @@ fun OrderDetailSheetContent(
 
             // ── Item Rows ──
             items(order.items, key = { it.id }) { item ->
-                Row(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Row(
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
+                        Row(
+                            modifier = Modifier.weight(1f),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                item.productName,
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                stringResource(R.string.mobile_retailer_ui_quantity, item.quantity),
+                                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                            )
+                        }
                         Text(
-                            item.productName,
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            "×${item.quantity}",
-                            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                            com.pegasusx.retailer.data.model.formatRetailerAmount(item.totalPrice, order.currency),
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                         )
                     }
-                    Text(
-                        String.format("$%.2f", item.totalPrice),
-                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-                    )
+                    if (item.mustHave || item.allowSubstitutes) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            if (item.mustHave) {
+                                Text(
+                                    "Must-have",
+                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
+                            }
+                            if (item.allowSubstitutes) {
+                                Text(
+                                    "Subs allowed",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                                )
+                            }
+                        }
+                    }
+                    val subLabel = item.substituteName?.takeIf { it.isNotBlank() }
+                        ?: item.substituteSku?.takeIf { it.isNotBlank() }
+                    val gapMinor = item.priceGapMinor
+                    if (subLabel != null || gapMinor != null) {
+                        Spacer(modifier = Modifier.height(3.dp))
+                        val formattedGap = gapMinor?.let {
+                            com.pegasusx.retailer.util.OrderLineContractHelper.formatPriceGapSom(
+                                gapMinor = it,
+                                currencyLabel = "so'm",
+                            )
+                        }
+                        val disclosure = buildString {
+                            if (subLabel != null) append("Substitute: $subLabel")
+                            if (formattedGap != null) {
+                                if (isNotEmpty()) append(" • ")
+                                append("Price gap: $formattedGap")
+                            }
+                        }
+                        Text(
+                            disclosure,
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
+                            color = MaterialTheme.colorScheme.tertiary,
+                        )
+                    }
                 }
             }
 
@@ -285,8 +358,6 @@ fun OrderDetailSheetContent(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 PriceRow("Subtotal", order.displayTotal)
-                Spacer(modifier = Modifier.height(6.dp))
-                PriceRow("Logistics Fee", "$2.50")
                 Spacer(modifier = Modifier.height(10.dp))
                 HorizontalDivider(
                     thickness = 0.5.dp,
@@ -303,7 +374,7 @@ fun OrderDetailSheetContent(
                         fontWeight = FontWeight.Bold,
                     )
                     Text(
-                        String.format("$%.2f", order.totalAmount + 2.50),
+                        order.displayTotal,
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
                     )
@@ -333,7 +404,7 @@ fun OrderDetailSheetContent(
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Icon(
                                 Icons.Outlined.QrCode2,
-                                contentDescription = "QR Code",
+                                contentDescription = stringResource(R.string.mobile_retailer_ui_qr_code),
                                 modifier = Modifier.size(64.dp),
                                 tint = MaterialTheme.colorScheme.onSurface,
                             )
@@ -346,7 +417,7 @@ fun OrderDetailSheetContent(
                             )
                         }
                     }
-                } else if (order.status == OrderStatus.PENDING || order.status == OrderStatus.LOADED) {
+                } else if ((order.status.customerStage == CustomerStage.PLACED || order.status.customerStage == CustomerStage.PROCESSING) && !order.status.hasDeliveryToken) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -386,7 +457,7 @@ fun OrderDetailSheetContent(
                     when {
                         claimElig?.eligible == true -> {
                             Text(
-                                "Eligible until ${formatClaimEndsAt(claimElig?.endsAt)} (${claimElig?.hoursRemaining}h left)",
+                                stringResource(R.string.mobile_retailer_ui_eligible_until_formatclaimendsat_hoursremainingh_left, formatClaimEndsAt(claimElig?.endsAt), claimElig?.hoursRemaining ?: 0),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
                             )
@@ -402,7 +473,7 @@ fun OrderDetailSheetContent(
                                 Text("File claim / report damage", fontWeight = FontWeight.SemiBold)
                             }
                         }
-                        claimElig != null && !claimElig!!.eligible -> {
+                        claimElig?.eligible == false -> {
                             Text(
                                 "Window closed — claim filing unavailable" +
                                     (claimElig?.endsAt?.let { " (ended ${formatClaimEndsAt(it)})" } ?: ""),

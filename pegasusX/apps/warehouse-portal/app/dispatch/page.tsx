@@ -1,5 +1,6 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import type {
@@ -12,11 +13,10 @@ import type {
   WarehouseUnavailableDispatchDriver,
   WarehouseVehicleUnavailableReason,
 } from '@pegasusx/types';
-import { ApiError, warehouseDispatchKey, warehouseUpdateVehicleKey } from '@pegasusx/api-client';
-import { ExplainStatusBanner, explainFromApiError } from '@pegasusx/explain-ui';
+import { ApiError, warehouseDispatchKey, warehouseUpdateVehicleKey } from '@pegasusx/api-core';
+import { ExplainStatusBanner, explainFromApiError, VirtualScrollList } from '@/components/ui';
 import type { StatusExplain } from '@pegasusx/types';
 import { isTauri } from '@pegasusx/desktop-bridge';
-import { VirtualScrollList } from '@pegasusx/ui-kit/desktop';
 import { apiFetch } from '@/lib/auth';
 import { warehouseApi } from '@/lib/warehouse-api';
 import {
@@ -37,8 +37,10 @@ import { useWarehouseSessionReconcile } from '@/lib/use-warehouse-session-reconc
 import { WAREHOUSE_DISPATCH_REFRESH_EVENTS, parseWarehouseWsEventType } from '@/lib/fleet-ws-events';
 import { subscribeWarehouseWS } from '@/lib/auth';
 import Icon from '@/components/Icon';
-import DispatchPreviewMap from '@/components/DispatchPreviewMap';
-import FleetLiveMapPanel from '@/components/FleetLiveMapPanel';
+import dynamic from 'next/dynamic';
+
+const DispatchPreviewMap = dynamic(() => import('@/components/DispatchPreviewMap'), { ssr: false });
+const FleetLiveMapPanel = dynamic(() => import('@/components/FleetLiveMapPanel'), { ssr: false });
 import PageTransition from '@/components/PageTransition';
 import { PageChrome } from '@/components/PageChrome';
 import { KpiStatCard, KpiStatGrid } from '@/components/KpiStatCard';
@@ -49,17 +51,16 @@ import { OrderActionDialog, OrderOpsCard, OrderProposeDateDialog } from '@/compo
 import { useToast } from '@/components/Toast';
 import DispatchOrderList from '@/components/dispatch/DispatchOrderList';
 import DispatchDriverList from '@/components/dispatch/DispatchDriverList';
+import {
+  DispatchConfirmAndCapacityModals,
+  DispatchDriverRescueSection,
+  DispatchFleetTrucksSection,
+  formatUnavailableReason,
+  formatVU,
+} from '@/components/dispatch/DispatchPanelsAndModals';
 import { warehouseOps } from '@/lib/warehouse-ops';
 
 const TETRIS_BUFFER = 0.95;
-
-const VEHICLE_UNAVAILABLE_REASONS: WarehouseVehicleUnavailableReason[] = [
-  'MAINTENANCE',
-  'TRUCK_DAMAGED',
-  'REGULATORY_HOLD',
-  'MANUAL_HOLD',
-  'OTHER',
-];
 
 const FLEET_AVAILABILITY_EVENTS = new Set([
   'DRIVER_AVAILABILITY_CHANGED',
@@ -68,24 +69,6 @@ const FLEET_AVAILABILITY_EVENTS = new Set([
 
 type CapacityPromptMode = 'manual' | 'auto';
 type DispatchMode = 'manual' | 'smart';
-
-function formatUnavailableReason(reason?: string, note?: string) {
-  if (!reason) {
-    return note || '';
-  }
-  if (reason.toUpperCase() === 'OTHER' && note?.trim()) {
-    return note.trim();
-  }
-  return reason
-    .toLowerCase()
-    .split('_')
-    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ');
-}
-
-function formatVU(value: number) {
-  return value.toFixed(1);
-}
 
 function routeVolumeVU(route: WarehouseDispatchProposedRoute) {
   return route.volume_vu ?? route.loaded_volume ?? 0;
@@ -97,6 +80,7 @@ function isoDeliveryDate(dateInput: string): string {
 }
 
 export default function DispatchPage() {
+  const t = usePortalT();
   const router = useRouter();
   const { toast } = useToast();
   const [orders, setOrders] = useState<WarehouseDispatchOrder[]>([]);
@@ -133,6 +117,13 @@ export default function DispatchPage() {
   const [opsProposedDate, setOpsProposedDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [opsActingId, setOpsActingId] = useState<string | null>(null);
 
+  // Early Complete
+  const [rescueDriverId, setRescueDriverId] = useState('');
+  const [rescueRequest, setRescueRequest] = useState<{ order_count: number; status: string; reason?: string } | null>(null);
+  const [rescueLoading, setRescueLoading] = useState(false);
+  const [rescueAction, setRescueAction] = useState<'CANCEL' | 'RESCHEDULE'>('CANCEL');
+  const [rescueNewDate, setRescueNewDate] = useState(() => new Date().toISOString().slice(0, 10));
+
   const selectedOrderList = useMemo(() => [...selectedOrderIds].sort(), [selectedOrderIds]);
 
   const closeOpsDialog = () => {
@@ -167,10 +158,51 @@ export default function DispatchPage() {
       }
       closeOpsDialog();
       await load();
-    } catch (err) {
+    } catch (err: unknown) {
       toast(err instanceof ApiError ? err.message : 'Action failed', 'error');
     } finally {
       setOpsActingId(null);
+    }
+  }
+
+  async function handleLookupRescue() {
+    if (!rescueDriverId) return;
+    setRescueLoading(true);
+    setRescueRequest(null);
+    try {
+      const res = await warehouseOps.getEarlyCompleteRequest(rescueDriverId);
+      setRescueRequest(res);
+    } catch (err: unknown) {
+      toast('No active rescue request found for this driver', 'error');
+    } finally {
+      setRescueLoading(false);
+    }
+  }
+
+  async function handleApproveRescue() {
+    if (!rescueDriverId) return;
+    setRescueLoading(true);
+    try {
+      if (rescueAction === 'RESCHEDULE' && !rescueNewDate) {
+        toast('Date required for reschedule', 'error');
+        setRescueLoading(false);
+        return;
+      }
+      const isoStart = isoDeliveryDate(rescueNewDate);
+      await warehouseOps.approveEarlyComplete(
+        rescueDriverId,
+        rescueAction,
+        rescueAction === 'RESCHEDULE' ? isoStart : undefined,
+        rescueAction === 'RESCHEDULE' ? isoStart : undefined,
+      );
+      toast('Rescue request approved successfully', 'success');
+      setRescueRequest(null);
+      setRescueDriverId('');
+      await loadAll();
+    } catch (err: unknown) {
+      toast(err instanceof ApiError ? err.message : 'Failed to approve rescue', 'error');
+    } finally {
+      setRescueLoading(false);
     }
   }
 
@@ -220,7 +252,7 @@ export default function DispatchPage() {
         void setDispatchPreviewCache(cacheKey, snapshot);
       }
       setRestricted(false);
-    } catch (err) {
+    } catch (err: unknown) {
       if (err instanceof ApiError && err.status === 403) {
         setRestricted(true);
         if (!hydratedFromCache) {
@@ -462,7 +494,7 @@ export default function DispatchPage() {
       } else {
         setExecuteError('Dispatch did not commit. Refresh and try again.');
       }
-    } catch (err) {
+    } catch (err: unknown) {
       setExecuteError(err instanceof ApiError ? err.message : 'Dispatch execute failed');
     } finally {
       setExecuting(false);
@@ -501,7 +533,7 @@ export default function DispatchPage() {
         ? `${vehicle.label || vehicle.license_plate} restored for dispatch`
         : `${vehicle.label || vehicle.license_plate} marked unavailable`);
       await loadAll();
-    } catch (err) {
+    } catch (err: unknown) {
       setExecuteError(err instanceof Error ? err.message : 'Vehicle update failed');
     } finally {
       setMutatingVehicleId('');
@@ -564,7 +596,7 @@ export default function DispatchPage() {
       } else {
         setExecuteError('Smart dispatch did not commit. Refresh and try again.');
       }
-    } catch (err) {
+    } catch (err: unknown) {
       if (err instanceof ApiError) {
         setExecuteError(err.message);
         setExecuteExplain(explainFromApiError(err.payload));
@@ -588,8 +620,8 @@ export default function DispatchPage() {
     <PageTransition>
       <PageChrome
         icon="dispatch"
-        title="Dispatch"
-        description="Manual truck assignment or smart dispatch across the fleet. Capacity uses product VU × quantity."
+        title={t("portal.nav.dispatch")}
+        description={t("warehouse_portal.residual.text.manual_truck_assignment_or_smart_dispatch_across_the_fleet_capac")}
         loading={loading}
         skeletonVariant="table"
         error={restricted ? 'You do not have permission to view dispatch for this scope.' : loadError}
@@ -678,7 +710,7 @@ export default function DispatchPage() {
 
         {fleetEffectiveCapacityVU > 0 && (
           <div className="mb-4 rounded-xl border border-(--border) p-3 text-sm" style={{ background: 'var(--background)' }}>
-            <span className="text-(--muted)">Fleet effective capacity </span>
+            <span className="text-(--muted)">{t("warehouse_portal.dispatch.text.fleet_effective_capacity")} </span>
             <span className="font-mono">{formatVU(fleetEffectiveCapacityVU)}</span>
             <span className="text-(--muted)"> VU · smart target </span>
             <span className="font-mono">{formatVU(smartTargetVolumeVU)}</span>
@@ -699,105 +731,52 @@ export default function DispatchPage() {
           <p className="text-sm mb-4" style={{ color: 'var(--warning)' }}>{fleetAlert}</p>
         )}
 
-        <PageSection
-          title={`Fleet trucks (${vehicles.length})`}
-          description="Mark trucks unavailable in real time — dispatch and smart suggest exclude them immediately."
-          className="mb-6"
-        >
-          {vehicles.length === 0 ? (
-            <p className="text-sm text-(--muted)">No vehicles registered for this warehouse.</p>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {vehicles.map(vehicle => (
-                <div key={vehicle.vehicle_id} className="rounded-lg border border-(--border) p-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <div className="text-sm font-medium">{vehicle.label || vehicle.license_plate}</div>
-                      <div className="text-xs text-(--muted)">{vehicle.license_plate} · {vehicle.vehicle_class}</div>
-                      {!vehicle.is_active && (
-                        <div className="text-xs mt-1" style={{ color: 'var(--warning)' }}>
-                          {formatUnavailableReason(vehicle.unavailable_reason, vehicle.unavailable_note)}
-                        </div>
-                      )}
-                    </div>
-                    <span className={`status-chip ${vehicle.is_active ? 'status-chip--stable' : 'status-chip--draft'}`}>
-                      {vehicle.is_active ? 'Active' : 'Unavailable'}
-                    </span>
-                  </div>
-                  <div className="mt-3 flex flex-wrap items-center gap-2">
-                    {vehicle.is_active && (
-                      <>
-                        <select
-                          value={vehicleReasons[vehicle.vehicle_id] || vehicle.unavailable_reason || 'MANUAL_HOLD'}
-                          onChange={event => setVehicleReasons(current => ({
-                            ...current,
-                            [vehicle.vehicle_id]: event.target.value as WarehouseVehicleUnavailableReason,
-                          }))}
-                          disabled={mutatingVehicleId === vehicle.vehicle_id}
-                          className="rounded-lg border px-2 py-1 text-xs"
-                          style={{ background: 'var(--field-background)', borderColor: 'var(--field-border)', color: 'var(--field-foreground)' }}
-                        >
-                          {VEHICLE_UNAVAILABLE_REASONS.map(reason => (
-                            <option key={reason} value={reason}>{formatUnavailableReason(reason)}</option>
-                          ))}
-                        </select>
-                        {(vehicleReasons[vehicle.vehicle_id] || 'MANUAL_HOLD') === 'OTHER' && (
-                          <input
-                            type="text"
-                            placeholder="Custom reason"
-                            value={vehicleNotes[vehicle.vehicle_id] || ''}
-                            onChange={event => setVehicleNotes(current => ({
-                              ...current,
-                              [vehicle.vehicle_id]: event.target.value,
-                            }))}
-                            disabled={mutatingVehicleId === vehicle.vehicle_id}
-                            className="rounded-lg border px-2 py-1 text-xs min-w-32"
-                            style={{ background: 'var(--field-background)', borderColor: 'var(--field-border)', color: 'var(--field-foreground)' }}
-                          />
-                        )}
-                      </>
-                    )}
-                    <button
-                      type="button"
-                      disabled={mutatingVehicleId === vehicle.vehicle_id}
-                      onClick={() => void handleToggleVehicleAvailability(vehicle, !vehicle.is_active)}
-                      className="rounded-lg px-2 py-1 text-xs font-medium disabled:opacity-50"
-                      style={{
-                        background: vehicle.is_active ? 'color-mix(in srgb, var(--warning) 15%, transparent)' : 'color-mix(in srgb, var(--success) 15%, transparent)',
-                        color: vehicle.is_active ? 'var(--warning)' : 'var(--success)',
-                      }}
-                    >
-                      {mutatingVehicleId === vehicle.vehicle_id ? 'Updating…' : vehicle.is_active ? 'Mark unavailable' : 'Restore'}
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </PageSection>
+        <DispatchFleetTrucksSection
+          vehicles={vehicles}
+          vehicleReasons={vehicleReasons}
+          setVehicleReasons={setVehicleReasons}
+          vehicleNotes={vehicleNotes}
+          setVehicleNotes={setVehicleNotes}
+          mutatingVehicleId={mutatingVehicleId}
+          onToggleAvailability={handleToggleVehicleAvailability}
+        />
 
         <KpiStatGrid columns={4}>
-          <KpiStatCard label="Undispatched orders" value={orders.length} sub="Awaiting assignment" />
-          <KpiStatCard label="Available drivers" value={drivers.length} sub="Ready for dispatch" />
+          <KpiStatCard label={t("warehouse_portal.residual.text.undispatched_orders")} value={orders.length} sub="Awaiting assignment" />
+          <KpiStatCard label={t("warehouse_portal.residual.text.available_drivers")} value={drivers.length} sub="Ready for dispatch" />
           <KpiStatCard
-            label="Unavailable"
+            label={t("warehouse_portal.residual.text.unavailable")}
             value={unavailableDrivers.length}
             sub={unavailableDrivers.length > 0 ? 'Vehicle or status blocked' : 'All assigned drivers clear'}
           />
           <KpiStatCard
-            label="Smart suggest routes"
+            label={t("warehouse_portal.residual.text.smart_suggest_routes")}
             value={proposedRoutes.length}
             sub={optimizerSource ? `Source: ${optimizerSource}` : 'Optimizer preview'}
           />
         </KpiStatGrid>
 
+        <DispatchDriverRescueSection
+          rescueDriverId={rescueDriverId}
+          setRescueDriverId={setRescueDriverId}
+          rescueRequest={rescueRequest}
+          setRescueRequest={setRescueRequest}
+          rescueLoading={rescueLoading}
+          rescueAction={rescueAction}
+          setRescueAction={setRescueAction}
+          rescueNewDate={rescueNewDate}
+          setRescueNewDate={setRescueNewDate}
+          onLookupRescue={handleLookupRescue}
+          onApproveRescue={handleApproveRescue}
+        />
+
         <PageSection
-          title="Recent dispatch commits"
-          description="Replay the last committed smart-dispatch runs for this node."
+          title={t("warehouse_portal.dispatch.text.recent_dispatch_commits")}
+          description={t("warehouse_portal.residual.text.replay_the_last_committed_smart_dispatch_runs_for_this_node")}
           className="mt-6"
         >
           {dispatchRuns.length === 0 ? (
-            <p className="text-sm text-(--muted)">No dispatch runs recorded yet.</p>
+            <p className="text-sm text-(--muted)">{t("warehouse_portal.dispatch.text.no_dispatch_runs_recorded_yet")}</p>
           ) : (
             <div className="space-y-2">
               {dispatchRuns.slice(0, 8).map((run) => (
@@ -813,23 +792,23 @@ export default function DispatchPage() {
         </PageSection>
 
         <PageSection
-          title="Handoff timeline"
-          description="Preorder → accept → dispatch → seal events from the ops pulse feed."
+          title={t("warehouse_portal.dispatch.text.handoff_timeline")}
+          description={t("warehouse_portal.residual.text.preorder_accept_dispatch_seal_events_from_the_ops_pulse_feed")}
           className="mt-6"
         >
           <HandoffTimelinePanel />
         </PageSection>
 
         <PageSection
-          title="Live fleet map"
-          description="Sealed manifest polylines and driver GPS for this warehouse node."
+          title={t("warehouse_portal.dispatch.text.live_fleet_map")}
+          description={t("warehouse_portal.residual.text.sealed_manifest_polylines_and_driver_gps_for_this_warehouse_node")}
           className="mt-6 overflow-hidden"
         >
           <FleetLiveMapPanel className="h-80 w-full -mx-5 -mb-5" />
         </PageSection>
 
         {(optimizerWarnings.length > 0 || windowConstrainedCount > 0) && (
-          <PageSection title="Smart suggest preview" className="mt-6">
+          <PageSection title={t("warehouse_portal.dispatch.text.smart_suggest_preview")} className="mt-6">
             {windowConstrainedCount > 0 && (
               <p className="text-xs" style={{ color: 'var(--warning)' }}>
                 {windowConstrainedCount} order(s) constrained by receiving window
@@ -907,116 +886,30 @@ export default function DispatchPage() {
           </PageSection>
         )}
 
-        {showSmartConfirm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.45)' }}>
-            <div className="w-full max-w-md rounded-xl border border-(--border) p-5" style={{ background: 'var(--background)' }}>
-              <h3 className="text-base font-semibold mb-2">Run smart dispatch?</h3>
-              <p className="text-sm text-(--muted) mb-4">
-                {selectedOrderIds.size > 0
-                  ? `Assign ${selectedOrderIds.size} selected order(s) using the optimizer.`
-                  : `Assign all ${orders.length} undispatched order(s) using the optimizer.`}
-                {proposedRoutes.length > 0 && ` ${proposedRoutes.length} route(s), ${smartStopCount} stop(s) in preview.`}
-              </p>
-              <div className="flex justify-end gap-2">
-                <button type="button" className="px-3 py-1.5 rounded-lg text-sm button--secondary" onClick={() => setShowSmartConfirm(false)}>
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className="px-3 py-1.5 rounded-lg text-sm button--primary"
-                  disabled={executing}
-                  onClick={() => void runSmartDispatch()}
-                >
-                  Smart Dispatch
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {capacityPrompt && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.45)' }}>
-            <div className="w-full max-w-md rounded-xl border border-(--border) p-5" style={{ background: 'var(--background)' }}>
-              <h3 className="text-base font-semibold mb-2">Capacity exceeded</h3>
-              <p className="text-sm text-(--muted) mb-4">
-                {capacityPromptMode === 'auto'
-                  ? 'Smart dispatch cannot fit all orders on available trucks. Accept to dispatch feasible routes and leave the rest undispatched, or force to override capacity.'
-                  : 'Selected orders exceed the truck effective capacity (95% Tetris buffer). Apply the suggestion, force dispatch, or cancel.'}
-              </p>
-              <ul className="text-sm space-y-2 mb-4">
-                {capacityPrompt.map(warning => (
-                  <li key={warning.driver_id} className="font-mono text-xs">
-                    {formatVU(warning.loaded_vu)} VU loaded / {formatVU(warning.effective_max_vu)} VU effective max
-                    {warning.suggested_unselect_order_ids?.length ? (
-                      <div className="mt-1 text-(--muted)">
-                        Suggested unselect: {warning.suggested_unselect_order_ids.join(', ')}
-                      </div>
-                    ) : null}
-                    {warning.suggested_defer_order_ids?.length ? (
-                      <div className="mt-1 text-(--muted)">
-                        Suggested defer: {warning.suggested_defer_order_ids.join(', ')}
-                      </div>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
-              <div className="flex justify-end gap-2 flex-wrap">
-                <button
-                  type="button"
-                  className="px-3 py-1.5 rounded-lg text-sm button--secondary"
-                  onClick={() => setCapacityPrompt(null)}
-                >
-                  Cancel
-                </button>
-                {capacityPromptMode === 'manual' && suggestedUnselectIds.size > 0 && (
-                  <button
-                    type="button"
-                    className="px-3 py-1.5 rounded-lg text-sm button--secondary"
-                    onClick={applyCapacitySuggestion}
-                  >
-                    Apply suggestion
-                  </button>
-                )}
-                {capacityPromptMode === 'auto' && (
-                  <button
-                    type="button"
-                    className="px-3 py-1.5 rounded-lg text-sm button--secondary"
-                    disabled={executing}
-                    onClick={() => {
-                      setCapacityPrompt(null);
-                      void runSmartDispatch({ acceptPartial: true });
-                    }}
-                  >
-                    Accept partial
-                  </button>
-                )}
-                <button
-                  type="button"
-                  className="px-3 py-1.5 rounded-lg text-sm button--primary"
-                  disabled={executing}
-                  onClick={() => {
-                    setCapacityPrompt(null);
-                    if (capacityPromptMode === 'auto') {
-                      void runSmartDispatch({ forceCapacity: true });
-                    } else {
-                      void runManualDispatch(true);
-                    }
-                  }}
-                >
-                  Force dispatch
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        <DispatchConfirmAndCapacityModals
+          showSmartConfirm={showSmartConfirm}
+          setShowSmartConfirm={setShowSmartConfirm}
+          selectedOrderCount={selectedOrderIds.size}
+          totalOrderCount={orders.length}
+          proposedRouteCount={proposedRoutes.length}
+          smartStopCount={smartStopCount}
+          executing={executing}
+          onRunSmartDispatch={runSmartDispatch}
+          capacityPrompt={capacityPrompt}
+          setCapacityPrompt={setCapacityPrompt}
+          capacityPromptMode={capacityPromptMode}
+          suggestedUnselectCount={suggestedUnselectIds.size}
+          onApplyCapacitySuggestion={applyCapacitySuggestion}
+          onRunManualDispatch={runManualDispatch}
+        />
       </PageChrome>
 
       {opsDialog ? (
         <>
           <OrderActionDialog
             open={opsDialog.kind === 'reject'}
-            title="Cancel order"
-            description="Cancels the order and notifies the retailer immediately."
+            title={t("warehouse_portal.dispatch.text.cancel_order")}
+            description={t("warehouse_portal.residual.text.cancels_the_order_and_notifies_the_retailer_immediately")}
             confirmLabel="Cancel order"
             destructive
             reason={opsReason}

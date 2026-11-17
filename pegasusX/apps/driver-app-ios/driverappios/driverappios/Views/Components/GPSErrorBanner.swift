@@ -12,14 +12,14 @@ struct GPSErrorBanner: View {
     var body: some View {
         HStack(spacing: LabTheme.s12) {
             Image(systemName: "location.slash.fill")
-                .font(.system(size: 14, weight: .bold))
+                .font(.system(.subheadline, weight: .bold))
 
             VStack(alignment: .leading, spacing: 2) {
                 Text("GPS_UNAVAILABLE")
-                    .font(.system(size: 10, weight: .black, design: .monospaced))
+                    .font(.system(.caption2, design: .monospaced, weight: .black))
                     .tracking(1.2)
                 Text(message)
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.system(.caption, weight: .medium))
                     .lineLimit(2)
             }
 

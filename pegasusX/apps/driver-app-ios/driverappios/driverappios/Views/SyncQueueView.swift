@@ -3,68 +3,70 @@ import SwiftData
 
 struct SyncQueueView: View {
     @Environment(\.modelContext) private var modelContext
-    @State private var pending: [QueuedDriverAction] = []
-    @State private var dead: [QueuedDriverAction] = []
-    @State private var status: String?
-    @State private var flushing = false
+    @State private var vm = SyncQueueViewModel()
 
     var body: some View {
         NavigationStack {
             List {
                 Section {
                     HStack {
-                        Text("\(pending.count) pending · \(dead.count) dead-letter")
+                        Text(L10n.format("mobile_driver.ui.count_pending_count_2_dead_letter", "\(vm.pending.count)", "\(vm.dead.count)"))
                             .font(.subheadline)
                         Spacer()
-                        Button(flushing ? "Flushing…" : "Flush now") {
-                            Task { await flush() }
+                        Button(vm.flushing ? "Flushing…" : "Flush now") {
+                            Task { await vm.flush() }
                         }
-                        .disabled(flushing || pending.isEmpty)
+                        .frame(minHeight: 44)
+                        .disabled(vm.flushing || vm.pending.isEmpty)
                     }
-                    if let status {
+                    if let status = vm.status {
                         Text(status).font(.caption).foregroundStyle(.secondary)
                     }
                 }
                 Section("Pending") {
-                    if pending.isEmpty {
-                        Text("No pending offline actions.").foregroundStyle(.secondary)
+                    if vm.pending.isEmpty {
+                        Text("mobile_driver.ui.no_pending_offline_actions").foregroundStyle(.secondary)
                     } else {
-                        ForEach(pending, id: \.id) { row in
+                        ForEach(vm.pending, id: \.id) { row in
                             actionRow(row)
                         }
                     }
                 }
                 Section {
-                    if dead.isEmpty {
-                        Text("No dead-lettered actions.").foregroundStyle(.secondary)
+                    if vm.dead.isEmpty {
+                        Text("mobile_driver.ui.no_dead_lettered_actions").foregroundStyle(.secondary)
                     } else {
-                        ForEach(dead, id: \.id) { row in
+                        ForEach(vm.dead, id: \.id) { row in
                             actionRow(row, dead: true)
                         }
                     }
                 } header: {
                     HStack {
-                        Text("Dead letter")
+                        Text("supplier_portal.settings.integrations.text.dead_letter")
                         Spacer()
-                        if !dead.isEmpty {
-                            Button("Dismiss all") {
-                                DriverOfflineQueue.shared.clearDead()
-                                reload()
+                        if !vm.dead.isEmpty {
+                            Button(L10n.string("mobile_driver.ui.escalate_to_support_review")) {
+                                Task { await vm.escalateDeadToSupport() }
                             }
-                            .font(.caption)
+                            .font(.caption.weight(.semibold))
+                            .frame(minHeight: 44)
+                            .disabled(vm.escalating)
                         }
                     }
                 }
             }
-            .navigationTitle("Sync Queue")
+            .scrollDismissesKeyboard(.interactively)
+            .navigationTitle("mobile_driver.ui.sync_queue")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Refresh", systemImage: "arrow.clockwise") { reload() }
+                    Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") {
+                        vm.reload()
+                    }
+                    .frame(minWidth: 44, minHeight: 44)
                 }
             }
             .onAppear {
-                DriverOfflineQueue.shared.attach(container: modelContext.container)
-                reload()
+                vm.attach(container: modelContext.container)
             }
         }
     }
@@ -73,11 +75,11 @@ struct SyncQueueView: View {
     private func actionRow(_ row: QueuedDriverAction, dead: Bool = false) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(row.endpoint).font(.headline)
-            Text("Order \(row.orderId.isEmpty ? "—" : row.orderId) · attempts \(row.attemptCount)")
+            Text(L10n.format("mobile_driver.ui.order_orderid_attempts_attemptcount", "\(row.orderId.isEmpty ? "—" : row.orderId)", "\(row.attemptCount)"))
                 .font(.caption)
                 .foregroundStyle(.secondary)
             if !row.clientTimestampIso.isEmpty {
-                Text("client_ts \(row.clientTimestampIso)")
+                Text(L10n.format("mobile_driver.ui.client_ts_clienttimestampiso", "\(row.clientTimestampIso)"))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
@@ -86,20 +88,17 @@ struct SyncQueueView: View {
                     .font(.caption)
                     .foregroundStyle(dead ? .red : .secondary)
             }
+            if dead {
+                Button(L10n.string("mobile_driver.ui.retry_now")) {
+                    Task { await vm.retryDeadItem(row) }
+                }
+                .font(.caption.weight(.semibold))
+                .buttonStyle(.bordered)
+                .frame(minHeight: 36)
+                .padding(.top, 4)
+            }
         }
         .padding(.vertical, 2)
-    }
-
-    private func reload() {
-        pending = DriverOfflineQueue.shared.pending()
-        dead = DriverOfflineQueue.shared.dead()
-    }
-
-    private func flush() async {
-        flushing = true
-        defer { flushing = false }
-        let result = await DriverOfflineQueue.shared.flush(api: .shared)
-        status = "Sent \(result.sent), remaining \(result.remaining)"
-        reload()
+        .accessibilityElement(children: .combine)
     }
 }

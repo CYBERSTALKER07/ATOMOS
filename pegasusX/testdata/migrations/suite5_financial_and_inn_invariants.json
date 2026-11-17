@@ -1,0 +1,61 @@
+{
+  "description": "Anonymized Suite 5 invariant fixture cases for financial, dedupe, auth bypass, INN, and 72h rollback",
+  "duplicate_historical_orders": [
+    {
+      "external_order_no": "ORD-DUP-001",
+      "order_date": "2026-10-20",
+      "status": "DELIVERED",
+      "total_amount": "500000"
+    },
+    {
+      "external_order_no": "ORD-DUP-001",
+      "order_date": "2026-10-20",
+      "status": "DELIVERED",
+      "total_amount": "500000"
+    }
+  ],
+  "imbalanced_nasiya_rows": [
+    {
+      "balance_due": "0",
+      "currency": "UZS",
+      "customer_inn": "309000001",
+      "customer_name": "Zero Debt Store",
+      "external_invoice_id": "INV-BAD-ZERO"
+    },
+    {
+      "balance_due": "-50000",
+      "currency": "UZS",
+      "customer_inn": "309000001",
+      "customer_name": "Neg Debt Store",
+      "external_invoice_id": "INV-BAD-NEG"
+    },
+    {
+      "balance_due": "100000",
+      "currency": "USD",
+      "customer_inn": "309000001",
+      "customer_name": "FX Mismatch Store",
+      "external_invoice_id": "INV-BAD-FX"
+    }
+  ],
+  "inn_lookup_cases": [
+    {
+      "expected_status": "FOUND",
+      "inn": "301900001",
+      "legal_name": "OOO Toshkent Logistika Test"
+    },
+    {
+      "expected_status": "NOT_FOUND",
+      "inn": "301900404"
+    },
+    {
+      "expected_status": "UNAVAILABLE",
+      "inn": "301900503"
+    },
+    {
+      "expected_status": "FOUND_WITH_EXISTING_TENANT",
+      "inn": "301900409",
+      "legal_name": "OOO Navoi Mart Test"
+    }
+  ],
+  "rollback_window_hours": 72
+}

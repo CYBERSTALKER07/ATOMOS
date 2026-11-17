@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.screens.procurement.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -15,17 +17,27 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pegasusx.retailer.data.model.DemandForecast
+import com.pegasusx.retailer.ui.components.LineOptionTogglePill
 import com.pegasusx.retailer.ui.screens.procurement.ProcurementUiState
 import com.pegasusx.retailer.ui.theme.SoftSquircleShape
+import com.pegasusx.retailer.util.OrderLineContractHelper
+import com.pegasusx.retailer.util.PackSnapMode
+import com.pegasusx.retailer.R
 
 @Composable
 fun SuggestionCard(
     forecast: DemandForecast,
     isSelected: Boolean,
     quantity: Int,
+    packSize: Int = 1,
+    mustHave: Boolean = false,
+    allowSubstitutes: Boolean = false,
     onToggle: () -> Unit,
     onDecrement: () -> Unit,
     onIncrement: () -> Unit,
+    onSnapPackNearest: () -> Unit = {},
+    onToggleMustHave: () -> Unit = {},
+    onToggleAllowSubstitutes: () -> Unit = {},
 ) {
     val borderModifier = if (isSelected) {
         Modifier.border(2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f), SoftSquircleShape)
@@ -50,7 +62,7 @@ fun SuggestionCard(
                         maxLines = 1,
                     )
                     Text(
-                        "Confidence: ${forecast.confidencePercent}",
+                        stringResource(R.string.mobile_retailer_ui_confidence_confidencepercent, forecast.confidencePercent),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                     )
@@ -59,7 +71,7 @@ fun SuggestionCard(
                     QuantityStepper(quantity = quantity, onDecrement = onDecrement, onIncrement = onIncrement)
                 } else {
                     Text(
-                        "${forecast.predictedQuantity} units",
+                        stringResource(R.string.mobile_retailer_ui_predictedquantity_units, forecast.predictedQuantity),
                         style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
                         color = MaterialTheme.colorScheme.primary,
                     )
@@ -72,6 +84,33 @@ fun SuggestionCard(
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
                 maxLines = 2,
             )
+            if (isSelected) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    LineOptionTogglePill(
+                        label = if (mustHave) "Must-have ✓" else "Must-have",
+                        selected = mustHave,
+                        onClick = onToggleMustHave,
+                    )
+                    LineOptionTogglePill(
+                        label = if (allowSubstitutes) "Allow subs ✓" else "Allow subs",
+                        selected = allowSubstitutes,
+                        onClick = onToggleAllowSubstitutes,
+                    )
+                    if (packSize > 1 && quantity % packSize != 0) {
+                        val snapped = OrderLineContractHelper.snapToPackMultiple(
+                            quantity = quantity,
+                            packSize = packSize,
+                            mode = PackSnapMode.NEAREST,
+                        )
+                        LineOptionTogglePill(
+                            label = "Snap $snapped",
+                            selected = true,
+                            onClick = onSnapPackNearest,
+                        )
+                    }
+                }
+            }
         }
     }
 }

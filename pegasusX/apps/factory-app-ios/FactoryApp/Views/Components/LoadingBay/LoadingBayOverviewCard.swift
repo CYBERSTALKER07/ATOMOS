@@ -8,12 +8,13 @@ struct LoadingBayOverviewCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: LabTheme.spacingLG) {
             VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
-                Text("Loading bay flow")
+                Text("mobile_factory.ui.loading_bay_flow")
                     .font(.title2.bold())
-                Text("Track approved transfers, active loading work, and dispatched volume from one queue.")
+                Text("mobile_factory.ui.track_approved_transfers_active_loading_work_and_dispatched_volu")
                     .font(.body)
                     .foregroundStyle(.secondary)
             }
+            .accessibilityElement(children: .combine)
 
             HStack(spacing: LabTheme.spacingSM) {
                 BayOverviewMetric(label: "Ready", value: "\(readyCount)")
@@ -40,6 +41,8 @@ struct BayOverviewMetric: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(LabTheme.spacingMD)
-        .background(LabTheme.tertiaryBackground, in: RoundedRectangle(cornerRadius: LabTheme.radiusMD))
+        .background(LabTheme.tertiaryBackground, in: RoundedRectangle(cornerRadius: LabTheme.radiusMD, style: .continuous))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(label): \(value)")
     }
 }

@@ -11,51 +11,98 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import android.os.Build
 
-/**
- * Material 3 Expressive palette for the Payload Terminal.
- *
- * Anchor: M3 default purple (Tonal #6750A4) shared with the supplier portal
- * + driver/retailer Android apps. On Android 12+ Dynamic Color is preferred so
- * the terminal blends into operator wallpaper themes.
- */
+// ── Monochrome Design Tokens ──
+private val Neutral0 = Color(0xFF000000)
+private val Neutral4 = Color(0xFF0C0C0E)
+private val Neutral6 = Color(0xFF121214)
+private val Neutral10 = Color(0xFF1C1C1E)
+private val Neutral17 = Color(0xFF2C2C2E)
+private val Neutral22 = Color(0xFF38383A)
+private val Neutral24 = Color(0xFF3A3A3C)
+private val Neutral30 = Color(0xFF48484A)
+private val Neutral40 = Color(0xFF636366)
+private val Neutral50 = Color(0xFF8E8E93)
+private val Neutral60 = Color(0xFFAEAEB2)
+private val Neutral70 = Color(0xFFC7C7CC)
+private val Neutral87 = Color(0xFFE5E5EA)
+private val Neutral90 = Color(0xFFE5E5EA)
+private val Neutral92 = Color(0xFFEBEBF0)
+private val Neutral94 = Color(0xFFF2F2F7)
+private val Neutral95 = Color(0xFFF2F2F7)
+private val Neutral96 = Color(0xFFF5F5FA)
+private val Neutral98 = Color(0xFFFAFAFF)
+private val Neutral100 = Color(0xFFFFFFFF)
+
+private val StatusRed = Color(0xFFFF3B30)
+private val StatusRedSoft = Color(0x1AFF3B30)
+
 private val DarkScheme = darkColorScheme(
-    primary = Color(0xFFD0BCFF),
-    onPrimary = Color(0xFF381E72),
-    primaryContainer = Color(0xFF4F378B),
-    onPrimaryContainer = Color(0xFFEADDFF),
-    secondary = Color(0xFFCCC2DC),
-    onSecondary = Color(0xFF332D41),
-    background = Color(0xFF141218),
-    onBackground = Color(0xFFE6E0E9),
-    surface = Color(0xFF141218),
-    onSurface = Color(0xFFE6E0E9),
-    surfaceVariant = Color(0xFF49454F),
-    onSurfaceVariant = Color(0xFFCAC4D0),
-    error = Color(0xFFF2B8B5),
-    onError = Color(0xFF601410),
+    primary = Neutral100,
+    onPrimary = Neutral0,
+    primaryContainer = Neutral17,
+    onPrimaryContainer = Neutral90,
+    secondary = Neutral60,
+    onSecondary = Neutral10,
+    secondaryContainer = Neutral22,
+    onSecondaryContainer = Neutral90,
+    tertiary = Neutral50,
+    onTertiary = Neutral10,
+    tertiaryContainer = Neutral24,
+    onTertiaryContainer = Neutral90,
+    background = Neutral6,
+    onBackground = Neutral90,
+    surface = Neutral10,
+    onSurface = Neutral90,
+    surfaceVariant = Neutral17,
+    onSurfaceVariant = Neutral60,
+    error = StatusRed,
+    onError = Neutral100,
+    errorContainer = StatusRedSoft,
+    onErrorContainer = StatusRed,
+    outline = Neutral40,
+    surfaceContainerLowest = Neutral4,
+    surfaceContainerLow = Neutral6,
+    surfaceContainer = Neutral10,
+    surfaceContainerHigh = Neutral17,
+    surfaceContainerHighest = Neutral22,
 )
 
 private val LightScheme = lightColorScheme(
-    primary = Color(0xFF6750A4),
-    onPrimary = Color(0xFFFFFFFF),
-    primaryContainer = Color(0xFFEADDFF),
-    onPrimaryContainer = Color(0xFF21005D),
-    secondary = Color(0xFF625B71),
-    onSecondary = Color(0xFFFFFFFF),
-    background = Color(0xFFFEF7FF),
-    onBackground = Color(0xFF1D1B20),
-    surface = Color(0xFFFEF7FF),
-    onSurface = Color(0xFF1D1B20),
-    surfaceVariant = Color(0xFFE7E0EC),
-    onSurfaceVariant = Color(0xFF49454F),
-    error = Color(0xFFB3261E),
-    onError = Color(0xFFFFFFFF),
+    primary = Neutral0,
+    onPrimary = Neutral100,
+    primaryContainer = Neutral94,
+    onPrimaryContainer = Neutral10,
+    secondary = Neutral40,
+    onSecondary = Neutral100,
+    secondaryContainer = Neutral92,
+    onSecondaryContainer = Neutral10,
+    tertiary = Neutral30,
+    onTertiary = Neutral100,
+    tertiaryContainer = Neutral90,
+    onTertiaryContainer = Neutral10,
+    background = Neutral95,
+    onBackground = Neutral10,
+    surface = Neutral100,
+    onSurface = Neutral10,
+    surfaceVariant = Neutral94,
+    onSurfaceVariant = Neutral40,
+    error = StatusRed,
+    onError = Neutral100,
+    errorContainer = StatusRedSoft,
+    onErrorContainer = StatusRed,
+    outline = Neutral70,
+    outlineVariant = Neutral87,
+    surfaceContainerLowest = Neutral100,
+    surfaceContainerLow = Neutral98,
+    surfaceContainer = Neutral96,
+    surfaceContainerHigh = Neutral94,
+    surfaceContainerHighest = Neutral92,
 )
 
 @Composable
 fun LabPayloadTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = true,
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val context = LocalContext.current

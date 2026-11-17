@@ -8,16 +8,17 @@ struct PortalHandoffView: View {
         VStack(spacing: SupplierTheme.spacingLG) {
             Spacer()
             Image(systemName: "desktopcomputer")
-                .font(.system(size: 48))
+                .font(.largeTitle.weight(.semibold))
+                .imageScale(.large)
                 .foregroundStyle(.primary)
-            Text("Manage on web portal")
+            Text("mobile_supplier.ui.manage_on_web_portal")
                 .font(.title2.bold())
             Text(feature.handoffMessage)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 360)
-            Button("Open supplier portal") {
+            Button("mobile_supplier.ui.open_supplier_portal") {
                 openURL(SupplierPortalLinks.url(for: feature))
             }
             .buttonStyle(.borderedProminent)

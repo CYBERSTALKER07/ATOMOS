@@ -57,7 +57,7 @@ func (r *SpannerRepository) ListAIRecommendations(ctx context.Context, supplierI
 		params["status"] = status
 	}
 
-	iter := r.client.Single().Query(ctx, spanner.Statement{SQL: sql, Params: params})
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{SQL: sql, Params: params})
 	defer iter.Stop()
 
 	items := make([]AIRecommendation, 0, limit)
@@ -170,19 +170,10 @@ func (r *SpannerRepository) RecordAIRecommendationDecision(ctx context.Context, 
 		})}
 
 		for _, event := range buf.events {
-			createdAt := event.CreatedAt.UTC()
-			if createdAt.IsZero() {
-				createdAt = decidedAt
+			if event.CreatedAt.IsZero() {
+				event.CreatedAt = decidedAt
 			}
-			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", map[string]any{
-				"EventId":       event.EventID,
-				"AggregateType": event.AggregateType,
-				"AggregateId":   event.AggregateID,
-				"TopicName":     event.TopicName,
-				"Payload":       event.Payload,
-				"CreatedAt":     createdAt,
-				"PublishedAt":   nil,
-			}))
+			mutations = append(mutations, portalOutboxMutation(event))
 		}
 
 		return txn.BufferWrite(mutations)

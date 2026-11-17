@@ -3,6 +3,7 @@ package payload
 import (
 	"context"
 	"strings"
+	"time"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/factory"
 )
@@ -20,7 +21,9 @@ func (s *Service) ManifestDetailSnapshotForDriver(driverID, manifestID, date str
 		return factory.ManifestDetailSnapshot{}, false
 	}
 
-	_ = s.hydrateFromRepo(context.Background())
+	hydrateCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	_ = s.hydrateFromRepo(hydrateCtx)
+	cancel()
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.ensureManifestStateLocked()

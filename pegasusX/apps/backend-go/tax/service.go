@@ -86,22 +86,26 @@ func (s *Service) CreateRegime(ctx context.Context, claims auth.Claims, req Crea
 	if req.EffectiveTo != nil && req.EffectiveTo.Before(req.EffectiveFrom) {
 		return TaxRegimeVersion{}, fmt.Errorf("%w: effective_to must be after effective_from", ErrRegimeInvalid)
 	}
-	if req.VatRateBps < 0 || req.VatRateBps > 10000 {
-		return TaxRegimeVersion{}, fmt.Errorf("%w: vat rate bps must be 0-10000, got %d", ErrRegimeInvalid, req.VatRateBps)
+	if len(req.VatRatesBps) == 0 {
+		return TaxRegimeVersion{}, fmt.Errorf("%w: at least one vat rate required", ErrRegimeInvalid)
+	}
+	for _, bps := range req.VatRatesBps {
+		if bps < 0 || bps > 10000 {
+			return TaxRegimeVersion{}, fmt.Errorf("%w: vat rate bps must be 0-10000, got %d", ErrRegimeInvalid, bps)
+		}
 	}
 
 	now := time.Now().UTC()
 	regime := TaxRegimeVersion{
-		Id:            uuid.NewString(),
-		CountryCode:   countryCode,
-		EffectiveFrom: req.EffectiveFrom.UTC(),
-		Currency:      currency,
-		VatRateBps:    req.VatRateBps,
-		Simplified:    req.Simplified,
-		RulesJson:     req.RulesJson,
-		CreatedAt:     now,
-		CreatedBy:     claims.Subject,
-		UpdatedAt:     now,
+		Id:              uuid.NewString(),
+		CountryCode:     countryCode,
+		EffectiveFrom:   req.EffectiveFrom.UTC(),
+		Currency:        currency,
+		VatRatesBps:     req.VatRatesBps,
+		SimplifiedRules: req.SimplifiedRules,
+		CreatedAt:       now,
+		CreatedBy:       claims.Subject,
+		UpdatedAt:       now,
 	}
 	if req.EffectiveTo != nil {
 		t := req.EffectiveTo.UTC()
@@ -122,7 +126,7 @@ func (s *Service) CreateRegime(ctx context.Context, claims auth.Claims, req Crea
 		"regime_id", regime.Id,
 		"country", countryCode,
 		"effective_from", regime.EffectiveFrom,
-		"vat_rate_bps", regime.VatRateBps,
+		"vat_rates_bps", regime.VatRatesBps,
 		"created_by", claims.Subject,
 	)
 

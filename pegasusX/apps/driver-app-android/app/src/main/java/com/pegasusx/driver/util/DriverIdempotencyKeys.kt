@@ -5,7 +5,11 @@ import com.pegasusx.driver.data.remote.TokenHolder
 
 /** Deterministic idempotency keys — aligned with @pegasusx/api-client idempotency.ts */
 object DriverIdempotencyKeys {
-    private fun driverId(): String = TokenHolder.userId?.takeIf { it.isNotBlank() } ?: "driver"
+    private fun driverId(): String = try {
+        TokenHolder.userId?.takeIf { it.isNotBlank() }
+    } catch (_: UninitializedPropertyAccessException) {
+        null
+    } ?: "driver"
 
     fun deliver(orderId: String): String = "driver-deliver:${driverId()}:$orderId"
 
@@ -40,6 +44,11 @@ object DriverIdempotencyKeys {
         return "driver-sync-batch:${driverId()}:${stableHash(sorted.joinToString(","))}"
     }
 
+    fun syncEscalation(itemIds: List<String>): String {
+        val sorted = itemIds.map { it.trim() }.filter { it.isNotEmpty() }.sorted()
+        return "driver-sync-escalation:${driverId()}:${stableHash(sorted.joinToString(","))}"
+    }
+
     fun markArrived(orderId: String): String = "driver-mark-arrived-$orderId"
 
     fun splitPayment(orderId: String, cashMinor: Long, cardMinor: Long): String =
@@ -51,7 +60,16 @@ object DriverIdempotencyKeys {
 
     fun reportDamage(orderId: String): String = "driver-report-damage:${driverId()}:$orderId"
 
+    fun reportCondition(orderId: String, conditionType: String): String =
+        "report-condition:${driverId()}:$orderId:${conditionType.trim().uppercase()}"
+
     fun requestEarlyComplete(reason: String): String = "driver-request-early-complete:${driverId()}:${stableHash(reason)}"
+
+    fun requestRescue(reason: String, note: String): String =
+        "driver-rescue-request:${driverId()}:${stableHash("${reason.trim()}:${note.trim()}")}"
+
+    fun respondRescue(rescueId: String, accept: Boolean): String =
+        "driver-rescue-respond:${driverId()}:$rescueId:$accept"
 
     fun routeReorder(routeId: String, orderSequence: List<String>): String {
         val seq = orderSequence.map { it.trim() }.filter { it.isNotEmpty() }

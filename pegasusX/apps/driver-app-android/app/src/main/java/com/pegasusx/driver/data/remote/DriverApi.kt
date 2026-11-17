@@ -32,6 +32,8 @@ import com.pegasusx.driver.data.model.MissingItemsPayload
 import com.pegasusx.driver.data.model.MissingItemsResponse
 import com.pegasusx.driver.data.model.NegotiationPayload
 import com.pegasusx.driver.data.model.NegotiationProposalResponse
+import com.pegasusx.driver.data.model.OfflinePoDRequest
+import com.pegasusx.driver.data.model.OfflinePoDResponse
 import com.pegasusx.driver.data.model.OpenFiscalResponse
 import com.pegasusx.driver.data.model.Order
 import com.pegasusx.driver.data.model.PendingCollection
@@ -41,6 +43,8 @@ import com.pegasusx.driver.data.model.ReorderStopsRequest
 import com.pegasusx.driver.data.model.ReturnCompleteRequest
 import com.pegasusx.driver.data.model.ReturnGoodsResponse
 import com.pegasusx.driver.data.model.RouteManifest
+import com.pegasusx.driver.data.model.SyncEscalationRequest
+import com.pegasusx.driver.data.model.SyncEscalationResponse
 import com.pegasusx.driver.data.model.RouteReorderResponse
 import com.pegasusx.driver.data.model.SplitPaymentPayload
 import com.pegasusx.driver.data.model.SplitPaymentResponse
@@ -112,6 +116,13 @@ interface DriverApi {
         @Header("Idempotency-Key") idempotencyKey: String? = null
     ): DeliverySubmitResponse
 
+    // Cryptographic Offline Proof of Delivery (PoD)
+    @POST("v1/delivery/submit-offline-pod")
+    suspend fun submitOfflinePoD(
+        @Body request: OfflinePoDRequest,
+        @Header("Idempotency-Key") idempotencyKey: String? = null
+    ): OfflinePoDResponse
+
     // Amend order — batch line-item reconciliation at delivery
     @POST("v1/order/amend")
     suspend fun amendOrder(
@@ -158,7 +169,8 @@ interface DriverApi {
         @Header("Idempotency-Key") idempotencyKey: String? = null
     ): CollectCashResponse
 
-    // Transition order state
+    // G1.C: do not call — backend always 501. Use arrive / depart / cash / card / credit edges.
+    @Deprecated("PATCH state is theatre (501); use delivery edge routes")
     @PATCH("v1/orders/{id}/state")
     suspend fun transitionState(
         @Path("id") orderId: String,
@@ -166,7 +178,7 @@ interface DriverApi {
         @Header("Idempotency-Key") idempotencyKey: String? = null,
     ): Order
 
-    // Mark arrived — driver enters 500m geofence (IN_TRANSIT → ARRIVED)
+    // Mark arrived — driver enters pack breach_radius_meters (UZ 150m; IN_TRANSIT → ARRIVED)
     @POST("v1/delivery/arrive")
     suspend fun markArrived(
         @Body body: Map<String, String>,
@@ -217,9 +229,15 @@ interface DriverApi {
     @GET("v1/driver/return-goods")
     suspend fun getReturnGoods(): ReturnGoodsResponse
 
-    /** Phase 6: open fiscal count soft-freezes cash bag / shift-end. */
+    /** Phase 6: open fiscal count soft-freezes cash bag / shift-end only when cash/PoD is incomplete. */
     @GET("v1/driver/open-fiscal")
     suspend fun getOpenFiscal(): OpenFiscalResponse
+
+    @POST("v1/driver/sync-escalation")
+    suspend fun escalateSyncDeadLetters(
+        @Body request: SyncEscalationRequest,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): SyncEscalationResponse
 
     @POST("v1/fleet/driver/return-complete")
     suspend fun returnComplete(
@@ -332,11 +350,13 @@ interface DriverApi {
     @POST("v1/driver/ops/rescue/request")
     suspend fun requestRescue(
         @Body body: Map<String, String>,
+        @Header("Idempotency-Key") idempotencyKey: String,
     ): Map<String, String>
 
     @POST("v1/driver/ops/rescue/respond")
     suspend fun respondRescue(
         @Body body: Map<String, @JvmSuppressWildcards Any>,
+        @Header("Idempotency-Key") idempotencyKey: String,
     ): Map<String, String>
 
     // Edge 33: Report missing items after seal (exception-report alias; DAMAGED needs photo_url)
@@ -374,6 +394,8 @@ interface DriverApi {
     suspend fun verifyHandshake(@Body body: VerifyHandshakeRequest): VerifyHandshakeResponse
 
     // Dynamic Delivery Edge Handling (in-delivery updates)
+    // G1.C: do not call — no durable writer (501). Use amend / partial-offload / missing-items.
+    @Deprecated("Mid-delivery update is not implemented; use amend edges")
     @POST("v1/delivery/update-order-during-delivery")
     suspend fun updateOrderDuringDelivery(@Body body: UpdateOrderDuringDeliveryRequest): UpdateOrderDuringDeliveryResponse
 
@@ -394,4 +416,19 @@ interface DriverApi {
         @Header("Idempotency-Key") idempotencyKey: String,
         @Body body: ArriveSupplyTransferRequest,
     ): ArriveSupplyTransferResponse
+
+    // ── Role 9: Fleet, DVIR & Mid-Route Rescue ──
+
+    @POST("/v1/foundry/fleet/dvir")
+    suspend fun submitDVIR(@Body req: com.pegasusx.driver.data.foundry.FleetDVIRInspection): Response<com.pegasusx.driver.data.foundry.FleetDVIRInspection>
+
+    @GET("/v1/foundry/fleet/vehicles/{vehicleID}/dispatch-check")
+    suspend fun checkVehicleDispatch(@Path("vehicleID") vehicleID: String): Response<com.pegasusx.driver.data.foundry.DispatchCheckResponse>
+
+    @POST("/v1/foundry/fleet/gate-events")
+    suspend fun recordGateEvent(@Body req: com.pegasusx.driver.data.foundry.YardGateCheckEvent): Response<com.pegasusx.driver.data.foundry.YardGateCheckEvent>
+
+    @POST("/v1/foundry/fleet/mid-route-rescue")
+    suspend fun executeMidRouteRescue(@Body req: com.pegasusx.driver.data.foundry.MidRouteRescueRequest): Response<com.pegasusx.driver.data.foundry.MidRouteRescueResult>
 }
+

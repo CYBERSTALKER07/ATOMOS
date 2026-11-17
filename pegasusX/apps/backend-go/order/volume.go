@@ -9,17 +9,11 @@ import (
 	"google.golang.org/api/iterator"
 )
 
-const defaultUnitVolumeVU = 1.0
-
-// productSnapshot captures catalog fields needed at order time.
+// productSnapshot captures catalog handling flags needed at order time.
 type productSnapshot struct {
-	unitVolumeVU      float64
-	handlingClass     string
-	requiresColdChain bool
-	isHazardous       bool
-	isPerishable      bool
-	storageTempMinC   *float64
-	storageTempMaxC   *float64
+	handlingClass string
+	isHazardous   bool
+	isPerishable  bool
 }
 
 func (s *Service) enrichLineItemVolumes(ctx context.Context, items []LineItem) ([]LineItem, error) {
@@ -41,15 +35,9 @@ func (s *Service) enrichLineItemVolumes(ctx context.Context, items []LineItem) (
 		if !ok {
 			continue
 		}
-		if items[i].UnitVolumeVU <= 0 {
-			items[i].UnitVolumeVU = snap.unitVolumeVU
-		}
 		items[i].HandlingClass = snap.handlingClass
-		items[i].RequiresColdChain = snap.requiresColdChain
 		items[i].IsHazardous = snap.isHazardous
 		items[i].IsPerishable = snap.isPerishable
-		items[i].StorageTempMinC = snap.storageTempMinC
-		items[i].StorageTempMaxC = snap.storageTempMaxC
 	}
 	return items, nil
 }
@@ -77,7 +65,7 @@ func lookupProductSnapshots(ctx context.Context, client *spanner.Client, product
 	}
 
 	stmt := spanner.Statement{
-		SQL:    `SELECT ProductId, UnitVolumeVU, HandlingClass, RequiresColdChain, IsHazardous, IsPerishable, StorageTempMinC, StorageTempMaxC FROM Products WHERE ProductId IN UNNEST(@ids)`,
+		SQL:    `SELECT ProductId, HandlingClass, IsHazardous, IsPerishable FROM Products WHERE ProductId IN UNNEST(@ids)`,
 		Params: map[string]any{"ids": unique},
 	}
 	iter := client.Single().Query(ctx, stmt)
@@ -93,29 +81,11 @@ func lookupProductSnapshots(ctx context.Context, client *spanner.Client, product
 		}
 		var productID string
 		var snap productSnapshot
-		var unitVU spanner.NullFloat64
 		var handlingClass spanner.NullString
-		var storageTempMinC, storageTempMaxC spanner.NullFloat64
-		if err := row.Columns(&productID, &unitVU, &handlingClass, &snap.requiresColdChain, &snap.isHazardous, &snap.isPerishable, &storageTempMinC, &storageTempMaxC); err != nil {
+		if err := row.Columns(&productID, &handlingClass, &snap.isHazardous, &snap.isPerishable); err != nil {
 			return nil, fmt.Errorf("scan product snapshot: %w", err)
 		}
-		if unitVU.Valid {
-			snap.unitVolumeVU = unitVU.Float64
-		} else {
-			snap.unitVolumeVU = defaultUnitVolumeVU
-		}
 		snap.handlingClass = handlingClass.StringVal
-		if storageTempMinC.Valid {
-			v := storageTempMinC.Float64
-			snap.storageTempMinC = &v
-		}
-		if storageTempMaxC.Valid {
-			v := storageTempMaxC.Float64
-			snap.storageTempMaxC = &v
-		}
-		if snap.unitVolumeVU <= 0 {
-			snap.unitVolumeVU = defaultUnitVolumeVU
-		}
 		out[productID] = snap
 	}
 }

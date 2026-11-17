@@ -8,7 +8,7 @@ import Drawer from '@/components/Drawer';
 import { buildSupplierOrgInviteIdempotencyKey, buildSupplierOrgMemberActionIdempotencyKey } from '../_shared/idempotency';
 import { normalizeCollectionResponse } from '../_shared/referenceData';
 
-/* ── Types ─────────────────────────────────────────────────────────────── */
+/* -- Types --------------------------------------------------------------- */
 
 interface OrgMember {
   user_id: string;
@@ -33,7 +33,7 @@ interface Factory {
   name: string;
 }
 
-/* ── Main Page ─────────────────────────────────────────────────────────── */
+/* -- Main Page ----------------------------------------------------------- */
 
 export default function OrgMembersPage() {
   const [members, setMembers] = useState<OrgMember[]>([]);
@@ -229,7 +229,7 @@ export default function OrgMembersPage() {
     }
   }
 
-  /* ── Render ── */
+  /* -- Render -- */
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
@@ -327,27 +327,27 @@ export default function OrgMembersPage() {
             </div>
           )}
 
-          <label className="flex flex-col gap-1">
+          <label htmlFor="org-form-name" className="flex flex-col gap-1">
             <span className="md-typescale-label-medium text-foreground">Full Name</span>
-            <input className="md-input-outlined" value={formName}
+            <input id="org-form-name" aria-label="Full Name" className="md-input-outlined" value={formName}
               onChange={e => setFormName(e.target.value)} placeholder="John Doe" required />
           </label>
 
-          <label className="flex flex-col gap-1">
+          <label htmlFor="org-form-email" className="flex flex-col gap-1">
             <span className="md-typescale-label-medium text-foreground">Email</span>
-            <input className="md-input-outlined" type="email" value={formEmail}
+            <input id="org-form-email" aria-label="Email" className="md-input-outlined" type="email" value={formEmail}
               onChange={e => setFormEmail(e.target.value)} placeholder="john@example.com" />
           </label>
 
-          <label className="flex flex-col gap-1">
+          <label htmlFor="org-form-phone" className="flex flex-col gap-1">
             <span className="md-typescale-label-medium text-foreground">Phone</span>
-            <input className="md-input-outlined" type="tel" value={formPhone}
+            <input id="org-form-phone" aria-label="Phone" className="md-input-outlined" type="tel" value={formPhone}
               onChange={e => setFormPhone(e.target.value)} placeholder="+998901234567" />
           </label>
 
-          <label className="flex flex-col gap-1">
+          <label htmlFor="org-form-password" className="flex flex-col gap-1">
             <span className="md-typescale-label-medium text-foreground">Password</span>
-            <input className="md-input-outlined" type="password" value={formPassword}
+            <input id="org-form-password" aria-label="Password" className="md-input-outlined" type="password" value={formPassword}
               onChange={e => setFormPassword(e.target.value)} placeholder="Minimum 8 characters" required />
           </label>
 

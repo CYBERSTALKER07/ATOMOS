@@ -16,11 +16,160 @@ interface SupplierApi {
     @POST("v1/auth/supplier/refresh")
     suspend fun refreshToken(@Body body: RefreshTokenRequest): Response<LoginResponse>
 
+    @POST("v1/user/device-token")
+    suspend fun registerDeviceToken(@Body body: DeviceTokenRequest): Response<Map<String, String>>
+
     @POST("v1/supplier/configure")
     suspend fun configureSupplier(@Body body: JsonElement): Response<JsonElement>
 
     @POST("v1/supplier/business/setup")
-    suspend fun setupBusiness(@Body body: JsonElement): Response<JsonElement>
+    suspend fun setupBusiness(
+        @Body body: JsonElement,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): Response<JsonElement>
+
+    @POST("v1/platform/inn/lookup")
+    suspend fun lookupINN(@Body body: INNLookupRequest): Response<INNLookupResponse>
+
+    @GET("v1/supplier/join-requests")
+    suspend fun listJoinRequests(
+        @Query("status") status: String = "PENDING",
+        @Query("limit") limit: Int = 100,
+    ): Response<JoinRequestsResponse>
+
+    @POST("v1/supplier/join-requests/{requestId}/approve")
+    suspend fun approveJoinRequest(
+        @Path("requestId") requestId: String,
+        @Header("Idempotency-Key") idempotencyKey: String,
+        @Body body: Map<String, String> = emptyMap(),
+    ): Response<JsonElement>
+
+    @POST("v1/supplier/join-requests/{requestId}/reject")
+    suspend fun rejectJoinRequest(
+        @Path("requestId") requestId: String,
+        @Header("Idempotency-Key") idempotencyKey: String,
+        @Body body: Map<String, String> = emptyMap(),
+    ): Response<JsonElement>
+
+    @GET("v1/supplier/ar/invoices")
+    suspend fun listSupplierARInvoices(
+        @Query("status") status: String? = null,
+        @Query("limit") limit: Int = 100,
+    ): Response<SupplierARInvoicesResponse>
+
+    // ── Universal Smart Migration Center ──
+
+    @GET("v1/supplier/migrations/projects")
+    suspend fun listMigrationProjects(): Response<MigrationProjectsResponse>
+
+    @POST("v1/supplier/migrations/projects")
+    suspend fun createMigrationProject(
+        @Header("Idempotency-Key") idempotencyKey: String,
+        @Body body: MigrationCreateProjectRequest,
+    ): Response<MigrationProject>
+
+    @GET("v1/supplier/migrations/projects/{projectId}")
+    suspend fun getMigrationProjectTree(
+        @Path("projectId") projectId: String,
+    ): Response<MigrationProjectTree>
+
+    @POST("v1/supplier/migrations/projects/{projectId}/bundles")
+    suspend fun createMigrationBundle(
+        @Path("projectId") projectId: String,
+        @Header("Idempotency-Key") idempotencyKey: String,
+        @Body body: MigrationCreateBundleRequest,
+    ): Response<MigrationCreateBundleResponse>
+
+    @POST("v1/supplier/migrations/projects/{projectId}/bundles/{bundleId}/uploaded")
+    suspend fun markMigrationBundleUploaded(
+        @Path("projectId") projectId: String,
+        @Path("bundleId") bundleId: String,
+        @Query("sync") sync: String = "1",
+        @Header("Idempotency-Key") idempotencyKey: String,
+        @Body body: MigrationBundleUploadedRequest,
+    ): Response<MigrationBundleUploadedResponse>
+
+    @PATCH("v1/supplier/migrations/projects/{projectId}/bundles/{bundleId}/sort")
+    suspend fun overrideMigrationBundleSort(
+        @Path("projectId") projectId: String,
+        @Path("bundleId") bundleId: String,
+        @Header("Idempotency-Key") idempotencyKey: String,
+        @Body body: MigrationBundleSortOverrideRequest,
+    ): Response<MigrationBundleSortOverrideResponse>
+
+    @GET("v1/supplier/migrations/sessions/{sessionId}")
+    suspend fun getMigrationSession(
+        @Path("sessionId") sessionId: String,
+    ): Response<MigrationSession>
+
+    @GET("v1/supplier/migrations/sessions/{sessionId}/rows")
+    suspend fun getMigrationSessionRows(
+        @Path("sessionId") sessionId: String,
+        @Query("limit") limit: Int = 20,
+        @Query("offset") offset: Int = 0,
+        @Query("invalid_only") invalidOnly: String? = null,
+    ): Response<MigrationSessionRowsResponse>
+
+    @GET("v1/supplier/migrations/sessions/{sessionId}/mapping")
+    suspend fun getMigrationSessionMapping(
+        @Path("sessionId") sessionId: String,
+    ): Response<MigrationGetSessionMappingResponse>
+
+    @POST("v1/supplier/migrations/sessions/{sessionId}/mapping")
+    suspend fun confirmMigrationSessionMapping(
+        @Path("sessionId") sessionId: String,
+        @Header("Idempotency-Key") idempotencyKey: String,
+        @Body body: MigrationConfirmMappingRequest,
+    ): Response<MigrationConfirmMappingResponse>
+
+    @POST("v1/supplier/migrations/projects/{projectId}/dry-run")
+    suspend fun runMigrationProjectDryRun(
+        @Path("projectId") projectId: String,
+        @Header("Idempotency-Key") idempotencyKey: String,
+        @Body body: MigrationDryRunRequest,
+    ): Response<MigrationDryRunResponse>
+
+    @POST("v1/supplier/migrations/sessions/{sessionId}/dry-run")
+    suspend fun runMigrationSessionDryRun(
+        @Path("sessionId") sessionId: String,
+        @Header("Idempotency-Key") idempotencyKey: String,
+        @Body body: MigrationDryRunRequest,
+    ): Response<MigrationDryRunResponse>
+
+    @POST("v1/supplier/migrations/sessions/{sessionId}/approve")
+    suspend fun approveMigrationSession(
+        @Path("sessionId") sessionId: String,
+        @Header("Idempotency-Key") idempotencyKey: String,
+        @Body body: MigrationApproveRequest,
+    ): Response<MigrationApproveResponse>
+
+    @POST("v1/supplier/migrations/sessions/{sessionId}/apply")
+    suspend fun applyMigrationSession(
+        @Path("sessionId") sessionId: String,
+        @Header("Idempotency-Key") idempotencyKey: String,
+        @Body body: MigrationApplyRequest,
+    ): Response<MigrationApplyResult>
+
+    @POST("v1/supplier/migrations/sessions/{sessionId}/rollback")
+    suspend fun rollbackMigrationSession(
+        @Path("sessionId") sessionId: String,
+        @Header("Idempotency-Key") idempotencyKey: String,
+        @Body body: Map<String, String> = emptyMap(),
+    ): Response<MigrationRollbackResult>
+
+    @POST("v1/supplier/migrations/projects/{projectId}/open-orders/release")
+    suspend fun releaseMigrationOpenOrders(
+        @Path("projectId") projectId: String,
+        @Header("Idempotency-Key") idempotencyKey: String,
+        @Body body: MigrationOpenOrderReleaseRequest,
+    ): Response<MigrationOpenOrderReleaseResponse>
+
+    @POST("v1/supplier/migrations/projects/{projectId}/cutover")
+    suspend fun cutoverMigrationProject(
+        @Path("projectId") projectId: String,
+        @Header("Idempotency-Key") idempotencyKey: String,
+        @Body body: Map<String, String> = emptyMap(),
+    ): Response<MigrationCutoverResult>
 
     @GET("v1/supplier/pulse")
     suspend fun getPulse(): Response<PulseResponse>
@@ -241,11 +390,101 @@ interface SupplierApi {
     @GET("v1/supplier/planning/seasonal-overrides")
     suspend fun getSeasonalOverrides(): Response<SeasonalTemplatesResponse>
 
+    @GET("v1/supplier/crm/retailers")
+    suspend fun getCrmRetailers(): Response<SupplierCRMListResponse>
+
+    @GET("v1/supplier/crm/retailers/{retailerId}")
+    suspend fun getCrmRetailer(@Path("retailerId") retailerId: String): Response<SupplierCRMRetailerDetail>
+
+    @GET("v1/supplier/network-mode")
+    suspend fun getNetworkMode(): Response<NetworkModeResponse>
+
+    @PUT("v1/supplier/network-mode")
+    suspend fun putNetworkMode(
+        @Body body: NetworkModeUpdateRequest,
+        @Header("X-Idempotency-Key") idempotencyKey: String,
+    ): Response<NetworkModeUpdateResponse>
+
+    @POST("v1/supplier/planning/pull-matrix")
+    suspend fun postPlanningPullMatrix(
+        @Header("X-Idempotency-Key") idempotencyKey: String,
+    ): Response<PullMatrixResponse>
+
+    @POST("v1/supplier/planning/predictive-push")
+    suspend fun postPlanningPredictivePush(
+        @Header("X-Idempotency-Key") idempotencyKey: String,
+    ): Response<PredictivePushResponse>
+
+    @GET("v1/supplier/planning/sparsity/{retailerId}")
+    suspend fun getPlanningSparsity(
+        @Path("retailerId") retailerId: String,
+    ): Response<SparsityGateResult>
+
+    @GET("v1/supplier/loyalty/program")
+    suspend fun getLoyaltyProgram(): Response<LoyaltyProgram>
+
+    @PATCH("v1/supplier/loyalty/program")
+    suspend fun patchLoyaltyProgram(
+        @Body body: LoyaltyProgram,
+        @Header("X-Idempotency-Key") idempotencyKey: String,
+    ): Response<LoyaltyProgram>
+
+    @POST("v1/supplier/entity-resolution/resolve")
+    suspend fun resolveEntity(@Body body: EntityResolutionResolveRequest): Response<EntityResolutionResolveResponse>
+
+    @POST("v1/supplier/entity-resolution/explain")
+    suspend fun explainEntity(@Body body: EntityResolutionExplainRequest): Response<EntityResolutionExplainResponse>
+
+    @POST("v1/supplier/planning/kill-switch")
+    suspend fun postPlanningKillSwitch(
+        @Body body: KillSwitchRequest,
+        @Header("X-Idempotency-Key") idempotencyKey: String,
+    ): Response<KillSwitchResponse>
+
+    @GET("v1/supplier/payouts/rail")
+    suspend fun getPayoutRail(): Response<PayoutRailInfo>
+
+    @GET("v1/supplier/payout-policy")
+    suspend fun getPayoutPolicy(): Response<SupplierPayoutPolicy>
+
+    @PATCH("v1/supplier/payout-policy")
+    suspend fun patchPayoutPolicy(@Body body: SupplierPayoutPolicyPatch): Response<SupplierPayoutPolicy>
+
+    @GET("v1/supplier/payouts/batches")
+    suspend fun listPayoutBatches(): Response<PayoutBatchListResponse>
+
+    @POST("v1/supplier/payouts/batches")
+    suspend fun generatePayoutBatch(
+        @Body body: PayoutBatchGenerateRequest,
+        @Header("X-Idempotency-Key") idempotencyKey: String,
+    ): Response<PayoutBatchGenerateResponse>
+
+    @POST("v1/supplier/payouts/batches/{batchID}/export")
+    suspend fun exportPayoutBatch(@Path("batchID") batchId: String): Response<okhttp3.ResponseBody>
+
+    @POST("v1/supplier/payouts/batches/{batchID}/mark-paid")
+    suspend fun markPayoutBatchPaid(@Path("batchID") batchId: String): Response<PayoutMarkPaidResponse>
+
+    @POST("v1/supplier/payouts/batches/{batchID}/dispatch")
+    suspend fun dispatchPayoutBatch(
+        @Path("batchID") batchId: String,
+        @Body body: Map<String, Boolean>,
+    ): Response<PayoutDispatchResponse>
+
     @POST("v1/supplier/planning/seasonal-overrides")
     suspend fun createSeasonalOverride(
         @Body body: SeasonalOverrideInput,
         @Header("X-Idempotency-Key") idempotencyKey: String,
     ): Response<SeasonalOverrideRow>
+
+    @GET("v1/supplier/return-policy")
+    suspend fun getReturnPolicy(): Response<SupplierReturnPolicy>
+
+    @PUT("v1/supplier/return-policy")
+    suspend fun putReturnPolicy(
+        @Body body: SupplierReturnPolicy,
+        @Header("X-Idempotency-Key") idempotencyKey: String,
+    ): Response<SupplierReturnPolicy>
 
     @GET("v1/supplier/knowledge-graph")
     suspend fun getKnowledgeGraph(): Response<SupplierKnowledgeGraph>
@@ -291,8 +530,6 @@ interface SupplierApi {
         @Header("Idempotency-Key") idempotencyKey: String,
     ): Response<JsonElement>
 
-    @GET("v1/supplier/inventory/audit")
-    suspend fun getInventoryAudit(): Response<JsonElement>
 
     @GET("v1/supplier/earnings")
     suspend fun getEarnings(): Response<SupplierEarnings>
@@ -520,7 +757,7 @@ interface SupplierApi {
     @GET("v1/payment/reconciliation/mismatches")
     suspend fun getPaymentReconciliationMismatches(
         @Query("group_limit") groupLimit: Int = 200,
-        @Query("mismatch_threshold_minor") mismatchThresholdMinor: Int = 1,
+        @Query("mismatch_threshold_minor") mismatchThresholdMinor: Long = 1L,
     ): Response<ReconciliationMismatchResponse>
 
     @POST("v1/supplier/replenishment/trigger")
@@ -582,4 +819,79 @@ interface SupplierApi {
         @Header("X-Idempotency-Key") idempotencyKey: String,
         @Body body: WarehouseOrderMutationRequest,
     ): Response<WarehouseOrderMutationResponse>
+
+    @GET("v1/control-tower/exceptions/scored")
+    suspend fun scoredControlTower(@Query("limit") limit: Int = 50): Response<ScoredExceptionsResponse>
+
+    @GET("v1/control-tower/playbooks")
+    suspend fun listPlaybooks(): Response<ControlTowerPlaybooksResponse>
+
+    @GET("v1/supplier/segmentation/retailers")
+    suspend fun listRetailerSegments(): Response<JsonElement>
+
+    @GET("v1/admin/tax-regimes")
+    suspend fun listTaxRegimes(@Query("country") country: String = "UZ", @Query("limit") limit: Int = 50): Response<JsonElement>
+
+    @GET("v1/supplier/credit-program")
+    suspend fun getCreditProgram(): Response<JsonElement>
+
+    @GET("v1/supplier/analytics/demand/flywheel")
+    suspend fun getDemandFlywheel(@Query("days") days: Int = 7): Response<JsonElement>
+
+    @GET("v1/demand/signals")
+    suspend fun getDemandSignals(@Query("type") type: String? = null): Response<JsonElement>
+
+    @POST("v1/admin/credit-relationships/{supplierId}/{retailerId}/disable")
+    suspend fun adminDisableCreditRelationship(
+        @Path("supplierId") supplierId: String,
+        @Path("retailerId") retailerId: String,
+        @Body body: CreditAdminDisableRequest,
+    ): Response<JsonElement>
+
+    @POST("v1/admin/credit-program/{supplierId}/disable")
+    suspend fun adminDisableCreditProgram(
+        @Path("supplierId") supplierId: String,
+        @Body body: CreditAdminDisableRequest,
+    ): Response<JsonElement>
+
+    // ── Foundry Triad & Fleet Routes ──
+
+    @POST("/v1/foundry/ontology/search-around")
+    suspend fun searchAround(@Body req: com.pegasusx.supplier.data.foundry.SearchAroundRequest): Response<com.pegasusx.supplier.data.foundry.SearchAroundResponse>
+
+    @POST("/v1/foundry/ontology/lot-recall")
+    suspend fun triggerLotRecall(@Body req: com.pegasusx.supplier.data.foundry.LotRecallRequest): Response<com.pegasusx.supplier.data.foundry.RecallBlastRadiusReport>
+
+    @POST("/v1/foundry/kinetic/actions/execute")
+    suspend fun executeAction(@Body req: com.pegasusx.supplier.data.foundry.ActionExecutionRequest): Response<com.pegasusx.supplier.data.foundry.ActionExecutionRecord>
+
+    @POST("/v1/foundry/scenarios/{scenarioID}/patches")
+    suspend fun applyScenarioPatch(
+        @Path("scenarioID") scenarioID: String,
+        @Body req: com.pegasusx.supplier.data.foundry.ScenarioPatchRequest,
+    ): Response<Map<String, kotlinx.serialization.json.JsonElement>>
+
+    @GET("/v1/foundry/scenarios/{scenarioID}/resolve/{cellID}/{objectType}/{objectID}")
+    suspend fun resolveScenarioObject(
+        @Path("scenarioID") scenarioID: String,
+        @Path("cellID") cellID: String,
+        @Path("objectType") objectType: String,
+        @Path("objectID") objectID: String,
+    ): Response<com.pegasusx.supplier.data.foundry.OntologyObjectDto>
+
+    @POST("/v1/foundry/scenarios/{scenarioID}/commit")
+    suspend fun commitScenario(@Path("scenarioID") scenarioID: String): Response<com.pegasusx.supplier.data.foundry.ScenarioCommitResult>
+
+    @POST("/v1/foundry/fleet/dvir")
+    suspend fun submitDVIR(@Body req: com.pegasusx.supplier.data.foundry.FleetDVIRInspection): Response<com.pegasusx.supplier.data.foundry.FleetDVIRInspection>
+
+    @POST("/v1/foundry/fleet/gate-events")
+    suspend fun recordGateEvent(@Body req: com.pegasusx.supplier.data.foundry.YardGateCheckEvent): Response<com.pegasusx.supplier.data.foundry.YardGateCheckEvent>
+
+    @POST("/v1/foundry/fleet/mid-route-rescue")
+    suspend fun executeMidRouteRescue(@Body req: com.pegasusx.supplier.data.foundry.MidRouteRescueRequest): Response<com.pegasusx.supplier.data.foundry.MidRouteRescueResult>
+
+    @GET("/v1/foundry/fleet/vehicles/{vehicleID}/dispatch-check")
+    suspend fun checkVehicleDispatch(@Path("vehicleID") vehicleID: String): Response<com.pegasusx.supplier.data.foundry.DispatchCheckResponse>
 }
+

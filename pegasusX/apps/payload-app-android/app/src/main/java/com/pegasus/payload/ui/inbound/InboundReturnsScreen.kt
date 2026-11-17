@@ -1,5 +1,7 @@
 package com.pegasus.payload.ui.inbound
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 
@@ -30,10 +32,10 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import com.pegasus.design.PegasusStatePane
-import com.pegasus.design.PegasusStateKind
-import com.pegasus.design.PegasusRuntimeBanner
-import com.pegasus.design.PegasusRuntimeTone
+import com.pegasus.payload.ui.design.PegasusStatePane
+import com.pegasus.payload.ui.design.PegasusStateKind
+import com.pegasus.payload.ui.design.PegasusRuntimeBanner
+import com.pegasus.payload.ui.design.PegasusRuntimeTone
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -56,6 +58,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pegasus.barcode.EanBarcodeScannerPreview
 import com.pegasus.payload.util.PayloadIdempotencyKeys
 import kotlinx.coroutines.launch
+import com.pegasus.payload.R
 
 data class InboundRow(
     val returnId: String,
@@ -93,9 +96,9 @@ fun InboundReturnsScreen(
     val scope = rememberCoroutineScope()
 
     fun parseRows(body: Map<String, Any>?): List<InboundRow> {
-        @Suppress("UNCHECKED_CAST")
-        val data = body?.get("data") as? List<Map<String, Any>> ?: return emptyList()
-        return data.mapNotNull { m ->
+        val data = body?.get("data") as? List<*> ?: return emptyList()
+        return data.mapNotNull { entry ->
+            val m = entry as? Map<*, *> ?: return@mapNotNull null
             val returnId = m["return_id"] as? String ?: return@mapNotNull null
             InboundRow(
                 returnId = returnId,
@@ -177,27 +180,27 @@ fun InboundReturnsScreen(
                 title = { Text("Inbound Returns") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                     }
                 },
                 actions = {
                     IconButton(onClick = { load() }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                        Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.portal_page_orders_action_refresh))
                     }
                 },
             )
         },
     ) { innerPadding ->
         when {
-            loading -> com.pegasus.design.PegasusLoadingState(
-                title = "Loading inbound queue",
+            loading -> com.pegasus.payload.ui.design.PegasusLoadingState(
+                title = stringResource(R.string.mobile_payload_ui_loading_inbound_queue),
                 body = "Fetching returns and exceptions awaiting gate entry.",
                 modifier = Modifier.fillMaxSize().padding(innerPadding)
             )
-            error != null -> com.pegasus.design.PegasusStatePane(
-                kind = com.pegasus.design.PegasusStateKind.Error,
+            error != null -> com.pegasus.payload.ui.design.PegasusStatePane(
+                kind = com.pegasus.payload.ui.design.PegasusStateKind.Error,
                 headline = "Failed to load",
-                body = error!!,
+                body = error.orEmpty(),
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
                 actionLabel = "Retry",
                 onAction = { load() }
@@ -235,7 +238,7 @@ fun InboundReturnsScreen(
                 }
                 if (queuedScans > 0) {
                     Text(
-                        "$queuedScans scan(s) queued offline",
+                        stringResource(R.string.mobile_payload_ui_queuedscans_scan_s_queued_offline_2, queuedScans),
                         modifier = Modifier.padding(horizontal = 16.dp),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.tertiary,
@@ -267,7 +270,7 @@ fun InboundReturnsScreen(
                                     statusMessage = e.message
                                 }
                             }
-                        }) { Text("Restock (${selected.size})") }
+                        }) { Text(stringResource(R.string.mobile_payload_ui_restock_size, selected.size)) }
                         TextButton(onClick = {
                             scope.launch {
                                 try {

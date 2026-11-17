@@ -16,24 +16,24 @@ struct MapButton: View {
                         .frame(width: 48, height: 48)
 
                     Image(systemName: "map.fill")
-                        .font(.system(size: 18, weight: .semibold))
+                        .font(.system(.title3, weight: .semibold))
                         .foregroundStyle(LabTheme.buttonFg)
                 }
 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("Open Map")
-                        .font(.system(size: 16, weight: .bold))
+                    Text("mobile_driver.ui.open_map")
+                        .font(.system(.callout, weight: .bold))
                         .foregroundStyle(LabTheme.fg)
 
-                    Text("\(pendingCount) deliveries waiting")
-                        .font(.system(size: 12, weight: .medium))
+                    Text(L10n.format("mobile_driver.ui.pendingcount_deliveries_waiting_3", "\(pendingCount)"))
+                        .font(.system(.caption, weight: .medium))
                         .foregroundStyle(LabTheme.fgSecondary)
                 }
 
                 Spacer()
 
                 Image(systemName: "arrow.right")
-                    .font(.system(size: 13, weight: .bold))
+                    .font(.system(.footnote, weight: .bold))
                     .foregroundStyle(LabTheme.fgTertiary)
             }
             .padding(LabTheme.s16)

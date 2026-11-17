@@ -15,7 +15,7 @@ interface OrderDao {
     @Query("SELECT * FROM orders ORDER BY createdAt DESC")
     fun observeAll(): Flow<List<OrderEntity>>
 
-    @Query("SELECT * FROM orders WHERE state IN ('LOADED', 'IN_TRANSIT', 'ARRIVING', 'ARRIVED', 'AWAITING_PAYMENT', 'PENDING_CASH_COLLECTION', 'FISCALIZING', 'FISCAL_FAILED') ORDER BY createdAt ASC")
+    @Query("SELECT * FROM orders WHERE state IN ('LOADED', 'IN_TRANSIT', 'ARRIVING', 'ARRIVED', 'ARRIVED_SHOP_CLOSED', 'AWAITING_PAYMENT', 'PENDING_CASH_COLLECTION', 'FISCALIZING', 'FISCAL_FAILED') ORDER BY createdAt ASC")
     fun observeActive(): Flow<List<OrderEntity>>
 
     @Query("SELECT * FROM orders WHERE id = :orderId")
@@ -98,6 +98,19 @@ interface PendingMutationDao {
     )
     suspend fun markDead(id: String, error: String)
 
+    @Query(
+        """
+        UPDATE pending_mutations
+        SET status = 'PENDING', attemptCount = 0, lastError = ''
+        WHERE id = :id
+        """,
+    )
+    suspend fun requeueDeadById(id: String)
+
+    @Query("DELETE FROM pending_mutations WHERE id IN (:ids)")
+    suspend fun deleteByIds(ids: List<String>)
+
+    @Deprecated("Unsafe silent drop; only use after confirmed server escalation", ReplaceWith("deleteByIds(ids)"))
     @Query("DELETE FROM pending_mutations WHERE status = 'DEAD'")
     suspend fun clearDead()
 }

@@ -159,6 +159,8 @@ export default function LocationPicker({ lat, lng, address, onLocationChange }: 
       {/* Search bar */}
       <div className="flex gap-2">
         <input
+          id="searchquery-input-3"
+          aria-label="Search address..."
           type="text"
           value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}
@@ -226,6 +228,8 @@ export default function LocationPicker({ lat, lng, address, onLocationChange }: 
         <div>
           <label className="md-typescale-label-medium block mb-1.5" style={{ color: 'var(--foreground)' }}>Latitude</label>
           <input
+            id="latitude-input-2"
+            aria-label="Latitude"
             type="number"
             step="any"
             value={lat}
@@ -240,6 +244,8 @@ export default function LocationPicker({ lat, lng, address, onLocationChange }: 
         <div>
           <label className="md-typescale-label-medium block mb-1.5" style={{ color: 'var(--foreground)' }}>Longitude</label>
           <input
+            id="longitude-input-1"
+            aria-label="Longitude"
             type="number"
             step="any"
             value={lng}

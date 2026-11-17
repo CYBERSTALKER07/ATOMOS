@@ -50,6 +50,7 @@ fun PayloadKpiTile(
     Surface(
         color = MaterialTheme.colorScheme.surface,
         shape = RoundedCornerShape(20.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)),
         modifier = modifier,
     ) {
         Column(
@@ -57,7 +58,7 @@ fun PayloadKpiTile(
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Text(
-                label,
+                label.uppercase(Locale.US),
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Black,
                 fontFamily = FontFamily.Monospace,
@@ -66,10 +67,50 @@ fun PayloadKpiTile(
             Text(
                 value,
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.Black,
                 fontFamily = FontFamily.Monospace,
             )
             footer?.invoke()
+        }
+    }
+}
+
+@Composable
+fun PayloadProtocolStateCard(
+    state: String,
+    modifier: Modifier = Modifier,
+) {
+    val normalized = state.trim().ifBlank { "DRAFT" }.uppercase(Locale.US)
+    val stateColor = when (normalized) {
+        "LOADING" -> MaterialTheme.colorScheme.primary
+        "SEALED", "DISPATCHED" -> MaterialTheme.colorScheme.tertiary
+        "DRAFT" -> MaterialTheme.colorScheme.secondary
+        else -> MaterialTheme.colorScheme.onSurface
+    }
+    Surface(
+        color = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(20.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)),
+        modifier = modifier,
+    ) {
+        Column(
+            modifier = Modifier.padding(PayloadSpacing.lg),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(
+                "PROTOCOL_STATE",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Black,
+                fontFamily = FontFamily.Monospace,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                normalized.replace('_', ' '),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Black,
+                fontFamily = FontFamily.Monospace,
+                color = stateColor,
+            )
         }
     }
 }

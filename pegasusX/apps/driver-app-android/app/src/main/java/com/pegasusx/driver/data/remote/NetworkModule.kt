@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import com.pegasusx.driver.BuildConfig
+import com.pegasusx.driver.data.local.MIGRATION_5_6
 import com.pegasusx.driver.data.local.PegasusDriverDatabase
 import com.pegasusx.driver.data.local.OrderDao
 import com.pegasusx.driver.data.local.PendingMutationDao
@@ -19,6 +20,8 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.Authenticator
+import okhttp3.CertificatePinner
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -48,14 +51,22 @@ object NetworkModule {
         .readTimeout(30, TimeUnit.SECONDS)
         .writeTimeout(15, TimeUnit.SECONDS)
         .pingInterval(30, TimeUnit.SECONDS) // WebSocket keepalive
+        .apply {
+            configuredCertificatePinner(BuildConfig.API_BASE_URL, BuildConfig.API_TLS_SPKI_PINS)
+                ?.let { certificatePinner(it) }
+        }
+        .addInterceptor(com.pegasusx.driver.ui.design.CellPinInterceptor(BuildConfig.API_BASE_URL) {
+            TokenHolder.token
+        })
         .addInterceptor { chain ->
-            val token = TokenHolder.firebaseIdToken ?: TokenHolder.token
+            val token = TokenHolder.httpAuthorizationToken(TokenHolder.token, null)
             val request = chain.request().newBuilder()
                 .addHeader("X-Trace-Id", java.util.UUID.randomUUID().toString())
                 .apply { if (token != null) addHeader("Authorization", "Bearer $token") }
                 .build()
             chain.proceed(request)
         }
+        .addInterceptor(com.pegasusx.driver.ui.design.PegasusHttpResilienceInterceptor())
         .authenticator(TokenRefreshAuthenticator(json))
         .addInterceptor(ProblemDetailInterceptor(json))
         .addInterceptor(
@@ -86,7 +97,7 @@ object NetworkModule {
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): PegasusDriverDatabase =
         Room.databaseBuilder(context, PegasusDriverDatabase::class.java, "pegasus_driver.db")
-            .fallbackToDestructiveMigration()
+            .addMigrations(MIGRATION_5_6)
             .build()
 
     @Provides
@@ -133,10 +144,14 @@ object TokenHolder {
         get() = prefs.getString("token", null)
         set(value) = prefs.edit().putString("token", value).apply()
 
-    /** Firebase ID token — preferred over legacy JWT when non-null */
-    var firebaseIdToken: String?
-        get() = prefs.getString("firebaseIdToken", null)
-        set(value) = prefs.edit().putString("firebaseIdToken", value).apply()
+    /** Session JWT for HTTP/WS Bearer. Firebase ID is OTP `id_token` body only. */
+    fun httpAuthorizationToken(sessionJwt: String?, @Suppress("UNUSED_PARAMETER") firebaseIdToken: String? = null): String? {
+        val jwt = sessionJwt?.trim().orEmpty()
+        if (jwt.isNotEmpty()) {
+            return jwt
+        }
+        return null
+    }
 
     var userId: String?
         get() = prefs.getString("userId", null)
@@ -221,8 +236,34 @@ object TokenHolder {
     }
 }
 
+internal fun configuredCertificatePinner(baseUrl: String, pinsCsv: String): CertificatePinner? {
+    val parsed = baseUrl.trim().toHttpUrlOrNull() ?: return null
+    if (!parsed.isHttps) return null
+    val host = parsed.host.lowercase()
+    if (host == "localhost" || host == "127.0.0.1" || host == "10.0.2.2" || host == "::1") {
+        return null
+    }
+    val pins = pinsCsv.split(',').map { it.trim() }.filter { it.startsWith("sha256/") }
+    if (pins.isEmpty()) return null
+    val builder = CertificatePinner.Builder()
+    for (pin in pins) {
+        builder.add(host, pin)
+    }
+    return builder.build()
+}
+
 /** OkHttp Authenticator that attempts token refresh on 401 before clearing credentials. */
 private class TokenRefreshAuthenticator(private val json: Json) : Authenticator {
+    private val refreshClient = OkHttpClient.Builder()
+        .connectTimeout(10, TimeUnit.SECONDS)
+        .readTimeout(10, TimeUnit.SECONDS)
+        .apply {
+            configuredCertificatePinner(BuildConfig.API_BASE_URL, BuildConfig.API_TLS_SPKI_PINS)
+                ?.let { certificatePinner(it) }
+        }
+        .build()
+
+    @Synchronized
     override fun authenticate(route: Route?, response: okhttp3.Response): Request? {
         // Prevent infinite retry loops — give up after a single refresh attempt
         if (response.request.header("X-Refresh-Attempted") != null) {
@@ -235,6 +276,14 @@ private class TokenRefreshAuthenticator(private val json: Json) : Authenticator 
             return null
         }
 
+        val requestToken = response.request.header("Authorization")?.removePrefix("Bearer ")?.trim()
+        if (!requestToken.isNullOrEmpty() && requestToken != currentToken) {
+            return response.request.newBuilder()
+                .header("Authorization", "Bearer $currentToken")
+                .header("X-Refresh-Attempted", "true")
+                .build()
+        }
+
         // Synchronously call the refresh endpoint
         val refreshRequest = Request.Builder()
             .url(BuildConfig.API_BASE_URL + "/v1/auth/refresh")
@@ -242,15 +291,9 @@ private class TokenRefreshAuthenticator(private val json: Json) : Authenticator 
             .addHeader("Authorization", "Bearer $currentToken")
             .build()
 
-        val client = OkHttpClient.Builder()
-            .connectTimeout(10, TimeUnit.SECONDS)
-            .readTimeout(10, TimeUnit.SECONDS)
-            .build()
-
         val refreshResponse = try {
-            client.newCall(refreshRequest).execute()
+            refreshClient.newCall(refreshRequest).execute()
         } catch (_: Exception) {
-            TokenHolder.clear()
             return null
         }
 

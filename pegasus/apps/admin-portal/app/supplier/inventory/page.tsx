@@ -342,7 +342,10 @@ export default function InventoryPage() {
                     <td className="text-right">
                       {adjusting === item.product_id ? (
                         <div className="flex items-center gap-2 justify-end">
+                          <label htmlFor={`adjust-delta-${item.product_id}`} className="sr-only">Adjust Quantity</label>
                           <input
+                            id={`adjust-delta-${item.product_id}`}
+                            aria-label="Adjust Quantity"
                             type="number"
                             value={adjustDelta}
                             onChange={e => setAdjustDelta(e.target.value)}

@@ -34,97 +34,170 @@ struct OpsSettingsForm: View {
     @Binding var scheduleJSON: String
     let scheduleError: String?
 
+    @State private var acceptBackorder: Bool
+
+    init(
+        preorderMinLeadDays: Binding<String>,
+        preorderMaxLeadDays: Binding<String>,
+        policy: Binding<String>,
+        showStockCounts: Binding<Bool>,
+        clearOrderLineMin: Binding<Bool>,
+        orderLineMin: Binding<String>,
+        clearOrderLineMax: Binding<Bool>,
+        orderLineMax: Binding<String>,
+        expressEnabled: Binding<Bool>,
+        expressStockFloor: Binding<String>,
+        clearFeeRules: Binding<Bool>,
+        feeBaseMinor: Binding<String>,
+        feeCurrency: Binding<String>,
+        feeTiers: Binding<[FeeTierDraft]>,
+        enforceOrderAcceptance: Binding<Bool>,
+        scheduleIs24h: Binding<Bool>,
+        scheduleTimezone: Binding<String>,
+        weekdayOpen: Binding<String>,
+        weekdayClose: Binding<String>,
+        scheduleJSON: Binding<String>,
+        scheduleError: String?
+    ) {
+        self._preorderMinLeadDays = preorderMinLeadDays
+        self._preorderMaxLeadDays = preorderMaxLeadDays
+        self._policy = policy
+        self._showStockCounts = showStockCounts
+        self._clearOrderLineMin = clearOrderLineMin
+        self._orderLineMin = orderLineMin
+        self._clearOrderLineMax = clearOrderLineMax
+        self._orderLineMax = orderLineMax
+        self._expressEnabled = expressEnabled
+        self._expressStockFloor = expressStockFloor
+        self._clearFeeRules = clearFeeRules
+        self._feeBaseMinor = feeBaseMinor
+        self._feeCurrency = feeCurrency
+        self._feeTiers = feeTiers
+        self._enforceOrderAcceptance = enforceOrderAcceptance
+        self._scheduleIs24h = scheduleIs24h
+        self._scheduleTimezone = scheduleTimezone
+        self._weekdayOpen = weekdayOpen
+        self._weekdayClose = weekdayClose
+        self._scheduleJSON = scheduleJSON
+        self.scheduleError = scheduleError
+        self._acceptBackorder = State(initialValue: policy.wrappedValue == "ACCEPT_BACKORDER")
+    }
+
     var body: some View {
         Section {
-            Text("Checkout policy, pre-orders, delivery fees, and retailer catalog display.")
+            Text("mobile_warehouse.ui.checkout_policy_pre_orders_delivery_fees_and_retailer_catalog_di")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         }
 
         Section("Pre-order lead window") {
-            Text("Retailers can request delivery between these lead days from today.")
+            Text("mobile_warehouse.ui.retailers_can_request_delivery_between_these_lead_days_from_toda")
                 .font(.caption)
                 .foregroundStyle(.secondary)
             HStack {
-                TextField("Min days", text: $preorderMinLeadDays)
+                TextField("mobile_warehouse.ui.min_days", text: $preorderMinLeadDays)
                     .keyboardType(.numberPad)
-                TextField("Max days", text: $preorderMaxLeadDays)
+                TextField("mobile_warehouse.ui.max_days", text: $preorderMaxLeadDays)
                     .keyboardType(.numberPad)
             }
         }
 
         Section("Out-of-stock orders") {
-            Toggle("Accept when out of stock", isOn: Binding(
-                get: { policy == "ACCEPT_BACKORDER" },
-                set: { policy = $0 ? "ACCEPT_BACKORDER" : "REJECT" }
-            ))
+            Toggle("Accept when out of stock", isOn: $acceptBackorder)
+                .frame(minHeight: 44)
+                .onChange(of: acceptBackorder) { _, newValue in
+                    let target = newValue ? "ACCEPT_BACKORDER" : "REJECT"
+                    if policy != target {
+                        PegasusHaptics.selection()
+                        policy = target
+                    }
+                }
+                .onChange(of: policy) { _, newValue in
+                    let shouldAccept = (newValue == "ACCEPT_BACKORDER")
+                    if acceptBackorder != shouldAccept {
+                        acceptBackorder = shouldAccept
+                    }
+                }
             Picker("Policy", selection: $policy) {
-                Text("Reject").tag("REJECT")
-                Text("Accept backorder").tag("ACCEPT_BACKORDER")
+                Text("mobile_warehouse.ui.reject").tag("REJECT")
+                Text("supplier_portal.inventory.inventory_table.text.accept_backorder").tag("ACCEPT_BACKORDER")
             }
             .pickerStyle(.inline)
         }
 
         Section("Retailer catalog display") {
             Toggle("Show stock counts to retailers", isOn: $showStockCounts)
+                .frame(minHeight: 44)
         }
 
         Section("Order line quantity limits") {
             Toggle("No minimum quantity", isOn: $clearOrderLineMin)
+                .frame(minHeight: 44)
             if !clearOrderLineMin {
-                TextField("Minimum quantity", text: $orderLineMin)
+                TextField("mobile_warehouse.ui.minimum_quantity", text: $orderLineMin)
                     .keyboardType(.numberPad)
             }
             Toggle("No maximum quantity", isOn: $clearOrderLineMax)
+                .frame(minHeight: 44)
             if !clearOrderLineMax {
-                TextField("Maximum quantity", text: $orderLineMax)
+                TextField("mobile_warehouse.ui.maximum_quantity", text: $orderLineMax)
                     .keyboardType(.numberPad)
             }
         }
 
         Section("Express delivery") {
             Toggle("Express enabled", isOn: $expressEnabled)
-            TextField("Express stock floor", text: $expressStockFloor)
+                .frame(minHeight: 44)
+            TextField("mobile_warehouse.ui.express_stock_floor", text: $expressStockFloor)
                 .keyboardType(.numberPad)
         }
 
         Section("Delivery fee rules") {
             Toggle("No delivery fee rules", isOn: $clearFeeRules)
+                .frame(minHeight: 44)
             if !clearFeeRules {
-                TextField("Base fee (minor)", text: $feeBaseMinor)
+                TextField("warehouse_portal.residual.text.base_fee_minor", text: $feeBaseMinor)
                     .keyboardType(.numberPad)
-                TextField("Currency", text: $feeCurrency)
+                LabeledContent("supplier_portal.chargebacks.text.currency", value: feeCurrency)
                 ForEach($feeTiers) { $tier in
                     HStack {
-                        TextField("Max km", text: $tier.maxKm)
+                        TextField("mobile_warehouse.ui.max_km", text: $tier.maxKm)
                             .keyboardType(.decimalPad)
-                        TextField("Fee (minor)", text: $tier.feeMinor)
+                        TextField("mobile_warehouse.ui.fee_minor", text: $tier.feeMinor)
                             .keyboardType(.numberPad)
                     }
                 }
-                Button("Add tier") {
+                Button("mobile_warehouse.ui.add_tier") {
+                    PegasusHaptics.light()
                     feeTiers.append(FeeTierDraft())
                 }
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
                 if feeTiers.count > 1 {
-                    Button("Remove last tier", role: .destructive) {
+                    Button("mobile_warehouse.ui.remove_last_tier", role: .destructive) {
+                        PegasusHaptics.warning()
                         feeTiers.removeLast()
                     }
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
                 }
             }
         }
 
         Section("Order acceptance hours") {
-            Text("When enforcement is on, retailers cannot preview or create orders outside the window.")
+            Text("warehouse_portal.residual.text.when_enforcement_is_on_retailers_cannot_preview_or_create_orders")
                 .font(.caption)
                 .foregroundStyle(.secondary)
             Toggle("Enforce order acceptance hours", isOn: $enforceOrderAcceptance)
+                .frame(minHeight: 44)
             Toggle("Open 24 hours", isOn: $scheduleIs24h)
-            TextField("Timezone", text: $scheduleTimezone)
+                .frame(minHeight: 44)
+            TextField("supplier_portal.configuration.countries.field.timezone", text: $scheduleTimezone)
             HStack {
-                TextField("Weekday open", text: $weekdayOpen)
-                TextField("Weekday close", text: $weekdayClose)
+                TextField("warehouse_portal.residual.text.weekday_open", text: $weekdayOpen)
+                TextField("warehouse_portal.residual.text.weekday_close", text: $weekdayClose)
             }
-            Text("Advanced JSON").font(.caption).foregroundStyle(.secondary)
+            Text("warehouse_portal.settings.ops_settings_form.text.advanced_json").font(.caption).foregroundStyle(.secondary)
             TextEditor(text: $scheduleJSON)
                 .font(.system(.caption, design: .monospaced))
                 .frame(minHeight: 140)

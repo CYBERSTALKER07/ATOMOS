@@ -8,7 +8,9 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-const eventDedupKeyPrefix = "dedup:event:"
+func eventDedupKey(key string) string {
+	return "{dedup:event:" + key + "}"
+}
 
 // RedisEventDedup uses SETNX with TTL for cross-pod idempotency.
 type RedisEventDedup struct {
@@ -29,9 +31,18 @@ func (d *RedisEventDedup) ShouldProcess(ctx context.Context, key string) (bool, 
 	if d == nil || d.client == nil || key == "" {
 		return true, nil
 	}
-	ok, err := d.client.SetNX(ctx, eventDedupKeyPrefix+key, "1", d.ttl).Result()
+	ok, err := d.client.SetNX(ctx, eventDedupKey(key), "1", d.ttl).Result()
 	if err != nil {
 		return false, fmt.Errorf("redis event dedup: %w", err)
 	}
 	return ok, nil
+}
+
+// Release deletes the key from Redis, allowing future retries.
+func (d *RedisEventDedup) Release(ctx context.Context, key string) error {
+	if d == nil || d.client == nil || key == "" {
+		return nil
+	}
+	_, err := d.client.Del(ctx, eventDedupKey(key)).Result()
+	return err
 }

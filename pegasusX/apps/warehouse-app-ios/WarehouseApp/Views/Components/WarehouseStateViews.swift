@@ -4,6 +4,7 @@ struct WarehouseLoadingView: View {
     let title: String
     var message: String = "Fetching the latest warehouse data."
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var animating = false
 
     var body: some View {
@@ -12,7 +13,7 @@ struct WarehouseLoadingView: View {
                 Circle()
                     .fill(LabTheme.tertiaryBackground)
                     .frame(width: 72, height: 72)
-                    .scaleEffect(animating ? 1.04 : 0.96)
+                    .scaleEffect(reduceMotion ? 1.0 : (animating ? 1.04 : 0.96))
                 ProgressView()
                     .controlSize(.regular)
             }
@@ -28,37 +29,13 @@ struct WarehouseLoadingView: View {
         }
         .frame(maxWidth: .infinity, minHeight: 200)
         .padding(LabTheme.spacingXL)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(title). \(message)")
         .onAppear {
+            guard !reduceMotion else { return }
             withAnimation(Anim.smooth.repeatForever(autoreverses: true)) {
                 animating = true
             }
         }
-    }
-}
-
-struct WarehouseErrorView: View {
-    let message: String
-    let retry: () -> Void
-
-    var body: some View {
-        ContentUnavailableView {
-            Label("Unable to load", systemImage: "exclamationmark.triangle")
-        } description: {
-            Text(message)
-        } actions: {
-            Button("Retry", action: retry)
-                .buttonStyle(.borderedProminent)
-        }
-        .frame(maxWidth: .infinity, minHeight: 200)
-    }
-}
-
-struct WarehouseEmptyView: View {
-    let title: String
-    let message: String
-
-    var body: some View {
-        ContentUnavailableView(title, systemImage: "tray", description: Text(message))
-            .frame(maxWidth: .infinity, minHeight: 200)
     }
 }

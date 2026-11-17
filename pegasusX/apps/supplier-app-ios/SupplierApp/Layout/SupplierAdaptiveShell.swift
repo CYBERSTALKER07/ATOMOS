@@ -1,37 +1,49 @@
-import SwiftUI
 import Network
+import SwiftUI
 
 enum CompactTab: Hashable {
     case dashboard
     case orders
-    case fleet
+    case dispatch
+    case plan
     case more
+}
+
+struct FocusedSupplierSectionKey: FocusedValueKey {
+    typealias Value = Binding<SupplierSection?>
+}
+
+extension FocusedValues {
+    var supplierSection: Binding<SupplierSection?>? {
+        get { self[FocusedSupplierSectionKey.self] }
+        set { self[FocusedSupplierSectionKey.self] = newValue }
+    }
 }
 
 struct SupplierAdaptiveShell: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(TokenStore.self) private var tokenStore
     @Environment(SupplierRealtimeHub.self) private var realtimeHub
-    @State private var sidebarSelection: SupplierSection? = .dashboard
-    @State private var isSidebarExpanded = true
-    @State private var compactTab: CompactTab = .dashboard
-    @State private var clientPolicyMessage: String?
-    @State private var clientPolicyForce = false
-    @State private var pendingManifest: AutoUpdater.Manifest?
-
-    @State private var pathMonitor: NWPathMonitor?
-    @State private var wasOffline = false
+    @State private var vm = SupplierShellViewModel()
+    private var network = NetworkLifecycleEngine.shared
+    private var statusCenter = SupplierStatusCenter.shared
 
     var body: some View {
+        @Bindable var vm = vm
         VStack(spacing: 0) {
             ClientPolicyBanner(
-                message: clientPolicyMessage,
-                force: clientPolicyForce,
-                onUpdate: clientPolicyMessage == nil ? nil : {
-                    AutoUpdater.shared.promptInstall(manifest: pendingManifest, force: clientPolicyForce)
+                message: vm.clientPolicyMessage,
+                force: vm.clientPolicyForce,
+                onUpdate: vm.clientPolicyMessage == nil ? nil : {
+                    vm.triggerUpdateInstall()
                 },
-                onDismiss: clientPolicyForce ? nil : { clientPolicyMessage = nil },
+                onDismiss: vm.clientPolicyForce ? nil : { vm.dismissBanner() }
             )
+            if let notice = statusCenter.notice, !notice.isEmpty {
+                SupplierRefreshNotice(message: notice) {
+                    statusCenter.clear()
+                }
+            }
             Group {
                 if horizontalSizeClass == .regular {
                     regularShell
@@ -40,27 +52,30 @@ struct SupplierAdaptiveShell: View {
                 }
             }
         }
-        .onAppear { startNetworkMonitor() }
-        .onDisappear {
-            pathMonitor?.cancel()
-            pathMonitor = nil
+        .focusedSceneValue(\.supplierSection, $vm.sidebarSelection)
+        .onChange(of: network.syncEpoch) { _, _ in
+            realtimeHub.bumpReconnect()
+            Task { await SupplierSessionReconcile.run() }
         }
         .task(id: realtimeHub.reconnectEpoch) {
-            await loadClientPolicy()
+            await vm.loadClientPolicy()
         }
     }
 
     private var regularShell: some View {
-        CollapsibleSidebar(
+        @Bindable var vm = vm
+        return CollapsibleSidebar(
             title: "Pegasus Supplier",
-            isExpanded: $isSidebarExpanded,
-            selection: $sidebarSelection,
-            groups: sidebarGroups,
+            isExpanded: $vm.isSidebarExpanded,
+            selection: $vm.sidebarSelection,
+            groups: sidebarGroups
         ) {
-            if let section = sidebarSelection {
-                sectionView(section)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(PegasusMonochromeTheme.background)
+            if let section = vm.sidebarSelection {
+                NavigationStack {
+                    sectionView(section)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(PegasusMonochromeTheme.background)
+                }
             } else {
                 ContentUnavailableView("Select a section", systemImage: "sidebar.left")
             }
@@ -82,24 +97,40 @@ struct SupplierAdaptiveShell: View {
     }
 
     private var compactShell: some View {
-        TabView(selection: $compactTab) {
-            sectionView(.dashboard)
-                .tabItem { Label("Dashboard", systemImage: SupplierSection.dashboard.icon) }
-                .tag(CompactTab.dashboard)
+        @Bindable var vm = vm
+        return TabView(selection: $vm.compactTab) {
+            NavigationStack {
+                sectionView(.dashboard)
+            }
+            .tabItem { Label("portal.nav.dashboard", systemImage: SupplierSection.dashboard.icon) }
+            .tag(CompactTab.dashboard)
 
-            sectionView(.orders)
-                .tabItem { Label("Orders", systemImage: SupplierSection.orders.icon) }
-                .tag(CompactTab.orders)
+            NavigationStack {
+                sectionView(.orders)
+            }
+            .tabItem { Label("portal.nav.orders", systemImage: SupplierSection.orders.icon) }
+            .tag(CompactTab.orders)
 
-            sectionView(.fleet)
-                .tabItem { Label("Fleet", systemImage: SupplierSection.fleet.icon) }
-                .tag(CompactTab.fleet)
+            NavigationStack {
+                sectionView(.dispatchPreview)
+            }
+            .tabItem { Label("portal.nav.dispatch", systemImage: SupplierSection.dispatchPreview.icon) }
+            .tag(CompactTab.dispatch)
+
+            NavigationStack {
+                sectionView(.planningBrain)
+            }
+            .tabItem { Label("portal.nav.planning", systemImage: SupplierSection.planningBrain.icon) }
+            .tag(CompactTab.plan)
 
             NavigationStack {
                 MoreHubView()
             }
-            .tabItem { Label("More", systemImage: "ellipsis.circle") }
+            .tabItem { Label("mobile_supplier.ui.more", systemImage: "ellipsis.circle") }
             .tag(CompactTab.more)
+        }
+        .onChange(of: vm.compactTab) { _, _ in
+            PegasusHaptics.selection()
         }
     }
 
@@ -117,7 +148,6 @@ struct SupplierAdaptiveShell: View {
         case .shopClosed:
             ShopClosedView()
         case .negotiations:
-            // Product-disabled: empty state only (see NegotiationsView).
             NegotiationsView()
         case .manifests:
             ManifestsView()
@@ -189,6 +219,8 @@ struct SupplierAdaptiveShell: View {
             PlanningBrainView()
         case .planningSettings:
             PlanningSettingsView()
+        case .returnPolicy:
+            ReturnPolicySettingsView()
         case .knowledgeGraph:
             KnowledgeGraphView()
         case .replenishmentPolicies:
@@ -197,80 +229,36 @@ struct SupplierAdaptiveShell: View {
             FactoriesView()
         case .warehouses:
             WarehousesView()
+        case .crm:
+            CRMView()
+        case .loyalty:
+            LoyaltyProgramView()
+        case .entityResolution:
+            EntityResolutionView()
+        case .payouts:
+            PayoutsView()
         case .catalogDetail:
             CatalogDetailView(productId: nil)
-        }
-    }
-
-    private func startNetworkMonitor() {
-        guard pathMonitor == nil else { return }
-        let monitor = NWPathMonitor()
-        monitor.pathUpdateHandler = { path in
-            DispatchQueue.main.async {
-                if path.status == .satisfied {
-                    if wasOffline {
-                        Task { await SupplierSessionReconcile.run() }
-                    }
-                    wasOffline = false
-                } else {
-                    wasOffline = true
-                }
-            }
-        }
-        monitor.start(queue: DispatchQueue(label: "com.pegasusx.supplier.network"))
-        pathMonitor = monitor
-    }
-
-    @MainActor
-    private func loadClientPolicy() async {
-        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
-        do {
-            struct ClientPolicy: Decodable {
-                let outdated: Bool
-                let forceUpdate: Bool
-                let updateDeferred: Bool
-                let minimumVersion: String
-                let recommendedVersion: String?
-                let updateURL: String?
-                let deferReason: String?
-
-                enum CodingKeys: String, CodingKey {
-                    case outdated
-                    case forceUpdate = "force_update"
-                    case updateDeferred = "update_deferred"
-                    case minimumVersion = "minimum_version"
-                    case recommendedVersion = "recommended_version"
-                    case updateURL = "update_url"
-                    case deferReason = "defer_reason"
-                }
-            }
-            let policy: ClientPolicy = try await APIClient.shared.get(
-                "v1/platform/client-policy",
-                query: [
-                    "role": EnterpriseUpdateConfig.policyRole,
-                    "platform": "ios",
-                    "version": version,
-                    "channel": EnterpriseUpdateConfig.channel,
-                ],
-            )
-            let state = await AutoUpdater.shared.evaluate(
-                outdated: policy.outdated,
-                forceUpdate: policy.forceUpdate,
-                updateDeferred: policy.updateDeferred,
-                minimumVersion: policy.minimumVersion,
-                recommendedVersion: policy.recommendedVersion,
-                deferReason: policy.deferReason,
-                updateURL: policy.updateURL,
-            )
-            clientPolicyMessage = state.message
-            clientPolicyForce = state.force
-            pendingManifest = state.manifest
-            // Force-required: surface install sheet immediately (still dismissible only if deferred).
-            if state.force, state.available {
-                AutoUpdater.shared.promptInstall(manifest: state.manifest, force: true)
-            }
-        } catch {
-            // Policy fetch is optional on local/dev stacks.
+        case .controlTower:
+            ScoredExceptionsView()
+        case .playbooks:
+            PlaybooksView()
+        case .segmentation:
+            JSONFeedView(title: "Segmentation", path: "v1/supplier/segmentation/retailers")
+        case .taxRegimes:
+            JSONFeedView(title: "Tax regimes", path: "v1/admin/tax-regimes", query: ["country": "UZ"])
+        case .creditPolicy:
+            JSONFeedView(title: "Credit policy", path: "v1/supplier/credit-program")
+        case .creditAdminDisable:
+            CreditAdminDisableView()
+        case .flywheel:
+            JSONFeedView(title: "POS flywheel", path: "v1/supplier/analytics/demand/flywheel", query: ["days": "7"])
+        case .paydayCalendar:
+            JSONFeedView(title: "Payday calendar", path: "v1/demand/signals", query: ["type": "PAYDAY"])
+        case .migrations:
+            MigrationCenterView()
+        case .joinRequests:
+            JoinRequestsView()
         }
     }
 }

@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.analytics
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -18,15 +20,15 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
-import com.pegasus.design.RealtimeRefreshEffect
-import com.pegasus.design.showFullScreenLoading
+import com.pegasusx.supplier.ui.design.RealtimeRefreshEffect
+import com.pegasusx.supplier.ui.design.showFullScreenLoading
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
 import com.pegasusx.supplier.data.remote.SupplierRealtimeSignals
 import com.pegasusx.supplier.ui.components.SupplierKpiTile
-import com.pegasus.design.PegasusLoadingState
+import com.pegasusx.supplier.ui.design.PegasusLoadingState
 import com.pegasusx.supplier.ui.components.SupplierSectionTitle
-import com.pegasus.design.PegasusStateKind
-import com.pegasus.design.PegasusStatePane
+import com.pegasusx.supplier.ui.design.PegasusStateKind
+import com.pegasusx.supplier.ui.design.PegasusStatePane
 import com.pegasusx.supplier.ui.screens.planning.ForecastConfidenceView
 import com.pegasusx.supplier.util.formatForecastUpdatedAt
 import com.pegasusx.supplier.util.forecastConfidenceFromDemand
@@ -36,6 +38,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.util.Locale
+import com.pegasusx.supplier.R
 
 private data class AnalyticsKpi(
     val label: String,
@@ -52,6 +55,7 @@ fun AnalyticsScreen(
     onOpenPlanningBrain: () -> Unit = {},
     onOpenKnowledgeGraph: () -> Unit = {},
     onOpenPlanningSettings: () -> Unit = {},
+    onOpenReturnPolicy: () -> Unit = {},
     onOpenRoutePerformance: () -> Unit = {},
 ) {
     var loading by remember { mutableStateOf(true) }
@@ -66,12 +70,9 @@ fun AnalyticsScreen(
     var demandGeneratedAt by remember { mutableStateOf<String?>(null) }
     var demandConfidence by remember { mutableStateOf<com.pegasusx.supplier.data.model.ForecastConfidence?>(null) }
     val scope = rememberCoroutineScope()
-    val fmt = remember { NumberFormat.getInstance(Locale.getDefault()) }
 
-    fun formatMinor(minor: Long, currency: String): String {
-        val major = minor / 100.0
-        return "${fmt.format(major)} $currency"
-    }
+    fun formatMinor(minor: Long, currency: String): String =
+        com.pegasusx.supplier.ui.components.formatMinorAmount(minor, currency)
 
     fun load(silent: Boolean = false) {
         scope.launch {
@@ -149,12 +150,12 @@ fun AnalyticsScreen(
                 title = { Text("Analytics") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                     }
                 },
                 actions = {
                     IconButton(onClick = { load() }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                        Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.portal_page_orders_action_refresh))
                     }
                 },
             )
@@ -162,14 +163,14 @@ fun AnalyticsScreen(
     ) { padding ->
         when {
             showFullScreenLoading(loading, hasSnapshot) -> PegasusLoadingState(
-                title = "Loading analytics…",
+                title = stringResource(R.string.mobile_supplier_ui_loading_analytics),
                 body = "Velocity, revenue, and demand",
                 modifier = Modifier.padding(padding),
             )
             error != null -> PegasusStatePane(
                 kind = PegasusStateKind.Error,
                 headline = "Analytics unavailable",
-                body = error!!,
+                body = error.orEmpty(),
                 modifier = Modifier.padding(padding),
                 actionLabel = "Retry",
                 onAction = { load() },
@@ -222,6 +223,9 @@ fun AnalyticsScreen(
                         }
                         OutlinedButton(onClick = onOpenPlanningSettings, modifier = Modifier.fillMaxWidth()) {
                             Text("Planning settings")
+                        }
+                        OutlinedButton(onClick = onOpenReturnPolicy, modifier = Modifier.fillMaxWidth()) {
+                            Text("Return policy")
                         }
                         OutlinedButton(onClick = onOpenRoutePerformance, modifier = Modifier.fillMaxWidth()) {
                             Text("Route performance")

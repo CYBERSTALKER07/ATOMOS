@@ -8,6 +8,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends gcc libc6-dev g
 WORKDIR /src
 
 COPY go.work go.work.sum ./
+COPY sdk/partner/go/go.mod ./sdk/partner/go/
 COPY packages/config/go.mod ./packages/config/
 COPY apps/backend-go/go.mod apps/backend-go/go.sum ./apps/backend-go/
 COPY apps/ai-worker/go.mod apps/ai-worker/go.sum ./apps/ai-worker/
@@ -19,43 +20,86 @@ WORKDIR /src/apps/backend-go
 RUN go mod download
 
 WORKDIR /src
+COPY sdk/partner/go ./sdk/partner/go
 COPY packages/config ./packages/config
 COPY packages/handoff ./packages/handoff
 COPY packages/optimizer-contract ./packages/optimizer-contract
 COPY apps/handoff-service ./apps/handoff-service
 COPY apps/backend-go ./apps/backend-go
 
-RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build \
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=1 GOOS=linux go build \
     -ldflags="-w -s" \
     -o /pegasusx-backend \
     ./apps/backend-go
 
-RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build \
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=1 GOOS=linux go build \
     -ldflags="-w -s" \
     -o /pegasusx-setup \
     ./apps/backend-go/cmd/setup
 
-RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build \
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=1 GOOS=linux go build \
+    -ldflags="-w -s" \
+    -o /apply-migration \
+    ./apps/backend-go/cmd/apply-migration
+
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=1 GOOS=linux go build \
     -ldflags="-w -s" \
     -o /planning-training-export \
     ./apps/backend-go/cmd/planning-training-export
+
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=1 GOOS=linux go build \
+    -ldflags="-w -s" \
+    -o /planning-accuracy \
+    ./apps/backend-go/cmd/planning-accuracy
+
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=1 GOOS=linux go build \
+    -ldflags="-w -s" \
+    -o /planning-forecast \
+    ./apps/backend-go/cmd/planning-forecast
 
 # Runtime must be glibc-based: h3-go forces CGO_ENABLED=1, so the binary links
 # against bookworm libc. Alpine (musl) yields "exec ...: no such file or directory".
 FROM debian:bookworm-slim
 
+LABEL org.opencontainers.image.title="PegasusX Backend" \
+      org.opencontainers.image.description="Core backend service for PegasusX logistics & commerce" \
+      org.opencontainers.image.source="https://github.com/pegasusx/pegasusx"
+
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates tzdata \
-    && rm -rf /var/lib/apt/lists/*
+    && apt-get install -y --no-install-recommends ca-certificates tzdata curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd -g 10001 pegasus \
+    && useradd -u 10001 -g pegasus -d /runtime -s /bin/false pegasus
 
 WORKDIR /runtime
 COPY --from=builder /pegasusx-backend /usr/local/bin/pegasusx-backend
 COPY --from=builder /pegasusx-setup /usr/local/bin/pegasusx-setup
+COPY --from=builder /apply-migration /usr/local/bin/apply-migration
 COPY --from=builder /planning-training-export /usr/local/bin/planning-training-export
+COPY --from=builder /planning-accuracy /usr/local/bin/planning-accuracy
+COPY --from=builder /planning-forecast /usr/local/bin/planning-forecast
 COPY apps/backend-go/schema ./apps/backend-go/schema
+
+RUN chown -R pegasus:pegasus /runtime
 
 EXPOSE 8080
 
-USER nobody
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD curl -f http://localhost:8080/healthz || exit 1
+
+USER pegasus:pegasus
 
 ENTRYPOINT ["/usr/local/bin/pegasusx-backend"]
+

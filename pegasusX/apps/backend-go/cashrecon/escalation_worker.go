@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/notifications"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
@@ -17,12 +18,13 @@ import (
 const EventCashReconciliationEscalation = "cash_reconciliation.escalation"
 
 // EscalationWorker scans stale cash reconciliations and notifies supplier finance.
+// SupplierID is a fallback when Drivers.SupplierId is missing (seed-bound SSMR).
 type EscalationWorker struct {
-	Spanner     *spanner.Client
-	Notifier    *notifications.Service
-	SupplierID  string
-	Now         func() time.Time
-	StaleAfter  time.Duration
+	Spanner    *spanner.Client
+	Notifier   *notifications.Service
+	SupplierID string
+	Now        func() time.Time
+	StaleAfter time.Duration
 }
 
 // RunNightlyWorker escalates PENDING/DISPUTED rows older than StaleAfter (default 24h).
@@ -54,12 +56,14 @@ func (w *EscalationWorker) runOnce(ctx context.Context) {
 	}
 	cutoff := now.Add(-stale)
 
+	// Derive tenant from Drivers.SupplierId (Gate 5 Week 9 worker pattern).
 	iter := w.Spanner.Single().Query(ctx, spanner.Statement{
 		SQL: `
-			SELECT ReconciliationId, DriverId, DifferenceMinor, CreatedAt
-			FROM CashReconciliations
-			WHERE Status IN ('PENDING','DISPUTED') AND CreatedAt < @cutoff
-			ORDER BY CreatedAt ASC
+			SELECT cr.ReconciliationId, cr.DriverId, cr.DifferenceMinor, cr.CreatedAt, d.SupplierId
+			FROM CashReconciliations cr
+			JOIN Drivers d ON d.DriverId = cr.DriverId
+			WHERE cr.Status IN ('PENDING','DISPUTED') AND cr.CreatedAt < @cutoff
+			ORDER BY cr.CreatedAt ASC
 			LIMIT 200`,
 		Params: map[string]any{"cutoff": cutoff},
 	})
@@ -74,23 +78,27 @@ func (w *EscalationWorker) runOnce(ctx context.Context) {
 			slog.WarnContext(ctx, "cash recon escalation scan failed", "err", err)
 			return
 		}
-		var reconID, driverID string
+		var reconID, driverID, supplierID string
 		var diff int64
 		var createdAt time.Time
-		if err := row.Columns(&reconID, &driverID, &diff, &createdAt); err != nil {
+		if err := row.Columns(&reconID, &driverID, &diff, &createdAt, &supplierID); err != nil {
 			continue
 		}
-		if err := w.escalateOne(ctx, reconID, driverID, diff, createdAt, now); err != nil {
+		if err := w.escalateOne(ctx, reconID, driverID, strings.TrimSpace(supplierID), diff, createdAt, now); err != nil {
 			slog.WarnContext(ctx, "cash recon escalation failed", "reconciliation_id", reconID, "err", err)
 		}
 	}
 }
 
-func (w *EscalationWorker) escalateOne(ctx context.Context, reconID, driverID string, diff int64, createdAt, now time.Time) error {
-	supplierID := stringsTrim(w.SupplierID)
+func (w *EscalationWorker) escalateOne(ctx context.Context, reconID, driverID, rowSupplierID string, diff int64, createdAt, now time.Time) error {
+	supplierID := strings.TrimSpace(rowSupplierID)
+	if supplierID == "" {
+		supplierID = strings.TrimSpace(w.SupplierID)
+	}
 	if supplierID == "" {
 		return nil
 	}
+	ctx = auth.WithTenant(ctx, auth.TenantContext{SupplierID: supplierID, Source: "worker"})
 
 	send, err := w.shouldNotify(ctx, supplierID, now)
 	if err != nil {
@@ -134,10 +142,6 @@ func (w *EscalationWorker) shouldNotify(ctx context.Context, principalID string,
 		return true, nil
 	}
 	return w.Notifier.ShouldSendNotification(ctx, principalID, EventCashReconciliationEscalation, "PUSH", now)
-}
-
-func stringsTrim(s string) string {
-	return strings.TrimSpace(s)
 }
 
 func mustJSON(v any) []byte {

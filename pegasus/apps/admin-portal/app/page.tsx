@@ -32,7 +32,7 @@ const RevenueBarChart = dynamic(
   { ssr: false, loading: () => <div className="skeleton-wave w-full h-full rounded" /> },
 );
 
-// ─── Types ─────────────────────────────────────────────────────────────────
+// --- Types -----------------------------------------------------------------
 
 type Order = {
   order_id: string;
@@ -75,7 +75,7 @@ type TruckManifest = {
 type OrderViewFilter = "ALL" | "PENDING" | "ACTIVE" | "COMPLETED" | "REVIEW";
 type DashboardLoadIssue = "offline" | "restricted" | "error";
 
-// ─── Status Chip ────────────────────────────────────────────────────────────
+// --- Status Chip ------------------------------------------------------------
 
 const chipConfig: Record<
   string,
@@ -103,7 +103,7 @@ const StatusChip = ({ status }: { status: string | undefined }) => {
   );
 };
 
-// ─── Temporal Urgency ───────────────────────────────────────────────────────
+// --- Temporal Urgency -------------------------------------------------------
 
 const getTemporalStatus = (deliverBefore: string | null | undefined) => {
   if (!deliverBefore) return { isUrgent: false, label: null as string | null };
@@ -114,7 +114,7 @@ const getTemporalStatus = (deliverBefore: string | null | undefined) => {
   return { isUrgent: false, label: null as string | null };
 };
 
-// ─── Chart Colors (monochrome) ──────────────────────────────────────────────
+// --- Chart Colors (monochrome) ----------------------------------------------
 
 const MONO_SHADES = [
   'var(--foreground)',
@@ -124,7 +124,7 @@ const MONO_SHADES = [
   'var(--surface)',
 ];
 
-// ─── Main Component ─────────────────────────────────────────────────────────
+// --- Main Component ---------------------------------------------------------
 
 export default function AdminDashboard() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -146,7 +146,7 @@ export default function AdminDashboard() {
   const [searchTerm, setSearchTerm] = useState("");
   const [showUrgentOnly, setShowUrgentOnly] = useState(false);
 
-  // ── Polling ──────────────────────────────────────────────────────────────
+  // -- Polling --------------------------------------------------------------
 
   const fetchOrders = useCallback(
     async (signal?: AbortSignal) => {
@@ -189,7 +189,7 @@ export default function AdminDashboard() {
 
   useSyncHub("HYBRID", "ORDER_REASSIGNED", (signal: AbortSignal) => fetchOrders(signal), 5000, [fetchOrders]);
 
-  // ── WebSocket: instant order state change notifications ──────────────────
+  // -- WebSocket: instant order state change notifications ------------------
   const fetchOrdersRef = useRef(fetchOrders);
   fetchOrdersRef.current = fetchOrders;
   useTelemetry(
@@ -201,7 +201,7 @@ export default function AdminDashboard() {
     { enabled: !isTauri() },
   );
 
-  // ── Selection ────────────────────────────────────────────────────────────
+  // -- Selection ------------------------------------------------------------
 
   const pendingOrders = useMemo(
     () => orders.filter((o) => (o.state === "PENDING" || o.state === "PENDING_REVIEW") && !o.route_id),
@@ -279,7 +279,7 @@ export default function AdminDashboard() {
     });
   }, []);
 
-  // ── Dispatch ─────────────────────────────────────────────────────────────
+  // -- Dispatch -------------------------------------------------------------
 
   const executeDispatch = useCallback(async () => {
     if (selectedOrders.size === 0 || isDispatching) return;
@@ -322,7 +322,7 @@ export default function AdminDashboard() {
     }
   }, [selectedOrders, isDispatching, targetRoute, fetchOrders]);
 
-  // ── Supplier name cookie ─────────────────────────────────────────────────
+  // -- Supplier name cookie -------------------------------------------------
 
   const [supplierName, setSupplierName] = useState("");
   useEffect(() => {
@@ -330,7 +330,7 @@ export default function AdminDashboard() {
     if (m) setSupplierName(decodeURIComponent(m[1]));
   }, []);
 
-  // ── Computed values ──────────────────────────────────────────────────────
+  // -- Computed values ------------------------------------------------------
 
   const greeting = useMemo(() => {
     const h = new Date().getHours();
@@ -399,7 +399,7 @@ export default function AdminDashboard() {
       .sort((left, right) => right.amount - left.amount);
   }, [orders]);
 
-  // ── Render ───────────────────────────────────────────────────────────────
+  // -- Render ---------------------------------------------------------------
 
   if (isLoading) {
     return (
@@ -458,7 +458,7 @@ export default function AdminDashboard() {
 
   return (
     <PageTransition className="min-h-full p-6 md:p-8">
-      {/* ── Header ──────────────────────────────────────────────────────── */}
+      {/* -- Header -------------------------------------------------------- */}
       <header className="mb-6 flex items-end justify-between gap-4">
         <div>
           <h1 className="md-typescale-headline-large">
@@ -512,14 +512,14 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* ══════════════════════════════════════════════════════════════════ */}
+      {/* ================================================================== */}
       {/* BENTO GRID — Modular cells. Size = Priority.                     */}
       {/* Anchor (2×2) → Statistics (1×1) → List (1×2) → Control (2×1)    */}
-      {/* ══════════════════════════════════════════════════════════════════ */}
+      {/* ================================================================== */}
 
       <BentoGrid className="mb-8">
 
-        {/* ── STATISTICS (1×1): Completed ─────────────────────────────── */}
+        {/* -- STATISTICS (1×1): Completed ------------------------------- */}
         <BentoCard size="stat" delay={120}>
           <div className="flex flex-col justify-between h-full p-5 active:scale-[0.98] transition-transform cursor-default">
             <div className="flex items-center justify-between mb-2">
@@ -540,7 +540,7 @@ export default function AdminDashboard() {
           </div>
         </BentoCard>
 
-        {/* ── STATISTICS (1×1): In Transit ────────────────────────────── */}
+        {/* -- STATISTICS (1×1): In Transit ------------------------------ */}
         <BentoCard size="stat" delay={180}>
           <div className="flex flex-col justify-between h-full p-5 active:scale-[0.98] transition-transform cursor-default">
             <div className="flex items-center justify-between mb-2">
@@ -558,7 +558,7 @@ export default function AdminDashboard() {
           </div>
         </BentoCard>
 
-        {/* ── STATISTICS (1×1): Revenue ───────────────────────────────── */}
+        {/* -- STATISTICS (1×1): Revenue --------------------------------- */}
         <BentoCard size="stat" delay={240}>
           <div className="flex flex-col justify-between h-full p-5 active:scale-[0.98] transition-transform cursor-default">
             <div className="flex items-center justify-between mb-2">
@@ -576,21 +576,21 @@ export default function AdminDashboard() {
           </div>
         </BentoCard>
 
-        {/* ── CONTROL (2×1): Quick Actions ────────────────────────────── */}
+        {/* -- CONTROL (2×1): Quick Actions ------------------------------ */}
         <BentoCard size="control" delay={300}>
           <Suspense fallback={<div className="skeleton w-full h-full rounded" />}>
             <QuickActionsCell />
           </Suspense>
         </BentoCard>
 
-        {/* ── LIST (1×2): Orphaned Retailer Alerts ────────────────────── */}
+        {/* -- LIST (1×2): Orphaned Retailer Alerts ---------------------- */}
         <BentoCard size="list" delay={360}>
           <Suspense fallback={<div className="skeleton w-full h-full rounded" />}>
             <OrphanAlertsCell />
           </Suspense>
         </BentoCard>
 
-        {/* ── Pipeline Donut (2×1) ────────────────────────────────────── */}
+        {/* -- Pipeline Donut (2×1) -------------------------------------- */}
         <BentoCard span={2} delay={420}>
           <div className="flex flex-col h-full">
             <div className="bento-card-header">
@@ -621,7 +621,7 @@ export default function AdminDashboard() {
           </div>
         </BentoCard>
 
-        {/* ── Revenue Split (2×1) ─────────────────────────────────────── */}
+        {/* -- Revenue Split (2×1) --------------------------------------- */}
         <BentoCard span={2} delay={480}>
           <div className="flex flex-col h-full">
             <div className="bento-card-header">
@@ -638,7 +638,7 @@ export default function AdminDashboard() {
         </BentoCard>
       </BentoGrid>
 
-      {/* ── Dispatch Command ────────────────────────────────────────────── */}
+      {/* -- Dispatch Command ---------------------------------------------- */}
       <section className="mb-8">
         <Card className="p-0 overflow-hidden">
           <div className="flex flex-col md:flex-row items-stretch md:items-center">
@@ -710,7 +710,7 @@ export default function AdminDashboard() {
         )}
       </section>
 
-      {/* ── Order View Controls ────────────────────────────────────────── */}
+      {/* -- Order View Controls ------------------------------------------ */}
       <section className="mb-4">
         <div className="flex flex-col xl:flex-row gap-4 xl:items-center">
           <div
@@ -745,13 +745,15 @@ export default function AdminDashboard() {
 
           <div className="flex flex-col sm:flex-row gap-3 xl:ml-auto xl:min-w-140">
             <div className="relative flex-1 group">
+              <label htmlFor="search-orders-input" className="sr-only">Search orders</label>
               <input
+                id="search-orders-input"
+                aria-label="Search orders"
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search orders..."
                 className="w-full md-input-outlined rounded-xl! pl-10 h-10"
-                aria-label="Search orders"
               />
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted group-focus-within:text-accent transition-colors" size={16} />
             </div>
@@ -784,7 +786,7 @@ export default function AdminDashboard() {
         </div>
       </section>
 
-      {/* ── Orders Table ────────────────────────────────────────────────── */}
+      {/* -- Orders Table -------------------------------------------------- */}
       {filteredOrders.length === 0 ? (
         <div className="bento-card py-16">
           <EmptyState 
@@ -845,7 +847,10 @@ export default function AdminDashboard() {
                       onClick={() => isPending && toggleOrder(order.order_id)}
                     >
                       <td className="px-6 py-4">
+                        <label htmlFor={`select-order-${order.order_id}`} className="sr-only">{`Select order ${order.order_id}`}</label>
                         <input
+                          id={`select-order-${order.order_id}`}
+                          aria-label={`Select order ${order.order_id}`}
                           type="checkbox"
                           checked={isSelected}
                           disabled={!isPending}
@@ -898,10 +903,16 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* ── Print Loading Manifest Modal ─────────────────────────────────── */}
+      {/* -- Print Loading Manifest Modal ----------------------------------- */}
       {printManifest && (
-        <div className="md-dialog-scrim" onClick={() => setPrintManifest(null)}>
-          <div className="md-dialog max-w-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="md-dialog-scrim">
+          <button
+            type="button"
+            aria-label="Close manifest dialog overlay"
+            className="fixed inset-0 w-full h-full bg-black/40 cursor-default border-0"
+            onClick={() => setPrintManifest(null)}
+          />
+          <div className="relative z-10 md-dialog max-w-2xl">
             <div className="flex items-start justify-between mb-4">
               <div>
                 <h3 className="md-dialog-title mb-0">Loading Manifest</h3>
@@ -948,10 +959,16 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* ── Dispatch Confirm Modal ───────────────────────────────────────── */}
+      {/* -- Dispatch Confirm Modal ----------------------------------------- */}
       {showConfirm && (
-        <div className="md-dialog-scrim" onClick={() => setShowConfirm(false)}>
-          <div className="md-dialog max-w-md" onClick={(e) => e.stopPropagation()}>
+        <div className="md-dialog-scrim">
+          <button
+            type="button"
+            aria-label="Close dispatch confirm dialog overlay"
+            className="fixed inset-0 w-full h-full bg-black/40 cursor-default border-0"
+            onClick={() => setShowConfirm(false)}
+          />
+          <div className="relative z-10 md-dialog max-w-md">
             <h3 className="md-dialog-title">Confirm Dispatch</h3>
             <p className="md-typescale-body-medium" style={{ color: 'var(--muted)' }}>
               Dispatch <strong>{selectedOrders.size}</strong> order{selectedOrders.size !== 1 ? "s" : ""} to:

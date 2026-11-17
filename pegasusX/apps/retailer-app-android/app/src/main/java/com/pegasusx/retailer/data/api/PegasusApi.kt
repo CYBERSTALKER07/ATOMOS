@@ -4,6 +4,9 @@ import com.pegasusx.retailer.data.model.ApiResponse
 import com.pegasusx.retailer.data.model.ActiveFulfillmentsResponse
 import com.pegasusx.retailer.data.model.AuthResponse
 import com.pegasusx.retailer.data.model.AutoOrderSettings
+import com.pegasusx.retailer.data.model.AutoOrderShadowProposalsResponse
+import com.pegasusx.retailer.data.model.AutoOrderShadowStats
+import com.pegasusx.retailer.data.model.AutoOrderSoakGate
 import com.pegasusx.retailer.data.model.RetailerReorderSuggestionsResponse
 import com.pegasusx.retailer.data.model.CardCheckoutRequest
 import com.pegasusx.retailer.data.model.CheckoutQuoteRequest
@@ -14,13 +17,31 @@ import com.pegasusx.retailer.data.model.ConfirmCashRequest
 import com.pegasusx.retailer.data.model.ConfirmCashResponse
 import com.pegasusx.retailer.data.model.CashCheckoutRequest
 import com.pegasusx.retailer.data.model.CashCheckoutResponse
+import com.pegasusx.retailer.data.model.ControlTowerPulse
 import com.pegasusx.retailer.data.model.CreditProfile
-import com.pegasusx.retailer.data.model.DemandForecast
+import com.pegasusx.retailer.data.model.LoyaltyLedgerResponse
+import com.pegasusx.retailer.data.model.LoyaltyTierView
+import com.pegasusx.retailer.data.model.RetailerAIPredictionsResponse
+import com.pegasusx.retailer.data.model.RetailerFastHomeResponse
+import com.pegasusx.retailer.data.model.TelegramLinkRequestResponse
+import com.pegasusx.retailer.data.model.TelegramLinkStatusResponse
+import com.pegasusx.retailer.data.model.DisputeOpeningBalanceRequest
+import com.pegasusx.retailer.data.model.MigrationOpeningBalancesResponse
+import com.pegasusx.retailer.data.model.MigrationOpeningInvoiceMutationResponse
+import com.pegasusx.retailer.data.model.RetailerInnLookupRequest
+import com.pegasusx.retailer.data.model.RetailerInnLookupResponse
+import com.pegasusx.retailer.data.model.RetailerJoinRequestDecisionRequest
+import com.pegasusx.retailer.data.model.RetailerJoinRequestDecisionResponse
+import com.pegasusx.retailer.data.model.RetailerJoinRequestsResponse
+import com.pegasusx.retailer.data.model.RetailerTaxIdentityRequest
+import com.pegasusx.retailer.data.model.RetailerTaxIdentityResponse
 import com.pegasusx.retailer.data.model.ClaimEligibility
 import com.pegasusx.retailer.data.model.FileClaimRequestBody
 import com.pegasusx.retailer.data.model.LoginRequest
 import com.pegasusx.retailer.data.model.MediaUploadTicket
 import com.pegasusx.retailer.data.model.Order
+import com.pegasusx.retailer.data.model.OrderCurrencyOptions
+import com.pegasusx.retailer.data.model.RetailerPaymentCatalogResponse
 import com.pegasusx.retailer.data.model.OrderTimelineResponse
 import com.pegasusx.retailer.data.model.PendingPaymentsResponse
 import com.pegasusx.retailer.data.model.Product
@@ -34,6 +55,18 @@ import com.pegasusx.retailer.data.model.RetailerClaim
 import com.pegasusx.retailer.data.model.RetailerClaimsListResponse
 import com.pegasusx.retailer.data.model.RetailerDetailedAnalytics
 import com.pegasusx.retailer.data.model.Supplier
+import com.pegasusx.retailer.data.model.ApprovalDecisionRequest
+import com.pegasusx.retailer.data.model.ApprovalDecisionResponse
+import com.pegasusx.retailer.data.model.ArPromiseDto
+import com.pegasusx.retailer.data.model.ArPromisesResponse
+import com.pegasusx.retailer.data.model.ArStatementResponse
+import com.pegasusx.retailer.data.model.CreateArPromiseRequest
+import com.pegasusx.retailer.data.model.PayArFifoRequest
+import com.pegasusx.retailer.data.model.PayArFifoResponse
+import com.pegasusx.retailer.data.model.PayArInvoiceRequest
+import com.pegasusx.retailer.data.model.RetailerApprovalsListResponse
+import com.pegasusx.retailer.data.model.SellerMandateResponse
+import com.pegasusx.retailer.data.model.SellerMandateUpdateRequest
 import com.pegasusx.retailer.data.model.TrackingResponse
 import com.pegasusx.retailer.data.model.UnifiedCheckoutRequest
 import com.pegasusx.retailer.data.model.UnifiedCheckoutResponse
@@ -50,6 +83,9 @@ import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Path
 import retrofit2.http.Query
+import retrofit2.http.Streaming
+import okhttp3.ResponseBody
+import com.pegasusx.retailer.data.model.PulseResponse
 
 /**
  * Retrofit interface for the Pegasus backend.
@@ -92,6 +128,20 @@ interface PegasusApi {
         @Body body: ProcurementOrderRequest,
         @Header("Idempotency-Key") idempotencyKey: String? = null,
     ): ProcurementOrderResponse
+
+    @POST
+    suspend fun createProcurementOrder(
+        @retrofit2.http.Url path: String,
+        @Body body: ProcurementOrderRequest,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): ProcurementOrderResponse
+
+    @POST
+    suspend fun postRawQueuedOrder(
+        @retrofit2.http.Url path: String,
+        @Body body: JsonElement,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): JsonElement
 
     @POST("/v1/order/cancel")
     suspend fun cancelOrder(
@@ -167,19 +217,11 @@ interface PegasusApi {
         @Header("Idempotency-Key") idempotencyKey: String? = null,
     ): ApiResponse
 
-    // ── AI / Predictions ──
-    @POST("/v1/ai/preorder")
-    suspend fun aiPreorder(@Body body: Map<String, @JvmSuppressWildcards Any>): ApiResponse
-
-    @GET("/v1/ai/predictions")
-    suspend fun getPredictions(@Query("retailer_id") retailerId: String): List<DemandForecast>
-
-    @PATCH("/v1/ai/predictions/correct")
-    suspend fun correctPrediction(
-        @Query("prediction_id") predictionId: String,
-        @Body body: Map<String, @JvmSuppressWildcards Any>,
-        @Header("Idempotency-Key") idempotencyKey: String? = null,
-    ): ApiResponse
+    // ── AI / Predictions (pending AI preorders; not SKU DemandForecast) ──
+    @GET("/v1/retailer/ai/predictions")
+    suspend fun getRetailerAIPredictions(
+        @Query("limit") limit: Int? = null,
+    ): RetailerAIPredictionsResponse
 
     // ── Retailer Profile & Setup ──
     @POST("/v1/retailer/setup")
@@ -196,6 +238,60 @@ interface PegasusApi {
 
     @GET("/v1/retailer/credit-profile")
     suspend fun getCreditProfile(): CreditProfile
+
+    @GET("/v1/retailer/loyalty/tier")
+    suspend fun getLoyaltyTier(): LoyaltyTierView
+
+    @GET("/v1/retailer/loyalty/ledger")
+    suspend fun getLoyaltyLedger(): LoyaltyLedgerResponse
+
+    @GET("/v1/retailer/credit-relationships")
+    suspend fun getCreditRelationships(): JsonElement
+
+    @GET("/v1/retailer/ar/invoices")
+    suspend fun getArInvoices(
+        @Query("status") status: String = "OPEN,PARTIAL",
+        @Query("limit") limit: Int = 50,
+    ): JsonElement
+
+    @GET("/v1/retailer/ar/statement")
+    suspend fun getArStatement(
+        @Query("supplier_id") supplierId: String? = null,
+        @Query("limit") limit: Int = 50,
+    ): ArStatementResponse
+
+    @POST("/v1/retailer/ar/pay-fifo")
+    suspend fun payArFifo(
+        @Body body: PayArFifoRequest,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): PayArFifoResponse
+
+    @POST("/v1/retailer/ar/invoices/{id}/pay")
+    suspend fun payArInvoice(
+        @Path("id") invoiceId: String,
+        @Body body: PayArInvoiceRequest,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): JsonElement
+
+    @GET("/v1/retailer/ar/promises")
+    suspend fun getArPromises(
+        @Query("supplier_id") supplierId: String? = null,
+    ): ArPromisesResponse
+
+    @POST("/v1/retailer/ar/promises")
+    suspend fun createArPromise(
+        @Body body: CreateArPromiseRequest,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): ArPromiseDto
+
+    @GET("/v1/retailer/hq/summary")
+    suspend fun getHqSummary(@Query("day") day: String): JsonElement
+
+    @GET("/v1/retailer/hq/sales-by-location")
+    suspend fun getHqSalesByLocation(@Query("day") day: String): JsonElement
+
+    @GET("/v1/retailer/hq/sales-by-sku")
+    suspend fun getHqSalesBySku(@Query("day") day: String): JsonElement
 
     @PUT("/v1/retailer/profile")
     suspend fun updateRetailerProfile(
@@ -266,6 +362,37 @@ interface PegasusApi {
         @Body body: Map<String, @JvmSuppressWildcards Any>,
         @Header("Idempotency-Key") idempotencyKey: String? = null,
     ): JsonElement
+
+    // W2 — Owner Approval Inbox & Seller Mandate Caps
+    @GET("/v1/retailer/approvals")
+    suspend fun getRetailerApprovals(
+        @Query("status") status: String? = "PENDING_OWNER",
+        @Query("limit") limit: Int = 20,
+        @Query("cursor") cursor: String? = null,
+    ): RetailerApprovalsListResponse
+
+    @POST("/v1/retailer/approvals/{requestID}/approve")
+    suspend fun approveRetailerRequest(
+        @Path("requestID") requestId: String,
+        @Body body: ApprovalDecisionRequest = ApprovalDecisionRequest(),
+    ): ApprovalDecisionResponse
+
+    @POST("/v1/retailer/approvals/{requestID}/reject")
+    suspend fun rejectRetailerRequest(
+        @Path("requestID") requestId: String,
+        @Body body: ApprovalDecisionRequest = ApprovalDecisionRequest(),
+    ): ApprovalDecisionResponse
+
+    @GET("/v1/retailer/org/members/{userID}/mandate")
+    suspend fun getSellerMandate(
+        @Path("userID") userId: String,
+    ): SellerMandateResponse
+
+    @PATCH("/v1/retailer/org/members/{userID}/mandate")
+    suspend fun updateSellerMandate(
+        @Path("userID") userId: String,
+        @Body body: SellerMandateUpdateRequest,
+    ): SellerMandateResponse
 
     // Retail OS Phase 2 — locations
     @GET("/v1/retailer/locations")
@@ -377,6 +504,27 @@ interface PegasusApi {
         @Body body: Map<String, @JvmSuppressWildcards Any>,
     ): JsonElement
 
+    @GET("/v1/retailer/pos/holds")
+    suspend fun listPosHolds(@Query("location_id") locationId: String? = null): JsonElement
+
+    @POST("/v1/retailer/pos/holds")
+    suspend fun parkPosHold(
+        @Body body: Map<String, @JvmSuppressWildcards Any>,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): JsonElement
+
+    @POST("/v1/retailer/pos/holds/{holdID}/resume")
+    suspend fun resumePosHold(
+        @Path("holdID") holdId: String,
+        @Body body: Map<String, @JvmSuppressWildcards Any>,
+    ): JsonElement
+
+    @POST("/v1/retailer/pos/holds/{holdID}/void")
+    suspend fun voidPosHold(
+        @Path("holdID") holdId: String,
+        @Body body: Map<String, @JvmSuppressWildcards Any> = emptyMap(),
+    ): JsonElement
+
     // Retail OS Phase 5 shifts & time
     @POST("/v1/retailer/time/clock-in")
     suspend fun clockIn(
@@ -423,8 +571,15 @@ interface PegasusApi {
     @GET("/v1/retailer/reports/summary")
     suspend fun getReportsSummary(): JsonElement
 
+    @Streaming
+    @GET("/v1/retailer/reports/export")
+    suspend fun exportReportsCsv(@Query("report") report: String = "sales"): ResponseBody
+
+    @GET("/v1/retailer/pulse")
+    suspend fun getRetailerPulse(): PulseResponse
+
     @GET("/v1/retailer/control-tower/pulse")
-    suspend fun getControlTowerPulse(): JsonElement
+    suspend fun getControlTowerPulse(): ControlTowerPulse
 
     @GET("/v1/retailer/assist/tickets")
     suspend fun getAssistTickets(): JsonElement
@@ -452,13 +607,19 @@ interface PegasusApi {
     ): RetailerDetailedAnalytics
 
     // ── Checkout ──
+    @GET("/v1/order/currencies")
+    suspend fun getOrderCurrencies(): OrderCurrencyOptions
+
+    @GET("/v1/retailer/payment-catalog")
+    suspend fun getPaymentCatalog(): RetailerPaymentCatalogResponse
+
     @POST("/v1/checkout/preview")
     suspend fun checkoutPreview(@Body body: UnifiedCheckoutRequest): CheckoutPreviewResponse
 
     @POST("/v1/checkout/unified")
     suspend fun unifiedCheckout(
         @Body body: UnifiedCheckoutRequest,
-        @Header("Idempotency-Key") idempotencyKey: String? = null,
+        @Header("Idempotency-Key") idempotencyKey: String,
     ): UnifiedCheckoutResponse
 
     // ── Post-Offload Payment ──
@@ -575,7 +736,7 @@ interface PegasusApi {
         @Body body: UpdateSettingsRequest,
     ): ApiResponse
 
-    /** Auto-order worker tick. mode=draft|place (place requires flag + role + geo). */
+    /** Auto-order worker tick. mode=shadow|draft|place (place requires flag + role + geo). */
     @POST("/v1/retailer/settings/auto-order/run")
     suspend fun runAutoOrder(
         @Query("mode") mode: String = "draft",
@@ -584,6 +745,15 @@ interface PegasusApi {
 
     @GET("/v1/retailer/settings/auto-order/runs")
     suspend fun getAutoOrderRuns(): JsonElement
+
+    @GET("/v1/retailer/settings/auto-order/shadow-proposals")
+    suspend fun getAutoOrderShadowProposals(): AutoOrderShadowProposalsResponse
+
+    @GET("/v1/retailer/settings/auto-order/shadow-stats")
+    suspend fun getAutoOrderShadowStats(): AutoOrderShadowStats
+
+    @GET("/v1/retailer/settings/auto-order/soak-gate")
+    suspend fun getAutoOrderSoakGate(): AutoOrderSoakGate
 
     /** OPEN reorder suggestions with sources[] (STORE_POS / WHOLESALE_HISTORY). */
     @GET("/v1/retailer/reorder-suggestions")
@@ -642,4 +812,64 @@ interface PegasusApi {
         @Query("version") version: String,
         @Query("channel") channel: String = "production",
     ): JsonElement
+
+    // ── W5 Fast Home & Telegram OTP Binding ──
+    @GET("/v1/retailer/fast-home")
+    suspend fun getRetailerFastHome(): RetailerFastHomeResponse
+
+    @GET("/v1/retailer/telegram/status")
+    suspend fun getTelegramLinkStatus(): TelegramLinkStatusResponse
+
+    @POST("/v1/retailer/telegram/link-request")
+    suspend fun requestTelegramLink(
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): TelegramLinkRequestResponse
+
+    // ── M10.4 INN Dual-Mode & Nasiya Opening Balances ──
+    @POST("/v1/platform/inn/lookup")
+    suspend fun lookupInn(
+        @Body body: RetailerInnLookupRequest,
+    ): RetailerInnLookupResponse
+
+    @PATCH("/v1/retailer/tax-identity")
+    suspend fun updateTaxIdentity(
+        @Body body: RetailerTaxIdentityRequest,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): RetailerTaxIdentityResponse
+
+    @GET("/v1/retailer/nasiya/opening-balances")
+    suspend fun listNasiyaOpeningBalances(): MigrationOpeningBalancesResponse
+
+    @POST("/v1/retailer/ar-invoices/{invoiceId}/acknowledge")
+    suspend fun acknowledgeOpeningBalance(
+        @Path("invoiceId") invoiceId: String,
+        @Body body: Map<String, String> = emptyMap(),
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): MigrationOpeningInvoiceMutationResponse
+
+    @POST("/v1/retailer/ar-invoices/{invoiceId}/dispute")
+    suspend fun disputeOpeningBalance(
+        @Path("invoiceId") invoiceId: String,
+        @Body body: DisputeOpeningBalanceRequest,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): MigrationOpeningInvoiceMutationResponse
+
+    @GET("/v1/retailer/join-requests")
+    suspend fun listRetailerJoinRequests(
+        @Query("status") status: String = "PENDING",
+    ): RetailerJoinRequestsResponse
+
+    @POST("/v1/retailer/join-requests/{requestId}/approve")
+    suspend fun approveRetailerJoinRequest(
+        @Path("requestId") requestId: String,
+        @Body body: RetailerJoinRequestDecisionRequest = RetailerJoinRequestDecisionRequest(),
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): RetailerJoinRequestDecisionResponse
+
+    @POST("/v1/retailer/join-requests/{requestId}/reject")
+    suspend fun rejectRetailerJoinRequest(
+        @Path("requestId") requestId: String,
+        @Body body: RetailerJoinRequestDecisionRequest = RetailerJoinRequestDecisionRequest(),
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): RetailerJoinRequestDecisionResponse
 }

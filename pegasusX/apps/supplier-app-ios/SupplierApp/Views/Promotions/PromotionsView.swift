@@ -2,49 +2,42 @@ import SwiftUI
 
 struct PromotionsView: View {
     @Environment(SupplierRealtimeHub.self) private var realtimeHub
-    @State private var promotions: [SupplierPromotion] = []
-    @State private var loading = true
-    @State private var error: String?
-    @State private var showCreate = false
-    @State private var showEdit = false
-    @State private var editingPromotion: SupplierPromotion?
-    @State private var name = ""
-    @State private var discountBps = "500"
-    @State private var simResults: [String: PromoSimulateResult] = [:]
-    @State private var simulatingId: String?
+    @State private var viewModel = PromotionsViewModel()
 
     var body: some View {
+        @Bindable var vm = viewModel
         Group {
-            if loading && promotions.isEmpty {
-                SupplierLoadingView(title: "Loading promotions…")
-            } else if let error {
-                SupplierErrorView(message: error) { Task { await load() } }
-            } else if promotions.isEmpty {
+            if viewModel.loading && viewModel.promotions.isEmpty {
+                SupplierLoadingView(title: "mobile_supplier.loading.promotions")
+            } else if let error = viewModel.error, viewModel.promotions.isEmpty {
+                SupplierErrorView(message: error) { Task { await viewModel.load() } }
+            } else if viewModel.promotions.isEmpty {
                 SupplierEmptyView(
-                    title: "No promotions",
-                    message: "Create a sale for products, categories, or your full catalog."
+                    title: "mobile_supplier.empty.no_promotions",
+                    message: "mobile_supplier.empty.promotions_message"
                 )
             } else {
                 ResponsiveGridContentWrapper {
-                    ForEach(promotions) { promo in
+                    ForEach(viewModel.promotions) { promo in
                         VStack(alignment: .leading, spacing: 4) {
                             Text(promo.name)
                                 .font(.headline)
-                            Text(promoSummary(promo))
+                            Text(Self.formatPromoSummary(promo))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
-                            if let sim = simResults[promo.promotionId] {
-                                Text("P&L sandbox: \(sim.projectedVolume) units · margin \(sim.projectedMarginMinor / 100) (\(Int(sim.marginDeltaPct))%)")
+                            if let sim = viewModel.simResults[promo.promotionId] {
+                                Text(simSummary(sim))
                                     .font(.caption2)
                                     .foregroundStyle(.secondary)
                             }
                         }
+                        .accessibilityElement(children: .combine)
                         .swipeActions(edge: .leading, allowsFullSwipe: false) {
                             if promo.isActive {
                                 Button {
-                                    Task { await simulate(promo) }
+                                    Task { await viewModel.simulate(promo) }
                                 } label: {
-                                    Text(simulatingId == promo.promotionId ? "…" : "P&L")
+                                    Text(viewModel.simulatingId == promo.promotionId ? "…" : "P&L")
                                 }
                                 .tint(.purple)
                             }
@@ -52,18 +45,15 @@ struct PromotionsView: View {
                         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                             if promo.isActive {
                                 Button {
-                                    editingPromotion = promo
-                                    name = promo.name
-                                    discountBps = String(promo.discountBps)
-                                    showEdit = true
+                                    viewModel.beginEdit(promo)
                                 } label: {
-                                    Text("Edit")
+                                    Text("supplier_portal.demand.signals.text.edit")
                                 }
                                 .tint(.blue)
                                 Button(role: .destructive) {
-                                    Task { await deactivate(promo.promotionId) }
+                                    Task { await viewModel.deactivate(promo.promotionId) }
                                 } label: {
-                                    Text("Deactivate")
+                                    Text("supplier_portal.demand.signals.text.deactivate")
                                 }
                             }
                         }
@@ -72,59 +62,60 @@ struct PromotionsView: View {
             }
         }
         .background(SupplierTheme.background)
-        .navigationTitle("Promotions")
+        .navigationTitle("portal.nav.promotions")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                Button("New") { showCreate = true }
+                Button("mobile_supplier.ui.new") { viewModel.showCreate = true }
             }
         }
-        .task { await load() }
-        .refreshable { await load(silent: true) }
+        .task { await viewModel.load() }
+        .refreshable { await viewModel.load(silent: true) }
         .silentRealtimeRefresh(
             refreshEpoch: realtimeHub.refreshEpoch,
             reconnectEpoch: realtimeHub.reconnectEpoch
         ) { silent in
-            Task { await load(silent: silent) }
+            Task { await viewModel.load(silent: silent) }
         }
-        .sheet(isPresented: $showCreate) {
+        .sheet(isPresented: $vm.showCreate) {
             NavigationStack {
                 Form {
-                    TextField("Name", text: $name)
-                    TextField("Discount (bps)", text: $discountBps)
+                    TextField("retailer_desktop.pos.text.name", text: $vm.name)
+                    TextField("supplier_portal.pricing._product_id_.text.discount_bps", text: $vm.discountBps)
                         .keyboardType(.numberPad)
-                    Text("Default scope: all products, all retailers.")
+                    Text("mobile_supplier.ui.default_scope_all_products_all_retailers")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-                .navigationTitle("New promotion")
+                .scrollDismissesKeyboard(.interactively)
+                .navigationTitle("mobile_supplier.ui.new_promotion")
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button("Cancel") { showCreate = false }
+                        Button("common.action.cancel") { viewModel.showCreate = false }
                     }
                     ToolbarItem(placement: .confirmationAction) {
-                        Button("Create") { Task { await create() } }
+                        Button("mobile_supplier.ui.create") { Task { await viewModel.create() } }
                     }
                 }
             }
             .presentationDetents([.medium])
         }
-        .sheet(isPresented: $showEdit) {
+        .sheet(isPresented: $vm.showEdit) {
             NavigationStack {
                 Form {
-                    TextField("Name", text: $name)
-                    TextField("Discount (bps)", text: $discountBps)
+                    TextField("retailer_desktop.pos.text.name", text: $vm.name)
+                    TextField("supplier_portal.pricing._product_id_.text.discount_bps", text: $vm.discountBps)
                         .keyboardType(.numberPad)
                 }
-                .navigationTitle("Edit promotion")
+                .scrollDismissesKeyboard(.interactively)
+                .navigationTitle("mobile_supplier.ui.edit_promotion")
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button("Cancel") {
-                            showEdit = false
-                            editingPromotion = nil
+                        Button("common.action.cancel") {
+                            viewModel.cancelEdit()
                         }
                     }
                     ToolbarItem(placement: .confirmationAction) {
-                        Button("Save") { Task { await saveEdit() } }
+                        Button("common.action.save") { Task { await viewModel.saveEdit() } }
                     }
                 }
             }
@@ -132,99 +123,19 @@ struct PromotionsView: View {
         }
     }
 
-    private func promoSummary(_ promo: SupplierPromotion) -> String {
-        let pct = Double(promo.discountBps) / 100.0
-        let status = promo.isActive ? "" : " · inactive"
-        return String(format: "%.1f%% · %@ · %@", pct, promo.scopeType, promo.retailerScope) + status
+    static func formatPromoSummary(_ promo: SupplierPromotion) -> String {
+        let pct = formatMinorUnits(promo.discountBps, fractionDigits: 2, trimTrailingZeros: true)
+        let status = promo.isActive ? "" : L10n.format("mobile_supplier.chrome.inactive_suffix")
+        return "\(pct)% · \(promo.scopeType) · \(promo.retailerScope)" + status
     }
 
-    @MainActor
-    private func load(silent: Bool = false) async {
-        if !silent { loading = true }
-        error = nil
-        do {
-            promotions = try await SupplierService.promotions()
-        } catch {
-            if !silent { self.error = error.localizedDescription }
-        }
-        loading = false
-    }
-
-    @MainActor
-    private func create() async {
-        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, let bps = Int64(discountBps.filter(\.isNumber)), bps > 0 else { return }
-        do {
-            _ = try await SupplierService.createPromotion(
-                SupplierPromotionUpsertRequest(
-                    name: trimmed,
-                    description: "",
-                    discountBps: bps,
-                    scopeType: "ALL_PRODUCTS",
-                    retailerScope: "ALL",
-                    scopeProductId: nil
-                )
-            )
-            name = ""
-            discountBps = "500"
-            showCreate = false
-            await load(silent: true)
-        } catch {
-            self.error = error.localizedDescription
-        }
-    }
-
-    @MainActor
-    private func saveEdit() async {
-        guard let promo = editingPromotion else { return }
-        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, let bps = Int64(discountBps.filter(\.isNumber)), bps > 0 else { return }
-        do {
-            _ = try await SupplierService.updatePromotion(
-                promotionId: promo.promotionId,
-                SupplierPromotionUpsertRequest(
-                    name: trimmed,
-                    description: "",
-                    discountBps: bps,
-                    scopeType: promo.scopeType,
-                    retailerScope: promo.retailerScope,
-                    scopeProductId: promo.scopeProductId
-                )
-            )
-            showEdit = false
-            editingPromotion = nil
-            await load(silent: true)
-        } catch {
-            self.error = error.localizedDescription
-        }
-    }
-
-    @MainActor
-    private func simulate(_ promo: SupplierPromotion) async {
-        simulatingId = promo.promotionId
-        defer { simulatingId = nil }
-        do {
-            let result = try await SupplierOperationsService.simulatePromotionPandL(
-                PromoSimulateInput(
-                    promotionId: promo.promotionId,
-                    discountPct: Double(promo.discountBps) / 100.0,
-                    expectedUnits: 500,
-                    avgUnitMarginMinor: 1000
-                )
-            )
-            simResults[promo.promotionId] = result
-        } catch {
-            self.error = error.localizedDescription
-        }
-    }
-
-    @MainActor
-    private func deactivate(_ promotionId: String) async {
-        do {
-            try await SupplierService.deactivatePromotion(promotionId: promotionId)
-            await load(silent: true)
-        } catch {
-            self.error = error.localizedDescription
-        }
+    private func simSummary(_ sim: PromoSimulateResult) -> String {
+        let margin = formatMinorUnits(sim.projectedMarginMinor, fractionDigits: 2, trimTrailingZeros: true)
+        return L10n.format(
+            "mobile_supplier.ui.p_l_sandbox_projectedvolume_units_margin_projectedmarginminor_100_margin",
+            "\(sim.projectedVolume)",
+            margin,
+            "\(Int(sim.marginDeltaPct))"
+        )
     }
 }

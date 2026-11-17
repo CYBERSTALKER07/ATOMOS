@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 
+	"github.com/pegasusx/pegasusx/apps/backend-go/drivercmd"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
 )
 
@@ -51,7 +52,8 @@ func (s *Service) broadcastAdminMessage(ctx context.Context, supplierID, targetR
 						continue
 					}
 					seen[driverID] = struct{}{}
-					s.portalDriverHub.Broadcast(ctx, "driver:"+driverID, payload)
+					prepared := drivercmd.PrepareAndRecordJSON(ctx, s.portalSpanner, driverID, payload)
+					s.portalDriverHub.Broadcast(ctx, "driver:"+driverID, prepared)
 				}
 			}
 		}

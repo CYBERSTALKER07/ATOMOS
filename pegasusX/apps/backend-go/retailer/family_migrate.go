@@ -61,7 +61,7 @@ func (s *Service) HandleFamilyMigrateToTeam(w http.ResponseWriter, r *http.Reque
 	var req struct {
 		Role            string `json:"retailer_role"`
 		DeactivateLogin bool   `json:"deactivate_login"` // if true, create inactive until owner activates
-		KeepFamilyRows  bool   `json:"keep_family_rows"`  // default false: remove migrated from family list
+		KeepFamilyRows  bool   `json:"keep_family_rows"` // default false: remove migrated from family list
 	}
 	_ = json.NewDecoder(r.Body).Decode(&req)
 	role := strings.ToUpper(strings.TrimSpace(req.Role))
@@ -270,4 +270,3 @@ func (s *Service) familyPostBlocked(w http.ResponseWriter, r *http.Request, orgI
 	}
 	return false
 }
-

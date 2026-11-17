@@ -43,10 +43,11 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -58,16 +59,18 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.pegasusx.retailer.data.model.DemandForecast
 import com.pegasusx.retailer.data.model.Product
 import com.pegasusx.retailer.data.model.Variant
+import com.pegasusx.retailer.ui.components.PackSuggestionBanner
 import com.pegasusx.retailer.ui.screens.cart.CartViewModel
 import com.pegasusx.retailer.ui.theme.SoftSquircleShape
 import com.pegasusx.retailer.ui.screens.procurement.components.*
+import com.pegasusx.retailer.util.PackSnapMode
 
 @Composable
 fun ProcurementScreen(
     viewModel: ProcurementViewModel = hiltViewModel(),
     cartViewModel: CartViewModel = hiltViewModel(),
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     if (uiState.showSuccess) {
         AlertDialog(
@@ -81,17 +84,34 @@ fun ProcurementScreen(
     }
 
     uiState.submitError?.let { message ->
+        val isQueuedNotice = uiState.queuedForSyncMessage != null
         AlertDialog(
-            onDismissRequest = viewModel::clearSubmitError,
-            title = { Text("Order Failed") },
+            onDismissRequest = {
+                viewModel.clearSubmitError()
+                if (isQueuedNotice) viewModel.dismissQueuedMessage()
+            },
+            title = { Text(if (isQueuedNotice) "Saved to Sync Queue" else "Order Failed") },
             text = { Text(message) },
             confirmButton = {
-                TextButton(onClick = { viewModel.clearSubmitError(); viewModel.createOrder() }) {
-                    Text("Retry")
+                if (isQueuedNotice) {
+                    TextButton(onClick = {
+                        viewModel.clearSubmitError()
+                        viewModel.dismissQueuedMessage()
+                    }) {
+                        Text("OK")
+                    }
+                } else {
+                    TextButton(onClick = { viewModel.clearSubmitError(); viewModel.createOrder() }) {
+                        Text("Retry")
+                    }
                 }
             },
-            dismissButton = {
-                TextButton(onClick = viewModel::clearSubmitError) { Text("Cancel") }
+            dismissButton = if (isQueuedNotice) {
+                null
+            } else {
+                {
+                    TextButton(onClick = viewModel::clearSubmitError) { Text("Cancel") }
+                }
             },
         )
     }
@@ -164,14 +184,74 @@ fun ProcurementScreen(
                         forecast = forecast,
                         isSelected = isSelected,
                         quantity = quantity,
+                        packSize = viewModel.effectivePackSizeFor(forecast.productId),
+                        mustHave = uiState.mustHaveByForecastId[forecast.id] ?: false,
+                        allowSubstitutes = uiState.allowSubstitutesByForecastId[forecast.id] ?: false,
                         onToggle = { viewModel.toggleSelection(forecast) },
                         onDecrement = { viewModel.updateQuantity(forecast.id, quantity - 1) },
                         onIncrement = { viewModel.updateQuantity(forecast.id, quantity + 1) },
+                        onSnapPackNearest = { viewModel.snapQuantityToPackMultiple(forecast.id, PackSnapMode.NEAREST) },
+                        onToggleMustHave = { viewModel.toggleMustHave(forecast.id) },
+                        onToggleAllowSubstitutes = { viewModel.toggleAllowSubstitutes(forecast.id) },
+                    )
+                }
+            }
+
+            if (uiState.ownerApprovalRequired != null) {
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    com.pegasusx.retailer.ui.components.OwnerApprovalRequiredBanner(
+                        detail = uiState.ownerApprovalRequired!!,
+                        isSubmitting = uiState.isSubmitting,
+                        onPayCash = { viewModel.retryWithFallbackPaymentMethod("CASH") },
+                        onPayCard = { viewModel.retryWithFallbackPaymentMethod("CARD") },
+                        onDismiss = viewModel::dismissOwnerApprovalRequired,
+                    )
+                }
+            }
+
+            if (uiState.packSuggestions.isNotEmpty()) {
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    PackSuggestionBanner(
+                        suggestions = uiState.packSuggestions,
+                        onApply = viewModel::applyPackSuggestion,
+                        onDismiss = viewModel::dismissPackSuggestions,
                     )
                 }
             }
 
             if (uiState.selectedIds.isNotEmpty()) {
+                item {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = SoftSquircleShape,
+                        color = MaterialTheme.colorScheme.surface,
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 14.dp, vertical = 10.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    "Auto-confirm preorder",
+                                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
+                                )
+                                Text(
+                                    "Auto-confirm eligible procurement orders when ready.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Switch(
+                                checked = uiState.autoConfirmOptIn,
+                                onCheckedChange = viewModel::setAutoConfirmOptIn,
+                            )
+                        }
+                    }
+                }
                 item {
                     SelectedSummary(
                         selectedCount = uiState.selectedCount,

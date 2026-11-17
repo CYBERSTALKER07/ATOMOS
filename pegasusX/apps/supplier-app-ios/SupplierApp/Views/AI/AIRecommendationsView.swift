@@ -4,39 +4,35 @@ struct AIRecommendationsView: View {
     private let statusFilters = ["PENDING", "ACKNOWLEDGED", "OVERRIDDEN", "DISMISSED", "ALL"]
     private let decisions = ["ACKNOWLEDGED", "OVERRIDDEN", "DISMISSED", "REOPENED"]
 
-    @State private var filter = "PENDING"
-    @State private var loading = true
-    @State private var error: String?
-    @State private var items: [SupplierAIRecommendation] = []
-    @State private var pendingDecisionId: String?
-    @State private var feedback: String?
+    @State private var viewModel = AIRecommendationsViewModel()
 
     var body: some View {
+        @Bindable var vm = viewModel
         Group {
-            if loading && items.isEmpty {
-                SupplierLoadingView(title: "Loading recommendations…")
-            } else if let error, items.isEmpty {
-                SupplierErrorView(message: error) { Task { await load() } }
+            if viewModel.loading && viewModel.items.isEmpty {
+                SupplierLoadingView(title: "mobile_supplier.loading.recommendations")
+            } else if let error = viewModel.error, viewModel.items.isEmpty {
+                SupplierErrorView(message: error) { Task { await viewModel.load() } }
             } else {
                 ResponsiveGridContentWrapper {
                     Section {
-                        Picker("Status", selection: $filter) {
+                        Picker("mobile_supplier.chrome.status", selection: $vm.filter) {
                             ForEach(statusFilters, id: \.self) { Text($0).tag($0) }
                         }
                         .pickerStyle(.segmented)
-                        if let feedback {
+                        if let feedback = viewModel.feedback {
                             Text(feedback).font(.footnote).foregroundStyle(.secondary)
                         }
                     }
 
-                    if items.isEmpty {
+                    if viewModel.items.isEmpty {
                         Section {
-                            Text("No \(filter.lowercased()) advisory rows for this supplier.")
+                            Text(L10n.format("mobile_supplier.ui.no_lowercased_advisory_rows_for_this_supplier", "\(viewModel.filter.lowercased())"))
                                 .foregroundStyle(.secondary)
                         }
                     }
 
-                    ForEach(items) { rec in
+                    ForEach(viewModel.items) { rec in
                         Section {
                             recommendationCard(rec)
                         }
@@ -45,8 +41,8 @@ struct AIRecommendationsView: View {
             }
         }
         .background(SupplierTheme.background)
-        .navigationTitle("AI recommendations")
-        .task(id: filter) { await load() }
+        .navigationTitle("mobile_supplier.ui.ai_recommendations")
+        .task(id: viewModel.filter) { await viewModel.load() }
     }
 
     @ViewBuilder
@@ -57,18 +53,18 @@ struct AIRecommendationsView: View {
                 Spacer()
                 Text(rec.status).font(.caption).foregroundStyle(.secondary)
             }
-            Text(String(format: "Confidence %.0f%% · Score %.2f", rec.confidence * 100, rec.score))
+            Text(L10n.format("mobile_supplier.chrome.confidence_score", String(format: "%.0f", rec.confidence * 100), String(format: "%.2f", rec.score)))
                 .font(.caption)
                 .foregroundStyle(.secondary)
             if !rec.explanation.isEmpty {
                 Text(rec.explanation).font(.subheadline)
             }
-            Text("\(rec.aggregateType) \(rec.aggregateId) · Source \(rec.source)")
+            Text(L10n.format("mobile_supplier.ui.aggregatetype_aggregateid_source_source", "\(rec.aggregateType)", "\(rec.aggregateId)", "\(rec.source)"))
                 .font(.caption2)
                 .foregroundStyle(.secondary)
 
             if !rec.reasonCodes.isEmpty {
-                Text("Reasons: \(rec.reasonCodes.joined(separator: ", "))")
+                Text(L10n.format("mobile_supplier.ui.reasons_joined", "\(rec.reasonCodes.joined(separator: ", "))"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -83,7 +79,7 @@ struct AIRecommendationsView: View {
             }
 
             if let decision = rec.decision, !decision.isEmpty {
-                Text("Decision: \(decision) by \(rec.decidedBy ?? "operator")")
+                Text(L10n.format("mobile_supplier.chrome.decision_by", decision, rec.decidedBy ?? L10n.format("mobile_supplier.chrome.operator")))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -92,47 +88,15 @@ struct AIRecommendationsView: View {
                 HStack {
                     ForEach(decisions, id: \.self) { decision in
                         Button(decision.capitalized) {
-                            Task { await record(rec, decision: decision) }
+                            Task { await viewModel.record(rec, decision: decision) }
                         }
                         .font(.caption)
                         .buttonStyle(.bordered)
-                        .disabled(pendingDecisionId != nil)
+                        .frame(minHeight: 44)
+                        .disabled(viewModel.pendingDecisionId != nil)
                     }
                 }
             }
-        }
-    }
-
-    private func load() async {
-        loading = true
-        error = nil
-        defer { loading = false }
-        do {
-            let resp = try await SupplierOperationsService.aiRecommendations(status: filter, limit: 50)
-            items = resp.items
-        } catch {
-            self.error = error.localizedDescription
-        }
-    }
-
-    private func record(_ rec: SupplierAIRecommendation, decision: String) async {
-        pendingDecisionId = rec.recommendationId
-        feedback = nil
-        defer { pendingDecisionId = nil }
-        do {
-            let request = SupplierAIRecommendationDecisionRequest(
-                recommendationId: rec.recommendationId,
-                decision: decision,
-                note: nil
-            )
-            let key = "ai-rec-\(rec.recommendationId)-\(decision)-\(UUID().uuidString)"
-            let resp = try await SupplierOperationsService.recordAiRecommendationDecision(request, idempotencyKey: key)
-            if let idx = items.firstIndex(where: { $0.recommendationId == resp.recommendation.recommendationId }) {
-                items[idx] = resp.recommendation
-            }
-            feedback = "\(decision.lowercased()) recorded for \(rec.aggregateType) \(rec.aggregateId)."
-        } catch {
-            feedback = "Decision failed: \(error.localizedDescription)"
         }
     }
 }

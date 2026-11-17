@@ -63,13 +63,13 @@ func (r *SpannerRepository) UpdatePayer(ctx context.Context, p Payer) error {
 // ListPayers lists all active payers (limited).
 func (r *SpannerRepository) ListPayers(ctx context.Context, limit, offset int) ([]Payer, error) {
 	stmt := spanner.Statement{
-		SQL: `SELECT * FROM Payers LIMIT @limit OFFSET @offset`,
+		SQL: `SELECT * FROM Payers WHERE IsActive = TRUE ORDER BY CreatedAt DESC LIMIT @limit OFFSET @offset`,
 		Params: map[string]interface{}{
 			"limit":  limit,
 			"offset": offset,
 		},
 	}
-	iter := r.client.Single().Query(ctx, stmt)
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 
 	var payers []Payer

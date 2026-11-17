@@ -6,7 +6,7 @@ struct TransferListSummary: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
-            Text("\(count) transfers in view")
+            Text(L10n.format("mobile_factory.ui.count_transfers_in_view_3", "\(count)"))
                 .font(.headline)
             Text(selectedFilter == "ALL" ? "Showing every transfer state across the factory queue." : "Filtered to \(selectedFilter) transfers.")
                 .font(.subheadline)

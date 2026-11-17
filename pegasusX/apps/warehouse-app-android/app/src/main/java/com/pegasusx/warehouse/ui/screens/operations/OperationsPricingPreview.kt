@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.operations
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
@@ -10,6 +12,7 @@ import androidx.compose.ui.unit.dp
 import com.pegasusx.warehouse.data.model.RetailerOverridePreview
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import com.pegasusx.warehouse.ui.components.WarehouseSectionTitle
+import com.pegasusx.warehouse.R
 
 @Composable
 fun OperationsPricingPreview(
@@ -61,10 +64,10 @@ fun OperationsPricingPreview(
                     .padding(vertical = PegasusSpacing.sm),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                Text("Retailers on SKU: ${p.retailersOnSkuCount}")
-                Text("Active overrides: ${p.activeOverrideCount}")
-                Text("Catalog list price: ${p.catalogListPrice}")
-                Text("Margin delta / unit: ${p.marginDeltaPerUnit}")
+                Text(stringResource(R.string.mobile_warehouse_ui_retailers_on_sku_retailersonskucount, p.retailersOnSkuCount))
+                Text(stringResource(R.string.mobile_warehouse_ui_active_overrides_activeoverridecount, p.activeOverrideCount))
+                Text(stringResource(R.string.mobile_warehouse_ui_catalog_list_price_cataloglistprice, p.catalogListPrice))
+                Text(stringResource(R.string.mobile_warehouse_ui_margin_delta_unit_margindeltaperunit, p.marginDeltaPerUnit))
                 Text(
                     p.marginEstimateLabel,
                     style = MaterialTheme.typography.bodySmall,

@@ -9,7 +9,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/innlookup"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 )
 
@@ -27,6 +29,7 @@ type BusinessSetupResponse struct {
 	SupplierID   string `json:"supplier_id"`
 	IsRegistered bool   `json:"is_registered"`
 	NextStep     string `json:"next_step"`
+	Token        string `json:"token,omitempty"`
 }
 
 // registrationComplete reports whether the full pegasus-style register payload
@@ -75,6 +78,52 @@ func (s *Service) CompleteBusinessSetup(ctx context.Context, supplierID string, 
 
 	now := s.now().UTC()
 	current.TaxID = strings.TrimSpace(req.TaxID)
+	if current.TaxID != "" {
+		if norm, _, err := innlookup.NormalizeTaxID(current.TaxID); err == nil {
+			if innSvc := s.INNLookup(); innSvc != nil {
+				cell := strings.TrimSpace(current.HomeCell)
+				if cell == "" {
+					cell = auth.DefaultHomeCellFromEnv()
+				}
+				if match, dup, merr := innSvc.FindTenantByNormalizedINN(ctx, cell, innlookup.TenantTypeSupplier, norm); merr == nil && dup && match.TenantID != supplierID {
+					reqPhone := strings.TrimSpace(current.Phone)
+					if reqPhone == "" {
+						reqPhone = "supplier:" + supplierID
+					}
+					reqName := strings.TrimSpace(current.LegalName)
+					if reqName == "" {
+						reqName = supplierID
+					}
+					_, _ = innSvc.CreateJoinRequest(ctx, innlookup.JoinRequest{
+						HomeCell:         cell,
+						TargetTenantType: innlookup.TenantTypeSupplier,
+						TargetTenantID:   match.TenantID,
+						NormalizedINN:    norm,
+						RequesterPhone:   reqPhone,
+						RequesterName:    reqName,
+						RequesterEmail:   strings.TrimSpace(current.Email),
+						RoleSought:       string(auth.RoleAdmin),
+						CreatedAt:        now,
+					}, func(txn outbox.TxnBuffer) error {
+						return outbox.EmitJSON(ctx, txn, events.AggregateSupplier, match.TenantID, events.TopicMain, map[string]any{
+							"type":               "JOIN_REQUEST_CREATED",
+							"timestamp":          now.Format(time.RFC3339Nano),
+							"supplier_id":        match.TenantID,
+							"target_tenant_type": innlookup.TenantTypeSupplier,
+							"target_tenant_id":   match.TenantID,
+							"normalized_inn":     norm,
+							"requester_phone":    reqPhone,
+							"requester_name":     reqName,
+							"role_sought":        string(auth.RoleAdmin),
+						})
+					})
+					return BusinessSetupResponse{}, fmt.Errorf("%w: %s", innlookup.ErrDuplicateTenant, match.TenantID)
+				}
+			}
+			current.NormalizedTaxID = norm
+			current.InnVerifiedAt = now
+		}
+	}
 	current.CompanyRegNumber = strings.TrimSpace(req.RegistrationNumber)
 	hq := composeHeadquartersAddress(req.HeadquartersAddress, req.City, req.PostalCode)
 	if current.BillingAddress == "" {
@@ -148,8 +197,13 @@ func (s *Service) HandleSupplierBusinessSetup(w http.ResponseWriter, r *http.Req
 	supplierID := s.scopedSupplierID(r)
 	resp, err := s.CompleteBusinessSetup(r.Context(), supplierID, req)
 	if err != nil {
-		switch err.Error() {
-		case "taxId required", "headquartersAddress required", "city required", "supplier scope required":
+		switch {
+		case errors.Is(err, innlookup.ErrDuplicateTenant):
+			writeJSON(w, http.StatusConflict, map[string]any{
+				"error": err.Error(),
+				"code":  err.Error(),
+			})
+		case err.Error() == "taxId required" || err.Error() == "headquartersAddress required" || err.Error() == "city required" || err.Error() == "supplier scope required":
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 		default:
 			s.log.WarnContext(r.Context(), "supplier business setup failed", "err", err, "supplier_id", supplierID)
@@ -158,8 +212,10 @@ func (s *Service) HandleSupplierBusinessSetup(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	if _, err := s.writeSessionCookie(w, resp.SupplierID, resp.IsRegistered, false); err != nil {
+	if tok, err := s.writeSessionCookie(w, resp.SupplierID, resp.IsRegistered, false); err != nil {
 		s.log.WarnContext(r.Context(), "business setup session reissue failed", "err", err)
+	} else {
+		resp.Token = tok
 	}
 	respBytes, _ := json.Marshal(resp)
 	idemCommitted = true

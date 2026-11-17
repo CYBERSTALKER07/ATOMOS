@@ -1,57 +1,46 @@
 import SwiftUI
 
 struct ManifestExceptionsView: View {
-    @State private var rows: [SupplierManifestExceptionRow] = []
-    @State private var loading = true
-    @State private var error: String?
-    @State private var escalatedOnly = false
+    @State private var viewModel = ManifestExceptionsViewModel()
 
     var body: some View {
+        @Bindable var vm = viewModel
         Group {
-            if loading {
-                SupplierLoadingView(title: "Loading gate exceptions…")
-            } else if let error {
-                SupplierErrorView(message: error) { Task { await load() } }
-            } else if rows.isEmpty {
-                SupplierEmptyView(title: "No exceptions", message: "No manifest gate exceptions in the current window.")
+            if viewModel.loading && viewModel.rows.isEmpty {
+                SupplierLoadingView(title: "mobile_supplier.loading.gate_exceptions")
+            } else if let error = viewModel.error, viewModel.rows.isEmpty {
+                SupplierErrorView(message: error) { Task { await viewModel.load() } }
+            } else if viewModel.rows.isEmpty {
+                SupplierEmptyView(title: "mobile_supplier.empty.no_manifest_exceptions", message: "mobile_supplier.empty.manifest_exceptions_message")
             } else {
                 ResponsiveGridContentWrapper {
-                    ForEach(rows) { row in
+                    ForEach(viewModel.rows) { row in
                         NavigationLink {
                             ManifestDetailView(manifestId: row.manifestId)
                         } label: {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(row.reason).font(.headline)
-                                Text("Manifest \(row.manifestId.prefix(8))…").font(.caption)
-                                Text("Order \(row.orderId.prefix(8))… · attempts \(row.attemptCount)").font(.caption)
+                                Text(L10n.format("mobile_supplier.ui.manifest_prefix", "\(row.manifestId.prefix(8))")).font(.caption)
+                                Text(L10n.format("mobile_supplier.ui.order_prefix_attempts_attemptcount", "\(row.orderId.prefix(8))", "\(row.attemptCount)")).font(.caption)
                                 if row.escalated {
-                                    Text("Escalated").font(.caption).foregroundStyle(.red)
+                                    Text("factory_portal.residual.text.escalated").font(.caption).foregroundStyle(SupplierTheme.destructive)
                                 }
                             }
+                            .accessibilityElement(children: .combine)
                         }
                     }
                 }
             }
         }
-        .navigationTitle("Gate exceptions")
+        .navigationTitle("factory_portal.manifest_exceptions.text.gate_exceptions")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Toggle("Escalated", isOn: $escalatedOnly)
+                Toggle("mobile_supplier.chrome.escalated", isOn: $vm.escalatedOnly)
                     .labelsHidden()
+                    .accessibilityLabel("mobile_supplier.chrome.escalated")
             }
         }
-        .onChange(of: escalatedOnly) { _, _ in Task { await load() } }
-        .task { await load() }
-    }
-
-    private func load() async {
-        loading = true
-        error = nil
-        defer { loading = false }
-        do {
-            rows = try await SupplierOperationsService.manifestExceptions(escalatedOnly: escalatedOnly)
-        } catch {
-            self.error = error.localizedDescription
-        }
+        .onChange(of: viewModel.escalatedOnly) { _, _ in Task { await viewModel.load() } }
+        .task { await viewModel.load() }
     }
 }

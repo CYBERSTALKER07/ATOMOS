@@ -15,7 +15,7 @@ function buildDeliveryZoneDeactivateIdempotencyKey(zoneId: string): string {
   return ['supplier-delivery-zone-deactivate', zoneId.trim()].join(':');
 }
 
-/* ─── Types ───────────────────────────────────────────────── */
+/* --- Types ------------------------------------------------- */
 
 interface DeliveryZone {
   zone_id: string;
@@ -29,7 +29,7 @@ interface DeliveryZone {
   is_active: boolean;
 }
 
-/* ─── Main Page ───────────────────────────────────────────── */
+/* --- Main Page --------------------------------------------- */
 
 export default function DeliveryZonesPage() {
   const token = useToken();
@@ -48,7 +48,7 @@ export default function DeliveryZonesPage() {
   const [priority, setPriority] = useState('0');
   const [warehouseId, setWarehouseId] = useState('');
 
-  /* ─── Fetch ─────────────────────────────────────────────── */
+  /* --- Fetch ----------------------------------------------- */
 
   const fetchZones = useCallback(async () => {
     if (!token) return;
@@ -70,7 +70,7 @@ export default function DeliveryZonesPage() {
     fetchZones();
   }, [fetchZones]);
 
-  /* ─── Create Zone ───────────────────────────────────────── */
+  /* --- Create Zone ----------------------------------------- */
 
   const handleCreate = useCallback(async () => {
     if (!token || !zoneName || !maxDist || !fee) return;
@@ -120,7 +120,7 @@ export default function DeliveryZonesPage() {
     }
   }, [token, zoneName, minDist, maxDist, fee, priority, warehouseId, toast, fetchZones]);
 
-  /* ─── Deactivate Zone ───────────────────────────────────── */
+  /* --- Deactivate Zone ------------------------------------- */
 
   const handleDeactivate = useCallback(async (zoneId: string) => {
     if (!token) return;
@@ -144,7 +144,7 @@ export default function DeliveryZonesPage() {
     }
   }, [token, toast, fetchZones]);
 
-  /* ─── Render ────────────────────────────────────────────── */
+  /* --- Render ---------------------------------------------- */
 
   return (
     <div className="flex flex-col gap-6 w-full max-w-7xl mx-auto px-4 py-6">
@@ -269,10 +269,12 @@ export default function DeliveryZonesPage() {
             </div>
             <div className="px-6 py-4 flex flex-col gap-4">
               <div>
-                <label className="md-typescale-label-medium block mb-1" style={{ color: 'var(--color-md-on-surface-variant)' }}>
+                <label htmlFor="zone-name-input" className="md-typescale-label-medium block mb-1" style={{ color: 'var(--color-md-on-surface-variant)' }}>
                   Zone Name
                 </label>
                 <input
+                  id="zone-name-input"
+                  aria-label="Zone Name"
                   type="text"
                   value={zoneName}
                   onChange={(e) => setZoneName(e.target.value)}
@@ -283,10 +285,12 @@ export default function DeliveryZonesPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="md-typescale-label-medium block mb-1" style={{ color: 'var(--color-md-on-surface-variant)' }}>
+                  <label htmlFor="zone-min-dist-input" className="md-typescale-label-medium block mb-1" style={{ color: 'var(--color-md-on-surface-variant)' }}>
                     Min Distance (km)
                   </label>
                   <input
+                    id="zone-min-dist-input"
+                    aria-label="Min Distance (km)"
                     type="number"
                     value={minDist}
                     onChange={(e) => setMinDist(e.target.value)}
@@ -295,10 +299,12 @@ export default function DeliveryZonesPage() {
                   />
                 </div>
                 <div>
-                  <label className="md-typescale-label-medium block mb-1" style={{ color: 'var(--color-md-on-surface-variant)' }}>
+                  <label htmlFor="zone-max-dist-input" className="md-typescale-label-medium block mb-1" style={{ color: 'var(--color-md-on-surface-variant)' }}>
                     Max Distance (km)
                   </label>
                   <input
+                    id="zone-max-dist-input"
+                    aria-label="Max Distance (km)"
                     type="number"
                     value={maxDist}
                     onChange={(e) => setMaxDist(e.target.value)}
@@ -309,10 +315,12 @@ export default function DeliveryZonesPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="md-typescale-label-medium block mb-1" style={{ color: 'var(--color-md-on-surface-variant)' }}>
+                  <label htmlFor="zone-fee-input" className="md-typescale-label-medium block mb-1" style={{ color: 'var(--color-md-on-surface-variant)' }}>
                     Fee (minor currency)
                   </label>
                   <input
+                    id="zone-fee-input"
+                    aria-label="Fee (minor currency)"
                     type="number"
                     value={fee}
                     onChange={(e) => setFee(e.target.value)}
@@ -322,10 +330,12 @@ export default function DeliveryZonesPage() {
                   />
                 </div>
                 <div>
-                  <label className="md-typescale-label-medium block mb-1" style={{ color: 'var(--color-md-on-surface-variant)' }}>
+                  <label htmlFor="zone-priority-input" className="md-typescale-label-medium block mb-1" style={{ color: 'var(--color-md-on-surface-variant)' }}>
                     Priority
                   </label>
                   <input
+                    id="zone-priority-input"
+                    aria-label="Priority"
                     type="number"
                     value={priority}
                     onChange={(e) => setPriority(e.target.value)}
@@ -335,10 +345,12 @@ export default function DeliveryZonesPage() {
                 </div>
               </div>
               <div>
-                <label className="md-typescale-label-medium block mb-1" style={{ color: 'var(--color-md-on-surface-variant)' }}>
+                <label htmlFor="zone-warehouse-id-input" className="md-typescale-label-medium block mb-1" style={{ color: 'var(--color-md-on-surface-variant)' }}>
                   Warehouse ID (optional — blank = all warehouses)
                 </label>
                 <input
+                  id="zone-warehouse-id-input"
+                  aria-label="Warehouse ID (optional — blank = all warehouses)"
                   type="text"
                   value={warehouseId}
                   onChange={(e) => setWarehouseId(e.target.value)}

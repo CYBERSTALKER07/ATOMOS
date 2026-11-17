@@ -1,13 +1,13 @@
-// Phase 2 Enterprise Integration: Auth0 Identity & Access Management
-// This file is currently commented out for Phase 1 (Trial).
-// Uncomment this block and run `go get github.com/auth0/go-jwt-middleware/v2`
-// when the enterprise contract is secured.
+// GS-I: do not mount SetupAuth0Middleware on the chi router.
+// A process-global AUTH0_DOMAIN wrap 401s native HS256 staff/driver JWTs.
+// Per-supplier OIDC lives in orgoidc (id_token exchange → auth.Issue).
 
 package enterprise
 
 import (
 	"context"
-	"log"
+	"fmt"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
@@ -46,7 +46,8 @@ func SetupAuth0Middleware() func(http.Handler) http.Handler {
 
 	issuerURL, err := url.Parse("https://" + domain + "/")
 	if err != nil {
-		log.Fatalf("Failed to parse the issuer url: %v", err)
+		slog.Error("failed to parse issuer url", "err", err)
+		panic(fmt.Sprintf("failed to parse issuer url: %v", err))
 	}
 
 	provider := jwks.NewCachingProvider(issuerURL, 5*time.Minute)
@@ -64,11 +65,12 @@ func SetupAuth0Middleware() func(http.Handler) http.Handler {
 		validator.WithAllowedClockSkew(time.Minute),
 	)
 	if err != nil {
-		log.Fatalf("Failed to set up the jwt validator")
+		slog.Error("failed to set up the jwt validator", "err", err)
+		panic(fmt.Sprintf("failed to set up the jwt validator: %v", err))
 	}
 
 	errorHandler := func(w http.ResponseWriter, r *http.Request, err error) {
-		log.Printf("Encountered error while validating JWT: %v", err)
+		slog.WarnContext(r.Context(), "encountered error while validating JWT", "err", err)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusUnauthorized)
 		w.Write([]byte(`{"message":"Failed to validate JWT."}`))
@@ -79,7 +81,7 @@ func SetupAuth0Middleware() func(http.Handler) http.Handler {
 		jwtmiddleware.WithErrorHandler(errorHandler),
 	)
 
-	log.Println("Auth0 Enterprise Middleware configured successfully")
+	slog.Info("Auth0 Enterprise Middleware configured successfully")
 
 	// Return a wrapper that runs Auth0 check, then maps claims to auth.Claims
 	return func(next http.Handler) http.Handler {

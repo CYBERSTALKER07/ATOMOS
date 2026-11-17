@@ -57,9 +57,16 @@ func (s *Service) hqAuth(w http.ResponseWriter, r *http.Request) (auth.Claims, s
 		return auth.Claims{}, "", false
 	}
 	// REPORTS_PRO pack: auto-enable on first HQ use (same posture as reports_pro).
-	enabled, _ := s.LoadEnabledPacks(r.Context(), orgID)
+	enabled, err := s.LoadEnabledPacks(r.Context(), orgID)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "hq_failed"})
+		return auth.Claims{}, "", false
+	}
 	if !enabled.Has(PackREPORTSPRO) {
-		_ = s.SetPackEnabled(r.Context(), orgID, PackREPORTSPRO, auth.ResolveRetailerUserID(claims), true, map[string]any{})
+		if err := s.SetPackEnabled(r.Context(), orgID, PackREPORTSPRO, auth.ResolveRetailerUserID(claims), true, map[string]any{}); err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "hq_failed"})
+			return auth.Claims{}, "", false
+		}
 	}
 	return claims, orgID, true
 }
@@ -94,7 +101,7 @@ func (s *Service) HandleHqSummary(w http.ResponseWriter, r *http.Request) {
 	var qtySold, qtyVoided, gross, net int64
 	locs := map[string]struct{}{}
 	skus := map[string]struct{}{}
-	currency := "UZS"
+	currency := coalescePackCurrency(r.Context(), "")
 	for _, row := range rows {
 		qtySold += row.QtySold
 		qtyVoided += row.QtyVoided
@@ -107,17 +114,17 @@ func (s *Service) HandleHqSummary(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"retailer_id":       orgID,
-		"day":               day,
-		"location_count":    len(locs),
-		"sku_count":         len(skus),
-		"qty_sold":          qtySold,
-		"qty_voided":        qtyVoided,
-		"gross_minor":       gross,
-		"net_minor":         net,
-		"currency":          currency,
-		"honest_empty":      len(rows) == 0,
-		"pack":              PackREPORTSPRO,
+		"retailer_id":    orgID,
+		"day":            day,
+		"location_count": len(locs),
+		"sku_count":      len(skus),
+		"qty_sold":       qtySold,
+		"qty_voided":     qtyVoided,
+		"gross_minor":    gross,
+		"net_minor":      net,
+		"currency":       currency,
+		"honest_empty":   len(rows) == 0,
+		"pack":           PackREPORTSPRO,
 	})
 }
 
@@ -150,10 +157,7 @@ func (s *Service) HandleHqSalesByLocation(w http.ResponseWriter, r *http.Request
 	for _, row := range rows {
 		b := byLoc[row.LocationID]
 		if b == nil {
-			b = &locRow{LocationID: row.LocationID, Currency: row.Currency}
-			if b.Currency == "" {
-				b.Currency = "UZS"
-			}
+			b = &locRow{LocationID: row.LocationID, Currency: coalescePackCurrency(r.Context(), row.Currency)}
 			byLoc[row.LocationID] = b
 		}
 		b.QtySold += row.QtySold
@@ -170,13 +174,13 @@ func (s *Service) HandleHqSalesByLocation(w http.ResponseWriter, r *http.Request
 	}
 	sort.Slice(items, func(i, j int) bool { return items[i].LocationID < items[j].LocationID })
 	writeJSON(w, http.StatusOK, map[string]any{
-		"retailer_id":    orgID,
-		"day":            day,
-		"items":          items,
-		"org_net_minor":  orgNet,
-		"sum_locations":  sumNet,
-		"balanced":       sumNet == orgNet,
-		"honest_empty":   len(items) == 0,
+		"retailer_id":   orgID,
+		"day":           day,
+		"items":         items,
+		"org_net_minor": orgNet,
+		"sum_locations": sumNet,
+		"balanced":      sumNet == orgNet,
+		"honest_empty":  len(items) == 0,
 	})
 }
 
@@ -213,10 +217,7 @@ func (s *Service) HandleHqSalesBySku(w http.ResponseWriter, r *http.Request) {
 		for _, row := range rows {
 			b := agg[row.SkuID]
 			if b == nil {
-				b = &skuRow{SkuID: row.SkuID, Currency: row.Currency, IsLocal: IsLocalSKU(row.SkuID)}
-				if b.Currency == "" {
-					b.Currency = "UZS"
-				}
+				b = &skuRow{SkuID: row.SkuID, Currency: coalescePackCurrency(r.Context(), row.Currency), IsLocal: IsLocalSKU(row.SkuID)}
 				agg[row.SkuID] = b
 			}
 			b.QtySold += row.QtySold
@@ -290,15 +291,15 @@ func (s *Service) HandleHqShrinkage(w http.ResponseWriter, r *http.Request) {
 		voidMinor = gross - net
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"retailer_id":        orgID,
-		"day":                day,
-		"void_qty":           voidQty,
-		"void_value_minor":   voidMinor,
-		"gross_minor":        gross,
-		"net_minor":          net,
-		"method":             "hq_void_proxy",
-		"note":               "Shrinkage here is POS void rollup from HQ daily, not full cycle-count loss.",
-		"honest_empty":       len(rows) == 0,
+		"retailer_id":      orgID,
+		"day":              day,
+		"void_qty":         voidQty,
+		"void_value_minor": voidMinor,
+		"gross_minor":      gross,
+		"net_minor":        net,
+		"method":           "hq_void_proxy",
+		"note":             "Shrinkage here is POS void rollup from HQ daily, not full cycle-count loss.",
+		"honest_empty":     len(rows) == 0,
 	})
 }
 
@@ -374,7 +375,7 @@ func (s *Service) listHqSalesRows(ctx context.Context, retailerID, day, location
 		sql += ` AND LocationId = @lid`
 		params["lid"] = locationID
 	}
-	iter := s.spannerClient.Single().Query(ctx, spanner.Statement{SQL: sql, Params: params})
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, spanner.Statement{SQL: sql, Params: params})
 	defer iter.Stop()
 	var out []HqSalesDayDTO
 	for {

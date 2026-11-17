@@ -10,7 +10,7 @@ import Icon from '@/components/Icon';
 import { useToast } from '@/components/Toast';
 import { Button } from '@heroui/react';
 
-/* ─── Types ───────────────────────────────────────────────── */
+/* --- Types ------------------------------------------------- */
 
 interface SettlementRow {
   order_id: string;
@@ -72,7 +72,7 @@ function todayISO(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-/* ─── Main Page ───────────────────────────────────────────── */
+/* --- Main Page --------------------------------------------- */
 
 export default function SettlementPage() {
   const { toast } = useToast();
@@ -88,7 +88,7 @@ export default function SettlementPage() {
 
   const pagination = usePagination(report?.rows || [], 25);
 
-  /* ─── Fetch ─────────────────────────────────────────────── */
+  /* --- Fetch ----------------------------------------------- */
 
   const fetchReport = useCallback(async () => {
     setLoading(true);
@@ -163,7 +163,7 @@ export default function SettlementPage() {
     fetchReport();
   }, [fetchReport]);
 
-  /* ─── Render ────────────────────────────────────────────── */
+  /* --- Render ---------------------------------------------- */
 
   return (
     <div className="min-h-full w-full max-w-7xl mx-auto px-4 py-6 flex flex-col gap-6" style={{ background: 'var(--desk-bg)' }}>
@@ -178,7 +178,10 @@ export default function SettlementPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <label htmlFor="settlement-from-date" className="sr-only">From Date</label>
           <input
+            id="settlement-from-date"
+            aria-label="From Date"
             type="date"
             value={from}
             onChange={(e) => setFrom(e.target.value)}
@@ -186,7 +189,10 @@ export default function SettlementPage() {
             style={{ background: 'var(--desk-surface)', color: 'var(--desk-text-primary)', borderColor: 'var(--desk-border)' }}
           />
           <span className="md-typescale-body-small" style={{ color: 'var(--desk-text-secondary)' }}>to</span>
+          <label htmlFor="settlement-to-date" className="sr-only">To Date</label>
           <input
+            id="settlement-to-date"
+            aria-label="To Date"
             type="date"
             value={to}
             onChange={(e) => setTo(e.target.value)}
@@ -336,10 +342,11 @@ export default function SettlementPage() {
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
                             <input
+                              id={`select-invoice-${r.invoice_id}`}
+                              aria-label={`Select ${r.invoice_id}`}
                               type="checkbox"
                               checked={selectedInvoiceIds.includes(r.invoice_id)}
                               onChange={() => toggleInvoiceSelection(r.invoice_id)}
-                              aria-label={`Select ${r.invoice_id}`}
                             />
                             <select
                               className="md-input-outlined px-2 py-1 text-xs"

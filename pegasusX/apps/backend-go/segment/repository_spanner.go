@@ -140,7 +140,7 @@ func (r *SpannerRepository) GetRiskTier(ctx context.Context, retailerID string) 
 }
 
 func (r *SpannerRepository) CountPolicies(ctx context.Context, supplierID string) (int64, error) {
-	iter := r.client.Single().Query(ctx, spanner.Statement{
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL:    `SELECT COUNT(*) FROM ServicePolicies WHERE SupplierId = @supplierId`,
 		Params: map[string]interface{}{"supplierId": supplierID},
 	})
@@ -204,7 +204,7 @@ func (r *SpannerRepository) UpsertServicePolicy(ctx context.Context, policy Serv
 }
 
 func (r *SpannerRepository) ListRetailerOrderStats(ctx context.Context, supplierID string) ([]RetailerOrderStats, error) {
-	iter := r.client.Single().Query(ctx, spanner.Statement{
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL: `SELECT RetailerId, COUNT(*) AS cnt
 		      FROM Orders
 		      WHERE SupplierId = @supplierId
@@ -275,7 +275,7 @@ func (r *SpannerRepository) ListRetailerCreditScores(ctx context.Context, retail
 }
 
 func (r *SpannerRepository) ListRetailerClaimCounts(ctx context.Context, supplierID string) (map[string]int64, error) {
-	iter := r.client.Single().Query(ctx, spanner.Statement{
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL: `SELECT RetailerId, COUNT(*) AS cnt
 		      FROM Claims
 		      WHERE SupplierId = @sid
@@ -308,7 +308,7 @@ type bootstrapLineItem struct {
 }
 
 func (r *SpannerRepository) SumSkuOrderQuantities(ctx context.Context, supplierID string, since time.Time) (map[string]int64, error) {
-	iter := r.client.Single().Query(ctx, spanner.Statement{
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL: `SELECT LineItemsJson FROM Orders
 		      WHERE SupplierId = @sid AND CreatedAt >= @since`,
 		Params: map[string]interface{}{
@@ -346,7 +346,7 @@ func (r *SpannerRepository) SumSkuOrderQuantities(ctx context.Context, supplierI
 }
 
 func (r *SpannerRepository) ListProductMeta(ctx context.Context, supplierID string) ([]ProductMeta, error) {
-	iter := r.client.Single().Query(ctx, spanner.Statement{
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL: `SELECT ProductId, PriceMinor, HandlingClass
 		      FROM Products WHERE SupplierId = @sid AND IsActive = true`,
 		Params: map[string]interface{}{"sid": supplierID},
@@ -371,10 +371,11 @@ func (r *SpannerRepository) ListProductMeta(ctx context.Context, supplierID stri
 }
 
 func (r *SpannerRepository) ListRetailerSegmentsForSupplier(ctx context.Context, supplierID string) ([]RetailerSegmentView, error) {
-	iter := r.client.Single().Query(ctx, spanner.Statement{
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL: `SELECT rs.RetailerId, rs.Segment, COALESCE(rs.Reason,''), rs.UpdatedAt
 		      FROM RetailerSegments rs
-		      INNER JOIN Orders o ON o.RetailerId = rs.RetailerId AND o.SupplierId = @sid
+		      INNER JOIN Orders o ON o.RetailerId = rs.RetailerId
+		      WHERE o.SupplierId = @sid
 		      GROUP BY rs.RetailerId, rs.Segment, rs.Reason, rs.UpdatedAt
 		      ORDER BY rs.UpdatedAt DESC`,
 		Params: map[string]interface{}{"sid": supplierID},
@@ -399,7 +400,7 @@ func (r *SpannerRepository) ListRetailerSegmentsForSupplier(ctx context.Context,
 }
 
 func (r *SpannerRepository) ListSkuClassesForSupplier(ctx context.Context, supplierID string) ([]SkuClassView, error) {
-	iter := r.client.Single().Query(ctx, spanner.Statement{
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL: `SELECT Sku, VelocityClass, StrategicFlag, UpdatedAt
 		      FROM SkuClasses WHERE SupplierId = @sid ORDER BY Sku`,
 		Params: map[string]interface{}{"sid": supplierID},

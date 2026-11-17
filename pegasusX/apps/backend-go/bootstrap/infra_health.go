@@ -7,6 +7,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
 	"github.com/pegasusx/pegasusx/apps/backend-go/infraroutes"
 	"github.com/redis/go-redis/v9"
+	"time"
 )
 
 func buildInfraHealthChecks(redisEnabled bool, cacheBackend cache.Backend, spannerClient *spanner.Client) infraroutes.Deps {
@@ -27,7 +28,7 @@ func buildInfraHealthChecks(redisEnabled bool, cacheBackend cache.Backend, spann
 	if spannerClient != nil {
 		client := spannerClient
 		checks["spanner"] = infraroutes.HealthCheckFunc(func(ctx context.Context) error {
-			iter := client.Single().Query(ctx, spanner.Statement{SQL: "SELECT 1"})
+			iter := client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, spanner.Statement{SQL: "SELECT 1"})
 			defer iter.Stop()
 			_, err := iter.Next()
 			return err

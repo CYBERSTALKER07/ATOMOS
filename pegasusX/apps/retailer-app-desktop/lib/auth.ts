@@ -1,11 +1,21 @@
 // lib/auth.ts
 import { useState, useEffect } from 'react';
+import { homeCellFromJwt, pinApiBaseUrl, readCachedAuthSession } from '@pegasusx/api-core';
 import { isTauri, getStoredToken, storeToken, clearStoredToken } from './bridge';
 import { createTranslator, detectBrowserLocale, translateProblemDetail } from '@pegasusx/i18n';
 import type { ProblemDetail } from '@pegasusx/types';
 import { isProblemDetail } from '@pegasusx/types';
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8180';
+const BOOTSTRAP = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8180';
+
+/** GS-C5: pin to JWT home_cell. Login (no token) stays on bootstrap. */
+export function retailerApiBaseUrl(): string {
+  return pinApiBaseUrl({
+    bootstrap: BOOTSTRAP,
+    homeCell: homeCellFromJwt(readToken()),
+    sessionApiUrl: readCachedAuthSession()?.api_url,
+  });
+}
 const getTranslator = () => createTranslator(detectBrowserLocale());
 
 /**
@@ -65,7 +75,7 @@ async function tryRefreshToken(): Promise<string | null> {
   const refresh = readRefreshFromCookie();
   if (!refresh) return null;
   try {
-    const res = await fetch(`${API}/v1/auth/retailer/refresh`, {
+    const res = await fetch(`${retailerApiBaseUrl()}/v1/auth/retailer/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ refresh_token: refresh }),
@@ -73,9 +83,11 @@ async function tryRefreshToken(): Promise<string | null> {
     if (!res.ok) return null;
     const data = (await res.json()) as { token?: string; refresh_token?: string };
     if (!data.token) return null;
-    document.cookie = `pegasus_retailer_jwt=${encodeURIComponent(data.token)}; path=/; max-age=86400; SameSite=Lax`;
+    const secureFlag =
+      typeof window !== 'undefined' && window.location.protocol === 'https:' ? '; Secure' : '';
+    document.cookie = `pegasus_retailer_jwt=${encodeURIComponent(data.token)}; path=/; max-age=86400; SameSite=Strict${secureFlag}`;
     if (data.refresh_token) {
-      document.cookie = `pegasus_retailer_refresh=${encodeURIComponent(data.refresh_token)}; path=/; max-age=604800; SameSite=Lax`;
+      document.cookie = `pegasus_retailer_refresh=${encodeURIComponent(data.refresh_token)}; path=/; max-age=604800; SameSite=Strict${secureFlag}`;
     }
     if (isTauri()) {
       storeToken(data.token, data.refresh_token || refresh).catch(() => {});
@@ -88,14 +100,18 @@ async function tryRefreshToken(): Promise<string | null> {
 
 export async function apiFetch(path: string, init?: RequestInit): Promise<Response> {
   const token = await getRetailerToken();
-  const headers: Record<string, string> = {
-    Authorization: `Bearer ${token}`,
-    'Content-Type': 'application/json',
-    'X-Trace-Id': crypto.randomUUID(),
-    ...(init?.headers as Record<string, string>),
-  };
+  const mergedHeaders = new Headers(init?.headers);
+  // Deduplicate case-insensitive header keys (e.g., lowercase `authorization` from ApiClient).
+  mergedHeaders.set('Authorization', `Bearer ${token}`);
+  if (!mergedHeaders.has('Content-Type') && !(init?.body instanceof FormData)) {
+    mergedHeaders.set('Content-Type', 'application/json');
+  }
+  if (!mergedHeaders.has('X-Trace-Id')) {
+    mergedHeaders.set('X-Trace-Id', crypto.randomUUID());
+  }
+  const headers = Object.fromEntries(mergedHeaders.entries());
 
-  const res = await fetch(`${API}${path}`, { ...init, headers });
+  const res = await fetch(`${retailerApiBaseUrl()}${path}`, { ...init, headers });
 
   // ── RFC 7807 Problem Detail detection ──
   const contentType = res.headers.get('Content-Type') || '';
@@ -119,12 +135,13 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
     }
     const newToken = await refreshInFlight;
     if (newToken) {
-      // Retry with fresh token
-      const retryHeaders: Record<string, string> = {
-        ...headers,
-        Authorization: `Bearer ${newToken}`,
-      };
-      return fetch(`${API}${path}`, { ...init, headers: retryHeaders });
+      // Retry with fresh token without preserving stale lowercase `authorization` keys.
+      const retryMerged = new Headers(mergedHeaders);
+      retryMerged.set('Authorization', `Bearer ${newToken}`);
+      return fetch(`${retailerApiBaseUrl()}${path}`, {
+        ...init,
+        headers: Object.fromEntries(retryMerged.entries()),
+      });
     }
     // Refresh failed
     document.cookie = 'pegasus_retailer_jwt=; Max-Age=0; path=/';

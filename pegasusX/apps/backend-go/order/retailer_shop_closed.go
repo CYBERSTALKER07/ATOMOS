@@ -8,6 +8,7 @@ import (
 
 	"cloud.google.com/go/spanner"
 	"github.com/go-chi/chi/v5"
+	"github.com/pegasusx/pegasusx/apps/backend-go/ar"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
@@ -80,6 +81,9 @@ func (s *Service) RetailerRespondShopClosed(
 	orderID, retailerID string,
 	req RetailerShopClosedResponse,
 ) error {
+	if s == nil || s.spannerClient == nil {
+		return status.Error(codes.Unavailable, "spanner required")
+	}
 	now := s.now().UTC()
 
 	_, err := s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
@@ -129,13 +133,13 @@ func (s *Service) resolveReschedule(ctx context.Context, txn *spanner.ReadWriteT
 
 	newStatus := StatusPending
 	mutations = append(mutations, spanner.UpdateMap("Orders", map[string]any{
-		"OrderId":               order.OrderID,
-		"Status":                string(newStatus),
-		"ShopClosedResolution":  "RESCHEDULED",
-		"Version":               order.Version + 1,
-		"UpdatedAt":             now,
-		"ReceivingWindowOpen":   *req.NewWindowStart,
-		"ReceivingWindowClose":  *req.NewWindowEnd,
+		"OrderId":              order.OrderID,
+		"Status":               string(newStatus),
+		"ShopClosedResolution": "RESCHEDULED",
+		"Version":              order.Version + 1,
+		"UpdatedAt":            now,
+		"ReceivingWindowOpen":  *req.NewWindowStart,
+		"ReceivingWindowClose": *req.NewWindowEnd,
 	}))
 
 	mutations = append(mutations, spanner.InsertMap("OrderShopClosedLog", map[string]any{
@@ -226,6 +230,47 @@ func (s *Service) resolveCreditLeaveFromRetailer(ctx context.Context, txn *spann
 		Resolution: "CREDIT_LEAVE",
 	})
 
+	if order.TotalMinor > 0 {
+		hasCreditLeg, legErr := s.hasCapturedCreditLeg(ctx, txn, order.OrderID)
+		if legErr != nil {
+			return legErr
+		}
+		if !hasCreditLeg {
+			leg := PaymentLeg{
+				OrderID:        order.OrderID,
+				LegID:          s.newID(),
+				Method:         MethodCredit,
+				AmountMinor:    order.TotalMinor,
+				Status:         PaymentStatusCaptured,
+				IdempotencyKey: "credit-leave-" + order.OrderID,
+				CreatedAt:      now,
+				CapturedAt:     spanner.NullTime{Time: now, Valid: true},
+			}
+			if err := s.RecordPaymentLeg(ctx, txn, leg); err != nil {
+				return err
+			}
+		}
+	}
+	if s.ar != nil && order.TotalMinor > 0 {
+		termsDays, graceDays, dueAt := s.resolveARTerms(ctx, order.RetailerID, order.SupplierID, now)
+		if err := s.ar.OpenFromCreditLeaveInTxn(ctx, txn, ar.OpenFromCreditLeaveRequest{
+			SupplierID:    order.SupplierID,
+			RetailerID:    order.RetailerID,
+			OrderID:       order.OrderID,
+			AmountMinor:   order.TotalMinor,
+			Currency:      order.Currency,
+			TermsDays:     termsDays,
+			GraceDays:     graceDays,
+			CreditLeaveAt: now,
+			DueAt:         dueAt,
+		}); err != nil {
+			return err
+		}
+	}
+	if err := s.recordOrderDeliveredGLInTxn(ctx, txn, buf, order, 0, 0, order.TotalMinor, nil, "CREDIT", now); err != nil {
+		return err
+	}
+
 	for _, e := range buf.events {
 		mutations = append(mutations, outboxMutation(e))
 	}
@@ -258,19 +303,23 @@ func (s *Service) resolveCancelFromRetailer(ctx context.Context, txn *spanner.Re
 		"CreatedAt": now,
 	}))
 
-	_ = outbox.EmitJSON(ctx, buf, events.AggregateOrder, order.OrderID, events.TopicMain, events.OrderEvent{
+	if err := outbox.EmitJSON(ctx, buf, events.AggregateOrder, order.OrderID, events.TopicMain, events.OrderEvent{
 		BaseEvent:  events.BaseEvent{Type: events.EventOrderStatusChanged, Timestamp: now.Format(time.RFC3339Nano)},
 		OrderID:    order.OrderID,
 		SupplierID: order.SupplierID,
 		Status:     string(newStatus),
 		Reason:     "retailer_cancelled",
-	})
-	_ = outbox.EmitJSON(ctx, buf, events.AggregateOrder, order.OrderID, events.TopicMain, events.OrderEvent{
+	}); err != nil {
+		return err
+	}
+	if err := outbox.EmitJSON(ctx, buf, events.AggregateOrder, order.OrderID, events.TopicMain, events.OrderEvent{
 		BaseEvent:  events.BaseEvent{Type: "order.shop_closed.retailer_responded", Timestamp: now.Format(time.RFC3339Nano)},
 		OrderID:    order.OrderID,
 		SupplierID: order.SupplierID,
 		Resolution: "CANCEL",
-	})
+	}); err != nil {
+		return err
+	}
 
 	for _, e := range buf.events {
 		mutations = append(mutations, outboxMutation(e))

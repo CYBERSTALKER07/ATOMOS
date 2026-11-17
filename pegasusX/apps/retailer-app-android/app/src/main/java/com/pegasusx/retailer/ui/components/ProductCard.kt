@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
@@ -45,6 +47,7 @@ import com.pegasusx.retailer.ui.theme.StatusBlueSoft
 import com.pegasusx.retailer.ui.theme.StatusGreen
 import com.pegasusx.retailer.ui.theme.StatusGreenSoft
 import java.util.Locale
+import com.pegasusx.retailer.R
 
 @Composable
 fun ProductCard(
@@ -107,7 +110,7 @@ fun ProductCard(
                     ) {
                         Icon(
                             imageVector = Icons.Rounded.Eco,
-                            contentDescription = "Product image unavailable",
+                            contentDescription = stringResource(R.string.mobile_retailer_ui_product_image_unavailable),
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(32.dp),
                         )
@@ -153,7 +156,7 @@ fun ProductCard(
                 if (product.isOutOfStock) {
                     if (product.acceptsBackorder) {
                         Text(
-                            text = "Backorder",
+                            text = stringResource(R.string.mobile_retailer_ui_backorder),
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onErrorContainer,
@@ -174,7 +177,7 @@ fun ProductCard(
                             contentAlignment = Alignment.Center,
                         ) {
                             Text(
-                                text = "Out of stock",
+                                text = stringResource(R.string.mobile_retailer_ui_out_of_stock),
                                 style = MaterialTheme.typography.labelLarge,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onPrimary,
@@ -183,7 +186,7 @@ fun ProductCard(
                     }
                 } else if (product.isLowStock) {
                     Text(
-                        text = "Low stock",
+                        text = stringResource(R.string.mobile_retailer_ui_low_stock),
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onErrorContainer,

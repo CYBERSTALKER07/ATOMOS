@@ -100,16 +100,16 @@ func TestRejectDeliveryProposal_CancelsOrder(t *testing.T) {
 	proposed := time.Date(2026, 7, 15, 12, 0, 0, 0, time.UTC)
 	repo := &testRepo{
 		order: Order{
-			OrderID:                "ord_rej",
-			SupplierID:             "sup_1",
-			WarehouseID:            "wh_1",
-			RetailerID:             "ret_1",
-			Status:                 StatusScheduled,
-			Source:                 OrderSourceManualPreorder,
-			ConfirmationStatus:     ConfirmationStatusPendingWarehouse,
-			RequestedDeliveryDate:  &requested,
-			ProposedDeliveryDate:   &proposed,
-			Currency:               "UZS",
+			OrderID:               "ord_rej",
+			SupplierID:            "sup_1",
+			WarehouseID:           "wh_1",
+			RetailerID:            "ret_1",
+			Status:                StatusScheduled,
+			Source:                OrderSourceManualPreorder,
+			ConfirmationStatus:    ConfirmationStatusPendingWarehouse,
+			RequestedDeliveryDate: &requested,
+			ProposedDeliveryDate:  &proposed,
+			Currency:              "UZS",
 		},
 		found: true,
 	}

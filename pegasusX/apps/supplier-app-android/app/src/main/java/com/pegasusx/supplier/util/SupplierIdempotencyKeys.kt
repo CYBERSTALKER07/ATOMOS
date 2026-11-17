@@ -74,6 +74,22 @@ object SupplierIdempotencyKeys {
 
     fun supplierScopeId(): String = TokenHolder.supplierId?.takeIf { it.isNotBlank() } ?: "supplier"
 
+    fun networkModePut(scopeId: String, mode: String): String =
+        "supplier-network-mode:$scopeId:${mode.trim().uppercase()}"
+
+    fun planningPullMatrix(scopeId: String): String = "supplier-planning-pull-matrix:$scopeId"
+
+    fun planningPredictivePush(scopeId: String): String = "supplier-planning-predictive-push:$scopeId"
+
+    fun loyaltyProgramPatch(scopeId: String, reason: String): String =
+        "supplier-loyalty-program:$scopeId:${stableHash(reason)}"
+
+    fun planningKillSwitch(scopeId: String, reason: String): String =
+        "supplier-planning-kill-switch:$scopeId:${stableHash(reason)}"
+
+    fun payoutGenerate(scopeId: String, periodStart: String, periodEnd: String): String =
+        "supplier-payout-generate:$scopeId:$periodStart:$periodEnd"
+
     fun profileUpdate(scopeId: String, payloadFingerprint: String): String =
         "supplier-profile-update:$scopeId:${stableHash(payloadFingerprint)}"
 
@@ -107,8 +123,51 @@ object SupplierIdempotencyKeys {
     fun seasonalOverrideCreate(scopeId: String, startDate: String, endDate: String): String =
         "supplier-seasonal-override:$scopeId:${stableHash("$startDate:$endDate")}"
 
+    fun returnPolicyPut(scopeId: String, hours: Long): String =
+        "supplier-return-policy:$scopeId:$hours"
+
     fun controlTowerZoneOverride(scopeId: String, action: String, polygonFingerprint: String): String =
         "supplier-control-tower-override:$scopeId:${stableHash("$action:$polygonFingerprint")}"
+
+    fun migrationProjectCreate(scopeId: String, name: String): String =
+        "migration-project-create:$scopeId:${stableHash(name)}"
+
+    fun migrationBundleCreate(projectId: String, fingerprint: String): String =
+        "migration-bundle-create:$projectId:${stableHash(fingerprint)}"
+
+    fun migrationBundleUploaded(bundleId: String, fingerprint: String): String =
+        "migration-bundle-uploaded:$bundleId:${stableHash(fingerprint)}"
+
+    fun migrationBundleSort(bundleId: String, fingerprint: String): String =
+        "migration-bundle-sort:$bundleId:${stableHash(fingerprint)}"
+
+    fun migrationMappingConfirm(sessionId: String, fingerprint: String): String =
+        "migration-mapping-confirm:$sessionId:${stableHash(fingerprint)}"
+
+    fun migrationDryRun(scopeId: String, applyMode: String): String =
+        "migration-dry-run:$scopeId:$applyMode"
+
+    fun migrationSessionApprove(sessionId: String, reportId: String?): String =
+        "migration-session-approve:$sessionId:${reportId.orEmpty().ifBlank { "latest" }}"
+
+    fun migrationSessionApply(sessionId: String, fingerprint: String?): String =
+        "migration-session-apply:$sessionId:${fingerprint.orEmpty().ifBlank { "latest" }}"
+
+    fun migrationSessionRollback(sessionId: String): String =
+        "migration-session-rollback:$sessionId"
+
+    fun migrationOpenOrdersRelease(scopeId: String, orderIds: List<String>, targetStatus: String): String {
+        val sorted = orderIds.sorted().joinToString(",")
+        return "migration-open-orders-release:$scopeId:$targetStatus:${stableHash(sorted)}"
+    }
+
+    fun migrationCutover(projectId: String): String =
+        "migration-cutover:$projectId"
+
+    fun joinRequestDecide(requestId: String, decision: String): String =
+        "join-request-decide:$requestId:${decision.lowercase()}"
+
+    fun hashFingerprint(input: String): String = stableHash(input)
 
     /** FNV-1a 32-bit — matches api-client `stableHash`. */
     private fun stableHash(input: String): String {

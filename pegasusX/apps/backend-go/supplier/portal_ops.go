@@ -58,31 +58,42 @@ type SupplierActivityEvent struct {
 
 // SupplierDispatchPreview is the supplier-scoped dispatch planning snapshot.
 type SupplierDispatchPreview struct {
-	UndispatchedOrders     []map[string]any `json:"undispatched_orders"`
-	AvailableDrivers       []map[string]any `json:"available_drivers"`
-	UnavailableDrivers     []map[string]any `json:"unavailable_drivers"`
-	PendingCount           int              `json:"pending_count"`
-	AvailableCount         int              `json:"available_driver_count"`
-	WindowConstrainedCount int              `json:"window_constrained_count"`
-	ProposedRoutes         []map[string]any `json:"proposed_routes,omitempty"`
-	OptimizerSource        string           `json:"optimizer_source,omitempty"`
-	OptimizerWarnings      []string         `json:"optimizer_warnings,omitempty"`
-	PlanFingerprint        string           `json:"plan_fingerprint,omitempty"`
-	WarehousePlanFingerprint string         `json:"warehouse_plan_fingerprint,omitempty"`
-	PlanFingerprintMismatch bool            `json:"plan_fingerprint_mismatch,omitempty"`
+	UndispatchedOrders       []map[string]any `json:"undispatched_orders"`
+	AvailableDrivers         []map[string]any `json:"available_drivers"`
+	UnavailableDrivers       []map[string]any `json:"unavailable_drivers"`
+	PendingCount             int              `json:"pending_count"`
+	AvailableCount           int              `json:"available_driver_count"`
+	WindowConstrainedCount   int              `json:"window_constrained_count"`
+	ProposedRoutes           []map[string]any `json:"proposed_routes,omitempty"`
+	OptimizerSource          string           `json:"optimizer_source,omitempty"`
+	OptimizerWarnings        []string         `json:"optimizer_warnings,omitempty"`
+	PlanFingerprint          string           `json:"plan_fingerprint,omitempty"`
+	WarehousePlanFingerprint string           `json:"warehouse_plan_fingerprint,omitempty"`
+	PlanFingerprintMismatch  bool             `json:"plan_fingerprint_mismatch,omitempty"`
 }
 
 // SupplierExceptionRow is an operational exception surfaced to the supplier queue.
 type SupplierExceptionRow struct {
-	OrderID         string `json:"order_id"`
-	Kind            string `json:"kind"`
-	Status          string `json:"status"`
-	RetailerID      string `json:"retailer_id,omitempty"`
-	Note            string `json:"note,omitempty"`
-	ManifestID      string `json:"manifest_id,omitempty"`
-	UpdatedAt       string `json:"updated_at"`
-	Score           *int64 `json:"score,omitempty"`
-	TopPlaybookName string `json:"top_playbook_name,omitempty"`
+	OrderID          string `json:"order_id"`
+	Kind             string `json:"kind"`
+	Status           string `json:"status"`
+	RetailerID       string `json:"retailer_id,omitempty"`
+	DriverID         string `json:"driver_id,omitempty"`
+	Note             string `json:"note,omitempty"`
+	ManifestID       string `json:"manifest_id,omitempty"`
+	UpdatedAt        string `json:"updated_at"`
+	Score            *int64 `json:"score,omitempty"`
+	TopPlaybookName  string `json:"top_playbook_name,omitempty"`
+	MoneyAtRiskMinor int64  `json:"money_at_risk_minor,omitempty"`
+	Severity         string `json:"severity,omitempty"`
+	HandlerGroup     string `json:"handler_group,omitempty"`
+	SeverityTier     string `json:"severity_tier,omitempty"`
+	DisplayName      string `json:"display_name,omitempty"`
+	Phone            string `json:"phone,omitempty"`
+	TIN              string `json:"tin,omitempty"`
+	PostingID        string `json:"posting_id,omitempty"`
+	DocumentKey      string `json:"document_key,omitempty"`
+	DedupClusterID   string `json:"dedup_cluster_id,omitempty"`
 }
 
 // SupplierManifestExceptionRow is a manifest loading-gate exception from ManifestExceptions.
@@ -99,18 +110,22 @@ type SupplierManifestExceptionRow struct {
 
 type supplierDashboardDetail struct {
 	supplierDashboardResponse
-	OrdersByStatus         map[string]int          `json:"orders_by_status"`
-	TodayRevenueMinor      int64                   `json:"today_revenue_minor"`
-	Currency               string                  `json:"currency"`
-	ActiveDrivers          int                     `json:"active_drivers"`
-	TotalDrivers           int                     `json:"total_drivers"`
-	RetailersOrderedToday  int                     `json:"retailers_ordered_today"`
-	TotalRetailers         int                     `json:"total_retailers"`
-	DeliveryCompletionRate float64                 `json:"delivery_completion_rate_pct"`
-	FleetVuUsed            int64                   `json:"fleet_vu_used"`
-	FleetVuTotal           int64                   `json:"fleet_vu_total"`
-	RecentManifests        []SupplierManifestRow   `json:"recent_manifests"`
-	ActivityEvents         []SupplierActivityEvent `json:"activity_events"`
+	OrdersByStatus           map[string]int          `json:"orders_by_status"`
+	TodayRevenueMinor        int64                   `json:"today_revenue_minor"`
+	Currency                 string                  `json:"currency"`
+	ActiveDrivers            int                     `json:"active_drivers"`
+	TotalDrivers             int                     `json:"total_drivers"`
+	RetailersOrderedToday    int                     `json:"retailers_ordered_today"`
+	TotalRetailers           int                     `json:"total_retailers"`
+	DeliveryCompletionRate   float64                 `json:"delivery_completion_rate_pct"`
+	DeliveriesCompletedToday int                     `json:"deliveries_completed_today"`
+	DeliveriesAttemptedToday int                     `json:"deliveries_attempted_today"`
+	ManifestsByState         map[string]int          `json:"manifests_by_state"`
+	FleetVuUsed              int64                   `json:"fleet_vu_used"`
+	FleetVuTotal             int64                   `json:"fleet_vu_total"`
+	FleetVuAvailable         bool                    `json:"fleet_vu_available"`
+	RecentManifests          []SupplierManifestRow   `json:"recent_manifests"`
+	ActivityEvents           []SupplierActivityEvent `json:"activity_events"`
 }
 
 // HandleDispatchPreview serves GET/POST /v1/supplier/dispatch/preview.
@@ -201,9 +216,39 @@ func (s *Service) HandleExceptions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	financeRows, finErr := s.listFinanceExceptionRows(r.Context(), sid)
-	if finErr == nil && len(financeRows) > 0 {
+	if finErr != nil {
+		s.log.WarnContext(r.Context(), "finance exceptions load failed", "supplier_id", sid, "err", finErr)
+	} else if len(financeRows) > 0 {
 		rows = append(rows, financeRows...)
 	}
+	manifestRows, manErr := s.listSupplierManifestExceptions(r.Context(), sid, false)
+	if manErr == nil {
+		for _, m := range manifestRows {
+			sevTier := "HIGH"
+			if m.Escalated {
+				sevTier = "CRITICAL"
+			}
+			rows = append(rows, SupplierExceptionRow{
+				OrderID:      firstNonEmptyExceptionStr(m.OrderID, m.ExceptionID),
+				Kind:         "MANIFEST_EXCEPTION",
+				Status:       "OPEN",
+				ManifestID:   m.ManifestID,
+				Note:         firstNonEmptyExceptionStr(m.Reason, m.ExceptionID),
+				UpdatedAt:    m.CreatedAt,
+				SeverityTier: sevTier,
+			})
+		}
+	}
+	if s.extraExceptionRowsFn != nil {
+		extra, exErr := s.extraExceptionRowsFn(r.Context(), sid)
+		if exErr != nil {
+			s.log.WarnContext(r.Context(), "extra exceptions query failed", "supplier_id", sid, "err", exErr)
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "load_supplier_exceptions_failed"})
+			return
+		}
+		rows = append(rows, extra...)
+	}
+	rows = s.filterResolvedInMemoryExceptions(rows)
 	if s.controlTower != nil && s.controlTower.Enabled() {
 		byOrder, enrichErr := s.controlTower.ScoredByOrderID(r.Context(), sid)
 		if enrichErr == nil {
@@ -215,6 +260,19 @@ func (s *Service) HandleExceptions(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 		}
+	}
+	s.enrichSupplierExceptionRows(r.Context(), sid, rows)
+	SortSupplierExceptions(rows)
+
+	handlerFilter := strings.ToUpper(strings.TrimSpace(r.URL.Query().Get("handler")))
+	if handlerFilter != "" && handlerFilter != "ALL" {
+		filtered := make([]SupplierExceptionRow, 0, len(rows))
+		for _, row := range rows {
+			if row.HandlerGroup == handlerFilter {
+				filtered = append(filtered, row)
+			}
+		}
+		rows = filtered
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"exceptions": rows})
 }
@@ -255,19 +313,27 @@ func (s *Service) buildSupplierDashboardDetail(ctx context.Context, sid string, 
 
 	metrics := aggregateOrderMetrics(orders, s.now())
 	drivers, vehicles := s.fleetCounts(ctx, sid)
+	currency := ""
+	if c, err := auth.CoalesceCurrency(ctx, sid, profile.Currency); err == nil {
+		currency = c
+	}
 
 	detail := supplierDashboardDetail{
 		supplierDashboardResponse: base,
 		OrdersByStatus:            metrics.ordersByStatus,
 		TodayRevenueMinor:         metrics.todayRevenueMinor,
-		Currency:                  s.currency,
+		Currency:                  currency,
 		ActiveDrivers:             metrics.activeDrivers,
 		TotalDrivers:              drivers,
 		RetailersOrderedToday:     metrics.retailersToday,
 		TotalRetailers:            metrics.totalRetailers,
 		DeliveryCompletionRate:    metrics.completionRate,
-		FleetVuUsed:               metrics.fleetVuUsed,
+		DeliveriesCompletedToday:  metrics.completedToday,
+		DeliveriesAttemptedToday:  metrics.attemptedToday,
+		ManifestsByState:          manifestStateCounts(manifests),
+		FleetVuUsed:               fleetVuUsedFromManifests(manifests),
 		FleetVuTotal:              fleetMaxVU,
+		FleetVuAvailable:          true,
 		RecentManifests:           manifests,
 		ActivityEvents:            buildSupplierActivityEvents(orders, 20),
 	}
@@ -491,13 +557,15 @@ func (s *Service) listSupplierExceptions(ctx context.Context, supplierID string)
 			continue
 		}
 		rows = append(rows, SupplierExceptionRow{
-			OrderID:    order.OrderID,
-			Kind:       kind,
-			Status:     order.Status,
-			RetailerID: order.RetailerID,
-			Note:       order.Note,
-			ManifestID: order.ManifestID,
-			UpdatedAt:  order.UpdatedAt,
+			OrderID:          order.OrderID,
+			Kind:             kind,
+			Status:           order.Status,
+			RetailerID:       order.RetailerID,
+			DriverID:         order.DriverID,
+			Note:             order.Note,
+			ManifestID:       order.ManifestID,
+			UpdatedAt:        order.UpdatedAt,
+			MoneyAtRiskMinor: order.TotalMinor,
 		})
 	}
 	sort.Slice(rows, func(i, j int) bool { return rows[i].UpdatedAt > rows[j].UpdatedAt })
@@ -547,14 +615,13 @@ type orderMetricsAggregate struct {
 	retailersToday    int
 	totalRetailers    int
 	completionRate    float64
-	fleetVuUsed       int64
+	completedToday    int
+	attemptedToday    int
 }
 
 func aggregateOrderMetrics(orders []SupplierOrder, now time.Time) orderMetricsAggregate {
 	dayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
-	statuses := map[string]int{
-		"PENDING": 0, "LOADED": 0, "IN_TRANSIT": 0, "ARRIVED": 0, "COMPLETED": 0, "CANCELLED": 0,
-	}
+	statuses := emptyOrderStatusCounts()
 	retailersToday := map[string]struct{}{}
 	allRetailers := map[string]struct{}{}
 	activeDrivers := map[string]struct{}{}
@@ -563,7 +630,7 @@ func aggregateOrderMetrics(orders []SupplierOrder, now time.Time) orderMetricsAg
 	attemptedToday := 0
 
 	for _, order := range orders {
-		status := strings.ToUpper(strings.TrimSpace(order.Status))
+		status := canonicalizeOrderStatus(order.Status)
 		if _, ok := statuses[status]; ok {
 			statuses[status]++
 		}
@@ -604,8 +671,98 @@ func aggregateOrderMetrics(orders []SupplierOrder, now time.Time) orderMetricsAg
 		retailersToday:    len(retailersToday),
 		totalRetailers:    len(allRetailers),
 		completionRate:    completion,
-		fleetVuUsed:       int64(len(orders)) * 10,
+		completedToday:    completedToday,
+		attemptedToday:    attemptedToday,
 	}
+}
+
+func emptyManifestStateCounts() map[string]int {
+	return map[string]int{
+		"DRAFT": 0, "LOADING": 0, "SEALED": 0,
+		"DISPATCHED": 0, "COMPLETED": 0, "CANCELLED": 0,
+	}
+}
+
+func manifestStateCounts(rows []SupplierManifestRow) map[string]int {
+	out := emptyManifestStateCounts()
+	for _, row := range rows {
+		state := strings.ToUpper(strings.TrimSpace(row.State))
+		if state == "" {
+			state = strings.ToUpper(strings.TrimSpace(row.Status))
+		}
+		if _, ok := out[state]; ok {
+			out[state]++
+		}
+	}
+	return out
+}
+
+var orderStatusFunnel = []string{
+	"PENDING", "SCHEDULED", "AUTO_ACCEPTED", "BACKORDERED",
+	"LOADED", "IN_TRANSIT", "DELAYED",
+	"ARRIVED", "ARRIVED_SHOP_CLOSED",
+	"AWAITING_PAYMENT", "PENDING_CASH_COLLECTION", "DELIVERED_ON_CREDIT",
+	"FISCALIZING", "FISCAL_FAILED", "RECONCILIATION_REQUIRED",
+	"COMPLETED", "CANCELLED",
+}
+
+func emptyOrderStatusCounts() map[string]int {
+	out := make(map[string]int, len(orderStatusFunnel))
+	for _, key := range orderStatusFunnel {
+		out[key] = 0
+	}
+	return out
+}
+
+func canonicalizeOrderStatus(status string) string {
+	switch strings.ToUpper(strings.TrimSpace(status)) {
+	case "DISPATCHED", "PACKED":
+		return "LOADED"
+	case "EN_ROUTE":
+		return "IN_TRANSIT"
+	case "ARRIVING":
+		return "ARRIVED"
+	case "SHOP_CLOSED_PENDING":
+		return "ARRIVED_SHOP_CLOSED"
+	case "DELIVERED":
+		return "COMPLETED"
+	case "DISPUTED":
+		return "RECONCILIATION_REQUIRED"
+	case "CONFIRMED":
+		return "AUTO_ACCEPTED"
+	case "PENDING_APPROVAL", "DRAFT", "PICKING":
+		return "PENDING"
+	case "CANCEL_REQUESTED":
+		return "CANCELLED"
+	default:
+		return strings.ToUpper(strings.TrimSpace(status))
+	}
+}
+
+func isOpenManifestState(state string) bool {
+	switch strings.ToUpper(strings.TrimSpace(state)) {
+	case "DRAFT", "LOADING", "SEALED", "DISPATCHED":
+		return true
+	default:
+		return false
+	}
+}
+
+func fleetVuUsedFromManifests(rows []SupplierManifestRow) int64 {
+	var used int64
+	for _, row := range rows {
+		if !isOpenManifestState(row.State) {
+			continue
+		}
+		if row.TotalVu > 0 {
+			used += row.TotalVu
+			continue
+		}
+		if row.TotalVolumeVU > 0 {
+			used += int64(row.TotalVolumeVU)
+		}
+	}
+	return used
 }
 
 func (s *Service) buildSupplierDispatchPreview(ctx context.Context, supplierID, warehouseID string, limit, offset int) (SupplierDispatchPreview, error) {

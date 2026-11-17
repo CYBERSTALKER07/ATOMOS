@@ -5,11 +5,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 	"sync"
 	"time"
 
 	"cloud.google.com/go/spanner"
+	"github.com/google/uuid"
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
 	"google.golang.org/api/iterator"
 	"google.golang.org/grpc/codes"
@@ -51,6 +56,7 @@ type RetailerPaymentTerms struct {
 	GracePeriodDays   int64      `json:"grace_period_days"`
 	CreditLimitMinor  int64      `json:"credit_limit_minor"`
 	UseGlobalDefaults bool       `json:"use_global_defaults"`
+	ConsentVerified   bool       `json:"consent_verified"`
 	Version           int64      `json:"version"`
 	UpdatedAt         time.Time  `json:"updated_at"`
 }
@@ -81,11 +87,13 @@ type CreditPolicyAuditRow struct {
 // PolicyRepository persists programs, terms, and audit.
 type PolicyRepository interface {
 	GetProgram(ctx context.Context, supplierID string) (SupplierCreditProgram, bool, error)
-	UpsertProgram(ctx context.Context, p SupplierCreditProgram) error
+	// UpsertProgram writes SupplierCreditPrograms; emit runs in the same RW txn when non-nil (B4).
+	UpsertProgram(ctx context.Context, p SupplierCreditProgram, emit func(outbox.TxnBuffer) error) error
 	GetTerms(ctx context.Context, retailerID, supplierID string) (RetailerPaymentTerms, bool, error)
 	ListTermsBySupplier(ctx context.Context, supplierID string, limit int) ([]RetailerPaymentTerms, error)
 	ListTermsByRetailer(ctx context.Context, retailerID string, limit int) ([]RetailerPaymentTerms, error)
-	UpsertTerms(ctx context.Context, t RetailerPaymentTerms) error
+	// UpsertTerms writes RetailerPaymentTerms; emit runs in the same RW txn when non-nil (B4).
+	UpsertTerms(ctx context.Context, t RetailerPaymentTerms, emit func(outbox.TxnBuffer) error) error
 	AppendAudit(ctx context.Context, a CreditPolicyAuditRow) error
 }
 
@@ -113,7 +121,12 @@ func (r *MemoryPolicyRepository) GetProgram(_ context.Context, supplierID string
 	return p, ok, nil
 }
 
-func (r *MemoryPolicyRepository) UpsertProgram(_ context.Context, p SupplierCreditProgram) error {
+func (r *MemoryPolicyRepository) UpsertProgram(_ context.Context, p SupplierCreditProgram, emit func(outbox.TxnBuffer) error) error {
+	if emit != nil {
+		if err := emit(&memoryPolicyTxnBuffer{}); err != nil {
+			return err
+		}
+	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.programs[p.SupplierID] = p
@@ -127,46 +140,105 @@ func (r *MemoryPolicyRepository) GetTerms(_ context.Context, retailerID, supplie
 	return t, ok, nil
 }
 
-func (r *MemoryPolicyRepository) ListTermsBySupplier(_ context.Context, supplierID string, limit int) ([]RetailerPaymentTerms, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
+func (r *MemoryPolicyRepository) ListTermsBySupplier(ctx context.Context, supplierID string, limit int) ([]RetailerPaymentTerms, error) {
+	page, _, err := r.ListTermsBySupplierPage(ctx, supplierID, limit, "")
+	return page, err
+}
+
+func (r *MemoryPolicyRepository) ListTermsBySupplierPage(_ context.Context, supplierID string, limit int, cursor string) ([]RetailerPaymentTerms, string, error) {
 	if limit <= 0 {
 		limit = 100
 	}
+	cursorTs, cursorRid, cursorSid, hasCursor, err := decodeProfileCursor(cursor)
+	if err != nil {
+		return nil, "", err
+	}
+	r.mu.RLock()
+	defer r.mu.RUnlock()
 	out := make([]RetailerPaymentTerms, 0)
 	for _, t := range r.terms {
 		if t.SupplierID == supplierID {
 			out = append(out, t)
-			if len(out) >= limit {
-				break
-			}
 		}
 	}
-	return out, nil
+	return paginateMemoryTerms(out, limit, cursorTs, cursorRid, cursorSid, hasCursor)
 }
 
-func (r *MemoryPolicyRepository) ListTermsByRetailer(_ context.Context, retailerID string, limit int) ([]RetailerPaymentTerms, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
+func (r *MemoryPolicyRepository) ListTermsByRetailer(ctx context.Context, retailerID string, limit int) ([]RetailerPaymentTerms, error) {
+	page, _, err := r.ListTermsByRetailerPage(ctx, retailerID, limit, "")
+	return page, err
+}
+
+func (r *MemoryPolicyRepository) ListTermsByRetailerPage(_ context.Context, retailerID string, limit int, cursor string) ([]RetailerPaymentTerms, string, error) {
 	if limit <= 0 {
 		limit = 100
 	}
+	cursorTs, cursorRid, cursorSid, hasCursor, err := decodeProfileCursor(cursor)
+	if err != nil {
+		return nil, "", err
+	}
+	r.mu.RLock()
+	defer r.mu.RUnlock()
 	out := make([]RetailerPaymentTerms, 0)
 	for _, t := range r.terms {
 		if t.RetailerID == retailerID {
 			out = append(out, t)
-			if len(out) >= limit {
-				break
+		}
+	}
+	return paginateMemoryTerms(out, limit, cursorTs, cursorRid, cursorSid, hasCursor)
+}
+
+func paginateMemoryTerms(
+	items []RetailerPaymentTerms,
+	limit int,
+	cursorTs time.Time,
+	cursorRid, cursorSid string,
+	hasCursor bool,
+) ([]RetailerPaymentTerms, string, error) {
+	sort.Slice(items, func(i, j int) bool {
+		if !items[i].UpdatedAt.Equal(items[j].UpdatedAt) {
+			return items[i].UpdatedAt.After(items[j].UpdatedAt)
+		}
+		if items[i].RetailerID != items[j].RetailerID {
+			return items[i].RetailerID > items[j].RetailerID
+		}
+		return items[i].SupplierID > items[j].SupplierID
+	})
+	filtered := items
+	if hasCursor {
+		filtered = make([]RetailerPaymentTerms, 0, len(items))
+		for _, t := range items {
+			ts := t.UpdatedAt.UTC()
+			if ts.Before(cursorTs) || (ts.Equal(cursorTs) && (t.RetailerID < cursorRid || (t.RetailerID == cursorRid && t.SupplierID < cursorSid))) {
+				filtered = append(filtered, t)
 			}
 		}
 	}
-	return out, nil
+	if len(filtered) > limit {
+		page := filtered[:limit]
+		last := page[len(page)-1]
+		return page, encodeProfileCursor(last.UpdatedAt, last.RetailerID, last.SupplierID), nil
+	}
+	return filtered, "", nil
 }
 
-func (r *MemoryPolicyRepository) UpsertTerms(_ context.Context, t RetailerPaymentTerms) error {
+func (r *MemoryPolicyRepository) UpsertTerms(_ context.Context, t RetailerPaymentTerms, emit func(outbox.TxnBuffer) error) error {
+	if emit != nil {
+		if err := emit(&memoryPolicyTxnBuffer{}); err != nil {
+			return err
+		}
+	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.terms[termsKey(t.RetailerID, t.SupplierID)] = t
+	return nil
+}
+
+// memoryPolicyTxnBuffer is a no-op buffer for memory-repo emit callbacks in tests.
+type memoryPolicyTxnBuffer struct{}
+
+func (b *memoryPolicyTxnBuffer) BufferOutbox(context.Context, outbox.Event) error { return nil }
+func (b *memoryPolicyTxnBuffer) BufferAudit(context.Context, outbox.AuditEntry) error {
 	return nil
 }
 
@@ -220,13 +292,25 @@ func scanProgram(row *spanner.Row) (SupplierCreditProgram, error) {
 	p.DisabledByActor = disabledBy.StringVal
 	p.DisableReason = reason.StringVal
 	p.Timezone = tz.StringVal
-	if p.Timezone == "" {
-		p.Timezone = "Asia/Tashkent"
-	}
 	return p, nil
 }
 
-func (r *SpannerPolicyRepository) UpsertProgram(ctx context.Context, p SupplierCreditProgram) error {
+func packCreditTimezone(ctx context.Context, supplierID string) string {
+	name, err := auth.TimezoneNameFromContext(ctx, supplierID)
+	if err != nil {
+		return ""
+	}
+	return name
+}
+
+func withPackTimezone(ctx context.Context, p SupplierCreditProgram) SupplierCreditProgram {
+	if strings.TrimSpace(p.Timezone) == "" {
+		p.Timezone = packCreditTimezone(ctx, p.SupplierID)
+	}
+	return p
+}
+
+func (r *SpannerPolicyRepository) UpsertProgram(ctx context.Context, p SupplierCreditProgram, emit func(outbox.TxnBuffer) error) error {
 	m := map[string]any{
 		"SupplierId":              p.SupplierID,
 		"ProgramEnabled":          p.ProgramEnabled,
@@ -246,14 +330,26 @@ func (r *SpannerPolicyRepository) UpsertProgram(ctx context.Context, p SupplierC
 	if p.DisabledAt != nil {
 		m["DisabledAt"] = *p.DisabledAt
 	}
-	_, err := r.client.Apply(ctx, []*spanner.Mutation{spanner.InsertOrUpdateMap("SupplierCreditPrograms", m)})
+	_, err := r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		if err := txn.BufferWrite([]*spanner.Mutation{spanner.InsertOrUpdateMap("SupplierCreditPrograms", m)}); err != nil {
+			return err
+		}
+		if emit == nil {
+			return nil
+		}
+		buf := outbox.NewSpannerTxnBuffer(txn)
+		if err := emit(buf); err != nil {
+			return err
+		}
+		return buf.Flush(ctx)
+	})
 	return err
 }
 
 func (r *SpannerPolicyRepository) GetTerms(ctx context.Context, retailerID, supplierID string) (RetailerPaymentTerms, bool, error) {
-	row, err := r.client.Single().ReadRow(ctx, "RetailerPaymentTerms", spanner.Key{retailerID, supplierID},
+	row, err := r.client.Single().WithTimestampBound(spanner.StrongRead()).ReadRow(ctx, "RetailerPaymentTerms", spanner.Key{retailerID, supplierID},
 		[]string{"RetailerId", "SupplierId", "CreditEnabled", "EnabledAt", "EnabledByUserId", "DisabledAt", "DisabledByActor",
-			"TermsDays", "GracePeriodDays", "CreditLimitMinor", "UseGlobalDefaults", "Version", "UpdatedAt"})
+			"TermsDays", "GracePeriodDays", "CreditLimitMinor", "UseGlobalDefaults", "ConsentVerified", "Version", "UpdatedAt"})
 	if err != nil {
 		if spanner.ErrCode(err) == codes.NotFound {
 			return RetailerPaymentTerms{}, false, nil
@@ -268,8 +364,9 @@ func scanTerms(row *spanner.Row) (RetailerPaymentTerms, error) {
 	var t RetailerPaymentTerms
 	var enabledAt, disabledAt spanner.NullTime
 	var enabledBy, disabledBy spanner.NullString
+	var consentVerified spanner.NullBool
 	if err := row.Columns(&t.RetailerID, &t.SupplierID, &t.CreditEnabled, &enabledAt, &enabledBy, &disabledAt, &disabledBy,
-		&t.TermsDays, &t.GracePeriodDays, &t.CreditLimitMinor, &t.UseGlobalDefaults, &t.Version, &t.UpdatedAt); err != nil {
+		&t.TermsDays, &t.GracePeriodDays, &t.CreditLimitMinor, &t.UseGlobalDefaults, &consentVerified, &t.Version, &t.UpdatedAt); err != nil {
 		return t, err
 	}
 	if enabledAt.Valid {
@@ -282,18 +379,41 @@ func scanTerms(row *spanner.Row) (RetailerPaymentTerms, error) {
 	}
 	t.EnabledByUserID = enabledBy.StringVal
 	t.DisabledByActor = disabledBy.StringVal
+	if consentVerified.Valid {
+		t.ConsentVerified = consentVerified.Bool
+	}
 	return t, nil
 }
 
 func (r *SpannerPolicyRepository) ListTermsBySupplier(ctx context.Context, supplierID string, limit int) ([]RetailerPaymentTerms, error) {
+	page, _, err := r.ListTermsBySupplierPage(ctx, supplierID, limit, "")
+	return page, err
+}
+
+func (r *SpannerPolicyRepository) ListTermsBySupplierPage(ctx context.Context, supplierID string, limit int, cursor string) ([]RetailerPaymentTerms, string, error) {
 	if limit <= 0 {
 		limit = 100
 	}
-	stmt := spanner.Statement{
-		SQL:    fmt.Sprintf(`SELECT RetailerId, SupplierId, CreditEnabled, EnabledAt, EnabledByUserId, DisabledAt, DisabledByActor, TermsDays, GracePeriodDays, CreditLimitMinor, UseGlobalDefaults, Version, UpdatedAt FROM RetailerPaymentTerms WHERE SupplierId = @sid ORDER BY UpdatedAt DESC LIMIT %d`, limit),
-		Params: map[string]any{"sid": supplierID},
+	if limit > 200 {
+		limit = 200
 	}
-	iter := r.client.Single().Query(ctx, stmt)
+	cursorTs, cursorRid, cursorSid, hasCursor, err := decodeProfileCursor(cursor)
+	if err != nil {
+		return nil, "", err
+	}
+	sql := `SELECT RetailerId, SupplierId, CreditEnabled, EnabledAt, EnabledByUserId, DisabledAt, DisabledByActor, TermsDays, GracePeriodDays, CreditLimitMinor, UseGlobalDefaults, ConsentVerified, Version, UpdatedAt FROM RetailerPaymentTerms WHERE SupplierId = @sid`
+	params := map[string]any{
+		"sid":   supplierID,
+		"limit": int64(limit + 1),
+	}
+	if hasCursor {
+		sql += ` AND (UpdatedAt < @cursorTs OR (UpdatedAt = @cursorTs AND (RetailerId < @cursorRid OR (RetailerId = @cursorRid AND SupplierId < @cursorSid))))`
+		params["cursorTs"] = cursorTs
+		params["cursorRid"] = cursorRid
+		params["cursorSid"] = cursorSid
+	}
+	sql += ` ORDER BY UpdatedAt DESC, RetailerId DESC, SupplierId DESC LIMIT @limit`
+	iter := r.client.Single().WithTimestampBound(spanner.StrongRead()).Query(ctx, spanner.Statement{SQL: sql, Params: params})
 	defer iter.Stop()
 	out := make([]RetailerPaymentTerms, 0)
 	for {
@@ -302,26 +422,51 @@ func (r *SpannerPolicyRepository) ListTermsBySupplier(ctx context.Context, suppl
 			break
 		}
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
 		t, err := scanTerms(row)
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
 		out = append(out, t)
 	}
-	return out, nil
+	if len(out) > limit {
+		page := out[:limit]
+		last := page[len(page)-1]
+		return page, encodeProfileCursor(last.UpdatedAt, last.RetailerID, last.SupplierID), nil
+	}
+	return out, "", nil
 }
 
 func (r *SpannerPolicyRepository) ListTermsByRetailer(ctx context.Context, retailerID string, limit int) ([]RetailerPaymentTerms, error) {
+	page, _, err := r.ListTermsByRetailerPage(ctx, retailerID, limit, "")
+	return page, err
+}
+
+func (r *SpannerPolicyRepository) ListTermsByRetailerPage(ctx context.Context, retailerID string, limit int, cursor string) ([]RetailerPaymentTerms, string, error) {
 	if limit <= 0 {
 		limit = 100
 	}
-	stmt := spanner.Statement{
-		SQL:    fmt.Sprintf(`SELECT RetailerId, SupplierId, CreditEnabled, EnabledAt, EnabledByUserId, DisabledAt, DisabledByActor, TermsDays, GracePeriodDays, CreditLimitMinor, UseGlobalDefaults, Version, UpdatedAt FROM RetailerPaymentTerms WHERE RetailerId = @rid ORDER BY UpdatedAt DESC LIMIT %d`, limit),
-		Params: map[string]any{"rid": retailerID},
+	if limit > 200 {
+		limit = 200
 	}
-	iter := r.client.Single().Query(ctx, stmt)
+	cursorTs, cursorRid, cursorSid, hasCursor, err := decodeProfileCursor(cursor)
+	if err != nil {
+		return nil, "", err
+	}
+	sql := `SELECT RetailerId, SupplierId, CreditEnabled, EnabledAt, EnabledByUserId, DisabledAt, DisabledByActor, TermsDays, GracePeriodDays, CreditLimitMinor, UseGlobalDefaults, ConsentVerified, Version, UpdatedAt FROM RetailerPaymentTerms WHERE RetailerId = @rid`
+	params := map[string]any{
+		"rid":   retailerID,
+		"limit": int64(limit + 1),
+	}
+	if hasCursor {
+		sql += ` AND (UpdatedAt < @cursorTs OR (UpdatedAt = @cursorTs AND (RetailerId < @cursorRid OR (RetailerId = @cursorRid AND SupplierId < @cursorSid))))`
+		params["cursorTs"] = cursorTs
+		params["cursorRid"] = cursorRid
+		params["cursorSid"] = cursorSid
+	}
+	sql += ` ORDER BY UpdatedAt DESC, RetailerId DESC, SupplierId DESC LIMIT @limit`
+	iter := r.client.Single().WithTimestampBound(spanner.StrongRead()).Query(ctx, spanner.Statement{SQL: sql, Params: params})
 	defer iter.Stop()
 	out := make([]RetailerPaymentTerms, 0)
 	for {
@@ -330,18 +475,23 @@ func (r *SpannerPolicyRepository) ListTermsByRetailer(ctx context.Context, retai
 			break
 		}
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
 		t, err := scanTerms(row)
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
 		out = append(out, t)
 	}
-	return out, nil
+	if len(out) > limit {
+		page := out[:limit]
+		last := page[len(page)-1]
+		return page, encodeProfileCursor(last.UpdatedAt, last.RetailerID, last.SupplierID), nil
+	}
+	return out, "", nil
 }
 
-func (r *SpannerPolicyRepository) UpsertTerms(ctx context.Context, t RetailerPaymentTerms) error {
+func termsMutationMap(t RetailerPaymentTerms) map[string]any {
 	m := map[string]any{
 		"RetailerId":        t.RetailerID,
 		"SupplierId":        t.SupplierID,
@@ -352,6 +502,7 @@ func (r *SpannerPolicyRepository) UpsertTerms(ctx context.Context, t RetailerPay
 		"GracePeriodDays":   t.GracePeriodDays,
 		"CreditLimitMinor":  t.CreditLimitMinor,
 		"UseGlobalDefaults": t.UseGlobalDefaults,
+		"ConsentVerified":   t.ConsentVerified,
 		"Version":           t.Version,
 		"UpdatedAt":         spanner.CommitTimestamp,
 	}
@@ -361,7 +512,100 @@ func (r *SpannerPolicyRepository) UpsertTerms(ctx context.Context, t RetailerPay
 	if t.DisabledAt != nil {
 		m["DisabledAt"] = *t.DisabledAt
 	}
-	_, err := r.client.Apply(ctx, []*spanner.Mutation{spanner.InsertOrUpdateMap("RetailerPaymentTerms", m)})
+	return m
+}
+
+func (r *SpannerPolicyRepository) UpsertTerms(ctx context.Context, t RetailerPaymentTerms, emit func(outbox.TxnBuffer) error) error {
+	_, err := r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		if err := txn.BufferWrite([]*spanner.Mutation{spanner.InsertOrUpdateMap("RetailerPaymentTerms", termsMutationMap(t))}); err != nil {
+			return err
+		}
+		if emit == nil {
+			return nil
+		}
+		buf := outbox.NewSpannerTxnBuffer(txn)
+		if err := emit(buf); err != nil {
+			return err
+		}
+		return buf.Flush(ctx)
+	})
+	return err
+}
+
+// UpsertTermsAndProfile writes RetailerPaymentTerms + RetailerCreditProfiles + dual outbox
+// in one RW txn (relationship enable/patch/disable Class A). Same Spanner database as credit.
+func (r *SpannerPolicyRepository) UpsertTermsAndProfile(ctx context.Context, t RetailerPaymentTerms, p Profile, emitTerms, emitProfile func(outbox.TxnBuffer) error) error {
+	if r == nil || r.client == nil {
+		return fmt.Errorf("policy upsert unavailable")
+	}
+	p.AvailableCreditMinor = p.Available()
+	if p.Status == "" {
+		p.Status = StatusInactive
+	}
+	if !p.Status.Valid() {
+		return fmt.Errorf("invalid credit profile status: %s", p.Status)
+	}
+	callerVersion := p.Version
+	_, err := r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		// Profile version CAS (same semantics as credit.SpannerRepository.UpsertProfile).
+		expectedVersion, reserved, balance, found, err := readProfileVersionReservedBalance(ctx, txn, p.RetailerID, p.SupplierID)
+		if err != nil {
+			return err
+		}
+		if found {
+			if callerVersion != 0 && expectedVersion != callerVersion {
+				return fmt.Errorf("optimistic concurrency conflict: expected %d, got %d", callerVersion, expectedVersion)
+			}
+			p.Version = expectedVersion + 1
+			if p.ReservedMinor == 0 {
+				p.ReservedMinor = reserved
+			}
+			if p.CurrentBalanceMinor == 0 && balance > 0 && p.CreditLimitMinor > 0 {
+				p.CurrentBalanceMinor = balance
+			}
+		} else {
+			p.Version = 1
+			if p.CreatedAt.IsZero() {
+				p.CreatedAt = p.UpdatedAt
+			}
+		}
+		p.AvailableCreditMinor = p.Available()
+
+		muts := []*spanner.Mutation{
+			spanner.InsertOrUpdateMap("RetailerPaymentTerms", termsMutationMap(t)),
+			spanner.InsertOrUpdateMap("RetailerCreditProfiles", map[string]any{
+				"RetailerId":           p.RetailerID,
+				"SupplierId":           p.SupplierID,
+				"CreditLimitMinor":     p.CreditLimitMinor,
+				"CurrentBalanceMinor":  p.CurrentBalanceMinor,
+				"ReservedMinor":        p.ReservedMinor,
+				"AvailableCreditMinor": p.AvailableCreditMinor,
+				"RiskScore":            p.RiskScore,
+				"DelinquencyCount":     p.DelinquencyCount,
+				"PrepayOnlyLocked":     p.PrepayOnlyLocked,
+				"Status":               string(p.Status),
+				"LastEvaluatedAt":      p.LastEvaluatedAt,
+				"Version":              p.Version,
+				"CreatedAt":            p.CreatedAt,
+				"UpdatedAt":            p.UpdatedAt,
+			}),
+		}
+		if err := txn.BufferWrite(muts); err != nil {
+			return err
+		}
+		buf := outbox.NewSpannerTxnBuffer(txn)
+		if emitTerms != nil {
+			if err := emitTerms(buf); err != nil {
+				return err
+			}
+		}
+		if emitProfile != nil {
+			if err := emitProfile(buf); err != nil {
+				return err
+			}
+		}
+		return buf.Flush(ctx)
+	})
 	return err
 }
 
@@ -388,7 +632,7 @@ func (r *SpannerPolicyRepository) AppendAudit(ctx context.Context, a CreditPolic
 		m["WarningAckAt"] = *a.WarningAckAt
 	}
 	return spannerutils.RunReadWriteTransaction(ctx, r.client, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-		return txn.BufferWrite([]*spanner.Mutation{spanner.InsertOrUpdateMap("CreditPolicyAudit", m)})
+		return txn.BufferWrite([]*spanner.Mutation{spanner.InsertMap("CreditPolicyAudit", m)})
 	})
 }
 
@@ -401,10 +645,10 @@ func nullable(s string) any {
 
 // PolicyService owns irreversible enable / admin disable / terms resolution.
 type PolicyService struct {
-	repo    PolicyRepository
-	credit  *Service
-	now     func() time.Time
-	newID   func() string
+	repo   PolicyRepository
+	credit *Service
+	now    func() time.Time
+	newID  func() string
 }
 
 func NewPolicyService(repo PolicyRepository, credit *Service) *PolicyService {
@@ -412,11 +656,66 @@ func NewPolicyService(repo PolicyRepository, credit *Service) *PolicyService {
 		repo:   repo,
 		credit: credit,
 		now:    func() time.Time { return time.Now().UTC() },
-		newID:  func() string { return fmt.Sprintf("cpa_%d", time.Now().UnixNano()) },
+		newID:  func() string { return "cpa_" + strings.ReplaceAll(uuid.NewString(), "-", "") },
 	}
 }
 
 func (s *PolicyService) SetNow(fn func() time.Time) { s.now = fn }
+
+// writeTermsAndProfile persists relationship terms and optional credit profile mirror.
+// On Spanner, both rows + dual outbox commit in one RW txn; otherwise sequential fallback.
+func (s *PolicyService) writeTermsAndProfile(ctx context.Context, t RetailerPaymentTerms, profile *Profile, actorUserID, termsAction, profileReason string) error {
+	now := t.UpdatedAt
+	if now.IsZero() {
+		now = s.now()
+	}
+	emitTerms := func(txn outbox.TxnBuffer) error {
+		return outbox.EmitJSON(ctx, txn, events.AggregateSupplier, t.SupplierID, events.TopicMain, events.SupplierCreditTermsEvent{
+			BaseEvent:     events.BaseEvent{Type: events.EventSupplierCreditTermsChanged, Timestamp: now.UTC().Format(time.RFC3339Nano)},
+			SupplierID:    t.SupplierID,
+			RetailerID:    t.RetailerID,
+			CreditEnabled: t.CreditEnabled,
+			Version:       t.Version,
+			Action:        termsAction,
+			ActorID:       actorUserID,
+		})
+	}
+	if profile == nil {
+		return s.repo.UpsertTerms(ctx, t, emitTerms)
+	}
+	if profile.UpdatedAt.IsZero() {
+		profile.UpdatedAt = now
+	}
+	if profile.LastEvaluatedAt.IsZero() {
+		profile.LastEvaluatedAt = now
+	}
+	if profile.CreatedAt.IsZero() {
+		profile.CreatedAt = now
+	}
+	emitProfile := func(txn outbox.TxnBuffer) error {
+		return outbox.EmitJSON(ctx, txn, events.AggregateCreditProfile, profile.RetailerID, events.TopicMain, events.CreditProfileEvent{
+			BaseEvent:        events.BaseEvent{Type: events.EventRetailerCreditProfileChanged, Timestamp: now.UTC().Format(time.RFC3339Nano)},
+			ProfileID:        profileID(profile.RetailerID, profile.SupplierID),
+			RetailerID:       profile.RetailerID,
+			SupplierID:       profile.SupplierID,
+			CreditLimitMinor: profile.CreditLimitMinor,
+			CurrentBalance:   profile.CurrentBalanceMinor,
+			Delinquent:       profile.DelinquencyCount > 0,
+			Reason:           profileReason,
+		})
+	}
+	if sp, ok := s.repo.(*SpannerPolicyRepository); ok {
+		return sp.UpsertTermsAndProfile(ctx, t, *profile, emitTerms, emitProfile)
+	}
+	// Memory / non-Spanner: terms then profile (tests).
+	if err := s.repo.UpsertTerms(ctx, t, emitTerms); err != nil {
+		return err
+	}
+	if s.credit != nil {
+		return s.credit.UpsertProfile(ctx, *profile, actorUserID, profileReason)
+	}
+	return nil
+}
 
 // CreditPathAllowed implements PolicyGate.
 func (s *PolicyService) CreditPathAllowed(ctx context.Context, retailerID, supplierID string) (bool, string, int64, error) {
@@ -470,7 +769,7 @@ func (s *PolicyService) ResolveDueAt(ctx context.Context, retailerID, supplierID
 func (s *PolicyService) resolveTerms(prog SupplierCreditProgram, terms RetailerPaymentTerms) ResolvedTerms {
 	tz := prog.Timezone
 	if tz == "" {
-		tz = "Asia/Tashkent"
+		tz = packCreditTimezone(context.Background(), prog.SupplierID)
 	}
 	if terms.UseGlobalDefaults || !terms.CreditEnabled {
 		days := prog.GlobalTermsDays
@@ -524,7 +823,7 @@ func (s *PolicyService) EnableProgram(ctx context.Context, supplierID, actorUser
 		GlobalTermsDays:         30,
 		GlobalGraceDays:         0,
 		GlobalDefaultLimitMinor: 0,
-		Timezone:                "Asia/Tashkent",
+		Timezone:                packCreditTimezone(ctx, supplierID),
 		Version:                 1,
 		UpdatedAt:               now,
 	}
@@ -547,7 +846,16 @@ func (s *PolicyService) EnableProgram(ctx context.Context, supplierID, actorUser
 	}
 	before, _ := json.Marshal(existing)
 	after, _ := json.Marshal(p)
-	if err := s.repo.UpsertProgram(ctx, p); err != nil {
+	if err := s.repo.UpsertProgram(ctx, p, func(txn outbox.TxnBuffer) error {
+		return outbox.EmitJSON(ctx, txn, events.AggregateSupplier, supplierID, events.TopicMain, events.SupplierCreditProgramEvent{
+			BaseEvent:      events.BaseEvent{Type: events.EventSupplierCreditProgramChanged, Timestamp: now.UTC().Format(time.RFC3339Nano)},
+			SupplierID:     supplierID,
+			ProgramEnabled: true,
+			Version:        p.Version,
+			Action:         "ENABLE",
+			ActorID:        actorUserID,
+		})
+	}); err != nil {
 		return SupplierCreditProgram{}, err
 	}
 	_ = s.repo.AppendAudit(ctx, CreditPolicyAuditRow{
@@ -583,7 +891,16 @@ func (s *PolicyService) PatchProgramDefaults(ctx context.Context, supplierID, ac
 	p.Version++
 	p.UpdatedAt = s.now()
 	after, _ := json.Marshal(p)
-	if err := s.repo.UpsertProgram(ctx, p); err != nil {
+	if err := s.repo.UpsertProgram(ctx, p, func(txn outbox.TxnBuffer) error {
+		return outbox.EmitJSON(ctx, txn, events.AggregateSupplier, supplierID, events.TopicMain, events.SupplierCreditProgramEvent{
+			BaseEvent:      events.BaseEvent{Type: events.EventSupplierCreditProgramChanged, Timestamp: p.UpdatedAt.UTC().Format(time.RFC3339Nano)},
+			SupplierID:     supplierID,
+			ProgramEnabled: p.ProgramEnabled,
+			Version:        p.Version,
+			Action:         "PATCH",
+			ActorID:        actorUserID,
+		})
+	}); err != nil {
 		return SupplierCreditProgram{}, err
 	}
 	_ = s.repo.AppendAudit(ctx, CreditPolicyAuditRow{
@@ -642,24 +959,32 @@ func (s *PolicyService) EnableRelationship(ctx context.Context, supplierID, reta
 	}
 	before, _ := json.Marshal(existing)
 	after, _ := json.Marshal(t)
-	if err := s.repo.UpsertTerms(ctx, t); err != nil {
-		return RetailerPaymentTerms{}, err
-	}
-	// Mirror onto credit profile as ACTIVE with limit.
-	if s.credit != nil {
-		limit := t.CreditLimitMinor
-		if t.UseGlobalDefaults {
-			limit = prog.GlobalDefaultLimitMinor
-			if t.CreditLimitMinor > 0 {
-				limit = t.CreditLimitMinor
-			}
+	limit := t.CreditLimitMinor
+	if t.UseGlobalDefaults {
+		limit = prog.GlobalDefaultLimitMinor
+		if t.CreditLimitMinor > 0 {
+			limit = t.CreditLimitMinor
 		}
-		_ = s.credit.UpsertProfile(ctx, Profile{
-			RetailerID:       retailerID,
-			SupplierID:       supplierID,
-			CreditLimitMinor: limit,
-			Status:           StatusActive,
-		}, actorUserID, "relationship_enable")
+	}
+	var prepayOnlyLocked bool
+	if s.credit != nil {
+		if existing, found, getErr := s.credit.GetProfile(ctx, retailerID, supplierID); getErr == nil && found {
+			prepayOnlyLocked = existing.PrepayOnlyLocked
+		}
+	}
+	profile := &Profile{
+		RetailerID:       retailerID,
+		SupplierID:       supplierID,
+		CreditLimitMinor: limit,
+		PrepayOnlyLocked: prepayOnlyLocked,
+		Status:           StatusActive,
+		UpdatedAt:        now,
+		CreatedAt:        now,
+		LastEvaluatedAt:  now,
+	}
+	// Single Spanner RW: terms + profile + dual outbox (residual S-P1-7).
+	if err := s.writeTermsAndProfile(ctx, t, profile, actorUserID, "ENABLE", "relationship_enable"); err != nil {
+		return RetailerPaymentTerms{}, err
 	}
 	_ = s.repo.AppendAudit(ctx, CreditPolicyAuditRow{
 		AuditID: s.newID(), SupplierID: supplierID, RetailerID: retailerID, Action: "REL_ENABLE",
@@ -694,15 +1019,17 @@ func (s *PolicyService) PatchRelationshipTerms(ctx context.Context, supplierID, 
 	t.Version++
 	t.UpdatedAt = s.now()
 	after, _ := json.Marshal(t)
-	if err := s.repo.UpsertTerms(ctx, t); err != nil {
-		return RetailerPaymentTerms{}, err
-	}
-	if s.credit != nil && limitMinor != nil {
+	var profile *Profile
+	if limitMinor != nil && s.credit != nil {
 		prof, found, _ := s.credit.GetProfile(ctx, retailerID, supplierID)
 		if found {
 			prof.CreditLimitMinor = *limitMinor
-			_ = s.credit.UpsertProfile(ctx, prof, actorUserID, "terms_limit_patch")
+			prof.UpdatedAt = t.UpdatedAt
+			profile = &prof
 		}
+	}
+	if err := s.writeTermsAndProfile(ctx, t, profile, actorUserID, "PATCH", "terms_limit_patch"); err != nil {
+		return RetailerPaymentTerms{}, err
 	}
 	_ = s.repo.AppendAudit(ctx, CreditPolicyAuditRow{
 		AuditID: s.newID(), SupplierID: supplierID, RetailerID: retailerID, Action: "TERMS_PATCH",
@@ -737,15 +1064,17 @@ func (s *PolicyService) AdminDisableRelationship(ctx context.Context, supplierID
 	t.Version++
 	t.UpdatedAt = now
 	after, _ := json.Marshal(t)
-	if err := s.repo.UpsertTerms(ctx, t); err != nil {
-		return err
-	}
+	var profile *Profile
 	if s.credit != nil {
 		prof, found, _ := s.credit.GetProfile(ctx, retailerID, supplierID)
 		if found {
 			prof.Status = StatusInactive
-			_ = s.credit.UpsertProfile(ctx, prof, actorUserID, "admin_disable:"+ticketID)
+			prof.UpdatedAt = now
+			profile = &prof
 		}
+	}
+	if err := s.writeTermsAndProfile(ctx, t, profile, actorUserID, "DISABLE", "admin_disable:"+ticketID); err != nil {
+		return err
 	}
 	return s.repo.AppendAudit(ctx, CreditPolicyAuditRow{
 		AuditID: s.newID(), SupplierID: supplierID, RetailerID: retailerID, Action: "ADMIN_DISABLE",
@@ -775,7 +1104,16 @@ func (s *PolicyService) AdminDisableProgram(ctx context.Context, supplierID, act
 	p.Version++
 	p.UpdatedAt = now
 	after, _ := json.Marshal(p)
-	if err := s.repo.UpsertProgram(ctx, p); err != nil {
+	if err := s.repo.UpsertProgram(ctx, p, func(txn outbox.TxnBuffer) error {
+		return outbox.EmitJSON(ctx, txn, events.AggregateSupplier, supplierID, events.TopicMain, events.SupplierCreditProgramEvent{
+			BaseEvent:      events.BaseEvent{Type: events.EventSupplierCreditProgramChanged, Timestamp: now.UTC().Format(time.RFC3339Nano)},
+			SupplierID:     supplierID,
+			ProgramEnabled: false,
+			Version:        p.Version,
+			Action:         "DISABLE",
+			ActorID:        actorUserID,
+		})
+	}); err != nil {
 		return err
 	}
 	return s.repo.AppendAudit(ctx, CreditPolicyAuditRow{
@@ -843,25 +1181,68 @@ func (s *PolicyService) UnholdRelationship(ctx context.Context, supplierID, reta
 }
 
 func (s *PolicyService) GetProgram(ctx context.Context, supplierID string) (SupplierCreditProgram, bool, error) {
-	return s.repo.GetProgram(ctx, supplierID)
+	p, ok, err := s.repo.GetProgram(ctx, supplierID)
+	if err != nil || !ok {
+		return p, ok, err
+	}
+	return withPackTimezone(ctx, p), true, nil
+}
+
+// PolicyTermsPager is an optional PolicyRepository extension supporting keyset pagination.
+type PolicyTermsPager interface {
+	ListTermsBySupplierPage(ctx context.Context, supplierID string, limit int, cursor string) ([]RetailerPaymentTerms, string, error)
+	ListTermsByRetailerPage(ctx context.Context, retailerID string, limit int, cursor string) ([]RetailerPaymentTerms, string, error)
 }
 
 func (s *PolicyService) ListRelationships(ctx context.Context, supplierID string, limit int) ([]RetailerPaymentTerms, error) {
 	return s.repo.ListTermsBySupplier(ctx, supplierID, limit)
 }
 
+func (s *PolicyService) ListRelationshipsPage(ctx context.Context, supplierID string, limit int, cursor string) ([]RetailerPaymentTerms, string, error) {
+	if pager, ok := s.repo.(PolicyTermsPager); ok {
+		return pager.ListTermsBySupplierPage(ctx, supplierID, limit, cursor)
+	}
+	if strings.TrimSpace(cursor) != "" {
+		return nil, "", ErrInvalidCursor
+	}
+	list, err := s.repo.ListTermsBySupplier(ctx, supplierID, limit)
+	return list, "", err
+}
+
 func (s *PolicyService) ListRetailerRelationships(ctx context.Context, retailerID string, limit int) ([]RetailerPaymentTerms, error) {
 	return s.repo.ListTermsByRetailer(ctx, retailerID, limit)
 }
 
+func (s *PolicyService) ListRetailerRelationshipsPage(ctx context.Context, retailerID string, limit int, cursor string) ([]RetailerPaymentTerms, string, error) {
+	if pager, ok := s.repo.(PolicyTermsPager); ok {
+		return pager.ListTermsByRetailerPage(ctx, retailerID, limit, cursor)
+	}
+	if strings.TrimSpace(cursor) != "" {
+		return nil, "", ErrInvalidCursor
+	}
+	list, err := s.repo.ListTermsByRetailer(ctx, retailerID, limit)
+	return list, "", err
+}
+
 func (s *PolicyService) ResolveTermsFor(ctx context.Context, retailerID, supplierID string) (ResolvedTerms, error) {
-	prog, _, err := s.repo.GetProgram(ctx, supplierID)
+	prog, found, err := s.repo.GetProgram(ctx, supplierID)
 	if err != nil {
 		return ResolvedTerms{}, err
+	}
+	if !found {
+		prog.SupplierID = supplierID
 	}
 	terms, _, err := s.repo.GetTerms(ctx, retailerID, supplierID)
 	if err != nil {
 		return ResolvedTerms{}, err
 	}
 	return s.resolveTerms(prog, terms), nil
+}
+
+// ResolveTermsForOrder returns effective TermsDays, GracePeriodDays, CreditLimitMinor, and Timezone for order/invoice flows.
+func (s *PolicyService) ResolveTermsForOrder(ctx context.Context, retailerID, supplierID string) (ResolvedTerms, error) {
+	if s == nil || s.repo == nil {
+		return ResolvedTerms{TermsDays: 30, Timezone: "Asia/Tashkent"}, nil
+	}
+	return s.ResolveTermsFor(ctx, retailerID, supplierID)
 }

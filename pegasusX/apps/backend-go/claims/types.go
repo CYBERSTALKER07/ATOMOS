@@ -67,28 +67,39 @@ const (
 	EvidenceNote      EvidenceType = "NOTE"
 )
 
+// EscalationMetadata captures anti-fraud threshold and repeat-pattern review signals on a Claim.
+type EscalationMetadata struct {
+	EscalationRequired bool     `json:"escalation_required"`
+	Reasons            []string `json:"reasons,omitempty"`
+	DHashStatus        string   `json:"dhash_status"` // "off" while CLAIM_AUTO_APPROVE_MAX_MINOR == 0
+	RecentClaimCount   int      `json:"recent_claim_count,omitempty"`
+	PriorOrderClaims   int      `json:"prior_order_claims,omitempty"`
+	ThresholdMinor     int64    `json:"threshold_minor,omitempty"`
+}
+
 // Claim is the liability/resolution aggregate for a post-delivery exception.
 type Claim struct {
-	ClaimID         string         `json:"claim_id"`
-	OrderID         string         `json:"order_id"`
-	SupplierID      string         `json:"supplier_id"`
-	RetailerID      string         `json:"retailer_id"`
-	FiledBy         string         `json:"filed_by"`
-	FiledByRole     string         `json:"filed_by_role"`
-	ClaimType       ClaimType      `json:"claim_type"`
-	Status          Status         `json:"status"`
-	Description     string         `json:"description,omitempty"`
-	AmountMinor     int64          `json:"amount_minor,omitempty"`
-	Currency        string         `json:"currency,omitempty"`
-	LineItems       []ClaimLine    `json:"line_items,omitempty"`
-	Evidences       []Evidence     `json:"evidences,omitempty"`
-	ResolutionNote  string         `json:"resolution_note,omitempty"`
-	ResolvedBy      string         `json:"resolved_by,omitempty"`
-	ResolvedAt      *time.Time     `json:"resolved_at,omitempty"`
-	Source          Source         `json:"source"`
-	TraceID         string         `json:"trace_id,omitempty"`
-	CreatedAt       time.Time      `json:"created_at"`
-	UpdatedAt       time.Time      `json:"updated_at"`
+	ClaimID         string              `json:"claim_id"`
+	OrderID         string              `json:"order_id"`
+	SupplierID      string              `json:"supplier_id"`
+	RetailerID      string              `json:"retailer_id"`
+	FiledBy         string              `json:"filed_by"`
+	FiledByRole     string              `json:"filed_by_role"`
+	ClaimType       ClaimType           `json:"claim_type"`
+	Status          Status              `json:"status"`
+	Description     string              `json:"description,omitempty"`
+	AmountMinor     int64               `json:"amount_minor,omitempty"`
+	Currency        string              `json:"currency,omitempty"`
+	LineItems       []ClaimLine         `json:"line_items,omitempty"`
+	Evidences       []Evidence          `json:"evidences,omitempty"`
+	Escalation      *EscalationMetadata `json:"escalation,omitempty"`
+	ResolutionNote  string              `json:"resolution_note,omitempty"`
+	ResolvedBy      string              `json:"resolved_by,omitempty"`
+	ResolvedAt      *time.Time          `json:"resolved_at,omitempty"`
+	Source          Source              `json:"source"`
+	TraceID         string              `json:"trace_id,omitempty"`
+	CreatedAt       time.Time           `json:"created_at"`
+	UpdatedAt       time.Time           `json:"updated_at"`
 }
 
 // ClaimLine is one SKU on a claim.
@@ -104,14 +115,17 @@ type ClaimLine struct {
 
 // Evidence is one proof artifact attached to a claim.
 type Evidence struct {
-	EvidenceID   string       `json:"evidence_id"`
-	ClaimID      string       `json:"claim_id"`
-	EvidenceType EvidenceType `json:"evidence_type"`
-	URI          string       `json:"uri"`
-	MimeType     string       `json:"mime_type,omitempty"`
-	CapturedAt   *time.Time   `json:"captured_at,omitempty"`
-	CapturedBy   string       `json:"captured_by,omitempty"`
-	CreatedAt    time.Time    `json:"created_at"`
+	EvidenceID       string       `json:"evidence_id"`
+	ClaimID          string       `json:"claim_id"`
+	EvidenceType     EvidenceType `json:"evidence_type"`
+	URI              string       `json:"uri"`
+	MimeType         string       `json:"mime_type,omitempty"`
+	ContentSha256    string       `json:"content_sha256,omitempty"`
+	UriSha256        string       `json:"uri_sha256,omitempty"`
+	ObjectGeneration int64        `json:"object_generation,omitempty"`
+	CapturedAt       *time.Time   `json:"captured_at,omitempty"`
+	CapturedBy       string       `json:"captured_by,omitempty"`
+	CreatedAt        time.Time    `json:"created_at"`
 }
 
 // FileClaimRequest is the retailer post-delivery claim body.
@@ -171,4 +185,5 @@ var (
 	ErrForbidden            = errors.New("forbidden")
 	ErrPricingFailed        = errors.New("claim_pricing_failed")
 	ErrAlreadySettled       = errors.New("claim_already_settled")
+	ErrReusedPhotoEvidence  = errors.New("reused_photo_evidence_refused")
 )

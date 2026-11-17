@@ -12,14 +12,18 @@ import (
 
 // Deps is the narrow dependency contract for credit routes.
 type Deps struct {
-	Service       *credit.Service
-	PolicyService *credit.PolicyService
-	ARService     *ar.Service
+	Service             *credit.Service
+	PolicyService       *credit.PolicyService
+	ARService           *ar.Service
+	DunningWorker       *ar.DunningWorker
+	PromiseBreachWorker *ar.PromiseBreachWorker
+	// StepUp optional MFA middleware for PLATFORM_ADMIN on dunning run-once (B5 M-P1-11).
+	StepUp func(http.Handler) http.Handler
 }
 
 // RegisterRoutes mounts credit profile + policy + AR endpoints.
 func RegisterRoutes(r chi.Router, d Deps) {
-	if d.Service == nil && d.PolicyService == nil {
+	if d.Service == nil && d.PolicyService == nil && d.ARService == nil && d.DunningWorker == nil && d.PromiseBreachWorker == nil {
 		return
 	}
 
@@ -27,7 +31,13 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		if d.Service != nil {
 			gr.With(auth.RequireRole(auth.RoleRetailer, auth.RoleAdmin)).Get("/v1/retailer/credit-profile", d.Service.HandleGetRetailerProfile)
 			gr.With(auth.RequireRole(auth.RoleAdmin)).Get("/v1/supplier/credit-profiles", d.Service.HandleListSupplierProfiles)
+			gr.With(auth.RequireRole(auth.RoleAdmin)).Get("/v1/supplier/credit-scores", d.Service.HandleGetScores)
 			gr.With(auth.RequireRole(auth.RoleAdmin)).Patch("/v1/supplier/retailer-credit-profile", d.Service.HandleUpsertSupplierProfile)
+			gr.With(auth.RequireRole(auth.RoleAdmin, auth.RoleWarehouseAdmin)).Post("/v1/supplier/credit-relationships/{retailerId}/prepay-lock", d.Service.HandleSetPrepayOnlyLock)
+			// M1.6 Credit Intelligence v2 routes (relationship + network score, portfolio, governed limit change).
+			gr.With(auth.RequireRole(auth.RoleRetailer, auth.RoleAdmin, auth.RoleWarehouseAdmin, auth.RoleWarehouse, auth.RolePlatformAdmin)).Get("/v1/credit/retailers/{id}/score", d.Service.HandleGetRetailerScore)
+			gr.With(auth.RequireRole(auth.RoleAdmin, auth.RoleWarehouseAdmin, auth.RoleWarehouse, auth.RolePlatformAdmin)).Get("/v1/credit/portfolio", d.Service.HandleGetPortfolio)
+			gr.With(auth.RequireRole(auth.RoleAdmin, auth.RoleWarehouseAdmin, auth.RolePlatformAdmin)).Post("/v1/credit/limits/{id}", d.Service.HandlePostCreditLimit)
 		}
 		if d.PolicyService != nil {
 			ps := d.PolicyService
@@ -48,7 +58,35 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		}
 		if d.ARService != nil {
 			gr.With(auth.RequireRole(auth.RoleRetailer, auth.RoleAdmin)).Get("/v1/retailer/ar/invoices", d.ARService.HandleListRetailerInvoices)
+			gr.With(auth.RequireRole(auth.RoleRetailer, auth.RoleAdmin)).Get("/v1/retailer/ar/statement", d.ARService.HandleRetailerStatement)
+			gr.With(auth.RequireRole(auth.RoleRetailer, auth.RoleAdmin)).Post("/v1/retailer/ar/pay-fifo", d.ARService.HandleRetailerPayFIFO)
+			gr.With(auth.RequireRole(auth.RoleRetailer, auth.RoleAdmin)).Post("/v1/retailer/ar/invoices/{id}/pay", d.ARService.HandleRetailerPayInvoice)
+			gr.With(auth.RequireRole(auth.RoleRetailer, auth.RoleAdmin)).Get("/v1/retailer/ar/promises", d.ARService.HandleRetailerListPromises)
+			gr.With(auth.RequireRole(auth.RoleRetailer, auth.RoleAdmin)).Post("/v1/retailer/ar/promises", d.ARService.HandleRetailerCreatePromise)
+			gr.With(auth.RequireRole(auth.RoleRetailer, auth.RoleAdmin)).Get("/v1/retailer/ar/delinquency-lock", d.ARService.HandleCheckDelinquencyLock)
 			gr.With(auth.RequireRole(auth.RoleAdmin, auth.RoleWarehouseAdmin, auth.RoleWarehouse)).Get("/v1/supplier/ar/invoices", d.ARService.HandleListSupplierInvoices)
+			gr.With(auth.RequireRole(auth.RoleAdmin, auth.RoleWarehouseAdmin, auth.RoleWarehouse)).Get("/v1/supplier/ar/promises", d.ARService.HandleSupplierListPromises)
+			gr.With(auth.RequireRole(auth.RoleAdmin, auth.RoleWarehouseAdmin), auth.RejectAuditorOrAgentMutation(false)).Post("/v1/supplier/ar/promises", d.ARService.HandleSupplierGrantPromise)
+			gr.With(auth.RequireRole(auth.RoleAdmin, auth.RoleWarehouseAdmin, auth.RoleWarehouse)).Get("/v1/supplier/ar/aging-summary", d.ARService.HandleSupplierAgingSummary)
+			gr.With(auth.RequireRole(auth.RoleAdmin, auth.RoleWarehouseAdmin), auth.RejectAuditorOrAgentMutation(true)).Post("/v1/supplier/ar/invoices/{id}/write-off", d.ARService.HandleInvoiceWriteOff)
+			gr.With(auth.RequireRole(auth.RoleAdmin, auth.RoleWarehouseAdmin, auth.RoleWarehouse)).Get("/v1/supplier/ar/retailers/{retailerId}/delinquency-lock", d.ARService.HandleCheckDelinquencyLock)
+		}
+		if d.DunningWorker != nil || d.PromiseBreachWorker != nil {
+			dunning := gr.With(auth.RequireRole(auth.RoleAdmin, auth.RolePlatformAdmin))
+			if d.StepUp != nil {
+				dunning = dunning.With(d.StepUp)
+			}
+			if d.DunningWorker != nil {
+				dunning.Post("/v1/admin/ar/dunning/run-once", d.DunningWorker.HandleRunDunningOnce)
+				dunning.Get("/v1/admin/ar/dunning/status", d.DunningWorker.HandleDunningStatus)
+			}
+			pw := d.PromiseBreachWorker
+			if pw == nil && d.ARService != nil {
+				pw = ar.NewPromiseBreachWorker(d.ARService, nil)
+			}
+			if pw != nil {
+				dunning.Post("/v1/admin/ar/promises/run-once", pw.HandleRunPromisesOnce)
+			}
 		}
 	}
 

@@ -4,4 +4,11 @@ metadata:
   name: pegasusx
   labels:
     app.kubernetes.io/part-of: pegasusx
-    app.kubernetes.io/managed-by: pegasusx-deploy
+    app.kubernetes.io/managed-by: pegasusx-gitops
+    cost-center: platform-engineering
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/audit-version: latest
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/warn-version: latest

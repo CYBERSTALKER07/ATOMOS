@@ -1,0 +1,83 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: pegasusx-planning-accuracy
+  namespace: pegasusx
+spec:
+  schedule: "0 3 * * *" # Daily 03:00 UTC — after predictive-push (01:00) and training-export (02:30)
+  startingDeadlineSeconds: 600
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 7
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 3600
+      ttlSecondsAfterFinished: 3600
+      template:
+        metadata:
+          labels:
+            app: pegasusx-planning-accuracy
+            cost-center: platform-engineering
+            workload-tier: batch-cron
+            pricing-model: spot
+        spec:
+          serviceAccountName: backend-go
+          automountServiceAccountToken: false
+          priorityClassName: pegasusx-batch-spot
+          terminationGracePeriodSeconds: 30
+          restartPolicy: OnFailure
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+            fsGroup: 10001
+            seccompProfile:
+              type: RuntimeDefault
+          tolerations:
+            - key: "cloud.google.com/gke-spot"
+              operator: "Equal"
+              value: "true"
+              effect: "NoSchedule"
+          affinity:
+            nodeAffinity:
+              preferredDuringSchedulingIgnoredDuringExecution:
+                - weight: 100
+                  preference:
+                    matchExpressions:
+                      - key: cloud.google.com/gke-spot
+                        operator: In
+                        values:
+                          - "true"
+          containers:
+            - name: planning-accuracy
+              image: us-central1-docker.pkg.dev/pegasusx-production/pegasusx/backend-go:latest
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop:
+                    - ALL
+              command:
+                - "/usr/local/bin/planning-accuracy"
+              args:
+                - "-days"
+                - "28"
+              envFrom:
+                - secretRef:
+                    name: backend-go-secrets
+                - configMapRef:
+                    name: backend-go-config
+              volumeMounts:
+                - name: tmp
+                  mountPath: /tmp
+              resources:
+                requests:
+                  cpu: "250m"
+                  memory: "512Mi"
+                limits:
+                  cpu: "500m"
+                  memory: "1Gi"
+          volumes:
+            - name: tmp
+              emptyDir: {}

@@ -52,7 +52,8 @@ enum WarehouseIdempotency {
     }
 
     static func assignDriverVehicle(driverId: String, vehicleId: String?) -> String {
-        let vid = vehicleId?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false ? vehicleId! : "none"
+        let trimmedVid = vehicleId?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let vid = (trimmedVid?.isEmpty == false ? trimmedVid : nil) ?? "none"
         return "warehouse-assign-driver-vehicle:\(warehouseId()):\(driverId):\(vid)"
     }
 
@@ -112,6 +113,10 @@ enum WarehouseIdempotency {
         "warehouse-ops-settings:\(warehouseId())"
     }
 
+    static func returnPolicyPut(supplierId: String = "") -> String {
+        "warehouse-return-policy:\(warehouseId()):\(supplierId.isEmpty ? "default" : supplierId)"
+    }
+
     static func opsLocation(lat: Double, lng: Double, placeId: String? = nil) -> String {
         let fingerprint = stableHash(String(format: "%.6f:%.6f:%@", lat, lng, placeId ?? ""))
         return "warehouse-ops-location:\(warehouseId()):\(fingerprint)"
@@ -147,5 +152,41 @@ enum WarehouseIdempotency {
 
     static func broadcastTemplateDelete(templateId: String) -> String {
         "warehouse-broadcast-template-delete:\(warehouseId()):\(templateId)"
+    }
+
+    static func createBin(zone: String) -> String {
+        "warehouse-bin-\(warehouseId())-\(zone.trimmingCharacters(in: .whitespacesAndNewlines))-\(UUID().uuidString.lowercased())"
+    }
+
+    static func putawayLot(productId: String, locationId: String) -> String {
+        "warehouse-putaway-\(warehouseId())-\(productId)-\(locationId)-\(UUID().uuidString.lowercased())"
+    }
+
+    static func createPickWave(manifestId: String) -> String {
+        "warehouse-pick-wave-\(warehouseId())-\(manifestId)-\(UUID().uuidString.lowercased())"
+    }
+
+    static func confirmPickTask(waveId: String, taskId: String) -> String {
+        "warehouse-pick-confirm-\(waveId)-\(taskId)-\(UUID().uuidString.lowercased())"
+    }
+
+    static func waivePickShorts(waveId: String) -> String {
+        "warehouse-pick-waive-\(warehouseId())-\(waveId)-\(UUID().uuidString.lowercased())"
+    }
+
+    static func createCycleCount(locationId: String, productId: String) -> String {
+        "warehouse-cycle-\(warehouseId())-\(locationId)-\(productId)-\(UUID().uuidString.lowercased())"
+    }
+
+    static func submitCycleCount(countId: String) -> String {
+        "warehouse-cycle-submit-\(warehouseId())-\(countId)-\(UUID().uuidString.lowercased())"
+    }
+
+    static func approveInventoryAdjustment(adjustmentId: String) -> String {
+        "warehouse-adj-approve-\(warehouseId())-\(adjustmentId)-\(UUID().uuidString.lowercased())"
+    }
+
+    static func rejectInventoryAdjustment(adjustmentId: String) -> String {
+        "warehouse-adj-reject-\(warehouseId())-\(adjustmentId)-\(UUID().uuidString.lowercased())"
     }
 }

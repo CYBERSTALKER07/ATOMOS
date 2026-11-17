@@ -1,59 +1,59 @@
 import SwiftUI
 
 struct WarehousesView: View {
-    @State private var warehouses: [SupplierTopologyWarehouse] = []
-    @State private var loading = true
-    @State private var error: String?
-    @State private var showAdd = false
+    @State private var vm = TopologyNodesListViewModel()
 
     var body: some View {
+        @Bindable var vm = vm
         Group {
-            if loading {
-                SupplierLoadingView(title: "Loading warehouses…")
-            } else if let error, warehouses.isEmpty {
-                SupplierErrorView(message: error) { Task { await load() } }
-            } else if warehouses.isEmpty {
+            if vm.loading && vm.warehouses.isEmpty {
+                SupplierLoadingView(title: "mobile_supplier.loading.warehouses")
+            } else if let error = vm.error, vm.warehouses.isEmpty {
+                SupplierErrorView(message: error) { Task { await vm.load() } }
+            } else if vm.warehouses.isEmpty {
                 TopologyCenteredEmptyState(
-                    title: "No warehouses",
-                    message: "Add your first distribution node to start fulfilling orders.",
-                    actionLabel: "Add first warehouse"
+                    title: "mobile_supplier.empty.no_warehouses",
+                    message: "mobile_supplier.empty.warehouses_message",
+                    actionLabel: "mobile_supplier.empty.add_first_warehouse"
                 ) {
-                    showAdd = true
+                    PegasusHaptics.light()
+                    vm.showAdd = true
                 }
             } else {
-                WarehouseList(warehouses: warehouses)
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("mobile_supplier.chrome.pin_stores_desktop")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal)
+                    WarehouseList(warehouses: vm.warehouses)
+                }
             }
         }
         .background(SupplierTheme.background)
-        .navigationTitle("Warehouses")
+        .navigationTitle("portal.nav.warehouses")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
-                    showAdd = true
+                    PegasusHaptics.light()
+                    vm.showAdd = true
                 } label: {
                     Image(systemName: "plus")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(SupplierTheme.label)
+                        .frame(minWidth: 44, minHeight: 44)
                 }
+                .accessibilityLabel(Text("supplier_portal.warehouses.components.warehouse_form.text.add_warehouse"))
             }
         }
-        .sheet(isPresented: $showAdd) {
+        .sheet(isPresented: $vm.showAdd) {
             AddWarehouseSheet {
-                Task { await load(silent: true) }
+                Task { await vm.load(silent: true) }
             }
         }
-        .task { await load() }
-        .refreshable { await load(silent: true) }
-    }
-
-    @MainActor
-    private func load(silent: Bool = false) async {
-        if !silent { loading = true }
-        error = nil
-        defer { loading = false }
-        do {
-            let topology = try await SupplierOperationsService.topology()
-            warehouses = topology.warehouses
-        } catch {
-            if !silent { self.error = error.localizedDescription }
+        .task { await vm.load() }
+        .refreshable {
+            PegasusHaptics.light()
+            await vm.load(silent: true)
         }
     }
 }

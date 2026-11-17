@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.screens.profile.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -17,7 +19,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -31,14 +33,14 @@ import com.pegasusx.retailer.ui.components.RetailerStatusChip
 import com.pegasusx.retailer.ui.screens.profile.CreditProfileUiState
 import com.pegasusx.retailer.ui.screens.profile.CreditProfileViewModel
 import com.pegasusx.retailer.ui.theme.PegasusSpacing
-import java.text.NumberFormat
-import java.util.Locale
+import com.pegasusx.retailer.util.OrderLineContractHelper
+import com.pegasusx.retailer.R
 
 @Composable
 fun CreditProfileCard(
     viewModel: CreditProfileViewModel = hiltViewModel(),
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     CreditProfileCardContent(uiState = uiState)
 }
 
@@ -68,7 +70,7 @@ fun CreditProfileCardContent(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Supplier credit",
+                    text = stringResource(R.string.retailer_desktop_credit_profile_card_text_supplier_credit),
                     style = MaterialTheme.typography.titleSmall,
                     modifier = Modifier.weight(1f),
                 )
@@ -88,7 +90,7 @@ fun CreditProfileCardContent(
                             strokeWidth = 2.dp,
                         )
                         Text(
-                            text = "Loading credit…",
+                            text = stringResource(R.string.mobile_retailer_ui_loading_credit),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -96,7 +98,7 @@ fun CreditProfileCardContent(
                 }
                 uiState.missing -> {
                     Text(
-                        text = "No credit line on file for this supplier relationship.",
+                        text = stringResource(R.string.mobile_retailer_ui_no_credit_line_on_file_for_this_supplier_relationship),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -118,13 +120,14 @@ fun CreditProfileCardContent(
 
 @Composable
 private fun CreditProfileMetrics(profile: CreditProfile) {
-    val formatter = NumberFormat.getIntegerInstance(Locale.US)
-    val util = if (profile.creditLimitMinor > 0) {
-        String.format(
-            Locale.US,
-            "%.1f",
-            (profile.currentBalanceMinor * 100.0) / profile.creditLimitMinor,
-        )
+    val util = if (profile.creditLimitMinor > 0L) {
+        val tenths = java.math.BigInteger.valueOf(profile.currentBalanceMinor)
+            .multiply(java.math.BigInteger.valueOf(1000L))
+            .divide(java.math.BigInteger.valueOf(profile.creditLimitMinor))
+            .toLong()
+        val sign = if (tenths < 0L) "-" else ""
+        val absTenths = kotlin.math.abs(tenths)
+        "$sign${absTenths / 10L}.${absTenths % 10L}"
     } else {
         "0.0"
     }
@@ -134,18 +137,18 @@ private fun CreditProfileMetrics(profile: CreditProfile) {
         horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
     ) {
         RetailerMetricTile(
-            label = "Limit",
-            value = formatter.format(profile.creditLimitMinor),
+            label = stringResource(R.string.supplier_portal_credit_collections_text_limit),
+            value = OrderLineContractHelper.formatWholeSom(profile.creditLimitMinor),
             modifier = Modifier.weight(1f),
         )
         RetailerMetricTile(
-            label = "Balance due",
-            value = formatter.format(profile.currentBalanceMinor),
+            label = stringResource(R.string.mobile_retailer_ui_balance_due),
+            value = OrderLineContractHelper.formatWholeSom(profile.currentBalanceMinor),
             modifier = Modifier.weight(1f),
         )
         RetailerMetricTile(
-            label = "Available",
-            value = formatter.format(profile.availableCreditMinor),
+            label = stringResource(R.string.retailer_desktop_stock_text_available),
+            value = OrderLineContractHelper.formatWholeSom(profile.availableCreditMinor),
             modifier = Modifier.weight(1f),
         )
     }
@@ -169,7 +172,7 @@ private fun CreditProfileMetrics(profile: CreditProfile) {
         )
         if (profile.delinquencyCount > 0) {
             Text(
-                text = "Delinquency ${profile.delinquencyCount}",
+                text = stringResource(R.string.mobile_retailer_ui_delinquency_delinquencycount, profile.delinquencyCount),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.error,
             )

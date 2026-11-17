@@ -53,6 +53,8 @@ type Service struct {
 	supplierAct   SupplierActivityLoader
 	log           *slog.Logger
 	now           func() time.Time
+	// transitionLister overrides Spanner order-transition reads in tests.
+	transitionLister func(ctx context.Context, scopeID, role string, limit int) ([]Event, error)
 }
 
 // Config wires pulse dependencies.
@@ -103,25 +105,29 @@ func (s *Service) ListForRecipient(ctx context.Context, recipientID, role, scope
 				DeepLink:    n.DeepLink,
 			})
 		}
-		if count, err := s.notifications.UnreadCount(ctx, recipientID); err == nil {
-			out.UnreadCount = count
+		count, unreadErr := s.notifications.UnreadCount(ctx, recipientID)
+		if unreadErr != nil {
+			return out, fmt.Errorf("pulse unread: %w", unreadErr)
 		}
+		out.UnreadCount = count
 	}
-	if s.spanner != nil {
-		transitions, err := s.listRecentTransitions(ctx, scopeID, role, limit)
-		if err != nil {
-			s.log.WarnContext(ctx, "pulse transitions read failed", "err", err)
-		} else {
-			out.Events = append(out.Events, transitions...)
+	if s.transitionLister != nil || s.spanner != nil {
+		lister := s.transitionLister
+		if lister == nil {
+			lister = s.listRecentTransitions
 		}
+		transitions, err := lister(ctx, scopeID, role, limit)
+		if err != nil {
+			return out, fmt.Errorf("pulse transitions: %w", err)
+		}
+		out.Events = append(out.Events, transitions...)
 	}
 	if strings.EqualFold(role, "ADMIN") && s.supplierAct != nil && scopeID != "" {
 		orders, err := s.supplierAct.ListRecentSupplierOrders(ctx, scopeID, limit)
 		if err != nil {
-			s.log.WarnContext(ctx, "pulse supplier activity failed", "err", err)
-		} else {
-			out.Events = append(out.Events, buildSupplierActivityEvents(orders)...)
+			return out, fmt.Errorf("pulse supplier activity: %w", err)
 		}
+		out.Events = append(out.Events, buildSupplierActivityEvents(orders)...)
 	}
 	sort.Slice(out.Events, func(i, j int) bool {
 		return out.Events[i].OccurredAt > out.Events[j].OccurredAt
@@ -145,10 +151,11 @@ func (s *Service) listRecentTransitions(ctx context.Context, scopeID, role strin
 		}
 		stmt = spanner.Statement{
 			SQL: `SELECT t.TransitionId, t.OrderId, t.NewStatus, t.Reason, t.EventKind, t.CreatedAt
-			      FROM OrderStatusTransitions t
-			      JOIN Orders o ON o.OrderId = t.OrderId
+			      FROM Orders@{FORCE_INDEX=Idx_Orders_ByRetailerCreated} o
+			      JOIN OrderStatusTransitions@{FORCE_INDEX=Idx_OrderStatusTransitions_ByOrderTime} t
+			        ON t.OrderId = o.OrderId
 			      WHERE o.RetailerId = @scope
-			        AND t.CreatedAt >= @since
+			        AND o.CreatedAt >= @since
 			      ORDER BY t.CreatedAt DESC
 			      LIMIT @lim`,
 			Params: map[string]any{"scope": scopeID, "since": since, "lim": int64(limit)},
@@ -159,25 +166,60 @@ func (s *Service) listRecentTransitions(ctx context.Context, scopeID, role strin
 		}
 		stmt = spanner.Statement{
 			SQL: `SELECT t.TransitionId, t.OrderId, t.NewStatus, t.Reason, t.EventKind, t.CreatedAt
-			      FROM OrderStatusTransitions t
-			      JOIN Orders o ON o.OrderId = t.OrderId
+			      FROM Orders@{FORCE_INDEX=Idx_Orders_ByWarehouseCreated} o
+			      JOIN OrderStatusTransitions@{FORCE_INDEX=Idx_OrderStatusTransitions_ByOrderTime} t
+			        ON t.OrderId = o.OrderId
 			      WHERE o.WarehouseId = @scope
-			        AND t.CreatedAt >= @since
+			        AND o.CreatedAt >= @since
 			      ORDER BY t.CreatedAt DESC
 			      LIMIT @lim`,
 			Params: map[string]any{"scope": scopeID, "since": since, "lim": int64(limit)},
 		}
+	case "ADMIN", "PAYLOAD":
+		if scopeID != "" {
+			stmt = spanner.Statement{
+				SQL: `SELECT t.TransitionId, t.OrderId, t.NewStatus, t.Reason, t.EventKind, t.CreatedAt
+				      FROM Orders@{FORCE_INDEX=Idx_Orders_BySupplierCreated} o
+				      JOIN OrderStatusTransitions@{FORCE_INDEX=Idx_OrderStatusTransitions_ByOrderTime} t
+				        ON t.OrderId = o.OrderId
+				      WHERE o.SupplierId = @scope
+				        AND o.CreatedAt >= @since
+				      ORDER BY t.CreatedAt DESC
+				      LIMIT @lim`,
+				Params: map[string]any{"scope": scopeID, "since": since, "lim": int64(limit)},
+			}
+			break
+		}
+		fallthrough
+	case "DRIVER":
+		if scopeID != "" {
+			stmt = spanner.Statement{
+				SQL: `SELECT t.TransitionId, t.OrderId, t.NewStatus, t.Reason, t.EventKind, t.CreatedAt
+				      FROM Orders@{FORCE_INDEX=Idx_Orders_ByDriverCreated} o
+				      JOIN OrderStatusTransitions@{FORCE_INDEX=Idx_OrderStatusTransitions_ByOrderTime} t
+				        ON t.OrderId = o.OrderId
+				      WHERE o.DriverId = @scope
+				        AND o.CreatedAt >= @since
+				      ORDER BY t.CreatedAt DESC
+				      LIMIT @lim`,
+				Params: map[string]any{"scope": scopeID, "since": since, "lim": int64(limit)},
+			}
+			break
+		}
+		fallthrough
 	default:
 		stmt = spanner.Statement{
-			SQL: `SELECT TransitionId, OrderId, NewStatus, Reason, EventKind, CreatedAt
-			      FROM OrderStatusTransitions
-			      WHERE CreatedAt >= @since
-			      ORDER BY CreatedAt DESC
+			SQL: `SELECT t.TransitionId, t.OrderId, t.NewStatus, t.Reason, t.EventKind, t.CreatedAt
+			      FROM Orders o
+			      JOIN OrderStatusTransitions@{FORCE_INDEX=Idx_OrderStatusTransitions_ByOrderTime} t
+			        ON t.OrderId = o.OrderId
+			      WHERE o.CreatedAt >= @since
+			      ORDER BY t.CreatedAt DESC
 			      LIMIT @lim`,
 			Params: map[string]any{"since": since, "lim": int64(limit)},
 		}
 	}
-	iter := s.spanner.Single().Query(ctx, stmt)
+	iter := s.spanner.Single().WithTimestampBound(spanner.MaxStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	out := make([]Event, 0, limit)
 	for {
@@ -191,7 +233,7 @@ func (s *Service) listRecentTransitions(ctx context.Context, scopeID, role strin
 		var transitionID, orderID, status, reason, kind string
 		var createdAt time.Time
 		if err := row.Columns(&transitionID, &orderID, &status, &reason, &kind, &createdAt); err != nil {
-			continue
+			return nil, fmt.Errorf("scan pulse transition: %w", err)
 		}
 		desc := strings.TrimSpace(reason)
 		if desc == "" {

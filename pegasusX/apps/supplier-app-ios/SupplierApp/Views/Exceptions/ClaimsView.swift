@@ -1,40 +1,35 @@
 import SwiftUI
 
 struct ClaimsView: View {
-    @State private var claims: [SupplierClaim] = []
-    @State private var statusFilter = "OPEN"
-    @State private var settlementMode = "LEDGER_ONLY"
-    @State private var loading = true
-    @State private var error: String?
-    @State private var busyId: String?
-    @State private var lastSettlement: String?
+    @State private var viewModel = ClaimsViewModel()
 
     private let settlementModes: [(String, String)] = [
-        ("LEDGER_ONLY", "Ledger only"),
-        ("STORE_CREDIT", "Store credit"),
-        ("GATEWAY_REFUND", "Card refund (GP)"),
+        ("LEDGER_ONLY", "mobile_supplier.chrome.ledger_only"),
+        ("STORE_CREDIT", "mobile_supplier.chrome.store_credit"),
+        ("GATEWAY_REFUND", "mobile_supplier.chrome.card_refund"),
     ]
 
     var body: some View {
+        @Bindable var vm = viewModel
         List {
             Section {
-                Picker("Status", selection: $statusFilter) {
+                Picker("mobile_supplier.chrome.status", selection: $vm.statusFilter) {
                     Text("OPEN").tag("OPEN")
                     Text("UNDER_REVIEW").tag("UNDER_REVIEW")
-                    Text("All").tag("")
+                    Text("supplier_portal.demand.signals.text.all").tag("")
                 }
-                .onChange(of: statusFilter) { _, _ in
-                    Task { await load() }
+                .onChange(of: viewModel.statusFilter) { _, _ in
+                    Task { await viewModel.load() }
                 }
 
-                Picker("Settlement", selection: $settlementMode) {
+                Picker("mobile_supplier.chrome.settlement", selection: $vm.settlementMode) {
                     ForEach(settlementModes, id: \.0) { mode in
-                        Text(mode.1).tag(mode.0)
+                        Text(LocalizedStringKey(mode.1)).tag(mode.0)
                     }
                 }
 
-                if let lastSettlement {
-                    Text("Last settle: \(lastSettlement)")
+                if let lastSettlement = viewModel.lastSettlement {
+                    Text(L10n.format("mobile_supplier.ui.last_settle_lastsettlement_2", "\(lastSettlement)"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -42,27 +37,27 @@ struct ClaimsView: View {
                 NavigationLink {
                     ClaimChargebacksView()
                 } label: {
-                    Label("Claim chargebacks ledger", systemImage: "list.bullet.rectangle")
+                    Label("mobile_supplier.ui.claim_chargebacks_ledger", systemImage: "list.bullet.rectangle")
                 }
             }
 
-            if loading {
+            if viewModel.loading && viewModel.claims.isEmpty {
                 Section {
-                    ProgressView("Loading claims…")
+                    ProgressView("mobile_supplier.loading.claims")
                 }
-            } else if let error {
+            } else if let error = viewModel.error, viewModel.claims.isEmpty {
                 Section {
-                    Text(error).foregroundStyle(.red)
-                    Button("Retry") { Task { await load() } }
+                    Text(error).foregroundStyle(SupplierTheme.destructive)
+                    Button("common.action.retry") { Task { await viewModel.load() } }
                 }
-            } else if claims.isEmpty {
+            } else if viewModel.claims.isEmpty {
                 Section {
-                    Text("No claims in this filter. Retailer post-delivery claims appear within the 48h window.")
+                    Text("mobile_supplier.ui.no_claims_in_this_filter_retailer_post_delivery_claims_appear_wi")
                         .foregroundStyle(.secondary)
                 }
             } else {
-                Section("Claims") {
-                    ForEach(claims) { claim in
+                Section("portal.nav.claims") {
+                    ForEach(viewModel.claims) { claim in
                         VStack(alignment: .leading, spacing: 6) {
                             HStack {
                                 Text(claim.claimType)
@@ -74,25 +69,27 @@ struct ClaimsView: View {
                             Text(claim.claimId)
                                 .font(.caption.monospaced())
                                 .foregroundStyle(.tint)
-                            Text("Order \(claim.orderId) · Retailer \(claim.retailerId)")
+                            Text(L10n.format("mobile_supplier.ui.order_orderid_retailer_retailerid", "\(claim.orderId)", "\(claim.retailerId)"))
                                 .font(.caption)
-                            Text("\(claim.amountMinor ?? 0) \(claim.currency ?? "UZS")")
+                            Text(Self.claimAmountLabel(claim.amountMinor, currency: claim.currency))
                                 .font(.subheadline.weight(.medium))
                             if let description = claim.description, !description.isEmpty {
                                 Text(description).font(.caption).foregroundStyle(.secondary)
                             }
                             if claim.status == "OPEN" || claim.status == "UNDER_REVIEW" {
                                 HStack {
-                                    Button("Approve (\(settlementModes.first { $0.0 == settlementMode }?.1 ?? settlementMode))") {
-                                        Task { await approve(claim.claimId) }
+                                    Button(L10n.format("mobile_supplier.ui.approve_n_1_settlementmode", L10n.format(settlementModes.first { $0.0 == viewModel.settlementMode }?.1 ?? viewModel.settlementMode))) {
+                                        Task { await viewModel.approve(claim.claimId) }
                                     }
                                     .buttonStyle(.borderedProminent)
-                                    .disabled(busyId == claim.claimId)
+                                    .frame(minHeight: 44)
+                                    .disabled(viewModel.busyId == claim.claimId)
 
-                                    Button("Reject", role: .destructive) {
-                                        Task { await reject(claim.claimId) }
+                                    Button("mobile_supplier.ui.reject", role: .destructive) {
+                                        Task { await viewModel.reject(claim.claimId) }
                                     }
-                                    .disabled(busyId == claim.claimId)
+                                    .frame(minHeight: 44)
+                                    .disabled(viewModel.busyId == claim.claimId)
                                 }
                                 .padding(.top, 4)
                             }
@@ -102,58 +99,13 @@ struct ClaimsView: View {
                 }
             }
         }
-        .navigationTitle("Claims")
-        .refreshable { await load() }
-        .task { await load() }
+        .navigationTitle("portal.nav.claims")
+        .refreshable { await viewModel.load(silent: true) }
+        .task { await viewModel.load() }
     }
 
-    private func load() async {
-        loading = true
-        error = nil
-        defer { loading = false }
-        do {
-            claims = try await SupplierOperationsService.listSupplierClaims(
-                status: statusFilter.isEmpty ? nil : statusFilter
-            )
-        } catch {
-            self.error = error.localizedDescription
-        }
-    }
-
-    private func approve(_ claimId: String) async {
-        busyId = claimId
-        lastSettlement = nil
-        defer { busyId = nil }
-        do {
-            let resp = try await SupplierOperationsService.approveClaim(
-                claimId: claimId,
-                request: ApproveClaimRequest(
-                    resolutionNote: "approved_via_supplier_ios",
-                    settlementMode: settlementMode,
-                    skipGatewayRefund: settlementMode != "GATEWAY_REFUND"
-                )
-            )
-            if let s = resp.settlement {
-                lastSettlement =
-                    "\(s.mode) · \(s.amountMinor) · refund=\(s.gatewayRefunded) · id=\(s.chargebackId ?? "—")"
-            }
-            await load()
-        } catch {
-            self.error = error.localizedDescription
-        }
-    }
-
-    private func reject(_ claimId: String) async {
-        busyId = claimId
-        defer { busyId = nil }
-        do {
-            _ = try await SupplierOperationsService.rejectClaim(
-                claimId: claimId,
-                request: RejectClaimRequest(resolutionNote: "rejected_via_supplier_ios")
-            )
-            await load()
-        } catch {
-            self.error = error.localizedDescription
-        }
+    static func claimAmountLabel(_ amount: Int64?, currency: String?) -> String {
+        guard let amount else { return MissingNumber.label(nil as Int64?) }
+        return MoneyFormat.minor(amount, currency: displayPackCurrency(currency))
     }
 }

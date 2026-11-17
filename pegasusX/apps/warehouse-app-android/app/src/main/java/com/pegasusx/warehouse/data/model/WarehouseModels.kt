@@ -23,6 +23,12 @@ data class AuthResponse(
 )
 
 @Serializable
+data class DeviceTokenRequest(
+    val token: String,
+    val platform: String,
+)
+
+@Serializable
 data class RefreshTokenRequest(
     @SerialName("refresh_token") val refreshToken: String,
 )
@@ -35,6 +41,12 @@ data class FleetStatusEntry(
 )
 
 @Serializable
+data class HoldReasonEntry(
+    val code: String = "",
+    val count: Int = 0,
+)
+
+@Serializable
 data class DashboardData(
     @SerialName("active_orders") val activeOrders: Long = 0,
     @SerialName("completed_today") val completedToday: Long = 0,
@@ -44,9 +56,16 @@ data class DashboardData(
     @SerialName("total_drivers") val totalDrivers: Long = 0,
     @SerialName("total_vehicles") val totalVehicles: Long = 0,
     @SerialName("today_revenue") val todayRevenue: Long = 0,
+    @SerialName("completed_today_available") val completedTodayAvailable: Boolean = false,
+    @SerialName("today_revenue_available") val todayRevenueAvailable: Boolean = false,
     @SerialName("low_stock_count") val lowStockCount: Long = 0,
     @SerialName("total_staff") val totalStaff: Long = 0,
     @SerialName("fleet_status") val fleetStatus: List<FleetStatusEntry> = emptyList(),
+    @SerialName("orders_by_status") val ordersByStatus: Map<String, Int> = emptyMap(),
+    @SerialName("truck_duty") val truckDuty: Map<String, Int> = emptyMap(),
+    @SerialName("hold_reasons") val holdReasons: List<HoldReasonEntry> = emptyList(),
+    @SerialName("demand_source") val demandSource: String = "empty",
+    @SerialName("history_available") val historyAvailable: Boolean = false,
 )
 
 // ── Orders ──
@@ -199,7 +218,7 @@ data class DeliveryFeeTier(
 
 @Serializable
 data class DeliveryFeeRules(
-    val currency: String = "UZS",
+    val currency: String = "",
     @SerialName("base_fee_minor") val baseFeeMinor: Long = 0,
     val tiers: List<DeliveryFeeTier> = emptyList(),
 )
@@ -219,6 +238,15 @@ data class WarehouseOpsSettingsResponse(
     @SerialName("order_line_min_quantity") val orderLineMinQuantity: Long? = null,
     @SerialName("order_line_max_quantity") val orderLineMaxQuantity: Long? = null,
     @SerialName("delivery_fee_rules") val deliveryFeeRules: DeliveryFeeRules? = null,
+)
+
+/** GET/PUT /v1/warehouse/return-policy */
+@Serializable
+data class WarehouseReturnPolicy(
+    @SerialName("supplier_id") val supplierId: String = "",
+    @SerialName("reverse_dock_sla_hours") val reverseDockSlaHours: Long? = null,
+    @SerialName("retailer_file_window_hours") val retailerFileWindowHours: Long? = null,
+    @SerialName("can_override_retailer_window") val canOverrideRetailerWindow: Boolean = false,
 )
 
 @Serializable
@@ -331,6 +359,33 @@ data class ManifestListResponse(
 )
 
 // ── Analytics ──
+object JsonMoneyLongSerializer : kotlinx.serialization.KSerializer<Long> {
+    override val descriptor: kotlinx.serialization.descriptors.SerialDescriptor =
+        kotlinx.serialization.descriptors.PrimitiveSerialDescriptor(
+            "WarehouseJsonMoneyLong",
+            kotlinx.serialization.descriptors.PrimitiveKind.LONG,
+        )
+
+    override fun deserialize(decoder: kotlinx.serialization.encoding.Decoder): Long {
+        if (decoder is kotlinx.serialization.json.JsonDecoder) {
+            val element = decoder.decodeJsonElement()
+            val primitive = element as? kotlinx.serialization.json.JsonPrimitive ?: return 0L
+            if (primitive is kotlinx.serialization.json.JsonNull) return 0L
+            val raw = primitive.content.trim()
+            if (raw.isEmpty()) return 0L
+            raw.toLongOrNull()?.let { return it }
+            return runCatching {
+                java.math.BigDecimal(raw).setScale(0, java.math.RoundingMode.HALF_UP).toLong()
+            }.getOrDefault(0L)
+        }
+        return decoder.decodeLong()
+    }
+
+    override fun serialize(encoder: kotlinx.serialization.encoding.Encoder, value: Long) {
+        encoder.encodeLong(value)
+    }
+}
+
 @Serializable
 data class AnalyticsData(
     val period: String = "",
@@ -338,7 +393,9 @@ data class AnalyticsData(
     @SerialName("total_orders") val totalOrders: Long = 0,
     @SerialName("completed_orders") val completedOrders: Long = 0,
     @SerialName("cancelled_orders") val cancelledOrders: Long = 0,
-    @SerialName("avg_order_value") val avgOrderValue: Double = 0.0,
+    @SerialName("avg_order_value")
+    @Serializable(with = JsonMoneyLongSerializer::class)
+    val avgOrderValue: Long = 0L,
     @SerialName("fleet_utilization") val fleetUtilization: FleetUtilization = FleetUtilization(),
     @SerialName("fleet_utilization_pct") val fleetUtilizationPctLegacy: Double = 0.0,
     @SerialName("import_freshness") val importFreshness: ImportFreshness = ImportFreshness(),
@@ -529,7 +586,7 @@ data class WarehouseClaim(
     @SerialName("claim_type") val claimType: String = "",
     val status: String = "",
     @SerialName("amount_minor") val amountMinor: Long = 0,
-    val currency: String = "UZS",
+    val currency: String = "",
     val description: String = "",
     @SerialName("line_items") val lineItems: List<WarehouseClaimLine> = emptyList(),
     @SerialName("created_at") val createdAt: String = "",
@@ -591,7 +648,7 @@ data class Invoice(
     @SerialName("retailer_name") val retailerName: String = "",
     @SerialName("amount") val amount: Long = 0,
     @SerialName("amount_uzs") val amountUzs: Long = 0,
-    val currency: String = "UZS",
+    val currency: String = "",
     val status: String = "",
     @SerialName("fee_amount") val feeAmount: Long = 0,
     @SerialName("net_payout_amount") val netPayoutAmount: Long = 0,
@@ -743,6 +800,7 @@ data class DemandForecastResponse(
     @SerialName("generated_at") val generatedAt: String? = null,
     val series: List<DemandForecastDay> = emptyList(),
     val products: List<DemandForecastProduct> = emptyList(),
+    val source: String = "empty",
 )
 
 @Serializable
@@ -760,6 +818,12 @@ data class WarehouseSupplyRequest(
     @SerialName("created_by") val createdBy: String = "",
     @SerialName("created_at") val createdAt: String = "",
     @SerialName("updated_at") val updatedAt: String? = null,
+)
+
+@Serializable
+data class SupplyRequestQCResponse(
+    @SerialName("request_id") val requestId: String = "",
+    val result: String = "",
 )
 
 @Serializable
@@ -873,15 +937,59 @@ data class CreateStaffResponse(
 // ── Payment Config ──
 @Serializable
 data class PaymentGateway(
-    @SerialName("gateway_name") val gatewayName: String,
+    @SerialName("gateway_name") val gatewayName: String = "",
     val provider: String = "",
     @SerialName("is_active") val isActive: Boolean = false,
     val mode: String = "",
+    val status: String = "",
+    val selectable: Boolean = false,
+)
+
+@Serializable
+data class PSPListing(
+    val code: String = "",
+    val status: String = "",
+    val selectable: Boolean = false,
 )
 
 @Serializable
 data class PaymentConfigResponse(
     val gateways: List<PaymentGateway> = emptyList(),
+    val catalog: List<PSPListing> = emptyList(),
+    @SerialName("currency_code") val currencyCode: String = "",
+    @SerialName("market_code") val marketCode: String = "",
+)
+
+@Serializable
+data class WarehouseCoverageCity(
+    val name: String = "",
+    val lat: Double = 0.0,
+    val lng: Double = 0.0,
+)
+
+@Serializable
+data class WarehouseServicePin(
+    @SerialName("target_type") val targetType: String = "",
+    @SerialName("target_id") val targetId: String = "",
+    val priority: Long = 0,
+)
+
+@Serializable
+data class WarehouseCoverageResponse(
+    @SerialName("warehouse_id") val warehouseId: String = "",
+    val mode: String = "COUNTRY_CLOSEST",
+    val cities: List<WarehouseCoverageCity> = emptyList(),
+    val pins: List<WarehouseServicePin> = emptyList(),
+    @SerialName("country_code") val countryCode: String = "",
+)
+
+@Serializable
+data class WarehouseSupplyFactoryResponse(
+    @SerialName("warehouse_id") val warehouseId: String = "",
+    @SerialName("factory_id") val factoryId: String = "",
+    @SerialName("transfer_mode") val transferMode: String = "",
+    val source: String = "engine",
+    @SerialName("country_code") val countryCode: String = "",
 )
 
 // ── Notifications + client policy ──
@@ -923,4 +1031,242 @@ data class ClientPolicyResponse(
     @SerialName("update_deferred") val updateDeferred: Boolean = false,
     @SerialName("defer_reason") val deferReason: String? = null,
     val outdated: Boolean = false,
+)
+
+/** §8.7 Wave 1A stock lot putaway. */
+@Serializable
+data class StockLotPutawayRequest(
+    @SerialName("product_id") val productId: String,
+    @SerialName("location_id") val locationId: String,
+    val quantity: Long,
+    @SerialName("lot_code") val lotCode: String? = null,
+    @SerialName("expiry_date") val expiryDate: String? = null,
+)
+
+@Serializable
+data class StockLotPutawayResponse(
+    @SerialName("lot_id") val lotId: String = "",
+    @SerialName("product_id") val productId: String = "",
+    @SerialName("location_id") val locationId: String = "",
+    @SerialName("quantity_on_hand") val quantityOnHand: Long = 0,
+    val status: String = "",
+)
+
+@Serializable
+data class WarehouseBinCreateRequest(
+    @SerialName("location_id") val locationId: String? = null,
+    val zone: String? = null,
+    @SerialName("location_type") val locationType: String = "PICK",
+    @SerialName("pick_sequence") val pickSequence: Long = 0,
+)
+
+@Serializable
+data class WarehouseBinLocation(
+    @SerialName("warehouse_id") val warehouseId: String = "",
+    @SerialName("location_id") val locationId: String = "",
+    val zone: String? = null,
+    @SerialName("location_type") val locationType: String = "PICK",
+    @SerialName("is_active") val isActive: Boolean = true,
+)
+
+@Serializable
+data class WarehouseBinListResponse(
+    val bins: List<WarehouseBinLocation> = emptyList(),
+    @SerialName("lots_enabled") val lotsEnabled: Boolean = false,
+)
+
+@Serializable
+data class StockLot(
+    @SerialName("lot_id") val lotId: String = "",
+    @SerialName("supplier_id") val supplierId: String = "",
+    @SerialName("warehouse_id") val warehouseId: String = "",
+    @SerialName("product_id") val productId: String = "",
+    @SerialName("location_id") val locationId: String = "",
+    @SerialName("lot_code") val lotCode: String? = null,
+    @SerialName("expiry_date") val expiryDate: String? = null,
+    @SerialName("quantity_on_hand") val quantityOnHand: Long = 0,
+    @SerialName("quantity_reserved") val quantityReserved: Long = 0,
+    val status: String = "AVAILABLE",
+    @SerialName("product_name") val productName: String? = null,
+    @SerialName("handling_class") val handlingClass: String? = null,
+    @SerialName("requires_cold_chain") val requiresColdChain: Boolean = false,
+    @SerialName("is_perishable") val isPerishable: Boolean = false,
+    @SerialName("required_zone") val requiredZone: String? = null,
+    @SerialName("location_zone") val locationZone: String? = null,
+    @SerialName("location_type") val locationType: String? = null,
+    @SerialName("migrated_staging") val migratedStaging: Boolean = false,
+    @SerialName("cold_lot_warning") val coldLotWarning: String? = null,
+)
+
+@Serializable
+data class StockLotListResponse(
+    val lots: List<StockLot> = emptyList(),
+    @SerialName("lots_enabled") val lotsEnabled: Boolean = false,
+    @SerialName("cold_lot_warning_count") val coldLotWarningCount: Long = 0,
+    @SerialName("migration_staging_count") val migrationStagingCount: Long = 0,
+)
+
+@Serializable
+data class TemperatureReadingItem(
+    @SerialName("reading_id") val readingId: String = "",
+    @SerialName("manifest_id") val manifestId: String = "",
+    @SerialName("sensor_id") val sensorId: String? = null,
+    @SerialName("temp_c") val tempC: Double = 0.0,
+)
+
+@Serializable
+data class ManifestTemperatureResponse(
+    @SerialName("manifest_id") val manifestId: String = "",
+    val readings: List<TemperatureReadingItem> = emptyList(),
+)
+
+/** §8.7 Wave 1B pick waves. */
+@Serializable
+data class PickTask(
+    @SerialName("task_id") val taskId: String = "",
+    @SerialName("order_id") val orderId: String = "",
+    @SerialName("product_id") val productId: String = "",
+    @SerialName("lot_id") val lotId: String = "",
+    @SerialName("location_id") val locationId: String = "",
+    @SerialName("quantity_requested") val quantityRequested: Long = 0,
+    @SerialName("quantity_picked") val quantityPicked: Long = 0,
+    val status: String = "PENDING",
+    @SerialName("pick_sequence") val pickSequence: Long = 0,
+)
+
+@Serializable
+data class PickWave(
+    @SerialName("wave_id") val waveId: String = "",
+    @SerialName("warehouse_id") val warehouseId: String = "",
+    @SerialName("manifest_id") val manifestId: String = "",
+    val status: String = "",
+    val tasks: List<PickTask> = emptyList(),
+    @SerialName("cold_lot_migrated_without_live_baseline") val coldLotMigratedWithoutLiveBaseline: Boolean = false,
+    @SerialName("cold_chain_baseline_missing") val coldChainBaselineMissing: Boolean = false,
+    @SerialName("cold_lot_warnings") val coldLotWarnings: List<String> = emptyList(),
+)
+
+@Serializable
+data class PickWaveListResponse(
+    val waves: List<PickWave> = emptyList(),
+    @SerialName("pick_waves_enabled") val pickWavesEnabled: Boolean = false,
+)
+
+@Serializable
+data class PickWaveCreateRequest(
+    @SerialName("manifest_id") val manifestId: String,
+)
+
+@Serializable
+data class PickTaskConfirmRequest(
+    @SerialName("quantity_picked") val quantityPicked: Long? = null,
+)
+
+@Serializable
+data class CycleCount(
+    @SerialName("count_id") val countId: String = "",
+    @SerialName("location_id") val locationId: String = "",
+    @SerialName("product_id") val productId: String = "",
+    @SerialName("expected_qty") val expectedQty: Long = 0,
+    @SerialName("counted_qty") val countedQty: Long? = null,
+    @SerialName("variance_qty") val varianceQty: Long? = null,
+    @SerialName("reason_code") val reasonCode: String? = null,
+    val status: String = "OPEN",
+)
+
+@Serializable
+data class CycleCountListResponse(
+    val counts: List<CycleCount> = emptyList(),
+    @SerialName("cycle_counts_enabled") val cycleCountsEnabled: Boolean = false,
+)
+
+@Serializable
+data class CycleCountCreateRequest(
+    @SerialName("location_id") val locationId: String,
+    @SerialName("product_id") val productId: String,
+    @SerialName("expected_qty") val expectedQty: Long? = null,
+)
+
+@Serializable
+data class CycleCountSubmitRequest(
+    @SerialName("counted_qty") val countedQty: Long,
+    @SerialName("reason_code") val reasonCode: String? = null,
+)
+
+@Serializable
+data class InventoryAdjustment(
+    @SerialName("adjustment_id") val adjustmentId: String = "",
+    @SerialName("warehouse_id") val warehouseId: String = "",
+    @SerialName("product_id") val productId: String = "",
+    @SerialName("lot_id") val lotId: String? = null,
+    @SerialName("count_id") val countId: String? = null,
+    @SerialName("delta_qty") val deltaQty: Long = 0,
+    @SerialName("reason_code") val reasonCode: String? = null,
+    val status: String = "PENDING",
+)
+
+@Serializable
+data class InventoryAdjustmentListResponse(
+    val adjustments: List<InventoryAdjustment> = emptyList(),
+    @SerialName("cycle_counts_enabled") val cycleCountsEnabled: Boolean = false,
+)
+
+// ── Labor capacity (camelCase API) ──
+@Serializable
+data class LaborZoneCapacity(
+    val zoneH3: String = "",
+    val date: String = "",
+    val totalCapacity: Double = 0.0,
+    val usedCapacity: Double = 0.0,
+    val computedAt: String? = null,
+)
+
+@Serializable
+data class LaborZoneCapacityListResponse(
+    val zones: List<LaborZoneCapacity>? = null,
+    val zoneH3: String? = null,
+    val date: String? = null,
+    val totalCapacity: Double? = null,
+    val usedCapacity: Double? = null,
+    val computedAt: String? = null,
+) {
+    fun resolvedZones(): List<LaborZoneCapacity> {
+        zones?.takeIf { it.isNotEmpty() }?.let { return it }
+        val h3 = zoneH3?.takeIf { it.isNotBlank() } ?: return emptyList()
+        return listOf(
+            LaborZoneCapacity(
+                zoneH3 = h3,
+                date = date.orEmpty(),
+                totalCapacity = totalCapacity ?: 0.0,
+                usedCapacity = usedCapacity ?: 0.0,
+                computedAt = computedAt,
+            ),
+        )
+    }
+}
+
+@Serializable
+data class LaborDriverScore(
+    val driverId: String = "",
+    val score: Double = 0.0,
+    val onTimeRate: Double = 0.0,
+    val completionRate: Double = 0.0,
+    val damageRate: Double = 0.0,
+    val shopClosedRate: Double = 0.0,
+    val feedbackScore: Double = 0.0,
+    val stopsPerHour: Double = 0.0,
+)
+
+@Serializable
+data class LaborDriverAvailabilityRequest(
+    val driverId: String,
+    val date: String,
+    val availableHours: Double,
+    val status: String,
+    val zoneH3: String? = null,
+)
+
+@Serializable
+data class LaborDriverAvailabilityResponse(
+    val status: String = "",
 )

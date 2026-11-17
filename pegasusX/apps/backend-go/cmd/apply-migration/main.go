@@ -19,9 +19,7 @@ import (
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/grpc/status"
 )
 
 func main() {
@@ -54,8 +52,8 @@ func main() {
 		os.Exit(1)
 	}
 	if len(statements) == 0 {
-		slog.Error("no ddl statements found", "path", ddlPath)
-		os.Exit(1)
+		slog.Info("no ddl statements found in file; skipping", "path", ddlPath)
+		return
 	}
 
 	admin, err := database.NewDatabaseAdminClient(ctx, spannerClientOptions(cfg)...)
@@ -158,28 +156,7 @@ func applyDDLStatements(
 	databaseName string,
 	statements []string,
 ) error {
-	for i, statement := range statements {
-		op, err := admin.UpdateDatabaseDdl(ctx, &databasepb.UpdateDatabaseDdlRequest{
-			Database:   databaseName,
-			Statements: []string{statement},
-		})
-		if err != nil {
-			if isBenignDDLConflict(err) {
-				slog.Info("ddl statement already applied", "index", i+1, "statement", truncateStatement(statement))
-				continue
-			}
-			return fmt.Errorf("update ddl statement %d %q: %w", i+1, truncateStatement(statement), err)
-		}
-		if err := op.Wait(ctx); err != nil {
-			if isBenignDDLConflict(err) {
-				slog.Info("ddl statement already applied", "index", i+1, "statement", truncateStatement(statement))
-				continue
-			}
-			return fmt.Errorf("wait ddl statement %d %q: %w", i+1, truncateStatement(statement), err)
-		}
-		slog.Info("ddl statement applied", "index", i+1, "statement", truncateStatement(statement))
-	}
-	return nil
+	return schemadrift.ConvergeDDLStatements(ctx, admin, databaseName, statements)
 }
 
 func verifyWarehouseStockMigration(ctx context.Context, cfg *bootstrap.Config) error {
@@ -243,15 +220,6 @@ func verifyWarehouseStockMigration(ctx context.Context, cfg *bootstrap.Config) e
 	return nil
 }
 
-func truncateStatement(statement string) string {
-	const max = 120
-	trimmed := strings.TrimSpace(statement)
-	if len(trimmed) <= max {
-		return trimmed
-	}
-	return trimmed[:max] + "..."
-}
-
 func spannerClientOptions(cfg *bootstrap.Config) []option.ClientOption {
 	if strings.TrimSpace(cfg.SpannerEmulatorHost) == "" {
 		return nil
@@ -272,22 +240,5 @@ func spannerDatabasePath(cfg *bootstrap.Config) string {
 }
 
 func isBenignDDLConflict(err error) bool {
-	if err == nil {
-		return false
-	}
-	st, ok := status.FromError(err)
-	if !ok {
-		return false
-	}
-	switch st.Code() {
-	case codes.AlreadyExists, codes.FailedPrecondition:
-		return true
-	case codes.InvalidArgument:
-		msg := strings.ToLower(st.Message())
-		return strings.Contains(msg, "already exists") ||
-			strings.Contains(msg, "duplicate") ||
-			strings.Contains(msg, "already has a constraint")
-	default:
-		return false
-	}
+	return schemadrift.IsBenignDDLConflict(err)
 }

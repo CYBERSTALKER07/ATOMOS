@@ -13,6 +13,10 @@ fi
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
+# Local/unsigned builds: allow committed dev.pub. Release CI must set TAURI_UPDATER_PUBKEY.
+if [[ -z "${TAURI_UPDATER_PUBKEY:-}" && -z "${TAURI_UPDATER_PUBKEY_PATH:-}" ]]; then
+  export ALLOW_DEV_UPDATER_PUBKEY="${ALLOW_DEV_UPDATER_PUBKEY:-1}"
+fi
 bash scripts/apply_desktop_updater_pubkey.sh
 
 # Prefer CI secret; fall back to local dev signing key for updater artifacts.

@@ -3,12 +3,16 @@ package eta
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"cloud.google.com/go/spanner"
 )
 
 func (s *Service) PersistETAs(ctx context.Context, routeId string, etas []RouteETA) error {
+	if s == nil || s.spanner == nil {
+		return errors.New("spanner required")
+	}
 	var muts []*spanner.Mutation
 	
 	// First, delete existing uncompleted ETAs for this route to avoid stale data

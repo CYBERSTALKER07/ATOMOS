@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Building2, Loader2 } from "lucide-react";
@@ -16,6 +17,7 @@ import {
  * C1.3 org picker after multi-org login (PendingOrgSelect intermediate token).
  */
 export default function SelectOrgPage() {
+  const t = usePortalT();
   const router = useRouter();
   const [items, setItems] = useState<RetailerMembershipDTO[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -39,7 +41,7 @@ export default function SelectOrgPage() {
       const ms = await listMemberships();
       setItems(ms.filter((m) => m.is_active));
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load organizations");
+      setError(e instanceof Error ? e.message : t("retailer_desktop.residual.text.failed_to_load_organizations"));
     } finally {
       setLoading(false);
     }
@@ -57,7 +59,7 @@ export default function SelectOrgPage() {
       clearStashedMemberships();
       router.replace(data.is_configured === false ? "/setup/tax" : "/dashboard");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not select organization");
+      setError(e instanceof Error ? e.message : t("retailer_desktop.residual.text.could_not_select_organization"));
     } finally {
       setBusyId(null);
     }
@@ -72,7 +74,7 @@ export default function SelectOrgPage() {
         >
           <Building2 size={22} />
         </div>
-        <h1 className="text-xl font-semibold tracking-tight">Choose organization</h1>
+        <h1 className="text-xl font-semibold tracking-tight">{t("retailer_desktop.auth.select_org.text.choose_organization")}</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Your phone is linked to more than one retailer. Select where to work.
         </p>

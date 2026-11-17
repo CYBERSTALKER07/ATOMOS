@@ -1,0 +1,22 @@
+<resources>
+    <string name="app_name">Pegasus Driver</string>
+    <string name="notification_channel_telemetry">Телеметрия</string>
+    <string name="notification_telemetry_title">Pegasus Logistics: Активная доставка</string>
+    <string name="notification_telemetry_text">Отслеживание маршрута для активных доставок</string>
+    <string name="scanner_prompt">Наведите камеру на QR-код доставки</string>
+    <string name="manifest_empty">На сегодня нет назначенных доставок</string>
+    <string name="action_scan">Сканировать QR</string>
+    <string name="action_start_transit">Начать рейс</string>
+    <string name="action_end_transit">Завершить рейс</string>
+    <string name="fiscal_retry_queued_title">ЧЕК SOLIQ В ОЧЕРЕДИ</string>
+    <string name="fiscal_retry_queued_message">Оплата и PoD сохранены. Фискальный чек Soliq поставлен в очередь на автоматический повтор и отправку QR-кода владельцу магазина по SMS/Telegram. Можно продолжать маршрут.</string>
+    <string name="fiscal_continue_next_stop">Перейти к следующей точке</string>
+    <string name="fiscal_retry_soliq_now">Повторить Soliq сейчас</string>
+    <string name="sync_queue_escalate_support">Передать в поддержку</string>
+    <string name="sync_queue_retry_now">Повторить сейчас</string>
+    <string name="settings_language_title">Язык / Til / Language</string>
+    <string name="settings_language_subtitle">Выберите язык приложения</string>
+    <string name="language_uz">O\'zbekcha</string>
+    <string name="language_ru">Русский</string>
+    <string name="language_en">English</string>
+</resources>

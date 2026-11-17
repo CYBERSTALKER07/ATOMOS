@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.screens.profile
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -22,7 +24,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.text.KeyboardOptions
@@ -30,6 +32,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.pegasusx.retailer.ui.screens.profile.components.CreditProfileCard
+import com.pegasusx.retailer.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,7 +40,7 @@ fun AccountProfileScreen(
     onBack: () -> Unit,
     viewModel: AccountProfileViewModel = hiltViewModel(),
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
@@ -45,7 +48,7 @@ fun AccountProfileScreen(
                 title = { Text("Account") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                     }
                 },
             )
@@ -62,7 +65,7 @@ fun AccountProfileScreen(
             CreditProfileCard()
 
             Text(
-                text = "Business details and receiving hours used for dispatch SLA scheduling.",
+                text = stringResource(R.string.mobile_retailer_ui_business_details_and_receiving_hours_used_for_dispatch_sla_sched),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -117,7 +120,7 @@ fun AccountProfileScreen(
             )
 
             Text(
-                text = "Receiving window",
+                text = stringResource(R.string.mobile_retailer_ui_receiving_window),
                 style = MaterialTheme.typography.titleSmall,
             )
             OutlinedTextField(

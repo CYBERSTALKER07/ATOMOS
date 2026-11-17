@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.products
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -18,6 +20,7 @@ import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.util.Locale
+import com.pegasusx.warehouse.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -36,7 +39,8 @@ fun ProductsScreen(
         scope.launch {
             try {
                 val resp = api.getProducts()
-                if (resp.isSuccessful && resp.body() != null) products = resp.body()!!.products
+                val respBody = resp.body()
+                if (resp.isSuccessful && respBody != null) products = respBody.products
                 else error = "Failed (${resp.code()})"
             } catch (e: Exception) { error = e.message ?: "Network error" }
             finally { loading = false }
@@ -58,7 +62,7 @@ fun ProductsScreen(
             loading -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
             error != null -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(error!!, color = MaterialTheme.colorScheme.error)
+                    Text(error.orEmpty(), color = MaterialTheme.colorScheme.error)
                     Spacer(Modifier.height(PegasusSpacing.lg))
                     Button(onClick = { load() }) { Text("Retry") }
                 }
@@ -78,13 +82,12 @@ fun ProductsScreen(
                         Row(modifier = Modifier.padding(PegasusSpacing.lg), verticalAlignment = Alignment.CenterVertically) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(p.name, style = MaterialTheme.typography.titleSmall)
-                                Text(
-                                    "${p.category.ifBlank { "—" }} · ${p.skuId}",
+                                Text(stringResource(R.string.mobile_warehouse_ui_ifblank_skuid, p.category.ifBlank { "—" }, p.skuId),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
-                            Text("${fmt.format(p.priceUzs)} UZS", style = MaterialTheme.typography.labelMedium)
+                            Text(stringResource(R.string.mobile_warehouse_ui_format_uzs, fmt.format(p.priceUzs)), style = MaterialTheme.typography.labelMedium)
                         }
                     }
                 }

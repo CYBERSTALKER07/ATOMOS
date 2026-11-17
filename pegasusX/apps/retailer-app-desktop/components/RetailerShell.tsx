@@ -10,24 +10,9 @@ import {
   Menu,
   Bell,
   Search,
-  LayoutDashboard,
-  ShoppingCart,
-  PackageSearch,
-  Activity,
-  BarChart3,
-  Settings,
   LogOut,
   Store,
   X,
-  MapPin,
-  Container,
-  RefreshCcw,
-  Clock,
-  LayoutGrid,
-  HandHelping,
-  FileBarChart,
-  Box,
-  Building2,
 } from "lucide-react";
 import { getRetailerProfile } from "@/lib/retailer-profile";
 import { useWebSocket } from "../lib/ws";
@@ -36,50 +21,22 @@ import { clearStoredToken } from "../lib/bridge";
 import { useTheme, type ThemeMode } from "./ThemeProvider";
 import Icon from "./Icon";
 import { apiFetch } from "@/lib/auth";
+import { SessionPackChip } from "./SessionPackChip";
 import { OrgSwitcher } from "./OrgSwitcher";
+import LanguageSwitcher from "./LanguageSwitcher";
+import { usePortalLocale, usePortalT } from "@/lib/i18n";
+import { NAV, navSectionIsActive, type NavSection } from "@/lib/nav";
+import { DesktopKeyboardCheatsheet } from "./ui/DesktopKeyboardCheatsheet";
+import {
+  FAST_HOME_COPY,
+  WORKSPACE_MODE_CHANGE_EVENT,
+  readStoredWorkspaceMode,
+  resolveEffectiveWorkspaceMode,
+  writeStoredWorkspaceMode,
+  type WorkspaceMode,
+} from "@/lib/fast-home";
 
-/* ────────── Navigation Config ────────── */
-
-type NavEntry = {
-  href: string;
-  icon: React.ElementType;
-  label: string;
-  /** If set, entry requires this retailer permission (from /v1/retailer/me). */
-  perm?: string;
-  /** Optional capability pack required (client-side progressive disclosure). */
-  pack?: string;
-};
-type NavSection = { label?: string; items: NavEntry[] };
 type RetailerIdentity = { name: string; company: string; initials: string };
-
-const NAV: NavSection[] = [
-  {
-    items: [
-      { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-      { href: "/orders", icon: ShoppingCart, label: "Orders", perm: "order.place" },
-      { href: "/tracking", icon: MapPin, label: "Tracking", perm: "dock.receive" },
-      { href: "/dock", icon: Container, label: "Dock", perm: "dock.receive" },
-      { href: "/catalog", icon: PackageSearch, label: "Catalog", perm: "order.place" },
-      { href: "/procurement", icon: Activity, label: "Procurement", perm: "order.place" },
-      { href: "/my-suppliers", icon: Store, label: "My Suppliers", perm: "order.place" },
-      { href: "/credit", icon: Store, label: "Credit partners", perm: "order.place" },
-      { href: "/auto-order", icon: RefreshCcw, label: "Auto-Order", perm: "order.place" },
-      { href: "/stock", icon: PackageSearch, label: "Store stock", perm: "stock.view", pack: "STORE_STOCK" },
-      { href: "/stock/local-skus", icon: Box, label: "Local SKUs", perm: "stock.view", pack: "STORE_STOCK" },
-      { href: "/pos", icon: ShoppingCart, label: "POS", perm: "pos.sell", pack: "POS" },
-      { href: "/shifts", icon: Clock, label: "Shifts", perm: "shift.open", pack: "SHIFTS" },
-      { href: "/sections", icon: LayoutGrid, label: "Sections", perm: "stock.view", pack: "SECTIONS" },
-      { href: "/assist", icon: HandHelping, label: "Assist", perm: "assist.respond", pack: "CUSTOMER_ASSIST" },
-      { href: "/insights", icon: BarChart3, label: "Insights", perm: "reports.view" },
-      { href: "/reports", icon: FileBarChart, label: "Reports Pro", perm: "reports.view", pack: "REPORTS_PRO" },
-      { href: "/hq", icon: Building2, label: "Franchise HQ", perm: "reports.view", pack: "REPORTS_PRO" },
-    ],
-  },
-  {
-    label: "System",
-    items: [{ href: "/settings", icon: Settings, label: "Settings" }],
-  },
-];
 
 function filterNavByPerms(
   sections: NavSection[],
@@ -137,17 +94,23 @@ function isActiveRoute(pathname: string, href: string): boolean {
   return pathname.startsWith(href + "/");
 }
 
-/* ── Breadcrumb helper ── */
-function buildBreadcrumbs(pathname: string): { label: string; href: string }[] {
-  if (pathname === "/") return [{ label: "Hub", href: "/" }];
+/* -- Breadcrumb helper -- */
+function buildBreadcrumbs(
+  pathname: string,
+  t: (key: string) => string,
+): { label: string; href: string }[] {
+  if (pathname === "/") return [{ label: t("portal.chrome.retailer_hub"), href: "/" }];
   const segs = pathname.split("/").filter(Boolean);
   const crumbs: { label: string; href: string }[] = [
-    { label: "Home", href: "/" },
+    { label: t("portal.chrome.home"), href: "/" },
   ];
   let path = "";
   for (const seg of segs) {
     path += "/" + seg;
-    const label = seg.charAt(0).toUpperCase() + seg.slice(1).replace(/-/g, " ");
+    const match = NAV.flatMap((s) => s.items).find((item) => item.href === path);
+    const label = match
+      ? t(match.labelKey)
+      : seg.charAt(0).toUpperCase() + seg.slice(1).replace(/-/g, " ");
     crumbs.push({ label, href: path });
   }
   return crumbs;
@@ -155,10 +118,16 @@ function buildBreadcrumbs(pathname: string): { label: string; href: string }[] {
 
 const ThemeToggle = memo(function ThemeToggle() {
   const { mode, cycle } = useTheme();
+  const t = usePortalT();
   const iconName: Record<ThemeMode, string> = {
     system: "autoMode",
     light: "lightMode",
     dark: "darkMode",
+  };
+  const labelKey: Record<ThemeMode, string> = {
+    system: "portal.chrome.theme_system",
+    light: "portal.chrome.theme_light",
+    dark: "portal.chrome.theme_dark",
   };
 
   return (
@@ -166,15 +135,15 @@ const ThemeToggle = memo(function ThemeToggle() {
       type="button"
       onClick={cycle}
       className="portal-btn portal-btn--ghost desk-icon-btn"
-      title={`Theme: ${mode}`}
-      aria-label={`Theme: ${mode}`}
+      title={t(labelKey[mode])}
+      aria-label={t(labelKey[mode])}
     >
       <Icon name={iconName[mode]} size={18} />
     </button>
   );
 });
 
-/* ── Memoized Drawer Content ── */
+/* -- Memoized Drawer Content -- */
 const DrawerContent = memo(function DrawerContent({
   isMobile,
   collapsed,
@@ -193,6 +162,7 @@ const DrawerContent = memo(function DrawerContent({
   capabilities: string[] | null;
 }) {
   const isRail = collapsed && !isMobile;
+  const t = usePortalT();
   const navSections = filterNavByPerms(NAV, permissions, capabilities);
   return (
     <div className="flex flex-col h-full">
@@ -204,7 +174,7 @@ const DrawerContent = memo(function DrawerContent({
           {isRail ? (
             <button
               onClick={onToggle}
-              aria-label="Open sidebar"
+              aria-label={t("portal.chrome.open_sidebar")}
               className="desk-icon-btn active-press"
             >
               <PanelLeft
@@ -242,7 +212,7 @@ const DrawerContent = memo(function DrawerContent({
                     letterSpacing: "0.05em",
                   }}
                 >
-                  Retailer Workspace
+                  {t("portal.chrome.retailer_hub")}
                 </p>
                 <h1
                   style={{
@@ -253,7 +223,7 @@ const DrawerContent = memo(function DrawerContent({
                     fontWeight: 600,
                   }}
                 >
-                  V.O.I.D Hub
+                  PegasusX Hub
                 </h1>
               </div>
               {!isMobile && (
@@ -261,7 +231,7 @@ const DrawerContent = memo(function DrawerContent({
                   onClick={onToggle}
                   className="desk-icon-btn active-press"
                   style={{ width: 28, height: 28 }}
-                  aria-label="Collapse sidebar"
+                  aria-label={t("portal.chrome.collapse_sidebar")}
                 >
                   <PanelLeftClose
                     size={16}
@@ -289,36 +259,15 @@ const DrawerContent = memo(function DrawerContent({
         {/* Navigation */}
         <nav
           className={`flex flex-col gap-0.5 mt-1 transition-all duration-200 ${isRail ? "px-1.5" : "px-2.5"}`}
+          data-testid="gs-un-nav"
         >
-          {navSections.map((section, si) => (
-            <div key={si}>
-              {si > 0 && (
-                <div
-                  style={{
-                    height: 1,
-                    background: "var(--desk-border)",
-                    margin: isRail ? "8px 4px" : "8px 12px",
-                  }}
-                />
-              )}
-              {section.label && !isRail && (
-                <motion.div
-                  layout
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="desk-sidebar-section-label"
-                  style={{
-                    color: "var(--desk-text-tertiary)",
-                    paddingLeft: "12px",
-                    marginBottom: "4px",
-                  }}
-                >
-                  {section.label}
-                </motion.div>
-              )}
-              {section.items.map((item) => {
+          {navSections.map((section, si) => {
+            const isPrimary = si === 0;
+            const sectionActive = navSectionIsActive(section, pathname, isActiveRoute);
+            const links = section.items.map((item) => {
                 const active = isActiveRoute(pathname, item.href);
                 const ItemIcon = item.icon;
+                const label = t(item.labelKey);
                 return (
                   <Link
                     key={item.href}
@@ -326,8 +275,8 @@ const DrawerContent = memo(function DrawerContent({
                     prefetch={false}
                     data-active={active ? "true" : undefined}
                     className={`desk-sidebar-link desk-sidebar-item active-press ${active ? "desk-sidebar-link--active" : ""}`}
-                    title={isRail ? item.label : undefined}
-                    aria-label={item.label}
+                    title={isRail ? label : undefined}
+                    aria-label={label}
                     style={{
                       justifyContent: isRail ? "center" : "flex-start",
                       padding: isRail ? "0" : "0 12px",
@@ -350,14 +299,41 @@ const DrawerContent = memo(function DrawerContent({
                         animate={{ opacity: 1, x: 0 }}
                         className="truncate ml-3"
                       >
-                        {item.label}
+                        {label}
                       </motion.span>
                     )}
                   </Link>
                 );
-              })}
-            </div>
-          ))}
+            });
+            return (
+              <div key={si} data-nav-primary={isPrimary ? "true" : undefined}>
+                {si > 0 && (
+                  <div
+                    style={{
+                      height: 1,
+                      background: "var(--desk-border)",
+                      margin: isRail ? "8px 4px" : "8px 12px",
+                    }}
+                  />
+                )}
+                {isPrimary || isRail ? (
+                  <>
+                    {section.labelKey && !isRail && (
+                      <div className="desk-sidebar-section-label">{t(section.labelKey)}</div>
+                    )}
+                    {links}
+                  </>
+                ) : (
+                  <details open={sectionActive}>
+                    <summary className="desk-sidebar-section-label" style={{ cursor: "pointer", listStyle: "none" }}>
+                      {t(section.labelKey ?? "portal.nav.more")}
+                    </summary>
+                    {links}
+                  </details>
+                )}
+              </div>
+            );
+          })}
         </nav>
       </div>
 
@@ -377,8 +353,8 @@ const DrawerContent = memo(function DrawerContent({
             <button
               onClick={onLogout}
               className="portal-btn portal-btn--ghost desk-sidebar-item active-press flex-1"
-              title="Sign Out"
-              aria-label="Sign Out"
+              title={t("common.action.sign_out")}
+              aria-label={t("common.action.sign_out")}
               type="button"
               style={{
                 height: 40,
@@ -397,11 +373,12 @@ const DrawerContent = memo(function DrawerContent({
                   marginLeft: "12px",
                 }}
               >
-                Sign Out
+                {t("common.action.sign_out")}
               </span>
             </button>
           )}
         </div>
+        {!isRail && <div className="mt-2"><LanguageSwitcher /></div>}
         {!isRail && (
           <motion.div
             layout
@@ -431,23 +408,54 @@ const DrawerContent = memo(function DrawerContent({
   );
 });
 
-/* ── Shell ── */
+/* -- Shell -- */
 
-export default function RetailerShell({
+function RetailerShellInner({
   children,
+  pathname,
 }: {
   children: React.ReactNode;
+  pathname: string;
 }) {
-  const pathname = usePathname();
+  const t = usePortalT();
+  const locale = usePortalLocale();
+  const workspaceCopy = FAST_HOME_COPY[locale] ?? FAST_HOME_COPY.uz;
   const router = useRouter();
   const { isConnected } = useWebSocket();
   const { unreadCount } = useRetailerNotifications();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [cheatsheetOpen, setCheatsheetOpen] = useState(false);
   const [identity, setIdentity] = useState<RetailerIdentity>(DEFAULT_IDENTITY);
   const [permissions, setPermissions] = useState<string[] | null>(null);
   const [capabilities, setCapabilities] = useState<string[] | null>(null);
+  const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>("fast");
   const reduceMotion = useReducedMotion();
+
+  useEffect(() => {
+    setWorkspaceMode(readStoredWorkspaceMode() ?? "fast");
+    const onWorkspaceChange = (evt: Event) => {
+      const detail = (evt as CustomEvent<WorkspaceMode>).detail;
+      if (detail === "fast" || detail === "full") {
+        setWorkspaceMode(detail);
+      } else {
+        setWorkspaceMode(readStoredWorkspaceMode() ?? "fast");
+      }
+    };
+    window.addEventListener(WORKSPACE_MODE_CHANGE_EVENT, onWorkspaceChange);
+    return () => window.removeEventListener(WORKSPACE_MODE_CHANGE_EVENT, onWorkspaceChange);
+  }, []);
+
+  const handleWorkspaceSwitch = useCallback(
+    (mode: WorkspaceMode) => {
+      setWorkspaceMode(mode);
+      writeStoredWorkspaceMode(mode);
+      if (mode === "fast" && pathname !== "/dashboard") {
+        router.push("/dashboard");
+      }
+    },
+    [pathname, router],
+  );
 
   const handleLogout = useCallback(async () => {
     document.cookie = "pegasus_retailer_jwt=; Max-Age=0; path=/";
@@ -455,12 +463,37 @@ export default function RetailerShell({
     router.push("/");
   }, [router]);
 
-  const breadcrumbs = useMemo(() => buildBreadcrumbs(pathname), [pathname]);
+  const breadcrumbs = useMemo(() => buildBreadcrumbs(pathname, t), [pathname, t]);
 
   /* Close mobile drawer on route change */
   useEffect(() => {
     setMobileOpen(false);
   }, [pathname]);
+
+  /* Desktop hotkeys: Cmd+K (search), ? (cheatsheet), Esc (dismiss) */
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        router.push("/catalog");
+      }
+      if (
+        (e.key === "?" && !e.metaKey && !e.ctrlKey) ||
+        ((e.metaKey || e.ctrlKey) && e.key === "/")
+      ) {
+        const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
+        if (tag !== "input" && tag !== "textarea") {
+          e.preventDefault();
+          setCheatsheetOpen((prev) => !prev);
+        }
+      }
+      if (e.key === "Escape") {
+        setCheatsheetOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [router]);
   useEffect(() => {
     const profile = getRetailerProfile();
     if (!profile) {
@@ -494,6 +527,8 @@ export default function RetailerShell({
           permissions?: string[];
           capabilities?: string[];
           home_surface?: string;
+          retailer_role?: string;
+          is_owner?: boolean;
           name?: string;
         };
         if (!cancelled && Array.isArray(me.permissions)) {
@@ -501,6 +536,15 @@ export default function RetailerShell({
         }
         if (!cancelled && Array.isArray(me.capabilities)) {
           setCapabilities(me.capabilities);
+        }
+        if (!cancelled) {
+          setWorkspaceMode(
+            resolveEffectiveWorkspaceMode(
+              readStoredWorkspaceMode(),
+              me.retailer_role,
+              me.is_owner,
+            ),
+          );
         }
         // Optional role home redirect only when landing on root dashboard as cashier/receiver
         if (
@@ -537,7 +581,7 @@ export default function RetailerShell({
         color: "var(--desk-text-primary)",
       }}
     >
-      {/* ── Desktop Sidebar ── */}
+      {/* -- Desktop Sidebar -- */}
       <motion.div
         layout={!reduceMotion}
         initial={false}
@@ -560,7 +604,7 @@ export default function RetailerShell({
         />
       </motion.div>
 
-      {/* ── Mobile Drawer Overlay ── */}
+      {/* -- Mobile Drawer Overlay -- */}
       <AnimatePresence>
         {mobileOpen && (
           <div className="fixed inset-0 z-50 md:hidden">
@@ -599,7 +643,7 @@ export default function RetailerShell({
                 <button
                   className="desk-icon-btn active-press"
                   onClick={() => setMobileOpen(false)}
-                  aria-label="Close menu"
+                  aria-label={t("retailer_desktop.retailer_shell.text.close_menu")}
                 >
                   <X size={20} />
                 </button>
@@ -618,29 +662,30 @@ export default function RetailerShell({
         )}
       </AnimatePresence>
 
-      {/* ── Main Flow ── */}
+      {/* -- Main Flow -- */}
       <div className="flex-1 flex flex-col min-w-0 relative z-0">
         {/* Top App Bar */}
         <header
           className="desk-topbar shrink-0"
+          data-tauri-drag-region
           style={{
             background: "var(--desk-surface)",
             borderBottom: "1px solid var(--desk-border)",
             height: "var(--desk-topbar-height)",
           }}
         >
-          <div className="desk-topbar-left px-6">
+          <div className="desk-topbar-left px-6" data-tauri-no-drag>
             <button
               className="desk-icon-btn md:hidden -ml-2 active-press"
               onClick={() => setMobileOpen(true)}
-              aria-label="Open menu"
+              aria-label={t("retailer_desktop.retailer_shell.text.open_menu")}
             >
               <Menu size={24} />
             </button>
 
             <nav
               className="desk-breadcrumb hidden md:flex"
-              aria-label="Breadcrumb"
+              aria-label={t("retailer_desktop.retailer_shell.text.breadcrumb")}
             >
               {breadcrumbs.map((crumb, i) => (
                 <motion.span
@@ -691,7 +736,50 @@ export default function RetailerShell({
             </span>
           </div>
 
-          <div className="desk-topbar-right px-6 gap-4">
+          <div className="desk-topbar-right px-6 gap-3" data-tauri-no-drag>
+            <div
+              className="inline-flex items-center rounded-xl border border-[var(--desk-border)] bg-[var(--desk-surface-subtle)] p-0.5 text-[11px]"
+              role="group"
+              aria-label="Workspace mode"
+              data-testid="workspace-mode-switcher"
+            >
+              <button
+                type="button"
+                onClick={() => handleWorkspaceSwitch("fast")}
+                className={`rounded-lg px-2.5 py-1 font-medium transition-colors ${
+                  workspaceMode === "fast"
+                    ? "bg-[var(--desk-accent)] text-white"
+                    : "text-[var(--desk-text-secondary)] hover:text-[var(--desk-text-primary)]"
+                }`}
+                data-testid="workspace-switch-fast"
+              >
+                {workspaceCopy.fastModeLabel}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleWorkspaceSwitch("full")}
+                className={`rounded-lg px-2.5 py-1 font-medium transition-colors ${
+                  workspaceMode === "full"
+                    ? "bg-[var(--desk-accent)] text-white"
+                    : "text-[var(--desk-text-secondary)] hover:text-[var(--desk-text-primary)]"
+                }`}
+                data-testid="workspace-switch-full"
+              >
+                {workspaceCopy.fullErpLabel}
+              </button>
+            </div>
+
+            {/* Native Desktop Telemetry Pill */}
+            <div className="hidden xl:inline-flex items-center gap-2 px-2.5 py-1 rounded-full border border-neutral-800 bg-neutral-900/80 text-[11px] font-mono text-neutral-300">
+              <span className="flex items-center gap-1 text-emerald-400">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                SPK-UZ: 12ms
+              </span>
+              <span className="text-neutral-700">|</span>
+              <span className="text-cyan-400">SQLITE OK</span>
+            </div>
+
+            <SessionPackChip />
             {/* Live indicator */}
             <div
               className={`desk-live-indicator hidden md:inline-flex ${!isConnected ? "opacity-50" : ""}`}
@@ -719,6 +807,18 @@ export default function RetailerShell({
               {isConnected ? "LIVE FEED" : "OFFLINE"}
             </div>
 
+            {/* Keyboard shortcuts cheatsheet button */}
+            <button
+              type="button"
+              className="desk-icon-btn hidden sm:flex active-press"
+              onClick={() => setCheatsheetOpen(true)}
+              title="Keyboard shortcuts (?)"
+              aria-label="Keyboard shortcuts"
+              style={{ color: "var(--desk-text-secondary)" }}
+            >
+              <Icon name="keyboard" size={18} />
+            </button>
+
             {/* Search */}
             <button
               className="desk-topbar-search hidden md:flex"
@@ -728,7 +828,7 @@ export default function RetailerShell({
                 borderRadius: "var(--radius-md)",
               }}
               onClick={() => router.push("/catalog")}
-              aria-label="Open catalog search"
+              aria-label={t("retailer_desktop.retailer_shell.text.open_catalog_search")}
             >
               <Search
                 size={16}
@@ -758,7 +858,7 @@ export default function RetailerShell({
             <button
               className="desk-icon-btn md:hidden active-press"
               onClick={() => router.push("/catalog")}
-              aria-label="Search catalog"
+              aria-label={t("retailer_desktop.retailer_shell.text.search_catalog")}
             >
               <Search size={20} />
             </button>
@@ -832,6 +932,26 @@ export default function RetailerShell({
           <div className="absolute inset-0">{children}</div>
         </main>
       </div>
+
+      <DesktopKeyboardCheatsheet
+        open={cheatsheetOpen}
+        onClose={() => setCheatsheetOpen(false)}
+      />
     </div>
   );
 }
+
+export default function RetailerShell({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const pathname = usePathname();
+  const isAuthOrOnboarding = pathname?.startsWith('/auth') || pathname === '/login' || pathname === '/register';
+  if (isAuthOrOnboarding) {
+    return <>{children}</>;
+  }
+
+  return <RetailerShellInner pathname={pathname || ""}>{children}</RetailerShellInner>;
+}
+

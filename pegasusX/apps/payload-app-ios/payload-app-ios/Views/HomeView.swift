@@ -4,7 +4,7 @@
 //
 //  Phase 3 master-detail home for the iPad payload terminal. Sidebar lists
 //  the payloader's assigned trucks; detail pane shows the selected truck's
-//  open DRAFT manifest summary. Loading workflow lands in Phase 4.
+//  open DRAFT/LOADING manifest workflow.
 //
 
 import SwiftUI
@@ -15,14 +15,10 @@ struct HomeView: View {
     @State private var viewModel = HomeViewModel()
     @State private var isTruckSidebarExpanded = true
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
-    @State private var showInjectSheet = false
-    @State private var showProductScanner = false
-    @State private var showInboundReturns = false
-    @State private var exceptionTargetOrderId: String?
 
     var body: some View {
         VStack(spacing: 0) {
-            PulseStrip(events: viewModel.pulseEvents, loading: viewModel.pulseLoading)
+            PulseStrip(events: viewModel.pulseEvents, loading: viewModel.pulseLoading, error: viewModel.pulseError)
             navigationRoot
         }
         .overlay {
@@ -40,19 +36,12 @@ struct HomeView: View {
                     .padding(32)
             }
         }
-            .homeSheets(
-                viewModel: viewModel,
-                tokenStore: tokenStore,
-                showInjectSheet: $showInjectSheet,
-                showProductScanner: $showProductScanner,
-                showInboundReturns: $showInboundReturns,
-                exceptionTargetOrderId: $exceptionTargetOrderId
-            )
-            .homeLifecycle(
-                viewModel: viewModel,
-                tokenStore: tokenStore,
-                scenePhase: scenePhase
-            )
+        .homeSheets(viewModel: viewModel)
+        .homeLifecycle(
+            viewModel: viewModel,
+            tokenStore: tokenStore,
+            scenePhase: scenePhase
+        )
     }
 
     private var navigationRoot: some View {
@@ -65,14 +54,24 @@ struct HomeView: View {
                 )
                 .navigationTitle(isTruckSidebarExpanded ? "Vehicles" : "")
                 .toolbar { sidebarToolbar }
+                .navigationDestination(for: String.self) { _ in
+                    ManifestDetailPane(
+                        viewModel: viewModel,
+                        onShowException: { viewModel.presentExceptionSheet(for: $0) },
+                        onShowReDispatch: { id in Task { await viewModel.openReDispatch(orderId: id) } },
+                        onScanProduct: { viewModel.showProductScanner = true }
+                    )
+                    .navigationTitle("warehouse_portal.manifests.text.manifest")
+                    .toolbar { detailToolbar }
+                }
         } detail: {
             ManifestDetailPane(
                 viewModel: viewModel,
-                onShowException: { exceptionTargetOrderId = $0 },
+                onShowException: { viewModel.presentExceptionSheet(for: $0) },
                 onShowReDispatch: { id in Task { await viewModel.openReDispatch(orderId: id) } },
-                onScanProduct: { showProductScanner = true }
+                onScanProduct: { viewModel.showProductScanner = true }
             )
-            .navigationTitle("Manifest")
+            .navigationTitle("warehouse_portal.manifests.text.manifest")
             .navigationSplitViewColumnWidth(min: 320, ideal: 720)
             .toolbar { detailToolbar }
         }
@@ -85,35 +84,54 @@ struct HomeView: View {
             OnlineDot(online: viewModel.online, queued: viewModel.queuedActions)
         }
         ToolbarItem(placement: .topBarTrailing) {
-            Button { viewModel.toggleExceptionsPanel() } label: {
+            Button {
+                viewModel.toggleExceptionsPanel()
+            } label: {
                 Image(systemName: "exclamationmark.triangle")
+                    .frame(minWidth: 44, minHeight: 44)
             }
+            .accessibilityLabel("Manifest exceptions")
         }
         ToolbarItem(placement: .topBarTrailing) {
-            Button { viewModel.toggleNotificationsPanel() } label: {
+            Button {
+                viewModel.toggleNotificationsPanel()
+            } label: {
                 Image(systemName: "bell")
+                    .frame(minWidth: 44, minHeight: 44)
                     .overlay(alignment: .topTrailing) {
                         if viewModel.unreadCount > 0 {
                             Text("\(viewModel.unreadCount)")
                                 .font(.caption2).bold()
-                                .padding(.horizontal, 4).padding(.vertical, 1)
-                                .background(.red).foregroundStyle(.white)
+                                .padding(.horizontal, 4)
+                                .padding(.vertical, 1)
+                                .background(.red)
+                                .foregroundStyle(.white)
                                 .clipShape(Capsule())
-                                .offset(x: 10, y: -8)
+                                .offset(x: 6, y: -4)
                         }
                     }
             }
+            .accessibilityLabel(viewModel.unreadCount > 0 ? "Notifications, \(viewModel.unreadCount) unread" : "Notifications")
         }
         ToolbarItem(placement: .topBarTrailing) {
-            Button { showInboundReturns = true } label: {
+            Button {
+                PegasusHaptics.selection()
+                viewModel.showInboundReturns = true
+            } label: {
                 Image(systemName: "arrow.uturn.backward.circle")
+                    .frame(minWidth: 44, minHeight: 44)
             }
             .accessibilityLabel("Inbound returns")
         }
         ToolbarItem(placement: .topBarTrailing) {
-            Button { Task { await viewModel.refreshTrucks() } } label: {
+            Button {
+                PegasusHaptics.light()
+                Task { await viewModel.refreshTrucks() }
+            } label: {
                 Image(systemName: "arrow.clockwise")
+                    .frame(minWidth: 44, minHeight: 44)
             }
+            .accessibilityLabel("Refresh vehicles")
         }
     }
 
@@ -121,112 +139,104 @@ struct HomeView: View {
     private var detailToolbar: some ToolbarContent {
         if viewModel.manifest?.state == "LOADING" {
             ToolbarItem(placement: .topBarTrailing) {
-                Button { showInjectSheet = true } label: {
+                Button {
+                    PegasusHaptics.selection()
+                    viewModel.showInjectSheet = true
+                } label: {
                     Image(systemName: "plus.circle")
+                        .frame(minWidth: 44, minHeight: 44)
                 }
                 .accessibilityLabel("Inject order")
             }
         }
         ToolbarItem(placement: .topBarTrailing) {
             Menu {
-                Button("Refresh manifest") {
+                Button("mobile_payload.ui.refresh_manifest") {
+                    PegasusHaptics.light()
                     Task { await viewModel.refreshManifest() }
                 }
-                Button("Logout", role: .destructive) {
+                Button("mobile_payload.ui.logout", role: .destructive) {
+                    PegasusHaptics.warning()
                     tokenStore.logout()
                 }
             } label: {
                 Image(systemName: "person.crop.circle")
+                    .frame(minWidth: 44, minHeight: 44)
             }
+            .accessibilityLabel("Operator account menu")
         }
     }
 }
 
 private struct HomeSheetsModifier: ViewModifier {
     @Bindable var viewModel: HomeViewModel
-    let tokenStore: TokenStore
-    @Binding var showInjectSheet: Bool
-    @Binding var showProductScanner: Bool
-    @Binding var showInboundReturns: Bool
-    @Binding var exceptionTargetOrderId: String?
 
     func body(content: Content) -> some View {
         content
-            .sheet(isPresented: $showInjectSheet) {
+            .sheet(isPresented: $viewModel.showInjectSheet) {
                 InjectOrderSheet(
                     injecting: viewModel.injectingOrder,
-                    onCancel: { showInjectSheet = false },
+                    onCancel: { viewModel.showInjectSheet = false },
                     onSubmit: { id in
                         Task {
                             await viewModel.injectOrder(id)
-                            showInjectSheet = false
+                            viewModel.showInjectSheet = false
                         }
                     }
                 )
             }
-            .sheet(isPresented: $showProductScanner) {
-                ProductScannerSheet(viewModel: viewModel, isPresented: $showProductScanner)
+            .sheet(isPresented: $viewModel.showProductScanner) {
+                ProductScannerSheet(viewModel: viewModel, isPresented: $viewModel.showProductScanner)
             }
-            .sheet(isPresented: $showInboundReturns) {
+            .sheet(isPresented: $viewModel.showInboundReturns) {
                 InboundReturnsView(online: viewModel.online)
             }
-            .sheet(item: Binding(
-                get: { exceptionTargetOrderId.map { ExceptionTarget(id: $0) } },
-                set: { exceptionTargetOrderId = $0?.id }
-            )) { target in
+            .sheet(item: $viewModel.exceptionTarget) { target in
                 ExceptionReasonSheet(
                     orderId: target.id,
                     inFlight: viewModel.exceptionLoadingOrderId == target.id,
-                    onCancel: { exceptionTargetOrderId = nil },
+                    onCancel: { viewModel.dismissExceptionSheet() },
                     onSelect: { reason in
                         Task {
                             await viewModel.reportException(orderId: target.id, reason: reason)
-                            exceptionTargetOrderId = nil
+                            viewModel.dismissExceptionSheet()
                         }
                     }
                 )
             }
-            .sheet(item: Binding(
-                get: { viewModel.reDispatchOrderId.map { ReDispatchTarget(id: $0) } },
-                set: { if $0 == nil { viewModel.closeReDispatch() } }
-            )) { target in
+            .sheet(item: $viewModel.reDispatchTarget) { target in
                 ReDispatchSheet(
                     orderId: target.id,
                     loading: viewModel.loadingRecommendations,
                     response: viewModel.recommendations,
                     reassigning: viewModel.reassigning,
                     onClose: { viewModel.closeReDispatch() },
-                    onPick: { driverId, isPartial in Task { await viewModel.reassignTo(driverId, isPartial: isPartial) } }
+                    onPick: { driverId, isPartial in
+                        Task { await viewModel.reassignTo(driverId, isPartial: isPartial) }
+                    }
                 )
+            }
+            .onChange(of: viewModel.reDispatchTarget) { _, target in
+                if target == nil && viewModel.reDispatchOrderId != nil {
+                    viewModel.closeReDispatch()
+                }
             }
             .alert(
                 "DLQ Escalation",
-                isPresented: Binding(
-                    get: { viewModel.escalatedMessage != nil },
-                    set: { if !$0 { viewModel.clearEscalatedMessage() } }
-                ),
+                isPresented: $viewModel.isShowingEscalatedAlert,
                 actions: { Button("OK", role: .cancel) { viewModel.clearEscalatedMessage() } },
                 message: { Text(viewModel.escalatedMessage ?? "") }
             )
             .alert(
                 "Handoff",
-                isPresented: Binding(
-                    get: { viewModel.handoffNavigationMessage != nil },
-                    set: { if !$0 { viewModel.clearHandoffNavigationMessage() } }
-                ),
+                isPresented: $viewModel.isShowingHandoffAlert,
                 actions: { Button("OK", role: .cancel) { viewModel.clearHandoffNavigationMessage() } },
                 message: { Text(viewModel.handoffNavigationMessage ?? "") }
             )
-            .sheet(isPresented: Binding(
-                get: { viewModel.showNotificationsPanel },
-                set: { viewModel.showNotificationsPanel = $0 }
-            )) {
+            .sheet(isPresented: $viewModel.showNotificationsPanel) {
                 NotificationsSheet(viewModel: viewModel)
             }
-            .sheet(isPresented: Binding(
-                get: { viewModel.showExceptionsPanel },
-                set: { viewModel.showExceptionsPanel = $0 }
-            )) {
+            .sheet(isPresented: $viewModel.showExceptionsPanel) {
                 ManifestExceptionsSheet(viewModel: viewModel)
             }
     }
@@ -245,9 +255,10 @@ private struct HomeLifecycleModifier: ViewModifier {
                 if let token = tokenStore.token {
                     await viewModel.bootstrapPhase6(token: token)
                 }
-                PushNotificationManager.shared.onOpenPanel = { [weak viewModel] in
-                    guard let viewModel else { return }
-                    if !viewModel.showNotificationsPanel { viewModel.toggleNotificationsPanel() }
+                let targetVM = viewModel
+                PushNotificationManager.shared.onOpenPanel = { [weak targetVM] in
+                    guard let targetVM else { return }
+                    if !targetVM.showNotificationsPanel { targetVM.toggleNotificationsPanel() }
                 }
                 await PushNotificationManager.shared.requestAuthorization()
             }
@@ -273,101 +284,9 @@ private struct HomeLifecycleModifier: ViewModifier {
     }
 }
 
-private struct HomeBannerOverlay: View {
-    @Bindable var viewModel: HomeViewModel
-
-    var body: some View {
-        if viewModel.barcodeScanMessage != nil ||
-           viewModel.missingItemsReportedMessage != nil ||
-           viewModel.queuedNoticeMessage != nil ||
-           viewModel.syncCompleteMessage != nil {
-            VStack(spacing: 8) {
-                if let msg = viewModel.barcodeScanMessage {
-                    InfoBanner(text: msg, tint: .blue)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                        .task {
-                            try? await Task.sleep(nanoseconds: 3_000_000_000)
-                            viewModel.clearBarcodeScanMessage()
-                        }
-                }
-                if let msg = viewModel.missingItemsReportedMessage {
-                    InfoBanner(text: msg, tint: .orange)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                        .task {
-                            try? await Task.sleep(nanoseconds: 3_000_000_000)
-                            viewModel.clearMissingItemsReportedMessage()
-                        }
-                }
-                if let msg = viewModel.queuedNoticeMessage {
-                    InfoBanner(text: msg, tint: .orange)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                        .task {
-                            try? await Task.sleep(nanoseconds: 3_000_000_000)
-                            viewModel.clearQueuedNoticeMessage()
-                        }
-                }
-                if let msg = viewModel.syncCompleteMessage {
-                    InfoBanner(text: msg, tint: .green)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                        .task {
-                            try? await Task.sleep(nanoseconds: 3_000_000_000)
-                            viewModel.clearSyncCompleteMessage()
-                        }
-                }
-            }
-            .animation(.easeInOut, value: viewModel.queuedNoticeMessage)
-            .animation(.easeInOut, value: viewModel.syncCompleteMessage)
-            .animation(.easeInOut, value: viewModel.barcodeScanMessage)
-            .padding()
-        }
-    }
-}
-
-private struct ProductScannerSheet: View {
-    @Bindable var viewModel: HomeViewModel
-    @Binding var isPresented: Bool
-
-    var body: some View {
-        NavigationStack {
-            VStack(spacing: 16) {
-                Text("Scan product EAN")
-                    .font(.system(size: 14, weight: .black, design: .monospaced))
-                EANBarcodeScannerView(onBarcode: { code in
-                    Task {
-                        await viewModel.onBarcodeScanned(code)
-                        isPresented = false
-                    }
-                })
-                Spacer()
-            }
-            .padding()
-            .navigationTitle("Product scan")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") { isPresented = false }
-                }
-            }
-        }
-    }
-}
-
 private extension View {
-    func homeSheets(
-        viewModel: HomeViewModel,
-        tokenStore: TokenStore,
-        showInjectSheet: Binding<Bool>,
-        showProductScanner: Binding<Bool>,
-        showInboundReturns: Binding<Bool>,
-        exceptionTargetOrderId: Binding<String?>
-    ) -> some View {
-        modifier(HomeSheetsModifier(
-            viewModel: viewModel,
-            tokenStore: tokenStore,
-            showInjectSheet: showInjectSheet,
-            showProductScanner: showProductScanner,
-            showInboundReturns: showInboundReturns,
-            exceptionTargetOrderId: exceptionTargetOrderId
-        ))
+    func homeSheets(viewModel: HomeViewModel) -> some View {
+        modifier(HomeSheetsModifier(viewModel: viewModel))
     }
 
     func homeLifecycle(
@@ -380,691 +299,5 @@ private extension View {
             tokenStore: tokenStore,
             scenePhase: scenePhase
         ))
-    }
-}
-
-private struct ExceptionTarget: Identifiable { let id: String }
-private struct ReDispatchTarget: Identifiable { let id: String }
-
-// ── Sidebar ──────────────────────────────────────────────────────────────
-
-// MARK: - Detail
-
-/*
-private struct ManifestDetailView: View {
-    @Bindable var viewModel: HomeViewModel
-    let onShowException: (String) -> Void
-    let onShowReDispatch: (String) -> Void
-    let onScanProduct: () -> Void
-
-    var body: some View {
-        Group {
-            if viewModel.selectedTruckId == nil {
-                PayloadStateView(
-                    variant: .truck,
-                    title: "SELECT_A_VEHICLE",
-                    message: "Pick a truck from the sidebar to load its manifest.",
-                    compact: false
-                )
-            } else if viewModel.manifestSealed {
-                AllSealedSuccessView(
-                    dispatchCodes: viewModel.dispatchCodes,
-                    onStartNew: { Task { await viewModel.startNewManifest() } }
-                )
-            } else if viewModel.loadingManifest && viewModel.manifest == nil {
-                PayloadLoadingView(
-                    title: "LOADING_MANIFEST",
-                    message: "Loading the active checklist for this truck."
-                )
-            } else if let m = viewModel.manifest {
-                ManifestWorkflow(
-                    manifest: m,
-                    truck: viewModel.trucks.first { $0.id == viewModel.selectedTruckId },
-                    viewModel: viewModel,
-                    onShowException: onShowException,
-                    onShowReDispatch: onShowReDispatch,
-                    onScanProduct: onScanProduct
-                )
-            } else {
-                PayloadStateView(
-                    variant: .manifest,
-                    title: "NO_OPEN_MANIFEST",
-                    message: "This vehicle has no DRAFT or LOADING manifest. Wait for dispatch.",
-                    tone: .warning
-                )
-            }
-        }
-    }
-}
-
-private struct ManifestWorkflow: View {
-    let manifest: Manifest
-    let truck: Truck?
-    @Bindable var viewModel: HomeViewModel
-    let onShowException: (String) -> Void
-    let onShowReDispatch: (String) -> Void
-    let onScanProduct: () -> Void
-
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 24) { // Increased tactical spacing
-                if let truck { TruckHeader(truck: truck) }
-
-                ManifestKpiGrid(manifest: manifest)
-
-                if viewModel.error != nil || viewModel.errorExplain != nil {
-                    ExplainStatusBanner(
-                        explain: viewModel.errorExplain,
-                        fallbackTitle: viewModel.error,
-                        fallbackDetail: nil
-                    )
-                }
-
-                if manifest.state == "DRAFT" {
-                    Button {
-                        Task { await viewModel.startLoading() }
-                    } label: {
-                        Text("Start Loading")
-                            .font(.headline)
-                            .frame(maxWidth: .infinity, minHeight: 48)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(viewModel.startingLoading)
-                    Text("Tap Start Loading to open the manifest for tap-check and per-order seal.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                } else if manifest.state == "LOADING" || manifest.state == "SEALED" {
-                    if let psId = viewModel.postSealOrderId {
-                        PostSealCountdownView(
-                            orderId: psId,
-                            dispatchCode: viewModel.dispatchCodes[psId] ?? "",
-                            secondsLeft: viewModel.postSealCountdown,
-                            reportingMissingItems: viewModel.reportingMissingItems,
-                            onDismiss: { viewModel.dismissCountdown() },
-                            onReportMissingItems: {
-                                Task { await viewModel.reportMissingItems(orderId: psId) }
-                            }
-                        )
-                    }
-
-                    OrderChecklistSection(
-                        viewModel: viewModel,
-                        onShowException: onShowException,
-                        onShowReDispatch: onShowReDispatch,
-                        onScanProduct: onScanProduct
-                    )
-
-                    if viewModel.allOrdersSealed && manifest.state != "SEALED" {
-                        Button {
-                            Task { await viewModel.sealManifest() }
-                        } label: {
-                            HStack {
-                                Image(systemName: "lock.fill")
-                                Text("Seal Manifest").font(.headline)
-                            }
-                            .frame(maxWidth: .infinity, minHeight: 48)
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .tint(.green)
-                        .disabled(viewModel.sealingManifest)
-                    }
-                }
-            }
-            .padding()
-        }
-    }
-}
-
-
-// MARK: - Post-seal 60s countdown
-
-private struct PostSealCountdownView: View {
-    let orderId: String
-    let dispatchCode: String
-    let secondsLeft: Int
-    let reportingMissingItems: Bool
-    let onDismiss: () -> Void
-    let onReportMissingItems: () -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            PayloadStateView(
-                variant: .warning,
-                title: "ORDER_SEALED",
-                message: "Double-check the load before dispatch.",
-                compact: true,
-                tone: .warning
-            )
-
-            HStack {
-                Image(systemName: "lock.shield.fill")
-                    .foregroundStyle(TermTheme.live)
-                Text("ORDER_SEALED")
-                    .font(.system(size: 12, weight: .black, design: .monospaced))
-                    .foregroundStyle(TermTheme.secondary)
-                Spacer()
-                Text("ORD-\(orderId.suffix(6).uppercased())")
-                    .font(.system(size: 12, weight: .black, design: .monospaced))
-                    .foregroundStyle(TermTheme.accent)
-            }
-            
-            VStack(alignment: .leading, spacing: 4) {
-                Text("DISPATCH_CODE")
-                    .font(.system(size: 10, weight: .bold, design: .monospaced))
-                    .foregroundStyle(TermTheme.secondary)
-                
-                Text(dispatchCode)
-                    .font(.system(size: 44, weight: .black, design: .monospaced))
-                    .foregroundStyle(TermTheme.live)
-            }
-            
-            HStack {
-                Text("DOUBLE_CHECK_WINDOW: \(secondsLeft)s")
-                    .font(.system(size: 12, weight: .bold, design: .monospaced))
-                    .foregroundStyle(TermTheme.accent)
-                Spacer()
-            }
-            
-            ProgressView(value: Double(secondsLeft) / 60.0)
-                .tint(TermTheme.live)
-
-            Button {
-                onReportMissingItems()
-            } label: {
-                HStack {
-                    if reportingMissingItems {
-                        ProgressView().controlSize(.small)
-                    }
-                    Text("REPORT_MISSING_ITEMS")
-                        .font(.system(size: 14, weight: .black, design: .monospaced))
-                }
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(TermTheme.card)
-                .foregroundStyle(TermTheme.accent)
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-            }
-            .disabled(reportingMissingItems)
-            
-            Button {
-                onDismiss()
-            } label: {
-                Text("CONTINUE_TO_NEXT")
-                    .font(.system(size: 14, weight: .black, design: .monospaced))
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(TermTheme.accent)
-                    .foregroundStyle(TermTheme.card)
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-            }
-        }
-        .padding(20)
-        .background(TermTheme.live.opacity(0.05))
-        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .stroke(TermTheme.live.opacity(0.2), lineWidth: 1)
-        }
-    }
-}
-
-// MARK: - All Sealed success terminal screen
-
-private struct AllSealedSuccessView: View {
-    let dispatchCodes: [String: String]
-    let onStartNew: () -> Void
-
-    var body: some View {
-        ScrollView {
-            VStack(spacing: 32) {
-                PayloadStateView(
-                    variant: .success,
-                    title: "MANIFEST_LOCKED",
-                    message: "All items verified and sealed for transport.",
-                    tone: .success
-                )
-                .padding(.top, 40)
-
-                VStack(alignment: .leading, spacing: 16) {
-                    Text("DISPATCH_MANIFEST_SUMMARY")
-                        .font(.system(size: 12, weight: .black, design: .monospaced))
-                        .foregroundStyle(TermTheme.tertiary)
-                    
-                    VStack(spacing: 8) {
-                        ForEach(dispatchCodes.sorted(by: { $0.key < $1.key }), id: \.key) { id, code in
-                            HStack {
-                                Text("ORD-\(id.suffix(6).uppercased())")
-                                    .font(.system(size: 14, weight: .black, design: .monospaced))
-                                    .foregroundStyle(TermTheme.accent)
-                                Spacer()
-                                Text(code)
-                                    .font(.system(size: 18, weight: .black, design: .monospaced))
-                                    .foregroundStyle(TermTheme.live)
-                            }
-                            .padding(16)
-                            .background(TermTheme.card)
-                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                            .overlay {
-                                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                    .stroke(TermTheme.separator.opacity(0.1), lineWidth: 1)
-                            }
-                        }
-                    }
-                }
-                .padding(24)
-                .background(TermTheme.bg)
-                .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .stroke(TermTheme.separator.opacity(0.1), lineWidth: 1)
-                }
-
-                Button {
-                    onStartNew()
-                } label: {
-                    HStack {
-                        Image(systemName: "plus.circle.fill")
-                        Text("START_NEXT_LOAD")
-                            .font(.system(size: 18, weight: .black, design: .monospaced))
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 20)
-                    .background(TermTheme.accent)
-                    .foregroundStyle(TermTheme.card)
-                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                }
-                .buttonStyle(.tactical)
-            }
-            .padding(24)
-        }
-        .background(TermTheme.bg)
-    }
-}
-
-private struct TruckHeader: View {
-    let truck: Truck
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(truck.label?.uppercased() ?? truck.licensePlate?.uppercased() ?? "VEHICLE-\(truck.id.prefix(8).uppercased())")
-                .font(.system(size: 28, weight: .black, design: .monospaced)) // Massive tactical header
-                .foregroundStyle(TermTheme.accent)
-                .tracking(1.4)
-            
-            HStack(spacing: 8) {
-                if let p = truck.licensePlate, !p.isEmpty {
-                    Text(p.uppercased())
-                        .font(.system(size: 14, weight: .bold, design: .monospaced))
-                        .foregroundStyle(TermTheme.secondary)
-                }
-                
-                if let c = truck.vehicleClass, !c.isEmpty {
-                    Text("—")
-                        .foregroundStyle(TermTheme.tertiary)
-                    Text(c.uppercased())
-                        .font(.system(size: 14, weight: .bold, design: .monospaced))
-                        .foregroundStyle(TermTheme.secondary)
-                }
-                
-                Spacer()
-                
-                // Active Marker
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(TermTheme.live)
-                        .frame(width: 8, height: 8)
-                    Text("ACTIVE_NODE")
-                        .font(.system(size: 10, weight: .black, design: .monospaced))
-                        .foregroundStyle(TermTheme.live)
-                }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 4)
-                .background(TermTheme.live.opacity(0.12), in: Capsule())
-            }
-        }
-        .padding(TermTheme.s24)
-        .tacticalCard(radius: TermTheme.radiusMD)
-    }
-}
-*/
-
-// MARK: - Phase 5 sheets
-
-private struct InjectOrderSheet: View {
-    let injecting: Bool
-    let onCancel: () -> Void
-    let onSubmit: (String) -> Void
-    @State private var orderId: String = ""
-    @State private var showScanner = false
-
-    var body: some View {
-        ZStack {
-            TermTheme.bg.ignoresSafeArea()
-            
-            VStack(spacing: 24) {
-                // Tactical Header
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("SYSTEM_INJECTION")
-                            .font(.system(size: 12, weight: .black, design: .monospaced))
-                            .foregroundStyle(TermTheme.secondary)
-                        Text("INJECT_ORDER")
-                            .font(.system(size: 24, weight: .black, design: .monospaced))
-                            .foregroundStyle(TermTheme.accent)
-                    }
-                    Spacer()
-                    Button(action: onCancel) {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 28))
-                            .foregroundStyle(TermTheme.tertiary)
-                    }
-                    .disabled(injecting)
-                }
-                .padding(.horizontal, 4)
-
-                VStack(alignment: .leading, spacing: 16) {
-                    Text("TARGET_ORDER_ID")
-                        .font(.system(size: 10, weight: .bold, design: .monospaced))
-                        .foregroundStyle(TermTheme.secondary)
-                    
-                    TextField("ORD-XXXXXX", text: $orderId)
-                        .font(.system(size: 20, weight: .black, design: .monospaced))
-                        .padding(16)
-                        .background(TermTheme.card)
-                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .stroke(TermTheme.accent.opacity(0.1), lineWidth: 1)
-                        }
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .disabled(injecting)
-                    
-                    Text("Add an order mid-load. Scan an order label or enter the order ID.")
-                        .font(.system(size: 12, weight: .medium, design: .monospaced))
-                        .foregroundStyle(TermTheme.tertiary)
-                        .padding(.horizontal, 4)
-
-                    Button {
-                        showScanner.toggle()
-                    } label: {
-                        Label(showScanner ? "HIDE SCANNER" : "SCAN ORDER LABEL", systemImage: "barcode.viewfinder")
-                            .font(.system(size: 12, weight: .bold, design: .monospaced))
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.bordered)
-                    .disabled(injecting)
-
-                    if showScanner {
-                        EANBarcodeScannerView(onBarcode: { scanned in
-                            orderId = scanned.trimmingCharacters(in: .whitespacesAndNewlines)
-                            showScanner = false
-                        })
-                    }
-                }
-                .padding(20)
-                .background(TermTheme.card.opacity(0.5))
-                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-                .tacticalCard()
-
-                Spacer()
-
-                Button {
-                    onSubmit(orderId)
-                } label: {
-                    HStack {
-                        if injecting {
-                            ProgressView().tint(TermTheme.card)
-                        } else {
-                            Image(systemName: "bolt.fill")
-                            Text("EXECUTE_INJECTION")
-                                .font(.system(size: 16, weight: .black, design: .monospaced))
-                        }
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 18)
-                    .background(orderId.trimmingCharacters(in: .whitespaces).isEmpty ? TermTheme.tertiary : TermTheme.accent)
-                    .foregroundStyle(TermTheme.card)
-                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                }
-                .disabled(injecting || orderId.trimmingCharacters(in: .whitespaces).isEmpty)
-                .buttonStyle(.tactical)
-            }
-            .padding(24)
-        }
-    }
-}
-
-private struct ExceptionReasonSheet: View {
-    let orderId: String
-    let inFlight: Bool
-    let onCancel: () -> Void
-    let onSelect: (String) -> Void
-
-    private let reasons: [(code: String, label: String, icon: String)] = [
-        ("OVERFLOW", "OVERFLOW - NO CAPACITY", "shippingbox.fill"),
-        ("DAMAGED", "DAMAGED - QUALITY FAIL", "exclamationmark.shield.fill"),
-        ("MANUAL", "MANUAL - OPERATOR VOID", "hand.raised.fill"),
-    ]
-
-    var body: some View {
-        ZStack {
-            TermTheme.bg.ignoresSafeArea()
-            
-            VStack(spacing: 24) {
-                // Header
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("EXCEPTION_REPORT")
-                            .font(.system(size: 12, weight: .black, design: .monospaced))
-                            .foregroundStyle(TermTheme.secondary)
-                        Text("REMOVE_ORD-\(orderId.suffix(6).uppercased())")
-                            .font(.system(size: 20, weight: .black, design: .monospaced))
-                            .foregroundStyle(TermTheme.warn)
-                    }
-                    Spacer()
-                    Button(action: onCancel) {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 28))
-                            .foregroundStyle(TermTheme.tertiary)
-                    }
-                }
-                .padding(.horizontal, 4)
-
-                VStack(alignment: .leading, spacing: 16) {
-                    Text("SELECT_EXCEPTION_REASON")
-                        .font(.system(size: 10, weight: .bold, design: .monospaced))
-                        .foregroundStyle(TermTheme.secondary)
-                    
-                    VStack(spacing: 12) {
-                        ForEach(reasons, id: \.code) { reason in
-                            Button {
-                                onSelect(reason.code)
-                            } label: {
-                                HStack(spacing: 16) {
-                                    Image(systemName: reason.icon)
-                                        .font(.system(size: 20))
-                                        .foregroundStyle(TermTheme.warn)
-                                        .frame(width: 44, height: 44)
-                                        .background(TermTheme.warn.opacity(0.1), in: RoundedRectangle(cornerRadius: 12))
-                                    
-                                    Text(reason.label)
-                                        .font(.system(size: 14, weight: .black, design: .monospaced))
-                                        .foregroundStyle(TermTheme.accent)
-                                    
-                                    Spacer()
-                                    
-                                    if inFlight {
-                                        ProgressView().tint(TermTheme.accent)
-                                    } else {
-                                        Image(systemName: "chevron.right")
-                                            .font(.system(size: 14, weight: .bold))
-                                            .foregroundStyle(TermTheme.tertiary)
-                                    }
-                                }
-                                .padding(12)
-                                .background(TermTheme.card)
-                                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                                .tacticalCard()
-                            }
-                            .disabled(inFlight)
-                            .buttonStyle(.tactical)
-                        }
-                    }
-                    
-                    Text("3+ overflow attempts on this manifest will escalate to admin DLQ.")
-                        .font(.system(size: 12, weight: .medium, design: .monospaced))
-                        .foregroundStyle(TermTheme.tertiary)
-                        .padding(.horizontal, 4)
-                        .padding(.top, 8)
-                }
-                
-                Spacer()
-            }
-            .padding(24)
-        }
-    }
-}
-
-private struct ReDispatchSheet: View {
-    let orderId: String
-    let loading: Bool
-    let response: RecommendReassignResponse?
-    let reassigning: Bool
-    let onClose: () -> Void
-    let onPick: (String, Bool) -> Void
-
-    var body: some View {
-        ZStack {
-            TermTheme.bg.ignoresSafeArea()
-            
-            VStack(spacing: 24) {
-                // Header
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("LOGISTICS_OPTIMIZER")
-                            .font(.system(size: 12, weight: .black, design: .monospaced))
-                            .foregroundStyle(TermTheme.secondary)
-                        Text("RE_DISPATCH_ORD-\(orderId.suffix(6).uppercased())")
-                            .font(.system(size: 20, weight: .black, design: .monospaced))
-                            .foregroundStyle(TermTheme.accent)
-                    }
-                    Spacer()
-                    Button(action: onClose) {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 28))
-                            .foregroundStyle(TermTheme.tertiary)
-                    }
-                }
-                .padding(.horizontal, 4)
-
-                Group {
-                    if loading {
-                        PayloadStateView(
-                            variant: .dispatch,
-                            title: "SOLVING_CONSTRAINTS...",
-                            message: "Scoring nearby trucks for the best reassignment path.",
-                            compact: true
-                        )
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    } else if let resp = response {
-                        ScrollView {
-                            VStack(spacing: 20) {
-                                // Order Info Card
-                                VStack(alignment: .leading, spacing: 8) {
-                                    Text("TARGET_OBJECT")
-                                        .font(.system(size: 10, weight: .bold, design: .monospaced))
-                                        .foregroundStyle(TermTheme.secondary)
-                                    
-                                    HStack {
-                                        Text(resp.retailerName?.uppercased() ?? "OFFLINE_RETAILER")
-                                            .font(.system(size: 16, weight: .black, design: .monospaced))
-                                            .foregroundStyle(TermTheme.accent)
-                                        Spacer()
-                                        Text(String(format: "%.1f VU", resp.orderVolumeVu ?? 0))
-                                            .font(.system(size: 16, weight: .black, design: .monospaced))
-                                            .foregroundStyle(TermTheme.accent)
-                                    }
-                                }
-                                .padding(16)
-                                .background(TermTheme.card)
-                                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                                .tacticalCard()
-
-                                if (resp.recommendations).isEmpty {
-                                    PayloadStateView(
-                                        variant: .dispatch,
-                                        title: "NO_SUITABLE_CARRIERS_FOUND",
-                                        message: "No nearby fleet target can accept this order right now.",
-                                        compact: true,
-                                        tone: .warning
-                                    )
-                                    .padding(40)
-                                    .frame(maxWidth: .infinity)
-                                    .background(TermTheme.card)
-                                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                                    .tacticalCard()
-                                } else {
-                                    VStack(alignment: .leading, spacing: 12) {
-                                        Text("AI_RECOMMENDATIONS")
-                                            .font(.system(size: 12, weight: .black, design: .monospaced))
-                                            .foregroundStyle(TermTheme.secondary)
-                                            .padding(.horizontal, 4)
-                                        
-                                        VStack(spacing: 12) {
-                                            ForEach(resp.recommendations) { rec in
-                                                RecommendationRow(
-                                                    rec: rec,
-                                                    onPickComplete: { onPick(rec.driverId, false) },
-                                                    onPickPartial: { onPick(rec.driverId, true) }
-                                                )
-                                                .disabled(reassigning)
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    } else {
-                        PayloadStateView(
-                            variant: .dispatch,
-                            title: "NO_DATA_AVAILABLE",
-                            message: "The optimizer response is not available yet.",
-                            compact: true,
-                            tone: .warning
-                        )
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    }
-                }
-            }
-            .padding(24)
-            
-            if reassigning {
-                TermTheme.bg.opacity(0.8).ignoresSafeArea()
-                VStack(spacing: 16) {
-                    ProgressView().tint(TermTheme.accent)
-                    Text("REASSIGNING_ORDER...")
-                        .font(.system(size: 12, weight: .black, design: .monospaced))
-                        .foregroundStyle(TermTheme.accent)
-                }
-            }
-        }
-    }
-}
-
-
-
-// MARK: - Phase 6: notifications sheet / info banner
-
-private struct InfoBanner: View {
-    let text: String
-    let tint: Color
-    var body: some View {
-        Text(text)
-            .font(.footnote.bold())
-            .foregroundStyle(.white)
-            .padding(.horizontal, 16).padding(.vertical, 10)
-            .background(tint)
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-            .shadow(radius: 4)
     }
 }

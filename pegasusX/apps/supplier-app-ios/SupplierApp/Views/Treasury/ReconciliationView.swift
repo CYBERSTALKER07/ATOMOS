@@ -1,34 +1,32 @@
 import SwiftUI
 
 struct ReconciliationView: View {
-    @State private var loading = true
-    @State private var error: String?
-    @State private var netMinor: Int64 = 0
-    @State private var currency = "UZS"
-    @State private var mismatchCount = 0
+    @State private var viewModel = ReconciliationViewModel()
 
     var body: some View {
         Group {
-            if loading {
-                SupplierLoadingView(title: "Loading reconciliation…")
-            } else if let error {
-                SupplierErrorView(message: error) { Task { await load() } }
+            if viewModel.loading && !viewModel.hasLoaded {
+                SupplierLoadingView(title: "mobile_supplier.loading.reconciliation")
+            } else if let error = viewModel.error, !viewModel.hasLoaded {
+                SupplierErrorView(message: error) { Task { await viewModel.load() } }
             } else {
                 ResponsiveGridContentWrapper {
                     Section {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("Settlement net (authority)").font(.caption).foregroundStyle(.secondary)
-                            Text(MoneyFormat.minor(netMinor, currency: currency)).font(.title2.bold())
+                            Text("supplier_portal.residual.text.settlement_net_authority").font(.caption).foregroundStyle(.secondary)
+                            Text(Self.formatSettlementNet(netMinor: viewModel.netMinor, currency: viewModel.currency)).font(.title2.bold())
                         }
+                        .accessibilityElement(children: .combine)
                     }
                     Section {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("Open mismatches").font(.caption).foregroundStyle(.secondary)
-                            Text("\(mismatchCount)").font(.title2.bold())
+                            Text("supplier_portal.residual.text.open_mismatches").font(.caption).foregroundStyle(.secondary)
+                            Text("\(viewModel.mismatchCount)").font(.title2.bold())
                         }
+                        .accessibilityElement(children: .combine)
                     }
                     Section {
-                        Text("Full ledger detail is on Payment ledger.")
+                        Text("mobile_supplier.ui.full_ledger_detail_is_on_payment_ledger")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     }
@@ -36,26 +34,13 @@ struct ReconciliationView: View {
             }
         }
         .background(SupplierTheme.background)
-        .navigationTitle("Reconciliation")
-        .task { await load() }
+        .navigationTitle("portal.nav.reconciliation")
+        .task { await viewModel.load() }
+        .refreshable { await viewModel.load(silent: true) }
     }
 
-    private func load() async {
-        loading = true
-        error = nil
-        defer { loading = false }
-        do {
-            async let authority = SupplierOperationsService.paymentSettlementAuthority()
-            async let mismatches = SupplierOperationsService.paymentReconciliationMismatches()
-            let authorityResp = try await authority
-            let mismatchResp = try await mismatches
-            if let primary = authorityResp.totalsByCurrency.first {
-                currency = primary.currency
-                netMinor = primary.amountMinorTotal
-            }
-            mismatchCount = mismatchResp.items.count
-        } catch {
-            self.error = error.localizedDescription
-        }
+    static func formatSettlementNet(netMinor: Int64?, currency: String) -> String {
+        guard let netMinor else { return MissingNumber.label(nil as Int64?) }
+        return MoneyFormat.minor(netMinor, currency: currency)
     }
 }

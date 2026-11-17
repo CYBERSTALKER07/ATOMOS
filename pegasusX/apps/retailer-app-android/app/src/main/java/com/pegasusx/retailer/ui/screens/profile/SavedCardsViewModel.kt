@@ -41,7 +41,6 @@ data class SavedCardsUiState(
     val otpPhone: String? = null,
     val addError: String? = null,
     val loadIssue: SavedCardsLoadIssue? = null,
-    val cardJustAdded: Boolean = false,
 ) {
     val syncMessage: String?
         get() = when (loadIssue) {
@@ -132,14 +131,7 @@ class SavedCardsViewModel @Inject constructor(
                     "card_token" to session,
                     "otp_code" to otp
                 ))
-                _uiState.update {
-                    it.copy(
-                        isAddingCard = false,
-                        initiateSession = null,
-                        otpPhone = null,
-                        cardJustAdded = true,
-                    )
-                }
+                _uiState.update { it.copy(isAddingCard = false, initiateSession = null, otpPhone = null) }
                 loadCards()
             } catch (e: Exception) {
                 val issue = resolveLoadIssue(e)
@@ -155,10 +147,6 @@ class SavedCardsViewModel @Inject constructor(
 
     fun cancelAdd() {
         _uiState.update { it.copy(isAddingCard = false, initiateSession = null, otpPhone = null, addError = null, loadIssue = null) }
-    }
-
-    fun clearCardJustAdded() {
-        _uiState.update { it.copy(cardJustAdded = false) }
     }
 
     fun setDefault(cardId: String) {

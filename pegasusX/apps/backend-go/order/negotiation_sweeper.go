@@ -2,6 +2,7 @@ package order
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"cloud.google.com/go/spanner"
@@ -48,38 +49,81 @@ func NegotiationFeatureEnabled() bool {
 
 // SweepExpiredNegotiations finds PENDING negotiations that have expired and AUTO_REJECTs them.
 func (s *Service) SweepExpiredNegotiations(ctx context.Context) error {
-	now := s.now()
-	stmt := spanner.Statement{
-		SQL: `SELECT ProposalId FROM NegotiationProposals 
-		      WHERE Status = 'PENDING' AND ExpiresAt <= @now
-		      LIMIT 100`,
-		Params: map[string]interface{}{"now": now},
+	if s.spannerClient == nil {
+		return fmt.Errorf("spanner unavailable")
 	}
-	iter := s.spannerClient.Single().Query(ctx, stmt)
-	defer iter.Stop()
+	now := s.now()
+	const pageSize = 100
+	var afterExpiresAt *time.Time
+	var afterProposalID string
 
-	var proposals []string
 	for {
-		row, err := iter.Next()
-		if err == iterator.Done {
+		stmt := buildExpiredNegotiationsPageStatement(now, pageSize, afterExpiresAt, afterProposalID)
+		iter := s.spannerClient.Single().Query(ctx, stmt)
+		type proposalCursor struct {
+			id        string
+			expiresAt time.Time
+		}
+		var page []proposalCursor
+		for {
+			row, err := iter.Next()
+			if err == iterator.Done {
+				break
+			}
+			if err != nil {
+				iter.Stop()
+				return err
+			}
+			var pid string
+			var exp time.Time
+			if err := row.Columns(&pid, &exp); err != nil {
+				iter.Stop()
+				return err
+			}
+			page = append(page, proposalCursor{id: pid, expiresAt: exp})
+		}
+		iter.Stop()
+
+		if len(page) == 0 {
 			break
 		}
-		if err != nil {
-			return err
+		for _, p := range page {
+			if err := s.autoRejectNegotiation(ctx, p.id, now); err != nil {
+				s.log.WarnContext(ctx, "failed to auto-reject negotiation", "proposal_id", p.id, "err", err)
+			}
 		}
-		var pid string
-		if err := row.Columns(&pid); err != nil {
-			return err
+		if len(page) < pageSize {
+			break
 		}
-		proposals = append(proposals, pid)
-	}
-
-	for _, pid := range proposals {
-		if err := s.autoRejectNegotiation(ctx, pid, now); err != nil {
-			s.log.WarnContext(ctx, "failed to auto-reject negotiation", "proposal_id", pid, "err", err)
-		}
+		last := page[len(page)-1]
+		exp := last.expiresAt
+		afterExpiresAt = &exp
+		afterProposalID = last.id
 	}
 	return nil
+}
+
+func buildExpiredNegotiationsPageStatement(now time.Time, limit int, afterExpiresAt *time.Time, afterProposalID string) spanner.Statement {
+	if limit <= 0 {
+		limit = 100
+	}
+	if limit > 500 {
+		limit = 500
+	}
+	params := map[string]interface{}{"now": now, "lim": limit}
+	cursorClause := ""
+	if afterExpiresAt != nil && afterProposalID != "" {
+		cursorClause = " AND (ExpiresAt > @afterExpiresAt OR (ExpiresAt = @afterExpiresAt AND ProposalId > @afterProposalId))"
+		params["afterExpiresAt"] = *afterExpiresAt
+		params["afterProposalId"] = afterProposalID
+	}
+	return spanner.Statement{
+		SQL: `SELECT ProposalId, ExpiresAt FROM NegotiationProposals
+		      WHERE Status = 'PENDING' AND ExpiresAt <= @now` + cursorClause + `
+		      ORDER BY ExpiresAt ASC, ProposalId ASC
+		      LIMIT @lim`,
+		Params: params,
+	}
 }
 
 func (s *Service) autoRejectNegotiation(ctx context.Context, proposalID string, now time.Time) error {

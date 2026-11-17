@@ -6,7 +6,7 @@ struct VehicleInfoCard: View {
     var body: some View {
         HStack(spacing: 14) {
             Image(systemName: "truck.box.fill")
-                .font(.system(size: 22))
+                .font(.system(.title2))
                 .foregroundStyle(LabTheme.fg)
                 .frame(width: 44, height: 44)
                 .background(LabTheme.separator)
@@ -14,17 +14,17 @@ struct VehicleInfoCard: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(vm.truckId)
-                    .font(.system(size: 15, weight: .bold))
+                    .font(.system(.subheadline, weight: .bold))
                     .foregroundStyle(LabTheme.fg)
                 HStack(spacing: 6) {
                     Text(vm.licensePlate)
-                        .font(.system(size: 12, weight: .medium, design: .monospaced))
+                        .font(.system(.caption, design: .monospaced, weight: .medium))
                         .foregroundStyle(LabTheme.fgTertiary)
                     if vm.vehicleClass != "—" {
                         Text("•")
                             .foregroundStyle(LabTheme.fgTertiary)
-                        Text("\(vm.vehicleClass) · \(Int(vm.maxVolumeVU)) VU")
-                            .font(.system(size: 12, weight: .medium, design: .monospaced))
+                        Text(L10n.format("mobile_driver.ui.vehicleclass_maxvolumevu_vu", "\(vm.vehicleClass)", "\(Int(vm.maxVolumeVU))"))
+                            .font(.system(.caption, design: .monospaced, weight: .medium))
                             .foregroundStyle(LabTheme.fgTertiary)
                     }
                 }

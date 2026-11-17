@@ -1,13 +1,13 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
+sortOptions:
+  order: fifo
+
 namespace: pegasusx
 
 resources:
   - ../prod
-  - ../../ai-worker/configmap.yaml
-  - ../../ai-worker/deployment.yaml
-  - ../../ai-worker/service.yaml
 
 patches:
   - target:

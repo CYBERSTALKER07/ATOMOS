@@ -26,7 +26,7 @@ export const translationContract: TranslationContract = {
   defaultLocale,
   supportedLocales: ["en", "ru", "uz"],
   uzbekScript: "latin",
-  fallbackChain: ["en"],
+  fallbackChain: ["uz", "ru", "en"],
   placeholderSyntax: "{name}",
   interpolationRules: {
     currency: "Intl.NumberFormat",
@@ -65,7 +65,14 @@ export function getTranslation(
     return localized;
   }
 
-  return catalogs[defaultLocale]?.[key] ?? key;
+  for (const fallbackLocale of translationContract.fallbackChain) {
+    const candidate = catalogs[fallbackLocale]?.[key];
+    if (candidate) {
+      return candidate;
+    }
+  }
+
+  return key;
 }
 
 export function formatTranslation(

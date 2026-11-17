@@ -9,6 +9,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
+import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.pegasus.payload.services.NotificationBus
@@ -29,6 +31,7 @@ class MainActivity : ComponentActivity() {
     private val requestNotificationPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* no-op */ }
 
+    @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
@@ -36,8 +39,9 @@ class MainActivity : ComponentActivity() {
         maybeRequestNotificationPermission()
         handleIntentExtras(intent)
         setContent {
+            val windowSizeClass = calculateWindowSizeClass(this)
             LabPayloadTheme {
-                PayloadRoot()
+                PayloadRoot(windowSizeClass = windowSizeClass)
             }
         }
     }

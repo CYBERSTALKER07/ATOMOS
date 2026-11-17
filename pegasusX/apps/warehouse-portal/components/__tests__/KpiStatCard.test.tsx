@@ -1,17 +1,19 @@
+"use client";
+
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import { KpiStatCard, KpiStatGrid } from '../KpiStatCard';
 
 describe('KpiStatCard', () => {
   it('renders the label and value correctly', () => {
-    render(<KpiStatCard label="Total Revenue" value="$10,000" />);
+    render(<KpiStatCard label={"Total Revenue"} value="$10,000" />);
     
     expect(screen.getByText('Total Revenue')).toBeInTheDocument();
     expect(screen.getByText('$10,000')).toBeInTheDocument();
   });
 
   it('renders the subtext if provided', () => {
-    render(<KpiStatCard label="Active Users" value="1,200" sub="+5% from last week" />);
+    render(<KpiStatCard label={"Active Users"} value="1,200" sub="+5% from last week" />);
     
     expect(screen.getByText('Active Users')).toBeInTheDocument();
     expect(screen.getByText('1,200')).toBeInTheDocument();

@@ -1,0 +1,191 @@
+{
+  "summary": {
+    "total_apps": 11,
+    "files_scanned": 1001,
+    "total_findings": 0,
+    "health_score": 100,
+    "critical": 0,
+    "high": 0,
+    "medium": 0,
+    "low": 0
+  },
+  "app_breakdown": {
+    "pegasusX/admin-portal": {
+      "app_info": {
+        "id": "pegasusX/admin-portal",
+        "path": "pegasusX/apps/admin-portal",
+        "system": "pegasusX",
+        "role": "Superadmin & Billing",
+        "stack": "Next.js 15 (App Router) \u2022 React 19 \u2022 Tauri v2"
+      },
+      "files_scanned": 17,
+      "total_findings": 0,
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "low": 0,
+      "findings": []
+    },
+    "pegasusX/retailer-app-desktop": {
+      "app_info": {
+        "id": "pegasusX/retailer-app-desktop",
+        "path": "pegasusX/apps/retailer-app-desktop",
+        "system": "pegasusX",
+        "role": "Retailer Commerce",
+        "stack": "Next.js 15 (App Router) \u2022 React 19 \u2022 Tauri v2"
+      },
+      "files_scanned": 128,
+      "total_findings": 0,
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "low": 0,
+      "findings": []
+    },
+    "pegasusX/supplier-portal": {
+      "app_info": {
+        "id": "pegasusX/supplier-portal",
+        "path": "pegasusX/apps/supplier-portal",
+        "system": "pegasusX",
+        "role": "Supplier Global Enterprise",
+        "stack": "Next.js 15 (App Router) \u2022 React 19 \u2022 Tauri v2"
+      },
+      "files_scanned": 252,
+      "total_findings": 0,
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "low": 0,
+      "findings": []
+    },
+    "pegasusX/warehouse-portal": {
+      "app_info": {
+        "id": "pegasusX/warehouse-portal",
+        "path": "pegasusX/apps/warehouse-portal",
+        "system": "pegasusX",
+        "role": "Global Fulfillment Node",
+        "stack": "Next.js 15 (App Router) \u2022 React 19 \u2022 Tauri v2"
+      },
+      "files_scanned": 149,
+      "total_findings": 0,
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "low": 0,
+      "findings": []
+    },
+    "pegasusX/factory-portal": {
+      "app_info": {
+        "id": "pegasusX/factory-portal",
+        "path": "pegasusX/apps/factory-portal",
+        "system": "pegasusX",
+        "role": "Factory Floor Production",
+        "stack": "Next.js 15 (App Router) \u2022 React 19 \u2022 Tauri v2"
+      },
+      "files_scanned": 99,
+      "total_findings": 0,
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "low": 0,
+      "findings": []
+    },
+    "pegasusX/payload-terminal": {
+      "app_info": {
+        "id": "pegasusX/payload-terminal",
+        "path": "pegasusX/apps/payload-terminal",
+        "system": "pegasusX",
+        "role": "Airfreight Payload Station",
+        "stack": "React Native \u2022 Expo SDK 52 \u2022 React Native Web"
+      },
+      "files_scanned": 51,
+      "total_findings": 0,
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "low": 0,
+      "findings": []
+    },
+    "pegasus/admin-portal": {
+      "app_info": {
+        "id": "pegasus/admin-portal",
+        "path": "pegasus/apps/admin-portal",
+        "system": "pegasus",
+        "role": "Sovereign Admin Console",
+        "stack": "Next.js 15 (App Router) \u2022 React 19 \u2022 Tauri v2"
+      },
+      "files_scanned": 195,
+      "total_findings": 0,
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "low": 0,
+      "findings": []
+    },
+    "pegasus/warehouse-portal": {
+      "app_info": {
+        "id": "pegasus/warehouse-portal",
+        "path": "pegasus/apps/warehouse-portal",
+        "system": "pegasus",
+        "role": "Depot Fulfillment",
+        "stack": "Next.js 15 (App Router) \u2022 React 19 \u2022 Tauri v2"
+      },
+      "files_scanned": 36,
+      "total_findings": 0,
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "low": 0,
+      "findings": []
+    },
+    "pegasus/factory-portal": {
+      "app_info": {
+        "id": "pegasus/factory-portal",
+        "path": "pegasus/apps/factory-portal",
+        "system": "pegasus",
+        "role": "Plant Line Operations",
+        "stack": "Next.js 15 (App Router) \u2022 React 19 \u2022 Tauri v2"
+      },
+      "files_scanned": 29,
+      "total_findings": 0,
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "low": 0,
+      "findings": []
+    },
+    "pegasus/retailer-app-desktop": {
+      "app_info": {
+        "id": "pegasus/retailer-app-desktop",
+        "path": "pegasus/apps/retailer-app-desktop",
+        "system": "pegasus",
+        "role": "Storefront Desktop",
+        "stack": "Next.js 15 (App Router) \u2022 React 19 \u2022 Tauri v2"
+      },
+      "files_scanned": 34,
+      "total_findings": 0,
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "low": 0,
+      "findings": []
+    },
+    "pegasus/payload-terminal": {
+      "app_info": {
+        "id": "pegasus/payload-terminal",
+        "path": "pegasus/apps/payload-terminal",
+        "system": "pegasus",
+        "role": "Payload Scanner Terminal",
+        "stack": "React Native \u2022 Expo SDK 52 \u2022 React Native Web"
+      },
+      "files_scanned": 11,
+      "total_findings": 0,
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "low": 0,
+      "findings": []
+    }
+  },
+  "findings": []
+}

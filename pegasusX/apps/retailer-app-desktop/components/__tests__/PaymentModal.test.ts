@@ -5,6 +5,7 @@
  * requiring WebSocket context or React rendering.
  */
 import { describe, it, expect } from "vitest";
+import { filterRetailerCardGateways } from "../../lib/payment-catalog";
 
 /* ── Re-implement pure functions from PaymentModal.tsx ── */
 
@@ -213,6 +214,13 @@ describe("PAYMENT_SETTLED matching", () => {
 
     const matches = currentEvent && settledMsg.order_id === currentEvent.order_id;
     expect(matches).toBe(true);
+  });
+});
+
+describe("GS-R pack-filtered card list", () => {
+  it("drops Adyen on a UZ catalog even when the event is empty or leaky", () => {
+    expect(filterRetailerCardGateways([], ["CASH", "GLOBAL_PAY"])).toEqual(["GLOBAL_PAY"]);
+    expect(filterRetailerCardGateways(["ADYEN"], ["CASH", "GLOBAL_PAY"])).toEqual([]);
   });
 });
 

@@ -38,9 +38,9 @@ enum EnterpriseUpdateConfig {
 
     static let policyRole = "ADMIN"
 
-    static let defaultManifestURL = URL(
-        string: "https://storage.googleapis.com/pegasusx-ssmr-app-updates/ios/supplier/updater.json"
-    )!
+    static let defaultManifestURL = SupplierURL.parse(
+        "https://storage.googleapis.com/pegasusx-ssmr-app-updates/ios/supplier/updater.json"
+    ) ?? SupplierURL.releaseBootstrap
 
     /// App Store listing URL for production builds.
     static var storeListingURL: URL? {

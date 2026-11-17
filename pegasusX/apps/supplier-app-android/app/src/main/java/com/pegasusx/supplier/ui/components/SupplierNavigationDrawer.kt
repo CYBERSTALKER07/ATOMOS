@@ -2,9 +2,9 @@ package com.pegasusx.supplier.ui.components
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import com.pegasus.design.PegasusCollapsibleRail
-import com.pegasus.design.PegasusRailGroup
-import com.pegasus.design.PegasusRailItem
+import com.pegasusx.supplier.ui.design.PegasusCollapsibleRail
+import com.pegasusx.supplier.ui.design.PegasusRailGroup
+import com.pegasusx.supplier.ui.design.PegasusRailItem
 import com.pegasusx.supplier.ui.navigation.SupplierSection
 
 @Composable

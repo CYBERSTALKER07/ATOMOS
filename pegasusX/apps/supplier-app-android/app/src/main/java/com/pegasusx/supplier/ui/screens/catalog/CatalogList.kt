@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.catalog
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -34,6 +36,7 @@ import com.pegasusx.supplier.data.model.CatalogProduct
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import java.text.NumberFormat
 import java.util.Locale
+import com.pegasusx.supplier.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -89,8 +92,7 @@ fun CatalogList(
                     TextButton(onClick = { onOpenProduct(product.productId) }) {
                         Text("View details")
                     }
-                    Text(
-                        "${fmt.format(product.priceMinor)} ${product.currency} · ${product.unit}",
+                    Text(stringResource(R.string.mobile_supplier_ui_format_currency_unit, fmt.format(product.priceMinor), product.currency, product.unit),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

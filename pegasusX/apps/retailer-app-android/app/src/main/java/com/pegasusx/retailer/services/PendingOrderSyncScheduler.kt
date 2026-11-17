@@ -7,6 +7,18 @@ import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 
+fun interface PendingOrderSyncEnqueuer {
+    fun enqueue()
+}
+
+class DefaultPendingOrderSyncEnqueuer(
+    private val context: Context,
+) : PendingOrderSyncEnqueuer {
+    override fun enqueue() {
+        PendingOrderSyncScheduler.enqueue(context)
+    }
+}
+
 object PendingOrderSyncScheduler {
     fun enqueue(context: Context) {
         val constraints = Constraints.Builder()

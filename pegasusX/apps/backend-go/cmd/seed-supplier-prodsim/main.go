@@ -23,6 +23,7 @@ import (
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
@@ -165,34 +166,33 @@ func main() {
 				"CreatedAt":          ts,
 				"UpdatedAt":          ts,
 			}),
-			spanner.InsertOrUpdateMap("PaymentLedgerEntries", map[string]any{
-				"LedgerEntryId": prodsimLedgerPendingID,
-				"OrderId":       pendingOrderID,
-				"SupplierId":    supplier.SupplierID,
-				"RetailerId":    retailerID,
-				"Gateway":       "PAYME",
-				"EntryType":     "WEBHOOK_PAID",
-				"AmountMinor":   int64(125_000),
-				"Currency":      supplier.Currency,
-				"ReferenceId":   "prodsim_seed_pending",
-				"Source":        "seed-supplier-prodsim",
-				"OccurredAt":    ts,
-				"CreatedAt":     ts,
-			}),
-			spanner.InsertOrUpdateMap("PaymentLedgerEntries", map[string]any{
-				"LedgerEntryId": prodsimLedgerDispatchID,
-				"OrderId":       dispatchOrderID,
-				"SupplierId":    supplier.SupplierID,
-				"RetailerId":    retailerID,
-				"Gateway":       "PAYME",
-				"EntryType":     "WEBHOOK_PAID",
-				"AmountMinor":   int64(210_000),
-				"Currency":      supplier.Currency,
-				"ReferenceId":   "prodsim_seed_dispatch",
-				"Source":        "seed-supplier-prodsim",
-				"OccurredAt":    ts,
-				"CreatedAt":     ts,
-			}),
+		}
+		for _, entry := range []struct {
+			id, orderID, refID string
+			amount             int64
+		}{
+			{prodsimLedgerPendingID, pendingOrderID, "prodsim_seed_pending", 125_000},
+			{prodsimLedgerDispatchID, dispatchOrderID, "prodsim_seed_dispatch", 210_000},
+		} {
+			_, err := txn.ReadRow(ctx, "PaymentLedgerEntries", spanner.Key{entry.id}, []string{"LedgerEntryId"})
+			if spanner.ErrCode(err) == codes.NotFound {
+				mutations = append(mutations, spanner.InsertMap("PaymentLedgerEntries", map[string]any{
+					"LedgerEntryId": entry.id,
+					"OrderId":       entry.orderID,
+					"SupplierId":    supplier.SupplierID,
+					"RetailerId":    retailerID,
+					"Gateway":       "PAYME",
+					"EntryType":     "WEBHOOK_PAID",
+					"AmountMinor":   entry.amount,
+					"Currency":      supplier.Currency,
+					"ReferenceId":   entry.refID,
+					"Source":        "seed-supplier-prodsim",
+					"OccurredAt":    ts,
+					"CreatedAt":     ts,
+				}))
+			} else if err != nil {
+				return fmt.Errorf("check prodsim ledger %s: %w", entry.id, err)
+			}
 		}
 		return txn.BufferWrite(mutations)
 	})

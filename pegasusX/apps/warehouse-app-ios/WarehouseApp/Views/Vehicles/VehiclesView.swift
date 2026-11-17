@@ -2,131 +2,123 @@ import SwiftUI
 
 struct VehiclesView: View {
     @Environment(WarehouseRealtimeHub.self) private var realtimeHub
-    @State private var vehicles: [Vehicle] = []
-    @State private var loading = true
-    @State private var error: String?
-    @State private var showCreate = false
+    @State private var vm = VehiclesViewModel()
 
     var body: some View {
-        NavigationStack {
-            Group {
-                if loading && vehicles.isEmpty {
-                    ProgressView()
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if let error, vehicles.isEmpty {
-                    ContentUnavailableView {
-                        Label("Error", systemImage: "exclamationmark.triangle")
-                    } description: {
-                        Text(error)
-                    } actions: {
-                        Button("Retry") { load() }
+        @Bindable var vm = vm
+        Group {
+            if vm.loading && vm.vehicles.isEmpty {
+                ProgressView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if let error = vm.error, vm.vehicles.isEmpty {
+                ContentUnavailableView {
+                    Label("mobile_warehouse.ui.error", systemImage: "exclamationmark.triangle")
+                } description: {
+                    Text(error)
+                } actions: {
+                    Button("common.action.retry") {
+                        PegasusHaptics.light()
+                        Task { await vm.load() }
                     }
-                } else if vehicles.isEmpty {
-                    ContentUnavailableView("No Trucks", systemImage: "truck.box", description: Text("Add a truck to get started"))
-                } else {
-                    VehiclesList(vehicles: vehicles)
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
                 }
-            }
-            .background(LabTheme.background)
-            .navigationTitle("Trucks")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Refresh", systemImage: "arrow.clockwise") { load() }
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Add Truck", systemImage: "plus") { showCreate = true }
-                }
-            }
-            .task { load() }
-            .refreshable { await load(silent: false) }
-            .silentRealtimeRefresh(refreshEpoch: realtimeHub.refreshEpoch, reconnectEpoch: realtimeHub.reconnectEpoch) { silent in
-                load(silent: silent)
-            }
-            .sheet(isPresented: $showCreate) {
-                CreateVehicleSheet { load() }
+            } else if vm.vehicles.isEmpty {
+                ContentUnavailableView(
+                    "No Trucks",
+                    systemImage: "truck.box",
+                    description: Text("mobile_warehouse.ui.add_a_truck_to_get_started")
+                )
+            } else {
+                VehiclesList(vehicles: vm.vehicles)
             }
         }
-    }
-
-    private func load(silent: Bool = false) {
-        if !silent { loading = true }
-        error = nil
-        Task {
-            do {
-                let resp = try await WarehouseService.vehicles()
-                vehicles = resp.vehicles
-            } catch {
-                if !silent { self.error = error.localizedDescription }
+        .background(LabTheme.background)
+        .navigationTitle("portal.nav.trucks")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    PegasusHaptics.light()
+                    Task { await vm.load() }
+                } label: {
+                    Label("portal.page.orders.action.refresh", systemImage: "arrow.clockwise")
+                        .frame(minWidth: 44, minHeight: 44)
+                        .contentShape(Rectangle())
+                }
+                .accessibilityLabel("Refresh trucks")
             }
-            if !silent { loading = false }
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    PegasusHaptics.light()
+                    vm.prepareCreateSheet()
+                } label: {
+                    Label("mobile_warehouse.ui.add_truck", systemImage: "plus")
+                        .frame(minWidth: 44, minHeight: 44)
+                        .contentShape(Rectangle())
+                }
+                .accessibilityLabel("Add truck")
+            }
+        }
+        .task { await vm.load() }
+        .refreshable { await vm.load(silent: false) }
+        .silentRealtimeRefresh(refreshEpoch: realtimeHub.refreshEpoch, reconnectEpoch: realtimeHub.reconnectEpoch) { silent in
+            Task { await vm.load(silent: silent) }
+        }
+        .sheet(isPresented: $vm.showCreate) {
+            CreateVehicleSheet(vm: vm)
         }
     }
 }
 
 private struct CreateVehicleSheet: View {
-    let onCreated: () -> Void
+    @Bindable var vm: VehiclesViewModel
     @Environment(\.dismiss) private var dismiss
     @Environment(WarehouseRealtimeHub.self) private var realtimeHub
-    @State private var label = ""
-    @State private var plate = ""
-    @State private var selectedClass = "CLASS_A"
-    @State private var submitting = false
-    @State private var error: String?
-
-    private let vehicleClasses = [
-        ("CLASS_A", "50 VU"),
-        ("CLASS_B", "150 VU"),
-        ("CLASS_C", "400 VU"),
-    ]
 
     var body: some View {
         NavigationStack {
             Form {
-                TextField("Label", text: $label)
-                TextField("License Plate", text: $plate)
+                TextField("mobile_warehouse.ui.label", text: $vm.draftLabel)
+                TextField("mobile_warehouse.ui.license_plate", text: $vm.draftPlate)
                 Section("Vehicle Class") {
-                    Picker("Class", selection: $selectedClass) {
-                        ForEach(vehicleClasses, id: \.0) { cls, cap in
-                            Text("\(cls) (\(cap))").tag(cls)
+                    Picker("Class", selection: $vm.selectedClass) {
+                        ForEach(vm.vehicleClasses, id: \.0) { cls, cap in
+                            Text(L10n.format("mobile_warehouse.ui.cls_cap", "\(cls)", "\(cap)")).tag(cls)
                         }
                     }
                     .pickerStyle(.segmented)
+                    .onChange(of: vm.selectedClass) { _, _ in
+                        PegasusHaptics.selection()
+                    }
                 }
-                if let error {
+                if let error = vm.createError {
                     Text(error).foregroundStyle(.red).font(.caption)
                 }
             }
-            .navigationTitle("Add Truck")
+            .scrollDismissesKeyboard(.interactively)
+            .navigationTitle("mobile_warehouse.ui.add_truck")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button("common.action.cancel") { dismiss() }
+                        .frame(minWidth: 44, minHeight: 44)
+                        .contentShape(Rectangle())
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Create") { create() }
-                        .disabled(submitting || label.isEmpty || plate.isEmpty)
+                    Button("mobile_warehouse.ui.create") {
+                        Task {
+                            if await vm.createVehicle() {
+                                dismiss()
+                            }
+                        }
+                    }
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
+                    .disabled(!vm.canCreate)
                 }
             }
             .onChange(of: realtimeHub.reconnectEpoch) { _, _ in
-                if submitting {
-                    submitting = false
-                    error = "Connection restored — verify status before retrying."
-                }
+                vm.handleReconnectDuringCreate()
             }
-        }
-    }
-
-    private func create() {
-        submitting = true
-        error = nil
-        Task {
-            do {
-                _ = try await WarehouseService.createVehicle(label: label, licensePlate: plate, vehicleClass: selectedClass)
-                dismiss()
-                onCreated()
-            } catch {
-                self.error = error.localizedDescription
-            }
-            submitting = false
         }
     }
 }

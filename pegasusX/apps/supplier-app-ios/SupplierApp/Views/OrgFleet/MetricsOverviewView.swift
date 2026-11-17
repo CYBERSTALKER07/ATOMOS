@@ -9,10 +9,10 @@ struct MetricsOverviewView: View {
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 16) {
-                MetricCard(title: "Warehouses", count: topology?.warehouses.count ?? 0)
-                MetricCard(title: "Factories", count: topology?.factories.count ?? 0)
-                MetricCard(title: "Org members", count: orgMembersCount)
-                MetricCard(title: "Fleet entities", count: driversCount + vehiclesCount)
+                MetricCard(title: "mobile_supplier.chrome.warehouses", count: topology?.warehouses.count ?? 0)
+                MetricCard(title: "mobile_supplier.chrome.factories", count: topology?.factories.count ?? 0)
+                MetricCard(title: "mobile_supplier.chrome.org_members", count: orgMembersCount)
+                MetricCard(title: "mobile_supplier.chrome.fleet_entities", count: driversCount + vehiclesCount)
             }
             .padding(.horizontal)
         }
@@ -25,7 +25,7 @@ private struct MetricCard: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(title)
+            Text(LocalizedStringKey(title))
                 .font(.caption)
                 .foregroundStyle(.secondary)
             Text("\(count)")
@@ -35,6 +35,6 @@ private struct MetricCard: View {
         .padding()
         .frame(minWidth: 130, alignment: .leading)
         .background(Color(uiColor: .secondarySystemBackground))
-        .cornerRadius(10)
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 }

@@ -26,6 +26,7 @@ import javax.inject.Singleton
 @Serializable
 data class RetailerWSMessage(
     @SerialName("type") val type: String,
+    @SerialName("event_id") val eventId: String? = null,
     @SerialName("order_id") val orderId: String = "",
     @SerialName("invoice_id") val invoiceId: String = "",
     @SerialName("session_id") val sessionId: String = "",
@@ -80,20 +81,33 @@ data class ShopClosedAlert(
     val options: List<String>,
 )
 
+interface CartRealtimeEventSource {
+    val events: SharedFlow<RetailerWSMessage>
+    fun connect()
+}
+
 @Singleton
 class RetailerWebSocket @Inject constructor(
     private val tokenManager: TokenManager,
     private val json: Json,
-) {
+) : CartRealtimeEventSource {
     private var socket: WebSocket? = null
-    private var client: OkHttpClient? = null
+    private val sharedClient: OkHttpClient = OkHttpClient.Builder()
+        .pingInterval(25, TimeUnit.SECONDS)
+        .readTimeout(0, TimeUnit.MILLISECONDS)
+        .apply {
+            configuredCertificatePinner(BuildConfig.BASE_URL, BuildConfig.API_TLS_SPKI_PINS)
+                ?.let { certificatePinner(it) }
+        }
+        .build()
     private val reconnectExecutor = Executors.newSingleThreadScheduledExecutor()
     private var reconnectTask: ScheduledFuture<*>? = null
     private val intentionalClose = AtomicBoolean(false)
     private val reconnectAttempt = AtomicInteger(0)
+    @Volatile private var lastEventId: String? = null
 
-    private val _events = MutableSharedFlow<RetailerWSMessage>(extraBufferCapacity = 16)
-    val events: SharedFlow<RetailerWSMessage> = _events.asSharedFlow()
+    private val _events = MutableSharedFlow<RetailerWSMessage>(extraBufferCapacity = 32)
+    override val events: SharedFlow<RetailerWSMessage> = _events.asSharedFlow()
 
     private val _reconnects = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val reconnects: SharedFlow<Unit> = _reconnects.asSharedFlow()
@@ -101,10 +115,9 @@ class RetailerWebSocket @Inject constructor(
     companion object {
         private const val BASE_DELAY_MS = 2_000L
         private const val MAX_DELAY_MS = 60_000L
-        private const val MAX_RECONNECT_ATTEMPTS = 10
     }
 
-    fun connect() {
+    override fun connect() {
         if (socket != null) return
         reconnectTask?.cancel(false)
         reconnectTask = null
@@ -112,19 +125,22 @@ class RetailerWebSocket @Inject constructor(
         val token = tokenManager.getToken() ?: return
 
         val wsBase = BuildConfig.WS_URL
-        val url = "$wsBase/v1/ws"
+        val currentLastId = lastEventId
+        val url = if (!currentLastId.isNullOrBlank()) {
+            "$wsBase/v1/ws?last_event_id=$currentLastId"
+        } else {
+            "$wsBase/v1/ws"
+        }
 
-        val okClient = OkHttpClient.Builder()
-            .pingInterval(30, TimeUnit.SECONDS)
-            .build()
-        client = okClient
-
-        val request = Request.Builder()
+        val reqBuilder = Request.Builder()
             .url(url)
             .addHeader("Authorization", "Bearer $token")
-            .build()
+        if (!currentLastId.isNullOrBlank()) {
+            reqBuilder.addHeader("Last-Event-ID", currentLastId)
+        }
+        val request = reqBuilder.build()
 
-        socket = okClient.newWebSocket(request, object : WebSocketListener() {
+        socket = sharedClient.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
                 val wasReconnect = reconnectAttempt.getAndSet(0) > 0
                 if (wasReconnect) {
@@ -135,9 +151,17 @@ class RetailerWebSocket @Inject constructor(
             override fun onMessage(webSocket: WebSocket, text: String) {
                 try {
                     val msg = json.decodeFromString<RetailerWSMessage>(text)
+                    if (msg.type == "WS_RESYNC_REQUIRED") {
+                        _reconnects.tryEmit(Unit)
+                        return
+                    }
+                    if (!msg.eventId.isNullOrBlank()) {
+                        lastEventId = msg.eventId
+                    }
                     _events.tryEmit(msg)
-                } catch (_: Exception) {
+                } catch (e: Exception) {
                     // ignore malformed messages
+                if (e is kotlinx.coroutines.CancellationException) throw e
                 }
             }
 
@@ -145,7 +169,6 @@ class RetailerWebSocket @Inject constructor(
                 socket = null
                 if (intentionalClose.get()) return
                 val attempt = reconnectAttempt.getAndIncrement()
-                if (attempt >= MAX_RECONNECT_ATTEMPTS) return
                 val delay = ReconnectBackoff.delayMs(attempt, BASE_DELAY_MS, MAX_DELAY_MS, ReconnectBackoff.retryAfterMs(response))
                 reconnectTask?.cancel(false)
                 reconnectTask = reconnectExecutor.schedule({ connect() }, delay, TimeUnit.MILLISECONDS)
@@ -153,6 +176,11 @@ class RetailerWebSocket @Inject constructor(
 
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
                 socket = null
+                if (intentionalClose.get()) return
+                val attempt = reconnectAttempt.getAndIncrement()
+                val delay = ReconnectBackoff.delayMs(attempt, BASE_DELAY_MS, MAX_DELAY_MS, -1)
+                reconnectTask?.cancel(false)
+                reconnectTask = reconnectExecutor.schedule({ connect() }, delay, TimeUnit.MILLISECONDS)
             }
         })
     }
@@ -163,7 +191,5 @@ class RetailerWebSocket @Inject constructor(
         reconnectTask = null
         socket?.close(1000, "App closing")
         socket = null
-        client?.dispatcher?.executorService?.shutdown()
-        client = null
     }
 }

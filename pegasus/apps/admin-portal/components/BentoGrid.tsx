@@ -4,7 +4,7 @@ import { type ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import { LoadingGlyph } from './Skeleton';
 
-// ── Bento Grid Container ────────────────────────────────────────────────────
+// -- Bento Grid Container ----------------------------------------------------
 
 interface BentoGridProps {
   children: ReactNode;
@@ -42,7 +42,7 @@ export function BentoGrid({
   );
 }
 
-// ── Bento Card ──────────────────────────────────────────────────────────────
+// -- Bento Card --------------------------------------------------------------
 
 type BentoSize = 'stat' | 'anchor' | 'list' | 'control' | 'wide' | 'full';
 
@@ -99,7 +99,7 @@ export function BentoCard({
   );
 }
 
-// ── Bento Skeleton (per-cell placeholder) ───────────────────────────────────
+// -- Bento Skeleton (per-cell placeholder) -----------------------------------
 
 interface BentoSkeletonProps {
   size?: BentoSize;

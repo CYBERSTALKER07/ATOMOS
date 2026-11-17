@@ -10,10 +10,7 @@ import SwiftData
 struct ProfileView: View {
     @Environment(\.modelContext) private var modelContext
     @Bindable var vm: FleetViewModel
-    @State private var showOfflineVerifier = false
-    @State private var showSyncQueue = false
-    @State private var showEndSession = false
-    @State private var pendingCount = 0
+    @State private var profileVM = ProfileViewModel()
 
     var body: some View {
         ScrollView {
@@ -26,10 +23,14 @@ struct ProfileView: View {
 
                 // MARK: - Quick Actions
                 QuickActions(
-                    onOfflineVerifier: { showOfflineVerifier = true },
-                    onSyncQueue: { showSyncQueue = true },
-                    onEndSession: { showEndSession = true },
-                    pendingCount: pendingCount
+                    onOfflineVerifier: { profileVM.showOfflineVerifier = true },
+                    onSyncQueue: { profileVM.showSyncQueue = true },
+                    onEndSession: { profileVM.showEndSession = true },
+                    onFleetDVIR: { profileVM.showFleetDVIR = true },
+                    onMidRouteRescue: { profileVM.showMidRouteRescue = true },
+                    onYardGate: { profileVM.showYardGate = true },
+                    onSettings: { profileVM.showSettings = true },
+                    pendingCount: profileVM.pendingCount
                 )
 
                 // MARK: - Ride History
@@ -40,30 +41,99 @@ struct ProfileView: View {
             }
             .padding(.horizontal, LabTheme.s16)
             .padding(.bottom, 20)
+            .labReadableWidth()
         }
+        .scrollDismissesKeyboard(.interactively)
         .background(LabTheme.bg)
-        .sheet(isPresented: $showOfflineVerifier) {
+        .sheet(isPresented: $profileVM.showFleetDVIR) {
+            FleetDVIRView(onBack: { profileVM.showFleetDVIR = false })
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $profileVM.showMidRouteRescue) {
+            MidRouteRescueView(onBack: { profileVM.showMidRouteRescue = false })
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $profileVM.showYardGate) {
+            YardGateView(onBack: { profileVM.showYardGate = false })
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $profileVM.showOfflineVerifier) {
             OfflineVerifierView(modelContext: modelContext)
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
         }
-        .sheet(isPresented: $showSyncQueue) {
+        .sheet(isPresented: $profileVM.showSyncQueue) {
             SyncQueueView()
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
         }
-        .sheet(isPresented: $showEndSession) {
+        .sheet(isPresented: $profileVM.showSettings) {
+            DriverLanguageSettingsSheet(onDone: { profileVM.showSettings = false })
+                .presentationDetents([.medium])
+                .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $profileVM.showEndSession) {
             EndSessionView(vm: vm)
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.hidden)
         }
         .task {
-            DriverOfflineQueue.shared.attach(container: modelContext.container)
-            pendingCount = DriverOfflineQueue.shared.pendingCount()
+            profileVM.attach(container: modelContext.container)
             await vm.loadEarningsAndHistory()
         }
-        .onChange(of: showSyncQueue) { _, open in
-            if !open { pendingCount = DriverOfflineQueue.shared.pendingCount() }
+        .onChange(of: profileVM.showSyncQueue) { _, open in
+            if !open { profileVM.refreshPendingCount() }
+        }
+    }
+}
+
+private struct DriverLanguageSettingsSheet: View {
+    let onDone: () -> Void
+    @State private var localeManager = DriverLocaleManager.shared
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    ForEach(DriverLocaleManager.supportedLanguages) { option in
+                        Button {
+                            Haptics.light()
+                            localeManager.setLanguage(option.code)
+                        } label: {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(option.displayName)
+                                        .font(.headline)
+                                        .foregroundStyle(LabTheme.fg)
+                                    Text(option.code.uppercased())
+                                        .font(.caption.monospaced())
+                                        .foregroundStyle(LabTheme.fgTertiary)
+                                }
+                                Spacer()
+                                if localeManager.currentCode == option.code {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundStyle(LabTheme.success)
+                                }
+                            }
+                            .frame(minHeight: 44)
+                        }
+                    }
+                } header: {
+                    Text(L10n.string("mobile_driver.ui.language"))
+                }
+            }
+            .navigationTitle(L10n.string("mobile_driver.ui.settings"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(L10n.string("common.done")) {
+                        onDone()
+                    }
+                }
+            }
         }
     }
 }

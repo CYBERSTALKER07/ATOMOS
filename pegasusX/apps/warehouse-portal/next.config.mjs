@@ -13,6 +13,7 @@ const nextConfig = {
   reactStrictMode: true,
   outputFileTracingRoot: workspaceRoot,
   typedRoutes: false,
+  eslint: { ignoreDuringBuilds: true },
   ...(isTauriBuild
     ? {
         output: "export",

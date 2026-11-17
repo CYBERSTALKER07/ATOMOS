@@ -48,15 +48,6 @@ type ReceiptLabels struct {
 	DownloadPDF   string
 }
 
-func countryFromCurrency(currency string) string {
-	switch strings.ToUpper(strings.TrimSpace(currency)) {
-	case "KZT":
-		return "KZ"
-	default:
-		return "UZ"
-	}
-}
-
 func receiptLayoutForCountry(country string) ReceiptLayout {
 	switch strings.ToUpper(strings.TrimSpace(country)) {
 	case "KZ":

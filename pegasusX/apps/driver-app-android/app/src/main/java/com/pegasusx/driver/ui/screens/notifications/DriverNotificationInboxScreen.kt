@@ -1,5 +1,7 @@
 package com.pegasusx.driver.ui.screens.notifications
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -33,7 +35,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,6 +51,7 @@ import com.pegasusx.driver.ui.components.DriverStateKind
 import com.pegasusx.driver.ui.components.DriverStatePane
 import java.time.Duration
 import java.time.Instant
+import com.pegasusx.driver.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -58,7 +61,7 @@ fun DriverNotificationInboxScreen(
     onHandoffUnresolved: () -> Unit = {},
     viewModel: DriverNotificationInboxViewModel = hiltViewModel(),
 ) {
-    val state by viewModel.uiState.collectAsState()
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
@@ -93,7 +96,7 @@ fun DriverNotificationInboxScreen(
                     contentAlignment = Alignment.Center,
                 ) {
                     DriverLoadingState(
-                        title = "Loading notifications",
+                        title = stringResource(R.string.mobile_driver_ui_loading_notifications),
                         body = "Checking route, payment, and dispatch updates.",
                         shimmerLines = true,
                     )

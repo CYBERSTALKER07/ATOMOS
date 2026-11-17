@@ -1,6 +1,6 @@
 # Static supplier-portal nginx image for SSMR
 # Usage: gcloud builds submit --config=cloudbuild.supplier-portal.yaml \
-#   --substitutions=_TAG=ssmr-portal,_REPO=pegasusx-ssmr-images --project=pegasus-503013 apps/supplier-portal
+#   --substitutions=_TAG=ssmr-portal,_REPO=pegasusx-ssmr-images --project=pegasusx-prod-uz apps/supplier-portal
 substitutions:
   _TAG: ssmr-supplier-portal
   _REGION: asia-south1

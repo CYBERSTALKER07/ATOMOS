@@ -30,6 +30,10 @@ type Wire struct {
 	UpdatedAt     string      `json:"updated_at,omitempty"`
 	Orders        []OrderWire `json:"orders,omitempty"`
 	OverflowCount int         `json:"overflow_count"`
+	// Thin inbound map: last known driver position (payload seal / handoff).
+	DriverLat             *float64 `json:"driver_lat,omitempty"`
+	DriverLng             *float64 `json:"driver_lng,omitempty"`
+	LiveLocationAvailable bool     `json:"live_location_available,omitempty"`
 }
 
 // DeliveryExpectationWire is the JSON shape embedded on manifest order rows.

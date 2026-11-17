@@ -10,7 +10,12 @@ import {
   type StockAwareProduct,
 } from './stock-policy';
 import { getRetailerId } from './retailer-profile';
+import { packCurrency, readCachedAuthSession } from '@pegasusx/api-core';
 import type { CheckoutPreviewResponse, Product } from './types';
+
+function cartCurrency(): string {
+  return packCurrency(readCachedAuthSession()?.pack);
+}
 
 export interface CartItem {
   product_id: string;
@@ -83,7 +88,7 @@ function toServerCartItems(items: CartItem[]): ServerCartItem[] {
       supplier_id: item.supplier_id,
       quantity: item.quantity,
       unit_price: Math.round(item.price),
-      currency: 'UZS',
+      currency: cartCurrency(),
     }));
 }
 
@@ -128,7 +133,7 @@ async function fetchPromotionTotals(cartItems: CartItem[]): Promise<{
           product_id: item.product_id,
           quantity: item.quantity,
           unit_price_minor: Math.round(item.price),
-          currency: 'UZS',
+          currency: cartCurrency(),
         })),
       }),
     });
@@ -155,7 +160,6 @@ async function fetchCheckoutPreviewCaps(
   const res = await apiFetch('/v1/checkout/preview', {
     method: 'POST',
     body: JSON.stringify({
-      retailer_id: retailerId,
       latitude: 0,
       longitude: 0,
       items: cartItems.map((item) => ({
@@ -334,7 +338,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const addToCart = (product: AddToCartProduct | Product, quantity = 1) => {
     const meta = stockMetaFromProduct(product as Product);
-    const cappedQty = clampCartQuantity(meta, quantity, previewOrderableQuantities, previewStockPolicyReject);
+    const cappedQty = clampCartQuantity(
+      { ...meta, product_id: product.id } as StockAwareProduct & { product_id: string },
+      quantity,
+      previewOrderableQuantities,
+      previewStockPolicyReject,
+    );
+    if (cappedQty <= 0) return;
     setItems((prev) => {
       const existing = prev.find((i) => i.product_id === product.id);
       if (existing) {
@@ -388,12 +398,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setPreviewStockPolicyReject(preview.default_out_of_stock_policy !== "ACCEPT_BACKORDER");
     setCheckoutPolicyToken(preview.checkout_policy_token ?? null);
     setItems((prev) =>
-      prev.map((item) => {
-        if (preview.default_out_of_stock_policy === "ACCEPT_BACKORDER" || item.accepts_backorder) return item;
-        const cap = caps[item.product_id];
-        if (cap == null || item.quantity <= cap) return item;
-        return { ...item, quantity: cap };
-      }),
+      prev
+        .map((item) => {
+          if (preview.default_out_of_stock_policy === "ACCEPT_BACKORDER" || item.accepts_backorder) return item;
+          const cap = caps[item.product_id];
+          if (cap == null || item.quantity <= cap) return item;
+          return { ...item, quantity: cap };
+        })
+        .filter((item) => item.quantity > 0),
     );
   }, []);
 

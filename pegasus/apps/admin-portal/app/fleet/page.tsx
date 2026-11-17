@@ -130,7 +130,7 @@ export default function FleetPage() {
         setLog((prev) => [`[${ts}] ${msg}`, ...prev].slice(0, 50));
     }, []);
 
-    // ── Fetch fleet metadata + active missions ─────────────────────────────
+    // -- Fetch fleet metadata + active missions -----------------------------
     const fetchFleetData = useCallback(async (signal?: AbortSignal) => {
         try {
             const [missionRes, driverRes] = await Promise.all([
@@ -223,7 +223,7 @@ export default function FleetPage() {
         }
     }, [appendLog, webTelemetry.status]);
 
-    // ── WebSocket telemetry (desktop Rust bridge only; web uses shared hook) ──
+    // -- WebSocket telemetry (desktop Rust bridge only; web uses shared hook) --
     useEffect(() => {
         let isDisposed = false;
         const unlisteners: (() => void)[] = [];
@@ -250,7 +250,7 @@ export default function FleetPage() {
 
             if (isDisposed) return;
 
-            // ── Desktop: use Rust-backed persistent WebSocket ──
+            // -- Desktop: use Rust-backed persistent WebSocket --
             if (isTauri()) {
                 appendLog("Using native Rust telemetry pipe.");
 
@@ -302,7 +302,7 @@ export default function FleetPage() {
         selectedDriverId ? (missionsByDriver.get(selectedDriverId) ?? []) : []
     ), [missionsByDriver, selectedDriverId]);
 
-    // ── Build route GeoJSON ────────────────────────────────────────────────
+    // -- Build route GeoJSON ------------------------------------------------
     const routeGeoJSON: GeoJSON.FeatureCollection = useMemo(() => ({
         type: "FeatureCollection",
         features: driverList.flatMap((d) => {
@@ -415,7 +415,12 @@ export default function FleetPage() {
                             const { info, orderCount, nextStop } = getDriverSummary(d);
                             return (
                                 <Marker key={d.driver_id} longitude={d.longitude} latitude={d.latitude} anchor="center">
-                                    <div className="relative group cursor-pointer" onClick={() => setSelectedDriverId(d.driver_id)}>
+                                    <button
+                                        type="button"
+                                        aria-label={`Select driver ${info?.name ?? d.driver_id}`}
+                                        className="relative group cursor-pointer bg-transparent border-0 p-0 text-left focus:outline-none focus:ring-2 focus:ring-cyan-500 rounded-full"
+                                        onClick={() => setSelectedDriverId(d.driver_id)}
+                                    >
                                         {/* Pin */}
                                         <div
                                             className={`w-5 h-5 rounded-full border-2 border-white flex items-center justify-center ${staleness === "live" ? "animate-pulse" : ""}`}
@@ -468,7 +473,7 @@ export default function FleetPage() {
                                                 </div>
                                             )}
                                         </div>
-                                    </div>
+                                    </button>
                                 </Marker>
                             );
                         })}
@@ -624,9 +629,10 @@ export default function FleetPage() {
                                         const info = fleetInfo.get(d.driver_id);
                                         const orderCount = missions.filter(m => m.route_id === d.driver_id).length;
                                         return (
-                                            <div
+                                            <button
+                                                type="button"
                                                 key={d.driver_id}
-                                                className="md-card md-card-elevated p-4 mb-2 cursor-pointer transition-colors"
+                                                className="w-full text-left md-card md-card-elevated p-4 mb-2 cursor-pointer transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-500"
                                                 onClick={() => setSelectedDriverId(d.driver_id)}
                                                 style={{ borderLeft: `3px solid ${getMarkerColor(staleness)}` }}
                                             >
@@ -660,7 +666,7 @@ export default function FleetPage() {
                                                         </span>
                                                     )}
                                                 </p>
-                                            </div>
+                                            </button>
                                         );
                                     })}
                                 </div>

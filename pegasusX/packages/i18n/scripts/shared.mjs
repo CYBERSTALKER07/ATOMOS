@@ -3,7 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 export const supportedLocales = ["en", "ru", "uz"];
-export const defaultLocale = "en";
+export const defaultLocale = "uz";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 export const repoRoot = path.resolve(scriptDir, "../../../");
@@ -72,10 +72,61 @@ export function escapeIos(value) {
   return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 }
 
+const ALLOWED_MULTIWORD_TECH_LITERALS = new Set([
+  "+998 XX XXX XX XX",
+  "Aziz Karimov",
+  "EHF ID",
+  "Empathy Engine",
+  "Global Pay",
+  "HTTP {status}",
+  "POST /partner/v1/oauth/token",
+  "Pegasus Beverages Ltd.",
+  "Pegasus Hub",
+  "Pegasus · v1.0.0",
+  "SFTP + EDI",
+  "SWIFT / BIC",
+  "EAN / GTIN",
+  "ETA {formatetatime}",
+  "EAN {barcode}",
+  "EAN {code}",
+  "SKU: {productid}",
+  "SKU: {adjustingsku}",
+]);
+
+const ENGLISH_SENTENCE_STOPWORDS =
+  /\b(the|and|with|for|from|not|are|this|that|your|you|click|enter|select|loading|failed|error|available|cannot|without|before|after|between|during|through|unable|invalid|missing|loaded|selected|created|updated|deleted|configured|required|optional|please)\b/i;
+
+const ALLOWED_TECHNICAL_MIX_KEYS = new Set([
+  // Contains payment provider brand "Click Up"
+  "supplier_portal.configuration.system.gateway.click_up_merchant_id",
+  // Shows literal target expression examples `retailer:123` / `city:Tashkent`
+  "supplier_portal.demand.signals.text.e_g_retailer_123_or_city_tashkent",
+  // Keyboard key `Enter`
+  "warehouse_portal.returns.text.scan_or_type_wedge_scanner_enter",
+]);
+
+function stripTemplateTokens(value) {
+  return value.replace(/\{[a-zA-Z0-9_]+\}/g, "").replace(/\$[a-zA-Z0-9_]+/g, "");
+}
+
+function hasUntranslatedMultiWordEnglish(value) {
+  const cleaned = stripTemplateTokens(value).trim();
+  if (!cleaned || ALLOWED_MULTIWORD_TECH_LITERALS.has(value)) {
+    return false;
+  }
+  const hasMultipleAsciiWords = /\b[a-zA-Z]{2,}\s+[a-zA-Z]{2,}\b/.test(cleaned);
+  return hasMultipleAsciiWords && ENGLISH_SENTENCE_STOPWORDS.test(cleaned);
+}
+
 export function validateCatalogs(flatCatalogs) {
+  if (defaultLocale !== "uz") {
+    throw new Error(`Expected canonical defaultLocale to be "uz", received "${defaultLocale}".`);
+  }
+
   const baseCatalog = flatCatalogs[defaultLocale];
   const baseKeys = Object.keys(baseCatalog).sort();
   const androidNames = new Map();
+  const enCatalog = flatCatalogs.en;
 
   for (const [locale, catalog] of Object.entries(flatCatalogs)) {
     const localeKeys = Object.keys(catalog).sort();
@@ -89,8 +140,36 @@ export function validateCatalogs(flatCatalogs) {
     }
 
     for (const key of baseKeys) {
+      const value = catalog[key];
+      if (typeof value !== "string" || value.trim().length === 0) {
+        throw new Error(`${locale} catalog contains an empty translation for ${key}.`);
+      }
+
+      if (locale === "uz" && /[а-яА-ЯёЁ]/.test(value)) {
+        throw new Error(`uz catalog contains Cyrillic characters for ${key}: "${value}".`);
+      }
+
+      if ((locale === "uz" || locale === "ru") && !ALLOWED_TECHNICAL_MIX_KEYS.has(key)) {
+        const enValue = enCatalog?.[key] ?? "";
+        const strippedEn = stripTemplateTokens(enValue).trim();
+        if (
+          value === enValue &&
+          !ALLOWED_MULTIWORD_TECH_LITERALS.has(enValue) &&
+          /\b[a-zA-Z]{2,}\s+[a-zA-Z]{2,}\b/.test(strippedEn)
+        ) {
+          throw new Error(
+            `${locale} catalog has untranslated multi-word English fallback for ${key}: "${value}".`,
+          );
+        }
+        if (hasUntranslatedMultiWordEnglish(value)) {
+          throw new Error(
+            `${locale} catalog has partial English sentence leakage for ${key}: "${value}".`,
+          );
+        }
+      }
+
       const basePlaceholders = collectPlaceholders(baseCatalog[key]);
-      const localePlaceholders = collectPlaceholders(catalog[key]);
+      const localePlaceholders = collectPlaceholders(value);
 
       if (basePlaceholders.join(",") !== localePlaceholders.join(",")) {
         throw new Error(

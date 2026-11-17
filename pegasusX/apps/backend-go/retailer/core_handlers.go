@@ -7,17 +7,12 @@ import (
 	"fmt"
 	"net/http"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
-	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
-	"github.com/pegasusx/pegasusx/apps/backend-go/proximity"
-	"github.com/pegasusx/pegasusx/apps/backend-go/telemetry"
 )
 
 // FamilyMember models retailer family-member records.
@@ -97,7 +92,7 @@ func (s *Service) handleGetProfile(w http.ResponseWriter, r *http.Request, retai
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": "retailer_not_found"})
 		return
 	}
-	writeJSON(w, http.StatusOK, retailerProfileDTO(ret, s.supplierID))
+	writeJSON(w, http.StatusOK, retailerProfileDTO(ret, s.resolveSupplierScope(r.Context())))
 }
 
 func retailerProfileDTO(ret Retailer, boundSupplierID string) map[string]any {
@@ -106,21 +101,39 @@ func retailerProfileDTO(ret Retailer, boundSupplierID string) map[string]any {
 		supplierID = boundSupplierID
 	}
 	displayName := strings.TrimSpace(ret.Name)
+	legalStatus := strings.TrimSpace(ret.LegalEntityStatus)
+	if legalStatus == "" {
+		legalStatus = LegalEntityInformalPhone
+	}
 	dto := map[string]any{
-		"retailer_id":  ret.RetailerID,
-		"id":           ret.RetailerID,
-		"supplier_id":  supplierID,
-		"name":         displayName,
-		"phone":        ret.Phone,
-		"company":      displayName,
-		"location":     retailerLocationLabel(ret.DeliveryAddress, ret.Lat, ret.Lng),
-		"country_code": ret.CountryCode,
-		"status":       "ACTIVE",
-		"h3_cell":      ret.H3Cell,
-		"lat":          ret.Lat,
-		"lng":          ret.Lng,
-		"created_at":   ret.CreatedAt.Format(time.RFC3339Nano),
-		"updated_at":   ret.UpdatedAt.Format(time.RFC3339Nano),
+		"retailer_id":         ret.RetailerID,
+		"id":                  ret.RetailerID,
+		"supplier_id":         supplierID,
+		"name":                displayName,
+		"phone":               ret.Phone,
+		"company":             displayName,
+		"location":            retailerLocationLabel(ret.DeliveryAddress, ret.Lat, ret.Lng),
+		"country_code":        ret.CountryCode,
+		"legal_entity_status": legalStatus,
+		"is_configured":       retailerProfileConfigured(ret),
+		"status":              "ACTIVE",
+		"h3_cell":             ret.H3Cell,
+		"lat":                 ret.Lat,
+		"lng":                 ret.Lng,
+		"created_at":          ret.CreatedAt.Format(time.RFC3339Nano),
+		"updated_at":          ret.UpdatedAt.Format(time.RFC3339Nano),
+	}
+	if taxID := strings.TrimSpace(ret.TaxID); taxID != "" {
+		dto["tax_id"] = taxID
+	}
+	if normTaxID := strings.TrimSpace(ret.NormalizedTaxID); normTaxID != "" {
+		dto["normalized_tax_id"] = normTaxID
+	}
+	if cell := strings.TrimSpace(ret.HomeCell); cell != "" {
+		dto["home_cell"] = cell
+	}
+	if ret.InnVerifiedAt != nil && !ret.InnVerifiedAt.IsZero() {
+		dto["inn_verified_at"] = ret.InnVerifiedAt.UTC().Format(time.RFC3339Nano)
 	}
 	if addr := strings.TrimSpace(ret.DeliveryAddress); addr != "" {
 		dto["delivery_address"] = addr
@@ -152,7 +165,7 @@ func (s *Service) handleUpdateProfile(w http.ResponseWriter, r *http.Request, re
 	if !ok {
 		return
 	}
-	if s.guardIdempotency(w, r, body) {
+	if s.guardIdempotencyStrict(w, r, body) {
 		return
 	}
 	idemCommitted := false
@@ -178,7 +191,7 @@ func (s *Service) handleUpdateProfile(w http.ResponseWriter, r *http.Request, re
 		return
 	}
 	if strings.TrimSpace(ret.SupplierID) == "" {
-		ret.SupplierID = s.supplierID
+		ret.SupplierID = s.resolveSupplierScope(r.Context())
 	}
 	name := strings.TrimSpace(req.Name)
 	if name == "" {
@@ -222,11 +235,18 @@ func (s *Service) handleUpdateProfile(w http.ResponseWriter, r *http.Request, re
 		}
 		ret.Lat = *req.Lat
 		ret.Lng = *req.Lng
-		if s.proximity != nil {
-			if cell, err := s.proximity.CellForCoordinate(ret.Lat, ret.Lng); err == nil {
-				ret.H3Cell = cell
-			}
+	}
+	country, cell, stampErr := stampRetailerOptionalCoords(r.Context(), ret.Lat, ret.Lng, ret.CountryCode)
+	if stampErr != nil {
+		if writeMarketLaw(w, stampErr) {
+			return
 		}
+		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": stampErr.Error()})
+		return
+	}
+	ret.CountryCode = country
+	if cell != "" {
+		ret.H3Cell = cell
 	}
 	ret.UpdatedAt = s.now()
 	if err := s.repo.UpdateRetailer(r.Context(), ret, func(txn outbox.TxnBuffer) error {
@@ -248,7 +268,7 @@ func (s *Service) handleUpdateProfile(w http.ResponseWriter, r *http.Request, re
 	if s.cache != nil {
 		s.cache.Invalidate(r.Context(), retailerByPhoneKey(ret.Phone), "retailer:id:"+ret.RetailerID)
 	}
-	respBytes, err := json.Marshal(retailerProfileDTO(ret, s.supplierID))
+	respBytes, err := json.Marshal(retailerProfileDTO(ret, s.resolveSupplierScope(r.Context())))
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "marshal_profile_failed"})
 		return
@@ -287,7 +307,7 @@ func (s *Service) handleSupplierMutation(w http.ResponseWriter, r *http.Request,
 	if !ok {
 		return
 	}
-	if s.guardIdempotency(w, r, body) {
+	if s.guardIdempotencyStrict(w, r, body) {
 		return
 	}
 	idemCommitted := false
@@ -296,6 +316,12 @@ func (s *Service) handleSupplierMutation(w http.ResponseWriter, r *http.Request,
 			s.releaseIdempotency(r.Context(), r)
 		}
 	}()
+	if action == "add" {
+		if _, err := s.guardTradingPartner(r.Context(), supplierID); err != nil {
+			writeAttachError(w, err)
+			return
+		}
+	}
 	s.applySupplierFavoriteMutationCtx(r.Context(), rid, supplierID, action)
 	respBytes, err := s.supplierListResponseBytes(r.Context(), rid)
 	if err != nil {
@@ -332,12 +358,12 @@ func (s *Service) supplierListResponseBytes(ctx context.Context, retailerID stri
 	if err != nil {
 		s.log.Warn("favorite suppliers load failed", "err", err)
 	}
-	favorite := prefs != nil && prefs[s.supplierID]
+	favorite := prefs != nil && prefs[s.resolveSupplierScope(ctx)]
 
 	var pricing *retailerPricingSummary
-	rule, found, err := s.repo.GetSupplierPricingRule(ctx, s.supplierID)
+	rule, found, err := s.repo.GetSupplierPricingRule(ctx, s.resolveSupplierScope(ctx))
 	if err != nil {
-		s.log.Warn("retailer supplier pricing read failed", "supplier_id", s.supplierID, "err", err)
+		s.log.Warn("retailer supplier pricing read failed", "supplier_id", s.resolveSupplierScope(ctx), "err", err)
 	} else if found {
 		summary := retailerPricingSummary{
 			BaseMarkupBps:       rule.BaseMarkupBps,
@@ -353,7 +379,7 @@ func (s *Service) supplierListResponseBytes(ctx context.Context, retailerID stri
 	}
 
 	return json.Marshal([]supplierPreference{{
-		SupplierID: s.supplierID,
+		SupplierID: s.resolveSupplierScope(ctx),
 		Name:       "pegasusX Supplier",
 		IsFavorite: favorite,
 		Pricing:    pricing,
@@ -409,14 +435,14 @@ func (s *Service) HandlePricingRule(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rule, found, err := s.repo.GetSupplierPricingRule(r.Context(), s.supplierID)
+	rule, found, err := s.repo.GetSupplierPricingRule(r.Context(), s.resolveSupplierScope(r.Context()))
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "load_pricing_rule_failed"})
 		return
 	}
 
 	resp := retailerPricingRuleResponse{
-		SupplierID: s.supplierID,
+		SupplierID: s.resolveSupplierScope(r.Context()),
 		Configured: found,
 		Pricing: retailerPricingSummary{
 			BaseMarkupBps:       0,
@@ -443,6 +469,8 @@ func (s *Service) HandlePricingRule(w http.ResponseWriter, r *http.Request) {
 }
 
 // HandleCartSync supports GET/POST /v1/retailer/cart/sync.
+// GET ?scope=all|all=1 returns cart lines across suppliers (Phase 2).
+// POST preserves an explicit per-line supplier_id; otherwise stamps active trading partner.
 func (s *Service) HandleCartSync(w http.ResponseWriter, r *http.Request) {
 	rid, err := retailerIDFromRequest(r)
 	if err != nil {
@@ -452,13 +480,21 @@ func (s *Service) HandleCartSync(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		if s.cartRepo == nil {
-			writeJSON(w, http.StatusOK, map[string]any{"items": []any{}, "updated_at": s.now().Format(time.RFC3339Nano)})
+			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "cart_unavailable"})
 			return
 		}
-		items, listErr := s.cartRepo.ListByRetailer(r.Context(), rid, s.supplierID)
+		var (
+			items   []CartItem
+			listErr error
+		)
+		if cartScopeAll(r) {
+			items, listErr = s.cartRepo.ListByRetailerAll(r.Context(), rid)
+		} else {
+			items, listErr = s.cartRepo.ListByRetailer(r.Context(), rid, s.resolveSupplierScope(r.Context()))
+		}
 		if listErr != nil {
 			s.log.ErrorContext(r.Context(), "cart list failed", "err", listErr, "retailer_id", rid)
-			writeJSON(w, http.StatusOK, map[string]any{"items": []any{}, "updated_at": s.now().Format(time.RFC3339Nano)})
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "cart_list_failed"})
 			return
 		}
 		if items == nil {
@@ -475,12 +511,16 @@ func (s *Service) HandleCartSync(w http.ResponseWriter, r *http.Request) {
 		}
 		defer r.Body.Close()
 		if s.cartRepo != nil {
+			fallbackSupplier := s.resolveSupplierScope(r.Context())
 			for i := range payload.Items {
 				if payload.Items[i].CartItemID == "" {
 					payload.Items[i].CartItemID = s.newID()
 				}
 				payload.Items[i].RetailerID = rid
-				payload.Items[i].SupplierID = s.supplierID
+				// Preserve explicit line SupplierId (mixed-cart / SSMR). Default UI still stamps active partner.
+				if strings.TrimSpace(payload.Items[i].SupplierID) == "" {
+					payload.Items[i].SupplierID = fallbackSupplier
+				}
 			}
 			if err := s.cartRepo.UpsertItems(r.Context(), payload.Items); err != nil {
 				s.log.ErrorContext(r.Context(), "cart sync failed", "err", err, "retailer_id", rid)
@@ -495,6 +535,50 @@ func (s *Service) HandleCartSync(w http.ResponseWriter, r *http.Request) {
 	default:
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 	}
+}
+
+// HandleCartClear supports DELETE /v1/retailer/cart (or POST /v1/retailer/cart/clear).
+// ?scope=all clears every supplier; otherwise clears the active trading-partner cart.
+func (s *Service) HandleCartClear(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodDelete && r.Method != http.MethodPost {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	rid, err := retailerIDFromRequest(r)
+	if err != nil {
+		writeRetailerIdentityError(w, err)
+		return
+	}
+	if s.cartRepo == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "cart_unavailable"})
+		return
+	}
+	if cartScopeAll(r) {
+		if err := s.cartRepo.ClearCartAll(r.Context(), rid); err != nil {
+			s.log.ErrorContext(r.Context(), "cart clear-all failed", "err", err, "retailer_id", rid)
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal"})
+			return
+		}
+	} else {
+		if err := s.cartRepo.ClearCart(r.Context(), rid, s.resolveSupplierScope(r.Context())); err != nil {
+			s.log.ErrorContext(r.Context(), "cart clear failed", "err", err, "retailer_id", rid)
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal"})
+			return
+		}
+	}
+	if s.cache != nil {
+		s.cache.Invalidate(r.Context(), "retailer:cart:"+rid)
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"cleared": true})
+}
+
+func cartScopeAll(r *http.Request) bool {
+	scope := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("scope")))
+	if scope == "all" {
+		return true
+	}
+	all := strings.TrimSpace(r.URL.Query().Get("all"))
+	return all == "1" || strings.EqualFold(all, "true")
 }
 
 // HandleOrders returns orders scoped to a retailer.
@@ -537,22 +621,30 @@ func (s *Service) demoOrdersForRetailer(ctx context.Context, retailerID string) 
 	return out
 }
 
-// HandleRequestCancel is POST /v1/orders/request-cancel.
+// HandleRequestCancel is POST /v1/orders/request-cancel when OrderService is nil.
+// B7 R-P0-3: never fake cancel_requested without durable order path.
 func (s *Service) HandleRequestCancel(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"status": "cancel_requested"})
+	writeJSON(w, http.StatusServiceUnavailable, map[string]string{
+		"error":   "order_service_unwired",
+		"message": "Order service required; request-cancel is disabled without Spanner order path",
+	})
 }
 
-// HandleCancelOrder is POST /v1/order/cancel.
+// HandleCancelOrder is POST /v1/order/cancel when OrderService is nil.
+// B7 R-P0-3: never fake cancelled without Spanner/outbox.
 func (s *Service) HandleCancelOrder(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"status": "cancelled"})
+	writeJSON(w, http.StatusServiceUnavailable, map[string]string{
+		"error":   "order_service_unwired",
+		"message": "Order service required for cancel; use POST /v1/order/cancel with OrderService wired",
+	})
 }
 
 // HandleExpensesAnalytics returns basic retailer expense analytics.
@@ -719,720 +811,3 @@ func (s *Service) HandleShopClosedResponse(w http.ResponseWriter, r *http.Reques
 }
 
 // HandleAIPredictions lists retailer AI preorder suggestions pending review.
-func (s *Service) HandleAIPredictions(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
-		return
-	}
-	retailerID, err := retailerIDFromRequest(r)
-	if err != nil {
-		writeRetailerIdentityError(w, err)
-		return
-	}
-	if s.orders == nil {
-		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "order_lifecycle_unavailable"})
-		return
-	}
-	limit := 25
-	if raw := strings.TrimSpace(r.URL.Query().Get("limit")); raw != "" {
-		parsed, err := strconv.Atoi(raw)
-		if err != nil || parsed <= 0 {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "limit must be a positive integer"})
-			return
-		}
-		limit = parsed
-	}
-	items, err := s.orders.ListRetailerAIPredictions(r.Context(), retailerID, limit)
-	if err != nil {
-		s.log.Warn("retailer ai predictions read failed", "retailer_id", retailerID, "err", err)
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "load_ai_predictions_failed"})
-		return
-	}
-	writeJSON(w, http.StatusOK, map[string]any{"items": items})
-}
-
-// HandleConfirmAIOrder confirms a retailer AI preorder.
-func (s *Service) HandleConfirmAIOrder(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
-		return
-	}
-	retailerID, err := retailerIDFromRequest(r)
-	if err != nil {
-		writeRetailerIdentityError(w, err)
-		return
-	}
-	if s.orders == nil {
-		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "order_lifecycle_unavailable"})
-		return
-	}
-	body, ok := readLimitedBody(w, r, 64*1024)
-	if !ok {
-		return
-	}
-	if s.guardIdempotency(w, r, body) {
-		return
-	}
-	idemCommitted := false
-	defer func() {
-		if !idemCommitted {
-			s.releaseIdempotency(r.Context(), r)
-		}
-	}()
-	var req order.ConfirmAIOrderRequest
-	if err := json.Unmarshal(body, &req); err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
-		return
-	}
-	resp, err := s.orders.ConfirmAIOrder(r.Context(), retailerID, req)
-	if err != nil {
-		writeRetailerOrderLifecycleError(w, err)
-		return
-	}
-	respBytes, _ := json.Marshal(resp)
-	idemCommitted = true
-	writeJSONBytes(w, http.StatusOK, respBytes)
-	s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
-}
-
-// HandleRejectAIOrder rejects a retailer AI preorder.
-func (s *Service) HandleRejectAIOrder(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
-		return
-	}
-	retailerID, err := retailerIDFromRequest(r)
-	if err != nil {
-		writeRetailerIdentityError(w, err)
-		return
-	}
-	if s.orders == nil {
-		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "order_lifecycle_unavailable"})
-		return
-	}
-	body, ok := readLimitedBody(w, r, 64*1024)
-	if !ok {
-		return
-	}
-	if s.guardIdempotency(w, r, body) {
-		return
-	}
-	idemCommitted := false
-	defer func() {
-		if !idemCommitted {
-			s.releaseIdempotency(r.Context(), r)
-		}
-	}()
-	var req order.RejectAIOrderRequest
-	if err := json.Unmarshal(body, &req); err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
-		return
-	}
-	resp, err := s.orders.RejectAIOrder(r.Context(), retailerID, req)
-	if err != nil {
-		writeRetailerOrderLifecycleError(w, err)
-		return
-	}
-	respBytes, _ := json.Marshal(resp)
-	idemCommitted = true
-	writeJSONBytes(w, http.StatusOK, respBytes)
-	s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
-}
-
-// HandleEditPreorder edits a retailer draft preorder.
-func (s *Service) HandleEditPreorder(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
-		return
-	}
-	retailerID, err := retailerIDFromRequest(r)
-	if err != nil {
-		writeRetailerIdentityError(w, err)
-		return
-	}
-	if s.orders == nil {
-		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "order_lifecycle_unavailable"})
-		return
-	}
-	body, ok := readLimitedBody(w, r, 64*1024)
-	if !ok {
-		return
-	}
-	if s.guardIdempotency(w, r, body) {
-		return
-	}
-	idemCommitted := false
-	defer func() {
-		if !idemCommitted {
-			s.releaseIdempotency(r.Context(), r)
-		}
-	}()
-	var req order.EditPreorderRequest
-	if err := json.Unmarshal(body, &req); err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
-		return
-	}
-	resp, err := s.orders.EditPreorder(r.Context(), retailerID, req)
-	if err != nil {
-		writeRetailerOrderLifecycleError(w, err)
-		return
-	}
-	respBytes, _ := json.Marshal(resp)
-	idemCommitted = true
-	writeJSONBytes(w, http.StatusOK, respBytes)
-	s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
-}
-
-// HandleConfirmPreorder confirms a retailer draft preorder.
-func (s *Service) HandleConfirmPreorder(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
-		return
-	}
-	retailerID, err := retailerIDFromRequest(r)
-	if err != nil {
-		writeRetailerIdentityError(w, err)
-		return
-	}
-	if s.orders == nil {
-		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "order_lifecycle_unavailable"})
-		return
-	}
-	body, ok := readLimitedBody(w, r, 64*1024)
-	if !ok {
-		return
-	}
-	if s.guardIdempotency(w, r, body) {
-		return
-	}
-	idemCommitted := false
-	defer func() {
-		if !idemCommitted {
-			s.releaseIdempotency(r.Context(), r)
-		}
-	}()
-	var req order.ConfirmPreorderRequest
-	if err := json.Unmarshal(body, &req); err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
-		return
-	}
-	resp, err := s.orders.ConfirmPreorder(r.Context(), retailerID, req)
-	if err != nil {
-		writeRetailerOrderLifecycleError(w, err)
-		return
-	}
-	respBytes, _ := json.Marshal(resp)
-	idemCommitted = true
-	writeJSONBytes(w, http.StatusOK, respBytes)
-	s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
-}
-
-// HandleAcceptDeliveryProposal applies a warehouse-proposed delivery date.
-func (s *Service) HandleAcceptDeliveryProposal(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
-		return
-	}
-	retailerID, err := retailerIDFromRequest(r)
-	if err != nil {
-		writeRetailerIdentityError(w, err)
-		return
-	}
-	if s.orders == nil {
-		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "order_lifecycle_unavailable"})
-		return
-	}
-	body, ok := readLimitedBody(w, r, 64*1024)
-	if !ok {
-		return
-	}
-	if s.guardIdempotency(w, r, body) {
-		return
-	}
-	idemCommitted := false
-	defer func() {
-		if !idemCommitted {
-			s.releaseIdempotency(r.Context(), r)
-		}
-	}()
-	var req order.AcceptDeliveryProposalRequest
-	if err := json.Unmarshal(body, &req); err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
-		return
-	}
-	resp, err := s.orders.AcceptDeliveryProposal(r.Context(), retailerID, req)
-	if err != nil {
-		writeRetailerOrderLifecycleError(w, err)
-		return
-	}
-	respBytes, _ := json.Marshal(resp)
-	idemCommitted = true
-	writeJSONBytes(w, http.StatusOK, respBytes)
-	s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
-}
-
-// HandleRejectDeliveryProposal cancels an order when the retailer declines a warehouse date proposal.
-func (s *Service) HandleRejectDeliveryProposal(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
-		return
-	}
-	retailerID, err := retailerIDFromRequest(r)
-	if err != nil {
-		writeRetailerIdentityError(w, err)
-		return
-	}
-	if s.orders == nil {
-		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "order_lifecycle_unavailable"})
-		return
-	}
-	body, ok := readLimitedBody(w, r, 64*1024)
-	if !ok {
-		return
-	}
-	if s.guardIdempotency(w, r, body) {
-		return
-	}
-	idemCommitted := false
-	defer func() {
-		if !idemCommitted {
-			s.releaseIdempotency(r.Context(), r)
-		}
-	}()
-	var req order.RejectDeliveryProposalRequest
-	if err := json.Unmarshal(body, &req); err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
-		return
-	}
-	resp, err := s.orders.RejectDeliveryProposal(r.Context(), retailerID, req)
-	if err != nil {
-		writeRetailerOrderLifecycleError(w, err)
-		return
-	}
-	respBytes, _ := json.Marshal(resp)
-	idemCommitted = true
-	writeJSONBytes(w, http.StatusOK, respBytes)
-	s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
-}
-
-// HandleRejectPreorder lets a retailer cancel a draft or scheduled manual pre-order.
-func (s *Service) HandleRejectPreorder(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
-		return
-	}
-	retailerID, err := retailerIDFromRequest(r)
-	if err != nil {
-		writeRetailerIdentityError(w, err)
-		return
-	}
-	if s.orders == nil {
-		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "order_lifecycle_unavailable"})
-		return
-	}
-	body, ok := readLimitedBody(w, r, 64*1024)
-	if !ok {
-		return
-	}
-	if s.guardIdempotency(w, r, body) {
-		return
-	}
-	idemCommitted := false
-	defer func() {
-		if !idemCommitted {
-			s.releaseIdempotency(r.Context(), r)
-		}
-	}()
-	var req order.RejectPreorderRequest
-	if err := json.Unmarshal(body, &req); err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
-		return
-	}
-	resp, err := s.orders.RejectPreorder(r.Context(), retailerID, req)
-	if err != nil {
-		writeRetailerOrderLifecycleError(w, err)
-		return
-	}
-	respBytes, _ := json.Marshal(resp)
-	idemCommitted = true
-	writeJSONBytes(w, http.StatusOK, respBytes)
-	s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
-}
-
-func writeRetailerOrderLifecycleError(w http.ResponseWriter, err error) {
-	switch {
-	case errors.Is(err, order.ErrOrderNotFound):
-		writeJSON(w, http.StatusNotFound, map[string]string{"error": "order_not_found"})
-	case errors.Is(err, order.ErrOrderForbidden):
-		writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
-	case errors.Is(err, order.ErrInvalidStatusTransition):
-		writeJSON(w, http.StatusConflict, map[string]string{"error": "invalid_status_transition"})
-	case errors.Is(err, order.ErrDeliveryProposalRequired):
-		writeJSON(w, http.StatusConflict, map[string]string{"error": "delivery_proposal_required"})
-	case errors.Is(err, order.ErrDeliveryProposalPending):
-		writeJSON(w, http.StatusConflict, map[string]string{"error": "delivery_proposal_pending"})
-	default:
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
-	}
-}
-
-// HandlePendingPayments returns pending post-offload payment sessions.
-func (s *Service) HandlePendingPayments(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
-		return
-	}
-	retailerID, err := retailerIDFromRequest(r)
-	if err != nil {
-		writeRetailerIdentityError(w, err)
-		return
-	}
-	orders, err := s.listRetailerTrackingOrders(r.Context(), retailerID)
-	if err != nil {
-		s.log.Warn("retailer pending payments read failed", "retailer_id", retailerID, "err", err)
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "load_pending_payments_failed"})
-		return
-	}
-	pending := filterTrackingOrders(orders, isPendingPaymentStatus)
-	sessions := make([]map[string]any, 0, len(pending))
-	for i := range pending {
-		sessions = append(sessions, map[string]any{
-			"session_id":    "sess_" + pending[i].OrderID,
-			"order_id":      pending[i].OrderID,
-			"retailer_id":   retailerID,
-			"supplier_id":   pending[i].SupplierID,
-			"gateway":       "payme",
-			"locked_amount": pending[i].TotalMinor,
-			"currency":      pending[i].Currency,
-			"status":        pending[i].Status,
-			"created_at":    pending[i].CreatedAt,
-		})
-	}
-	writeJSON(w, http.StatusOK, map[string]any{
-		"status":  "pending",
-		"pending": sessions,
-		"count":   len(sessions),
-	})
-}
-
-// HandleActiveFulfillment returns active fulfillment list for retailer UI.
-func (s *Service) HandleActiveFulfillment(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
-		return
-	}
-	retailerID, err := retailerIDFromRequest(r)
-	if err != nil {
-		writeRetailerIdentityError(w, err)
-		return
-	}
-	orders, err := s.listRetailerTrackingOrders(r.Context(), retailerID)
-	if err != nil {
-		s.log.Warn("retailer active fulfillment read failed", "retailer_id", retailerID, "err", err)
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "load_active_fulfillment_failed"})
-		return
-	}
-	fulfillments := make([]map[string]any, 0, len(orders))
-	for i := range orders {
-		fulfillments = append(fulfillments, mobileActiveFulfillment(orders[i]))
-	}
-	writeJSON(w, http.StatusOK, map[string]any{
-		"status":       "active",
-		"fulfillments": fulfillments,
-		"count":        len(fulfillments),
-	})
-}
-
-// HandleTracking returns active assigned-order tracking projections.
-func (s *Service) HandleTracking(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
-		return
-	}
-	retailerID, err := retailerIDFromRequest(r)
-	if err != nil {
-		writeRetailerIdentityError(w, err)
-		return
-	}
-	orders, err := s.listRetailerTrackingOrders(r.Context(), retailerID)
-	if err != nil {
-		s.log.Warn("retailer tracking read failed", "retailer_id", retailerID, "err", err)
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "load_tracking_failed"})
-		return
-	}
-
-	receipts, err := s.listRetailerRecentReceipts(r.Context(), retailerID)
-	if err != nil {
-		s.log.Warn("retailer recent receipts read failed", "retailer_id", retailerID, "err", err)
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "load_receipts_failed"})
-		return
-	}
-
-	merged := mergeTrackingOrders(orders, receipts)
-	events := deriveTrackingEvents(merged)
-
-	status := "idle"
-	if len(orders) > 0 {
-		status = "active"
-	}
-
-	mobileOrders := make([]map[string]any, 0, len(orders))
-	for i := range orders {
-		mobileOrders = append(mobileOrders, mobileTrackingOrder(orders[i]))
-	}
-
-	mobileReceipts := make([]map[string]any, 0, len(receipts))
-	for i := range receipts {
-		mobileReceipts = append(mobileReceipts, mobileTrackingOrder(receipts[i]))
-	}
-
-	writeJSON(w, http.StatusOK, map[string]any{
-		"status":          status,
-		"orders":          mobileOrders,
-		"recent_receipts": mobileReceipts,
-		"events":          events,
-	})
-}
-
-func (s *Service) listRetailerTrackingOrders(ctx context.Context, retailerID string) ([]TrackingOrder, error) {
-	const pageSize = 500
-	all := make([]TrackingOrder, 0)
-	for offset := 0; ; offset += pageSize {
-		batch, err := s.repo.ListTrackingOrders(ctx, retailerID, pageSize, offset)
-		if err != nil {
-			return nil, err
-		}
-		all = append(all, batch...)
-		if len(batch) < pageSize {
-			break
-		}
-	}
-	return normalizeTrackingOrders(s.attachLiveLocations(ctx, all)), nil
-}
-
-func (s *Service) listRetailerRecentReceipts(ctx context.Context, retailerID string) ([]TrackingOrder, error) {
-	receipts, err := s.repo.ListRecentReceipts(ctx, retailerID, recentReceiptLimit)
-	if err != nil {
-		return nil, err
-	}
-	return normalizeTrackingOrders(receipts), nil
-}
-
-func mergeTrackingOrders(primary []TrackingOrder, secondary []TrackingOrder) []TrackingOrder {
-	if len(primary) == 0 && len(secondary) == 0 {
-		return []TrackingOrder{}
-	}
-	merged := make([]TrackingOrder, 0, len(primary)+len(secondary))
-	seen := make(map[string]struct{}, len(primary)+len(secondary))
-	appendUnique := func(orders []TrackingOrder) {
-		for _, order := range orders {
-			orderID := strings.TrimSpace(order.OrderID)
-			if orderID != "" {
-				if _, ok := seen[orderID]; ok {
-					continue
-				}
-				seen[orderID] = struct{}{}
-			}
-			merged = append(merged, order)
-		}
-	}
-	appendUnique(primary)
-	appendUnique(secondary)
-	return merged
-}
-
-func normalizeTrackingOrders(orders []TrackingOrder) []TrackingOrder {
-	if len(orders) == 0 {
-		return []TrackingOrder{}
-	}
-	return orders
-}
-
-func filterTrackingOrders(orders []TrackingOrder, keep func(TrackingOrder) bool) []TrackingOrder {
-	if len(orders) == 0 {
-		return []TrackingOrder{}
-	}
-	filtered := make([]TrackingOrder, 0, len(orders))
-	for _, order := range orders {
-		if keep(order) {
-			filtered = append(filtered, order)
-		}
-	}
-	if len(filtered) == 0 {
-		return []TrackingOrder{}
-	}
-	return filtered
-}
-
-func isPendingPaymentStatus(order TrackingOrder) bool {
-	switch strings.TrimSpace(order.Status) {
-	case "AWAITING_PAYMENT", "PENDING_CASH_COLLECTION":
-		return true
-	default:
-		return false
-	}
-}
-
-func deriveTrackingEvents(orders []TrackingOrder) []TrackingEvent {
-	if len(orders) == 0 {
-		return []TrackingEvent{}
-	}
-	events := make([]TrackingEvent, 0, len(orders)*2)
-	for _, order := range orders {
-		createdAt := strings.TrimSpace(order.CreatedAt)
-		updatedAt := strings.TrimSpace(order.UpdatedAt)
-		status := strings.TrimSpace(order.Status)
-		if createdAt != "" {
-			events = append(events, TrackingEvent{
-				EventType:  TrackingEventOrderCreated,
-				OrderID:    order.OrderID,
-				OccurredAt: createdAt,
-				Derived:    true,
-				Source:     trackingEventSourceOrderRow,
-			})
-		}
-		if updatedAt == "" || status == "" {
-			continue
-		}
-		if updatedAt == createdAt && status == "PENDING" {
-			continue
-		}
-		if updatedAt == createdAt && createdAt == "" {
-			continue
-		}
-		events = append(events, TrackingEvent{
-			EventType:  TrackingEventOrderStatusSnapshot,
-			OrderID:    order.OrderID,
-			Status:     status,
-			OccurredAt: updatedAt,
-			Derived:    true,
-			Source:     trackingEventSourceOrderRow,
-		})
-	}
-	sort.SliceStable(events, func(i, j int) bool {
-		left := parseTrackingEventTime(events[i].OccurredAt)
-		right := parseTrackingEventTime(events[j].OccurredAt)
-		if left.Equal(right) {
-			if events[i].OrderID == events[j].OrderID {
-				return events[i].EventType < events[j].EventType
-			}
-			return events[i].OrderID < events[j].OrderID
-		}
-		return left.After(right)
-	})
-	if len(events) == 0 {
-		return []TrackingEvent{}
-	}
-	return events
-}
-
-func parseTrackingEventTime(value string) time.Time {
-	parsed, err := time.Parse(time.RFC3339Nano, strings.TrimSpace(value))
-	if err != nil {
-		return time.Time{}
-	}
-	return parsed
-}
-
-type trackingLocationLookup struct {
-	location telemetry.DriverLocation
-	found    bool
-}
-
-func (s *Service) attachLiveLocations(ctx context.Context, orders []TrackingOrder) []TrackingOrder {
-	if s.locations == nil || len(orders) == 0 {
-		return orders
-	}
-	now := s.now()
-	lookups := make(map[string]trackingLocationLookup, len(orders))
-	for i := range orders {
-		orders[i].LiveLocationAvailable = false
-		orders[i].DriverLocation = nil
-		driverID := strings.TrimSpace(orders[i].DriverID)
-		if driverID == "" {
-			continue
-		}
-		lookup, ok := lookups[driverID]
-		if !ok {
-			location, found, err := s.locations.GetDriverLocation(ctx, driverID)
-			if err != nil {
-				s.log.Warn("retailer tracking location read failed", "driver_id", driverID, "err", err)
-				continue
-			}
-			lookup = trackingLocationLookup{location: location, found: found}
-			lookups[driverID] = lookup
-		}
-		if !lookup.found || !lookup.location.IsLive(now) {
-			continue
-		}
-		if strings.TrimSpace(lookup.location.SupplierID) != strings.TrimSpace(orders[i].SupplierID) {
-			continue
-		}
-		orders[i].LiveLocationAvailable = true
-		orders[i].DriverLocation = trackingLocationFromTelemetry(lookup.location)
-		if orders[i].DeliveryLat != 0 && orders[i].DeliveryLng != 0 {
-			driverLat := lookup.location.Lat
-			driverLng := lookup.location.Lng
-			if driverLat == 0 && lookup.location.Latitude != 0 {
-				driverLat = lookup.location.Latitude
-			}
-			if driverLng == 0 && lookup.location.Longitude != 0 {
-				driverLng = lookup.location.Longitude
-			}
-			if proximity.WithinDeliveryApproach(proximity.HaversineDistance(driverLat, driverLng, orders[i].DeliveryLat, orders[i].DeliveryLng)) {
-				orders[i].IsApproaching = true
-			}
-		}
-	}
-	return orders
-}
-
-func trackingLocationFromTelemetry(location telemetry.DriverLocation) *TrackingLocation {
-	return &TrackingLocation{
-		DriverID:          location.DriverID,
-		SupplierID:        location.SupplierID,
-		Lat:               location.Lat,
-		Lng:               location.Lng,
-		Latitude:          location.Latitude,
-		Longitude:         location.Longitude,
-		Velocity:          location.Velocity,
-		Heading:           location.Heading,
-		ReportedAt:        location.ReportedAt.UTC().Format(time.RFC3339Nano),
-		ReceivedAt:        location.ReceivedAt.UTC().Format(time.RFC3339Nano),
-		StaleAfterSeconds: location.StaleAfterSeconds,
-	}
-}
-
-func retailerIDFromRequest(r *http.Request) (string, error) {
-	if claims, ok := auth.FromContext(r.Context()); ok {
-		// Retail OS v2: tenant id is RetailerOrgID; legacy v1 uses Subject as retailer id.
-		orgID := auth.ResolveRetailerOrgID(claims)
-		if orgID != "" {
-			pathRetailerID := strings.TrimSpace(chi.URLParam(r, "retailerID"))
-			if pathRetailerID != "" && pathRetailerID != orgID {
-				return "", errRetailerScopeMismatch
-			}
-			queryRetailerID := strings.TrimSpace(r.URL.Query().Get("retailer_id"))
-			if queryRetailerID != "" && queryRetailerID != orgID {
-				return "", errRetailerScopeMismatch
-			}
-			return orgID, nil
-		}
-	}
-	if id := strings.TrimSpace(chi.URLParam(r, "retailerID")); id != "" {
-		return id, nil
-	}
-	if id := strings.TrimSpace(r.URL.Query().Get("retailer_id")); id != "" {
-		return id, nil
-	}
-	return "", errRetailerUnauthorized
-}
-
-func writeRetailerIdentityError(w http.ResponseWriter, err error) {
-	switch {
-	case errors.Is(err, errRetailerScopeMismatch):
-		writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
-	default:
-		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
-	}
-}

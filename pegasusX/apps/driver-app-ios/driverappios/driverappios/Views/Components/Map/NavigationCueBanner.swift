@@ -6,14 +6,14 @@ struct NavigationCueBanner: View {
     var body: some View {
         HStack(alignment: .center, spacing: 10) {
             Image(systemName: "location.north.line.fill")
-                .font(.system(size: 14, weight: .bold))
+                .font(.system(.subheadline, weight: .bold))
                 .foregroundStyle(LabTheme.fg)
             VStack(alignment: .leading, spacing: 2) {
                 Text(RouteNavigation.formatDistance(cue.distanceM))
-                    .font(.system(size: 13, weight: .bold))
+                    .font(.system(.footnote, weight: .bold))
                     .foregroundStyle(LabTheme.fg)
                 Text(cue.instruction)
-                    .font(.system(size: 14, weight: .medium))
+                    .font(.system(.subheadline, weight: .medium))
                     .foregroundStyle(LabTheme.fg.opacity(0.85))
                     .lineLimit(2)
             }

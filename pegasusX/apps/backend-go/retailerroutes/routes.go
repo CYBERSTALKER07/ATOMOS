@@ -5,27 +5,32 @@ package retailerroutes
 import (
 	"net/http"
 
+	"cloud.google.com/go/spanner"
 	"github.com/go-chi/chi/v5"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"github.com/pegasusx/pegasusx/apps/backend-go/loyalty"
 	"github.com/pegasusx/pegasusx/apps/backend-go/payment"
 	"github.com/pegasusx/pegasusx/apps/backend-go/promotion"
 	"github.com/pegasusx/pegasusx/apps/backend-go/retailer"
+	"github.com/pegasusx/pegasusx/apps/backend-go/supplier"
 )
 
 // Deps is the narrow dependency contract for this routes package.
 type Deps struct {
 	Service          *retailer.Service
+	SupplierService  *supplier.Service
 	PaymentService   *payment.Service
 	PromotionService *promotion.Service
-	OrderService interface {
+	OrderService     interface {
 		HandleShopClosedResponse(http.ResponseWriter, *http.Request)
 		HandleRetailerRespondShopClosed(http.ResponseWriter, *http.Request)
 		HandleRetailerCancel(http.ResponseWriter, *http.Request)
 		HandleRetailerRequestCancel(http.ResponseWriter, *http.Request)
 	}
-	FirebaseAuthEnabled bool
-	FirebaseVerifier    auth.FirebaseVerifier
-	AllowAuthBypass     bool
+	JWTSecret       string
+	JWTIssuer       string
+	AllowAuthBypass bool
+	Spanner         *spanner.Client
 }
 
 // RegisterRoutes mounts the retailer role-row surface.
@@ -42,13 +47,27 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	r.Post("/v1/auth/retailer/select-org", d.Service.HandleSelectOrg)
 
 	mountProtected := func(rr chi.Router) {
+		// Fast Mode consolidated BFF & Telegram OTP binding
+		rr.Get("/v1/retailer/fast-home", d.Service.HandleFastHome)
+		rr.Post("/v1/retailer/telegram/link-request", d.Service.HandleTelegramLinkRequest)
+		rr.Get("/v1/retailer/telegram/status", d.Service.HandleTelegramStatus)
 		// C1.2 switch-org requires full JWT (RequireRole rejects PendingOrgSelect).
 		rr.Post("/v1/auth/retailer/switch-org", d.Service.HandleSwitchOrg)
+		rr.Get("/v1/retailer/ws-session", auth.WSSessionHandler(d.JWTSecret, d.JWTIssuer, 0))
 		// Retail OS Phase 0 identity + capability packs
 		rr.Get("/v1/retailer/me", d.Service.HandleMe)
 		rr.Get("/v1/retailer/capabilities", d.Service.HandleCapabilitiesList)
 		rr.Post("/v1/retailer/capabilities/{packID}/enable", d.Service.HandleCapabilityEnable)
 		rr.Post("/v1/retailer/capabilities/{packID}/disable", d.Service.HandleCapabilityDisable)
+
+		// Phase 4.1 Shelf Intelligence
+		rr.Post("/v1/retailer/shelf/check", d.Service.HandleCheckShelfAlerts)
+		rr.Post("/v1/retailer/shelf/alerts/{alertID}/resolve", d.Service.HandleResolveShelfAlert)
+
+		if d.SupplierService != nil {
+			rr.Get("/v1/retailer/service-promise", d.SupplierService.HandleEvaluateServicePromise)
+			rr.Post("/v1/retailer/service-promise", d.SupplierService.HandleEvaluateServicePromise)
+		}
 
 		// Retail OS Phase 7 — honest ops pulse (no demo supplier)
 		rr.Get("/v1/retailer/control-tower/pulse", d.Service.HandleControlTowerPulse)
@@ -61,6 +80,9 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		rr.Delete("/v1/retailer/org/members/{userID}", d.Service.HandleOrgMemberByID)
 		rr.Put("/v1/retailer/org/members/{userID}/locations", d.Service.HandleMemberLocations)
 		rr.Post("/v1/retailer/org/members/{userID}/locations", d.Service.HandleMemberLocations)
+		rr.Get("/v1/retailer/org/members/{userID}/mandate", d.Service.HandleOrgMemberMandate)
+		rr.Patch("/v1/retailer/org/members/{userID}/mandate", d.Service.HandleOrgMemberMandate)
+		rr.Put("/v1/retailer/org/members/{userID}/mandate", d.Service.HandleOrgMemberMandate)
 
 		// Retail OS Phase 2 locations
 		rr.Get("/v1/retailer/locations", d.Service.HandleLocations)
@@ -69,6 +91,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		rr.Put("/v1/retailer/locations/{locationID}", d.Service.HandleLocationByID)
 		rr.Post("/v1/retailer/locations/{locationID}/set-primary", d.Service.HandleLocationSetPrimary)
 		rr.Post("/v1/auth/retailer/switch-location", d.Service.HandleSwitchLocation)
+		rr.Post("/v1/retailer/attach", d.Service.HandleAcceptTradingPartnerInvite)
 
 		// Retail OS Phase 3 store stock
 		rr.Get("/v1/retailer/stock", d.Service.HandleStockList)
@@ -89,6 +112,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		rr.Post("/v1/retailer/pos/sessions/open", d.Service.HandlePosSessionOpen)
 		rr.Post("/v1/retailer/pos/sessions/{sessionID}/close", d.Service.HandlePosSessionClose)
 		rr.Get("/v1/retailer/pos/sessions/{sessionID}", d.Service.HandlePosSessionGet)
+		rr.Post("/v1/retailer/pos/scan", d.Service.HandlePOSScan)
 		rr.Post("/v1/retailer/pos/sales", d.Service.HandlePosSale)
 		rr.Post("/v1/retailer/pos/sales/{saleID}/void", d.Service.HandlePosSaleVoid)
 		rr.Post("/v1/retailer/pos/sales/{saleID}/refund", d.Service.HandlePosSaleRefund)
@@ -151,7 +175,20 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		rr.Post("/v1/retailer/assist/tickets/{ticketID}/complete", d.Service.HandleAssistComplete)
 		rr.Post("/v1/retailer/assist/tickets/{ticketID}/cancel", d.Service.HandleAssistCancel)
 
+		rr.Post("/v1/retailer/kyc/documents", d.Service.HandleSubmitKyc)
+		rr.Get("/v1/retailer/kyc/documents", d.Service.HandleListKyc)
+
+		rr.Post("/v1/retailer/returns", d.Service.HandleSubmitReturn)
+		rr.Get("/v1/retailer/returns", d.Service.HandleListReturns)
+
 		rr.Post("/v1/retailer/setup", d.Service.HandleRetailerSetup)
+		rr.Patch("/v1/retailer/tax-identity", d.Service.HandleTaxIdentity)
+		rr.Get("/v1/retailer/join-requests", d.Service.HandleListJoinRequests)
+		rr.Post("/v1/retailer/join-requests/{requestId}/approve", d.Service.HandleApproveJoinRequest)
+		rr.Post("/v1/retailer/join-requests/{requestId}/reject", d.Service.HandleRejectJoinRequest)
+		rr.Get("/v1/retailer/nasiya/opening-balances", d.Service.HandleListNasiyaOpeningBalances)
+		rr.Post("/v1/retailer/ar-invoices/{invoiceID}/acknowledge", d.Service.HandleAcknowledgeARInvoice)
+		rr.Post("/v1/retailer/ar-invoices/{invoiceID}/dispute", d.Service.HandleDisputeARInvoice)
 		rr.Get("/v1/retailer/profile", d.Service.HandleProfile)
 		rr.Put("/v1/retailer/profile", d.Service.HandleProfile)
 
@@ -163,6 +200,8 @@ func RegisterRoutes(r chi.Router, d Deps) {
 
 		rr.Get("/v1/retailer/cart/sync", d.Service.HandleCartSync)
 		rr.Post("/v1/retailer/cart/sync", d.Service.HandleCartSync)
+		rr.Delete("/v1/retailer/cart", d.Service.HandleCartClear)
+		rr.Post("/v1/retailer/cart/clear", d.Service.HandleCartClear)
 		if d.PromotionService != nil {
 			rr.Post("/v1/retailer/checkout/quote", d.PromotionService.HandleCheckoutQuote)
 			rr.Post("/v1/retailer/promotions/watch", d.PromotionService.HandleWatchSupplierPromotions)
@@ -195,6 +234,10 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		// Auto-order execution (Retail OS close-out)
 		rr.Post("/v1/retailer/settings/auto-order/run", d.Service.HandleAutoOrderRun)
 		rr.Get("/v1/retailer/settings/auto-order/runs", d.Service.HandleAutoOrderRuns)
+		rr.Get("/v1/retailer/settings/auto-order/shadow-proposals", d.Service.HandleAutoOrderShadowProposals)
+		rr.Get("/v1/retailer/settings/auto-order/shadow-stats", d.Service.HandleAutoOrderShadowStats)
+		rr.Get("/v1/retailer/settings/auto-order/soak-gate", d.Service.HandleAutoOrderSoakGate)
+		rr.Get("/v1/retailer/settings/auto-order/soak-artifact", d.Service.HandleAutoOrderSoakArtifact)
 
 		if d.OrderService != nil {
 			rr.Post("/v1/retailer/shop-closed-response", d.OrderService.HandleShopClosedResponse)
@@ -239,21 +282,27 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		rr.Patch("/v1/retailer/settings/auto-order/variant/{variantID}", d.Service.HandleAutoOrderPatch)
 
 		rr.Get("/v1/retailer/cards", d.Service.HandleRetailerCards)
+		rr.Get("/v1/retailer/payment-catalog", d.Service.HandlePaymentCatalog)
+		loyaltyH := &loyalty.Handlers{Spanner: d.Spanner}
+		rr.Get("/v1/retailer/loyalty/tier", loyaltyH.HandleRetailerTier)
+		rr.Get("/v1/retailer/loyalty/ledger", loyaltyH.HandleRetailerLedger)
 		rr.Post("/v1/retailer/card/initiate", d.Service.HandleRetailerCardMutation)
 		rr.Post("/v1/retailer/card/confirm", d.Service.HandleRetailerCardMutation)
 		rr.Post("/v1/retailer/card/deactivate", d.Service.HandleRetailerCardMutation)
 		rr.Post("/v1/retailer/card/default", d.Service.HandleRetailerCardMutation)
-
-		rr.Get("/v1/user/notifications", d.Service.HandleUserNotifications)
-		rr.Post("/v1/user/notifications/read", d.Service.HandleMarkNotificationsRead)
 	}
 
 	auth.ProtectMutations(r, auth.MutationGuardConfig{
-		FirebaseEnabled:  d.FirebaseAuthEnabled,
-		FirebaseVerifier: d.FirebaseVerifier,
-		AllowBypass:      d.AllowAuthBypass,
+		AllowBypass: d.AllowAuthBypass,
 	}, func(gr chi.Router) {
 		gr.Use(auth.RequireRole(auth.RoleRetailer))
 		mountProtected(gr)
+	})
+
+	auth.ProtectMutations(r, auth.MutationGuardConfig{
+		AllowBypass: d.AllowAuthBypass,
+	}, func(gr chi.Router) {
+		gr.Use(auth.RequireRole(auth.RoleAdmin, auth.RolePlatformAdmin))
+		gr.Post("/v1/admin/retailer-kyc/{documentID}/review", d.Service.HandleReviewKyc)
 	})
 }

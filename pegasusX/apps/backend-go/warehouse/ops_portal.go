@@ -10,10 +10,15 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
+	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/stocklots"
+	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/api/iterator"
 )
 
@@ -118,8 +123,8 @@ func (s *Service) ensurePortalSeed() {
 		{OrderID: "ord-wh-2", RetailerID: "ret-2", Status: "IN_TRANSIT", TotalMinor: 8900000, Currency: s.currency, UpdatedAt: now},
 	}
 	s.drivers = []PortalDriver{
-		{DriverID: "drv-1", Name: "Jamshid R.", Phone: "+998901111001", TruckStatus: "AVAILABLE", IsActive: true, VehicleID: "veh-1", VehicleClass: "CLASS_A", MaxVolumeVU: 50, VehicleIsActive: true},
-		{DriverID: "drv-2", Name: "Dilnoza K.", Phone: "+998901111002", TruckStatus: "IN_TRANSIT", IsActive: true, VehicleID: "veh-2", VehicleClass: "CLASS_C", MaxVolumeVU: 400, VehicleIsActive: true},
+		{DriverID: "drv-1", Name: "Jamshid R.", Phone: "+998901111001", TruckStatus: "AVAILABLE", IsActive: true, OnShift: true, VehicleID: "veh-1", VehicleClass: "CLASS_A", MaxVolumeVU: 50, VehicleIsActive: true},
+		{DriverID: "drv-2", Name: "Dilnoza K.", Phone: "+998901111002", TruckStatus: "IN_TRANSIT", IsActive: true, OnShift: true, VehicleID: "veh-2", VehicleClass: "CLASS_C", MaxVolumeVU: 400, VehicleIsActive: true},
 	}
 	s.vehicles = []PortalVehicle{
 		{VehicleID: "veh-1", Label: "Van 12", LicensePlate: "01A111AA", VehicleClass: "CLASS_A", MaxVolumeVU: 50, IsActive: true, AssignedDriverID: "drv-1", AssignedDriverName: "Jamshid R."},
@@ -146,78 +151,54 @@ func (s *Service) handleOpsDashboard(w http.ResponseWriter, r *http.Request) {
 	}
 	whID := warehouseIDFromRequest(r)
 
-	var active, pending, onRoute, idle, totalDrivers, totalVehicles int64
+	var active, pending, totalDrivers, totalVehicles int64
 	var lowStock int64
+	ordersByStatus := emptyWarehouseOrderStatusCounts()
+	truckDuty := emptyWarehouseTruckDutyCounts()
+	holdReasons := []map[string]any{}
+	var drivers []PortalDriver
+	var vehicles []PortalVehicle
 
 	if s.opsOrders != nil {
 		orders, err := s.opsOrders(r.Context(), whID, 200)
 		if err == nil {
-			for _, o := range orders {
-				switch strings.ToUpper(o.Status) {
-				case "PENDING", "LOADED":
-					pending++
-					active++
-				case "IN_TRANSIT", "ARRIVED":
-					active++
-				}
-			}
+			ordersByStatus, active, pending = countWarehouseOrdersByStatus(orders)
 		}
 	} else {
 		s.ensurePortalSeed()
 		s.mu.RLock()
-		for _, o := range s.orders {
-			switch strings.ToUpper(o.Status) {
-			case "PENDING", "LOADED":
-				pending++
-				active++
-			case "IN_TRANSIT", "ARRIVED":
-				active++
-			}
-		}
+		ordersByStatus, active, pending = countWarehouseOrdersByStatus(s.orders)
 		s.mu.RUnlock()
 	}
 
 	if s.opsDrivers != nil {
-		drivers, err := s.opsDrivers(r.Context(), whID)
+		rows, err := s.opsDrivers(r.Context(), whID)
 		if err == nil {
-			totalDrivers = int64(len(drivers))
-			for _, d := range drivers {
-				if !d.IsActive {
-					continue
-				}
-				if strings.EqualFold(d.TruckStatus, "IN_TRANSIT") {
-					onRoute++
-				} else {
-					idle++
-				}
-			}
+			drivers = rows
 		}
 	} else {
 		s.mu.RLock()
-		totalDrivers = int64(len(s.drivers))
-		for _, d := range s.drivers {
-			if !d.IsActive {
-				continue
-			}
-			if strings.EqualFold(d.TruckStatus, "IN_TRANSIT") {
-				onRoute++
-			} else {
-				idle++
-			}
-		}
+		drivers = append([]PortalDriver(nil), s.drivers...)
 		s.mu.RUnlock()
 	}
+	totalDrivers = int64(len(drivers))
+	truckDuty = countWarehouseTruckDuty(drivers)
+	onRoute := int64(truckDuty["IN_TRANSIT"])
+	idle := int64(truckDuty["AVAILABLE"])
 
 	if s.opsVehicles != nil {
-		vehicles, err := s.opsVehicles(r.Context(), whID)
+		rows, err := s.opsVehicles(r.Context(), whID)
 		if err == nil {
-			totalVehicles = int64(len(vehicles))
+			vehicles = rows
 		}
 	} else {
 		s.mu.RLock()
-		totalVehicles = int64(len(s.vehicles))
+		vehicles = append([]PortalVehicle(nil), s.vehicles...)
 		s.mu.RUnlock()
 	}
+	totalVehicles = int64(len(vehicles))
+	holdReasons = collectHoldReasons(drivers, vehicles)
+	_, demandSource := s.productDemandForecast(r.Context(), whID, 7)
 
 	if s.repo != nil && whID != "" {
 		inventoryList, _ := s.repo.GetInventoryList(r.Context(), whID, InventoryListOptions{})
@@ -231,26 +212,35 @@ func (s *Service) handleOpsDashboard(w http.ResponseWriter, r *http.Request) {
 	staffCount := int64(len(s.staff))
 	s.mu.RUnlock()
 
-	writeJSON(w, http.StatusOK, map[string]any{
-		"warehouse_id":     whID,
-		"active_orders":    active,
-		"completed_today":  int64(0),
-		"pending_dispatch": pending,
-		"drivers_on_route": onRoute,
-		"drivers_idle":     idle,
-		"total_drivers":    totalDrivers,
-		"total_vehicles":   totalVehicles,
-		"today_revenue":    int64(0),
-		"low_stock_count":  lowStock,
-		"total_staff":      staffCount,
-		"fleet_status": []map[string]any{
-			{"status": "AVAILABLE", "count": idle},
-			{"status": "IN_TRANSIT", "count": onRoute},
-		},
-		"sparkline_active_orders": []int{int(active) / 2, int(active), int(active) * 2, int(active) / 3, int(active)},
-		"sparkline_revenue":       []int{100, 250, 200, 300, 150, 400},
-		"sparkline_completed":     []int{5, 12, 8, 15, 10, 20},
+	payload := map[string]any{
+		"warehouse_id":              whID,
+		"active_orders":             active,
+		"pending_dispatch":          pending,
+		"drivers_on_route":          onRoute,
+		"drivers_idle":              idle,
+		"total_drivers":             totalDrivers,
+		"total_vehicles":            totalVehicles,
+		"low_stock_count":           lowStock,
+		"total_staff":               staffCount,
+		"completed_today_available": false,
+		"today_revenue_available":   false,
+		"history_available":         false,
+		"currency":                  s.responseCurrency(r.Context()),
+		"orders_by_status":          ordersByStatus,
+		"truck_duty":                truckDuty,
+		"hold_reasons":              holdReasons,
+		"demand_source":             demandSource,
+		"fleet_status":              fleetStatusFromDuty(truckDuty),
+	}
+	key := cache.DashboardKey("warehouse", whID)
+	body, err := cache.LoadDashboard(s.cache, r.Context(), key, func(context.Context) ([]byte, error) {
+		return json.Marshal(payload)
 	})
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "dashboard_unavailable"})
+		return
+	}
+	cache.WriteJSONWithETag(w, r, body)
 }
 
 func (s *Service) handleOpsInventory(w http.ResponseWriter, r *http.Request) {
@@ -305,11 +295,12 @@ func (s *Service) handleOpsInventory(w http.ResponseWriter, r *http.Request) {
 			})
 		}
 		writeJSON(w, http.StatusOK, map[string]any{
-			"inventory": items,
-			"items":     items,
-			"limit":     limit,
-			"offset":    offset,
-			"total":     len(items),
+			"inventory":    items,
+			"items":        items,
+			"limit":        limit,
+			"offset":       offset,
+			"total":        len(items),
+			"lots_enabled": stocklots.LotsEnabled(),
 		})
 	case http.MethodPatch:
 		body, ok := readMutationBody(w, r, 64*1024)
@@ -336,7 +327,14 @@ func (s *Service) handleOpsInventory(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		err := s.repo.UpdateInventoryQuantity(r.Context(), whID, patchBody.ProductID, patchBody.Quantity, func(buf outbox.TxnBuffer) error {
-			return nil
+			// B2 M-P0-3: stock absolute set must leave the bus.
+			return outbox.EmitJSON(r.Context(), buf, events.AggregateWarehouse, whID, events.TopicMain, map[string]any{
+				"type":         events.EventInventoryQuantityUpdated,
+				"warehouse_id": whID,
+				"product_id":   patchBody.ProductID,
+				"quantity":     patchBody.Quantity,
+				"timestamp":    time.Now().UTC().Format(time.RFC3339Nano),
+			})
 		})
 		if err != nil {
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_update_inventory"})
@@ -472,7 +470,7 @@ func (s *Service) loadOpsOrderDetailFromSpanner(ctx context.Context, warehouseID
 			"warehouseId": strings.TrimSpace(warehouseID),
 		},
 	}
-	iter := s.spannerClient.Single().Query(ctx, stmt)
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	row, err := iter.Next()
 	if err == iterator.Done {
@@ -535,7 +533,7 @@ func (s *Service) HandleOpsStaff(w http.ResponseWriter, r *http.Request) {
 				        AND SupplierRole IN ('WAREHOUSE', 'WAREHOUSE_ADMIN', 'WAREHOUSE_STAFF', 'PAYLOADER')`,
 				Params: map[string]any{"wh_id": whID},
 			}
-			iter := s.spannerClient.Single().Query(r.Context(), stmt)
+			iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(r.Context(), stmt)
 			defer iter.Stop()
 			var staff []portalStaff
 			for {
@@ -586,26 +584,42 @@ func (s *Service) HandleOpsStaff(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		staffID := "stf-" + uuid.NewString()[:8]
+		plainPin, err := generateOpsDriverPIN(4)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "pin_generate_failed"})
+			return
+		}
+		pinHash, err := bcrypt.GenerateFromPassword([]byte(plainPin), bcrypt.DefaultCost)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "pin_hash_failed"})
+			return
+		}
+		role := strings.TrimSpace(req.Role)
+		if role == "" {
+			role = "WAREHOUSE_STAFF"
+		}
 
 		if s.spannerClient != nil {
 			now := s.now().UTC()
 			m := spanner.Insert("SupplierUsers",
 				[]string{"UserId", "SupplierId", "Phone", "Name", "PasswordHash", "SupplierRole", "AssignedWarehouseId", "IsActive", "CreatedAt", "UpdatedAt"},
-				[]any{staffID, s.supplierID, strings.TrimSpace(req.Phone), strings.TrimSpace(req.Name), "password_hash", strings.TrimSpace(req.Role), warehouseIDFromRequest(r), true, now, now},
+				[]any{staffID, s.resolveSupplierScope(r.Context()), strings.TrimSpace(req.Phone), strings.TrimSpace(req.Name), string(pinHash), role, warehouseIDFromRequest(r), true, now, now},
 			)
-			if _, err := s.spannerClient.Apply(r.Context(), []*spanner.Mutation{m}); err != nil {
+			if _, err := s.spannerClient.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+				return txn.BufferWrite([]*spanner.Mutation{m})
+			}); err != nil {
 				s.log.ErrorContext(r.Context(), "failed to create staff", "err", err)
 				writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_create_staff"})
 				return
 			}
 		} else {
-			row := portalStaff{StaffID: staffID, Name: req.Name, Phone: req.Phone, Role: req.Role}
+			row := portalStaff{StaffID: staffID, Name: req.Name, Phone: req.Phone, Role: role}
 			s.mu.Lock()
 			s.staff = append(s.staff, row)
 			s.mu.Unlock()
 		}
 
-		resp := map[string]any{"staff_id": staffID, "pin": "5678"}
+		resp := map[string]any{"staff_id": staffID, "pin": plainPin}
 		respBytes, _ := json.Marshal(resp)
 		s.storeMutationReplay(r.Context(), key, body, http.StatusCreated, respBytes)
 		idemCommitted = true
@@ -613,6 +627,168 @@ func (s *Service) HandleOpsStaff(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+}
+
+func (s *Service) checkWarehouseStaffAdmin(r *http.Request) bool {
+	claims, ok := auth.FromContext(r.Context())
+	if !ok || claims.Subject == "" {
+		return false
+	}
+	if claims.Role == auth.RoleAdmin || claims.Role == auth.RoleWarehouseAdmin || claims.Role == auth.RolePlatformAdmin {
+		return true
+	}
+	if strings.EqualFold(string(claims.SupplierRole), string(auth.RoleAdmin)) ||
+		strings.EqualFold(string(claims.SupplierRole), string(auth.RoleWarehouseAdmin)) {
+		return true
+	}
+	return false
+}
+
+// HandleDeleteOpsStaff handles DELETE /v1/warehouse/ops/staff/{staffID}
+func (s *Service) HandleDeleteOpsStaff(w http.ResponseWriter, r *http.Request) {
+	if !s.checkWarehouseStaffAdmin(r) {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
+		return
+	}
+	staffID := strings.TrimSpace(chi.URLParam(r, "staffID"))
+	if staffID == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "staff_id_required"})
+		return
+	}
+
+	found := false
+	s.mu.Lock()
+	for i := range s.staff {
+		if s.staff[i].StaffID == staffID {
+			s.staff = append(s.staff[:i], s.staff[i+1:]...)
+			found = true
+			break
+		}
+	}
+	s.mu.Unlock()
+
+	if s.spannerClient != nil {
+		now := s.now().UTC()
+		m := spanner.Update("SupplierUsers",
+			[]string{"UserId", "IsActive", "UpdatedAt"},
+			[]any{staffID, false, now},
+		)
+		if _, err := s.spannerClient.Apply(r.Context(), []*spanner.Mutation{m}); err == nil {
+			found = true
+		} else {
+			s.log.ErrorContext(r.Context(), "failed to deactivate warehouse staff", "staff_id", staffID, "err", err)
+		}
+	}
+
+	// Revoke user tokens
+	_ = auth.GetRevocationStore().RevokeUser(r.Context(), staffID, 24*time.Hour)
+
+	if !found && s.spannerClient == nil {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "staff_not_found"})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"status": "deactivated", "staff_id": staffID})
+}
+
+// HandleUpdateOpsStaff handles PATCH /v1/warehouse/ops/staff/{staffID}
+func (s *Service) HandleUpdateOpsStaff(w http.ResponseWriter, r *http.Request) {
+	if !s.checkWarehouseStaffAdmin(r) {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
+		return
+	}
+	staffID := strings.TrimSpace(chi.URLParam(r, "staffID"))
+	if staffID == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "staff_id_required"})
+		return
+	}
+
+	body, ok := readMutationBody(w, r, 64*1024)
+	if !ok {
+		return
+	}
+
+	var req struct {
+		Name     *string `json:"name"`
+		Role     *string `json:"role"`
+		Phone    *string `json:"phone"`
+		IsActive *bool   `json:"is_active"`
+		Active   *bool   `json:"active"`
+	}
+	if len(body) > 0 {
+		if err := json.Unmarshal(body, &req); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+			return
+		}
+	}
+
+	activeVal := req.IsActive
+	if activeVal == nil {
+		activeVal = req.Active
+	}
+
+	found := false
+	var updatedRow portalStaff
+	s.mu.Lock()
+	for i := range s.staff {
+		if s.staff[i].StaffID == staffID {
+			if req.Name != nil {
+				s.staff[i].Name = strings.TrimSpace(*req.Name)
+			}
+			if req.Role != nil {
+				s.staff[i].Role = strings.TrimSpace(*req.Role)
+			}
+			if req.Phone != nil {
+				s.staff[i].Phone = strings.TrimSpace(*req.Phone)
+			}
+			updatedRow = s.staff[i]
+			if activeVal != nil && !*activeVal {
+				s.staff = append(s.staff[:i], s.staff[i+1:]...)
+			}
+			found = true
+			break
+		}
+	}
+	s.mu.Unlock()
+
+	if s.spannerClient != nil {
+		now := s.now().UTC()
+		cols := []string{"UserId", "UpdatedAt"}
+		vals := []any{staffID, now}
+		if req.Name != nil {
+			cols = append(cols, "Name")
+			vals = append(vals, strings.TrimSpace(*req.Name))
+		}
+		if req.Role != nil {
+			cols = append(cols, "SupplierRole")
+			vals = append(vals, strings.TrimSpace(*req.Role))
+		}
+		if req.Phone != nil {
+			cols = append(cols, "Phone")
+			vals = append(vals, strings.TrimSpace(*req.Phone))
+		}
+		if activeVal != nil {
+			cols = append(cols, "IsActive")
+			vals = append(vals, *activeVal)
+		}
+		m := spanner.Update("SupplierUsers", cols, vals)
+		if _, err := s.spannerClient.Apply(r.Context(), []*spanner.Mutation{m}); err == nil {
+			found = true
+		}
+	}
+
+	if activeVal != nil && !*activeVal {
+		_ = auth.GetRevocationStore().RevokeUser(r.Context(), staffID, 24*time.Hour)
+	}
+
+	if !found && s.spannerClient == nil {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "staff_not_found"})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"status":   "updated",
+		"staff_id": staffID,
+		"staff":    updatedRow,
+	})
 }
 
 func (s *Service) HandleOpsProducts(w http.ResponseWriter, r *http.Request) {
@@ -636,8 +812,8 @@ func (s *Service) HandleOpsManifests(w http.ResponseWriter, r *http.Request) {
 	if s.spannerClient != nil && !s.portalSeedEnabled() {
 		manifests, err := s.loadWarehouseManifestsFromSpanner(r.Context(), whID)
 		if err != nil {
-			s.log.WarnContext(r.Context(), "warehouse manifests query failed", "err", err, "warehouse_id", whID)
-			writeJSON(w, http.StatusOK, map[string]any{"manifests": []portalManifest{}})
+			s.log.ErrorContext(r.Context(), "warehouse manifests query failed", "err", err, "warehouse_id", whID)
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "manifests_query_failed"})
 			return
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"manifests": manifests})
@@ -659,8 +835,8 @@ func (s *Service) HandleOpsCRM(w http.ResponseWriter, r *http.Request) {
 	if s.spannerClient != nil && !s.portalSeedEnabled() {
 		retailers, err := s.loadWarehouseCRMFromSpanner(r.Context(), whID)
 		if err != nil {
-			s.log.WarnContext(r.Context(), "warehouse crm query failed", "err", err, "warehouse_id", whID)
-			writeJSON(w, http.StatusOK, map[string]any{"retailers": []portalRetailer{}})
+			s.log.ErrorContext(r.Context(), "warehouse crm query failed", "err", err, "warehouse_id", whID)
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "crm_query_failed"})
 			return
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"retailers": retailers})
@@ -678,8 +854,19 @@ func (s *Service) HandleOpsReturns(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
+	whID := warehouseIDFromRequest(r)
 	if s.spannerClient != nil && !s.portalSeedEnabled() {
-		writeJSON(w, http.StatusOK, map[string]any{"items": []portalReturnItem{}})
+		items, err := s.loadWarehouseReturnsFromSpanner(r.Context(), whID)
+		if err != nil {
+			s.log.ErrorContext(r.Context(), "warehouse returns query failed", "err", err, "warehouse_id", whID)
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "returns_query_failed"})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"items": items})
+		return
+	}
+	if !s.portalSeedEnabled() {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "spanner_required"})
 		return
 	}
 	s.ensurePortalSeed()
@@ -704,6 +891,7 @@ func (s *Service) HandleOpsAnalytics(w http.ResponseWriter, r *http.Request) {
 		supplierID := s.resolveAnalyticsSupplierID(r)
 		payload, err := s.loadOpsAnalytics(r.Context(), whID, period, supplierID)
 		if err == nil {
+			payload["currency"] = s.responseCurrency(r.Context())
 			writeJSON(w, http.StatusOK, payload)
 			return
 		}
@@ -726,24 +914,25 @@ func (s *Service) HandleOpsAnalytics(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	var avgOrderValue float64
+	var avgOrderValue int64
 	if completedOrders > 0 {
-		avgOrderValue = float64(totalRevenue) / float64(completedOrders)
+		avgOrderValue = totalRevenue / completedOrders
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{
-		"warehouse_id":         whID,
-		"period":               period,
-		"total_orders":         totalOrders,
-		"total_revenue":        totalRevenue,
-		"completed_orders":     completedOrders,
-		"cancelled_orders":     cancelledOrders,
-		"avg_order_value":      avgOrderValue,
-		"top_products":         []any{},
-		"daily_breakdown":      []any{},
-		"fleet_utilization":    map[string]any{"utilization_pct": 0},
-		"import_freshness":     map[string]any{"applied_rows_30d": 0, "applied_skus_30d": 0, "quantity_delta_30d": 0},
-		"import_anomaly_queue": map[string]any{"open_rows_30d": 0},
+		"warehouse_id":              whID,
+		"period":                    period,
+		"currency":                  s.responseCurrency(r.Context()),
+		"total_orders":              totalOrders,
+		"total_revenue":             totalRevenue,
+		"completed_orders":          completedOrders,
+		"cancelled_orders":          cancelledOrders,
+		"avg_order_value":           avgOrderValue,
+		"top_products_available":    false,
+		"daily_breakdown_available": false,
+		"fleet_utilization":         map[string]any{"utilization_pct": 0},
+		"import_freshness":          map[string]any{"applied_rows_30d": 0, "applied_skus_30d": 0, "quantity_delta_30d": 0},
+		"import_anomaly_queue":      map[string]any{"open_rows_30d": 0},
 	})
 }
 
@@ -757,27 +946,29 @@ func (s *Service) HandleOpsTreasury(w http.ResponseWriter, r *http.Request) {
 	if view == "" {
 		view = "overview"
 	}
-	if s.spannerClient != nil && !s.portalSeedEnabled() {
-		if view == "invoices" {
-			writeJSON(w, http.StatusOK, map[string]any{"invoices": []any{}})
+	// Fail-closed honesty: [] only when the warehouse-scoped query is empty.
+	if view == "invoices" {
+		sid := s.resolveAnalyticsSupplierID(r)
+		rows, err := s.loadWarehouseTreasuryInvoices(r.Context(), whID, sid)
+		if err != nil {
+			if s.log != nil {
+				s.log.WarnContext(r.Context(), "warehouse treasury invoices read failed", "warehouse_id", whID, "err", err)
+			}
+			writeTreasuryInvoicesUnavailable(w, err)
 			return
 		}
+		writeJSON(w, http.StatusOK, map[string]any{"invoices": rows})
+		return
+	}
+	if s.spannerClient != nil && !s.portalSeedEnabled() {
 		writeJSON(w, http.StatusOK, s.loadWarehouseTreasuryOverview(r.Context(), whID))
 		return
 	}
-	s.ensurePortalSeed()
-	if view == "invoices" {
-		writeJSON(w, http.StatusOK, map[string]any{
-			"invoices": []map[string]any{
-				{"invoice_id": "inv-1", "status": "PAID", "amount_uzs": 45000000, "payout_uzs": 42750000},
-			},
-		})
-		return
-	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"total_invoiced":    int64(120000000),
-		"total_paid":        int64(98000000),
-		"total_outstanding": int64(22000000),
+		"total_invoiced":    int64(0),
+		"total_paid":        int64(0),
+		"total_outstanding": int64(0),
+		"currency":          s.responseCurrency(r.Context()),
 	})
 }
 
@@ -874,7 +1065,7 @@ func (s *Service) HandleSupplyRequestByID(w http.ResponseWriter, r *http.Request
 				BaseEvent:   events.BaseEvent{Type: events.EventSupplyRequestUpdate, Timestamp: nowTS},
 				RequestID:   id,
 				WarehouseID: warehouseID,
-				SupplierID:  s.supplierID,
+				SupplierID:  s.resolveSupplierScope(r.Context()),
 				FactoryID:   target.FactoryID,
 				Status:      "CANCELLED",
 			})
@@ -885,10 +1076,10 @@ func (s *Service) HandleSupplyRequestByID(w http.ResponseWriter, r *http.Request
 		}
 
 		if s.cache != nil {
-			s.cache.Invalidate(r.Context(), warehouseSupplyRequestsKey(s.supplierID, warehouseID))
+			s.cache.Invalidate(r.Context(), warehouseSupplyRequestsKey(s.resolveSupplierScope(r.Context()), warehouseID))
 		}
 		s.broadcastSupplyRequestUpdate(r.Context(), warehouseID, target)
-		s.log.Info("warehouse supply request cancelled", "supplier_id", s.supplierID, "warehouse_id", warehouseID, "request_id", id)
+		s.log.Info("warehouse supply request cancelled", "supplier_id", s.resolveSupplierScope(r.Context()), "warehouse_id", warehouseID, "request_id", id)
 		writeJSON(w, http.StatusOK, map[string]any{"request_id": id, "state": "CANCELLED"})
 	default:
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
@@ -1017,6 +1208,7 @@ func (s *Service) loadWarehouseTreasuryOverview(ctx context.Context, warehouseID
 		"total_invoiced":    totalInvoiced,
 		"total_paid":        totalPaid,
 		"total_outstanding": totalOutstanding,
+		"currency":          s.responseCurrency(ctx),
 	}
 }
 

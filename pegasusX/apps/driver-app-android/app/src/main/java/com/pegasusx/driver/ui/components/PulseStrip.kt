@@ -1,5 +1,7 @@
 package com.pegasusx.driver.ui.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -18,18 +20,29 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.pegasusx.driver.data.model.PulseEvent
 import com.pegasusx.driver.ui.theme.PegasusSpacing
+import com.pegasusx.driver.R
 
 @Composable
 fun PulseStrip(
     events: List<PulseEvent>,
     loading: Boolean,
+    error: String? = null,
     modifier: Modifier = Modifier,
 ) {
-    if (loading && events.isEmpty()) {
+    if (loading && events.isEmpty() && error.isNullOrBlank()) {
         Text(
-            text = "Loading network pulse…",
+            text = stringResource(R.string.mobile_driver_ui_loading_network_pulse),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = modifier.padding(vertical = PegasusSpacing.s8),
+        )
+        return
+    }
+    if (!error.isNullOrBlank()) {
+        Text(
+            text = error,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.error,
             modifier = modifier.padding(vertical = PegasusSpacing.s8),
         )
         return
@@ -38,7 +51,7 @@ fun PulseStrip(
 
     Column(modifier = modifier.fillMaxWidth()) {
         Text(
-            text = "Network pulse",
+            text = stringResource(R.string.factory_portal_app_text_network_pulse),
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onSurfaceVariant,

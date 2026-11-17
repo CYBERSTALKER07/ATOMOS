@@ -4,127 +4,99 @@ struct CreateTransferView: View {
     @Environment(\.dismiss) private var dismiss
     let onCreated: (String) -> Void
 
-    @State private var realtimeClient = FactoryRealtimeClient()
-    @State private var loadingFleet = true
-    @State private var submitting = false
-    @State private var error: String?
-    @State private var drivers: [FactoryFleetDriverRow] = []
-    @State private var vehicles: [FactoryFleetVehicleRow] = []
-    @State private var orderId = ""
-    @State private var totalVu = "25"
-    @State private var driverId = ""
-    @State private var vehicleId = ""
+    @State private var vm = CreateTransferViewModel()
 
     var body: some View {
+        @Bindable var vm = vm
+
         NavigationStack {
             Group {
-                if loadingFleet {
+                if vm.loadingFleet {
                     ProgressView()
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if let error {
+                } else if let error = vm.error, vm.drivers.isEmpty, vm.vehicles.isEmpty {
                     ContentUnavailableView {
-                        Label("Error", systemImage: "exclamationmark.triangle")
+                        Label("mobile_factory.ui.error", systemImage: "exclamationmark.triangle")
                     } description: {
                         Text(error)
                     } actions: {
-                        Button("Retry") { Task { await loadFleet() } }
+                        Button("common.action.retry") {
+                            PegasusHaptics.selection()
+                            Task { await vm.loadFleet() }
+                        }
+                        .frame(minWidth: 44, minHeight: 44)
                     }
                 } else {
                     Form {
+                        if let error = vm.error {
+                            Section {
+                                Text(error)
+                                    .foregroundStyle(.red)
+                                    .font(.caption)
+                                    .accessibilityLabel("Error: \(error)")
+                            }
+                        }
+
                         Section {
-                            TextField("Order ID (optional)", text: $orderId)
-                            TextField("Total VU", text: $totalVu)
+                            TextField("mobile_factory.ui.order_id_optional", text: $vm.orderId)
+                                .frame(minHeight: 44)
+                                .accessibilityLabel("Optional order ID")
+                            TextField("mobile_factory.ui.total_vu", text: $vm.totalVu)
                                 .keyboardType(.numberPad)
+                                .frame(minHeight: 44)
+                                .accessibilityLabel("Total volume units")
                         } footer: {
-                            Text("Stage a factory-to-warehouse movement. Volume is captured in VU.")
+                            Text("mobile_factory.ui.stage_a_factory_to_warehouse_movement_volume_is_captured_in_vu")
                         }
 
                         Section("Fleet assignment") {
-                            Picker("Driver", selection: $driverId) {
-                                Text("Unassigned").tag("")
-                                ForEach(drivers) { driver in
+                            Picker("Driver", selection: $vm.driverId) {
+                                Text("factory_portal.transfers._id_.text.unassigned").tag("")
+                                ForEach(vm.drivers) { driver in
                                     Text("\(driver.name)\(driver.onShift ? " (on shift)" : "")").tag(driver.driverId)
                                 }
                             }
-                            Picker("Vehicle", selection: $vehicleId) {
-                                Text("Unassigned").tag("")
-                                ForEach(vehicles) { vehicle in
-                                    Text("\(vehicle.plateNo) · \(vehicle.state)").tag(vehicle.vehicleId)
+                            Picker("Vehicle", selection: $vm.vehicleId) {
+                                Text("factory_portal.transfers._id_.text.unassigned").tag("")
+                                ForEach(vm.vehicles) { vehicle in
+                                    Text(L10n.format("mobile_factory.ui.plateno_state", "\(vehicle.plateNo)", "\(vehicle.state)")).tag(vehicle.vehicleId)
                                 }
                             }
                         }
                     }
+                    .scrollDismissesKeyboard(.interactively)
                 }
             }
-            .navigationTitle("Create Transfer")
+            .navigationTitle("mobile_factory.ui.create_transfer")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button("common.action.cancel") {
+                        PegasusHaptics.selection()
+                        dismiss()
+                    }
+                    .frame(minWidth: 44, minHeight: 44)
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(submitting ? "Creating…" : "Create") {
-                        Task { await submit() }
-                    }
-                    .disabled(submitting || loadingFleet)
-                }
-            }
-            .task { await loadFleet() }
-            .onAppear {
-                realtimeClient.connect(
-                    onStateChange: { _ in },
-                    onEvent: { _ in },
-                    onReconnect: {
-                        if submitting {
-                            submitting = false
-                            error = "Connection restored — verify transfer was created before retrying."
+                    Button(vm.submitting ? "Creating…" : "Create") {
+                        Task {
+                            if let transferId = await vm.submit() {
+                                onCreated(transferId)
+                                dismiss()
+                            }
                         }
                     }
-                )
+                    .frame(minWidth: 44, minHeight: 44)
+                    .disabled(vm.submitting || vm.loadingFleet)
+                }
+            }
+            .task {
+                vm.startRealtime()
+                await vm.loadFleet()
             }
             .onDisappear {
-                realtimeClient.disconnect()
+                vm.stopRealtime()
             }
         }
-    }
-
-    @MainActor
-    private func loadFleet() async {
-        loadingFleet = true
-        error = nil
-        do {
-            async let driverRows = FactoryService.fleetDrivers()
-            async let vehicleRows = FactoryService.fleetVehicles()
-            drivers = try await driverRows
-            vehicles = try await vehicleRows
-        } catch {
-            self.error = error.localizedDescription
-        }
-        loadingFleet = false
-    }
-
-    @MainActor
-    private func submit() async {
-        guard let parsedVu = Int(totalVu), parsedVu > 0 else {
-            error = "Total VU must be a positive number."
-            return
-        }
-        submitting = true
-        error = nil
-        do {
-            let response = try await FactoryService.createTransfer(
-                FactoryCreateTransferRequest(
-                    orderId: orderId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : orderId,
-                    totalVu: parsedVu,
-                    driverId: driverId.isEmpty ? nil : driverId,
-                    vehicleId: vehicleId.isEmpty ? nil : vehicleId
-                )
-            )
-            onCreated(response.transferId)
-            dismiss()
-        } catch {
-            self.error = error.localizedDescription
-        }
-        submitting = false
     }
 }

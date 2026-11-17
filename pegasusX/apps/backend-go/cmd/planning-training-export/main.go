@@ -122,37 +122,31 @@ func sanitizeTrainingRows(rows []trainingRow) ([]trainingRow, exportQuality) {
 }
 
 type trainingRow struct {
-	SupplierID           string `json:"supplier_id"`
-	WarehouseID          string `json:"warehouse_id"`
-	ProductID            string `json:"product_id"`
-	ForecastDate         string `json:"forecast_date"`
-	BaselineQty          int64  `json:"baseline_qty"`
-	LowUnits             int64  `json:"low_units"`
-	HighUnits            int64  `json:"high_units"`
-	ConfidencePct        int64  `json:"confidence_pct"`
-	BaselineSource       string `json:"baseline_source"`
-	WarehouseDayOrders   int64  `json:"warehouse_day_completed_orders"`
-	ExportAt             string `json:"export_at"`
+	SupplierID     string `json:"supplier_id"`
+	WarehouseID    string `json:"warehouse_id"`
+	ProductID      string `json:"product_id"`
+	ForecastDate   string `json:"forecast_date"`
+	BaselineQty    int64  `json:"baseline_qty"`
+	LowUnits       int64  `json:"low_units"`
+	HighUnits      int64  `json:"high_units"`
+	ConfidencePct  int64  `json:"confidence_pct"`
+	BaselineSource string `json:"baseline_source"`
+	ActualUnits    int64  `json:"actual_units"`
+	ExportAt       string `json:"export_at"`
 }
 
 func queryTrainingRows(ctx context.Context, client *spanner.Client, supplierID string, start, end time.Time) ([]trainingRow, error) {
+	actuals, err := planning.LoadCompletedActuals(ctx, client, supplierID, start, end)
+	if err != nil {
+		return nil, err
+	}
+
 	sql := `SELECT
 		b.SupplierId, b.WarehouseId, b.ProductId, b.ForecastDate,
 		b.BaselineQty, COALESCE(b.LowUnits, b.BaselineQty), COALESCE(b.HighUnits, b.BaselineQty),
 		COALESCE(b.ConfidencePct, CAST(ROUND(b.Confidence * 100) AS INT64)),
-		COALESCE(b.BaselineSource, b.Source),
-		COALESCE(act.CompletedOrders, 0)
+		COALESCE(b.BaselineSource, b.Source)
 	FROM DemandForecastBaseline b
-	LEFT JOIN (
-		SELECT SupplierId, WarehouseId,
-			DATE(TIMESTAMP_TRUNC(UpdatedAt, DAY, 'UTC')) AS OrderDay,
-			COUNT(*) AS CompletedOrders
-		FROM Orders
-		WHERE Status = 'COMPLETED'
-		GROUP BY SupplierId, WarehouseId, OrderDay
-	) act ON b.SupplierId = act.SupplierId
-		AND b.WarehouseId = act.WarehouseId
-		AND b.ForecastDate = act.OrderDay
 	WHERE b.ForecastDate BETWEEN @start AND @end`
 	params := map[string]any{"start": civil.DateOf(start), "end": civil.DateOf(end)}
 	if supplierID != "" {
@@ -179,11 +173,13 @@ func queryTrainingRows(ctx context.Context, client *spanner.Client, supplierID s
 		if err := row.Columns(
 			&r.SupplierID, &r.WarehouseID, &r.ProductID, &forecastDate,
 			&r.BaselineQty, &r.LowUnits, &r.HighUnits, &r.ConfidencePct, &r.BaselineSource,
-			&r.WarehouseDayOrders,
 		); err != nil {
 			return nil, err
 		}
 		r.ForecastDate = forecastDate.String()
+		r.ActualUnits = actuals[planning.ActualKey{
+			SupplierID: r.SupplierID, WarehouseID: r.WarehouseID, ProductID: r.ProductID, Day: forecastDate,
+		}]
 		r.ExportAt = exportAt
 		rows = append(rows, r)
 	}
@@ -205,14 +201,14 @@ func writeCSV(w *os.File, rows []trainingRow) error {
 	_ = cw.Write([]string{
 		"supplier_id", "warehouse_id", "product_id", "forecast_date",
 		"baseline_qty", "low_units", "high_units", "confidence_pct", "baseline_source",
-		"warehouse_day_completed_orders", "export_at",
+		"actual_units", "export_at",
 	})
 	for _, r := range rows {
 		if err := cw.Write([]string{
 			r.SupplierID, r.WarehouseID, r.ProductID, r.ForecastDate,
 			fmt.Sprintf("%d", r.BaselineQty), fmt.Sprintf("%d", r.LowUnits), fmt.Sprintf("%d", r.HighUnits),
 			fmt.Sprintf("%d", r.ConfidencePct), r.BaselineSource,
-			fmt.Sprintf("%d", r.WarehouseDayOrders), r.ExportAt,
+			fmt.Sprintf("%d", r.ActualUnits), r.ExportAt,
 		}); err != nil {
 			return err
 		}

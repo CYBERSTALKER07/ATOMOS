@@ -13,12 +13,16 @@ var (
 	TopicDispatch = topicFromEnv("KAFKA_TOPIC_DISPATCH", "pegasusx-dispatch")
 	// TopicRealtime carries driver location and live telemetry fan-out.
 	TopicRealtime = topicFromEnv("KAFKA_TOPIC_REALTIME", "pegasusx-realtime")
-	// TopicWebhooks carries payment gateway settlement events.
+	// TopicWebhooks is RETIRED (W1 2026-08-12). Payment settlement and partner
+	// webhook delivery consume TopicMain / TopicOrders. The Kafka topic may still
+	// exist in infra for compatibility; producers must not emit to it.
 	TopicWebhooks = topicFromEnv("KAFKA_TOPIC_WEBHOOKS", "pegasusx-webhooks")
 	// TopicExceptions carries logistics claims / OS&D / reverse-logistics.
 	TopicExceptions = topicFromEnv("KAFKA_TOPIC_EXCEPTIONS", "logistics.exceptions.v1")
 	// TopicTelemetryLogistics carries temperature / seal / sensor exception telemetry.
 	TopicTelemetryLogistics = topicFromEnv("KAFKA_TOPIC_TELEMETRY_LOGISTICS", "logistics.telemetry.v1")
+	// TopicLedger carries append-only general ledger entry posted/reversed events.
+	TopicLedger = topicFromEnv("KAFKA_TOPIC_LEDGER", "pegasusx-ledger")
 )
 
 // DualWriteDomainTopics mirrors events onto domain topics while consumers migrate
@@ -47,9 +51,13 @@ func DispatcherConsumerTopics() []string {
 	if !ConsumeDomainTopics() {
 		return []string{TopicMain}
 	}
-	seen := make(map[string]struct{}, 4)
-	out := make([]string, 0, 4)
-	for _, t := range []string{TopicMain, TopicOrders, TopicDispatch, TopicRealtime} {
+	seen := make(map[string]struct{}, 10)
+	out := make([]string, 0, 10)
+	for _, t := range []string{
+		TopicMain, TopicOrders, TopicDispatch, TopicRealtime,
+		TopicExceptions, TopicTelemetryLogistics, TopicDemand,
+		"driver.score.updated", "capacity.zone.updated", "demand.adjustment.updated",
+	} {
 		t = strings.TrimSpace(t)
 		if t == "" {
 			continue
@@ -71,6 +79,29 @@ func DispatchConsumerTopic() string {
 	return TopicMain
 }
 
+// TwinConsumerTopics returns Kafka topics for the digital-twin projector.
+// Always includes TopicMain; when domain consume is on, also fans in orders,
+// dispatch (route created), realtime (driver location), and route ETA updates.
+func TwinConsumerTopics() []string {
+	if !ConsumeDomainTopics() {
+		return []string{TopicMain}
+	}
+	seen := make(map[string]struct{}, 5)
+	out := make([]string, 0, 5)
+	for _, t := range []string{TopicMain, TopicOrders, TopicDispatch, TopicRealtime, "route.eta.updated"} {
+		t = strings.TrimSpace(t)
+		if t == "" {
+			continue
+		}
+		if _, ok := seen[t]; ok {
+			continue
+		}
+		seen[t] = struct{}{}
+		out = append(out, t)
+	}
+	return out
+}
+
 // DomainTopicForEventType maps an event type to its domain topic, or "" when
 // the event should remain on TopicMain only.
 func DomainTopicForEventType(eventType string) string {
@@ -89,29 +120,60 @@ func DomainTopicForEventType(eventType string) string {
 		EventSettlementRequired, EventDeliverySessionUpdated, EventDeliveryDisputed,
 		EventMissingItemsReported, EventSplitPaymentCreated,
 		EventFiscalReceiptRequested, EventFiscalReceiptSucceeded, EventFiscalReceiptFailed,
-		EventOrderForceCompleted, EventCashShortfall, EventCashOverage:
+		EventRefundRequested, EventRefundSucceeded, EventRefundFailed, EventFiscalCorrectiveRequested,
+		EventOrderForceCompleted, EventCashShortfall, EventCashOverage,
+		EventCashierSessionStarted, EventCashierSessionTransition,
+		EventOfflineQuotaLeaseUpdated, EventAMLExposureUpdated,
+		EventP2PPOCreated:
 		return TopicOrders
 	case EventWarehouseDispatchLockChanged, EventManifestDraftCreated,
 		EventManifestLoadingStarted, EventManifestOrderInjected, EventManifestOrderException,
 		EventManifestDLQEscalation, EventManifestRebalanced, EventManifestCancelled,
 		EventManifestSealed, EventManifestDispatched, EventManifestCompleted,
-		EventRouteCreated, EventRouteReordered, EventDriverAvailabilityChanged,
-		EventVehicleAvailabilityChanged, EventFreezeLockAcquired, EventFreezeLockReleased:
+		EventRouteCreated, EventRouteReordered, EventRouteReplanned, EventDriverAvailabilityChanged,
+		EventVehicleAvailabilityChanged, EventFreezeLockAcquired, EventFreezeLockReleased,
+		EventFleetDVIRInspected, EventFleetDVIRRedTag, EventYardGateCheckRecorded,
+		EventOntologyObjectUpdated,
+		EventInventoryReceived, EventInventoryIssued, EventInventoryExpiryRisk,
+		EventInventoryRebalanceProposed,
+		EventP2PReceiptPosted:
 		return TopicDispatch
 	case EventDriverLocationUpdated, EventDriverReturnApproaching,
 		EventSupplyTransferApproaching, EventCommandDispatched, EventCommandReceived,
 		EventCommandSettled:
 		return TopicRealtime
-	case EventClaimFiled, EventClaimResolved, EventLogisticsExceptionReported,
-		EventReverseLogisticsRequired:
+	case EventClaimFiled, EventClaimUnderReview, EventClaimResolved, EventLogisticsExceptionReported,
+		EventReverseLogisticsRequired, EventContainerLedgerUpdated,
+		EventAnomalyDetected, EventAnomalyResolved:
 		// MISSING_ITEMS_REPORTED stays on TopicOrders (above); dual-emit to exceptions
 		// is done explicitly in order handlers when needed.
 		return TopicExceptions
-	case EventLogisticsTelemetry:
-		return TopicTelemetryLogistics
 	case EventDemandSignal:
 		// STORE_POS flywheel → dedicated demand topic for supplier consumers.
 		return TopicDemand
+	case EventLogisticsTelemetry, EventHaccpExcursionReported:
+		return TopicTelemetryLogistics
+	case EventGLEntryPosted, EventGLEntryReversed,
+		EventReconRunCompleted, EventReconBreakOpened, EventReconBreakResolved,
+		EventAuditAnchorWritten, EventIAMRoleChanged, EventSodViolationDetected,
+		EventPeriodSoftClosed, EventPeriodClosed, EventPeriodReopened,
+		EventEsfSubmitted, EventEsfAccepted, EventEsfRejected, EventEsfCancelled,
+		EventExportPackCreated, EventAuditorAccessGranted,
+		EventEntityIntercompanyPosted, EventFxRevaluationPosted, EventP2PThreeWayMatchCompleted,
+		EventScimIdentitySynced:
+		return TopicLedger
+	case EventConnectorSyncCompleted, EventConnectorSyncFailed, EventConnectorShadowMismatch,
+		EventConnectorPushCompleted:
+		return TopicConnectors
+	case EventApprovalRequested, EventApprovalDecided,
+		EventCreditLimitChanged, EventCreditHoldApplied, EventCreditHoldReleased,
+		EventProposalL2AutoExecuted:
+		return TopicMain
+	case EventOntologyObjectChanged,
+		EventForecastRunCompleted, EventCreditScoreComputed,
+		EventProposalCreated, EventProposalDecided, EventProposalExecuted,
+		EventRoiEventRecorded, EventWhatIfSimulated:
+		return TopicIntel
 	default:
 		return ""
 	}
@@ -135,7 +197,8 @@ func RelayPublishTopics(storedTopic string, payload []byte) []string {
 	return []string{storedTopic, domain}
 }
 
-func extractEventTypeFromPayload(payload []byte) string {
+// ExtractEventTypeFromPayload extracts the event type string from an opaque JSON payload.
+func ExtractEventTypeFromPayload(payload []byte) string {
 	if len(payload) == 0 || payload[0] != '{' {
 		return ""
 	}
@@ -146,4 +209,8 @@ func extractEventTypeFromPayload(payload []byte) string {
 		return ""
 	}
 	return envelope.Type
+}
+
+func extractEventTypeFromPayload(payload []byte) string {
+	return ExtractEventTypeFromPayload(payload)
 }

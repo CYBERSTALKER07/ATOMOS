@@ -63,27 +63,30 @@ struct PayloadStateView: View {
                     .offset(y: reduceMotion ? 0 : (drift ? -4 : 3))
                     .rotationEffect(shouldRotate && !reduceMotion ? .degrees(spin ? 360 : 0) : .zero)
             }
+            .accessibilityHidden(true)
 
             Text(title)
-                .font(.system(size: compact ? 16 : 24, weight: .black, design: .monospaced))
+                .font(.system(compact ? .callout : .title2, design: .monospaced, weight: .black))
                 .foregroundStyle(TermTheme.accent)
                 .multilineTextAlignment(.center)
 
             if let message, !message.isEmpty {
                 Text(message)
-                    .font(.system(size: compact ? 12 : 14, weight: .medium, design: .monospaced))
+                    .font(.system(compact ? .caption : .subheadline, design: .monospaced, weight: .medium))
                     .foregroundStyle(TermTheme.secondary)
                     .multilineTextAlignment(.center)
             }
 
             if let detail, !detail.isEmpty {
                 Text(detail)
-                    .font(.system(size: 11, weight: .bold, design: .monospaced))
+                    .font(.system(.caption, design: .monospaced, weight: .bold))
                     .foregroundStyle(TermTheme.tertiary)
                     .multilineTextAlignment(.center)
             }
         }
         .frame(maxWidth: compact ? 280 : 360)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel([title, message, detail].compactMap { $0 }.joined(separator: ". "))
         .onAppear {
             guard !reduceMotion else { return }
             pulse = true
@@ -117,7 +120,7 @@ struct PayloadStateView: View {
                     .frame(width: illustrationSize * 0.22, height: illustrationSize * 0.24)
                     .offset(y: -8)
                 Image(systemName: "arrow.triangle.2.circlepath")
-                    .font(.system(size: compact ? 24 : 32, weight: .bold))
+                    .font(.system(compact ? .title2 : .largeTitle, weight: .bold))
                     .foregroundStyle(accent)
                     .offset(x: illustrationSize * 0.2, y: -illustrationSize * 0.22)
             }
@@ -128,7 +131,8 @@ struct PayloadStateView: View {
                     .frame(width: illustrationSize * 0.32, height: illustrationSize * 0.14)
                     .offset(x: -10, y: -26)
                 Image(systemName: "truck.box.fill")
-                    .font(.system(size: compact ? 40 : 54, weight: .bold))
+                    .font(.system(compact ? .title : .largeTitle, weight: .bold))
+                    .imageScale(.large)
                     .foregroundStyle(accent)
                 HStack(spacing: illustrationSize * 0.14) {
                     Circle().fill(TermTheme.card).frame(width: compact ? 12 : 14, height: compact ? 12 : 14)
@@ -150,7 +154,7 @@ struct PayloadStateView: View {
                     .frame(width: illustrationSize * 0.24, height: illustrationSize * 0.09)
                     .offset(y: -illustrationSize * 0.26)
                 Image(systemName: "checklist")
-                    .font(.system(size: compact ? 28 : 38, weight: .bold))
+                    .font(.system(compact ? .title : .largeTitle, weight: .bold))
                     .foregroundStyle(accent)
             }
         case .dispatch:
@@ -175,13 +179,14 @@ struct PayloadStateView: View {
                     .overlay(Circle().stroke(TermTheme.secondary.opacity(0.6), lineWidth: 2))
                     .offset(x: illustrationSize * 0.22, y: -illustrationSize * 0.18)
                 Image(systemName: "arrow.triangle.swap")
-                    .font(.system(size: compact ? 24 : 30, weight: .bold))
+                    .font(.system(compact ? .title2 : .title, weight: .bold))
                     .foregroundStyle(accent)
             }
         case .notifications:
             ZStack {
                 Image(systemName: "bell.fill")
-                    .font(.system(size: compact ? 42 : 54, weight: .bold))
+                    .font(.system(compact ? .title : .largeTitle, weight: .bold))
+                    .imageScale(.large)
                     .foregroundStyle(accent)
                 Circle()
                     .fill(accent)
@@ -198,7 +203,8 @@ struct PayloadStateView: View {
                     .fill(accent.opacity(0.16))
                     .frame(width: illustrationSize * 0.6, height: illustrationSize * 0.52)
                 Image(systemName: "exclamationmark.triangle.fill")
-                    .font(.system(size: compact ? 38 : 52, weight: .bold))
+                    .font(.system(compact ? .title : .largeTitle, weight: .bold))
+                    .imageScale(.large)
                     .foregroundStyle(accent)
             }
         case .success:
@@ -207,7 +213,8 @@ struct PayloadStateView: View {
                     .fill(accent.opacity(0.12))
                     .frame(width: illustrationSize * 0.62, height: illustrationSize * 0.62)
                 Image(systemName: "checkmark.seal.fill")
-                    .font(.system(size: compact ? 40 : 54, weight: .bold))
+                    .font(.system(compact ? .title : .largeTitle, weight: .bold))
+                    .imageScale(.large)
                     .foregroundStyle(accent)
             }
         }

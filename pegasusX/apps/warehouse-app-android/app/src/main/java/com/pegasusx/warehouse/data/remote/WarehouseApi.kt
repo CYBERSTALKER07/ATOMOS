@@ -106,6 +106,93 @@ interface WarehouseApi {
         @Header("Idempotency-Key") idempotencyKey: String,
     ): Response<Unit>
 
+    @GET("v1/warehouse/ops/bins")
+    suspend fun listBins(): Response<WarehouseBinListResponse>
+
+    @GET("v1/warehouse/ops/lots")
+    suspend fun listLots(): Response<StockLotListResponse>
+
+    @GET("v1/warehouse/ops/manifests/{manifestId}/temperature")
+    suspend fun getManifestTemperature(
+        @Path("manifestId") manifestId: String,
+    ): Response<ManifestTemperatureResponse>
+
+    @POST("v1/warehouse/ops/bins")
+    suspend fun createBin(
+        @Body body: WarehouseBinCreateRequest,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): Response<WarehouseBinLocation>
+
+    @POST("v1/warehouse/ops/lots/putaway")
+    suspend fun putawayLot(
+        @Body body: StockLotPutawayRequest,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): Response<StockLotPutawayResponse>
+
+    @GET("v1/warehouse/ops/pick-waves")
+    suspend fun listPickWaves(
+        @Query("manifest_id") manifestId: String? = null,
+        @Query("status") status: String? = null,
+    ): Response<PickWaveListResponse>
+
+    @POST("v1/warehouse/ops/pick-waves")
+    suspend fun createPickWave(
+        @Body body: PickWaveCreateRequest,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): Response<PickWave>
+
+    @GET("v1/warehouse/ops/pick-waves/{waveId}")
+    suspend fun getPickWave(
+        @Path("waveId") waveId: String,
+    ): Response<PickWave>
+
+    @POST("v1/warehouse/ops/pick-waves/{waveId}/tasks/{taskId}/confirm")
+    suspend fun confirmPickTask(
+        @Path("waveId") waveId: String,
+        @Path("taskId") taskId: String,
+        @Body body: PickTaskConfirmRequest,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): Response<PickWave>
+
+    @POST("v1/warehouse/ops/pick-waves/{waveId}/waive-shorts")
+    suspend fun waivePickShorts(
+        @Path("waveId") waveId: String,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): Response<PickWave>
+
+    @GET("v1/warehouse/ops/cycle-counts")
+    suspend fun listCycleCounts(
+        @Query("status") status: String? = null,
+    ): Response<CycleCountListResponse>
+
+    @POST("v1/warehouse/ops/cycle-counts")
+    suspend fun createCycleCount(
+        @Body body: CycleCountCreateRequest,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): Response<CycleCount>
+
+    @POST("v1/warehouse/ops/cycle-counts/{countId}/submit")
+    suspend fun submitCycleCount(
+        @Path("countId") countId: String,
+        @Body body: CycleCountSubmitRequest,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): Response<CycleCount>
+
+    @GET("v1/warehouse/ops/inventory-adjustments")
+    suspend fun listInventoryAdjustments(): Response<InventoryAdjustmentListResponse>
+
+    @POST("v1/warehouse/ops/inventory-adjustments/{adjustmentId}/approve")
+    suspend fun approveInventoryAdjustment(
+        @Path("adjustmentId") adjustmentId: String,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): Response<InventoryAdjustment>
+
+    @POST("v1/warehouse/ops/inventory-adjustments/{adjustmentId}/reject")
+    suspend fun rejectInventoryAdjustment(
+        @Path("adjustmentId") adjustmentId: String,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): Response<InventoryAdjustment>
+
     @GET("v1/warehouse/ops/settings")
     suspend fun getOpsSettings(): Response<WarehouseOpsSettingsResponse>
 
@@ -114,6 +201,20 @@ interface WarehouseApi {
         @Body body: WarehouseOpsSettingsPatchRequest,
         @Header("Idempotency-Key") idempotencyKey: String,
     ): Response<Map<String, String>>
+
+    @GET("v1/warehouse/return-policy")
+    suspend fun getReturnPolicy(
+        @Query("warehouse_id") warehouseId: String? = null,
+        @Query("supplier_id") supplierId: String? = null,
+    ): Response<WarehouseReturnPolicy>
+
+    @PUT("v1/warehouse/return-policy")
+    suspend fun putReturnPolicy(
+        @Body body: WarehouseReturnPolicy,
+        @Header("Idempotency-Key") idempotencyKey: String,
+        @Query("warehouse_id") warehouseId: String? = null,
+        @Query("supplier_id") supplierId: String? = null,
+    ): Response<WarehouseReturnPolicy>
 
     @GET("v1/warehouse/ops/location")
     suspend fun getWarehouseLocation(): Response<WarehouseLocationResponse>
@@ -236,6 +337,9 @@ interface WarehouseApi {
     @GET("v1/warehouse/supply-requests/{id}")
     suspend fun getSupplyRequest(@Path("id") id: String): Response<WarehouseSupplyRequest>
 
+    @GET("v1/warehouse/supply-requests/{id}/qc")
+    suspend fun getSupplyRequestQC(@Path("id") id: String): Response<SupplyRequestQCResponse>
+
     @GET("v1/warehouse/ops/preorders")
     suspend fun getPreorders(): Response<com.pegasusx.warehouse.data.model.WarehousePreordersResponse>
 
@@ -321,6 +425,12 @@ interface WarehouseApi {
     @GET("v1/warehouse/ops/payment-config")
     suspend fun getPaymentConfig(): Response<PaymentConfigResponse>
 
+    @GET("v1/warehouse/ops/coverage")
+    suspend fun getOpsCoverage(): Response<WarehouseCoverageResponse>
+
+    @GET("v1/warehouse/ops/supply-factory")
+    suspend fun getOpsSupplyFactory(): Response<WarehouseSupplyFactoryResponse>
+
     // ── P1-03 ops depth ──
     @POST("v1/warehouse/transfers/emergency")
     suspend fun emergencyTransfer(
@@ -403,6 +513,23 @@ interface WarehouseApi {
         @Header("Idempotency-Key") idempotencyKey: String,
     ): Response<WarehouseOrderMutationResponse>
 
+    @POST("v1/warehouse/ops/orders/payment-bypass")
+    suspend fun issuePaymentBypass(
+        @Body body: Map<String, String>,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): Response<Map<String, String>>
+
+    @GET("v1/warehouse/ops/orders/early-complete/{driverId}")
+    suspend fun getEarlyCompleteRequest(
+        @Path("driverId") driverId: String,
+    ): Response<Map<String, Any>>
+
+    @POST("v1/warehouse/ops/orders/early-complete/approve")
+    suspend fun approveEarlyComplete(
+        @Body body: Map<String, String>,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): Response<Map<String, Any>>
+
     @GET("v1/warehouse/ops/fleet/live-map")
     suspend fun getFleetLiveMap(
         @Query("warehouse_id") warehouseId: String? = null,
@@ -410,6 +537,22 @@ interface WarehouseApi {
 
     @GET("v1/warehouse/ops/pulse")
     suspend fun getPulse(): Response<PulseResponse>
+
+    // ── Labor capacity ──
+    @GET("v1/labor-capacity/zone-capacity")
+    suspend fun listLaborZoneCapacity(
+        @Query("date") date: String,
+    ): Response<LaborZoneCapacityListResponse>
+
+    @GET("v1/labor-capacity/driver-score/{driverId}")
+    suspend fun getLaborDriverScore(
+        @Path("driverId") driverId: String,
+    ): Response<LaborDriverScore>
+
+    @POST("v1/labor-capacity/driver-availability")
+    suspend fun setLaborDriverAvailability(
+        @Body body: LaborDriverAvailabilityRequest,
+    ): Response<LaborDriverAvailabilityResponse>
 
     // ── Rescue Operations ──
     @POST("v1/warehouse/ops/dispatch/rescue/preview")
@@ -446,6 +589,72 @@ interface WarehouseApi {
 
     @POST("v1/user/device-token")
     suspend fun registerDeviceToken(
-        @Body body: Map<String, String>,
+        @Body body: DeviceTokenRequest,
     ): Response<Map<String, String>>
+
+    @GET("v1/control-tower/exceptions/scored")
+    suspend fun scoredControlTower(@Query("limit") limit: Int = 50): Response<ScoredExceptionsResponse>
+
+    // ── Foundry Role 7: Cashier & AML Vault Endpoints ──
+
+    @POST("/v1/foundry/cashier/sessions")
+    suspend fun startCashierSession(@Body req: com.pegasusx.warehouse.data.foundry.StartCashierSessionRequest): Response<com.pegasusx.warehouse.data.foundry.CashierSessionView>
+
+    @POST("/v1/foundry/cashier/sessions/{sessionID}/blind-count")
+    suspend fun submitBlindCount(
+        @Path("sessionID") sessionID: String,
+        @Body req: com.pegasusx.warehouse.data.foundry.BlindCountRequest,
+    ): Response<com.pegasusx.warehouse.data.foundry.CashierSessionView>
+
+    @POST("/v1/foundry/cashier/reclassify-tender")
+    suspend fun reclassifyTender(@Body req: com.pegasusx.warehouse.data.foundry.RRNTenderReclassificationRequest): Response<com.pegasusx.warehouse.data.foundry.CashierSessionView>
+
+    @POST("/v1/foundry/cashier/vault/cit-handover")
+    suspend fun executeCITHandover(@Body req: com.pegasusx.warehouse.data.foundry.CITHandoverRequest): Response<com.pegasusx.warehouse.data.foundry.DepotVaultLedgerEntry>
+
+    @POST("/v1/foundry/guards/aml-check")
+    suspend fun checkAML(@Body req: com.pegasusx.warehouse.data.foundry.AMLCheckRequest): Response<com.pegasusx.warehouse.data.foundry.AMLCheckResponse>
+
+    // ── Foundry Role 9: Fleet & Yard Endpoints ──
+
+    @POST("/v1/foundry/fleet/dvir")
+    suspend fun submitDVIR(@Body req: com.pegasusx.warehouse.data.foundry.FleetDVIRInspection): Response<com.pegasusx.warehouse.data.foundry.FleetDVIRInspection>
+
+    @POST("/v1/foundry/fleet/gate-events")
+    suspend fun recordGateEvent(@Body req: com.pegasusx.warehouse.data.foundry.YardGateCheckEvent): Response<com.pegasusx.warehouse.data.foundry.YardGateCheckEvent>
+
+    @POST("/v1/foundry/fleet/mid-route-rescue")
+    suspend fun executeMidRouteRescue(@Body req: com.pegasusx.warehouse.data.foundry.MidRouteRescueRequest): Response<com.pegasusx.warehouse.data.foundry.MidRouteRescueResult>
+
+    @GET("/v1/foundry/fleet/vehicles/{vehicleID}/dispatch-check")
+    suspend fun checkVehicleDispatch(@Path("vehicleID") vehicleID: String): Response<com.pegasusx.warehouse.data.foundry.DispatchCheckResponse>
+
+    // ── Foundry Triad: Semantic, Kinetic & Dynamic ──
+
+    @POST("/v1/foundry/ontology/search-around")
+    suspend fun searchAround(@Body req: com.pegasusx.warehouse.data.foundry.SearchAroundRequest): Response<com.pegasusx.warehouse.data.foundry.SearchAroundResponse>
+
+    @POST("/v1/foundry/ontology/lot-recall")
+    suspend fun triggerLotRecall(@Body req: com.pegasusx.warehouse.data.foundry.LotRecallRequest): Response<com.pegasusx.warehouse.data.foundry.RecallBlastRadiusReport>
+
+    @POST("/v1/foundry/kinetic/actions/execute")
+    suspend fun executeAction(@Body req: com.pegasusx.warehouse.data.foundry.ActionExecutionRequest): Response<com.pegasusx.warehouse.data.foundry.ActionExecutionRecord>
+
+    @POST("/v1/foundry/scenarios/{scenarioID}/patches")
+    suspend fun applyScenarioPatch(
+        @Path("scenarioID") scenarioID: String,
+        @Body req: com.pegasusx.warehouse.data.foundry.ScenarioPatchRequest,
+    ): Response<Map<String, kotlinx.serialization.json.JsonElement>>
+
+    @GET("/v1/foundry/scenarios/{scenarioID}/resolve/{cellID}/{objectType}/{objectID}")
+    suspend fun resolveScenarioObject(
+        @Path("scenarioID") scenarioID: String,
+        @Path("cellID") cellID: String,
+        @Path("objectType") objectType: String,
+        @Path("objectID") objectID: String,
+    ): Response<com.pegasusx.warehouse.data.foundry.OntologyObjectDto>
+
+    @POST("/v1/foundry/scenarios/{scenarioID}/commit")
+    suspend fun commitScenario(@Path("scenarioID") scenarioID: String): Response<com.pegasusx.warehouse.data.foundry.ScenarioCommitResult>
 }
+

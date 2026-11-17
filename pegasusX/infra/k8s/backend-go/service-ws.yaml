@@ -11,6 +11,7 @@ metadata:
     pegasusx.io/service-role: websocket
   annotations:
     cloud.google.com/backend-config: '{"default": "pegasusx-ws-backendconfig"}'
+    cloud.google.com/neg: '{"ingress": true}'
 spec:
   type: ClusterIP
   selector:

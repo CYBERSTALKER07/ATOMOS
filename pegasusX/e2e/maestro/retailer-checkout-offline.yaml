@@ -1,0 +1,17 @@
+appId: com.pegasusx.retailer
+---
+- launchApp:
+    clearState: true
+- assertVisible:
+    text: ".*Sign In.*|.*Dashboard.*|.*Catalog.*"
+- tapOn:
+    text: "Catalog|Procurement"
+    optional: true
+- tapOn:
+    text: "Checkout|Order"
+    optional: true
+- runFlow:
+    when:
+      visible: "Queued Offline"
+    commands:
+      - assertVisible: "PendingSyncBanner|Queued Offline"

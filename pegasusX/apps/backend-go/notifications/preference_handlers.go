@@ -32,12 +32,12 @@ func (h *PreferenceHandlers) HandleGetPreferences(w http.ResponseWriter, r *http
 		return
 	}
 	if h == nil || h.Repo == nil {
-		writePrefJSON(w, http.StatusOK, map[string]any{"preferences": []NotificationPreference{}})
+		writePrefJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "preferences_unavailable"})
 		return
 	}
 	sp, ok := h.Repo.(*SpannerRepository)
 	if !ok {
-		writePrefJSON(w, http.StatusOK, map[string]any{"preferences": []NotificationPreference{}})
+		writePrefJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "preferences_unavailable"})
 		return
 	}
 	prefs, err := sp.ListPreferencesForPrincipal(r.Context(), principalID)
@@ -68,7 +68,7 @@ func (h *PreferenceHandlers) HandlePatchPreferences(w http.ResponseWriter, r *ht
 		return
 	}
 	if h == nil || h.Repo == nil {
-		writePrefJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+		writePrefJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "preferences_unavailable"})
 		return
 	}
 	principalType := strings.TrimSpace(string(claims.Role))

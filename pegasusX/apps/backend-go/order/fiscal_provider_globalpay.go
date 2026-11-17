@@ -16,11 +16,11 @@ import (
 // Not required for ADR-009 hard-gate — PEGASUS platform receipts cover that.
 // When configured, ProviderFromEnv can wrap PEGASUS + GLOBAL_PAY.
 const (
-	envGPReceiptEnabled  = "FISCAL_GLOBAL_PAY_RECEIPT_ENABLED"
-	envGPReceiptBaseURL  = "FISCAL_GLOBAL_PAY_RECEIPT_BASE_URL"
-	envGPReceiptPath     = "FISCAL_GLOBAL_PAY_RECEIPT_PATH"
-	envGPReceiptAPIKey   = "FISCAL_GLOBAL_PAY_RECEIPT_API_KEY"
-	envGPReceiptTimeout  = "FISCAL_GLOBAL_PAY_RECEIPT_TIMEOUT_MS"
+	envGPReceiptEnabled = "FISCAL_GLOBAL_PAY_RECEIPT_ENABLED"
+	envGPReceiptBaseURL = "FISCAL_GLOBAL_PAY_RECEIPT_BASE_URL"
+	envGPReceiptPath    = "FISCAL_GLOBAL_PAY_RECEIPT_PATH"
+	envGPReceiptAPIKey  = "FISCAL_GLOBAL_PAY_RECEIPT_API_KEY"
+	envGPReceiptTimeout = "FISCAL_GLOBAL_PAY_RECEIPT_TIMEOUT_MS"
 )
 
 // GlobalPayReceiptProvider calls Global Pay's receipt API when credentials exist.
@@ -75,9 +75,9 @@ func (p *GlobalPayReceiptProvider) CreateReceipt(ctx context.Context, req Fiscal
 	if p == nil {
 		return FiscalCreateResult{}, fmt.Errorf("global_pay_receipt: nil provider")
 	}
-	currency := strings.TrimSpace(req.Currency)
-	if currency == "" {
-		currency = "UZS"
+	currency, err := fiscalCurrency(ctx, req.SupplierID, req.Currency)
+	if err != nil {
+		return FiscalCreateResult{}, err
 	}
 	body := map[string]any{
 		"attempt_id":      req.AttemptID,
@@ -138,9 +138,9 @@ func (p *GlobalPayReceiptProvider) CreateReceipt(ctx context.Context, req Fiscal
 // multiReceiptProvider runs primary (PEGASUS) for hard-gate success, then optionally
 // attaches a Global Pay payment receipt into the payload (best-effort; never fails the gate).
 type multiReceiptProvider struct {
-	primary  FiscalProvider
-	payment  FiscalProvider
-	name     string
+	primary FiscalProvider
+	payment FiscalProvider
+	name    string
 }
 
 func (m multiReceiptProvider) CreateReceipt(ctx context.Context, req FiscalCreateRequest) (FiscalCreateResult, error) {

@@ -35,6 +35,10 @@ func (s *Service) HandleRetailerLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	idToken := strings.TrimSpace(req.IDToken)
+	if idToken != "" && s.firebaseVerifier == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": auth.FirebaseLoginUnavailable})
+		return
+	}
 
 	var ret Retailer
 	var sessionUser *RetailerUser
@@ -112,10 +116,10 @@ func (s *Service) HandleRetailerLogin(w http.ResponseWriter, r *http.Request) {
 					if shop, shopOK, err := s.repo.GetRetailer(r.Context(), u.RetailerID); err == nil && shopOK {
 						ret = shop
 					} else {
-						ret = Retailer{RetailerID: u.RetailerID, Phone: u.Phone, Name: u.Name, SupplierID: s.supplierID}
+						ret = Retailer{RetailerID: u.RetailerID, Phone: u.Phone, Name: u.Name, SupplierID: s.resolveSupplierScope(r.Context())}
 					}
 				} else {
-					ret = Retailer{RetailerID: u.RetailerID, Phone: u.Phone, Name: u.Name, SupplierID: s.supplierID}
+					ret = Retailer{RetailerID: u.RetailerID, Phone: u.Phone, Name: u.Name, SupplierID: s.resolveSupplierScope(r.Context())}
 				}
 				sessionUser = &u
 				ok = true
@@ -144,10 +148,10 @@ func (s *Service) HandleRetailerLogin(w http.ResponseWriter, r *http.Request) {
 							if shop, shopOK, err := s.repo.GetRetailer(r.Context(), u.RetailerID); err == nil && shopOK {
 								ret = shop
 							} else {
-								ret = Retailer{RetailerID: u.RetailerID, Phone: u.Phone, Name: u.Name, SupplierID: s.supplierID}
+								ret = Retailer{RetailerID: u.RetailerID, Phone: u.Phone, Name: u.Name, SupplierID: s.resolveSupplierScope(r.Context())}
 							}
 						} else {
-							ret = Retailer{RetailerID: u.RetailerID, Phone: u.Phone, Name: u.Name, SupplierID: s.supplierID}
+							ret = Retailer{RetailerID: u.RetailerID, Phone: u.Phone, Name: u.Name, SupplierID: s.resolveSupplierScope(r.Context())}
 						}
 						sessionUser = &u
 						ok = true
@@ -271,6 +275,16 @@ func (s *Service) HandleRetailerRefresh(w http.ResponseWriter, r *http.Request) 
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid_refresh_token", "code": "PENDING_ORG_EXPIRED"})
 		return
 	}
+	if rerr := auth.ValidateAndRotateRefreshClaims(r.Context(), claims, 0); rerr != nil {
+		code := http.StatusUnauthorized
+		if rerr.Error() == "revocation_store_unavailable" {
+			code = http.StatusServiceUnavailable
+		}
+		writeJSON(w, code, map[string]string{"error": rerr.Error()})
+		return
+	}
+	claims.JTI = ""
+	claims.TokenUse = auth.TokenUseFull
 	// Refresh capability snapshot when possible.
 	if org := auth.ResolveRetailerOrgID(claims); org != "" {
 		if packs, err := s.LoadEnabledPacks(r.Context(), org); err == nil {
@@ -292,52 +306,54 @@ func (s *Service) HandleRetailerRefresh(w http.ResponseWriter, r *http.Request) 
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "issue_token_failed"})
 		return
 	}
+	newRefresh, err := auth.Issue(claims, auth.IssueOptions{Secret: s.jwtSecret, Issuer: s.jwtIssuer, TTL: 7 * 24 * time.Hour})
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "issue_refresh_failed"})
+		return
+	}
 	writeJSON(w, http.StatusOK, map[string]string{
 		"token":         token,
-		"refresh_token": refresh,
+		"refresh_token": newRefresh,
 	})
 }
 
 func (s *Service) resolveRetailerLogin(ctx context.Context, phone, secret string) (Retailer, bool, error) {
-	expectPhone := strings.TrimSpace(os.Getenv("RETAILER_DEMO_PHONE"))
-	if expectPhone == "" {
-		expectPhone = "+998901000077"
-	}
-	expectSecret := strings.TrimSpace(os.Getenv("RETAILER_DEMO_PASSWORD"))
-	if expectSecret == "" {
-		expectSecret = strings.TrimSpace(os.Getenv("RETAILER_DEMO_PIN"))
-	}
-	if expectSecret == "" {
-		expectSecret = "1234"
-	}
-
-	if phone == expectPhone && secret == expectSecret {
+	expectSecret := demoRetailerSecret()
+	if expectSecret != "" {
+		expectPhone := strings.TrimSpace(os.Getenv("RETAILER_DEMO_PHONE"))
+		if expectPhone == "" {
+			expectPhone = "+998901000077"
+		}
+		if phone == expectPhone && secret == expectSecret {
+			if ret, found, err := s.repo.FindByPhone(ctx, phone); err != nil {
+				return Retailer{}, false, err
+			} else if found {
+				return ret, true, nil
+			}
+			reg, err := s.Register(ctx, RegisterRequest{
+				Phone:      phone,
+				Name:       demoRetailerStoreName(),
+				SupplierID: s.seedSupplierID,
+				Lat:        41.311081,
+				Lng:        69.240562,
+				H3Cell:     "8928308280fffff",
+			})
+			if err != nil {
+				return Retailer{}, false, err
+			}
+			return Retailer{
+				RetailerID: reg.RetailerID,
+				Phone:      reg.Phone,
+				Name:       demoRetailerStoreName(),
+				SupplierID: reg.SupplierID,
+			}, true, nil
+		}
 		if ret, found, err := s.repo.FindByPhone(ctx, phone); err != nil {
 			return Retailer{}, false, err
-		} else if found {
+		} else if found && secret == expectSecret {
 			return ret, true, nil
 		}
-		reg, err := s.Register(ctx, RegisterRequest{
-			Phone: phone,
-			Name:  demoRetailerStoreName(),
-			Lat:   41.311081,
-			Lng:   69.240562,
-		})
-		if err != nil {
-			return Retailer{}, false, err
-		}
-		return Retailer{
-			RetailerID: reg.RetailerID,
-			Phone:      reg.Phone,
-			Name:       demoRetailerStoreName(),
-			SupplierID: s.supplierID,
-		}, true, nil
-	}
-
-	if ret, found, err := s.repo.FindByPhone(ctx, phone); err != nil {
-		return Retailer{}, false, err
-	} else if found && secret == expectSecret {
-		return ret, true, nil
+		return Retailer{}, false, nil
 	}
 	return Retailer{}, false, nil
 }
@@ -363,8 +379,10 @@ func retailerProfileConfigured(ret Retailer) bool {
 }
 
 func (s *Service) marshalMobileAuthResponse(ret Retailer) (int, []byte) {
+	authCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 	// Phase 0: bootstrap OWNER user so JWT Subject is the person id.
-	owner, err := s.EnsureOwnerUser(context.Background(), ret)
+	owner, err := s.EnsureOwnerUser(authCtx, ret)
 	if err != nil {
 		if s.log != nil {
 			s.log.Warn("owner bootstrap failed; falling back to legacy subject", "retailer_id", ret.RetailerID, "err", err)
@@ -383,9 +401,11 @@ func (s *Service) marshalMobileAuthResponse(ret Retailer) (int, []byte) {
 }
 
 func (s *Service) marshalMobileAuthResponseForUser(ret Retailer, user RetailerUser) (int, []byte) {
+	authCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 	isConfigured := retailerProfileConfigured(ret)
 	packList := []string{PackCORE}
-	if packs, err := s.LoadEnabledPacks(context.Background(), ret.RetailerID); err == nil {
+	if packs, err := s.LoadEnabledPacks(authCtx, ret.RetailerID); err == nil {
 		packList = packs.List()
 	}
 
@@ -401,10 +421,10 @@ func (s *Service) marshalMobileAuthResponseForUser(ret Retailer, user RetailerUs
 	// Phase 2: ensure primary location + attach scope/active branch to JWT.
 	var locIDs []string
 	var activeLoc string
-	if primary, err := s.EnsurePrimaryLocation(context.Background(), ret.RetailerID); err == nil {
+	if primary, err := s.EnsurePrimaryLocation(authCtx, ret.RetailerID); err == nil {
 		activeLoc = primary.LocationID
 	}
-	if bound, err := s.listUserLocationIDs(context.Background(), user.UserID); err == nil && len(bound) > 0 {
+	if bound, err := s.listUserLocationIDs(authCtx, user.UserID); err == nil && len(bound) > 0 {
 		locIDs = bound
 		if !containsString(bound, activeLoc) {
 			activeLoc = bound[0]
@@ -425,7 +445,7 @@ func (s *Service) marshalMobileAuthResponseForUser(ret Retailer, user RetailerUs
 		ActiveLocationID: activeLoc,
 	}
 	if claims.SupplierID == "" {
-		claims.SupplierID = s.supplierID
+		claims.SupplierID = s.seedSupplierID
 	}
 	token, err := auth.Issue(claims, auth.IssueOptions{Secret: s.jwtSecret, Issuer: s.jwtIssuer, TTL: 24 * time.Hour})
 	if err != nil {
@@ -440,15 +460,17 @@ func (s *Service) marshalMobileAuthResponseForUser(ret Retailer, user RetailerUs
 	// Home surface hint for clients (role home).
 	home := roleHomeSurface(role)
 	respMap := map[string]any{
-		"token":              token,
-		"token_type":         "full",
-		"refresh_token":      refresh,
-		"is_configured":      isConfigured,
-		"retailer_id":        ret.RetailerID,
-		"retailer_org_id":    ret.RetailerID,
-		"user_id":            user.UserID,
-		"retailer_role":      role,
-		"capabilities":       packList,
+		"token":               token,
+		"token_type":          "full",
+		"refresh_token":       refresh,
+		"is_configured":       isConfigured,
+		"retailer_id":         ret.RetailerID,
+		"retailer_org_id":     ret.RetailerID,
+		"user_id":             user.UserID,
+		"retailer_role":       role,
+		"legal_entity_status": ret.LegalEntityStatus,
+		"normalized_tax_id":   ret.NormalizedTaxID,
+		"capabilities":        packList,
 		"home_surface":       home,
 		"permissions":        auth.ListRetailerPerms(claims),
 		"active_location_id": activeLoc,
@@ -463,7 +485,7 @@ func (s *Service) marshalMobileAuthResponseForUser(ret Retailer, user RetailerUs
 			"role":        role,
 		},
 	}
-	if fbToken, err := auth.MintCustomToken(context.Background(), user.UserID, map[string]interface{}{
+	if fbToken, err := auth.MintCustomToken(authCtx, user.UserID, map[string]interface{}{
 		"role":             string(auth.RoleRetailer),
 		"retailer_id":      ret.RetailerID,
 		"retailer_org_id":  ret.RetailerID,

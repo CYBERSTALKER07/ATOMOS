@@ -166,13 +166,13 @@ func (s *Service) listReplenishmentInsightsSpanner(ctx context.Context, warehous
 		sql += ` AND ri.WarehouseId = @whId`
 		params["whId"] = warehouseID
 	}
-	if strings.TrimSpace(s.supplierID) != "" {
+	if sid := strings.TrimSpace(s.resolveSupplierScope(ctx)); sid != "" {
 		sql += ` AND ri.SupplierId = @sid`
-		params["sid"] = s.supplierID
+		params["sid"] = sid
 	}
 	sql += ` ORDER BY ri.CreatedAt DESC`
 
-	iter := s.spannerClient.Single().Query(ctx, spanner.Statement{SQL: sql, Params: params})
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{SQL: sql, Params: params})
 	defer iter.Stop()
 
 	rows := make([]replenishmentInsight, 0)
@@ -205,10 +205,12 @@ func (s *Service) listReplenishmentInsightsSpanner(ctx context.Context, warehous
 				item.DemandBreakdown = parsed
 			}
 		}
-		if item.DemandBreakdown == nil && strings.TrimSpace(s.supplierID) != "" {
-			item.DemandBreakdown = planning.ProductForecastBreakdown(
-				ctx, s.spannerClient, s.supplierID, item.WarehouseID, item.ProductID, time.Now().UTC(),
-			)
+		if item.DemandBreakdown == nil {
+			if sid := strings.TrimSpace(s.resolveSupplierScope(ctx)); sid != "" {
+				item.DemandBreakdown = planning.ProductForecastBreakdown(
+					ctx, s.spannerClient, sid, item.WarehouseID, item.ProductID, time.Now().UTC(),
+				)
+			}
 		}
 		item.Urgency = insightWireUrgency(item.Urgency)
 		item.Status = insightWireStatus(item.Status)

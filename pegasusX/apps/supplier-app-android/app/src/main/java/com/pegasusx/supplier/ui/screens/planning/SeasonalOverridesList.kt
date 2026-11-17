@@ -24,7 +24,7 @@ fun SeasonalOverridesList(overrides: List<SeasonalOverrideRow>) {
             overrides.forEach { row ->
                 SupplierOpsListCard(
                     headline = row.name?.ifBlank { row.templateId } ?: row.templateId,
-                    supporting = "${row.startDate} → ${row.endDate} · ${if (row.isActive) "Active" else "Inactive"}",
+                    supporting = "${row.startDate} → ${row.endDate} · ×${row.multiplier} · ${if (row.isActive) "Active" else "Inactive"}",
                 )
             }
         }

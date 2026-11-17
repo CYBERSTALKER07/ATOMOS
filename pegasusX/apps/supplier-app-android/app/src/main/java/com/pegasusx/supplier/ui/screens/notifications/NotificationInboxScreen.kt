@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.notifications
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -37,6 +39,7 @@ import com.pegasusx.supplier.data.model.NotificationItem
 import com.pegasusx.supplier.data.remote.SupplierApi
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
+import com.pegasusx.supplier.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -57,7 +60,7 @@ fun NotificationInboxScreen(
             try {
                 val resp = api.getNotifications(limit = 50, offset = 0)
                 if (resp.isSuccessful && resp.body() != null) {
-                    val page = resp.body()!!
+                    val page = resp.body() ?: return@launch
                     items = page.notifications
                     unreadCount = page.unreadCount
                 } else {
@@ -88,13 +91,13 @@ fun NotificationInboxScreen(
                 navigationIcon = {
                     if (onBack != null) {
                         IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                         }
                     }
                 },
                 actions = {
                     IconButton(onClick = { load() }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                        Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.portal_page_orders_action_refresh))
                     }
                     if (unreadCount > 0) {
                         TextButton(
@@ -124,7 +127,7 @@ fun NotificationInboxScreen(
                 contentAlignment = Alignment.Center,
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(error!!, color = MaterialTheme.colorScheme.error)
+                    Text(error.orEmpty(), color = MaterialTheme.colorScheme.error)
                     TextButton(onClick = { load() }) { Text("Retry") }
                 }
             }

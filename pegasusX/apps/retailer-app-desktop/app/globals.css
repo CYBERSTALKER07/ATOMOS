@@ -1,11 +1,11 @@
 @import "tailwindcss";
 @import "@heroui/styles";
-@import "@pegasusx/ui-kit/styles/desktop-foundation.css";
-@import "@pegasusx/ui-kit/styles/auth-layout.css";
-@import "@pegasusx/ui-kit/styles/auth-desktop.css";
-@import "@pegasusx/ui-kit/styles/portal-ui.css";
-@import "@pegasusx/ui-kit/styles/setup-onboarding.css";
-@import "@pegasusx/ui-kit/styles/monochrome-desktop.css";
+@import "./styles/desktop-foundation.css";
+@import "./styles/auth-layout.css";
+@import "./styles/auth-desktop.css";
+@import "./styles/portal-ui.css";
+@import "./styles/setup-onboarding.css";
+@import "./styles/monochrome-desktop.css";
 
 /* ═══════════════════════════════════════════════════════════════════════════ */
 /* Pre-hydration Splash Screen                                                */
@@ -2855,7 +2855,7 @@ body {
     }
 }
 
-/* The following premium utilities are now inherited from @pegasusx/ui-kit/desktop-foundation.css:
+/* The following premium utilities are now inherited from ./styles/desktop-foundation.css:
    .glass-premium, .orb-container, .gradient-orb-*, .animate-float, .animate-glow, .hover-lift, .active-press, .skeleton-shimmer
 */
 
@@ -6035,7 +6035,7 @@ body {
     pointer-events: none;
 }
 
-/* The following premium utilities are now inherited from @pegasusx/ui-kit/desktop-foundation.css:
+/* The following premium utilities are now inherited from ./styles/desktop-foundation.css:
    .glass-premium, .orb-container, .gradient-orb-*, .animate-float, .animate-glow, .hover-lift, .active-press, .skeleton-shimmer
 */
 

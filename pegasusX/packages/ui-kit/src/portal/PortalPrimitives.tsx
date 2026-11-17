@@ -258,7 +258,7 @@ export function HubCard({
   description: string;
   icon?: ReactNode;
   onClick?: () => void;
-  LinkComponent?: ComponentType<LinkProps>;
+  LinkComponent?: ComponentType<{ href: string; className?: string; children?: ReactNode }>;
 }) {
   const content = (
     <>
@@ -279,10 +279,11 @@ export function HubCard({
   );
 
   if (href && LinkComponent) {
+    const Component = LinkComponent;
     return (
-      <LinkComponent href={href} className="portal-hub-card">
+      <Component href={href} className="portal-hub-card">
         {content}
-      </LinkComponent>
+      </Component>
     );
   }
 

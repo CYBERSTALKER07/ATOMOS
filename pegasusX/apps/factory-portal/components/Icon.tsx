@@ -2,7 +2,7 @@ import {
   LayoutDashboard, Package, Truck, Users, ClipboardCheck, Settings,
   TrendingUp, LogOut, Menu, ChevronRight, Sun, Moon, Monitor, Warehouse,
   ArrowLeft, AlertTriangle, RefreshCw, ChevronLeft, Bell, type LucideIcon,
-  Boxes, ArrowDownUp, Lightbulb, Plus, CircleCheck, CircleAlert,
+  Boxes, ArrowDownUp, Lightbulb, Plus, CircleCheck, CircleAlert, Keyboard,
 } from 'lucide-react';
 
 const iconMap: Record<string, LucideIcon> = {
@@ -32,6 +32,7 @@ const iconMap: Record<string, LucideIcon> = {
   check_circle: CircleCheck,
   error: CircleAlert,
   notifications: Bell,
+  keyboard: Keyboard,
 };
 
 export default function Icon({ name, size = 24, className = '' }: { name: string; size?: number; className?: string }) {

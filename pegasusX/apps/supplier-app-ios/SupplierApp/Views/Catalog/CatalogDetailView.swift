@@ -2,54 +2,35 @@ import SwiftUI
 
 struct CatalogDetailView: View {
     let productId: String?
-    @State private var product: CatalogProduct?
-    @State private var loading = true
-    @State private var error: String?
+    @State private var vm = CatalogDetailViewModel()
 
     var body: some View {
         Group {
-            if loading {
-                SupplierLoadingView(title: "Loading product…")
-            } else if let error {
-                SupplierErrorView(message: error) { Task { await load() } }
-            } else if let product {
+            if vm.loading && vm.product == nil {
+                SupplierLoadingView(title: "mobile_supplier.loading.product")
+            } else if let error = vm.error, vm.product == nil {
+                SupplierErrorView(message: error) { Task { await vm.load(productId: productId) } }
+            } else if let product = vm.product {
                 ResponsiveGridContentWrapper {
-                    Section("Product") {
-                        LabeledContent("ID", value: product.productId)
-                        LabeledContent("Name", value: product.name)
-                        LabeledContent("Category", value: product.categoryId)
-                        LabeledContent("Price", value: MoneyFormat.minor(product.priceMinor, currency: product.currency))
-                        LabeledContent("Unit VU", value: String(format: "%.2f", product.unitVolumeVu))
+                    Section("mobile_supplier.chrome.product") {
+                        LabeledContent("mobile_supplier.chrome.id_label", value: product.productId)
+                        LabeledContent("mobile_supplier.chrome.name", value: product.name)
+                        LabeledContent("mobile_supplier.chrome.category", value: product.categoryId)
+                        LabeledContent("mobile_supplier.chrome.price", value: MoneyFormat.minor(product.priceMinor, currency: product.currency))
+                        LabeledContent("mobile_supplier.chrome.unit_vu", value: String(format: "%.2f", product.unitVolumeVu))
                         if let barcode = product.barcode, !barcode.isEmpty {
-                            LabeledContent("Barcode", value: barcode)
+                            LabeledContent("mobile_supplier.chrome.barcode", value: barcode)
                         }
-                        LabeledContent("Active", value: product.isActive ? "Yes" : "No")
-                        LabeledContent("Version", value: "\(product.version)")
+                        LabeledContent("mobile_supplier.chrome.active", value: product.isActive ? L10n.format("mobile_supplier.chrome.yes") : L10n.format("mobile_supplier.chrome.no"))
+                        LabeledContent("mobile_supplier.chrome.version", value: "\(product.version)")
                     }
                 }
             } else {
-                SupplierEmptyView(title: "Product not found", message: "Select a catalog item to view details.")
+                SupplierEmptyView(title: "mobile_supplier.empty.product_not_found", message: "mobile_supplier.empty.product_not_found_message")
             }
         }
         .background(SupplierTheme.background)
-        .navigationTitle(product?.name ?? "Catalog detail")
-        .task { await load() }
-    }
-
-    @MainActor
-    private func load() async {
-        loading = true
-        error = nil
-        defer { loading = false }
-        guard let productId, !productId.isEmpty else {
-            error = "No product selected."
-            return
-        }
-        do {
-            let products = try await SupplierService.catalogProducts()
-            product = products.first { $0.productId == productId }
-        } catch {
-            self.error = error.localizedDescription
-        }
+        .navigationTitle(vm.product?.name ?? "mobile_supplier.chrome.catalog_detail")
+        .task(id: productId) { await vm.load(productId: productId) }
     }
 }

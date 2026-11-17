@@ -26,6 +26,7 @@ func TestHandleTransferTransition_UsesRepositoryApply(t *testing.T) {
 	repo.svc = svc
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/factory/transfers/tr_bay_1/transition", strings.NewReader(`{"target_state":"LOADING"}`))
+	req.Header.Set("Idempotency-Key", "test-key-28")
 	req = withFactoryRouteParam(req, "transferID", "tr_bay_1")
 	rr := httptest.NewRecorder()
 
@@ -104,6 +105,7 @@ func TestHandleDispatch_ExplicitLoadingTransferIDs(t *testing.T) {
 	repo.svc = svc
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/factory/dispatch", strings.NewReader(`{"transfer_ids":["tr_bay_2"],"reason":"bay"}`))
+	req.Header.Set("Idempotency-Key", "test-key-29")
 	rr := httptest.NewRecorder()
 	svc.HandleDispatch(rr, req)
 
@@ -116,6 +118,9 @@ func TestHandleDispatch_ExplicitLoadingTransferIDs(t *testing.T) {
 	}
 	if got, _ := body["manifests_created"].(float64); got < 1 {
 		t.Fatalf("expected manifests_created >= 1, got %v", body)
+	}
+	if body["optimizer_class"] != "HEURISTIC" || body["dispatch_algo"] != "pick_n_created_v1" {
+		t.Fatalf("dispatch honesty labels missing: %v", body)
 	}
 }
 
@@ -132,6 +137,7 @@ func TestHandleManifestStartLoading_SeamParity(t *testing.T) {
 	svc.factoryHub.Subscribe("factory:supplier-test", factoryConn)
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/factory/manifests/mf_factory_1/start-loading", strings.NewReader(`{"reason":"ops"}`))
+	req.Header.Set("Idempotency-Key", "test-key-30")
 	req = withFactoryRouteParam(req, "manifestID", "mf_factory_1")
 	rr := httptest.NewRecorder()
 
@@ -169,7 +175,21 @@ func TestHandleDispatch_SeamParity(t *testing.T) {
 	svc.supplierHub.Subscribe("supplier:supplier-test", supplierConn)
 	svc.factoryHub.Subscribe("factory:supplier-test", factoryConn)
 
+	now := svc.now().Format(time.RFC3339Nano)
+	svc.mu.Lock()
+	svc.ensureDemoDataLocked()
+	svc.transfers = append(svc.transfers, TransferRow{
+		TransferID: "tr_dispatch_1",
+		OrderID:    "ord_dispatch_1",
+		State:      "CREATED",
+		TotalVU:    24,
+		CreatedAt:  now,
+		UpdatedAt:  now,
+	})
+	svc.mu.Unlock()
+
 	req := httptest.NewRequest(http.MethodPost, "/v1/factory/dispatch", strings.NewReader(`{"reason":"wave"}`))
+	req.Header.Set("Idempotency-Key", "test-key-31")
 	rr := httptest.NewRecorder()
 
 	svc.HandleDispatch(rr, req)
@@ -191,6 +211,9 @@ func TestHandleDispatch_SeamParity(t *testing.T) {
 	manifestID, _ := body["manifest_id"].(string)
 	if strings.TrimSpace(manifestID) == "" {
 		t.Fatalf("expected manifest_id in response, got %v", body)
+	}
+	if body["optimizer_class"] != "HEURISTIC" || body["dispatch_algo"] != "pick_n_created_v1" {
+		t.Fatalf("dispatch honesty labels missing: %v", body)
 	}
 
 	assertFactoryCacheDeletedKeys(t, cacheBackend.deletedKeys,
@@ -221,6 +244,7 @@ func TestHandleManifestSeal_EmitsRouteMetadata(t *testing.T) {
 	svc.mu.Unlock()
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/factory/manifests/mf_factory_1/seal", strings.NewReader(`{"reason":"seal"}`))
+	req.Header.Set("Idempotency-Key", "test-key-32")
 	req = withFactoryRouteParam(req, "manifestID", "mf_factory_1")
 	rr := httptest.NewRecorder()
 
@@ -297,6 +321,7 @@ func TestHandleManifestRebalance_IdempotentAlreadyAssigned(t *testing.T) {
 	svc.factoryHub.Subscribe("factory:supplier-test", factoryConn)
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/factory/manifests/rebalance", strings.NewReader(`{"manifest_id":"mf_factory_1","transfer_id":"tr_factory_1","to_driver_id":"drv_factory_1","to_vehicle":"veh_factory_1","reason":"noop"}`))
+	req.Header.Set("Idempotency-Key", "test-key-33")
 	rr := httptest.NewRecorder()
 
 	svc.HandleManifestRebalance(rr, req)
@@ -343,6 +368,7 @@ func TestHandleManifestRebalance_TransferNotMutable(t *testing.T) {
 	svc.factoryHub.Subscribe("factory:supplier-test", factoryConn)
 
 	cancelReq := httptest.NewRequest(http.MethodPost, "/v1/factory/manifests/cancel-transfer", strings.NewReader(`{"manifest_id":"mf_factory_1","transfer_id":"tr_factory_1","reason":"ops"}`))
+	cancelReq.Header.Set("Idempotency-Key", "test-key-34")
 	cancelRR := httptest.NewRecorder()
 	svc.HandleManifestCancelTransfer(cancelRR, cancelReq)
 	if cancelRR.Code != http.StatusOK {
@@ -358,6 +384,7 @@ func TestHandleManifestRebalance_TransferNotMutable(t *testing.T) {
 	factoryTypesAfterCancel := factoryWSMessageTypes(factoryConn.messages)
 
 	rebalanceReq := httptest.NewRequest(http.MethodPost, "/v1/factory/manifests/rebalance", strings.NewReader(`{"manifest_id":"mf_factory_1","transfer_id":"tr_factory_1","to_driver_id":"drv_factory_2","reason":"retry"}`))
+	rebalanceReq.Header.Set("Idempotency-Key", "test-key-35")
 	rebalanceRR := httptest.NewRecorder()
 	svc.HandleManifestRebalance(rebalanceRR, rebalanceReq)
 
@@ -446,6 +473,7 @@ func TestHandleManifestRebalance_TransferStateNotMutable(t *testing.T) {
 	svc.mu.Unlock()
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/factory/manifests/rebalance", strings.NewReader(`{"manifest_id":"mf_factory_1","transfer_id":"tr_factory_1","to_driver_id":"drv_factory_2","reason":"state-check"}`))
+	req.Header.Set("Idempotency-Key", "test-key-36")
 	rr := httptest.NewRecorder()
 
 	svc.HandleManifestRebalance(rr, req)
@@ -503,6 +531,7 @@ func TestHandleManifestRebalance_GlobalTransferMissingConflict(t *testing.T) {
 	svc.mu.Unlock()
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/factory/manifests/rebalance", strings.NewReader(`{"manifest_id":"mf_factory_1","transfer_id":"tr_factory_1","to_driver_id":"drv_factory_2","reason":"global-drift"}`))
+	req.Header.Set("Idempotency-Key", "test-key-37")
 	rr := httptest.NewRecorder()
 
 	svc.HandleManifestRebalance(rr, req)
@@ -565,6 +594,7 @@ func TestHandleManifestRebalance_TransferRouteMismatch(t *testing.T) {
 	svc.mu.Unlock()
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/factory/manifests/rebalance", strings.NewReader(`{"manifest_id":"mf_factory_1","transfer_id":"tr_factory_1","to_driver_id":"drv_factory_2","reason":"route-consistency"}`))
+	req.Header.Set("Idempotency-Key", "test-key-38")
 	rr := httptest.NewRecorder()
 
 	svc.HandleManifestRebalance(rr, req)
@@ -622,6 +652,7 @@ func TestHandleManifestRebalance_TransferLedgerMismatch(t *testing.T) {
 	svc.mu.Unlock()
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/factory/manifests/rebalance", strings.NewReader(`{"manifest_id":"mf_factory_1","transfer_id":"tr_factory_1","to_driver_id":"drv_factory_2","reason":"ledger-parity"}`))
+	req.Header.Set("Idempotency-Key", "test-key-39")
 	rr := httptest.NewRecorder()
 
 	svc.HandleManifestRebalance(rr, req)
@@ -670,6 +701,7 @@ func TestHandleManifestRebalance_ReplayAfterSuccessIdempotent(t *testing.T) {
 	body := `{"manifest_id":"mf_factory_1","transfer_id":"tr_factory_1","to_driver_id":"drv_factory_2","to_vehicle":"veh_factory_1","reason":"replay-idempotency"}`
 
 	firstReq := httptest.NewRequest(http.MethodPost, "/v1/factory/manifests/rebalance", strings.NewReader(body))
+	firstReq.Header.Set("Idempotency-Key", "test-key-40")
 	firstRR := httptest.NewRecorder()
 	svc.HandleManifestRebalance(firstRR, firstReq)
 
@@ -717,6 +749,7 @@ func TestHandleManifestRebalance_ReplayAfterSuccessIdempotent(t *testing.T) {
 	}
 
 	secondReq := httptest.NewRequest(http.MethodPost, "/v1/factory/manifests/rebalance", strings.NewReader(body))
+	secondReq.Header.Set("Idempotency-Key", "test-key-41")
 	secondRR := httptest.NewRecorder()
 	svc.HandleManifestRebalance(secondRR, secondReq)
 
@@ -806,6 +839,7 @@ func TestHandleManifestRebalance_TransferRouteMismatchAfterSuccess_NoExtraFanout
 
 	firstBody := `{"manifest_id":"mf_factory_1","transfer_id":"tr_factory_1","to_driver_id":"drv_factory_2","to_vehicle_id":"veh_factory_1","reason":"baseline-success"}`
 	firstReq := httptest.NewRequest(http.MethodPost, "/v1/factory/manifests/rebalance", strings.NewReader(firstBody))
+	firstReq.Header.Set("Idempotency-Key", "test-key-42")
 	firstRR := httptest.NewRecorder()
 	svc.HandleManifestRebalance(firstRR, firstReq)
 
@@ -833,6 +867,7 @@ func TestHandleManifestRebalance_TransferRouteMismatchAfterSuccess_NoExtraFanout
 
 	conflictBody := `{"manifest_id":"mf_factory_1","transfer_id":"tr_factory_1","to_driver_id":"drv_factory_2","to_vehicle_id":"veh_factory_2","reason":"route-mismatch-after-success"}`
 	conflictReq := httptest.NewRequest(http.MethodPost, "/v1/factory/manifests/rebalance", strings.NewReader(conflictBody))
+	conflictReq.Header.Set("Idempotency-Key", "test-key-43")
 	conflictRR := httptest.NewRecorder()
 	svc.HandleManifestRebalance(conflictRR, conflictReq)
 
@@ -906,12 +941,19 @@ func TestHandleManifestCancelTransfer_IdempotentAlreadyCancelled(t *testing.T) {
 
 	body := `{"manifest_id":"mf_factory_1","transfer_id":"tr_factory_1","reason":"ops"}`
 	firstReq := httptest.NewRequest(http.MethodPost, "/v1/factory/manifests/cancel-transfer", strings.NewReader(body))
+	firstReq.Header.Set("Idempotency-Key", "test-key-44")
 	firstRR := httptest.NewRecorder()
 
 	svc.HandleManifestCancelTransfer(firstRR, firstReq)
 
 	if firstRR.Code != http.StatusOK {
 		t.Fatalf("expected first status 200, got %d body=%s", firstRR.Code, firstRR.Body.String())
+	}
+	if len(repo.savedExceptions) == 0 {
+		t.Fatal("expected SaveException so GET /manifest-exceptions can read Spanner")
+	}
+	if repo.savedExceptions[len(repo.savedExceptions)-1].TransferID != "tr_factory_1" {
+		t.Fatalf("unexpected saved exception: %+v", repo.savedExceptions[len(repo.savedExceptions)-1])
 	}
 	if len(repo.events) != 1 {
 		t.Fatalf("expected one outbox event after first cancel, got %d", len(repo.events))
@@ -925,6 +967,7 @@ func TestHandleManifestCancelTransfer_IdempotentAlreadyCancelled(t *testing.T) {
 	factoryTypesAfterFirst := factoryWSMessageTypes(factoryConn.messages)
 
 	secondReq := httptest.NewRequest(http.MethodPost, "/v1/factory/manifests/cancel-transfer", strings.NewReader(body))
+	secondReq.Header.Set("Idempotency-Key", "test-key-45")
 	secondRR := httptest.NewRecorder()
 
 	svc.HandleManifestCancelTransfer(secondRR, secondReq)
@@ -1069,15 +1112,18 @@ func assertFactoryWSMessageContainsType(t *testing.T, messages [][]byte, wantTyp
 }
 
 type factoryRepoSpy struct {
-	svc        *Service
-	applyCalls int
-	events     []outbox.Event
+	svc                *Service
+	applyCalls         int
+	events             []outbox.Event
+	savedStaff         []StaffRow
+	savedExceptions    []ManifestException
+	resolvedExceptions []ManifestException
 }
 
 func (r *factoryRepoSpy) RunTx(ctx context.Context, fn func(ctx context.Context, tx FactoryTx) error, emit func(outbox.TxnBuffer) error) error {
 	r.applyCalls++
 	if fn != nil {
-		if err := fn(ctx, &dummyFactoryTx{svc: r.svc}); err != nil {
+		if err := fn(ctx, &dummyFactoryTx{svc: r.svc, spy: r}); err != nil {
 			return err
 		}
 	}
@@ -1139,6 +1185,14 @@ func (b *factoryCacheBackendSpy) Set(context.Context, string, []byte, time.Durat
 	return nil
 }
 
+func (b *factoryCacheBackendSpy) DecrBy(context.Context, string, int64) (int64, error) {
+	return 0, nil
+}
+
+func (b *factoryCacheBackendSpy) IncrBy(context.Context, string, int64) (int64, error) {
+	return 0, nil
+}
+
 func (b *factoryCacheBackendSpy) Delete(_ context.Context, keys ...string) error {
 	copyKeys := append([]string(nil), keys...)
 	b.deletedKeys = append(b.deletedKeys, copyKeys)
@@ -1178,13 +1232,97 @@ func (r *factoryRepoSpy) Hydrate(ctx context.Context, supplierID string, s *Serv
 	return nil
 }
 
-type dummyFactoryTx struct{ svc *Service }
+type dummyFactoryTx struct {
+	svc *Service
+	spy *factoryRepoSpy
+}
 
 func (d *dummyFactoryTx) ListManifests(ctx context.Context) ([]ManifestRow, error) {
+	if d.svc == nil {
+		return nil, nil
+	}
 	return append([]ManifestRow(nil), d.svc.manifests...), nil
 }
 func (d *dummyFactoryTx) SaveManifest(ctx context.Context, m ManifestRow) error { return nil }
 func (d *dummyFactoryTx) ListTransfers(ctx context.Context) ([]TransferRow, error) {
+	if d.svc == nil {
+		return nil, nil
+	}
 	return append([]TransferRow(nil), d.svc.transfers...), nil
 }
 func (d *dummyFactoryTx) SaveTransfer(ctx context.Context, t TransferRow) error { return nil }
+func (d *dummyFactoryTx) SaveStaff(ctx context.Context, row StaffRow) error {
+	if d.spy != nil {
+		d.spy.savedStaff = append(d.spy.savedStaff, row)
+	}
+	return nil
+}
+func (d *dummyFactoryTx) SaveException(ctx context.Context, row ManifestException) error {
+	if d.spy != nil {
+		d.spy.savedExceptions = append(d.spy.savedExceptions, row)
+	}
+	return nil
+}
+func (d *dummyFactoryTx) ResolveException(ctx context.Context, row ManifestException, orderID string) error {
+	if d.spy != nil {
+		d.spy.resolvedExceptions = append(d.spy.resolvedExceptions, row)
+	}
+	return nil
+}
+
+func TestHandleFleet_DemoFallbackAndStructure(t *testing.T) {
+	repo := &factoryRepoSpy{}
+	cacheBackend := &factoryCacheBackendSpy{}
+	svc := newFactoryTestService(repo, cacheBackend)
+	repo.svc = svc
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/factory/fleet", nil)
+	rr := httptest.NewRecorder()
+
+	svc.HandleFleet(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d body=%s", rr.Code, rr.Body.String())
+	}
+	var resp struct {
+		Vehicles []map[string]any `json:"vehicles"`
+	}
+	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if len(resp.Vehicles) == 0 {
+		t.Fatalf("expected non-empty vehicles list")
+	}
+	first := resp.Vehicles[0]
+	if first["id"] == "" || first["plate_number"] == "" {
+		t.Fatalf("expected id and plate_number in vehicle payload: %#v", first)
+	}
+}
+
+func TestHandleFleetVehicles_DemoFallbackAndStructure(t *testing.T) {
+	repo := &factoryRepoSpy{}
+	cacheBackend := &factoryCacheBackendSpy{}
+	svc := newFactoryTestService(repo, cacheBackend)
+	repo.svc = svc
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/factory/fleet/vehicles", nil)
+	rr := httptest.NewRecorder()
+
+	svc.HandleFleetVehicles(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d body=%s", rr.Code, rr.Body.String())
+	}
+	var resp struct {
+		Vehicles []FleetVehicle `json:"vehicles"`
+	}
+	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if len(resp.Vehicles) == 0 {
+		t.Fatalf("expected non-empty fleet vehicles list")
+	}
+	if resp.Vehicles[0].VehicleID == "" || resp.Vehicles[0].PlateNo == "" {
+		t.Fatalf("expected VehicleID and PlateNo in fleet vehicle: %#v", resp.Vehicles[0])
+	}
+}

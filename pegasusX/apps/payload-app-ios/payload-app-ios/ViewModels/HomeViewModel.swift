@@ -13,6 +13,14 @@
 import Foundation
 import Observation
 
+struct ExceptionSheetTarget: Identifiable, Equatable {
+    let id: String
+}
+
+struct ReDispatchSheetTarget: Identifiable, Equatable {
+    let id: String
+}
+
 @MainActor
 @Observable
 final class HomeViewModel {
@@ -23,6 +31,7 @@ final class HomeViewModel {
     // Sidebar
     private(set) var trucks: [Truck] = []
     private(set) var selectedTruckId: String?
+    var sidebarSelectionId: String?
     private(set) var loadingTrucks = false
 
     // Detail
@@ -46,10 +55,20 @@ final class HomeViewModel {
 
     private(set) var error: String?
     private(set) var errorExplain: StatusExplain?
-    var barcodeScanMessage: String?
+    private(set) var barcodeScanMessage: String?
 
     private(set) var pulseEvents: [PulseEvent] = []
     private(set) var pulseLoading = false
+    private(set) var pulseError: String?
+
+    // MARK: - Sheet & Alert Presentation State
+    var showInjectSheet = false
+    var showProductScanner = false
+    var showInboundReturns = false
+    var exceptionTarget: ExceptionSheetTarget?
+    var reDispatchTarget: ReDispatchSheetTarget?
+    var isShowingEscalatedAlert = false
+    var isShowingHandoffAlert = false
 
     // MARK: - Phase 6 state
     private(set) var notifications: [NotificationItem] = []
@@ -57,8 +76,8 @@ final class HomeViewModel {
     private(set) var online: Bool = false
     private(set) var queuedActions: Int = 0
     var showNotificationsPanel: Bool = false
-    var queuedNoticeMessage: String?
-    var syncCompleteMessage: String?
+    private(set) var queuedNoticeMessage: String?
+    private(set) var syncCompleteMessage: String?
 
     // MARK: - Phase 5 state
     /// Order currently being removed via manifest-exception.
@@ -81,18 +100,31 @@ final class HomeViewModel {
     private(set) var batchReadyManifestIds: [String] = []
     private(set) var batchSealing = false
     private(set) var batchSealFailures: [SealCompletedManifestResult] = []
-    var handoffNavigationMessage: String?
+    private(set) var handoffNavigationMessage: String?
+
+    let bannerAutoDismissNanoseconds: UInt64
 
     private let api: APIClient
     private let ws: WebSocketClient
     private let queue: OfflineQueue
     private var countdownTask: Task<Void, Never>?
+    private var barcodeBannerTask: Task<Void, Never>?
+    private var missingItemsBannerTask: Task<Void, Never>?
+    private var queuedNoticeBannerTask: Task<Void, Never>?
+    private var syncCompleteBannerTask: Task<Void, Never>?
 
-    init() {
-        self.api = APIClient.shared
-        self.ws = WebSocketClient()
-        self.queue = OfflineQueue.shared
-        self.queuedActions = queue.read().count
+    init(
+        api: APIClient = .shared,
+        ws: WebSocketClient? = nil,
+        queue: OfflineQueue? = nil,
+        bannerAutoDismissNanoseconds: UInt64 = 3_000_000_000
+    ) {
+        let resolvedQueue = queue ?? .shared
+        self.api = api
+        self.ws = ws ?? WebSocketClient()
+        self.queue = resolvedQueue
+        self.bannerAutoDismissNanoseconds = bannerAutoDismissNanoseconds
+        self.queuedActions = resolvedQueue.read().count
         self.ws.onFrame = { [weak self] frame in self?.handleFrame(frame) }
         self.ws.onReconnect = { [weak self] in
             Task { @MainActor [weak self] in
@@ -112,6 +144,100 @@ final class HomeViewModel {
         // ws is @MainActor; HomeView triggers disconnectPhase6() on disappear.
     }
 
+    // MARK: - Sheet & Banner Helpers
+
+    func presentExceptionSheet(for orderId: String) {
+        PegasusHaptics.warning()
+        exceptionTarget = ExceptionSheetTarget(id: orderId)
+    }
+
+    func dismissExceptionSheet() {
+        exceptionTarget = nil
+    }
+
+    func postBarcodeScanMessage(_ message: String) {
+        barcodeScanMessage = message
+        barcodeBannerTask?.cancel()
+        let delay = bannerAutoDismissNanoseconds
+        barcodeBannerTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: delay)
+            guard !Task.isCancelled else { return }
+            self?.barcodeScanMessage = nil
+        }
+    }
+
+    func postMissingItemsReportedMessage(_ message: String) {
+        missingItemsReportedMessage = message
+        missingItemsBannerTask?.cancel()
+        let delay = bannerAutoDismissNanoseconds
+        missingItemsBannerTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: delay)
+            guard !Task.isCancelled else { return }
+            self?.missingItemsReportedMessage = nil
+        }
+    }
+
+    func postQueuedNoticeMessage(_ message: String) {
+        queuedNoticeMessage = message
+        queuedNoticeBannerTask?.cancel()
+        let delay = bannerAutoDismissNanoseconds
+        queuedNoticeBannerTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: delay)
+            guard !Task.isCancelled else { return }
+            self?.queuedNoticeMessage = nil
+        }
+    }
+
+    func postSyncCompleteMessage(_ message: String) {
+        syncCompleteMessage = message
+        syncCompleteBannerTask?.cancel()
+        let delay = bannerAutoDismissNanoseconds
+        syncCompleteBannerTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: delay)
+            guard !Task.isCancelled else { return }
+            self?.syncCompleteMessage = nil
+        }
+    }
+
+    private func setEscalatedAlert(_ message: String) {
+        escalatedMessage = message
+        isShowingEscalatedAlert = true
+    }
+
+    private func setHandoffAlert(_ message: String) {
+        handoffNavigationMessage = message
+        isShowingHandoffAlert = true
+    }
+
+    // MARK: - Deterministic Hydration Hook (Unit Testing)
+    func hydrateState(
+        trucks: [Truck] = [],
+        selectedTruckId: String? = nil,
+        manifest: Manifest? = nil,
+        orders: [LiveOrder] = [],
+        selectedOrderId: String? = nil,
+        sealedOrderIds: Set<String> = [],
+        dispatchCodes: [String: String] = [:],
+        postSealOrderId: String? = nil,
+        postSealCountdown: Int = 0,
+        notifications: [NotificationItem] = [],
+        online: Bool = false
+    ) {
+        self.trucks = trucks
+        self.selectedTruckId = selectedTruckId
+        self.sidebarSelectionId = selectedTruckId
+        self.manifest = manifest
+        self.orders = orders
+        self.selectedOrderId = selectedOrderId ?? orders.first?.orderId
+        self.sealedOrderIds = sealedOrderIds
+        self.dispatchCodes = dispatchCodes
+        self.postSealOrderId = postSealOrderId
+        self.postSealCountdown = postSealCountdown
+        self.notifications = notifications
+        self.unreadCount = notifications.filter(\.isUnread).count
+        self.online = online
+    }
+
     // MARK: - Truck list
     func refreshTrucks(silent: Bool = false) async {
         if !silent { loadingTrucks = true }
@@ -119,8 +245,14 @@ final class HomeViewModel {
         defer { if !silent { loadingTrucks = false } }
         do {
             let result = try await api.trucks()
-            trucks = result
-            if selectedTruckId == nil, let first = result.first?.id {
+            var board: [Manifest] = []
+            for state in ManifestBoard.states {
+                if let rows = try? await api.listLoadingBayManifests(state: state) {
+                    board.append(contentsOf: rows)
+                }
+            }
+            trucks = ManifestBoard.attach(trucks: result, manifests: board)
+            if selectedTruckId == nil, let first = trucks.first?.id {
                 await selectTruck(first)
             }
         } catch {
@@ -129,12 +261,16 @@ final class HomeViewModel {
     }
 
     func selectTruck(_ truckId: String) async {
-        if selectedTruckId == truckId, manifest != nil { return }
+        if selectedTruckId == truckId, manifest != nil {
+            sidebarSelectionId = truckId
+            return
+        }
         cancelCountdown()
         if let previous = selectedTruckId, !sealedOrderIds.isEmpty {
             sealedOrdersByTruck[previous] = sealedOrderIds
         }
         selectedTruckId = truckId
+        sidebarSelectionId = truckId
         manifest = nil
         orders = []
         selectedOrderId = nil
@@ -173,7 +309,11 @@ final class HomeViewModel {
             let loading = try await api.loadingManifests().manifests
             var ready: [String] = []
             for item in loading {
-                guard let manifestTruckId = item.truckId else { continue }
+                // Batch seal-completed is payloader-only; factory seals via /v1/factory/.../seal.
+                guard item.source != "factory" else { continue }
+                let manifestTruckId = item.truckId.flatMap { $0.isEmpty ? nil : $0 }
+                    ?? item.vehicleId.flatMap { $0.isEmpty ? nil : $0 }
+                guard let manifestTruckId else { continue }
                 let truckOrders: [LiveOrder]
                 if manifestTruckId == truckId {
                     truckOrders = orders
@@ -199,20 +339,23 @@ final class HomeViewModel {
         batchSealFailures = []
         defer { batchSealing = false }
         do {
-            let response = try await api.sealCompletedManifests(manifestIds: batchReadyManifestIds)
+            let response = try await api.sealAllManifests()
             let failures = (response.results ?? []).filter { ($0.status ?? "") != "sealed" && !($0.status ?? "").isEmpty }
             if !failures.isEmpty {
                 batchSealFailures = failures
                 error = failures.compactMap { $0.explain?.title ?? $0.manifestId }.joined(separator: "\n")
                 errorExplain = failures.compactMap(\.explain).first
+                PegasusHaptics.error()
                 return
             }
             manifestSealed = true
             batchReadyManifestIds = []
             sealedOrdersByTruck = [:]
             manifest = manifest.map { mutateState($0, to: "SEALED") }
+            PegasusHaptics.success()
         } catch {
             self.error = describe(error)
+            PegasusHaptics.error()
         }
     }
 
@@ -227,39 +370,41 @@ final class HomeViewModel {
                 if let truckId = detail.truckId, !truckId.isEmpty {
                     await selectTruck(truckId)
                 } else {
-                    handoffNavigationMessage = "Open in portal — no native route for this link"
+                    setHandoffAlert("Open in portal — no native route for this link")
                 }
             } catch {
-                handoffNavigationMessage = "Open in portal — no native route for this link"
+                setHandoffAlert("Open in portal — no native route for this link")
             }
         case .orderDetail(let orderId):
             showNotificationsPanel = false
             if orders.contains(where: { $0.orderId == orderId }) {
                 selectedOrderId = orderId
             } else {
-                handoffNavigationMessage = "Open in portal — order not on this truck"
+                setHandoffAlert("Open in portal — order not on this truck")
             }
         case .unresolved:
             showNotificationsPanel = false
-            handoffNavigationMessage = "Open in portal — no native route for this link"
+            setHandoffAlert("Open in portal — no native route for this link")
         }
     }
 
     func clearHandoffNavigationMessage() {
         handoffNavigationMessage = nil
+        isShowingHandoffAlert = false
     }
 
     private func loadManifest(for truckId: String, silent: Bool = false) async {
         if !silent { loadingManifest = true }
         defer { if !silent { loadingManifest = false } }
         do {
-            let draft = try await api.supplierManifests(state: "DRAFT")
-            if let match = draft.manifests.first(where: { $0.truckId == truckId }) {
-                manifest = match
-                return
+            for state in ManifestBoard.states {
+                let rows = try await api.listLoadingBayManifests(state: state)
+                if let match = rows.first(where: { $0.matchesTruck(truckId) }) {
+                    manifest = match
+                    return
+                }
             }
-            let loading = try await api.supplierManifests(state: "LOADING")
-            manifest = loading.manifests.first(where: { $0.truckId == truckId })
+            manifest = nil
         } catch {
             if !silent { self.error = describe(error) }
         }
@@ -282,14 +427,20 @@ final class HomeViewModel {
     }
 
     // MARK: - Per-order checklist + seal
-    func selectOrder(_ orderId: String) { selectedOrderId = orderId }
+    func selectOrder(_ orderId: String) {
+        PegasusHaptics.selection()
+        selectedOrderId = orderId
+    }
 
     func toggleItem(_ lineItemId: String) {
+        PegasusHaptics.light()
         if checkedItems.contains(lineItemId) { checkedItems.remove(lineItemId) }
         else { checkedItems.insert(lineItemId) }
     }
 
     func clearBarcodeScanMessage() {
+        barcodeBannerTask?.cancel()
+        barcodeBannerTask = nil
         barcodeScanMessage = nil
     }
 
@@ -297,7 +448,8 @@ final class HomeViewModel {
         let trimmed = ean.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         guard let orderId = selectedOrderId else {
-            barcodeScanMessage = "Select an order first"
+            PegasusHaptics.warning()
+            postBarcodeScanMessage("Select an order first")
             return
         }
         guard let order = orders.first(where: { $0.orderId == orderId }) else { return }
@@ -305,14 +457,17 @@ final class HomeViewModel {
             let product = try await api.lookupBarcode(ean: trimmed)
             let sku = product.skuId ?? product.productId ?? ""
             guard let match = (order.items ?? []).first(where: { $0.skuId == sku }) else {
-                barcodeScanMessage = "SKU not on this order"
+                PegasusHaptics.warning()
+                postBarcodeScanMessage("SKU not on this order")
                 return
             }
             toggleItem(match.lineItemId)
-            let label = (product.name?.isEmpty == false) ? product.name! : sku
-            barcodeScanMessage = "Checked \(label)"
+            let label = (product.name?.isEmpty == false ? product.name : nil) ?? sku
+            PegasusHaptics.success()
+            postBarcodeScanMessage("Checked \(label)")
         } catch {
-            barcodeScanMessage = describe(error)
+            PegasusHaptics.error()
+            postBarcodeScanMessage(describe(error))
         }
     }
 
@@ -328,20 +483,23 @@ final class HomeViewModel {
     func sealSelectedOrder() async {
         guard let orderId = selectedOrderId,
               let truckId = selectedTruckId,
+              let manifestId = manifest?.manifestId,
               canSealOrder(orderId) else { return }
         sealingOrderId = orderId
         error = nil
         defer { sealingOrderId = nil }
         do {
-            let resp = try await api.sealOrder(orderId: orderId, terminalId: truckId)
+            let resp = try await api.sealOrder(manifestId: manifestId, orderId: orderId, terminalId: truckId)
             sealedOrderIds.insert(orderId)
             dispatchCodes[orderId] = resp.dispatchCode
             postSealOrderId = orderId
             postSealCountdown = 60
+            PegasusHaptics.success()
             startCountdown()
             await refreshBatchReadyManifests()
         } catch {
             self.error = describe(error)
+            PegasusHaptics.error()
         }
     }
 
@@ -365,6 +523,7 @@ final class HomeViewModel {
     }
 
     func dismissCountdown() {
+        PegasusHaptics.light()
         cancelCountdown()
         postSealCountdown = 0
         advanceAfterCountdown()
@@ -377,15 +536,25 @@ final class HomeViewModel {
 
     // MARK: - Manifest-level transitions
     func startLoading() async {
-        guard let id = manifest?.manifestId, !startingLoading else { return }
+        guard let current = manifest, !startingLoading else { return }
         startingLoading = true
         error = nil
         defer { startingLoading = false }
         do {
-            _ = try await api.supplierStartLoading(manifestId: id)
+            if current.source == "factory" {
+                _ = try await api.factoryStartLoading(manifestId: current.manifestId)
+            } else {
+                do {
+                    _ = try await api.supplierStartLoading(manifestId: current.manifestId)
+                } catch {
+                    _ = try await api.factoryStartLoading(manifestId: current.manifestId)
+                }
+            }
             manifest = manifest.map { mutateState($0, to: "LOADING") }
+            PegasusHaptics.medium()
         } catch {
             self.error = describe(error)
+            PegasusHaptics.error()
         }
     }
 
@@ -394,22 +563,28 @@ final class HomeViewModel {
     }
 
     func sealManifest() async {
-        guard let id = manifest?.manifestId, !sealingManifest else { return }
+        guard let current = manifest, !sealingManifest else { return }
         sealingManifest = true
         error = nil
         errorExplain = nil
         defer { sealingManifest = false }
         do {
-            let manifestIds = batchReadyManifestIds.count > 1 && batchReadyManifestIds.contains(id)
+            let factoryOnly = current.source == "factory"
+            let manifestIds = !factoryOnly && batchReadyManifestIds.count > 1 && batchReadyManifestIds.contains(current.manifestId)
                 ? batchReadyManifestIds
-                : [id]
-            _ = try await api.sealCompletedManifests(manifestIds: manifestIds)
+                : [current.manifestId]
+            if factoryOnly {
+                _ = try await api.factorySealManifest(manifestId: current.manifestId)
+            } else {
+                _ = try await api.sealCompletedManifests(manifestIds: manifestIds)
+            }
             manifestSealed = true
-            if manifestIds.count > 1 {
+            if !factoryOnly && manifestIds.count > 1 {
                 batchReadyManifestIds = []
                 sealedOrdersByTruck = [:]
             }
             manifest = manifest.map { mutateState($0, to: "SEALED") }
+            PegasusHaptics.success()
             await refreshBatchReadyManifests()
         } catch {
             if case APIError.explainError(let message, let explain) = error {
@@ -419,14 +594,17 @@ final class HomeViewModel {
                 self.error = describe(error)
                 self.errorExplain = nil
             }
+            PegasusHaptics.error()
         }
     }
 
     /// Reset to a fresh state and reload trucks (after All Sealed).
     func startNewManifest() async {
+        PegasusHaptics.medium()
         cancelCountdown()
         trucks = []
         selectedTruckId = nil
+        sidebarSelectionId = nil
         manifest = nil
         orders = []
         selectedOrderId = nil
@@ -446,10 +624,20 @@ final class HomeViewModel {
         error = nil
         errorExplain = nil
     }
-    func clearEscalatedMessage() { escalatedMessage = nil }
-    func clearMissingItemsReportedMessage() { missingItemsReportedMessage = nil }
+
+    func clearEscalatedMessage() {
+        escalatedMessage = nil
+        isShowingEscalatedAlert = false
+    }
+
+    func clearMissingItemsReportedMessage() {
+        missingItemsBannerTask?.cancel()
+        missingItemsBannerTask = nil
+        missingItemsReportedMessage = nil
+    }
 
     func toggleExceptionsPanel() {
+        PegasusHaptics.selection()
         showExceptionsPanel.toggle()
         if showExceptionsPanel {
             Task { await loadManifestExceptions() }
@@ -476,9 +664,11 @@ final class HomeViewModel {
         defer { reportingMissingItems = false }
         do {
             _ = try await api.reportMissingItems(orderId: orderId, items: [])
-            missingItemsReportedMessage = "Missing items flagged for review."
+            PegasusHaptics.warning()
+            postMissingItemsReportedMessage("Missing items flagged for review.")
         } catch {
             self.error = describe(error)
+            PegasusHaptics.error()
         }
     }
 
@@ -495,12 +685,17 @@ final class HomeViewModel {
             let resp = try await api.manifestException(manifestId: manifestId, orderId: orderId, reason: reason)
             orders.removeAll { $0.orderId == orderId }
             if selectedOrderId == orderId { selectedOrderId = orders.first?.orderId }
+            exceptionTarget = nil
             if resp.escalated == true {
                 let count = resp.overflowCount ?? 0
-                escalatedMessage = "DLQ ESCALATION: order \(orderId.prefix(8)) escalated after \(count) overflow attempts."
+                PegasusHaptics.error()
+                setEscalatedAlert("DLQ ESCALATION: order \(orderId.prefix(8)) escalated after \(count) overflow attempts.")
+            } else {
+                PegasusHaptics.warning()
             }
         } catch {
             self.error = describe(error)
+            PegasusHaptics.error()
         }
     }
 
@@ -524,7 +719,8 @@ final class HomeViewModel {
             )
             queue.enqueue(action)
             queuedActions = queue.read().count
-            queuedNoticeMessage = "Queued offline. Will sync when connection restores."
+            PegasusHaptics.warning()
+            postQueuedNoticeMessage("Queued offline. Will sync when connection restores.")
             return
         }
         injectingOrder = true
@@ -532,17 +728,21 @@ final class HomeViewModel {
         defer { injectingOrder = false }
         do {
             _ = try await api.supplierInjectOrder(manifestId: manifestId, orderId: trimmed)
+            PegasusHaptics.success()
             await loadManifest(for: truckId)
             await loadOrders(for: truckId)
         } catch {
             self.error = describe(error)
+            PegasusHaptics.error()
         }
     }
 
     // MARK: - Phase 5: Re-dispatch (recommend + reassign)
 
     func openReDispatch(orderId: String) async {
+        PegasusHaptics.selection()
         reDispatchOrderId = orderId
+        reDispatchTarget = ReDispatchSheetTarget(id: orderId)
         loadingRecommendations = true
         recommendations = nil
         error = nil
@@ -556,6 +756,7 @@ final class HomeViewModel {
 
     func closeReDispatch() {
         reDispatchOrderId = nil
+        reDispatchTarget = nil
         recommendations = nil
         loadingRecommendations = false
     }
@@ -573,9 +774,12 @@ final class HomeViewModel {
                 if selectedOrderId == orderId { selectedOrderId = orders.first?.orderId }
             }
             reDispatchOrderId = nil
+            reDispatchTarget = nil
             recommendations = nil
+            PegasusHaptics.success()
         } catch {
             self.error = describe(error)
+            PegasusHaptics.error()
         }
     }
 
@@ -592,16 +796,26 @@ final class HomeViewModel {
 
     func refreshPulse() async {
         pulseLoading = true
+        pulseError = nil
         defer { pulseLoading = false }
         do {
             let response = try await api.pulse()
-            pulseEvents = response.events
+            let result = PulseHonesty.apply(ok: true, incoming: response.events, previous: pulseEvents)
+            pulseEvents = result.events
+            pulseError = result.error
         } catch {
-            pulseEvents = []
+            let result = PulseHonesty.apply(ok: false, incoming: nil, previous: pulseEvents)
+            pulseEvents = result.events
+            pulseError = result.error
         }
     }
 
     func disconnectPhase6() {
+        cancelCountdown()
+        barcodeBannerTask?.cancel()
+        missingItemsBannerTask?.cancel()
+        queuedNoticeBannerTask?.cancel()
+        syncCompleteBannerTask?.cancel()
         ws.disconnect()
         online = false
     }
@@ -623,10 +837,12 @@ final class HomeViewModel {
             unreadCount = unread
         } catch {
             // soft-fail; surface via error only on user-initiated retry
+            print("[HomeViewModel] notifications fetch deferred: \(error.localizedDescription)")
         }
     }
 
     func toggleNotificationsPanel() {
+        PegasusHaptics.selection()
         showNotificationsPanel.toggle()
     }
 
@@ -656,15 +872,24 @@ final class HomeViewModel {
         Task { _ = try? await api.markRead(ids: nil, all: true) }
     }
 
-    func clearSyncCompleteMessage() { syncCompleteMessage = nil }
-    func clearQueuedNoticeMessage() { queuedNoticeMessage = nil }
+    func clearSyncCompleteMessage() {
+        syncCompleteBannerTask?.cancel()
+        syncCompleteBannerTask = nil
+        syncCompleteMessage = nil
+    }
+
+    func clearQueuedNoticeMessage() {
+        queuedNoticeBannerTask?.cancel()
+        queuedNoticeBannerTask = nil
+        queuedNoticeMessage = nil
+    }
 
     func registerFcmToken(_ token: String) {
         Task { _ = try? await api.registerDeviceToken(token) }
     }
 
     private func handleFrame(_ frame: WsMessage) {
-        if frame.type == "PAYLOAD_SYNC" {
+        if frame.type == "PAYLOAD_SYNC" || (frame.type?.hasPrefix("MANIFEST_") ?? false) {
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 let silent = self.manifest != nil || !self.orders.isEmpty
@@ -702,8 +927,10 @@ final class HomeViewModel {
         )
     }
 
+    private static let isoFormatter = ISO8601DateFormatter()
+
     private func nowIso() -> String {
-        ISO8601DateFormatter().string(from: Date())
+        Self.isoFormatter.string(from: Date())
     }
 
     private func reconcileSession() async {
@@ -717,7 +944,7 @@ final class HomeViewModel {
         injectingOrder = false
         sealingOrderId = nil
         if hadInFlight {
-            syncCompleteMessage = "Connection restored — loading workflow refreshed from server."
+            postSyncCompleteMessage("Connection restored — loading workflow refreshed from server.")
         }
     }
 
@@ -725,7 +952,7 @@ final class HomeViewModel {
         let (sent, kept) = await queue.flush(api: api)
         queuedActions = kept
         if sent > 0 {
-            syncCompleteMessage = "Synced \(sent) queued action\(sent == 1 ? "" : "s")."
+            postSyncCompleteMessage("Synced \(sent) queued action\(sent == 1 ? "" : "s").")
         }
     }
 
@@ -736,9 +963,10 @@ final class HomeViewModel {
         Manifest(
             manifestId: m.manifestId,
             truckId: m.truckId,
+            vehicleId: m.vehicleId,
             driverId: m.driverId,
             state: state,
-            totalVolumeVu: m.totalVolumeVu,
+            usedVolumeVu: m.usedVolumeVu,
             maxVolumeVu: m.maxVolumeVu,
             stopCount: m.stopCount,
             regionCode: m.regionCode,
@@ -746,7 +974,8 @@ final class HomeViewModel {
             dispatchedAt: m.dispatchedAt,
             createdAt: m.createdAt,
             orders: m.orders,
-            overflowCount: m.overflowCount
+            overflowCount: m.overflowCount,
+            source: m.source
         )
     }
 

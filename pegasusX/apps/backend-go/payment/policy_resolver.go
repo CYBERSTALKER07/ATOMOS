@@ -9,6 +9,8 @@ import (
 
 	"cloud.google.com/go/spanner"
 	"google.golang.org/api/iterator"
+
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 )
 
 // PolicyResolver resolves allowed gateways for checkout.
@@ -28,8 +30,12 @@ func NewSpannerPolicyResolver(client *spanner.Client) *SpannerPolicyResolver {
 
 // Resolve implements PolicyResolver.
 func (r *SpannerPolicyResolver) Resolve(ctx context.Context, supplierID, warehouseID string) (GatewayPolicy, error) {
+	pack, err := auth.CheckoutPackFromContext(ctx)
+	if err != nil {
+		return GatewayPolicy{}, err
+	}
 	if r == nil || r.client == nil {
-		return NormalizeGatewayPolicy(PaymentAcceptorSupplier, nil, "SUPPLIER_DEFAULT"), nil
+		return NormalizeGatewayPolicyForPack(PaymentAcceptorSupplier, nil, "SUPPLIER_DEFAULT", pack), nil
 	}
 	supplierID = strings.TrimSpace(supplierID)
 	if supplierID == "" {
@@ -54,7 +60,7 @@ func (r *SpannerPolicyResolver) Resolve(ctx context.Context, supplierID, warehou
 			}
 		}
 	}
-	return NormalizeGatewayPolicy(acceptor, gateways, policySource), nil
+	return NormalizeGatewayPolicyForPack(acceptor, gateways, policySource, pack), nil
 }
 
 // AllowedGateways exposes a narrow read surface for order event enrichment.

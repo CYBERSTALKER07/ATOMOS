@@ -1,60 +1,57 @@
 import SwiftUI
-import UIKit
 
 struct ComplianceAuditView: View {
-    @State private var loading = true
-    @State private var error: String?
-    @State private var summary: ComplianceSummary?
-    @State private var forceCompletes: [ComplianceForceCompleteRow] = []
-    @State private var openFiscal: [ComplianceFiscalOpenRow] = []
+    @State private var viewModel = ComplianceAuditViewModel()
 
     var body: some View {
         Group {
-            if loading {
-                SupplierLoadingView(title: "Loading compliance audit…")
-            } else if let error {
-                SupplierErrorView(message: error) { Task { await load() } }
-            } else if let summary {
+            if viewModel.loading && viewModel.summary == nil {
+                SupplierLoadingView(title: "mobile_supplier.loading.compliance")
+            } else if let error = viewModel.error, viewModel.summary == nil {
+                SupplierErrorView(message: error) { Task { await viewModel.load() } }
+            } else if let summary = viewModel.summary {
                 List {
-                    Section("Summary") {
-                        metricRow("Open fiscal", value: summary.openFiscalCount)
-                        metricRow("Force completes", value: summary.forceCompleteCount)
-                        metricRow("Claim mismatches", value: summary.claimMismatchCount)
-                        metricRow("Credit freezes", value: summary.creditFreezeCount)
+                    Section("mobile_supplier.chrome.summary") {
+                        metricRow("mobile_supplier.chrome.open_fiscal", value: summary.openFiscalCount)
+                        metricRow("mobile_supplier.chrome.force_completes_count", value: summary.forceCompleteCount)
+                        metricRow("mobile_supplier.chrome.claim_mismatches", value: summary.claimMismatchCount)
+                        metricRow("mobile_supplier.chrome.credit_freezes", value: summary.creditFreezeCount)
                         if !summary.generatedAt.isEmpty {
-                            Text("Generated \(summary.generatedAt)")
+                            Text(L10n.format("mobile_supplier.ui.generated_generatedat", "\(summary.generatedAt)"))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
                     }
-                    if !openFiscal.isEmpty {
-                        Section("Open fiscal") {
-                            ForEach(openFiscal) { row in
+                    if !viewModel.openFiscal.isEmpty {
+                        Section("mobile_supplier.chrome.open_fiscal") {
+                            ForEach(viewModel.openFiscal) { row in
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(row.orderId).font(.subheadline.monospaced())
-                                    Text("\(row.status) · \(row.fiscalStatus)")
+                                    Text(L10n.format("mobile_supplier.ui.status_fiscalstatus", "\(row.status)", "\(row.fiscalStatus)"))
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
-                                    Button("View receipt") {
-                                        Task { await openReceipt(orderId: row.orderId) }
+                                    Button("mobile_supplier.ui.view_receipt") {
+                                        Task { await viewModel.openReceipt(orderId: row.orderId) }
                                     }
                                     .font(.caption.weight(.semibold))
+                                    .frame(minHeight: 44)
                                 }
                             }
                         }
                     }
-                    if !forceCompletes.isEmpty {
-                        Section("Force-completes") {
-                            ForEach(forceCompletes) { row in
+                    if !viewModel.forceCompletes.isEmpty {
+                        Section("mobile_supplier.chrome.force_completes") {
+                            ForEach(viewModel.forceCompletes) { row in
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(row.orderId).font(.subheadline.monospaced())
-                                    Text("Reason \(row.reasonCode.isEmpty ? "—" : row.reasonCode)")
+                                    Text(L10n.format("mobile_supplier.ui.reason_reasoncode", "\(row.reasonCode.isEmpty ? "—" : row.reasonCode)"))
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
-                                    Button("View receipt") {
-                                        Task { await openReceipt(orderId: row.orderId) }
+                                    Button("mobile_supplier.ui.view_receipt") {
+                                        Task { await viewModel.openReceipt(orderId: row.orderId) }
                                     }
                                     .font(.caption.weight(.semibold))
+                                    .frame(minHeight: 44)
                                 }
                             }
                         }
@@ -62,54 +59,33 @@ struct ComplianceAuditView: View {
                 }
             } else {
                 SupplierEmptyView(
-                    title: "No compliance data",
-                    message: "Compliance audit metrics will appear here."
+                    title: "mobile_supplier.empty.no_compliance",
+                    message: "mobile_supplier.empty.compliance_message"
                 )
             }
         }
         .background(SupplierTheme.background)
-        .navigationTitle("Compliance audit")
-        .task { await load() }
-        .refreshable { await load(silent: true) }
+        .navigationTitle("portal.nav.compliance_audit")
+        .task { await viewModel.load() }
+        .refreshable { await viewModel.load(silent: true) }
     }
 
     private func metricRow(_ label: String, value: Int) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(label).font(.caption).foregroundStyle(.secondary)
+            Text(LocalizedStringKey(label)).font(.caption).foregroundStyle(.secondary)
             Text("\(value)").font(.title2.bold())
         }
+        .accessibilityElement(children: .combine)
     }
+}
 
-    private func openReceipt(orderId: String) async {
-        do {
-            let meta: OrderReceiptMeta = try await APIClient.shared.get(
-                "v1/supplier/orders/\(orderId)/receipt",
-                query: ["format": "json"]
-            )
-            let raw = [meta.htmlUrl, meta.qrUrl, meta.pdfUrl]
-                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-                .first { !$0.isEmpty }
-            if let raw, let url = URL(string: raw) {
-                await MainActor.run {
-                    UIApplication.shared.open(url)
-                }
-            }
-        } catch {
-            // Receipt may not exist yet for open fiscal rows.
+enum ReceiptOpen {
+    static func shouldStayQuiet(_ error: Error) -> Bool {
+        if case APIError.httpError(404) = error { return true }
+        if case APIError.server(let message) = error {
+            let lowered = message.lowercased()
+            return lowered.contains("not_found") || lowered.contains("not found")
         }
-    }
-
-    private func load(silent: Bool = false) async {
-        if !silent { loading = true }
-        error = nil
-        defer { if !silent { loading = false } }
-        do {
-            let response = try await SupplierOperationsService.complianceDashboard()
-            summary = response.summary
-            openFiscal = response.openFiscal
-            forceCompletes = response.forceCompletes
-        } catch {
-            if !silent { self.error = error.localizedDescription }
-        }
+        return false
     }
 }

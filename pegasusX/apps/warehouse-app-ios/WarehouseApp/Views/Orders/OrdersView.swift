@@ -1,212 +1,148 @@
 import SwiftUI
 
-
-
 struct OrdersView: View {
-    @State private var hubTab: OrdersHubTab = .active
-    @State private var orders: [Order] = []
-    @State private var preorders: [WarehousePreorderRow] = []
-    @State private var loading = true
-    @State private var error: String?
-    @State private var selectedState = "ALL"
-    @State private var proposeTarget: String?
-    @State private var proposeDate = Date()
-    @State private var rejectTarget: String?
-    @State private var reasonInput = ""
-    @State private var statusMessage: String?
+    var initialState: String? = nil
+    @State private var vm: OrdersViewModel
 
-    private let states = ["ALL", "PENDING", "LOADED", "IN_TRANSIT", "ARRIVED", "COMPLETED", "CANCELLED"]
+    init(initialState: String? = nil) {
+        self.initialState = initialState
+        _vm = State(initialValue: OrdersViewModel(initialState: initialState))
+    }
 
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-                Picker("Queue", selection: $hubTab) {
-                    ForEach(OrdersHubTab.allCases) { tab in
-                        Text(tab.rawValue).tag(tab)
-                    }
+        @Bindable var vm = vm
+        VStack(spacing: 0) {
+            Picker("Queue", selection: $vm.hubTab) {
+                ForEach(OrdersHubTab.allCases) { tab in
+                    Text(tab.rawValue).tag(tab)
                 }
-                .pickerStyle(.segmented)
-                .padding(.horizontal)
-                .padding(.vertical, LabTheme.spacingSM)
+            }
+            .pickerStyle(.segmented)
+            .padding(.horizontal)
+            .padding(.vertical, LabTheme.spacingSM)
+            .onChange(of: vm.hubTab) { _, _ in
+                PegasusHaptics.selection()
+            }
 
-                OrdersList(
-                    hubTab: hubTab,
-                    loading: loading,
-                    error: error,
-                    orders: orders,
-                    preorders: preorders,
-                    onRetry: { load() },
-                    onProposeActive: { proposeTarget = $0; proposeDate = Date(); reasonInput = "" },
-                    onRejectActive: { rejectTarget = $0; reasonInput = "" },
-                    onProposePreorder: { proposeTarget = $0; proposeDate = Date(); reasonInput = "" },
-                    onRejectPreorder: { rejectTarget = $0; reasonInput = "" }
-                )
-            }
-            .background(LabTheme.background)
-            .navigationTitle("Orders")
-            .navigationDestination(for: String.self) { orderId in
-                OrderDetailView(orderId: orderId)
-            }
-            .toolbar {
-                if hubTab == .active {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Menu {
-                            ForEach(states, id: \.self) { state in
-                                Button {
-                                    selectedState = state
-                                } label: {
-                                    if state == selectedState {
-                                        Label(state, systemImage: "checkmark")
-                                    } else {
-                                        Text(state)
-                                    }
+            OrdersList(
+                hubTab: vm.hubTab,
+                loading: vm.loading,
+                error: vm.error,
+                orders: vm.orders,
+                preorders: vm.preorders,
+                onRetry: {
+                    PegasusHaptics.light()
+                    Task { await vm.load() }
+                },
+                onProposeActive: { vm.beginPropose(orderId: $0) },
+                onRejectActive: { vm.beginReject(orderId: $0) },
+                onProposePreorder: { vm.beginPropose(orderId: $0) },
+                onRejectPreorder: { vm.beginReject(orderId: $0) }
+            )
+        }
+        .background(LabTheme.background)
+        .navigationTitle("portal.nav.orders")
+        .navigationDestination(for: String.self) { orderId in
+            OrderDetailView(orderId: orderId)
+        }
+        .toolbar {
+            if vm.hubTab == .active {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        ForEach(vm.filterStates, id: \.self) { state in
+                            Button {
+                                PegasusHaptics.selection()
+                                vm.selectedState = state
+                            } label: {
+                                if state == vm.selectedState {
+                                    Label(state, systemImage: "checkmark")
+                                } else {
+                                    Text(state)
                                 }
                             }
-                        } label: {
-                            Label("Filter", systemImage: "line.3.horizontal.decrease.circle")
                         }
+                    } label: {
+                        Label("mobile_warehouse.ui.filter", systemImage: "line.3.horizontal.decrease.circle")
+                            .frame(minWidth: 44, minHeight: 44)
+                            .contentShape(Rectangle())
                     }
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Refresh", systemImage: "arrow.clockwise") { load() }
+                    .accessibilityLabel("Filter orders by state")
                 }
             }
-            .task(id: "\(hubTab)-\(selectedState)") { load() }
-            .refreshable { load() }
-            .onChange(of: hubTab) { load() }
-            .sheet(item: Binding(
-                get: { proposeTarget.map { ProposeSheetOrder(id: $0) } },
-                set: { proposeTarget = $0?.id },
-            )) { target in
-                NavigationStack {
-                    Form {
-                        DatePicker("New delivery date", selection: $proposeDate, displayedComponents: .date)
-                        TextField("Reason (required)", text: $reasonInput, axis: .vertical)
-                    }
-                    .navigationTitle("Propose new delivery date")
-                    .toolbar {
-                        ToolbarItem(placement: .cancellationAction) {
-                            Button("Cancel") {
-                                proposeTarget = nil
-                                reasonInput = ""
-                            }
-                        }
-                        ToolbarItem(placement: .confirmationAction) {
-                            Button("Notify retailer") {
-                                Task { await submitPropose(orderId: target.id) }
-                            }
-                            .disabled(reasonInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                        }
-                    }
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    PegasusHaptics.light()
+                    Task { await vm.load() }
+                } label: {
+                    Label("portal.page.orders.action.refresh", systemImage: "arrow.clockwise")
+                        .frame(minWidth: 44, minHeight: 44)
+                        .contentShape(Rectangle())
                 }
-                .presentationDetents([.medium])
-            }
-            .alert("Cancel order", isPresented: Binding(
-                get: { rejectTarget != nil },
-                set: { if !$0 { rejectTarget = nil; reasonInput = "" } },
-            )) {
-                TextField("Reason (required)", text: $reasonInput)
-                Button("Cancel order", role: .destructive) {
-                    guard let orderId = rejectTarget, !reasonInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
-                    Task {
-                        do {
-                            let isPreorder = preorders.contains { $0.orderId == orderId }
-                            if isPreorder {
-                                _ = try await WarehouseOperationsService.rejectPreorder(orderId: orderId, reason: reasonInput)
-                            } else {
-                                _ = try await WarehouseOperationsService.rejectOrder(orderId: orderId, reason: reasonInput)
-                            }
-                            statusMessage = "Order cancelled · retailer notified"
-                            rejectTarget = nil
-                            reasonInput = ""
-                            load()
-                        } catch {
-                            statusMessage = error.localizedDescription
-                        }
-                    }
-                }
-                Button("Cancel", role: .cancel) { rejectTarget = nil; reasonInput = "" }
-            } message: {
-                Text("The retailer will be notified.")
-            }
-            .overlay(alignment: .bottom) {
-                if let statusMessage {
-                    Text(statusMessage)
-                        .font(.caption)
-                        .padding(8)
-                        .background(.ultraThinMaterial)
-                        .clipShape(Capsule())
-                        .padding()
-                        .onAppear {
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 2) { self.statusMessage = nil }
-                        }
-                }
+                .accessibilityLabel("Refresh orders")
             }
         }
-    }
-
-    private func submitPropose(orderId: String) async {
-        let reason = reasonInput.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !reason.isEmpty else { return }
-        do {
-            let isPreorder = preorders.contains { $0.orderId == orderId }
-            if isPreorder {
-                _ = try await WarehouseOperationsService.proposePreorderDelivery(
-                    orderId: orderId,
-                    proposedDeliveryDate: isoDeliveryDate(from: proposeDate),
-                    reason: reason
-                )
-            } else {
-                _ = try await WarehouseOperationsService.proposeOrderDelivery(
-                    orderId: orderId,
-                    proposedDeliveryDate: isoDeliveryDate(from: proposeDate),
-                    reason: reason
-                )
-            }
-            statusMessage = "New delivery date proposed · retailer notified"
-            proposeTarget = nil
-            reasonInput = ""
-            load()
-        } catch {
-            statusMessage = error.localizedDescription
+        .onChange(of: initialState) { _, newValue in
+            vm.applyInitialState(newValue)
         }
-    }
-
-    private func isoDeliveryDate(from date: Date) -> String {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        formatter.timeZone = TimeZone(secondsFromGMT: 5 * 3600)
-        var components = Calendar.current.dateComponents(in: TimeZone(secondsFromGMT: 5 * 3600)!, from: date)
-        components.hour = 12
-        components.minute = 0
-        components.second = 0
-        let noon = Calendar.current.date(from: components) ?? date
-        return formatter.string(from: noon)
-    }
-
-    private func load() {
-        loading = true
-        error = nil
-        Task {
-            do {
-                if hubTab == .active {
-                    let state = selectedState == "ALL" ? nil : selectedState
-                    let resp = try await WarehouseService.orders(state: state)
-                    orders = resp.orders
-                } else {
-                    let resp = try await WarehouseService.preorders()
-                    preorders = resp.items.isEmpty ? resp.preorders : resp.items
+        .task(id: "\(vm.hubTab.rawValue)-\(vm.selectedState)") {
+            await vm.load()
+        }
+        .refreshable {
+            await vm.load()
+        }
+        .sheet(item: $vm.proposeSheetOrder) { target in
+            NavigationStack {
+                Form {
+                    DatePicker("New delivery date", selection: $vm.proposeDate, displayedComponents: .date)
+                    TextField("supplier_portal.orders.order_ops_actions.text.reason_required", text: $vm.reasonInput, axis: .vertical)
                 }
-            } catch {
-                self.error = error.localizedDescription
+                .scrollDismissesKeyboard(.interactively)
+                .navigationTitle("mobile_warehouse.ui.propose_new_delivery_date")
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("common.action.cancel") {
+                            vm.cancelPropose()
+                        }
+                        .frame(minWidth: 44, minHeight: 44)
+                        .contentShape(Rectangle())
+                    }
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("mobile_warehouse.ui.notify_retailer") {
+                            PegasusHaptics.medium()
+                            Task { await vm.submitPropose(orderId: target.id) }
+                        }
+                        .frame(minWidth: 44, minHeight: 44)
+                        .contentShape(Rectangle())
+                        .disabled(vm.trimmedReason.isEmpty)
+                    }
+                }
             }
-            loading = false
+            .presentationDetents([.medium])
+        }
+        .alert("Cancel order", isPresented: $vm.showRejectAlert) {
+            TextField("supplier_portal.orders.order_ops_actions.text.reason_required", text: $vm.reasonInput)
+            Button("warehouse_portal.dispatch.text.cancel_order", role: .destructive) {
+                PegasusHaptics.warning()
+                Task { await vm.submitReject() }
+            }
+            Button("common.action.cancel", role: .cancel) {
+                vm.cancelReject()
+            }
+        } message: {
+            Text("mobile_warehouse.ui.the_retailer_will_be_notified")
+        }
+        .overlay(alignment: .bottom) {
+            if let statusMessage = vm.statusMessage {
+                Text(statusMessage)
+                    .font(.caption)
+                    .padding(8)
+                    .background(.ultraThinMaterial)
+                    .clipShape(Capsule())
+                    .padding()
+                    .task(id: statusMessage) {
+                        await vm.autoClearStatusMessage()
+                    }
+            }
         }
     }
 }
-
-private struct ProposeSheetOrder: Identifiable {
-    let id: String
-}
-
-

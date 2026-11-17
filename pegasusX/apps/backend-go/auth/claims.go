@@ -2,21 +2,24 @@
 // middleware. All scope (supplier_id, factory_id, warehouse_id, home_node_id)
 // MUST be resolved from the authenticated session — never from request bodies.
 //
-// In pegasusX (single-supplier tenant) ResolveSupplierID returns the seeded
-// SupplierId for every authenticated caller regardless of role.
+// Gate 5 Phase 1: prefer TenantFromContext (request-scoped SupplierId). ResolveSupplierID
+// remains for claim fallback during migration.
 package auth
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"strings"
+	"time"
 )
 
 // Role enumerates every JWT role string. Mirrors packages/types Role union.
 type Role string
 
 const (
-	RoleAdmin          Role = "ADMIN" // Supplier portal session (single-tenant)
+	RoleAdmin          Role = "ADMIN"          // Supplier portal session (single-tenant)
+	RolePlatformAdmin  Role = "PLATFORM_ADMIN" // Break-glass platform governance
 	RoleRetailer       Role = "RETAILER"
 	RoleDriver         Role = "DRIVER"
 	RolePayload        Role = "PAYLOAD"
@@ -37,9 +40,11 @@ const (
 
 // TokenUse discriminates intermediate multi-org tokens from full session JWTs.
 // Empty / "full" = normal business access. "PendingOrgSelect" is C1.2 only.
+// "ws" is a short-lived WebSocket upgrade ticket (query ?token= only).
 const (
 	TokenUseFull             = ""
 	TokenUsePendingOrgSelect = "PendingOrgSelect"
+	TokenUseWS               = "ws"
 )
 
 // Claims is the parsed JWT identity. Populated by Middleware and read via
@@ -63,6 +68,10 @@ type Claims struct {
 	IsConfigured bool // supplier completed billing setup
 	PhoneNumber  string
 	TraceID      string
+	// JTI is the unique token id used for session revocation (denylist).
+	JTI string
+	// ExpiresAt is the JWT exp instant (UTC); used to size denylist TTL on logout.
+	ExpiresAt time.Time
 
 	// TokenUse is empty for full tokens; PendingOrgSelect for multi-org intermediate.
 	TokenUse string
@@ -74,6 +83,21 @@ type Claims struct {
 	LocationIDs      []string // optional location scope (staff bind)
 	ActiveLocationID string   // currently selected store branch (Phase 2)
 	CapabilityPacks  []string // enabled pack ids excluding always-on CORE (optional cache)
+
+	// MFAVerified is set after PLATFORM_ADMIN TOTP step-up (claim mfa_verified).
+	MFAVerified bool
+
+	// MarketCode is the tenant market pack (UZ shipped; others planned). Empty → DEFAULT_MARKET_CODE.
+	MarketCode string
+	// HomeCell is the regional cell id (cell-uz, cell-eu, …). Empty → pack default.
+	HomeCell string
+
+	// ActorType discriminates actor provenance ("human", "agent", "connector", "system").
+	ActorType string
+	// SupplierPerms carries explicit/cached supplier permission grants (optional).
+	SupplierPerms []string
+	// AuditorExpiresAt bounds time-boxed external AUDITOR portal access (UTC).
+	AuditorExpiresAt *time.Time
 }
 
 // IsPendingOrgSelect reports whether claims are intermediate multi-org tokens.
@@ -81,12 +105,77 @@ func IsPendingOrgSelect(c Claims) bool {
 	return strings.EqualFold(strings.TrimSpace(c.TokenUse), TokenUsePendingOrgSelect)
 }
 
+// IsWSTicket reports whether claims are a short-lived WebSocket upgrade ticket.
+func IsWSTicket(c Claims) bool {
+	return strings.EqualFold(strings.TrimSpace(c.TokenUse), TokenUseWS)
+}
+
+// ActorLabel returns a stable audit actor id for platform-admin / flag trails.
+// Preference: Subject → PhoneNumber → RetailerUserID → Role → "unknown".
+// Never returns an empty string.
+func ActorLabel(c Claims) string {
+	if s := strings.TrimSpace(c.Subject); s != "" {
+		return s
+	}
+	if s := strings.TrimSpace(c.PhoneNumber); s != "" {
+		return s
+	}
+	if s := strings.TrimSpace(c.RetailerUserID); s != "" {
+		return s
+	}
+	if c.Role != "" {
+		return string(c.Role)
+	}
+	return "unknown"
+}
+
+// ActorFromContext resolves ActorLabel from request claims, or "unknown".
+func ActorFromContext(ctx context.Context) string {
+	if c, ok := FromContext(ctx); ok {
+		return ActorLabel(c)
+	}
+	return "unknown"
+}
+
 type ctxKey int
 
 const (
 	ctxKeyClaims ctxKey = iota
 	ctxKeyTraceID
+	ctxKeyAuditorExpired
 )
+
+// WithAuditorExpired marks the request context as having presented an expired AUDITOR JWT.
+func WithAuditorExpired(ctx context.Context) context.Context {
+	return context.WithValue(ctx, ctxKeyAuditorExpired, true)
+}
+
+// IsAuditorExpiredInContext reports whether middleware flagged an expired AUDITOR JWT.
+func IsAuditorExpiredInContext(ctx context.Context) bool {
+	v, _ := ctx.Value(ctxKeyAuditorExpired).(bool)
+	return v
+}
+
+// IsAuditorExpired reports whether time-boxed AUDITOR claims have passed their expiry instant.
+func IsAuditorExpired(c Claims, now time.Time) bool {
+	if !IsReadOnlyAuditor(c) || c.AuditorExpiresAt == nil || c.AuditorExpiresAt.IsZero() {
+		return false
+	}
+	if now.IsZero() {
+		now = time.Now().UTC()
+	}
+	return now.UTC().After(c.AuditorExpiresAt.UTC())
+}
+
+func writeAuditorExpiredJSON(w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusUnauthorized)
+	_ = json.NewEncoder(w).Encode(map[string]string{
+		"error":   "auditor_access_expired",
+		"code":    "auditor_access_expired",
+		"message": "auditor access window has expired",
+	})
+}
 
 // WithClaims attaches claims to the request context. Use only from middleware.
 func WithClaims(ctx context.Context, c Claims) context.Context {
@@ -123,7 +212,15 @@ func RequireRole(allowed ...Role) func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			c, ok := FromContext(r.Context())
 			if !ok {
+				if IsAuditorExpiredInContext(r.Context()) {
+					writeAuditorExpiredJSON(w)
+					return
+				}
 				http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+				return
+			}
+			if IsAuditorExpired(c, time.Now().UTC()) {
+				writeAuditorExpiredJSON(w)
 				return
 			}
 			if IsPendingOrgSelect(c) {
@@ -132,8 +229,43 @@ func RequireRole(allowed ...Role) func(http.Handler) http.Handler {
 				_, _ = w.Write([]byte(`{"error":"forbidden","code":"ORG_SELECT_REQUIRED"}`))
 				return
 			}
+			if IsWSTicket(c) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusForbidden)
+				_, _ = w.Write([]byte(`{"error":"forbidden","code":"ws_ticket_not_allowed"}`))
+				return
+			}
 			if _, allowed := allow[c.Role]; !allowed {
 				http.Error(w, `{"error":"forbidden"}`, http.StatusForbidden)
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// RequireAnyAuthenticated allows any role with a session (including PendingOrgSelect).
+// Used by GET /v1/auth/session so multi-org login can read the market pack before select-org.
+func RequireAnyAuthenticated() func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			c, ok := FromContext(r.Context())
+			if !ok || strings.TrimSpace(c.Subject) == "" {
+				if !ok && IsAuditorExpiredInContext(r.Context()) {
+					writeAuditorExpiredJSON(w)
+					return
+				}
+				http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+				return
+			}
+			if IsAuditorExpired(c, time.Now().UTC()) {
+				writeAuditorExpiredJSON(w)
+				return
+			}
+			if IsWSTicket(c) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusForbidden)
+				_, _ = w.Write([]byte(`{"error":"forbidden","code":"ws_ticket_not_allowed"}`))
 				return
 			}
 			next.ServeHTTP(w, r)
@@ -285,7 +417,15 @@ func RequireRetailerPerm(perm string) func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			c, ok := FromContext(r.Context())
 			if !ok {
+				if IsAuditorExpiredInContext(r.Context()) {
+					writeAuditorExpiredJSON(w)
+					return
+				}
 				http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+				return
+			}
+			if IsAuditorExpired(c, time.Now().UTC()) {
+				writeAuditorExpiredJSON(w)
 				return
 			}
 			if c.Role != RoleRetailer {

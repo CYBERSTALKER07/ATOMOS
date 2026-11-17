@@ -123,20 +123,39 @@ export async function openDesktopStoreListing(
     );
     return false;
   }
+  const safeTarget = (() => {
+    try {
+      const u = new URL(target);
+      if (u.protocol === "https:") return u.toString();
+      if (
+        u.protocol === "http:" &&
+        (u.hostname === "localhost" || u.hostname === "127.0.0.1")
+      ) {
+        return u.toString();
+      }
+      return "";
+    } catch {
+      return "";
+    }
+  })();
+  if (!safeTarget) {
+    console.warn("desktop-bridge openDesktopStoreListing: blocked unsafe URL");
+    return false;
+  }
   try {
     if (isTauri()) {
       try {
         const shell = await importPeer<{
           open: (path: string) => Promise<void>;
         }>("@tauri-apps/plugin-shell");
-        await shell.open(target);
+        await shell.open(safeTarget);
         return true;
       } catch {
         // fall through
       }
     }
     if (typeof window !== "undefined") {
-      window.open(target, "_blank", "noopener,noreferrer");
+      window.open(safeTarget, "_blank", "noopener,noreferrer");
       return true;
     }
     return false;
@@ -179,8 +198,9 @@ const PROCESS_PKG = "@tauri-apps/plugin-process";
 let pending: PendingUpdate | null = null;
 
 async function importPeer<T>(specifier: string): Promise<T> {
-  // eslint-disable-next-line @typescript-eslint/no-implied-eval -- dynamic peer load
-  return (await new Function("s", "return import(s)")(specifier)) as T;
+  // Use native dynamic import with bundler ignore hints to avoid eval/new Function ('unsafe-eval').
+  const runtimeSpecifier = specifier;
+  return (await import(/* @vite-ignore */ /* webpackIgnore: true */ runtimeSpecifier)) as T;
 }
 
 /** True when running inside a Tauri desktop shell that can self-update via CDN. */

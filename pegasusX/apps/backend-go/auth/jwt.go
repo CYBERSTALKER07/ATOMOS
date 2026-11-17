@@ -5,6 +5,7 @@
 package auth
 
 import (
+	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
@@ -14,6 +15,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // CookieName is the canonical session cookie. The supplier-portal middleware
@@ -23,17 +26,23 @@ const CookieName = "supplier_jwt"
 // ErrInvalidToken is returned when signature or structure fails verification.
 var ErrInvalidToken = errors.New("invalid token")
 
+// ErrAuditorAccessExpired is returned when a time-boxed AUDITOR JWT has passed AuditorExpiresAt.
+var ErrAuditorAccessExpired = errors.New("auditor_access_expired")
+
 // IssueOptions controls token shape.
 type IssueOptions struct {
-	Secret string
-	Issuer string
-	TTL    time.Duration
-	Now    func() time.Time
+	Secret  string
+	Keyring Keyring // optional: if set and Secret is empty, uses Keyring.CurrentKey()
+	KeyID   string  // optional: stamps kid into header
+	Issuer  string
+	TTL     time.Duration
+	Now     func() time.Time
 }
 
 type jwtHeader struct {
 	Alg string `json:"alg"`
 	Typ string `json:"typ"`
+	Kid string `json:"kid,omitempty"`
 }
 
 type jwtPayload struct {
@@ -41,6 +50,7 @@ type jwtPayload struct {
 	Iss          string `json:"iss,omitempty"`
 	Exp          int64  `json:"exp"`
 	Iat          int64  `json:"iat"`
+	JTI          string `json:"jti,omitempty"`
 	Role         string `json:"role"`
 	SupplierID   string `json:"supplier_id"`
 	SupplierRole string `json:"supplier_role,omitempty"`
@@ -52,63 +62,196 @@ type jwtPayload struct {
 	TokenUse     string `json:"token_use,omitempty"`
 
 	// Retail OS multi-user (optional; additive for backward compatibility).
-	RetailerOrgID    string   `json:"retailer_org_id,omitempty"`
-	RetailerRole     string   `json:"retailer_role,omitempty"`
-	RetailerUserID   string   `json:"retailer_user_id,omitempty"`
-	LocationIDs      []string `json:"location_ids,omitempty"`
-	ActiveLocationID string   `json:"active_location_id,omitempty"`
-	CapabilityPacks  []string `json:"capability_packs,omitempty"`
+	RetailerOrgID      string   `json:"retailer_org_id,omitempty"`
+	RetailerRole       string   `json:"retailer_role,omitempty"`
+	RetailerUserID     string   `json:"retailer_user_id,omitempty"`
+	LocationIDs        []string `json:"location_ids,omitempty"`
+	ActiveLocationID   string   `json:"active_location_id,omitempty"`
+	CapabilityPacks    []string `json:"capability_packs,omitempty"`
+	MFAVerified        bool     `json:"mfa_verified,omitempty"`
+	MarketCode         string   `json:"market_code,omitempty"`
+	HomeCell           string   `json:"home_cell,omitempty"`
+	ActorType          string   `json:"actor_type,omitempty"`
+	SupplierPerms      []string `json:"supplier_perms,omitempty"`
+	AuditorExpiresAt   int64    `json:"auditor_expires_at,omitempty"`
+	AuditorExpiresAtNS int64    `json:"auditor_expires_at_ns,omitempty"`
 }
 
 // Issue returns a signed HS256 JWT for the given claims.
+// GS-A1: every token carries market_code + home_cell (claim → profile → env).
 func Issue(c Claims, opts IssueOptions) (string, error) {
-	if opts.Secret == "" {
+	c = StampMarketClaims(c)
+	secret := opts.Secret
+	kid := opts.KeyID
+	if secret == "" && opts.Keyring != nil {
+		secret, kid = opts.Keyring.CurrentKey()
+	}
+	if secret == "" {
 		return "", errors.New("jwt: empty secret")
 	}
 	if opts.TTL <= 0 {
-		opts.TTL = 24 * time.Hour
+		if IsReadOnlyAuditor(c) && c.AuditorExpiresAt != nil && !c.AuditorExpiresAt.IsZero() {
+			if ttl := c.AuditorExpiresAt.UTC().Sub(time.Now().UTC()); ttl > 0 {
+				opts.TTL = ttl
+			} else {
+				opts.TTL = time.Second
+			}
+		} else {
+			opts.TTL = 24 * time.Hour
+		}
 	}
 	if opts.Now == nil {
 		opts.Now = func() time.Time { return time.Now().UTC() }
 	}
 	now := opts.Now()
-	h, _ := json.Marshal(jwtHeader{Alg: "HS256", Typ: "JWT"})
+	jti := strings.TrimSpace(c.JTI)
+	if jti == "" {
+		jti = uuid.NewString()
+	}
+	var audExpSec, audExpNS int64
+	if c.AuditorExpiresAt != nil && !c.AuditorExpiresAt.IsZero() {
+		expUTC := c.AuditorExpiresAt.UTC()
+		audExpSec = expUTC.Unix()
+		audExpNS = expUTC.UnixNano()
+	}
+	h, _ := json.Marshal(jwtHeader{Alg: "HS256", Typ: "JWT", Kid: kid})
 	p, _ := json.Marshal(jwtPayload{
-		Sub:              c.Subject,
-		Iss:              opts.Issuer,
-		Iat:              now.Unix(),
-		Exp:              now.Add(opts.TTL).Unix(),
-		Role:             string(c.Role),
-		SupplierID:       c.SupplierID,
-		SupplierRole:     string(c.SupplierRole),
-		HomeNodeType:     string(c.HomeNodeType),
-		HomeNodeID:       c.HomeNodeID,
-		IsRegistered:     c.IsRegistered,
-		IsConfigured:     c.IsConfigured,
-		PhoneNumber:      c.PhoneNumber,
-		TokenUse:         c.TokenUse,
-		RetailerOrgID:    c.RetailerOrgID,
-		RetailerRole:     c.RetailerRole,
-		RetailerUserID:   c.RetailerUserID,
-		LocationIDs:      c.LocationIDs,
-		ActiveLocationID: c.ActiveLocationID,
-		CapabilityPacks:  c.CapabilityPacks,
+		Sub:                c.Subject,
+		Iss:                opts.Issuer,
+		Iat:                now.Unix(),
+		Exp:                now.Add(opts.TTL).Unix(),
+		JTI:                jti,
+		Role:               string(c.Role),
+		SupplierID:         c.SupplierID,
+		SupplierRole:       string(c.SupplierRole),
+		HomeNodeType:       string(c.HomeNodeType),
+		HomeNodeID:         c.HomeNodeID,
+		IsRegistered:       c.IsRegistered,
+		IsConfigured:       c.IsConfigured,
+		PhoneNumber:        c.PhoneNumber,
+		TokenUse:           c.TokenUse,
+		RetailerOrgID:      c.RetailerOrgID,
+		RetailerRole:       c.RetailerRole,
+		RetailerUserID:     c.RetailerUserID,
+		LocationIDs:        c.LocationIDs,
+		ActiveLocationID:   c.ActiveLocationID,
+		CapabilityPacks:    c.CapabilityPacks,
+		MFAVerified:        c.MFAVerified,
+		MarketCode:         c.MarketCode,
+		HomeCell:           c.HomeCell,
+		ActorType:          c.ActorType,
+		SupplierPerms:      c.SupplierPerms,
+		AuditorExpiresAt:   audExpSec,
+		AuditorExpiresAtNS: audExpNS,
 	})
 	head := b64(h) + "." + b64(p)
-	sig := sign(head, opts.Secret)
+	sig := sign(head, secret)
 	return head + "." + sig, nil
+}
+
+// IssueWSTicket mints a short-lived WebSocket upgrade ticket (token_use=ws).
+// Copies identity from the session claims and forces a fresh jti so logout of
+// the parent session does not denylist this ticket by accident (ticket TTL is short).
+func IssueWSTicket(session Claims, opts IssueOptions) (token string, expiresAt time.Time, err error) {
+	if opts.TTL <= 0 {
+		opts.TTL = 10 * time.Minute
+	}
+	if opts.Now == nil {
+		opts.Now = func() time.Time { return time.Now().UTC() }
+	}
+	now := opts.Now()
+	if IsWSTicket(session) || IsPendingOrgSelect(session) {
+		return "", time.Time{}, errors.New("jwt: cannot mint websocket ticket from restricted token")
+	}
+	ticket := session
+	ticket.TokenUse = TokenUseWS
+	ticket.JTI = ""
+	token, err = Issue(ticket, opts)
+	if err != nil {
+		return "", time.Time{}, err
+	}
+	return token, now.Add(opts.TTL), nil
+}
+
+// ParseBearerClaims extracts and validates Authorization: Bearer (incl. revocation).
+func ParseBearerClaims(r *http.Request, secret string) (Claims, bool) {
+	return ParseBearerClaimsWithKeyring(r, NewKeyring(secret))
+}
+
+// ParseBearerClaimsWithKeyring extracts and validates Authorization: Bearer against a Keyring.
+func ParseBearerClaimsWithKeyring(r *http.Request, keyring Keyring) (Claims, bool) {
+	token := BearerToken(r)
+	if token == "" {
+		return Claims{}, false
+	}
+	claims, err := ParseWithKeyring(token, keyring)
+	if err != nil || tokenRevoked(r.Context(), claims) || IsWSTicket(claims) {
+		return Claims{}, false
+	}
+	return claims, true
 }
 
 // Parse verifies signature + exp and returns the embedded Claims.
 func Parse(token, secret string) (Claims, error) {
+	return parseWithKeyring(token, singleKeyring(secret), false)
+}
+
+// ParseIgnoreExpiry verifies signature but allows expired tokens (used for token refresh).
+func ParseIgnoreExpiry(token, secret string) (Claims, error) {
+	return parseWithKeyring(token, singleKeyring(secret), true)
+}
+
+// ParseWithKeyring verifies a token signature against all candidate keys in a Keyring.
+func ParseWithKeyring(token string, keyring Keyring) (Claims, error) {
+	return parseWithKeyring(token, keyring, false)
+}
+
+// ParseTokenWithKeyring is an alias for ParseWithKeyring.
+func ParseTokenWithKeyring(token string, keyring Keyring) (Claims, error) {
+	return ParseWithKeyring(token, keyring)
+}
+
+// ParseWithKeyringIgnoreExpiry verifies signature with a Keyring but allows expired tokens.
+func ParseWithKeyringIgnoreExpiry(token string, keyring Keyring) (Claims, error) {
+	return parseWithKeyring(token, keyring, true)
+}
+
+func parse(token, secret string, ignoreExpiry bool) (Claims, error) {
+	return parseWithKeyring(token, singleKeyring(secret), ignoreExpiry)
+}
+
+func parseWithKeyring(token string, keyring Keyring, ignoreExpiry bool) (Claims, error) {
 	parts := strings.Split(token, ".")
 	if len(parts) != 3 {
 		return Claims{}, ErrInvalidToken
 	}
-	expected := sign(parts[0]+"."+parts[1], secret)
-	if !hmac.Equal([]byte(expected), []byte(parts[2])) {
+	if keyring == nil || !keyring.HasKeys() {
+		return Claims{}, errors.New("jwt: empty keyring")
+	}
+
+	var h jwtHeader
+	if hb, err := base64.RawURLEncoding.DecodeString(parts[0]); err == nil {
+		_ = json.Unmarshal(hb, &h)
+	}
+
+	candidates := keyring.VerifyCandidateKeys(h.Kid)
+	if len(candidates) == 0 {
 		return Claims{}, ErrInvalidToken
 	}
+
+	target := parts[0] + "." + parts[1]
+	matched := false
+	for _, sec := range candidates {
+		expected := sign(target, sec)
+		if hmac.Equal([]byte(expected), []byte(parts[2])) {
+			matched = true
+			break
+		}
+	}
+	if !matched {
+		return Claims{}, ErrInvalidToken
+	}
+
 	pb, err := base64.RawURLEncoding.DecodeString(parts[1])
 	if err != nil {
 		return Claims{}, fmt.Errorf("jwt: payload decode: %w", err)
@@ -117,10 +260,25 @@ func Parse(token, secret string) (Claims, error) {
 	if err := json.Unmarshal(pb, &p); err != nil {
 		return Claims{}, fmt.Errorf("jwt: payload json: %w", err)
 	}
-	if p.Exp > 0 && time.Now().UTC().Unix() > p.Exp {
+	var audExpAt *time.Time
+	if p.AuditorExpiresAtNS > 0 {
+		t := time.Unix(0, p.AuditorExpiresAtNS).UTC()
+		audExpAt = &t
+	} else if p.AuditorExpiresAt > 0 {
+		t := time.Unix(p.AuditorExpiresAt, 0).UTC()
+		audExpAt = &t
+	}
+	if audExpAt != nil && time.Now().UTC().After(*audExpAt) {
+		return Claims{}, fmt.Errorf("jwt: %w: %w", ErrInvalidToken, ErrAuditorAccessExpired)
+	}
+	if !ignoreExpiry && p.Exp > 0 && time.Now().UTC().Unix() > p.Exp {
 		return Claims{}, fmt.Errorf("jwt: %w (expired)", ErrInvalidToken)
 	}
-	return Claims{
+	var expAt time.Time
+	if p.Exp > 0 {
+		expAt = time.Unix(p.Exp, 0).UTC()
+	}
+	claims := Claims{
 		Subject:          p.Sub,
 		Role:             Role(p.Role),
 		SupplierID:       p.SupplierID,
@@ -131,13 +289,25 @@ func Parse(token, secret string) (Claims, error) {
 		IsConfigured:     p.IsConfigured,
 		PhoneNumber:      p.PhoneNumber,
 		TokenUse:         p.TokenUse,
+		JTI:              p.JTI,
+		ExpiresAt:        expAt,
 		RetailerOrgID:    p.RetailerOrgID,
 		RetailerRole:     p.RetailerRole,
 		RetailerUserID:   p.RetailerUserID,
 		LocationIDs:      p.LocationIDs,
 		ActiveLocationID: p.ActiveLocationID,
 		CapabilityPacks:  p.CapabilityPacks,
-	}, nil
+		MFAVerified:      p.MFAVerified,
+		MarketCode:       p.MarketCode,
+		HomeCell:         p.HomeCell,
+		ActorType:        p.ActorType,
+		SupplierPerms:    p.SupplierPerms,
+		AuditorExpiresAt: audExpAt,
+	}
+	if err := rejectForeignCell(claims); err != nil {
+		return Claims{}, err
+	}
+	return claims, nil
 }
 
 // SetSessionCookie writes the supplier portal cookie. SameSite=Lax + HttpOnly.
@@ -158,9 +328,14 @@ func SetSessionCookie(w http.ResponseWriter, token string, ttl time.Duration, se
 // context when a valid session cookie is present, and passes through silently
 // otherwise. RequireRole performs the actual gating.
 func CookieAuth(secret string) func(http.Handler) http.Handler {
+	return CookieAuthWithKeyring(NewKeyring(secret))
+}
+
+// CookieAuthWithKeyring attaches Claims using a Keyring.
+func CookieAuthWithKeyring(keyring Keyring) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			r = attachSessionClaims(r, secret)
+			r = attachSessionClaimsWithKeyring(r, keyring)
 			next.ServeHTTP(w, r)
 		})
 	}
@@ -169,26 +344,70 @@ func CookieAuth(secret string) func(http.Handler) http.Handler {
 // SessionAuth attaches Claims from the supplier session cookie or a Bearer JWT.
 // Used for local SSMR smoke and native clients that send Authorization headers.
 func SessionAuth(secret string) func(http.Handler) http.Handler {
+	return SessionAuthWithKeyring(NewKeyring(secret))
+}
+
+// SessionAuthWithKeyring attaches Claims using a Keyring.
+func SessionAuthWithKeyring(keyring Keyring) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			r = attachSessionClaims(r, secret)
+			r = attachSessionClaimsWithKeyring(r, keyring)
 			next.ServeHTTP(w, r)
 		})
 	}
 }
 
 func attachSessionClaims(r *http.Request, secret string) *http.Request {
+	return attachSessionClaimsWithKeyring(r, singleKeyring(secret))
+}
+
+func attachSessionClaimsWithKeyring(r *http.Request, keyring Keyring) *http.Request {
 	if c, err := r.Cookie(CookieName); err == nil && c.Value != "" {
-		if claims, err := Parse(c.Value, secret); err == nil {
+		claims, parseErr := ParseWithKeyring(c.Value, keyring)
+		if parseErr == nil && !tokenRevoked(r.Context(), claims) && !IsWSTicket(claims) {
 			return r.WithContext(WithClaims(r.Context(), claims))
+		}
+		if errors.Is(parseErr, ErrAuditorAccessExpired) {
+			r = r.WithContext(WithAuditorExpired(r.Context()))
 		}
 	}
 	if token := BearerToken(r); token != "" {
-		if claims, err := Parse(token, secret); err == nil {
+		claims, parseErr := ParseWithKeyring(token, keyring)
+		if parseErr == nil && !tokenRevoked(r.Context(), claims) && !IsWSTicket(claims) {
 			return r.WithContext(WithClaims(r.Context(), claims))
+		}
+		if errors.Is(parseErr, ErrAuditorAccessExpired) {
+			r = r.WithContext(WithAuditorExpired(r.Context()))
 		}
 	}
 	return r
+}
+
+func tokenRevoked(ctx context.Context, claims Claims) bool {
+	revoked, err := checkTokenRevoked(ctx, claims)
+	// Store errors fail closed so a Redis blip cannot revive a denylisted jti.
+	if err != nil || revoked {
+		return true
+	}
+	userRevoked, uerr := checkUserRevoked(ctx, claims)
+	return uerr != nil || userRevoked
+}
+
+func checkTokenRevoked(ctx context.Context, claims Claims) (revoked bool, err error) {
+	jti := strings.TrimSpace(claims.JTI)
+	if jti == "" {
+		// Legacy tokens without jti cannot be denylisted; still accept until they expire.
+		return false, nil
+	}
+	return GetRevocationStore().IsRevoked(ctx, jti)
+}
+
+func checkUserRevoked(ctx context.Context, claims Claims) (revoked bool, err error) {
+	sub := strings.TrimSpace(claims.Subject)
+	if sub == "" {
+		return false, nil
+	}
+	return GetRevocationStore().IsUserRevoked(ctx, sub)
 }
 
 func b64(b []byte) string { return base64.RawURLEncoding.EncodeToString(b) }

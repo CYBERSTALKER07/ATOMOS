@@ -3,119 +3,82 @@ import SwiftUI
 struct ManifestDetailView: View {
     @Environment(SupplierRealtimeHub.self) private var realtimeHub
     let manifestId: String
-    @State private var detail: SupplierManifestDetail?
-    @State private var loading = true
-    @State private var error: String?
-    @State private var actionError: String?
-    @State private var busy = false
-    @State private var injectOrderId = ""
+    @State private var viewModel = ManifestDetailViewModel()
 
     var body: some View {
         Group {
-            if loading {
-                SupplierLoadingView(title: "Loading manifest…")
-            } else if let error {
-                SupplierErrorView(message: error) { Task { await load() } }
-            } else if let detail {
-                manifestContent(detail)
+            if viewModel.loading && viewModel.detail == nil {
+                SupplierLoadingView(title: "mobile_supplier.loading.manifest")
+            } else if let error = viewModel.error, viewModel.detail == nil {
+                SupplierErrorView(message: error) { Task { await viewModel.load(manifestId: manifestId) } }
+            } else if let detail = viewModel.detail {
+                manifestContent(detail, vm: viewModel)
             } else {
-                SupplierEmptyView(title: "Not found", message: "Manifest could not be loaded.")
+                SupplierEmptyView(title: "mobile_supplier.empty.not_found", message: "mobile_supplier.empty.manifest_not_found_message")
             }
         }
-        .navigationTitle("Manifest")
-        .task { await load() }
+        .navigationTitle("warehouse_portal.manifests.text.manifest")
+        .task { await viewModel.load(manifestId: manifestId) }
         .onChange(of: realtimeHub.reconnectEpoch) { _, _ in
-            if busy {
-                busy = false
-                actionError = "Connection restored — verify manifest status before retrying."
-            }
+            viewModel.handleReconnect()
         }
     }
 
     @ViewBuilder
-    private func manifestContent(_ detail: SupplierManifestDetail) -> some View {
+    private func manifestContent(_ detail: SupplierManifestDetail, @Bindable vm: ManifestDetailViewModel) -> some View {
         let state = (detail.state.isEmpty ? detail.status : detail.state).uppercased()
         Form {
-            if let actionError {
-                Section { Text(actionError).foregroundStyle(.red) }
+            if let actionError = viewModel.actionError {
+                Section { Text(actionError).foregroundStyle(SupplierTheme.destructive) }
             }
-            Section("Summary") {
+            Section("mobile_supplier.chrome.summary") {
                 Text(detail.manifestId).font(.caption.monospaced())
-                Text("\(detail.status) · \(detail.ordersCount) orders")
+                Text(L10n.format("mobile_supplier.ui.status_orderscount_orders", "\(detail.status)", "\(detail.ordersCount)"))
                 Text(detail.driverName.isEmpty ? (detail.driverId ?? "—") : detail.driverName)
-                if let plate = detail.vehiclePlate { Text("Vehicle \(plate)") }
+                if let plate = detail.vehiclePlate { Text(L10n.format("mobile_supplier.ui.vehicle_plate_2", "\(plate)")) }
             }
             if state == "DRAFT" {
                 Section {
-                    Button(busy ? "Starting…" : "Start loading") {
-                        Task { await runAction { try await SupplierOperationsService.startManifestLoading(manifestId, idempotencyKey: idem("start-loading")) } }
+                    Button(LocalizedStringKey(viewModel.busy ? "mobile_supplier.chrome.starting" : "mobile_supplier.chrome.start_loading")) {
+                        Task { await viewModel.startLoading(manifestId: manifestId) }
                     }
-                    .disabled(busy)
+                    .frame(minHeight: 44)
+                    .disabled(viewModel.busy)
                 }
             }
             if state == "LOADING" {
-                Section("Inject order") {
-                    TextField("Order ID", text: $injectOrderId)
-                    Button("Inject order") {
-                        Task {
-                            let orderId = injectOrderId.trimmingCharacters(in: .whitespacesAndNewlines)
-                            guard !orderId.isEmpty else { return }
-                            await runAction {
-                                try await SupplierOperationsService.injectManifestOrder(
-                                    manifestId,
-                                    request: SupplierManifestInjectOrderRequest(orderId: orderId, volumeVu: nil),
-                                    idempotencyKey: idem("inject-order", extra: orderId)
-                                )
-                                injectOrderId = ""
-                            }
-                        }
+                Section("mobile_supplier.ui.inject_order") {
+                    TextField("supplier_portal.admin.control_center.field.order_id", text: $vm.injectOrderId)
+                    Button("mobile_supplier.ui.inject_order") {
+                        Task { await viewModel.injectOrder(manifestId: manifestId) }
                     }
-                    .disabled(busy || injectOrderId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .frame(minHeight: 44)
+                    .disabled(viewModel.busy || viewModel.injectOrderId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
                 Section {
-                    Button(busy ? "Sealing…" : "Seal manifest") {
-                        Task { await runAction { try await SupplierOperationsService.sealManifest(manifestId, idempotencyKey: idem("seal")) } }
+                    Button(LocalizedStringKey(viewModel.busy ? "mobile_supplier.chrome.sealing" : "mobile_supplier.chrome.seal_manifest")) {
+                        Task { await viewModel.seal(manifestId: manifestId) }
                     }
-                    .disabled(busy)
+                    .frame(minHeight: 44)
+                    .disabled(viewModel.busy)
                 }
             }
             if !detail.orders.isEmpty {
-                Section("Orders") {
+                Section("mobile_supplier.chrome.orders") {
                     ForEach(detail.orders) { order in
                         VStack(alignment: .leading) {
                             Text(order.orderId).font(.caption.monospaced())
                             Text(order.status.isEmpty ? order.state : order.status).font(.caption)
                         }
+                        .accessibilityElement(children: .combine)
                     }
                 }
             }
         }
+        .scrollDismissesKeyboard(.interactively)
     }
 
-    private func idem(_ prefix: String, extra: String = "") -> String {
-        "\(prefix):\(manifestId):\(extra.isEmpty ? UUID().uuidString : extra)"
-    }
-
-    private func load() async {
-        loading = true
-        error = nil
-        defer { loading = false }
-        do {
-            detail = try await SupplierOperationsService.manifestDetail(manifestId)
-        } catch {
-            self.error = error.localizedDescription
-        }
-    }
-
-    private func runAction(_ action: () async throws -> Void) async {
-        busy = true
-        actionError = nil
-        defer { busy = false }
-        do {
-            try await action()
-            await load()
-        } catch {
-            actionError = error.localizedDescription
-        }
+    static func connectionRestoredNotice() -> String {
+        L10n.format("mobile_supplier.chrome.connection_restored_manifest")
     }
 }

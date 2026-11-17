@@ -44,6 +44,16 @@ func (s *Service) HandlePayloaderRefresh(w http.ResponseWriter, r *http.Request)
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": "invalid_refresh_scope"})
 		return
 	}
+	if rerr := auth.ValidateAndRotateRefreshClaims(r.Context(), claims, 0); rerr != nil {
+		code := http.StatusUnauthorized
+		if rerr.Error() == "revocation_store_unavailable" {
+			code = http.StatusServiceUnavailable
+		}
+		writeJSON(w, code, map[string]string{"error": rerr.Error()})
+		return
+	}
+	claims.JTI = ""
+	claims.TokenUse = auth.TokenUseFull
 
 	token, err := auth.Issue(claims, auth.IssueOptions{Secret: s.jwtSecret, Issuer: s.jwtIssuer, TTL: 24 * time.Hour})
 	if err != nil {

@@ -21,21 +21,21 @@ struct OrderPreviewSheet: View {
 
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("ORD-\(mission.order_id.suffix(6).uppercased())")
-                        .font(.system(size: 20, weight: .black, design: .monospaced))
+                    Text(L10n.format("mobile_driver.ui.ord_uppercased", "\(mission.order_id.suffix(6).uppercased())"))
+                        .font(.system(.title3, design: .monospaced, weight: .black))
                         .foregroundStyle(LabTheme.fg)
                         .tracking(1.2)
                     HStack(spacing: 6) {
                         Text(mission.gateway.uppercased())
-                            .font(.system(size: 9, weight: .black, design: .monospaced))
+                            .font(.system(.caption2, design: .monospaced, weight: .black))
                             .padding(.horizontal, 10).padding(.vertical, 4)
                             .background(LabTheme.fg.opacity(0.1), in: Capsule())
                         Text(mission.amount.formattedAmount)
-                            .font(.system(size: 13, weight: .bold, design: .monospaced))
+                            .font(.system(.footnote, design: .monospaced, weight: .bold))
                             .foregroundStyle(LabTheme.fgSecondary)
                         if let feeLabel = order?.deliveryFeeLabel {
                             Text(feeLabel)
-                                .font(.system(size: 9, weight: .bold, design: .monospaced))
+                                .font(.system(.caption2, design: .monospaced, weight: .bold))
                                 .foregroundStyle(LabTheme.warning)
                         }
                     }
@@ -47,20 +47,20 @@ struct OrderPreviewSheet: View {
 
             VStack(alignment: .leading, spacing: 7) {
                 Text("STRATEGIC_ENDPOINT")
-                    .font(.system(size: 9, weight: .black, design: .monospaced))
+                    .font(.system(.caption2, design: .monospaced, weight: .black))
                     .foregroundStyle(LabTheme.fgTertiary)
                     .tracking(1.4)
                 Text(String(format: "%.5f, %.5f", mission.target_lat, mission.target_lng))
-                    .font(.system(size: 14, weight: .bold, design: .monospaced))
+                    .font(.system(.subheadline, design: .monospaced, weight: .bold))
                     .foregroundStyle(LabTheme.fg)
                 if let d = dist {
                     HStack(spacing: 5) {
                         Circle().fill(inRange ? LabTheme.success : LabTheme.warning).frame(width: 6, height: 6)
                         Text(formattedDistance(d))
-                            .font(.system(size: 12, weight: .black, design: .monospaced))
+                            .font(.system(.caption, design: .monospaced, weight: .black))
                             .foregroundStyle(inRange ? LabTheme.success : LabTheme.fgSecondary)
                         Text(inRange ? "GEOFENCE_ACTIVE" : "APPROACHING_TARGET")
-                            .font(.system(size: 10, weight: .black, design: .monospaced))
+                            .font(.system(.caption2, design: .monospaced, weight: .black))
                             .foregroundStyle(inRange ? LabTheme.success : LabTheme.warning)
                     }
                 }
@@ -69,19 +69,19 @@ struct OrderPreviewSheet: View {
                 if let order = order, let eta = order.estimatedArrivalAt {
                     HStack(spacing: 5) {
                         Image(systemName: "clock.fill")
-                            .font(.system(size: 10, weight: .semibold))
+                            .font(.system(.caption2, weight: .semibold))
                             .foregroundStyle(LabTheme.fgTertiary)
-                        Text("ETA \(formatETATime(eta))")
-                            .font(.system(size: 12, weight: .bold, design: .monospaced))
+                        Text(L10n.format("mobile_driver.ui.eta_formatetatime", "\(formatETATime(eta))"))
+                            .font(.system(.caption, design: .monospaced, weight: .bold))
                             .foregroundStyle(LabTheme.fg)
                         if let dur = order.etaDurationSec {
-                            Text("· \(formatDuration(dur))")
-                                .font(.system(size: 11, weight: .medium))
+                            Text(L10n.format("mobile_driver.ui.formatduration", "\(formatDuration(dur))"))
+                                .font(.system(.caption2, weight: .medium))
                                 .foregroundStyle(LabTheme.fgSecondary)
                         }
                         if let distM = order.etaDistanceM {
-                            Text("· \(formatETADistance(distM))")
-                                .font(.system(size: 11, weight: .medium))
+                            Text(L10n.format("mobile_driver.ui.formatetadistance", "\(formatETADistance(distM))"))
+                                .font(.system(.caption2, weight: .medium))
                                 .foregroundStyle(LabTheme.fgSecondary)
                         }
                     }
@@ -105,7 +105,7 @@ struct OrderPreviewSheet: View {
                     startTelemetry()
                 } label: {
                     Text("START_OPERATIONAL_FLOW")
-                        .font(.system(size: 14, weight: .black, design: .monospaced))
+                        .font(.system(.subheadline, design: .monospaced, weight: .black))
                         .tracking(1.2)
                         .foregroundStyle(LabTheme.buttonFg)
                         .frame(maxWidth: .infinity).padding(.vertical, 18)
@@ -121,9 +121,9 @@ struct OrderPreviewSheet: View {
                 } label: {
                     HStack(spacing: 8) {
                         Image(systemName: "arrow.triangle.turn.up.right.diamond.fill")
-                            .font(.system(size: 14, weight: .bold))
+                            .font(.system(.subheadline, weight: .bold))
                         Text("EXTERNAL_NAVIGATION")
-                            .font(.system(size: 12, weight: .black, design: .monospaced))
+                            .font(.system(.caption, design: .monospaced, weight: .black))
                             .tracking(1.2)
                     }
                     .foregroundStyle(LabTheme.fgSecondary)
@@ -143,8 +143,8 @@ struct OrderPreviewSheet: View {
                     Haptics.light()
                     withAnimation(Anim.snappy) { selectedMission = nil; phase = .pickingOrder }
                 } label: {
-                    Text("Choose Another")
-                        .font(.system(size: 13, weight: .semibold))
+                    Text("mobile_driver.ui.choose_another")
+                        .font(.system(.footnote, weight: .semibold))
                         .foregroundStyle(LabTheme.fgSecondary)
                         .frame(maxWidth: .infinity).padding(.vertical, 11)
                 }
@@ -157,13 +157,22 @@ struct OrderPreviewSheet: View {
     }
     
     // ETA Helpers
+    private static let isoFractionalFormatter: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return f
+    }()
+    private static let isoStandardFormatter = ISO8601DateFormatter()
+    private static let etaTimeFormatter: DateFormatter = {
+        let tf = DateFormatter()
+        tf.locale = Locale(identifier: "en_US_POSIX")
+        tf.dateFormat = "HH:mm"
+        return tf
+    }()
+
     private func formatETATime(_ iso: String) -> String {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        if let date = formatter.date(from: iso) ?? ISO8601DateFormatter().date(from: iso) {
-            let tf = DateFormatter()
-            tf.dateFormat = "HH:mm"
-            return tf.string(from: date)
+        if let date = Self.isoFractionalFormatter.date(from: iso) ?? Self.isoStandardFormatter.date(from: iso) {
+            return Self.etaTimeFormatter.string(from: date)
         }
         return iso.suffix(8).prefix(5).description
     }

@@ -1,5 +1,7 @@
 package com.pegasusx.factory.ui.screens.override
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.lazy.grid.items
 
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -65,11 +67,11 @@ import com.pegasusx.factory.data.model.ManifestTransfer
 import com.pegasusx.factory.data.remote.FactoryApi
 import com.pegasusx.factory.data.remote.FactoryRealtimeEventType
 import com.pegasusx.factory.data.remote.FactoryRealtimeStatus
-import com.pegasus.design.PegasusLoadingState
-import com.pegasus.design.PegasusRuntimeBanner
-import com.pegasus.design.PegasusRuntimeTone
-import com.pegasus.design.PegasusStateKind
-import com.pegasus.design.PegasusStatePane
+import com.pegasusx.factory.ui.design.PegasusLoadingState
+import com.pegasusx.factory.ui.design.PegasusRuntimeBanner
+import com.pegasusx.factory.ui.design.PegasusRuntimeTone
+import com.pegasusx.factory.ui.design.PegasusStateKind
+import com.pegasusx.factory.ui.design.PegasusStatePane
 import com.pegasusx.factory.ui.realtime.FactoryRealtimeReloadEffect
 import com.pegasusx.factory.ui.screens.override.components.CancelManifestDialog
 import com.pegasusx.factory.ui.screens.override.components.CancelTransferDialog
@@ -81,6 +83,7 @@ import java.util.Date
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import com.pegasusx.factory.R
 
 private data class MoveTransferCandidate(
     val sourceManifestId: String,
@@ -125,7 +128,7 @@ fun PayloadOverrideScreen(
             try {
                 val resp = api.getManifests(state = "LOADING")
                 if (resp.isSuccessful && resp.body() != null) {
-                    manifests = resp.body()!!.manifests.filter { it.state == "LOADING" }
+                    resp.body()?.let { body -> manifests = body.manifests.filter { it.state == "LOADING" } }
                     staleMessage = null
                     error = null
                     lastSyncedAt = System.currentTimeMillis()
@@ -273,7 +276,7 @@ fun PayloadOverrideScreen(
     }
 
     val runtimeStatus = when {
-        staleMessage != null -> staleMessage!!
+        staleMessage != null -> staleMessage.orEmpty()
         realtimeStatus == FactoryRealtimeStatus.OFFLINE -> "Offline — showing last sync ${formatOverrideSyncTime(lastSyncedAt)}"
         realtimeStatus == FactoryRealtimeStatus.RECONNECTING -> "Reconnecting live manifests — last sync ${formatOverrideSyncTime(lastSyncedAt)}"
         realtimeStatus == FactoryRealtimeStatus.CONNECTING -> "Connecting to live manifests…"
@@ -306,7 +309,7 @@ fun PayloadOverrideScreen(
     ) { innerPadding ->
         when {
             loading -> PegasusLoadingState(
-                title = "Loading payload override",
+                title = stringResource(R.string.mobile_factory_ui_loading_payload_override),
                 body = "Fetching live loading manifests that can be rebalanced or released.",
                 modifier = Modifier
                     .fillMaxSize()
@@ -315,7 +318,7 @@ fun PayloadOverrideScreen(
             error != null -> PegasusStatePane(
                 kind = if (realtimeStatus == FactoryRealtimeStatus.OFFLINE) PegasusStateKind.Offline else PegasusStateKind.Error,
                 headline = if (realtimeStatus == FactoryRealtimeStatus.OFFLINE) "Payload override unavailable offline" else "Unable to load loading manifests",
-                body = error!!,
+                body = error.orEmpty(),
                 actionLabel = "Retry",
                 onAction = { load() },
                 modifier = Modifier

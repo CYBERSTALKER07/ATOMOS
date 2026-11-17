@@ -1,0 +1,45 @@
+# PegasusX Monorepo Code Ownership
+
+# Global fallback owners
+* @pegasusx/core-architects
+
+# Backend Go Services
+/apps/backend-go/             @pegasusx/backend-core
+/apps/backend-go/auth/        @pegasusx/security-team @pegasusx/backend-core
+/apps/backend-go/order/       @pegasusx/backend-core
+/apps/backend-go/payment/     @pegasusx/financial-systems
+/apps/backend-go/ar/          @pegasusx/financial-systems
+/apps/backend-go/soliq/       @pegasusx/financial-systems
+/apps/backend-go/storage/     @pegasusx/backend-core
+
+# AI Worker & Background Services
+/apps/ai-worker/              @pegasusx/planning-intelligence
+/apps/handoff-service/        @pegasusx/security-team @pegasusx/backend-core
+
+# Optimizer Service
+/services/optimizer-core/     @pegasusx/logistics-optimization
+
+# Contracts & Schemas
+/contracts/                   @pegasusx/contracts-council
+/packages/optimizer-contract/ @pegasusx/contracts-council @pegasusx/logistics-optimization
+/packages/handoff/            @pegasusx/contracts-council @pegasusx/security-team
+/packages/types/              @pegasusx/contracts-council @pegasusx/web-platform
+
+# Web Portals & Desktop Shell
+/apps/retailer-app-desktop/   @pegasusx/web-platform @pegasusx/desktop-core
+/apps/supplier-portal/        @pegasusx/web-platform
+/apps/admin-portal/           @pegasusx/web-platform
+/apps/warehouse-portal/       @pegasusx/web-platform
+/apps/factory-portal/         @pegasusx/web-platform
+
+# Android Applications
+/apps/*-android/              @pegasusx/mobile-android
+
+# iOS Applications
+/apps/*-ios/                  @pegasusx/mobile-ios
+
+# Infrastructure, CI & Terraform
+/infra/k8s/                   @pegasusx/infra-sre
+/infra/terraform/             @pegasusx/infra-sre
+/.github/                     @pegasusx/infra-sre
+/scripts/                     @pegasusx/infra-sre

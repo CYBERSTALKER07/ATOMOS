@@ -26,6 +26,9 @@ type CapabilityPackRow struct {
 
 // LoadEnabledPacks returns the enabled set for a retailer (memory + Spanner).
 func (s *Service) LoadEnabledPacks(ctx context.Context, retailerID string) (EnabledSet, error) {
+	if s != nil && s.enabledPacksQuery != nil {
+		return s.enabledPacksQuery(ctx, retailerID)
+	}
 	set := EnabledSet{}.WithCORE()
 	if s.spannerClient == nil {
 		s.mu.RLock()
@@ -44,7 +47,7 @@ func (s *Service) LoadEnabledPacks(ctx context.Context, retailerID string) (Enab
 			WHERE RetailerId = @rid`,
 		Params: map[string]any{"rid": retailerID},
 	}
-	iter := s.spannerClient.Single().Query(ctx, stmt)
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	for {
 		row, err := iter.Next()
@@ -69,6 +72,9 @@ func (s *Service) LoadEnabledPacks(ctx context.Context, retailerID string) (Enab
 
 // SetPackEnabled persists a pack enable/disable with optional config JSON.
 func (s *Service) SetPackEnabled(ctx context.Context, retailerID, packID, actorUserID string, enabled bool, config map[string]any) error {
+	if s != nil && s.setPackEnabledFn != nil {
+		return s.setPackEnabledFn(ctx, retailerID, packID, actorUserID, enabled, config)
+	}
 	packID = NormalizePackID(packID)
 	cfgBytes, _ := json.Marshal(config)
 	if cfgBytes == nil {
@@ -151,7 +157,30 @@ func (s *Service) LoadPackConfig(ctx context.Context, retailerID, packID string)
 		return out, err
 	}
 	if cfg.Valid && strings.TrimSpace(cfg.StringVal) != "" {
-		_ = json.Unmarshal([]byte(cfg.StringVal), &out)
+		dec := json.NewDecoder(strings.NewReader(cfg.StringVal))
+		dec.UseNumber()
+		_ = dec.Decode(&out)
 	}
 	return out, nil
+}
+
+func packConfigInt64(raw any) (int64, bool) {
+	switch v := raw.(type) {
+	case json.Number:
+		if n, err := v.Int64(); err == nil {
+			return n, true
+		}
+	case int64:
+		return v, true
+	case int:
+		return int64(v), true
+	}
+	return 0, false
+}
+
+func packConfigInt(raw any) (int, bool) {
+	if n, ok := packConfigInt64(raw); ok {
+		return int(n), true
+	}
+	return 0, false
 }

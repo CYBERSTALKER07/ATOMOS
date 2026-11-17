@@ -1,5 +1,7 @@
 package com.pegasusx.driver.ui.screens.offload
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -24,10 +26,11 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -40,9 +43,11 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.pegasusx.driver.ui.theme.LocalPegasusColors
 import com.pegasusx.driver.ui.theme.MotionTokens
+import com.pegasusx.driver.ui.theme.StatusAmber
 import com.pegasusx.driver.ui.theme.StatusGreen
 import com.pegasusx.driver.ui.theme.StatusRed
 import com.pegasusx.driver.ui.theme.formattedAmount
+import com.pegasusx.driver.R
 
 @Composable
 fun PaymentWaitingScreen(
@@ -50,7 +55,7 @@ fun PaymentWaitingScreen(
     onCashCollectionRequired: (orderId: String, amount: Long) -> Unit = { _, _ -> },
     viewModel: PaymentWaitingViewModel = hiltViewModel()
 ) {
-    val state by viewModel.state.collectAsState()
+    val state by viewModel.state.collectAsStateWithLifecycle()
     val lab = LocalPegasusColors.current
 
     LaunchedEffect(Unit) {
@@ -64,7 +69,7 @@ fun PaymentWaitingScreen(
         return
     }
 
-    val pulseTransition = rememberInfiniteTransition(label = "pulse")
+    val pulseTransition = rememberInfiniteTransition(label = stringResource(R.string.mobile_driver_ui_pulse))
     val pulseAlpha by pulseTransition.animateFloat(
         initialValue = 0.4f,
         targetValue = 1f,
@@ -73,13 +78,13 @@ fun PaymentWaitingScreen(
     )
 
     val title = when {
-        state.fiscalFailed -> "FISCAL FAILED"
+        state.fiscalFailed -> stringResource(R.string.fiscal_retry_queued_title)
         state.fiscalizing -> "FISCALIZING"
         state.paymentSettled -> "PAYMENT RECEIVED"
         else -> "AWAITING PAYMENT"
     }
     val subtitle = when {
-        state.fiscalFailed -> "Fiscal receipt failed. Retry or call supervisor for force-complete."
+        state.fiscalFailed -> state.statusNotice ?: stringResource(R.string.fiscal_retry_queued_message)
         state.fiscalizing -> "Payment captured. Waiting for fiscal receipt…"
         state.paymentSettled -> "Finalizing delivery…"
         else -> "Waiting for retailer to complete payment..."
@@ -91,7 +96,7 @@ fun PaymentWaitingScreen(
         else -> Icons.Default.HourglassTop
     }
     val iconTint = when {
-        state.fiscalFailed -> StatusRed
+        state.fiscalFailed -> StatusAmber
         state.paymentSettled && !state.fiscalizing -> StatusGreen
         else -> lab.fgTertiary
     }
@@ -120,7 +125,7 @@ fun PaymentWaitingScreen(
             fontSize = 11.sp,
             fontWeight = FontWeight.Black,
             fontFamily = FontFamily.Monospace,
-            color = if (state.fiscalFailed) StatusRed else if (state.paymentSettled && !state.fiscalizing) StatusGreen else lab.fgTertiary,
+            color = if (state.fiscalFailed) StatusAmber else if (state.paymentSettled && !state.fiscalizing) StatusGreen else lab.fgTertiary,
             letterSpacing = 1.5.sp
         )
 
@@ -145,7 +150,7 @@ fun PaymentWaitingScreen(
         Spacer(modifier = Modifier.height(4.dp))
 
         Text(
-            text = "Card / terminal",
+            text = stringResource(R.string.mobile_driver_ui_card_terminal),
             fontSize = 13.sp,
             color = lab.fgTertiary
         )
@@ -175,7 +180,7 @@ fun PaymentWaitingScreen(
         if (state.fiscalFailed) {
             Spacer(modifier = Modifier.height(24.dp))
             Button(
-                onClick = { viewModel.retryFiscal() },
+                onClick = { viewModel.continueNextStop() },
                 enabled = !state.isCompleting,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -183,7 +188,18 @@ fun PaymentWaitingScreen(
                 shape = MaterialTheme.shapes.medium,
                 colors = ButtonDefaults.buttonColors(containerColor = StatusGreen),
             ) {
-                Text(text = "Retry Fiscal", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                Text(text = stringResource(R.string.fiscal_continue_next_stop), fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            }
+            Spacer(modifier = Modifier.height(10.dp))
+            OutlinedButton(
+                onClick = { viewModel.retryFiscal() },
+                enabled = !state.isCompleting,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+                shape = MaterialTheme.shapes.medium,
+            ) {
+                Text(text = stringResource(R.string.fiscal_retry_soliq_now), fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
             }
         } else if (state.error != null && state.paymentSettled && !state.fiscalizing) {
             Spacer(modifier = Modifier.height(24.dp))
@@ -196,7 +212,7 @@ fun PaymentWaitingScreen(
                 shape = MaterialTheme.shapes.medium,
                 colors = ButtonDefaults.buttonColors(containerColor = StatusGreen),
             ) {
-                Text(text = "Retry Capture", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                Text(text = stringResource(R.string.mobile_driver_ui_retry_capture), fontWeight = FontWeight.Bold, fontSize = 15.sp)
             }
         }
     }

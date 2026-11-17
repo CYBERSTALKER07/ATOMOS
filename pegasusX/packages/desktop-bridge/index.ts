@@ -132,3 +132,11 @@ export {
   type DesktopUpdateInfo,
   type DesktopUpdateProgress,
 } from "./updater";
+export {
+  fromBrowserFiles,
+  isNativeImportPickerAvailable,
+  MIGRATION_IMPORT_EXTENSIONS,
+  pickNativeImportDirectory,
+  pickNativeImportFiles,
+  type PickedImportFile,
+} from "./file-open";

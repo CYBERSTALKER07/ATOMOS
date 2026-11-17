@@ -6,12 +6,13 @@ struct DashboardHeroCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: LabTheme.spacingLG) {
             VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
-                Text("Outbound floor status")
+                Text("mobile_factory.ui.outbound_floor_status")
                     .font(.title2.bold())
-                Text("\(stats.pendingTransfers + stats.loadingTransfers) transfers are active across release and bay lanes.")
+                Text(L10n.format("mobile_factory.ui.loadingtransfers_transfers_are_active_across_release_and_bay_lanes", "\(stats.pendingTransfers + stats.loadingTransfers)"))
                     .font(.body)
                     .foregroundStyle(.secondary)
             }
+            .accessibilityElement(children: .combine)
 
             HStack(spacing: LabTheme.spacingSM) {
                 OverviewMetric(label: "Queued", value: "\(stats.pendingTransfers)")
@@ -39,6 +40,8 @@ struct OverviewMetric: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(LabTheme.spacingMD)
-        .background(LabTheme.tertiaryBackground, in: RoundedRectangle(cornerRadius: LabTheme.radiusMD))
+        .background(LabTheme.tertiaryBackground, in: RoundedRectangle(cornerRadius: LabTheme.radiusMD, style: .continuous))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(label): \(value)")
     }
 }

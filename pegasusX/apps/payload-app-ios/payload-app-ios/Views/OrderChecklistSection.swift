@@ -47,24 +47,30 @@ struct OrderChecklistSection: View {
                     VStack(alignment: .leading, spacing: 12) {
                         HStack {
                             Text("LINE_ITEMS")
-                                .font(.system(size: 12, weight: .black, design: .monospaced))
+                                .font(.system(.caption, design: .monospaced, weight: .black))
                                 .foregroundStyle(TermTheme.secondary)
                             Spacer()
-                            Button(action: onScanProduct) {
+                            Button {
+                                PegasusHaptics.light()
+                                onScanProduct()
+                            } label: {
                                 Label("SCAN", systemImage: "barcode.viewfinder")
-                                    .font(.system(size: 11, weight: .bold, design: .monospaced))
+                                    .font(.system(.caption, design: .monospaced, weight: .bold))
+                                    .frame(minWidth: 44, minHeight: 44)
                             }
                             .buttonStyle(.bordered)
-                            Text("ORD-\(selected.orderId.suffix(6).uppercased())")
-                                .font(.system(size: 12, weight: .black, design: .monospaced))
+                            .accessibilityLabel("Scan product barcode")
+
+                            Text(L10n.format("mobile_payload.ui.ord_uppercased", "\(selected.orderId.suffix(6).uppercased())"))
+                                .font(.system(.caption, design: .monospaced, weight: .black))
                                 .foregroundStyle(TermTheme.accent)
                         }
                         .padding(.top, 8)
-                        
+
                         let items = selected.items ?? []
                         if items.isEmpty {
                             Text("NO_ITEMS_IN_ORDER")
-                                .font(.system(size: 12, weight: .bold, design: .monospaced))
+                                .font(.system(.caption, design: .monospaced, weight: .bold))
                                 .foregroundStyle(TermTheme.tertiary)
                         } else {
                             VStack(spacing: 2) {
@@ -83,15 +89,17 @@ struct OrderChecklistSection: View {
                         if viewModel.sealedOrderIds.contains(selected.orderId) {
                             HStack {
                                 Image(systemName: "lock.fill")
-                                Text("ORDER_SEALED: \(viewModel.dispatchCodes[selected.orderId] ?? "")")
+                                Text(L10n.format("mobile_payload.ui.order_sealed_orderid", "\(viewModel.dispatchCodes[selected.orderId] ?? "")"))
                             }
-                            .font(.system(size: 14, weight: .black, design: .monospaced))
+                            .font(.system(.subheadline, design: .monospaced, weight: .black))
                             .foregroundStyle(TermTheme.live)
                             .padding()
-                            .frame(maxWidth: .infinity)
-                            .background(TermTheme.live.opacity(0.1), in: RoundedRectangle(cornerRadius: 12))
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                            .background(TermTheme.live.opacity(0.1), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            .accessibilityElement(children: .combine)
                         } else {
                             Button {
+                                PegasusHaptics.heavy()
                                 Task { await viewModel.sealSelectedOrder() }
                             } label: {
                                 HStack(spacing: 12) {
@@ -99,157 +107,48 @@ struct OrderChecklistSection: View {
                                         ProgressView().controlSize(.regular)
                                     } else {
                                         Image(systemName: "lock.shield.fill")
-                                            .font(.system(size: 20))
+                                            .font(.system(.title3))
                                         Text("SEAL_ORDER")
-                                            .font(.system(size: 16, weight: .black, design: .monospaced))
+                                            .font(.system(.callout, design: .monospaced, weight: .black))
                                     }
                                 }
                                 .padding()
-                                .frame(maxWidth: .infinity)
+                                .frame(maxWidth: .infinity, minHeight: 48)
                                 .background(viewModel.canSealOrder(selected.orderId) ? TermTheme.accent : TermTheme.tertiary.opacity(0.3))
                                 .foregroundStyle(TermTheme.card)
                                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                             }
                             .disabled(viewModel.sealingOrderId != nil || !viewModel.canSealOrder(selected.orderId))
                             .buttonStyle(.tactical)
+                            .accessibilityLabel("Seal selected order")
 
                             HStack(spacing: 12) {
-                                Button("REPORT_ISSUE") { onShowException(selected.orderId) }
-                                    .font(.system(size: 12, weight: .bold, design: .monospaced))
-                                    .padding(.vertical, 10)
-                                    .frame(maxWidth: .infinity)
-                                    .background(TermTheme.warn.opacity(0.1), in: RoundedRectangle(cornerRadius: 12))
-                                    .foregroundStyle(TermTheme.warn)
-                                    .buttonStyle(.tactical)
+                                Button("REPORT_ISSUE") {
+                                    PegasusHaptics.warning()
+                                    onShowException(selected.orderId)
+                                }
+                                .font(.system(.caption, design: .monospaced, weight: .bold))
+                                .frame(maxWidth: .infinity, minHeight: 44)
+                                .background(TermTheme.warn.opacity(0.1), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                .foregroundStyle(TermTheme.warn)
+                                .buttonStyle(.tactical)
+                                .accessibilityLabel("Report issue on order \(selected.orderId.suffix(6))")
 
-                                Button("RE_DISPATCH") { onShowReDispatch(selected.orderId) }
-                                    .font(.system(size: 12, weight: .bold, design: .monospaced))
-                                    .padding(.vertical, 10)
-                                    .frame(maxWidth: .infinity)
-                                    .background(TermTheme.accent.opacity(0.1), in: RoundedRectangle(cornerRadius: 12))
-                                    .foregroundStyle(TermTheme.accent)
-                                    .buttonStyle(.tactical)
+                                Button("RE_DISPATCH") {
+                                    PegasusHaptics.medium()
+                                    onShowReDispatch(selected.orderId)
+                                }
+                                .font(.system(.caption, design: .monospaced, weight: .bold))
+                                .frame(maxWidth: .infinity, minHeight: 44)
+                                .background(TermTheme.accent.opacity(0.1), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                .foregroundStyle(TermTheme.accent)
+                                .buttonStyle(.tactical)
+                                .accessibilityLabel("Re-dispatch order \(selected.orderId.suffix(6))")
                             }
                         }
                     }
                 }
             }
         }
-    }
-}
-
-struct OrderChip: View {
-    let order: LiveOrder
-    let selected: Bool
-    let sealed: Bool
-    let dispatchCode: String?
-    let onTap: () -> Void
-
-    var body: some View {
-        Button(action: onTap) {
-            HStack(spacing: 12) {
-                if sealed {
-                    Image(systemName: "checkmark.seal.fill") // Tactical seal icon
-                        .font(.system(size: 20))
-                        .foregroundStyle(TermTheme.live)
-                } else {
-                    Image(systemName: "circle.dotted")
-                        .font(.system(size: 20))
-                        .foregroundStyle(selected ? TermTheme.accent : TermTheme.tertiary)
-                }
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("ORD-\(order.orderId.suffix(6).uppercased())")
-                        .font(.system(size: 14, weight: .black, design: .monospaced))
-                        .foregroundStyle(TermTheme.accent)
-                    
-                    Text("\((order.items ?? []).count) UNITS")
-                        .font(.system(size: 10, weight: .bold, design: .monospaced))
-                        .foregroundStyle(TermTheme.secondary)
-                }
-                
-                Spacer()
-                
-                if sealed, let code = dispatchCode, !code.isEmpty {
-                    Text(code)
-                        .font(.system(size: 16, weight: .black, design: .monospaced))
-                        .foregroundStyle(TermTheme.live)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 4)
-                        .background(TermTheme.live.opacity(0.12), in: Capsule())
-                }
-            }
-            .padding(14)
-            .background {
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(background)
-                    .overlay {
-                        if selected {
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .stroke(TermTheme.accent.opacity(0.2), lineWidth: 2)
-                        } else {
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .stroke(TermTheme.separator.opacity(0.08), lineWidth: 1)
-                        }
-                    }
-            }
-        }
-        .buttonStyle(.tactical)
-    }
-
-    private var background: Color {
-        if sealed { return TermTheme.live.opacity(0.04) }
-        if selected { return TermTheme.accent.opacity(0.08) }
-        return TermTheme.card
-    }
-}
-
-struct ItemRow: View {
-    let checked: Bool
-    let enabled: Bool
-    let label: String
-    let quantity: Int
-    let onToggle: () -> Void
-
-    var body: some View {
-        Button(action: { if enabled { onToggle() } }) {
-            HStack(spacing: 14) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .fill(checked ? TermTheme.accent : TermTheme.accent.opacity(0.06))
-                        .frame(width: 32, height: 32)
-                    
-                    if checked {
-                        Image(systemName: "checkmark")
-                            .font(.system(size: 14, weight: .black))
-                            .foregroundStyle(TermTheme.card)
-                    }
-                }
-                
-                Text(label.uppercased())
-                    .font(.system(size: 13, weight: .bold, design: .monospaced))
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .foregroundStyle(checked ? TermTheme.accent : TermTheme.secondary)
-                
-                Text("QTY: \(quantity)")
-                    .font(.system(size: 13, weight: .black, design: .monospaced))
-                    .foregroundStyle(TermTheme.accent)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
-                    .background(TermTheme.accent.opacity(0.06), in: RoundedRectangle(cornerRadius: 6))
-            }
-            .padding(.vertical, 8)
-            .padding(.horizontal, 12)
-            .background {
-                if checked {
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(TermTheme.accent.opacity(0.03))
-                }
-            }
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.tactical)
-        .opacity(enabled ? 1 : 0.5)
-        .disabled(!enabled)
     }
 }

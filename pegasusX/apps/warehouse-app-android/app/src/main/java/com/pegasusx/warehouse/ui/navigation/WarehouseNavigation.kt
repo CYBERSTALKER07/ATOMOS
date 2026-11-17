@@ -20,6 +20,7 @@ import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -47,6 +48,7 @@ import com.pegasusx.warehouse.data.remote.WarehouseOperationsRepository
 import com.pegasusx.warehouse.data.remote.WarehouseRealtimeSignals
 import com.pegasusx.warehouse.service.AutoUpdater
 import com.pegasusx.warehouse.service.EnterpriseUpdateConfig
+import com.pegasusx.warehouse.network.NetworkLifecycleEngine
 import com.pegasusx.warehouse.ui.components.ClientPolicyBanner
 import com.pegasusx.warehouse.ui.components.WarehouseBottomBar
 import com.pegasusx.warehouse.ui.components.WarehouseNavigationDrawer
@@ -64,14 +66,18 @@ import com.pegasusx.warehouse.ui.screens.forecast.DemandForecastScreen
 import com.pegasusx.warehouse.ui.screens.inventory.InventoryScreen
 import com.pegasusx.warehouse.ui.screens.inventory.LocationSettingsScreen
 import com.pegasusx.warehouse.ui.screens.inventory.OpsSettingsScreen
+import com.pegasusx.warehouse.ui.screens.inventory.ReturnPolicySettingsScreen
+import com.pegasusx.warehouse.ui.screens.labor.LaborCapacityScreen
 import com.pegasusx.warehouse.ui.screens.preorders.PreordersScreen
 import com.pegasusx.warehouse.ui.screens.preorders.StockCommitmentsScreen
 import com.pegasusx.warehouse.ui.screens.manifests.ManifestsScreen
 import com.pegasusx.warehouse.ui.screens.more.MoreHubScreen
 import com.pegasusx.warehouse.ui.screens.notifications.NotificationInboxScreen
 import com.pegasusx.warehouse.ui.screens.operations.OperationsScreen
+import com.pegasusx.warehouse.ui.screens.ops.WarehouseScoredExceptionsScreen
 import com.pegasusx.warehouse.ui.screens.orders.OrderDetailScreen
 import com.pegasusx.warehouse.ui.screens.orders.OrdersScreen
+import com.pegasusx.warehouse.ui.screens.coverage.CoverageScreen
 import com.pegasusx.warehouse.ui.screens.payment.PaymentConfigScreen
 import com.pegasusx.warehouse.ui.screens.portal.PortalHandoffScreen
 import com.pegasusx.warehouse.ui.screens.products.ProductsScreen
@@ -85,6 +91,9 @@ import com.pegasusx.warehouse.ui.screens.supply.SupplyRequestsScreen
 import com.pegasusx.warehouse.ui.screens.supply.SupplyRequestDetailScreen
 import com.pegasusx.warehouse.ui.screens.transfers.TransferActionsScreen
 import com.pegasusx.warehouse.ui.screens.treasury.TreasuryScreen
+import com.pegasusx.warehouse.ui.screens.cashier.CashierBlindCountScreen
+import com.pegasusx.warehouse.ui.screens.cashier.CashierViewModel
+import com.pegasusx.warehouse.ui.screens.yard.YardGateScreen
 import com.pegasusx.warehouse.ui.screens.vehicles.VehicleDetailScreen
 import com.pegasusx.warehouse.ui.screens.vehicles.VehiclesScreen
 import com.pegasusx.warehouse.ui.portal.WarehousePortalFeature
@@ -94,7 +103,11 @@ object WarehouseRoutes {
     const val LOGIN = "login"
     const val DASHBOARD = "dashboard"
     const val ORDERS = "orders"
+    const val ORDERS_ROUTE = "orders?state={state}"
     const val ORDER_DETAIL = "orders/{id}"
+
+    fun orders(state: String? = null): String =
+        if (state.isNullOrBlank()) ORDERS else "$ORDERS?state=${android.net.Uri.encode(state)}"
     const val DRIVERS = "drivers"
     const val VEHICLES = "vehicles"
     const val VEHICLE_DETAIL = "vehicles/{id}"
@@ -104,10 +117,13 @@ object WarehouseRoutes {
     const val ANALYTICS = "analytics"
     const val CRM = "crm"
     const val RETURNS = "returns"
+    const val LABOR_CAPACITY = "labor_capacity"
     const val EXCEPTIONS = "exceptions"
     const val CLAIMS = "claims"
     const val RESCUES = "rescues"
     const val TREASURY = "treasury"
+    const val CASHIER_BLIND_COUNT = "cashier_blind_count"
+    const val YARD_GATE = "yard_gate"
     const val DISPATCH = "dispatch"
     const val FLEET_LIVE_MAP = "fleet_live_map"
     const val STAFF = "staff"
@@ -117,14 +133,17 @@ object WarehouseRoutes {
     const val REPLENISHMENT = "replenishment"
     const val DISPATCH_SETTINGS = "dispatch_settings"
     const val OPS_SETTINGS = "ops_settings"
+    const val RETURN_POLICY = "return_policy"
     const val LOCATION_SETUP = "location_setup"
     const val LOCATION_SETTINGS = "location_settings"
     const val PREORDERS = "preorders"
     const val TOMORROW_BOARD = "tomorrow_board"
     const val STOCK_COMMITMENTS = "stock_commitments"
     const val PAYMENT_CONFIG = "payment_config"
+    const val COVERAGE = "coverage"
     const val NOTIFICATIONS = "notifications"
     const val OPERATIONS = "operations"
+    const val CONTROL_TOWER = "control_tower"
     const val SUPPLY_REQUESTS = "supply_requests"
     const val SUPPLY_REQUEST_DETAIL = "supply_requests/{id}"
     const val PORTAL_HANDOFF = "portal/{feature}"
@@ -156,7 +175,9 @@ fun WarehouseNavigation(
     }
     val lifecycleOwner = LocalLifecycleOwner.current
     val context = LocalContext.current
-    var networkAvailable by remember { mutableStateOf(true) }
+    val isOnline by NetworkLifecycleEngine.shared.isOnline.collectAsStateWithLifecycle()
+    val syncEpoch by NetworkLifecycleEngine.shared.syncEpoch.collectAsStateWithLifecycle()
+    val networkAvailable = isOnline
     var clientPolicyMessage by remember { mutableStateOf<String?>(null) }
     var clientPolicyForce by remember { mutableStateOf(false) }
     var pendingManifest by remember { mutableStateOf<AutoUpdater.Manifest?>(null) }
@@ -185,14 +206,16 @@ fun WarehouseNavigation(
                     version = BuildConfig.VERSION_NAME,
                     channel = EnterpriseUpdateConfig.CHANNEL,
                 )
-                if (resp.isSuccessful && resp.body() != null) {
-                    val state = autoUpdater.checkFromPolicy(resp.body()!!, autoDownload = false)
+                val policy = resp.body()
+                if (resp.isSuccessful && policy != null) {
+                    val state = autoUpdater.checkFromPolicy(policy, autoDownload = false)
                     clientPolicyMessage = state.message
                     clientPolicyForce = state.force
                     pendingManifest = state.manifest
                 }
-            } catch (_: Exception) {
+            } catch (e: Exception) {
                 // Policy fetch is optional on local/dev stacks.
+            if (e is kotlinx.coroutines.CancellationException) throw e
             }
         }
     }
@@ -216,31 +239,6 @@ fun WarehouseNavigation(
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
-        }
-    }
-
-    DisposableEffect(context) {
-        val mainHandler = Handler(Looper.getMainLooper())
-        val connectivityManager = context.getSystemService(ConnectivityManager::class.java)
-        val request = NetworkRequest.Builder()
-            .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-            .build()
-        val callback = object : ConnectivityManager.NetworkCallback() {
-            override fun onAvailable(network: Network) {
-                mainHandler.post {
-                    if (!networkAvailable) { /* per-screen refresh */ }
-                    networkAvailable = true
-                }
-            }
-
-            override fun onLost(network: Network) {
-                mainHandler.post { networkAvailable = false }
-            }
-        }
-
-        runCatching { connectivityManager?.registerNetworkCallback(request, callback) }
-        onDispose {
-            runCatching { connectivityManager?.unregisterNetworkCallback(callback) }
         }
     }
 
@@ -335,13 +333,23 @@ fun WarehouseNavigation(
                     )
                 }
 
-                composable(WarehouseRoutes.ORDERS) {
+                composable(
+                    route = WarehouseRoutes.ORDERS_ROUTE,
+                    arguments = listOf(
+                        navArgument("state") {
+                            type = NavType.StringType
+                            defaultValue = ""
+                        },
+                    ),
+                ) { entry ->
+                    val state = entry.arguments?.getString("state").orEmpty()
                     OrdersScreen(
                         api = api,
                         opsRepository = opsRepository,
                         realtimeSignals = realtimeSignals,
                         onOrderClick = { id -> navController.navigate(WarehouseRoutes.orderDetail(id)) },
                         onBack = backFor(WarehouseRoutes.ORDERS),
+                        initialState = state.takeIf { it.isNotBlank() },
                     )
                 }
 
@@ -407,11 +415,20 @@ fun WarehouseNavigation(
                 composable(WarehouseRoutes.RETURNS) {
                     ReturnsScreen(api = api, onBack = backFor(WarehouseRoutes.RETURNS))
                 }
+                composable(WarehouseRoutes.LABOR_CAPACITY) {
+                    LaborCapacityScreen(api = api, onBack = backFor(WarehouseRoutes.LABOR_CAPACITY))
+                }
                 composable(WarehouseRoutes.EXCEPTIONS) {
                     ExceptionsScreen(
                         api = api,
                         onOrderClick = { id -> navController.navigate(WarehouseRoutes.orderDetail(id)) },
                         onBack = backFor(WarehouseRoutes.EXCEPTIONS),
+                    )
+                }
+                composable(WarehouseRoutes.CONTROL_TOWER) {
+                    WarehouseScoredExceptionsScreen(
+                        api = api,
+                        onBack = backFor(WarehouseRoutes.CONTROL_TOWER),
                     )
                 }
                 composable(WarehouseRoutes.CLAIMS) {
@@ -429,6 +446,21 @@ fun WarehouseNavigation(
 
                 composable(WarehouseRoutes.TREASURY) {
                     TreasuryScreen(api = api, onBack = backFor(WarehouseRoutes.TREASURY))
+                }
+
+                composable(WarehouseRoutes.CASHIER_BLIND_COUNT) {
+                    val cashierVm = remember(api) { CashierViewModel(api) }
+                    CashierBlindCountScreen(
+                        viewModel = cashierVm,
+                        onBack = { navController.popBackStack() },
+                    )
+                }
+
+                composable(WarehouseRoutes.YARD_GATE) {
+                    YardGateScreen(
+                        api = api,
+                        onBack = { navController.popBackStack() },
+                    )
                 }
 
                 composable(WarehouseRoutes.DISPATCH) {
@@ -497,6 +529,9 @@ fun WarehouseNavigation(
                 composable(WarehouseRoutes.OPS_SETTINGS) {
                     OpsSettingsScreen(api = api, onBack = backFor(WarehouseRoutes.OPS_SETTINGS))
                 }
+                composable(WarehouseRoutes.RETURN_POLICY) {
+                    ReturnPolicySettingsScreen(api = api, onBack = backFor(WarehouseRoutes.RETURN_POLICY))
+                }
                 composable(WarehouseRoutes.LOCATION_SETTINGS) {
                     LocationSettingsScreen(
                         api = api,
@@ -522,6 +557,9 @@ fun WarehouseNavigation(
                     StockCommitmentsScreen(api = api, onBack = backFor(WarehouseRoutes.STOCK_COMMITMENTS))
                 }
 
+                composable(WarehouseRoutes.COVERAGE) {
+                    CoverageScreen(api = api, onBack = backFor(WarehouseRoutes.COVERAGE))
+                }
                 composable(WarehouseRoutes.PAYMENT_CONFIG) {
                     PaymentConfigScreen(
                         opsRepository = opsRepository,

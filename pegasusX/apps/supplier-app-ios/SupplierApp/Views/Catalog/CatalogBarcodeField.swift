@@ -1,12 +1,33 @@
+import Observation
 import SwiftUI
+
+@Observable
+@MainActor
+final class CatalogBarcodeFieldViewModel {
+    var showScanner = false
+    var scannerEnabled = true
+    var validationMessage: String?
+
+    func handleScanned(_ scanned: String) async -> String? {
+        guard let code = EANBarcode.normalize(scanned) else {
+            validationMessage = L10n.format("mobile_supplier.chrome.invalid_gtin_label")
+            PegasusHaptics.warning()
+            return nil
+        }
+        validationMessage = nil
+        scannerEnabled = false
+        PegasusHaptics.success()
+        try? await Task.sleep(for: .milliseconds(1500))
+        scannerEnabled = true
+        return code
+    }
+}
 
 struct CatalogBarcodeField: View {
     @Binding var value: String
     var enabled: Bool = true
 
-    @State private var showScanner = false
-    @State private var scannerEnabled = true
-    @State private var validationMessage: String?
+    @State private var viewModel = CatalogBarcodeFieldViewModel()
 
     private var normalized: String? {
         EANBarcode.normalize(value)
@@ -14,48 +35,52 @@ struct CatalogBarcodeField: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: SupplierTheme.spacingSM) {
-            TextField("EAN / GTIN barcode", text: $value)
+            TextField("mobile_supplier.ui.ean_gtin_barcode", text: $value)
+                .font(.body.monospaced())
                 .keyboardType(.numberPad)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
                 .disabled(!enabled)
                 .onChange(of: value) { _, _ in
-                    validationMessage = nil
+                    viewModel.validationMessage = nil
                 }
 
-            Button(showScanner ? "Hide camera" : "Scan barcode") {
-                showScanner.toggle()
+            Button(LocalizedStringKey(viewModel.showScanner ? "mobile_supplier.chrome.hide_camera" : "mobile_supplier.chrome.scan_barcode")) {
+                PegasusHaptics.light()
+                viewModel.showScanner.toggle()
             }
             .font(.caption)
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
             .disabled(!enabled)
 
-            if showScanner && enabled {
+            if viewModel.showScanner && enabled {
                 EANBarcodeScannerView(
                     onBarcode: { scanned in
-                        guard let code = EANBarcode.normalize(scanned) else {
-                            validationMessage = "Invalid EAN/GTIN — check the label"
-                            return
-                        }
-                        validationMessage = nil
-                        value = code
-                        scannerEnabled = false
                         Task {
-                            try? await Task.sleep(for: .milliseconds(1500))
-                            scannerEnabled = true
+                            if let code = await viewModel.handleScanned(scanned) {
+                                value = code
+                            }
                         }
                     },
-                    enabled: scannerEnabled
+                    enabled: viewModel.scannerEnabled
                 )
             }
 
-            if let validationMessage {
+            if let validationMessage = viewModel.validationMessage {
                 Text(validationMessage)
                     .font(.caption)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(SupplierTheme.destructive)
             } else if !value.isEmpty {
-                Text(normalized != nil ? "Valid GTIN: \(normalized!)" : "Enter a valid EAN/GTIN checksum")
-                    .font(.caption)
-                    .foregroundStyle(normalized != nil ? Color.secondary : Color.red)
+                if let normalized {
+                    Text(L10n.format("mobile_supplier.chrome.valid_gtin", normalized))
+                        .font(.caption)
+                        .foregroundStyle(Color.secondary)
+                } else {
+                    Text(L10n.format("mobile_supplier.chrome.enter_valid_gtin"))
+                        .font(.caption)
+                        .foregroundStyle(SupplierTheme.destructive)
+                }
             }
         }
     }

@@ -1,9 +1,10 @@
 import React from 'react';
 import { Text, Pressable, ScrollView } from 'react-native';
 import type { InboundRow } from '../inboundReturns';
+import type { AppTheme } from '../theme';
 
 type Props = {
-  theme: any;
+  theme: AppTheme;
   list: InboundRow[];
   selectable: boolean;
   selected: Set<string>;

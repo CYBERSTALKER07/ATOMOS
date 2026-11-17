@@ -11,9 +11,9 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-PROJECT="${PROJECT:-pegasus-503013}"
+PROJECT="${PROJECT:-pegasusx-prod-uz}"
 INSTANCE="${INSTANCE:-pegasusx-staging-spanner}"
-DATABASE="${DATABASE:-pegasusx-staging-db}"
+DATABASE="${DATABASE:-main}"
 BATCH_SIZE="${BATCH_SIZE:-15}"
 BASE_DDL="$ROOT/apps/backend-go/schema/spanner.ddl"
 MIG_DIR="$ROOT/apps/backend-go/schema/migrations"

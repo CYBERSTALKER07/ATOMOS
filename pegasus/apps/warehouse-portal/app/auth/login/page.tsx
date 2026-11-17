@@ -58,8 +58,10 @@ export default function WarehouseLogin() {
 
         <div className="space-y-4">
           <div>
-            <label className="block text-xs font-medium mb-1.5 text-[var(--muted)]">Phone Number</label>
+            <label htmlFor="wh-login-phone" className="block text-xs font-medium mb-1.5 text-[var(--muted)]">Phone Number</label>
             <input
+              id="wh-login-phone"
+              aria-label="Phone Number"
               type="tel"
               value={phone}
               onChange={e => setPhone(e.target.value)}
@@ -75,8 +77,10 @@ export default function WarehouseLogin() {
           </div>
 
           <div>
-            <label className="block text-xs font-medium mb-1.5 text-[var(--muted)]">PIN</label>
+            <label htmlFor="wh-login-pin" className="block text-xs font-medium mb-1.5 text-[var(--muted)]">PIN</label>
             <input
+              id="wh-login-pin"
+              aria-label="PIN"
               type="password"
               value={pin}
               onChange={e => setPin(e.target.value)}

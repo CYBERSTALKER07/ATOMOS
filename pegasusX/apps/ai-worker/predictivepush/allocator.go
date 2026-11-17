@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"math"
+	"os"
+	"strings"
 	"time"
 
 	"cloud.google.com/go/spanner"
@@ -28,16 +30,17 @@ func (a *Allocator) Allocate(ctx context.Context, events []*DemandEvent) error {
 	if a == nil || a.spannerClient == nil {
 		return nil
 	}
+	whCache, err := a.locator.FindNearestWarehousesBatch(ctx, events)
+	if err != nil {
+		return err
+	}
 	now := time.Now().UTC()
 	insights := make([]planning.ReplenishmentInsightWriteInput, 0, len(events))
 	for _, event := range events {
 		if event == nil {
 			continue
 		}
-		warehouse, err := a.locator.FindNearestWarehouse(ctx, event.RetailerId, event.SupplierId)
-		if err != nil {
-			return err
-		}
+		warehouse := whCache[event.RetailerId+"|"+event.SupplierId]
 		if warehouse == nil {
 			continue
 		}
@@ -82,20 +85,39 @@ func (a *Allocator) Allocate(ctx context.Context, events []*DemandEvent) error {
 	if err := planning.WriteReplenishmentInsightsWithOutbox(ctx, a.spannerClient, now, insights); err != nil {
 		return err
 	}
-	return a.writeDemandBaselines(ctx, events, now)
+	return a.writeDemandBaselines(ctx, events, now, whCache)
 }
 
-func (a *Allocator) writeDemandBaselines(ctx context.Context, events []*DemandEvent, now time.Time) error {
+func (a *Allocator) writeDemandBaselines(ctx context.Context, events []*DemandEvent, now time.Time, whCaches ...map[string]*Warehouse) error {
 	if a == nil || a.spannerClient == nil || len(events) == 0 {
 		return nil
+	}
+	// §8.1: Croston/HW nightly job owns DemandForecastBaseline when enabled.
+	if forecastAlgoEnabled() {
+		return nil
+	}
+	var whCache map[string]*Warehouse
+	if len(whCaches) > 0 && whCaches[0] != nil {
+		whCache = whCaches[0]
+	} else if a.locator != nil {
+		whCache, _ = a.locator.FindNearestWarehousesBatch(ctx, events)
 	}
 	day := now.Truncate(24 * time.Hour)
 	for _, event := range events {
 		if event == nil || event.SupplierId == "" || event.ProductId == "" {
 			continue
 		}
-		warehouse, err := a.locator.FindNearestWarehouse(ctx, event.RetailerId, event.SupplierId)
-		if err != nil || warehouse == nil {
+		var warehouse *Warehouse
+		if whCache != nil {
+			warehouse = whCache[event.RetailerId+"|"+event.SupplierId]
+		} else if a.locator != nil {
+			var err error
+			warehouse, err = a.locator.FindNearestWarehouse(ctx, event.RetailerId, event.SupplierId)
+			if err != nil {
+				continue
+			}
+		}
+		if warehouse == nil {
 			continue
 		}
 		if err := planning.WriteBaselineWithOutbox(ctx, a.spannerClient, now, planning.BaselineWriteInput{
@@ -112,4 +134,9 @@ func (a *Allocator) writeDemandBaselines(ctx context.Context, events []*DemandEv
 		}
 	}
 	return nil
+}
+
+func forecastAlgoEnabled() bool {
+	v := strings.ToLower(strings.TrimSpace(os.Getenv("FORECAST_ALGO_ENABLED")))
+	return v == "1" || v == "true" || v == "yes" || v == "on"
 }

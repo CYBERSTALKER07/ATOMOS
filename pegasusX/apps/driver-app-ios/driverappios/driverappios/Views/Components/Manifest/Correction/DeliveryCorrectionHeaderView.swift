@@ -17,7 +17,7 @@ struct DeliveryCorrectionHeaderView: View {
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "chevron.left")
-                        Text("Back")
+                        Text("common.action.back")
                     }
                     .font(.body.weight(.semibold))
                     .foregroundStyle(LabTheme.fg)
@@ -31,29 +31,29 @@ struct DeliveryCorrectionHeaderView: View {
                 )
             }
 
-            Text("Delivery Correction")
-                .font(.system(size: 22, weight: .bold))
+            Text("mobile_driver.ui.delivery_correction")
+                .font(.system(.title2, weight: .bold))
                 .foregroundStyle(LabTheme.fg)
 
             Text(orderId)
-                .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                .font(.system(.footnote, design: .monospaced, weight: .semibold))
                 .foregroundStyle(LabTheme.fgSecondary)
 
             if isPartial {
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("Partial Order Split")
-                        .font(.system(size: 16, weight: .bold))
+                    Text("mobile_driver.ui.partial_order_split")
+                        .font(.system(.callout, weight: .bold))
                         .foregroundStyle(LabTheme.fg)
                     
-                    Text("This order is split across multiple trucks. Press Start Transit when you are heading to this route to notify the other driver.")
-                        .font(.system(size: 14))
+                    Text("mobile_driver.ui.this_order_is_split_across_multiple_trucks_press_start_transit_w")
+                        .font(.system(.subheadline))
                         .foregroundStyle(LabTheme.fgSecondary)
                     
                     Button {
                         showStartTransitAlert = true
                     } label: {
-                        Text("Start Transit")
-                            .font(.system(size: 15, weight: .bold))
+                        Text("mobile_driver.ui.start_transit_2")
+                            .font(.system(.subheadline, weight: .bold))
                             .foregroundStyle(.white)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 12)

@@ -1,24 +1,39 @@
 package com.pegasusx.retailer.ui.screens.cart
 
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.pegasusx.retailer.data.api.CartRealtimeEventSource
 import com.pegasusx.retailer.data.api.PegasusApi
-import com.pegasusx.retailer.data.api.RetailerWebSocket
 import com.pegasusx.retailer.data.local.PendingOrderEntity
 import com.pegasusx.retailer.data.local.PendingOrderDao
-import com.pegasusx.retailer.data.local.TokenManager
+import com.pegasusx.retailer.data.local.RetailerUserIdProvider
+import com.pegasusx.retailer.data.model.selectableRetailerCatalogCodes
+import com.pegasusx.retailer.data.model.sessionPackCurrency
 import com.pegasusx.retailer.data.model.CartItem
 import com.pegasusx.retailer.data.model.CheckoutLineItem
 import com.pegasusx.retailer.data.model.CheckoutQuoteLine
 import com.pegasusx.retailer.data.model.CheckoutQuoteRequest
+import com.pegasusx.retailer.data.model.ProblemDetailException
 import com.pegasusx.retailer.data.model.Product
 import com.pegasusx.retailer.data.model.StockWarning
 import com.pegasusx.retailer.data.model.UnifiedCheckoutRequest
 import com.pegasusx.retailer.data.model.Variant
+import com.pegasusx.retailer.services.PendingOrderStatusBus
+import com.pegasusx.retailer.services.PendingOrderStatusNotice
+import com.pegasusx.retailer.services.PendingOrderSyncEnqueuer
+import com.pegasusx.retailer.services.PendingOrderSyncProcessor
 import com.pegasusx.retailer.ui.components.CheckoutPhase
 import com.pegasusx.retailer.ui.components.CheckoutPaymentOption
+import com.pegasusx.retailer.util.OrderLineContractHelper
+import com.pegasusx.retailer.util.OwnerApprovalRequiredDetail
+import com.pegasusx.retailer.util.PackMultipleSuggestion
+import com.pegasusx.retailer.util.PackSnapMode
+import com.pegasusx.retailer.util.PendingOrderConflictKind
+import com.pegasusx.retailer.util.RetailerW2ContractHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.IOException
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,6 +44,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -37,7 +53,6 @@ import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.JsonObject
 import retrofit2.HttpException
 import javax.inject.Inject
-
 enum class CartLoadIssue {
     RESTRICTED,
     OFFLINE,
@@ -64,6 +79,11 @@ data class CartUiState(
     val deliveryMode: String = "STANDARD",
     val deliveryDate: String? = null,
     val expressPriority: Boolean = false,
+    val currencyPickerEnabled: Boolean = false,
+    val currencyAllowlist: List<String> = emptyList(),
+    val operatingCurrency: String = "",
+    val orderCurrency: String = "",
+    val catalogCodes: List<String> = emptyList(),
     val preorderMinLeadDays: Long = 3,
     val preorderMaxLeadDays: Long = 0,
     val deliveryFeeMinor: Long = 0,
@@ -78,21 +98,31 @@ data class CartUiState(
     val paymentUrlToOpen: String? = null,
     val quotedDiscountMinor: Long? = null,
     val quotedSubtotalMinor: Long? = null,
+    val autoConfirmOptIn: Boolean = false,
+    val packSuggestions: List<PackMultipleSuggestion> = emptyList(),
+    val pendingQueueNotice: PendingOrderStatusNotice? = null,
+    val ownerApprovalRequired: OwnerApprovalRequiredDetail? = null,
 ) {
     val isEmpty: Boolean get() = items.isEmpty()
     val totalItems: Int get() = items.sumOf { it.quantity }
-    val subtotal: Double get() = quotedSubtotalMinor?.toDouble() ?: items.sumOf { it.totalPrice }
-    val shipping: Double get() = if (subtotal > 50_000) 0.0 else 15_000.0
-    val discount: Double get() = quotedDiscountMinor?.toDouble() ?: 0.0
-    val total: Double get() = subtotal + shipping - discount
-    val displaySubtotal: String get() = "%,.0f".format(subtotal)
-    val displayShipping: String get() = if (shipping == 0.0) "Free" else "%,.0f".format(shipping)
-    val displayDiscount: String get() = if (discount == 0.0) "0" else "-%,.0f".format(discount)
-    val displayTotal: String get() = "%,.0f".format(total)
+    val subtotal: Long get() = quotedSubtotalMinor ?: items.sumOf { it.totalPrice }
+    val shipping: Long get() = if (subtotal > 50_000L) 0L else 15_000L
+    val discount: Long get() = quotedDiscountMinor ?: 0L
+    val total: Long get() = subtotal + shipping - discount
+    val displaySubtotal: String get() = "%,d".format(subtotal)
+    val displayShipping: String get() = if (shipping == 0L) "Free" else "%,d".format(shipping)
+    val displayDiscount: String get() = if (discount == 0L) "0" else "-%,d".format(discount)
+    val displayTotal: String get() = "%,d".format(total)
     val firstProductName: String get() = items.firstOrNull()?.product?.name ?: "Order"
-    val selectedPaymentLabel: String get() = checkoutPaymentLabel(selectedPaymentGateway, paymentOptions)
+    val selectedPaymentLabel: String
+        get() = paymentOptions.find { it.gateway.equals(selectedPaymentGateway.trim(), ignoreCase = true) }?.label
+            ?: when (selectedPaymentGateway.trim().uppercase()) {
+                "GLOBAL_PAY" -> "GlobalPay"
+                "CASH" -> "Cash on Delivery"
+                else -> selectedPaymentGateway.trim()
+            }
     val displayDeliveryFee: String
-        get() = if (deliveryFeeMinor > 0) "%,.0f".format(deliveryFeeMinor.toDouble()) else "Free"
+        get() = if (deliveryFeeMinor > 0) "%,d".format(deliveryFeeMinor) else "Free"
     val syncMessage: String?
         get() = when (loadIssue) {
             CartLoadIssue.RESTRICTED -> "Cart sync access is restricted for this account"
@@ -102,32 +132,37 @@ data class CartUiState(
         }
 }
 
-private fun checkoutPaymentLabel(gateway: String, options: List<CheckoutPaymentOption>): String {
-    return options.find { it.gateway == gateway }?.label ?: when (gateway.trim().uppercase()) {
-        "GLOBAL_PAY" -> "GlobalPay"
-        "ADYEN" -> "Adyen"
-        "CASH" -> "Cash on Delivery"
-        else -> gateway
-    }
-}
-
 private fun com.pegasusx.retailer.data.model.CheckoutPreviewResponse.orderableCaps(): Map<String, Int> {
     val source = orderableQuantities.ifEmpty { maxQuantities }
     return source.mapValues { it.value.toInt() }
 }
 
-private fun standardPaymentOptions(): List<CheckoutPaymentOption> = listOf(
-    CheckoutPaymentOption(gateway = "GLOBAL_PAY", label = "GlobalPay (New)"),
-    CheckoutPaymentOption(gateway = "ADYEN", label = "Adyen"),
-    CheckoutPaymentOption(gateway = "CASH", label = "Cash on Delivery"),
-)
+private fun standardPaymentOptions(catalogCodes: List<String> = emptyList()): List<CheckoutPaymentOption> {
+    val codes = if (catalogCodes.isEmpty()) listOf("CASH") else catalogCodes
+    return codes.mapNotNull { code ->
+        when (code) {
+            "CASH" -> CheckoutPaymentOption(
+                gateway = "CASH",
+                label = "Cash on Delivery",
+                labelRes = com.pegasusx.retailer.R.string.supplier_portal_billing_setup_gateway_cash_label,
+            )
+            "GLOBAL_PAY" -> CheckoutPaymentOption(
+                gateway = "GLOBAL_PAY",
+                label = "GlobalPay",
+                labelRes = com.pegasusx.retailer.R.string.mobile_retailer_ui_globalpay,
+            )
+            else -> null
+        }
+    }
+}
 
 @HiltViewModel
 class CartViewModel @Inject constructor(
     private val api: PegasusApi,
-    private val tokenManager: TokenManager,
-    private val retailerWebSocket: RetailerWebSocket,
+    private val tokenManager: RetailerUserIdProvider,
+    private val retailerWebSocket: CartRealtimeEventSource,
     private val pendingOrderDao: PendingOrderDao,
+    private val syncEnqueuer: PendingOrderSyncEnqueuer = PendingOrderSyncEnqueuer {},
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CartUiState())
@@ -139,17 +174,31 @@ class CartViewModel @Inject constructor(
     private var quoteDebounceJob: Job? = null
     private var previewDebounceJob: Job? = null
     private var lastCartSignature: String = ""
+    private var currentCheckoutSessionId: String? = null
+
+    private fun getOrCreateCheckoutSessionId(): String {
+        return currentCheckoutSessionId ?: java.util.UUID.randomUUID().toString().also {
+            currentCheckoutSessionId = it
+        }
+    }
 
 init { 
         flushPendingOrders()
+        fetchPaymentCatalog()
         fetchPaymentOptions()
         refreshCartFromServer()
         observeCartSyncUpdates()
     }
 
     fun retrySync() {
+        flushPendingOrders()
         refreshCartFromServer()
+        fetchPaymentCatalog()
         fetchPaymentOptions()
+    }
+
+    fun retryPendingOrderSync() {
+        flushPendingOrders()
     }
 
     private fun cartSignature(items: List<CartItem>): String {
@@ -158,7 +207,7 @@ init {
             .joinToString("|") { item ->
                 val skuId = if (item.variant.id.isNotBlank()) item.variant.id else item.product.id
                 val supplierId = item.product.supplierId.orEmpty()
-                "$skuId:$supplierId:${item.quantity}:${item.variant.price.toInt()}"
+                "$skuId:$supplierId:${item.quantity}:${item.variant.price}:${item.mustHave}:${item.allowSubstitutes}"
             }
     }
 
@@ -168,7 +217,13 @@ init {
 
     private fun JsonObject.longField(name: String): Long {
         val primitive = this[name]?.jsonPrimitive ?: return 0L
-        return primitive.longOrNull ?: primitive.contentOrNull?.toLongOrNull() ?: 0L
+        return primitive.longOrNull
+            ?: primitive.contentOrNull?.trim()?.let { raw ->
+                raw.toLongOrNull() ?: runCatching {
+                    java.math.BigDecimal(raw).setScale(0, java.math.RoundingMode.HALF_UP).toLong()
+                }.getOrNull()
+            }
+            ?: 0L
     }
 
     private fun mapServerCart(items: List<JsonObject>): List<CartItem> {
@@ -185,21 +240,27 @@ init {
             if (quantity <= 0) {
                 return@mapNotNull null
             }
-            val unitPrice = raw.longField("unit_price").toDouble()
-
+            val unitPrice = raw.longField("unit_price")
             val existing = existingBySku[skuId]
+            val mustHave = raw["must_have"]?.jsonPrimitive?.booleanOrNull ?: existing?.mustHave ?: false
+            val allowSubstitutes = raw["allow_substitutes"]?.jsonPrimitive?.booleanOrNull
+                ?: existing?.allowSubstitutes
+                ?: false
+
             if (existing != null) {
                 val variant = existing.variant.copy(price = unitPrice)
                 val product = existing.product.copy(
                     variants = listOf(variant),
                     supplierId = existing.product.supplierId ?: supplierId,
-                    price = unitPrice.toInt(),
+                    price = unitPrice,
                 )
                 return@mapNotNull CartItem(
                     id = "${product.id}_${variant.id}",
                     product = product,
                     variant = variant,
                     quantity = quantity,
+                    mustHave = mustHave,
+                    allowSubstitutes = allowSubstitutes,
                 )
             }
 
@@ -216,13 +277,15 @@ init {
                 name = "Item",
                 variants = listOf(fallbackVariant),
                 supplierId = supplierId,
-                price = unitPrice.toInt(),
+                price = unitPrice,
             )
             CartItem(
                 id = "${fallbackProduct.id}_${fallbackVariant.id}",
                 product = fallbackProduct,
                 variant = fallbackVariant,
                 quantity = quantity,
+                mustHave = mustHave,
+                allowSubstitutes = allowSubstitutes,
             )
         }
     }
@@ -308,8 +371,10 @@ init {
                         "sku_id" to skuId,
                         "supplier_id" to supplierId,
                         "quantity" to item.quantity,
-                        "unit_price" to item.variant.price.toLong(),
-                        "currency" to "UZS",
+                        "unit_price" to item.variant.price,
+                        "currency" to sessionPackCurrency(),
+                        "must_have" to item.mustHave,
+                        "allow_substitutes" to item.allowSubstitutes,
                     )
                 }
             }
@@ -354,13 +419,13 @@ init {
                 CheckoutPaymentOption(gateway = tokenId, label = label)
             }
 
-            _uiState.update { it.copy(paymentOptions = dynamicOptions + standardPaymentOptions()) }
+            _uiState.update { it.copy(paymentOptions = dynamicOptions + standardPaymentOptions(it.catalogCodes)) }
             _uiState.update { it.copy(syncError = null, loadIssue = null) }
         } catch (e: Exception) {
             val issue = resolveLoadIssue(e)
             _uiState.update {
                 it.copy(
-                    paymentOptions = standardPaymentOptions(),
+                    paymentOptions = standardPaymentOptions(it.catalogCodes),
                     syncError = resolveErrorMessage(e, issue),
                     loadIssue = issue,
                 )
@@ -368,24 +433,69 @@ init {
         }
     }
 
+    private fun fetchPaymentCatalog() = viewModelScope.launch {
+        try {
+            val resp = api.getPaymentCatalog()
+            val codes = selectableRetailerCatalogCodes(resp.catalog)
+            val currency = resp.currencyCode.ifBlank { sessionPackCurrency() }
+            _uiState.update {
+                val nextOptions = it.paymentOptions.filter { option ->
+                    option.gateway !in setOf("GLOBAL_PAY", "CASH", "ADYEN", "STRIPE")
+                } + standardPaymentOptions(codes)
+                val selected = when {
+                    nextOptions.any { option -> option.gateway == it.selectedPaymentGateway } -> it.selectedPaymentGateway
+                    nextOptions.any { option -> option.gateway == "CASH" } -> "CASH"
+                    else -> nextOptions.firstOrNull()?.gateway ?: "CASH"
+                }
+                it.copy(
+                    catalogCodes = codes,
+                    currencyPickerEnabled = false,
+                    currencyAllowlist = emptyList(),
+                    operatingCurrency = currency,
+                    orderCurrency = currency,
+                    selectedPaymentGateway = selected,
+                    paymentOptions = nextOptions,
+                )
+            }
+        } catch (_: Exception) {
+            val currency = sessionPackCurrency()
+            _uiState.update {
+                it.copy(
+                    catalogCodes = emptyList(),
+                    currencyPickerEnabled = false,
+                    operatingCurrency = currency,
+                    orderCurrency = currency,
+                    paymentOptions = it.paymentOptions.filter { option ->
+                        option.gateway !in setOf("GLOBAL_PAY", "CASH", "ADYEN", "STRIPE")
+                    } + standardPaymentOptions(emptyList()),
+                )
+            }
+        }
+    }
+
     private fun flushPendingOrders() = viewModelScope.launch {
-        val pending = pendingOrderDao.getAll()
-        for (order in pending) {
-            try {
-                val request = Json.decodeFromString<UnifiedCheckoutRequest>(order.payloadJson)
-                api.unifiedCheckout(request, order.idempotencyKey)
-                pendingOrderDao.deleteById(order.id)
-                _uiState.update { it.copy(syncError = null, loadIssue = null) }
-            } catch (e: Exception) {
-                val issue = resolveLoadIssue(e)
-                val reason = resolveErrorMessage(e, issue)
-                pendingOrderDao.incrementRetry(order.id, reason)
+        val summary = PendingOrderSyncProcessor(
+            api = api,
+            pendingOrderDao = pendingOrderDao,
+            json = OrderLineContractHelper.lenientJson,
+            onStatusNotice = { notice ->
+                PendingOrderStatusBus.emit(notice)
+                _uiState.update { it.copy(pendingQueueNotice = notice) }
+            },
+        ).processAll()
+
+        if (summary.attempted > 0) {
+            if (summary.shouldRetry) {
+                syncEnqueuer.enqueue()
+                val keptNotice = summary.notices.firstOrNull { it.keptInQueue }
                 _uiState.update {
                     it.copy(
-                        syncError = reason,
-                        loadIssue = issue,
+                        syncError = keptNotice?.message ?: "Queued orders pending automatic sync retry.",
+                        pendingQueueNotice = keptNotice ?: it.pendingQueueNotice,
                     )
                 }
+            } else {
+                _uiState.update { it.copy(syncError = null, loadIssue = null) }
             }
         }
     }
@@ -427,6 +537,82 @@ init {
         scheduleCartSyncPush()
         scheduleQuoteRefresh()
         schedulePreviewRefresh()
+    }
+
+    fun effectivePackSizeFor(item: CartItem): Int =
+        OrderLineContractHelper.effectivePackSize(item.product, item.variant)
+
+    fun needsPackSnap(item: CartItem): Boolean {
+        val packSize = effectivePackSizeFor(item)
+        return packSize > 1 && item.quantity % packSize != 0
+    }
+
+    fun snapItemToPackMultiple(itemId: String, mode: PackSnapMode = PackSnapMode.NEAREST) {
+        val targetItem = _uiState.value.items.find { it.id == itemId } ?: return
+        val packSize = effectivePackSizeFor(targetItem)
+        val snapped = OrderLineContractHelper.snapToPackMultiple(targetItem.quantity, packSize, mode)
+        updateQuantity(itemId, snapped)
+        val skuId = skuIdFor(targetItem)
+        _uiState.update { state ->
+            val remaining = state.packSuggestions.filterNot {
+                it.skuId == skuId || it.skuId == targetItem.product.id || it.skuId == targetItem.variant.id
+            }
+            state.copy(
+                packSuggestions = remaining,
+                checkoutError = if (remaining.isEmpty()) null else state.checkoutError,
+            )
+        }
+    }
+
+    fun applyPackSuggestion(skuId: String, suggestedQuantity: Int) {
+        val matched = _uiState.value.items.firstOrNull {
+            skuIdFor(it) == skuId || it.product.id == skuId || it.variant.id == skuId
+        }
+        if (matched != null) {
+            updateQuantity(matched.id, suggestedQuantity)
+        }
+        _uiState.update { state ->
+            val remaining = state.packSuggestions.filterNot { it.skuId == skuId }
+            state.copy(
+                packSuggestions = remaining,
+                checkoutError = if (remaining.isEmpty()) null else state.checkoutError,
+            )
+        }
+    }
+
+    fun dismissPackSuggestions() {
+        _uiState.update { it.copy(packSuggestions = emptyList()) }
+    }
+
+    fun toggleMustHave(itemId: String) {
+        _uiState.update { state ->
+            state.copy(
+                items = state.items.map { item ->
+                    if (item.id == itemId) item.copy(mustHave = !item.mustHave) else item
+                },
+            )
+        }
+        scheduleCartSyncPush()
+    }
+
+    fun toggleAllowSubstitutes(itemId: String) {
+        _uiState.update { state ->
+            state.copy(
+                items = state.items.map { item ->
+                    if (item.id == itemId) item.copy(allowSubstitutes = !item.allowSubstitutes) else item
+                },
+            )
+        }
+        scheduleCartSyncPush()
+    }
+
+    fun setAutoConfirmOptIn(enabled: Boolean) {
+        _uiState.update { it.copy(autoConfirmOptIn = enabled) }
+    }
+
+    fun dismissPendingQueueNotice() {
+        _uiState.update { it.copy(pendingQueueNotice = null) }
+        PendingOrderStatusBus.clear()
     }
 
     private fun skuIdFor(item: CartItem): String {
@@ -529,7 +715,8 @@ init {
                             CheckoutQuoteLine(
                                 productId = skuId,
                                 quantity = item.quantity.toLong(),
-                                unitPriceMinor = item.variant.price.toLong(),
+                                unitPriceMinor = item.variant.price,
+                                currency = sessionPackCurrency(),
                             )
                         },
                     ),
@@ -543,12 +730,16 @@ init {
                     quotedDiscountMinor = discountMinor,
                 )
             }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
             _uiState.update { it.copy(quotedDiscountMinor = null, quotedSubtotalMinor = null) }
         }
     }
 
     fun showCheckout() {
+        if (currentCheckoutSessionId == null) {
+            currentCheckoutSessionId = java.util.UUID.randomUUID().toString()
+        }
         _uiState.update { it.copy(showCheckout = true, checkoutPhase = CheckoutPhase.REVIEW) }
         scheduleQuoteRefresh()
         refreshCheckoutPreview()
@@ -627,12 +818,15 @@ init {
         state: CartUiState,
         retailerId: String,
         gateway: String,
+        paymentMethodOverride: String? = null,
     ): UnifiedCheckoutRequest {
         val lineItems = state.items.map { cartItem ->
             CheckoutLineItem(
                 skuId = cartItem.variant.id.ifBlank { cartItem.product.id },
                 quantity = cartItem.quantity,
-                unitPrice = cartItem.variant.price.toLong(),
+                unitPrice = cartItem.variant.price,
+                mustHave = cartItem.mustHave,
+                allowSubstitutes = cartItem.allowSubstitutes,
             )
         }
         val requestedDeliveryDate = state.deliveryDate?.let { date ->
@@ -649,7 +843,14 @@ init {
             requestedDeliveryDate = if (state.deliveryMode == "SCHEDULED") requestedDeliveryDate else null,
             deliveryPriority = if (state.expressPriority) "EXPRESS" else "STANDARD",
             checkoutPolicyToken = state.checkoutPolicyToken,
+            currency = null,
+            autoConfirmOptIn = state.autoConfirmOptIn,
+            paymentMethod = paymentMethodOverride,
         )
+    }
+
+    fun setOrderCurrency(code: String) {
+        _uiState.update { it.copy(orderCurrency = code.trim().uppercase()) }
     }
 
     fun setSupplierIsActive(value: Boolean) {
@@ -657,146 +858,304 @@ init {
     }
 
     fun dismissCheckout() {
-        _uiState.update { it.copy(showCheckout = false, checkoutPhase = CheckoutPhase.REVIEW) }
+        currentCheckoutSessionId = null
+        _uiState.update {
+            it.copy(
+                showCheckout = false,
+                checkoutPhase = CheckoutPhase.REVIEW,
+                ownerApprovalRequired = null,
+            )
+        }
+    }
+
+    fun dismissOwnerApprovalRequired() {
+        _uiState.update { it.copy(ownerApprovalRequired = null) }
     }
 
     fun setSelectedPaymentGateway(gateway: String) {
         // Uppercase known gateways, otherwise keep token IDs untouched.
-        val gw = if (gateway.equals("GLOBAL_PAY", ignoreCase=true) || gateway.equals("ADYEN", ignoreCase=true) || gateway.equals("CASH", ignoreCase=true)) gateway.trim().uppercase() else gateway.trim()
+        val known = setOf("GLOBAL_PAY", "CASH")
+        val gw = if (known.any { gateway.equals(it, ignoreCase = true) }) gateway.trim().uppercase() else gateway.trim()
         _uiState.update { it.copy(selectedPaymentGateway = gw) }
+    }
+
+    fun retryCheckoutWithFallbackMethod(method: String) {
+        val normalized = method.trim().uppercase()
+        if (normalized.isEmpty()) return
+        val state = _uiState.value
+        val targetGateway = when (normalized) {
+            "CASH" -> "CASH"
+            else -> state.paymentOptions.firstOrNull { !it.gateway.equals("CASH", ignoreCase = true) }?.gateway
+                ?: if (state.catalogCodes.contains("GLOBAL_PAY")) "GLOBAL_PAY" else normalized
+        }
+        currentCheckoutSessionId = "${getOrCreateCheckoutSessionId()}:fallback:$normalized"
+        _uiState.update {
+            it.copy(
+                selectedPaymentGateway = targetGateway,
+                ownerApprovalRequired = null,
+                pendingQueueNotice = null,
+                checkoutError = null,
+            )
+        }
+        viewModelScope.launch {
+            runCatching {
+                pendingOrderDao.getAll()
+                    .filter {
+                        it.status == PendingOrderEntity.STATUS_AWAITING_OWNER_APPROVAL &&
+                            it.endpoint == "/v1/checkout/unified"
+                    }
+                    .forEach { pendingOrderDao.deleteById(it.id) }
+            }
+            submitCheckout(skipBackorderConfirm = false, paymentMethodOverride = normalized)
+        }
     }
 
     fun processPayment(skipBackorderConfirm: Boolean = false) {
         viewModelScope.launch {
-            _uiState.update { it.copy(checkoutPhase = CheckoutPhase.PROCESSING, checkoutError = null) }
-            var checkoutRequest: UnifiedCheckoutRequest? = null
-            try {
-                val state = _uiState.value
-                val retailerId = tokenManager.getUserId() ?: ""
-                var finalGateway = state.selectedPaymentGateway
-                if (finalGateway != "GLOBAL_PAY" && finalGateway != "ADYEN" && finalGateway != "CASH") {
-                    try {
-                        api.setDefaultCard(mapOf("token_id" to finalGateway))
-                        finalGateway = "GLOBAL_PAY"
-                    } catch (e: Exception) {
-                        _uiState.update {
-                            it.copy(
-                                checkoutPhase = CheckoutPhase.REVIEW,
-                                checkoutError = resolveCheckoutErrorMessage(e, "Failed to select payment method"),
-                            )
-                        }
-                        return@launch
-                    }
-                }
+            submitCheckout(skipBackorderConfirm = skipBackorderConfirm, paymentMethodOverride = null)
+        }
+    }
 
-                val preview = api.checkoutPreview(buildCheckoutRequest(state, retailerId, finalGateway))
-                applyPreviewCaps(preview)
-                val refreshedState = _uiState.value
-                if (preview.code == "order_acceptance_closed") {
+    private suspend fun submitCheckout(
+        skipBackorderConfirm: Boolean = false,
+        paymentMethodOverride: String? = null,
+    ) {
+        _uiState.update {
+            it.copy(
+                checkoutPhase = CheckoutPhase.PROCESSING,
+                checkoutError = null,
+                packSuggestions = emptyList(),
+                ownerApprovalRequired = null,
+            )
+        }
+        val initialState = _uiState.value
+        val retailerId = tokenManager.getUserId() ?: ""
+        val sessionId = getOrCreateCheckoutSessionId()
+        var checkoutRequest: UnifiedCheckoutRequest? = null
+        try {
+            var finalGateway = initialState.selectedPaymentGateway
+            if (finalGateway != "GLOBAL_PAY" && finalGateway != "CASH" && finalGateway != "CARD") {
+                try {
+                    api.setDefaultCard(mapOf("token_id" to finalGateway))
+                    finalGateway = if (initialState.catalogCodes.contains("GLOBAL_PAY")) "GLOBAL_PAY" else "CASH"
+                } catch (e: Exception) {
                     _uiState.update {
                         it.copy(
                             checkoutPhase = CheckoutPhase.REVIEW,
-                            checkoutError = preview.message ?: "Orders are not accepted at this time.",
+                            checkoutError = resolveCheckoutErrorMessage(e, "Failed to select payment method"),
                         )
                     }
-                    return@launch
-                }
-                if (preview.blocked) {
-                    _uiState.update {
-                        it.copy(
-                            checkoutPhase = CheckoutPhase.REVIEW,
-                            checkoutError = preview.message ?: "Checkout blocked by stock policy",
-                            oosItems = preview.oosItems.ifEmpty { preview.rejectedSkus },
-                            stockWarnings = preview.stockWarnings,
-                            previewMaxQuantities = preview.orderableCaps(),
-                            previewShowStockCounts = preview.showStockCounts,
-                            previewShortfall = preview.shortfall,
-                        )
-                    }
-                    return@launch
-                }
-                if (preview.stockWarnings.isNotEmpty() && !skipBackorderConfirm) {
-                    _uiState.update {
-                        it.copy(
-                            checkoutPhase = CheckoutPhase.REVIEW,
-                            stockWarnings = preview.stockWarnings,
-                            pendingBackorderConfirm = true,
-                        )
-                    }
-                    return@launch
-                }
-
-                val request = buildCheckoutRequest(refreshedState, retailerId, finalGateway)
-                checkoutRequest = request
-                val response = api.unifiedCheckout(request, checkoutIdempotencyKey(request))
-                val firstOrderId = response.supplierOrders.firstOrNull()?.orderId
-                _uiState.update {
-                    it.copy(
-                        stockWarnings = response.stockWarnings,
-                        lastOrderId = firstOrderId ?: response.invoiceId,
-                        paymentUrlToOpen = null,
-                        checkoutPhase = CheckoutPhase.COMPLETE,
-                    )
-                }
-                delay(1800)
-                _uiState.update {
-                    it.copy(
-                        showCheckout = false,
-                        checkoutPhase = CheckoutPhase.REVIEW,
-                        items = emptyList(),
-                        lastOrderId = null,
-                    )
-                }
-            } catch (e: HttpException) {
-                val body = e.response()?.errorBody()?.string()
-                var msg: String
-                var flaggedOos = emptyList<String>()
-                if (e.code() == 409) {
-                    // Attempt to parse structured OOS response: {"code":"ALL_ITEMS_OUT_OF_STOCK","oos_items":["sku1","sku2"]}
-                    try {
-                        val json = body?.let { Json.decodeFromString<Map<String, kotlinx.serialization.json.JsonElement>>(it) }
-                        val code = json?.get("code")?.toString()?.trim('"') ?: ""
-                        val oosArr = json?.get("oos_items")
-                        if (oosArr is kotlinx.serialization.json.JsonArray) {
-                            flaggedOos = oosArr.mapNotNull { it.toString().trim('"').takeIf { s -> s.isNotEmpty() } }
-                        }
-                        msg = when (code) {
-                            "inventory_exhausted" -> "Stock changed while checking out. Review your cart and try again."
-                            "ALL_ITEMS_OUT_OF_STOCK" -> "All items are out of stock. Please update your cart."
-                            "PARTIAL_OUT_OF_STOCK_REJECTED" -> "Some items are out of stock and cannot be backordered. Please update your cart."
-                            else -> body ?: "Some items are out of stock"
-                        }
-                    } catch (_: Exception) {
-                        msg = body ?: "Item out of stock — pull to refresh"
-                    }
-                    refreshCheckoutPreview()
-                } else {
-                    msg = body ?: "Checkout failed (${e.code()})"
-                }
-                _uiState.update {
-                    it.copy(
-                        checkoutPhase = CheckoutPhase.REVIEW,
-                        checkoutError = msg,
-                        oosItems = flaggedOos,
-                    )
-                }
-            } catch (e: Exception) {
-                val request = checkoutRequest
-                if (e is IOException && request != null) {
-                    queuePendingCheckout(request, checkoutIdempotencyKey(request))
-                }
-                _uiState.update {
-                    it.copy(
-                        checkoutPhase = CheckoutPhase.REVIEW,
-                        checkoutError = if (e is IOException && request != null) {
-                            "Network issue during checkout. Saved for automatic retry when you reconnect."
-                        } else {
-                            resolveCheckoutErrorMessage(e, "Checkout failed")
-                        },
-                    )
+                    return
                 }
             }
+
+            val draftRequest = buildCheckoutRequest(initialState, retailerId, finalGateway, paymentMethodOverride)
+            checkoutRequest = draftRequest
+            val preview = api.checkoutPreview(draftRequest)
+            applyPreviewCaps(preview)
+            val refreshedState = _uiState.value
+            if (preview.code == "order_acceptance_closed") {
+                _uiState.update {
+                    it.copy(
+                        checkoutPhase = CheckoutPhase.REVIEW,
+                        checkoutError = preview.message ?: "Orders are not accepted at this time.",
+                    )
+                }
+                return
+            }
+            if (preview.blocked) {
+                _uiState.update {
+                    it.copy(
+                        checkoutPhase = CheckoutPhase.REVIEW,
+                        checkoutError = preview.message ?: "Checkout blocked by stock policy",
+                        oosItems = preview.oosItems.ifEmpty { preview.rejectedSkus },
+                        stockWarnings = preview.stockWarnings,
+                        previewMaxQuantities = preview.orderableCaps(),
+                        previewShowStockCounts = preview.showStockCounts,
+                        previewShortfall = preview.shortfall,
+                    )
+                }
+                return
+            }
+            if (preview.stockWarnings.isNotEmpty() && !skipBackorderConfirm) {
+                _uiState.update {
+                    it.copy(
+                        checkoutPhase = CheckoutPhase.REVIEW,
+                        stockWarnings = preview.stockWarnings,
+                        pendingBackorderConfirm = true,
+                    )
+                }
+                return
+            }
+
+            val request = buildCheckoutRequest(refreshedState, retailerId, finalGateway, paymentMethodOverride)
+            checkoutRequest = request
+            val idempotencyKey = checkoutIdempotencyKey(request, sessionId)
+            val response = api.unifiedCheckout(request, idempotencyKey)
+            val firstOrderId = response.supplierOrders.firstOrNull()?.orderId
+            _uiState.update {
+                it.copy(
+                    stockWarnings = response.stockWarnings,
+                    lastOrderId = firstOrderId ?: response.invoiceId,
+                    paymentUrlToOpen = null,
+                    checkoutPhase = CheckoutPhase.COMPLETE,
+                    packSuggestions = emptyList(),
+                    ownerApprovalRequired = null,
+                )
+            }
+            currentCheckoutSessionId = null
+            delay(1800)
+            _uiState.update {
+                it.copy(
+                    showCheckout = false,
+                    checkoutPhase = CheckoutPhase.REVIEW,
+                    items = emptyList(),
+                    lastOrderId = null,
+                )
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            handleCheckoutSubmitFailure(e, checkoutRequest, sessionId)
         }
+    }
+
+    private suspend fun handleCheckoutSubmitFailure(
+        error: Exception,
+        checkoutRequest: UnifiedCheckoutRequest?,
+        sessionId: String,
+    ) {
+        val packFixes = OrderLineContractHelper.parsePackMultipleSuggestions(error)
+        if (packFixes.isNotEmpty()) {
+            _uiState.update {
+                it.copy(
+                    checkoutPhase = CheckoutPhase.REVIEW,
+                    packSuggestions = packFixes,
+                    checkoutError = packFixes.firstOrNull()?.message
+                        ?: "Adjust item quantities to match pack size",
+                )
+            }
+            return
+        }
+
+        val oosResult = extractOos409Result(error)
+        if (oosResult != null) {
+            refreshCheckoutPreview()
+            _uiState.update {
+                it.copy(
+                    checkoutPhase = CheckoutPhase.REVIEW,
+                    checkoutError = oosResult.first,
+                    oosItems = oosResult.second,
+                )
+            }
+            return
+        }
+
+        val ownerApproval = RetailerW2ContractHelper.parseOwnerApprovalRequired(error)
+        val assessment = OrderLineContractHelper.assessPendingOrderError(error)
+        val shouldQueue = checkoutRequest != null && (
+            error is IOException ||
+                ownerApproval != null ||
+                assessment.kind == PendingOrderConflictKind.OWNER_APPROVAL_REQUIRED ||
+                assessment.kind == PendingOrderConflictKind.REQUEST_IN_PROGRESS ||
+                assessment.kind == PendingOrderConflictKind.RATE_LIMITED ||
+                assessment.kind == PendingOrderConflictKind.UNAUTHORIZED
+            )
+        if (shouldQueue && checkoutRequest != null) {
+            val status = when {
+                ownerApproval != null || assessment.kind == PendingOrderConflictKind.OWNER_APPROVAL_REQUIRED ->
+                    PendingOrderEntity.STATUS_AWAITING_OWNER_APPROVAL
+                assessment.kind == PendingOrderConflictKind.REQUEST_IN_PROGRESS -> PendingOrderEntity.STATUS_IN_PROGRESS
+                assessment.kind == PendingOrderConflictKind.RATE_LIMITED -> PendingOrderEntity.STATUS_RATE_LIMITED
+                assessment.kind == PendingOrderConflictKind.UNAUTHORIZED -> assessment.status
+                else -> PendingOrderEntity.STATUS_PENDING
+            }
+            val message = if (error is IOException) {
+                "Network issue during checkout. Saved for automatic retry when you reconnect."
+            } else {
+                ownerApproval?.message ?: assessment.message
+            }
+            val key = checkoutIdempotencyKey(checkoutRequest, sessionId)
+            queuePendingCheckout(checkoutRequest, key, status = status, lastError = message)
+            _uiState.update {
+                it.copy(
+                    checkoutPhase = CheckoutPhase.REVIEW,
+                    checkoutError = message,
+                    ownerApprovalRequired = ownerApproval,
+                    pendingQueueNotice = PendingOrderStatusNotice(
+                        orderId = 0L,
+                        endpoint = "/v1/checkout/unified",
+                        status = status,
+                        message = message,
+                        keptInQueue = true,
+                    ),
+                )
+            }
+            return
+        }
+
+        val fallbackMsg = when (error) {
+            is ProblemDetailException -> error.problem.detail ?: error.problem.title ?: error.message ?: "Checkout failed"
+            is HttpException -> RetailerW2ContractHelper.peekHttpErrorBody(error)
+                ?.takeIf { it.isNotBlank() } ?: "Checkout failed (${error.code()})"
+            else -> resolveCheckoutErrorMessage(error, "Checkout failed")
+        }
+        _uiState.update {
+            it.copy(
+                checkoutPhase = CheckoutPhase.REVIEW,
+                checkoutError = fallbackMsg,
+            )
+        }
+    }
+
+    private fun extractOos409Result(error: Exception): Pair<String, List<String>>? {
+        val status = when (error) {
+            is ProblemDetailException -> error.problem.status
+            is HttpException -> error.code()
+            else -> return null
+        }
+        if (status != 409) return null
+
+        val rawBody = when (error) {
+            is ProblemDetailException -> error.problem.rawBody
+            is HttpException -> RetailerW2ContractHelper.peekHttpErrorBody(error)
+            else -> null
+        }
+        val problem = (error as? ProblemDetailException)?.problem
+        val parsed = rawBody?.let {
+            runCatching { OrderLineContractHelper.lenientJson.decodeFromString<Map<String, kotlinx.serialization.json.JsonElement>>(it) }.getOrNull()
+        }
+        val code = problem?.code
+            ?: problem?.error
+            ?: parsed?.get("code")?.jsonPrimitive?.contentOrNull
+            ?: parsed?.get("error")?.jsonPrimitive?.contentOrNull
+            ?: ""
+        if (code.equals("owner_approval_required", ignoreCase = true) ||
+            code.equals("pending_owner_approval", ignoreCase = true) ||
+            code.equals("request_in_progress", ignoreCase = true)
+        ) {
+            return null
+        }
+        val flaggedOos = (
+            problem?.oosItems.orEmpty() +
+                (parsed?.get("oos_items") as? kotlinx.serialization.json.JsonArray)
+                    ?.mapNotNull { it.jsonPrimitive.contentOrNull?.takeIf(String::isNotBlank) }
+                    .orEmpty()
+            ).distinct()
+        if (code != "inventory_exhausted" &&
+            code != "ALL_ITEMS_OUT_OF_STOCK" &&
+            code != "PARTIAL_OUT_OF_STOCK_REJECTED" &&
+            flaggedOos.isEmpty()
+        ) {
+            return null
+        }
+        val msg = when (code) {
+            "inventory_exhausted" -> "Stock changed while checking out. Review your cart and try again."
+            "ALL_ITEMS_OUT_OF_STOCK" -> "All items are out of stock. Please update your cart."
+            "PARTIAL_OUT_OF_STOCK_REJECTED" -> "Some items are out of stock and cannot be backordered. Please update your cart."
+            else -> problem?.detail ?: rawBody ?: "Some items are out of stock"
+        }
+        return msg to flaggedOos
     }
 
     fun clearCheckoutError() {
@@ -818,20 +1177,32 @@ init {
         return if (cap > 0) "Only $cap left" else null
     }
 
-    private fun checkoutIdempotencyKey(request: UnifiedCheckoutRequest): String {
+    private fun checkoutIdempotencyKey(request: UnifiedCheckoutRequest, sessionId: String? = null): String {
         val itemKey = request.items
             .sortedBy { it.skuId }
-            .joinToString("|") { "${it.skuId}:${it.quantity}:${it.unitPrice}" }
-        return "retailer-checkout:${request.paymentGateway}:$itemKey"
+            .joinToString("|") { "${it.skuId}:${it.quantity}:${it.unitPrice}:${it.mustHave}:${it.allowSubstitutes}" }
+        val autoFlag = if (request.autoConfirmOptIn) ":auto" else ""
+        val sid = sessionId ?: getOrCreateCheckoutSessionId()
+        return "retailer-checkout:${request.paymentGateway}:$sid:$itemKey$autoFlag"
     }
 
-    private suspend fun queuePendingCheckout(request: UnifiedCheckoutRequest, idempotencyKey: String) {
+    private suspend fun queuePendingCheckout(
+        request: UnifiedCheckoutRequest,
+        idempotencyKey: String,
+        status: String = PendingOrderEntity.STATUS_PENDING,
+        lastError: String? = null,
+    ) {
         pendingOrderDao.insert(
             PendingOrderEntity(
+                endpoint = "/v1/checkout/unified",
+                method = "POST",
                 payloadJson = Json.encodeToString(UnifiedCheckoutRequest.serializer(), request),
                 idempotencyKey = idempotencyKey,
+                lastError = lastError,
+                status = status,
             ),
         )
+        syncEnqueuer.enqueue()
     }
 
     private fun resolveLoadIssue(error: Exception): CartLoadIssue {
@@ -864,5 +1235,6 @@ init {
         cartSyncDebounceJob?.cancel()
         cartSyncEventsJob?.cancel()
         quoteDebounceJob?.cancel()
+        previewDebounceJob?.cancel()
     }
 }

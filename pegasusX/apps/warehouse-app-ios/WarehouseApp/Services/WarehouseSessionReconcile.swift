@@ -8,15 +8,26 @@
 import Foundation
 
 enum WarehouseSessionReconcile {
-    static func run() async {
-        _ = try? await WarehouseService.dispatchPreview()
-        _ = try? await WarehouseService.dispatchLocks()
-        _ = try? await WarehouseService.demandForecast(days: 7)
-        _ = try? await WarehouseService.replenishmentInsights()
-        let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: Date()) ?? Date()
+    private static let utcDateFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
+        formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.timeZone = TimeZone(secondsFromGMT: 0)
-        _ = try? await WarehouseService.opsBoard(date: formatter.string(from: tomorrow))
+        return formatter
+    }()
+
+    static func run() async {
+        let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: Date()) ?? Date()
+        let tomorrowStr = utcDateFormatter.string(from: tomorrow)
+        async let previewTask = WarehouseService.dispatchPreview()
+        async let locksTask = WarehouseService.dispatchLocks()
+        async let forecastTask = WarehouseService.demandForecast(days: 7)
+        async let replenishmentTask = WarehouseService.replenishmentInsights()
+        async let opsBoardTask = WarehouseService.opsBoard(date: tomorrowStr)
+        _ = try? await previewTask
+        _ = try? await locksTask
+        _ = try? await forecastTask
+        _ = try? await replenishmentTask
+        _ = try? await opsBoardTask
     }
 }

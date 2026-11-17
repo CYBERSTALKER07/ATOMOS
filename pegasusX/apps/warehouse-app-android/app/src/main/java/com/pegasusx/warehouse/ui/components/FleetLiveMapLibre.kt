@@ -54,6 +54,7 @@ fun FleetLiveMapLibre(
     val mapView = remember { MapView(context) }
     val animator = remember { FleetDriverMarkerAnimator() }
     var animatedDrivers by remember { mutableStateOf<List<AnimatedDriverPoint>>(emptyList()) }
+    var hasFittedInitialBounds by remember { mutableStateOf(false) }
 
     LaunchedEffect(routes, animateDrivers) {
         if (!animateDrivers) {
@@ -85,16 +86,33 @@ fun FleetLiveMapLibre(
         }
     }
 
-    LaunchedEffect(routes, animatedDrivers, animateDrivers) {
+    LaunchedEffect(routes) {
         mapView.getMapAsync { map ->
             val callback: (Style) -> Unit = { style ->
-                updateFleetMap(style, map, routes, if (animateDrivers) animatedDrivers else null)
+                val fitted = updateFleetRoutesAndBounds(
+                    style = style,
+                    map = map,
+                    routes = routes,
+                    shouldFitBounds = !hasFittedInitialBounds,
+                )
+                if (fitted) {
+                    hasFittedInitialBounds = true
+                }
+                updateFleetDriverLayer(style, routes, if (animateDrivers) animatedDrivers else null)
             }
-            if (map.style != null) {
-                callback(map.style!!)
+            val currentStyle = map.style
+            if (currentStyle != null) {
+                callback(currentStyle)
             } else {
                 map.setStyle(Style.Builder().fromUri(STYLE_URL), callback)
             }
+        }
+    }
+
+    LaunchedEffect(animatedDrivers, animateDrivers) {
+        mapView.getMapAsync { map ->
+            val currentStyle = map.style ?: return@getMapAsync
+            updateFleetDriverLayer(currentStyle, routes, if (animateDrivers) animatedDrivers else null)
         }
     }
 
@@ -104,53 +122,69 @@ fun FleetLiveMapLibre(
     )
 }
 
-private fun updateFleetMap(
+private fun updateFleetRoutesAndBounds(
     style: Style,
     map: org.maplibre.android.maps.MapLibreMap,
     routes: List<WarehouseFleetLiveRoute>,
-    animatedDrivers: List<AnimatedDriverPoint>?,
-) {
+    shouldFitBounds: Boolean,
+): Boolean {
     val boundsBuilder = LatLngBounds.Builder()
-    var hasBounds = false
+    var pointCount = 0
 
     routes.forEachIndexed { index, route ->
         val lineSourceId = "fleet-line-${route.manifestId}"
         val lineLayerId = "fleet-line-layer-${route.manifestId}"
-        if (style.getLayer(lineLayerId) != null) {
-            style.removeLayer(lineLayerId)
-        }
-        if (style.getSource(lineSourceId) != null) {
-            style.removeSource(lineSourceId)
-        }
-
         val coordinates = route.routeGeometry?.coordinates.orEmpty()
         if (coordinates.size >= 2) {
             val points = coordinates.map { Point.fromLngLat(it.lng, it.lat) }
-            val feature = Feature.fromGeometry(LineString.fromLngLats(points))
-            style.addSource(GeoJsonSource(lineSourceId, FeatureCollection.fromFeature(feature)))
-            style.addLayer(
-                LineLayer(lineLayerId, lineSourceId).withProperties(
-                    PropertyFactory.lineColor(routeColor(index)),
-                    PropertyFactory.lineWidth(4f),
-                    PropertyFactory.lineOpacity(0.85f),
-                    PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
-                    PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
-                ),
-            )
+            val collection = FeatureCollection.fromFeature(Feature.fromGeometry(LineString.fromLngLats(points)))
+            val existingSource = style.getSourceAs<GeoJsonSource>(lineSourceId)
+            if (existingSource != null) {
+                existingSource.setGeoJson(collection)
+            } else {
+                style.addSource(GeoJsonSource(lineSourceId, collection))
+            }
+            if (style.getLayer(lineLayerId) == null) {
+                style.addLayer(
+                    LineLayer(lineLayerId, lineSourceId).withProperties(
+                        PropertyFactory.lineColor(routeColor(index)),
+                        PropertyFactory.lineWidth(4f),
+                        PropertyFactory.lineOpacity(0.85f),
+                        PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
+                        PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
+                    ),
+                )
+            }
             coordinates.forEach { coordinate ->
                 boundsBuilder.include(LatLng(coordinate.lat, coordinate.lng))
-                hasBounds = true
+                pointCount += 1
             }
+        }
+        val location = route.driverLocation
+        if (route.liveLocationAvailable && location != null) {
+            boundsBuilder.include(LatLng(location.resolvedLatitude(), location.resolvedLongitude()))
+            pointCount += 1
         }
     }
 
+    if (shouldFitBounds && pointCount >= 2) {
+        val bounds = boundsBuilder.build()
+        map.easeCamera(CameraUpdateFactory.newLatLngBounds(bounds, 96))
+        return true
+    }
+    return false
+}
+
+private fun updateFleetDriverLayer(
+    style: Style,
+    routes: List<WarehouseFleetLiveRoute>,
+    animatedDrivers: List<AnimatedDriverPoint>?,
+) {
     val driverFeatures = if (animatedDrivers != null) {
         animatedDrivers.map { point ->
             val feature = Feature.fromGeometry(Point.fromLngLat(point.lng, point.lat))
             feature.addStringProperty("color", point.color)
             feature.addNumberProperty("stale", if (point.stale) 1 else 0)
-            boundsBuilder.include(LatLng(point.lat, point.lng))
-            hasBounds = true
             feature
         }
     } else {
@@ -164,20 +198,18 @@ private fun updateFleetMap(
             val feature = Feature.fromGeometry(Point.fromLngLat(lng, lat))
             feature.addStringProperty("color", routeColor(index))
             feature.addNumberProperty("stale", if (route.locationStale == true) 1 else 0)
-            boundsBuilder.include(LatLng(lat, lng))
-            hasBounds = true
             feature
         }
     }
 
-    if (style.getLayer("fleet-driver-points") != null) {
-        style.removeLayer("fleet-driver-points")
+    val collection = FeatureCollection.fromFeatures(driverFeatures)
+    val existingSource = style.getSourceAs<GeoJsonSource>("fleet-driver-points")
+    if (existingSource != null) {
+        existingSource.setGeoJson(collection)
+    } else if (driverFeatures.isNotEmpty()) {
+        style.addSource(GeoJsonSource("fleet-driver-points", collection))
     }
-    if (style.getSource("fleet-driver-points") != null) {
-        style.removeSource("fleet-driver-points")
-    }
-    if (driverFeatures.isNotEmpty()) {
-        style.addSource(GeoJsonSource("fleet-driver-points", FeatureCollection.fromFeatures(driverFeatures)))
+    if (driverFeatures.isNotEmpty() && style.getLayer("fleet-driver-points") == null) {
         style.addLayer(
             CircleLayer("fleet-driver-points", "fleet-driver-points").withProperties(
                 PropertyFactory.circleRadius(7f),
@@ -196,11 +228,6 @@ private fun updateFleetMap(
                 ),
             ),
         )
-    }
-
-    if (hasBounds) {
-        val bounds = boundsBuilder.build()
-        map.easeCamera(CameraUpdateFactory.newLatLngBounds(bounds, 96))
     }
 }
 

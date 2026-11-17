@@ -16,6 +16,7 @@ final class WarehouseRealtimeClient {
     private let workQueue = DispatchQueue(label: "warehouse.realtime.client")
 
     private var task: URLSessionWebSocketTask?
+    private var pingTask: Task<Void, Never>?
     private var reconnectWorkItem: DispatchWorkItem?
     private var reconnectAttempt = 0
     private var closed = true
@@ -24,6 +25,8 @@ final class WarehouseRealtimeClient {
     private var eventHandler: (@MainActor (WarehouseLiveEvent) -> Void)?
     private var reconnectHandler: (@MainActor () -> Void)?
     private var hasConnectedOnce = false
+    private var lastEventId: String?
+    private static let pingIntervalNs: UInt64 = 25_000_000_000 // 25s heartbeat
 
     init(session: URLSession = .shared) {
         self.session = session
@@ -47,6 +50,7 @@ final class WarehouseRealtimeClient {
 
     deinit {
         pathMonitor.cancel()
+        pingTask?.cancel()
         reconnectWorkItem?.cancel()
     }
 
@@ -65,6 +69,8 @@ final class WarehouseRealtimeClient {
 
     func disconnect() {
         closed = true
+        pingTask?.cancel()
+        pingTask = nil
         reconnectWorkItem?.cancel()
         reconnectWorkItem = nil
         task?.cancel(with: .goingAway, reason: nil)
@@ -90,10 +96,15 @@ final class WarehouseRealtimeClient {
                 return
             }
 
+            self.pingTask?.cancel()
             self.task?.cancel(with: .goingAway, reason: nil)
             self.publish(isReconnect ? .reconnecting : .connecting)
 
-            let socketTask = self.session.webSocketTask(with: APIClient.shared.warehouseWebSocketURL(token: token))
+            var wsRequest = URLRequest(url: APIClient.shared.warehouseWebSocketURL(token: token, lastEventId: self.lastEventId))
+            if let lastId = self.lastEventId, !lastId.isEmpty {
+                wsRequest.setValue(lastId, forHTTPHeaderField: "Last-Event-ID")
+            }
+            let socketTask = self.session.webSocketTask(with: wsRequest)
             self.task = socketTask
             socketTask.resume()
             socketTask.sendPing { [weak self] error in
@@ -105,6 +116,7 @@ final class WarehouseRealtimeClient {
                     self.hasConnectedOnce = true
                     self.reconnectAttempt = 0
                     self.publish(.live)
+                    self.startHeartbeatLoop(for: socketTask)
                     if wasReconnect {
                         Task { await WarehouseSessionReconcile.run() }
                         if let reconnectHandler = self.reconnectHandler {
@@ -114,6 +126,25 @@ final class WarehouseRealtimeClient {
                 }
             }
             self.receiveLoop()
+        }
+    }
+
+    private func startHeartbeatLoop(for socketTask: URLSessionWebSocketTask) {
+        pingTask?.cancel()
+        pingTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: Self.pingIntervalNs)
+                guard !Task.isCancelled, let self, !self.closed, self.task === socketTask else { return }
+                let alive = await withCheckedContinuation { continuation in
+                    socketTask.sendPing { error in
+                        continuation.resume(returning: error == nil)
+                    }
+                }
+                if !alive {
+                    self.handleSocketDrop()
+                    return
+                }
+            }
         }
     }
 
@@ -135,11 +166,17 @@ final class WarehouseRealtimeClient {
                 }
 
                 self.publish(.live)
-                if let payload,
-                   let event = try? self.decoder.decode(WarehouseLiveEvent.self, from: payload),
-                   let eventHandler = self.eventHandler {
-                    Task { @MainActor in
-                        eventHandler(event)
+                if let payload {
+                    if let rawObj = try? JSONSerialization.jsonObject(with: payload) as? [String: Any],
+                       let eid = (rawObj["event_id"] as? String ?? rawObj["id"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines),
+                       !eid.isEmpty {
+                        self.lastEventId = eid
+                    }
+                    if let event = try? self.decoder.decode(WarehouseLiveEvent.self, from: payload),
+                       let eventHandler = self.eventHandler {
+                        Task { @MainActor in
+                            eventHandler(event)
+                        }
                     }
                 }
 
@@ -151,6 +188,8 @@ final class WarehouseRealtimeClient {
     }
 
     private func handleSocketDrop() {
+        pingTask?.cancel()
+        pingTask = nil
         task = nil
         scheduleReconnect()
     }

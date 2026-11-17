@@ -19,11 +19,11 @@ import (
 )
 
 var (
-	errRetailerMemberNotFound      = errors.New("retailer_org_member_not_found")
-	errRetailerMemberPhoneExists   = errors.New("retailer_org_member_phone_exists")
-	errRetailerMemberOwnerLocked   = errors.New("retailer_org_member_owner_locked")
-	errRetailerMemberInvalidRole   = errors.New("retailer_org_member_invalid_role")
-	errRetailerTeamPackRequired    = errors.New("retailer_team_pack_required")
+	errRetailerMemberNotFound    = errors.New("retailer_org_member_not_found")
+	errRetailerMemberPhoneExists = errors.New("retailer_org_member_phone_exists")
+	errRetailerMemberOwnerLocked = errors.New("retailer_org_member_owner_locked")
+	errRetailerMemberInvalidRole = errors.New("retailer_org_member_invalid_role")
+	errRetailerTeamPackRequired  = errors.New("retailer_team_pack_required")
 )
 
 // OrgMemberDTO is the wire shape for team roster rows.
@@ -376,6 +376,7 @@ func (s *Service) handleOrgMemberDeactivate(w http.ResponseWriter, r *http.Reque
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "deactivate_failed"})
 		return
 	}
+	_ = auth.GetRevocationStore().RevokeUser(r.Context(), target.UserID, 24*time.Hour)
 	resp, err := s.loadOrgMembersResponse(r.Context(), orgID)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "load_retailer_org_members_failed"})
@@ -422,7 +423,7 @@ func (s *Service) listOrgMembers(ctx context.Context, retailerID string) ([]OrgM
 			ORDER BY IsOwner DESC, UpdatedAt DESC`,
 		Params: map[string]any{"rid": retailerID},
 	}
-	iter := s.spannerClient.Single().Query(ctx, stmt)
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	var out []OrgMemberDTO
 	for {
@@ -518,7 +519,7 @@ func (s *Service) createOrgMember(ctx context.Context, u RetailerUser) error {
 			RetailerID: u.RetailerID,
 			Phone:      u.Phone,
 			Name:       u.Name,
-			SupplierID: s.supplierID,
+			SupplierID: s.resolveSupplierScope(ctx),
 			UserID:     u.UserID,
 		}); err != nil {
 			return err

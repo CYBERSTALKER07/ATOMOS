@@ -54,8 +54,8 @@ export function effectiveCartMaxQuantity(
     return productMaxQuantity(item);
   }
   const sku = item.product_id;
-  if (sku && previewCaps?.[sku] != null && previewCaps[sku] > 0) {
-    return previewCaps[sku];
+  if (sku && previewCaps?.[sku] != null && previewCaps[sku] >= 0) {
+    return Math.max(0, previewCaps[sku]);
   }
   return productMaxQuantity(item);
 }

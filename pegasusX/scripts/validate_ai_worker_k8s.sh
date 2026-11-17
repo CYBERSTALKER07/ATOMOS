@@ -23,6 +23,8 @@ service = YAML.load_file(service_path)
 assert(configmap['kind'] == 'ConfigMap', "#{configmap_path} must be a ConfigMap")
 assert(configmap.dig('metadata', 'name') == 'ai-worker-config', 'config map name must be ai-worker-config')
 assert(configmap.dig('data', 'HEALTH_PORT') == '8081', 'config map HEALTH_PORT must be 8081')
+assert(configmap.dig('data', 'SPANNER_PROJECT') != 'pegasusx-local', 'ai-worker configmap must not use local emulator project pegasusx-local')
+assert(configmap.dig('data', 'KAFKA_BROKERS') != 'kafka:9092', 'ai-worker configmap must use cluster-qualified or managed Kafka DNS, not docker-compose kafka:9092')
 
 assert(deployment['kind'] == 'Deployment', "#{deployment_path} must be a Deployment")
 assert(deployment.dig('metadata', 'name') == 'ai-worker', 'deployment name must be ai-worker')

@@ -1,104 +1,92 @@
 import SwiftUI
 
 struct PaymentsView: View {
-    @State private var loading = true
-    @State private var error: String?
-    @State private var authority: SettlementAuthorityResponse?
-    @State private var mismatches: [ReconciliationMismatchRow] = []
+    @State private var viewModel = PaymentsViewModel()
 
     var body: some View {
         Group {
-            if loading {
-                SupplierLoadingView(title: "Loading settlement authority…")
-            } else if let error {
-                SupplierErrorView(message: error) { Task { await load() } }
-            } else if let authority {
+            if viewModel.loading && viewModel.authority == nil {
+                SupplierLoadingView(title: "mobile_supplier.loading.settlement")
+            } else if let error = viewModel.error, viewModel.authority == nil {
+                SupplierErrorView(message: error) { Task { await viewModel.load() } }
+            } else if let authority = viewModel.authority {
                 ResponsiveGridContentWrapper {
-                    Section("Scope") {
-                        PaymentsKpiRow(label: "Supplier scope", value: authority.supplierId.isEmpty ? "(global)" : authority.supplierId)
-                        PaymentsKpiRow(label: "Grouped rows", value: "\(authority.count)")
-                        PaymentsKpiRow(label: "Total entries", value: "\(authority.entryCountTotal)")
-                        PaymentsKpiRow(label: "Reconciliation groups", value: "\(mismatches.count)")
+                    Section("mobile_supplier.chrome.scope") {
+                        PaymentsKpiRow(label: "mobile_supplier.chrome.supplier_scope", value: authority.supplierId.isEmpty ? "mobile_supplier.chrome.global_scope" : authority.supplierId)
+                        PaymentsKpiRow(label: "mobile_supplier.chrome.grouped_rows", value: "\(authority.count)")
+                        PaymentsKpiRow(label: "mobile_supplier.chrome.total_entries", value: "\(authority.entryCountTotal)")
+                        PaymentsKpiRow(label: "mobile_supplier.chrome.reconciliation_groups", value: "\(viewModel.mismatches.count)")
                     }
 
-                    Section("Totals by currency") {
+                    Section("mobile_supplier.chrome.totals_by_currency") {
                         if authority.totalsByCurrency.isEmpty {
-                            Text("No totals available.").foregroundStyle(.secondary)
+                            Text("mobile_supplier.ui.no_totals_available").foregroundStyle(.secondary)
                         }
                         ForEach(authority.totalsByCurrency, id: \.currency) { row in
                             HStack {
                                 Text(row.currency).fontWeight(.medium)
                                 Spacer()
-                                Text("\(row.entryCount) entries").font(.caption).foregroundStyle(.secondary)
+                                Text(L10n.format("mobile_supplier.ui.entrycount_entries", "\(row.entryCount)")).font(.caption).foregroundStyle(.secondary)
                                 Text(MoneyFormat.minor(row.amountMinorTotal, currency: row.currency))
                             }
                             .font(.subheadline)
+                            .accessibilityElement(children: .combine)
                         }
                     }
 
-                    Section("Reconciliation mismatches") {
-                        if mismatches.isEmpty {
-                            Text("No non-zero mismatches detected.").foregroundStyle(.secondary)
+                    Section("mobile_supplier.chrome.reconciliation_mismatches") {
+                        if viewModel.mismatches.isEmpty {
+                            Text("mobile_supplier.ui.no_non_zero_mismatches_detected").foregroundStyle(.secondary)
                         }
-                        ForEach(mismatches) { row in
+                        ForEach(viewModel.mismatches) { row in
                             VStack(alignment: .leading, spacing: 4) {
                                 HStack {
-                                    Text("\(row.gateway) · \(row.currency)").fontWeight(.medium)
+                                    Text(L10n.format("mobile_supplier.ui.gateway_currency", "\(row.gateway)", "\(row.currency)")).fontWeight(.medium)
                                     Spacer()
-                                    Text(MoneyFormat.minor(row.netAmountMinor, currency: row.currency))
+                                    Text(row.netAmountMinor.map { MoneyFormat.minor($0, currency: row.currency) } ?? "—")
                                         .foregroundStyle(SupplierTheme.destructive)
                                 }
-                                Text(String(format: "Credit %@ · Debit %@ · %d entries",
-                                            MoneyFormat.minor(row.creditAmountMinorTotal, currency: row.currency),
-                                            MoneyFormat.minor(row.debitAmountMinorTotal, currency: row.currency),
-                                            row.entryCountTotal))
+                                Text(L10n.format(
+                                    "mobile_supplier.chrome.credit_debit_entries",
+                                    row.creditAmountMinorTotal.map { MoneyFormat.minor($0, currency: row.currency) } ?? "—",
+                                    row.debitAmountMinorTotal.map { MoneyFormat.minor($0, currency: row.currency) } ?? "—",
+                                    "\(row.entryCountTotal)"
+                                ))
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
                             .font(.subheadline)
+                            .accessibilityElement(children: .combine)
                         }
                     }
 
-                    Section("Settlement groups") {
+                    Section("mobile_supplier.chrome.settlement_groups") {
                         if authority.items.isEmpty {
-                            Text("No settlement groups found.").foregroundStyle(.secondary)
+                            Text("mobile_supplier.ui.no_settlement_groups_found").foregroundStyle(.secondary)
                         }
                         ForEach(authority.items) { row in
                             VStack(alignment: .leading, spacing: 4) {
                                 HStack {
-                                    Text("\(row.gateway) · \(row.entryType)").fontWeight(.medium)
+                                    Text(L10n.format("mobile_supplier.ui.gateway_entrytype", "\(row.gateway)", "\(row.entryType)")).fontWeight(.medium)
                                     Spacer()
                                     Text(MoneyFormat.minor(row.amountMinorTotal, currency: row.currency))
                                 }
-                                Text("\(row.currency) · \(row.entryCount) entries")
+                                Text(L10n.format("mobile_supplier.ui.currency_entrycount_entries", "\(row.currency)", "\(row.entryCount)"))
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
                             .font(.subheadline)
+                            .accessibilityElement(children: .combine)
                         }
                     }
                 }
             } else {
-                SupplierEmptyView(title: "No data", message: "No settlement authority data available.")
+                SupplierEmptyView(title: "mobile_supplier.empty.no_data", message: "mobile_supplier.empty.payments_message")
             }
         }
         .background(SupplierTheme.background)
-        .navigationTitle("Payments")
-        .task { await load() }
-    }
-
-    private func load() async {
-        loading = true
-        error = nil
-        defer { loading = false }
-        do {
-            async let authorityCall = SupplierOperationsService.paymentSettlementAuthority()
-            async let mismatchCall = SupplierOperationsService.paymentReconciliationMismatches()
-            authority = try await authorityCall
-            mismatches = try await mismatchCall.items
-        } catch {
-            self.error = error.localizedDescription
-        }
+        .navigationTitle("portal.nav.payments")
+        .task { await viewModel.load() }
     }
 }
 
@@ -108,10 +96,11 @@ private struct PaymentsKpiRow: View {
 
     var body: some View {
         HStack {
-            Text(label).foregroundStyle(.secondary)
+            Text(LocalizedStringKey(label)).foregroundStyle(.secondary)
             Spacer()
-            Text(value).fontWeight(.medium)
+            Text(LocalizedStringKey(value)).fontWeight(.medium)
         }
         .font(.subheadline)
+        .accessibilityElement(children: .combine)
     }
 }

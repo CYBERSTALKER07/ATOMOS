@@ -50,6 +50,9 @@ func (s *Service) CreateNotificationWithMetadata(ctx context.Context, recipientI
 
 // ListForRecipient returns recent notifications with limit and offset pagination.
 func (s *Service) ListForRecipient(ctx context.Context, recipientID string, limit, offset int) ([]Notification, error) {
+	if s == nil || s.repo == nil {
+		return nil, errInboxUnavailable
+	}
 	notifs, err := s.repo.ListByRecipient(ctx, recipientID, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("list notifications: %w", err)
@@ -62,6 +65,9 @@ func (s *Service) ListForRecipient(ctx context.Context, recipientID string, limi
 
 // MarkRead marks notification IDs as read and invalidates cache.
 func (s *Service) MarkRead(ctx context.Context, recipientID string, notificationIDs []string) error {
+	if s == nil || s.repo == nil {
+		return errInboxUnavailable
+	}
 	if err := s.repo.MarkRead(ctx, notificationIDs); err != nil {
 		return fmt.Errorf("mark read: %w", err)
 	}
@@ -73,6 +79,9 @@ func (s *Service) MarkRead(ctx context.Context, recipientID string, notification
 
 // MarkAllRead marks every unread notification for a recipient as read.
 func (s *Service) MarkAllRead(ctx context.Context, recipientID string) error {
+	if s == nil || s.repo == nil {
+		return errInboxUnavailable
+	}
 	if err := s.repo.MarkAllRead(ctx, recipientID); err != nil {
 		return fmt.Errorf("mark all read: %w", err)
 	}
@@ -84,6 +93,9 @@ func (s *Service) MarkAllRead(ctx context.Context, recipientID string) error {
 
 // UnreadCount returns the unread notification count for a recipient.
 func (s *Service) UnreadCount(ctx context.Context, recipientID string) (int64, error) {
+	if s == nil || s.repo == nil {
+		return 0, errInboxUnavailable
+	}
 	return s.repo.UnreadCount(ctx, recipientID)
 }
 

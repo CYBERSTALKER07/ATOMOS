@@ -85,63 +85,21 @@ func (s *Service) applyHqSalesDeltaMemory(k hqSalesKey, qtySold, qtyVoided, gros
 // buildHqSalesMutationsFromSale returns Spanner mutations for sale completion
 // (qty sold + gross/net). Includes local: SKUs.
 func (s *Service) buildHqSalesMutationsFromSale(ctx context.Context, sale PosSaleDTO) ([]*spanner.Mutation, error) {
-	day := hqDayUTC(s.now())
-	if sale.CreatedAt != "" {
-		if t, err := time.Parse(time.RFC3339Nano, sale.CreatedAt); err == nil {
-			day = hqDayUTC(t)
-		}
+	if s.spannerClient == nil {
+		s.applyHqFromSaleMemory(sale)
+		return nil, nil
 	}
-	currency := sale.Currency
-	if currency == "" {
-		currency = "UZS"
-	}
-	var muts []*spanner.Mutation
-	for _, l := range sale.Lines {
-		sku := strings.TrimSpace(l.Sku)
-		if sku == "" || l.Qty <= 0 {
-			continue
-		}
-		m, err := s.hqSalesDailyUpsertMutation(ctx, sale.RetailerID, sale.LocationID, day, sku,
-			l.Qty, 0, l.LineTotalMinor, l.LineTotalMinor, currency)
-		if err != nil {
-			return nil, err
-		}
-		if m != nil {
-			muts = append(muts, m)
-		}
-	}
-	return muts, nil
+	return s.hqSalesMutationsWithReader(ctx, sale, false, s.spannerClient.Single().ReadRow)
 }
 
 // buildHqSalesMutationsFromVoid returns Spanner mutations for void
 // (qty voided + net decrease). Gross unchanged.
 func (s *Service) buildHqSalesMutationsFromVoid(ctx context.Context, sale PosSaleDTO) ([]*spanner.Mutation, error) {
-	day := hqDayUTC(s.now())
-	if sale.CreatedAt != "" {
-		if t, err := time.Parse(time.RFC3339Nano, sale.CreatedAt); err == nil {
-			day = hqDayUTC(t)
-		}
+	if s.spannerClient == nil {
+		s.applyHqFromVoidMemory(sale)
+		return nil, nil
 	}
-	currency := sale.Currency
-	if currency == "" {
-		currency = "UZS"
-	}
-	var muts []*spanner.Mutation
-	for _, l := range sale.Lines {
-		sku := strings.TrimSpace(l.Sku)
-		if sku == "" || l.Qty <= 0 {
-			continue
-		}
-		m, err := s.hqSalesDailyUpsertMutation(ctx, sale.RetailerID, sale.LocationID, day, sku,
-			0, l.Qty, 0, -l.LineTotalMinor, currency)
-		if err != nil {
-			return nil, err
-		}
-		if m != nil {
-			muts = append(muts, m)
-		}
-	}
-	return muts, nil
+	return s.hqSalesMutationsWithReader(ctx, sale, true, s.spannerClient.Single().ReadRow)
 }
 
 // hqSalesDailyUpsertMutation reads current row (if any) and builds InsertOrUpdate.
@@ -191,9 +149,104 @@ func (s *Service) hqSalesDailyUpsertMutation(ctx context.Context, retailerID, lo
 	}), nil
 }
 
-func (s *Service) readHqSalesDaily(ctx context.Context, retailerID, locationID, day, sku string) (sold, voided, gross, net int64, currency string, err error) {
+func (s *Service) hqSalesMutationsWithReader(
+	ctx context.Context,
+	sale PosSaleDTO,
+	isVoid bool,
+	readRow func(ctx context.Context, table string, key spanner.Key, cols []string) (*spanner.Row, error),
+) ([]*spanner.Mutation, error) {
+	day := hqDayUTC(s.now())
+	if sale.CreatedAt != "" {
+		if t, err := time.Parse(time.RFC3339Nano, sale.CreatedAt); err == nil {
+			day = hqDayUTC(t)
+		}
+	}
+	currency := coalescePackCurrency(ctx, sale.Currency)
 	dayT := parseHQDay(day)
-	row, err := s.spannerClient.Single().ReadRow(ctx, "RetailerHqSalesDaily",
+
+	// Accumulate per-SKU totals inside this transaction so duplicate SKUs in sale.Lines
+	// combine cleanly without reading stale pre-buffer Spanner rows twice.
+	acc := map[hqSalesKey]HqSalesDayDTO{}
+	order := make([]hqSalesKey, 0, len(sale.Lines))
+	for _, l := range sale.Lines {
+		sku := strings.TrimSpace(l.Sku)
+		if sku == "" || l.Qty <= 0 || strings.TrimSpace(sale.RetailerID) == "" || strings.TrimSpace(sale.LocationID) == "" {
+			continue
+		}
+		k := hqSalesKey{
+			RetailerID: strings.TrimSpace(sale.RetailerID),
+			LocationID: strings.TrimSpace(sale.LocationID),
+			Day:        day,
+			SkuID:      sku,
+		}
+		cur, seen := acc[k]
+		if !seen {
+			sold, voided, gross, net, curCur, err := readHqSalesDailyRow(ctx, readRow, k.RetailerID, k.LocationID, dayT, k.SkuID)
+			if err != nil {
+				if strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "RetailerHqSalesDaily") {
+					return nil, nil
+				}
+				return nil, err
+			}
+			c := currency
+			if c == "" {
+				c = curCur
+			}
+			cur = HqSalesDayDTO{
+				RetailerID: k.RetailerID,
+				LocationID: k.LocationID,
+				Day:        day,
+				SkuID:      k.SkuID,
+				QtySold:    sold,
+				QtyVoided:  voided,
+				GrossMinor: gross,
+				NetMinor:   net,
+				Currency:   c,
+			}
+			order = append(order, k)
+		}
+		if isVoid {
+			cur.QtyVoided += l.Qty
+			cur.NetMinor -= l.LineTotalMinor
+		} else {
+			cur.QtySold += l.Qty
+			cur.GrossMinor += l.LineTotalMinor
+			cur.NetMinor += l.LineTotalMinor
+		}
+		acc[k] = cur
+	}
+
+	muts := make([]*spanner.Mutation, 0, len(order))
+	for _, k := range order {
+		cur := acc[k]
+		muts = append(muts, spanner.InsertOrUpdateMap("RetailerHqSalesDaily", map[string]any{
+			"RetailerId": cur.RetailerID,
+			"LocationId": cur.LocationID,
+			"Day":        dayT,
+			"SkuId":      cur.SkuID,
+			"QtySold":    cur.QtySold,
+			"QtyVoided":  cur.QtyVoided,
+			"GrossMinor": cur.GrossMinor,
+			"NetMinor":   cur.NetMinor,
+			"Currency":   cur.Currency,
+			"UpdatedAt":  spanner.CommitTimestamp,
+		}))
+	}
+	return muts, nil
+}
+
+func (s *Service) hqSalesMutationsInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, sale PosSaleDTO, isVoid bool) ([]*spanner.Mutation, error) {
+	return s.hqSalesMutationsWithReader(ctx, sale, isVoid, txn.ReadRow)
+}
+
+func readHqSalesDailyRow(
+	ctx context.Context,
+	readRow func(ctx context.Context, table string, key spanner.Key, cols []string) (*spanner.Row, error),
+	retailerID, locationID string,
+	dayT time.Time,
+	sku string,
+) (sold, voided, gross, net int64, currency string, err error) {
+	row, err := readRow(ctx, "RetailerHqSalesDaily",
 		spanner.Key{retailerID, dayT, locationID, sku},
 		[]string{"QtySold", "QtyVoided", "GrossMinor", "NetMinor", "Currency"})
 	if err != nil {
@@ -208,20 +261,25 @@ func (s *Service) readHqSalesDaily(ctx context.Context, retailerID, locationID, 
 	return sold, voided, gross, net, currency, nil
 }
 
+func (s *Service) readHqSalesDaily(ctx context.Context, retailerID, locationID, day, sku string) (sold, voided, gross, net int64, currency string, err error) {
+	return readHqSalesDailyRow(ctx, s.spannerClient.Single().ReadRow, retailerID, locationID, parseHQDay(day), sku)
+}
+
 // applyHqFromSaleMemory is called when sale is saved without Spanner.
 func (s *Service) applyHqFromSaleMemory(sale PosSaleDTO) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.applyHqFromSaleMemoryLocked(sale)
+}
+
+func (s *Service) applyHqFromSaleMemoryLocked(sale PosSaleDTO) {
 	day := hqDayUTC(s.now())
 	if sale.CreatedAt != "" {
 		if t, err := time.Parse(time.RFC3339Nano, sale.CreatedAt); err == nil {
 			day = hqDayUTC(t)
 		}
 	}
-	cur := sale.Currency
-	if cur == "" {
-		cur = "UZS"
-	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	cur := coalescePackCurrency(context.Background(), sale.Currency)
 	for _, l := range sale.Lines {
 		s.applyHqSalesDeltaMemory(hqSalesKey{
 			RetailerID: sale.RetailerID, LocationID: sale.LocationID, Day: day, SkuID: l.Sku,
@@ -230,18 +288,19 @@ func (s *Service) applyHqFromSaleMemory(sale PosSaleDTO) {
 }
 
 func (s *Service) applyHqFromVoidMemory(sale PosSaleDTO) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.applyHqFromVoidMemoryLocked(sale)
+}
+
+func (s *Service) applyHqFromVoidMemoryLocked(sale PosSaleDTO) {
 	day := hqDayUTC(s.now())
 	if sale.CreatedAt != "" {
 		if t, err := time.Parse(time.RFC3339Nano, sale.CreatedAt); err == nil {
 			day = hqDayUTC(t)
 		}
 	}
-	cur := sale.Currency
-	if cur == "" {
-		cur = "UZS"
-	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	cur := coalescePackCurrency(context.Background(), sale.Currency)
 	for _, l := range sale.Lines {
 		s.applyHqSalesDeltaMemory(hqSalesKey{
 			RetailerID: sale.RetailerID, LocationID: sale.LocationID, Day: day, SkuID: l.Sku,
@@ -280,7 +339,7 @@ func (s *Service) ListHqSalesByLocation(ctx context.Context, retailerID, day str
 		}
 		return out, nil
 	}
-	iter := s.spannerClient.Single().Query(ctx, spanner.Statement{
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, spanner.Statement{
 		SQL: `SELECT LocationId, SUM(NetMinor) FROM RetailerHqSalesDaily
 			WHERE RetailerId = @rid AND Day = @day
 			GROUP BY LocationId`,
@@ -350,7 +409,15 @@ func (s *Service) UpsertHqStockSnapshot(ctx context.Context, retailerID, locatio
 // refreshHqStockSnapshotsForSale updates HQ stock snapshots for sale lines (after stock delta).
 func (s *Service) refreshHqStockSnapshotsForSale(ctx context.Context, retailerID, locationID, bin string, lines []PosSaleLine) {
 	for _, l := range lines {
-		onHand, _ := s.getOnHand(ctx, locationID, normalizeBin(bin), l.Sku)
-		_ = s.UpsertHqStockSnapshot(ctx, retailerID, locationID, l.Sku, onHand, 0)
+		onHand, err := s.getOnHand(ctx, locationID, normalizeBin(bin), l.Sku)
+		if err != nil {
+			if s.log != nil {
+				s.log.Warn("hq stock snapshot read failed", "retailer_id", retailerID, "sku", l.Sku, "err", err)
+			}
+			continue
+		}
+		if err := s.UpsertHqStockSnapshot(ctx, retailerID, locationID, l.Sku, onHand, 0); err != nil && s.log != nil {
+			s.log.Warn("hq stock snapshot upsert failed", "retailer_id", retailerID, "sku", l.Sku, "err", err)
+		}
 	}
 }

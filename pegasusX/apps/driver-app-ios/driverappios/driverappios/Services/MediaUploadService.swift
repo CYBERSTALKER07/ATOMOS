@@ -43,6 +43,15 @@ enum MediaUploadService {
         guard let data = image.jpegData(compressionQuality: 0.82) else {
             throw APIError.decodingError
         }
+        return try await uploadJPEGData(data, purpose: purpose, orderId: orderId, api: api)
+    }
+
+    static func uploadJPEGData(
+        _ data: Data,
+        purpose: String = "credit_proof",
+        orderId: String?,
+        api: APIClient = .shared
+    ) async throws -> String {
         var path = "v1/media/upload-ticket?purpose=\(purpose)&ext=jpg"
         if let orderId, !orderId.isEmpty {
             let enc = orderId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? orderId
@@ -61,5 +70,19 @@ enum MediaUploadService {
             throw APIError.httpError((response as? HTTPURLResponse)?.statusCode ?? 0)
         }
         return ticket.publicURL
+    }
+
+    /// Persist PoD bytes under Caches for offline credit / shop-closed flush.
+    static func savePodJPEG(_ data: Data, prefix: String) throws -> String {
+        let dir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("pod", isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let url = dir.appendingPathComponent("\(prefix)-\(UUID().uuidString).jpg")
+        try data.write(to: url, options: .atomic)
+        return url.path
+    }
+
+    static func readLocalJPEG(_ path: String) throws -> Data {
+        try Data(contentsOf: URL(fileURLWithPath: path))
     }
 }

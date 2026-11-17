@@ -2,22 +2,19 @@ package bootstrap
 
 import (
 	"context"
-	"math"
 	"time"
 
 	"github.com/google/uuid"
-
 	"github.com/redis/go-redis/v9"
 )
 
 var redisRateLimitScript = redis.NewScript(`
 local key = KEYS[1]
 local max_requests = tonumber(ARGV[1])
-local window_seconds = tonumber(ARGV[2])
+local window_ms = tonumber(ARGV[2])
 local now_ms = tonumber(ARGV[3])
 local req_id = ARGV[4]
 
-local window_ms = window_seconds * 1000
 local clear_before = now_ms - window_ms
 
 redis.call('ZREMRANGEBYSCORE', key, 0, clear_before)
@@ -35,27 +32,48 @@ if current_requests >= max_requests then
 end
 
 redis.call('ZADD', key, now_ms, req_id)
-redis.call('EXPIRE', key, window_seconds)
+redis.call('PEXPIRE', key, window_ms)
 
 local remaining = max_requests - (current_requests + 1)
 return {1, remaining, 0}
 `)
 
 type redisRateLimiter struct {
-	client *redis.Client
+	client   *redis.Client
+	fallback *fixedWindowRateLimiter
 }
 
 func newRedisRateLimiter(client *redis.Client) *redisRateLimiter {
-	return &redisRateLimiter{client: client}
+	return &redisRateLimiter{
+		client:   client,
+		fallback: newFixedWindowRateLimiter(),
+	}
+}
+
+// Close cleanly stops the fallback limiter background sweep.
+func (l *redisRateLimiter) Close() {
+	if l == nil {
+		return
+	}
+	if l.fallback != nil {
+		l.fallback.Close()
+	}
 }
 
 func (l *redisRateLimiter) Allow(key string, max int, window time.Duration, now time.Time) (bool, int, int) {
-	if l == nil || l.client == nil || max <= 0 || window <= 0 {
+	if l == nil || max <= 0 || window <= 0 {
 		return true, max, 0
 	}
-	windowSec := int64(math.Ceil(window.Seconds()))
-	if windowSec < 1 {
-		windowSec = 1
+	if l.client == nil {
+		if l.fallback != nil {
+			return l.fallback.Allow(key, max, window, now)
+		}
+		return true, max, 0
+	}
+
+	windowMs := window.Milliseconds()
+	if windowMs < 1000 {
+		windowMs = 1000
 	}
 	if now.IsZero() {
 		now = time.Now()
@@ -66,8 +84,12 @@ func (l *redisRateLimiter) Allow(key string, max int, window time.Duration, now 
 	ctx, cancel := context.WithTimeout(context.Background(), 250*time.Millisecond)
 	defer cancel()
 
-	res, err := redisRateLimitScript.Run(ctx, l.client, []string{"rl:" + key}, max, windowSec, nowMs, reqID).Int64Slice()
+	res, err := redisRateLimitScript.Run(ctx, l.client, []string{"{rl:" + key + "}"}, max, windowMs, nowMs, reqID).Int64Slice()
 	if err != nil || len(res) < 3 {
+		// Clean fallback to local in-memory rate limiter on Redis failure or timeout (SO-5, CG-4)
+		if l.fallback != nil {
+			return l.fallback.Allow(key, max, window, now)
+		}
 		return true, max, 0
 	}
 	allowed := res[0] == 1

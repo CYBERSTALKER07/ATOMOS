@@ -14,21 +14,35 @@ struct OrderOpsActions: View {
             Section("Quick actions") {
                 if canProposeDate(state) {
                     DatePicker("Proposed delivery date", selection: $proposeDate, displayedComponents: .date)
-                    Button("Propose new date") { showProposeSheet = true }
+                    Button("mobile_warehouse.ui.propose_new_date") { showProposeSheet = true }
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
                         .disabled(mutating || reasonInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
-                TextField("Reason (required for propose and cancel)", text: $reasonInput, axis: .vertical)
+                TextField("mobile_warehouse.ui.reason_required_for_propose_and_cancel", text: $reasonInput, axis: .vertical)
                     .lineLimit(2...4)
                 if canOverflow(state) {
-                    Button("Return to dispatch pool") { pendingAction = .overflow }
+                    Button("mobile_warehouse.ui.return_to_dispatch_pool") { pendingAction = .overflow }
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
                         .disabled(mutating)
                 }
                 if canReject(state) {
-                    Button("Cancel order", role: .destructive) { pendingAction = .reject }
+                    Button("warehouse_portal.dispatch.text.cancel_order", role: .destructive) { pendingAction = .reject }
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
                         .disabled(mutating)
                 }
                 if canReassign(state) {
-                    Button("Reassign order") { onLoadRecommendations() }
+                    Button("mobile_warehouse.ui.reassign_order") { onLoadRecommendations() }
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
+                        .disabled(mutating)
+                }
+                if !["COMPLETED", "CANCELLED"].contains(state.uppercased()) {
+                    Button("Emergency Payment Bypass") { pendingAction = .paymentBypass }
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
                         .disabled(mutating)
                 }
             }
@@ -36,7 +50,7 @@ struct OrderOpsActions: View {
     }
 
     private func showOps(for state: String) -> Bool {
-        canProposeDate(state) || canReject(state) || canOverflow(state) || canReassign(state)
+        canProposeDate(state) || canReject(state) || canOverflow(state) || canReassign(state) || !["COMPLETED", "CANCELLED"].contains(state.uppercased())
     }
 
     private func canProposeDate(_ state: String) -> Bool {

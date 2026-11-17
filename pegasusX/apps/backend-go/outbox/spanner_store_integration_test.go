@@ -43,12 +43,41 @@ func TestSpannerStore_AppendFetchMarkPublished_Integration(t *testing.T) {
 		client.Close()
 	})
 
-	fetched, err := store.Fetch(ctx, 10000)
-	if err != nil {
-		t.Fatalf("fetch integration event: %v", err)
+	var claimedOtherIDs []string
+	defer func() {
+		if len(claimedOtherIDs) > 0 {
+			_ = store.Unclaim(context.Background(), claimedOtherIDs)
+		}
+	}()
+
+	// Claim in production-sized batches so shared emulator backlog (>500 older
+	// unpublished rows from prior integration runs) never hides our newly appended row.
+	maxBatches := 40
+	if unpublishedCount, cerr := store.CountUnpublished(ctx); cerr == nil && unpublishedCount > 0 {
+		needed := int(unpublishedCount/400) + 10
+		if needed > maxBatches {
+			maxBatches = needed
+		}
 	}
-	if !containsEventID(fetched, eventID) {
-		t.Fatalf("fetch did not include appended event_id %s", eventID)
+	found := false
+	for batch := 0; batch < maxBatches; batch++ {
+		fetched, err := store.Fetch(ctx, 500)
+		if err != nil {
+			t.Fatalf("fetch integration event (batch %d): %v", batch, err)
+		}
+		for _, e := range fetched {
+			if e.EventID == eventID {
+				found = true
+			} else {
+				claimedOtherIDs = append(claimedOtherIDs, e.EventID)
+			}
+		}
+		if found || len(fetched) == 0 {
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("fetch did not include appended event_id %s after claiming backlog (%d batches)", eventID, maxBatches)
 	}
 
 	publishAt := time.Now().UTC().Truncate(time.Microsecond)

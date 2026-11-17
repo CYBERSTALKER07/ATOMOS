@@ -28,6 +28,10 @@ import javax.inject.Inject
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
+/** Non-blocking fiscal queue guidance shown instead of legacy supervisor call prompts. */
+const val FISCAL_RETRY_QUEUED_GUIDANCE =
+    "Cash/payment and PoD are recorded. Soliq fiscal receipt is queued for automatic retry and SMS/Telegram QR delivery to the shop owner. You may continue to the next stop."
+
 /** ADR-009 cash path phases for driver UI. */
 enum class CashFiscalPhase {
     COLLECT,
@@ -49,6 +53,7 @@ data class CashCollectionUiState(
     val phase: CashFiscalPhase = CashFiscalPhase.COLLECT,
     val attemptId: String = "",
     val fiscalStatus: String = "",
+    val statusNotice: String? = null,
     val splitPaymentRecorded: Boolean = false,
     val shortfallMinor: Long = 0,
     val overageMinor: Long = 0,
@@ -124,13 +129,19 @@ class CashCollectionViewModel @Inject constructor(
                     }
                     "FISCAL_RECEIPT_FAILED", "ORDER_STATUS_CHANGED" -> {
                         val status = (msg.status ?: msg.state).orEmpty().uppercase()
-                        if (status == "FISCAL_FAILED" || msg.type == "FISCAL_RECEIPT_FAILED") {
+                        if (
+                            status == "FISCAL_FAILED" ||
+                            status == "FISCAL_RETRY_QUEUED" ||
+                            status == "PENDING_FISCAL_ISSUE" ||
+                            msg.type == "FISCAL_RECEIPT_FAILED"
+                        ) {
                             _state.update {
                                 it.copy(
                                     phase = CashFiscalPhase.FISCAL_FAILED,
                                     isCompleting = false,
-                                    fiscalStatus = "FAILED",
-                                    error = "Fiscal receipt failed. Retry or call supervisor.",
+                                    fiscalStatus = "FISCAL_RETRY_QUEUED",
+                                    statusNotice = FISCAL_RETRY_QUEUED_GUIDANCE,
+                                    error = null,
                                 )
                             }
                         } else if (status == "COMPLETED") {
@@ -298,29 +309,48 @@ class CashCollectionViewModel @Inject constructor(
                 }
                 val nextPhase = when (resp.state.uppercase()) {
                     "COMPLETED" -> CashFiscalPhase.DONE
-                    "FISCAL_FAILED" -> CashFiscalPhase.FISCAL_FAILED
+                    "FISCAL_FAILED", "FISCAL_RETRY_QUEUED", "PENDING_FISCAL_ISSUE" -> CashFiscalPhase.FISCAL_FAILED
                     else -> CashFiscalPhase.FISCALIZING
                 }
+                val isRetryQueued = nextPhase == CashFiscalPhase.FISCAL_FAILED ||
+                    resp.fiscalStatus.uppercase() in setOf("FISCAL_RETRY_QUEUED", "PENDING_FISCAL_ISSUE")
                 _state.update {
                     it.copy(
                         isCompleting = false,
                         completed = nextPhase == CashFiscalPhase.DONE,
-                        phase = nextPhase,
+                        phase = if (isRetryQueued && nextPhase != CashFiscalPhase.DONE) CashFiscalPhase.FISCAL_FAILED else nextPhase,
                         distanceM = resp.distanceM,
                         attemptId = resp.attemptId,
                         shortfallMinor = resp.shortfallMinor,
                         overageMinor = resp.overageMinor,
                         fiscalStatus = resp.fiscalStatus.ifBlank {
-                            if (nextPhase == CashFiscalPhase.FISCALIZING) "PENDING" else resp.state
+                            if (nextPhase == CashFiscalPhase.FISCAL_FAILED) "FISCAL_RETRY_QUEUED"
+                            else if (nextPhase == CashFiscalPhase.FISCALIZING) "PENDING"
+                            else resp.state
                         },
-                        error = if (nextPhase == CashFiscalPhase.FISCAL_FAILED) {
-                            "Fiscal receipt failed. Retry or call supervisor."
-                        } else null,
+                        statusNotice = if (isRetryQueued) FISCAL_RETRY_QUEUED_GUIDANCE else null,
+                        error = null,
                     )
                 }
             } catch (e: Exception) {
                 val msg = e.message ?: "Failed to collect cash"
                 _state.update { it.copy(isCompleting = false, error = msg) }
+            }
+        }
+    }
+
+    /** Cash and PoD are already saved; allow the driver to proceed to the next stop while Soliq retries automatically. */
+    fun continueNextStop() {
+        _state.update {
+            if (it.phase == CashFiscalPhase.FISCAL_FAILED || it.fiscalStatus == "FISCAL_RETRY_QUEUED") {
+                it.copy(
+                    phase = CashFiscalPhase.DONE,
+                    completed = true,
+                    isCompleting = false,
+                    error = null,
+                )
+            } else {
+                it
             }
         }
     }

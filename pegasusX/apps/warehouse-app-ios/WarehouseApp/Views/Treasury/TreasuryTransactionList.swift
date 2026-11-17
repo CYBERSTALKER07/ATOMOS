@@ -13,7 +13,7 @@ struct TreasuryTransactionList: View {
                         VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
                             Text(inv.retailerName)
                                 .font(.headline)
-                            Text("\(inv.amountUzs.formatted()) \(inv.currency) · Due: \(inv.dueDate)")
+                            Text(L10n.format("mobile_warehouse.ui.formatted_currency_due_duedate", "\(inv.amountUzs.formatted())", "\(inv.currency)", "\(inv.dueDate)"))
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                             let ownerType = inv.payoutOwnerType.isEmpty ? "SUPPLIER" : inv.payoutOwnerType
@@ -25,6 +25,9 @@ struct TreasuryTransactionList: View {
                         Spacer()
                         WarehouseStatusBadge(text: inv.status)
                     }
+                    .frame(minHeight: 44)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("Invoice for \(inv.retailerName), amount \(inv.amountUzs.formatted()) \(inv.currency), due \(inv.dueDate), status \(inv.status)")
                 }
             }
         }

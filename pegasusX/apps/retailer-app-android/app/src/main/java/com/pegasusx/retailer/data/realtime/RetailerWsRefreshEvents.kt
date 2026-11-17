@@ -25,6 +25,7 @@ object RetailerWsRefreshEvents {
         "SETTLEMENT_REQUIRED",
         "PAYMENT_REQUIRED",
         "PAYMENT_CLEARED",
+        "SPLIT_PAYMENT_CREATED",
         "PAYMENT_SETTLED",
         "PAYMENT_FAILED",
         "PAYMENT_EXPIRED",

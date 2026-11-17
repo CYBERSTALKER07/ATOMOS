@@ -25,8 +25,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.pegasusx.retailer.ui.components.RetailerMetricTile
-import com.pegasus.design.PegasusRuntimeBanner
-import com.pegasus.design.PegasusRuntimeTone
+import com.pegasusx.retailer.ui.design.PegasusRuntimeBanner
+import com.pegasusx.retailer.ui.design.PegasusRuntimeTone
 import com.pegasusx.retailer.ui.components.RetailerSectionHeader
 import com.pegasusx.retailer.ui.theme.PegasusSpacing
 import com.pegasusx.retailer.ui.theme.SoftSquircleShape
@@ -53,7 +53,7 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -79,17 +79,30 @@ fun ProfileScreen(
     onFamilyMembersClick: () -> Unit = {},
     onCapabilitiesClick: () -> Unit = {},
     onTeamClick: () -> Unit = {},
+    onOwnerApprovalsClick: () -> Unit = {},
     onLocationsClick: () -> Unit = {},
     onStoreStockClick: () -> Unit = {},
     onLocalSkusClick: () -> Unit = {},
     onPosClick: () -> Unit = {},
     onShiftsClick: () -> Unit = {},
     onSectionsClick: () -> Unit = {},
+    onPlanogramsClick: () -> Unit = {},
     onReportsClick: () -> Unit = {},
     onAssistClick: () -> Unit = {},
     viewModel: ProfileViewModel = hiltViewModel(),
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = androidx.compose.ui.platform.LocalContext.current
+
+    if (uiState.showGeneralSettingsDialog) {
+        com.pegasusx.retailer.ui.screens.profile.components.GeneralSettingsDialog(
+            selectedLanguage = uiState.selectedLanguage,
+            selectedWorkspaceMode = uiState.workspaceMode,
+            onSelectLanguage = { lang -> viewModel.setLanguage(context, lang) },
+            onSelectWorkspaceMode = viewModel::setWorkspaceMode,
+            onDismiss = { viewModel.setShowGeneralSettingsDialog(false) },
+        )
+    }
 
     // History/Fresh dialog when enabling global auto-order
     if (uiState.showHistoryDialog) {
@@ -182,14 +195,29 @@ fun ProfileScreen(
                 onFamilyMembersClick = onFamilyMembersClick,
                 onCapabilitiesClick = onCapabilitiesClick,
                 onTeamClick = onTeamClick,
+                isOwner = uiState.isOwner,
+                onOwnerApprovalsClick = onOwnerApprovalsClick,
                 onLocationsClick = onLocationsClick,
                 onStoreStockClick = onStoreStockClick,
                 onLocalSkusClick = onLocalSkusClick,
                 onPosClick = onPosClick,
                 onShiftsClick = onShiftsClick,
                 onSectionsClick = onSectionsClick,
+                onPlanogramsClick = onPlanogramsClick,
                 onReportsClick = onReportsClick,
                 onAssistClick = onAssistClick,
+                generalSettingsSubtitle = "${uiState.selectedLanguage.nativeLabel} · ${if (uiState.workspaceMode == com.pegasusx.retailer.data.local.RetailerWorkspaceMode.FAST) "Fast Mode" else "Full ERP"}",
+                onGeneralSettingsClick = { viewModel.setShowGeneralSettingsDialog(true) },
+            )
+        }
+
+        item {
+            com.pegasusx.retailer.ui.screens.profile.components.TelegramQuickBindCard(
+                status = uiState.telegramStatus,
+                linkRequest = uiState.telegramLinkRequest,
+                busy = uiState.telegramBusy,
+                error = uiState.telegramError,
+                onGenerateOtp = viewModel::requestTelegramLink,
             )
         }
 

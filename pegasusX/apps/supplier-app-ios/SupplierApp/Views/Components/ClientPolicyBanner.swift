@@ -20,10 +20,10 @@ struct ClientPolicyBanner: View {
                     HStack {
                         Spacer()
                         if !force, let onDismiss {
-                            Button("Later", action: onDismiss)
+                            Button("mobile_supplier.ui.later", action: onDismiss)
                                 .buttonStyle(.borderless)
                         }
-                        Button(force ? "Update now" : "Update") {
+                        Button(LocalizedStringKey(force ? "mobile_supplier.chrome.update_now" : "mobile_supplier.chrome.update")) {
                             onUpdate?()
                         }
                         .buttonStyle(.borderedProminent)
@@ -37,5 +37,27 @@ struct ClientPolicyBanner: View {
             )
             .clipShape(RoundedRectangle(cornerRadius: SupplierTheme.radiusMD))
         }
+    }
+}
+
+struct SupplierRefreshNotice: View {
+    let message: String
+    let dismiss: () -> Void
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: SupplierTheme.spacingMD) {
+            Text(message)
+                .font(.footnote)
+                .foregroundStyle(.primary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Button("mobile_supplier.chrome.dismiss", action: dismiss)
+                .font(.footnote.weight(.semibold))
+                .buttonStyle(.borderless)
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.yellow.opacity(0.25))
+        .accessibilityElement(children: .combine)
     }
 }

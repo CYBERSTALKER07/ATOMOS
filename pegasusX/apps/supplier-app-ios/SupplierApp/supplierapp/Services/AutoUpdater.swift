@@ -24,11 +24,17 @@ final class AutoUpdater {
         let deferred: Bool
         let message: String?
         let manifest: Manifest?
+        let manifestFailed: Bool
     }
 
     private(set) var lastManifest: Manifest?
 
     private init() {}
+
+    /// A failed policy read is not "up to date" and must not offer an install.
+    static func failedPolicy(message: String, hadBanner: Bool) -> (clearBanner: Bool, force: Bool, notice: String) {
+        (!hadBanner, false, message)
+    }
 
     /// Evaluate policy fields + optional CDN manifest.
     func evaluate(
@@ -63,6 +69,7 @@ final class AutoUpdater {
                 deferred: updateDeferred,
                 message: nil,
                 manifest: nil,
+                manifestFailed: false,
             )
         }
 
@@ -74,6 +81,7 @@ final class AutoUpdater {
                 deferred: updateDeferred,
                 message: message,
                 manifest: nil,
+                manifestFailed: false,
             )
         }
 
@@ -84,31 +92,33 @@ final class AutoUpdater {
         let manifest = await fetchManifest(from: manifestURLString)
         lastManifest = manifest
 
-        let currentCode = Int(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "0") ?? 0
-        let newer = manifest.map { $0.versionCode > currentCode } ?? false
+        let currentCode = AppBuildVersion.code(Bundle.main.infoDictionary?["CFBundleVersion"] as? String)
+        let newer = manifest.map { AppBuildVersion.manifestIsNewer($0.versionCode, than: currentCode) } ?? false
 
+        let manifestFailed = manifest == nil
         return UpdateState(
-            available: newer || outdated,
-            force: force,
+            available: !manifestFailed && (newer || outdated),
+            force: manifestFailed ? false : force,
             deferred: updateDeferred,
-            message: message,
+            message: manifestFailed ? nil : message,
             manifest: manifest,
+            manifestFailed: manifestFailed,
         )
     }
 
-    /// Prompt user to install (enterprise OTA).
+    /// Prompt user to install (enterprise OTA). Returns false when there is nothing to open.
     @MainActor
-    func promptInstall(manifest: Manifest? = nil, force: Bool = false) {
+    @discardableResult
+    func promptInstall(manifest: Manifest? = nil, force: Bool = false) -> Bool {
         if !EnterpriseUpdateConfig.enableCdnOta {
-            openStoreListing(force: force)
-            return
+            return openStoreListing(force: force)
         }
         let target = manifest ?? lastManifest
-        guard let target else { return }
+        guard let target else { return false }
         guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
               let rootVC = windowScene.windows.first?.rootViewController else {
             triggerOTAInstall(manifestURL: target.manifestURL)
-            return
+            return true
         }
 
         let title = force ? "Update Required" : "Update Available"
@@ -124,6 +134,7 @@ final class AutoUpdater {
             self.triggerOTAInstall(manifestURL: target.manifestURL)
         })
         rootVC.present(alert, animated: true)
+        return true
     }
 
     func triggerOTAInstall(manifestURL: URL) {
@@ -149,17 +160,17 @@ final class AutoUpdater {
 
 
     @MainActor
-    func openStoreListing(force: Bool = false) {
+    @discardableResult
+    func openStoreListing(force: Bool = false) -> Bool {
         guard let storeURL = EnterpriseUpdateConfig.storeListingURL else {
-            // No App Store ID configured yet — surface message only.
-            return
+            return false
         }
         let title = force ? "Update Required" : "Update Available"
         let message = "Please update from the App Store."
         guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
               let rootVC = windowScene.windows.first?.rootViewController else {
             UIApplication.shared.open(storeURL)
-            return
+            return true
         }
         let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
         if !force {
@@ -169,6 +180,7 @@ final class AutoUpdater {
             UIApplication.shared.open(storeURL)
         })
         rootVC.present(alert, animated: true)
+        return true
     }
 
     // MARK: - Manifest fetch
@@ -196,5 +208,24 @@ final class AutoUpdater {
         } catch {
             return nil
         }
+    }
+}
+
+enum AppBuildVersion {
+    /// A missing or non-numeric build is unknown. It is not build 0.
+    static func code(_ raw: String?) -> Int? {
+        let trimmed = raw?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard let value = Int(trimmed), value >= 0 else { return nil }
+        return value
+    }
+
+    static func manifestIsNewer(_ manifestCode: Int, than current: Int?) -> Bool {
+        guard let current else { return false }
+        return manifestCode > current
+    }
+
+    static func marketingVersion(_ raw: String?) -> String? {
+        let trimmed = raw?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return trimmed.isEmpty ? nil : trimmed
     }
 }

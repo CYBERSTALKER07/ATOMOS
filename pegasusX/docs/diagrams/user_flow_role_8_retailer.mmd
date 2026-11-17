@@ -1,0 +1,44 @@
+flowchart TD
+    subgraph Phase1["Phase 1: Store Setup, Soliq TIN & Closest DC Discovery"]
+        R1["Submit Store Registration with Tax TIN (INN) & Commercial Address"] --> R2["Verify Legal Entity via State Tax Committee (Soliq) API"]
+        R2 --> R3["Set Precise Storefront GPS Coordinates & Receiving Hours Window"]
+        R3 --> R4["Automated Geocoding Engine: Assign Nearest Fulfillment Warehouse DC"]
+        R4 --> R5["Submit Trade Credit Application: Underwrite Net-15/30 Limit (e.g., 50M UZS)"]
+        R5 --> R6["Provision Retailer Web / Desktop (Tauri 2) / Mobile (iOS/Android) App"]
+    end
+
+    subgraph Phase2["Phase 2: Wholesale Catalog, Tiered Pricing & Multi-Supplier Cart"]
+        R6 --> S1["Browse Multi-Supplier Wholesale Catalog with Real-Time Stock Availability"]
+        S1 --> S2["Inspect Product Specifications, MXIK Tax Classifications & Expiration Dates"]
+        S2 --> S3["Add SKUs from Multiple Suppliers into Unified Smart Cart"]
+        S3 --> S4["Dynamic Volume Break Engine: Automatically Apply Tiered Quantity Discounts"]
+        S4 --> S5["Review Cart Summary: Total Cost, Estimated Delivery Windows & Tax Breakdown"]
+    end
+
+    subgraph Phase3["Phase 3: Unified ParentOrders Saga Checkout & Uncapped Multi-Tender"]
+        S5 --> T1["Click Place Order: Initiate PegasusX ParentOrders Distributed Saga"]
+        T1 --> T2["Select Payment Preference: Cash, Corporate Card, or Open Trade Credit (No Limits)"]
+        T2 --> T3["Atomic Spanner ReadWriteTransaction: Reserve Stock & Commit ParentOrder"]
+        T3 --> T4["Generate N Child Orders: Broadcast Events to Respective Supplier & DC Hubs"]
+    end
+
+    subgraph Phase4["Phase 4: Live Delivery Radar Tracking & Reefer Telematics"]
+        T4 --> U1["Monitor Order Lifecycle on Interactive Timeline (18 Canonical States)"]
+        U1 --> U2["Driver Dispatches: MapLibre Vector Map Displays Live Vehicle Position"]
+        U2 --> U3["Inspect Driver ETA, Distance & Live Reefer Compartment Temperature"]
+        U3 --> U4["Driver Arrives: Verify 100m Geofence Doorstep Handshake Signal"]
+        U4 --> U5["Physically Inspect Delivered Cartons: Verify Seal Integrity & Expiry Dates"]
+        U5 --> U6{"Any Damaged or Missing Cases (OS&D)?"}
+        U6 -- "Damaged Cases Found" --> U7["Log Immediate In-Line OS&D Claim with Photo Proof: Adjust Invoice"]
+        U6 -- "Order Intact & Complete" --> U8["Accept Delivered Stock into Store Custody"]
+        U7 --> U8
+    end
+
+    subgraph Phase5["Phase 5: Two-Party QR Handshake, Soliq Factura & Store POS"]
+        U8 --> V1["Select Payment Method: Net-30 Trade Credit, Cash COD or Card POS Tap"]
+        V1 --> V2["Merchant Scans Dynamic Single-Use Delivery QR on Driver Device"]
+        V2 --> V3["Instant Cloud Spanner Electronic Proof of Delivery (EPOD) Commit"]
+        V3 --> V4["Receive Legally Compliant Soliq Fiscal E-Factura in Digital Vault"]
+        V4 --> V5["Stock Ingested into Built-in Retailer Point-of-Sale (POS) System"]
+        V5 --> V6(["Goods Displayed on Retail Shelves Ready for Consumer Checkout"])
+    end

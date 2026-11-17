@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.screens.dashboard
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 
@@ -8,6 +10,10 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 
 import androidx.compose.foundation.lazy.grid.GridCells
+import com.pegasusx.retailer.ui.design.ORDER_STATUS_FUNNEL
+import com.pegasusx.retailer.ui.design.PackBanner
+import com.pegasusx.retailer.ui.design.SourceChip
+import com.pegasusx.retailer.ui.design.StatusStack
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -53,7 +59,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -74,16 +80,19 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.pegasusx.retailer.data.model.DemandForecast
+import com.pegasusx.retailer.data.local.RetailerWorkspaceMode
 import com.pegasusx.retailer.data.model.Product
 import com.pegasusx.retailer.ui.components.RetailerMetricTile
-import com.pegasus.design.PegasusRuntimeBanner
-import com.pegasus.design.PegasusRuntimeTone
+import com.pegasusx.retailer.ui.design.PegasusRuntimeBanner
+import com.pegasusx.retailer.ui.design.PegasusRuntimeTone
 import com.pegasusx.retailer.ui.components.RetailerSectionHeader
 import com.pegasusx.retailer.ui.screens.dashboard.components.DashboardOverviewCard
+import com.pegasusx.retailer.ui.screens.dashboard.components.FastHomeCardsSection
+import com.pegasusx.retailer.ui.components.PulseStrip
 import com.pegasusx.retailer.ui.screens.dashboard.components.PredictionCard
 import com.pegasusx.retailer.ui.screens.dashboard.components.QuickReorderRow
 import com.pegasusx.retailer.ui.screens.dashboard.components.ServiceGrid
+import com.pegasusx.retailer.ui.screens.dashboard.components.WorkspaceModeToggleStrip
 import com.pegasusx.retailer.ui.components.modifiers.bounceCash
 import com.pegasusx.retailer.ui.theme.PegasusSpacing
 import com.pegasusx.retailer.ui.theme.HexagonShape
@@ -92,6 +101,7 @@ import com.pegasusx.retailer.ui.theme.StatusGreen
 import com.pegasusx.retailer.ui.theme.StatusOrange
 import com.pegasusx.retailer.ui.theme.StatusRed
 import com.pegasusx.retailer.ui.theme.SquircleShape
+import com.pegasusx.retailer.R
 
 private val timeRanges = listOf("Day", "Week", "Month")
 
@@ -101,6 +111,7 @@ fun DashboardScreen(
     viewModel: DashboardViewModel = hiltViewModel(),
     onOpenCatalog: () -> Unit = {},
     onOpenOrders: () -> Unit = {},
+    onOpenOrderStatus: (status: String, supplierId: String?) -> Unit = { _, _ -> },
     onOpenDeliveries: () -> Unit = {},
     onOpenInsights: () -> Unit = {},
     onOpenSuppliers: () -> Unit = {},
@@ -108,9 +119,20 @@ fun DashboardScreen(
     onOpenProfile: () -> Unit = {},
     onOpenControlTower: () -> Unit = {},
     onQuickReorder: (Product) -> Unit = {},
+    onOpenCredit: () -> Unit = {},
+    onOpenOwnerApprovals: () -> Unit = {},
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var selectedRange by rememberSaveable { mutableIntStateOf(0) }
+
+    androidx.compose.runtime.LaunchedEffect(uiState.fastHome?.cutoffAt, uiState.serverClockOffsetMs) {
+        if (!uiState.fastHome?.cutoffAt.isNullOrBlank()) {
+            while (true) {
+                kotlinx.coroutines.delay(1_000L)
+                viewModel.tickCountdown()
+            }
+        }
+    }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -123,13 +145,24 @@ fun DashboardScreen(
                 .padding(innerPadding),
         ) {
             LazyVerticalGrid(
-        columns = GridCells.Adaptive(minSize = 340.dp),
+                columns = GridCells.Adaptive(minSize = 320.dp),
         
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(24.dp),
                 modifier = Modifier.fillMaxSize(),
         horizontalArrangement = Arrangement.spacedBy(24.dp)
     ) {
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    WorkspaceModeToggleStrip(
+                        mode = uiState.workspaceMode,
+                        pendingApprovalsCount = uiState.fastHome?.pendingApprovalsCount ?: 0,
+                        onSelectMode = viewModel::switchWorkspaceMode,
+                        onOpenApprovals = onOpenOwnerApprovals,
+                    )
+                }
+                item {
+                    PackBanner(uiState.pack)
+                }
                 if (uiState.loadIssue != null || uiState.isLoading) {
                     item {
                         val loadIssue = uiState.loadIssue
@@ -150,11 +183,100 @@ fun DashboardScreen(
                     }
                 }
 
-                item {
-                    DashboardOverviewCard(
-                        activeOrderCount = uiState.activeOrders.size,
-                        predictionCount = uiState.predictions.size,
-                        recentProductCount = uiState.recentProducts.size,
+                if (uiState.workspaceMode == RetailerWorkspaceMode.FAST) {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        FastHomeCardsSection(
+                            fastHome = uiState.fastHome,
+                            countdown = uiState.countdown,
+                            actionPending = uiState.orderActionPending,
+                            actionFeedback = uiState.actionFeedback,
+                            onOpenDeliveries = onOpenDeliveries,
+                            onOpenCredit = onOpenCredit,
+                            onConfirmProposal = viewModel::confirmFastProposal,
+                            onHoldProposal = viewModel::holdFastProposal,
+                            onEditProposal = viewModel::editFastProposal,
+                        )
+                    }
+                } else {
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    val pulse = uiState.commandPulse
+                    val commandError = uiState.commandPulseError
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text("Retailer command", color = MaterialTheme.colorScheme.onBackground, style = MaterialTheme.typography.titleMedium)
+                            if (commandError.isNullOrBlank()) {
+                                SourceChip(pulse?.source ?: "empty")
+                            }
+                        }
+                        if (!commandError.isNullOrBlank()) {
+                            Text(
+                                commandError,
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                        } else if (pulse?.empty == true) {
+                            Text(
+                                "No live ops signals yet. Empty pulse — not demo tiles.",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                        } else if (pulse != null) {
+                            Text(
+                                "Open ${pulse.openOrders} · dock ${pulse.dockPending} · POS ${pulse.posOpenSessions}",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                        }
+                        if (commandError.isNullOrBlank()) {
+                            StatusStack(
+                                counts = pulse?.ordersByStatus,
+                                dictionary = ORDER_STATUS_FUNNEL,
+                                source = pulse?.source,
+                                onSelect = { onOpenOrderStatus(it, null) },
+                            )
+                            pulse?.ordersBySupplier?.forEach { facet ->
+                                Text(
+                                    facet.supplierId.ifBlank { "missing supplier" },
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    style = MaterialTheme.typography.labelSmall,
+                                )
+                                StatusStack(
+                                    counts = facet.ordersByStatus,
+                                    dictionary = ORDER_STATUS_FUNNEL,
+                                    source = pulse.source,
+                                    onSelect = { onOpenOrderStatus(it, facet.supplierId) },
+                                )
+                            }
+                            if (pulse?.loyalty?.enrolled != true) {
+                                Text(
+                                    "Not enrolled. No fake Bronze — supplier has not configured a program, or you have no points yet.",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
+                            }
+                        }
+                    }
+                }
+
+                if (uiState.commandPulseError.isNullOrBlank()) {
+                    item {
+                        DashboardOverviewCard(
+                            activeOrderCount = uiState.commandPulse?.openOrders ?: uiState.activeOrders.size,
+                            predictionCount = uiState.predictions.size,
+                            recentProductCount = uiState.recentProducts.size,
+                        )
+                    }
+                }
+
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    PulseStrip(
+                        events = uiState.pulseEvents,
+                        loading = uiState.pulseLoading,
+                        error = uiState.pulseError,
                     )
                 }
 
@@ -175,7 +297,7 @@ fun DashboardScreen(
 
                 if (uiState.recentProducts.isNotEmpty()) {
                     item {
-                        RetailerSectionHeader(title = "Quick reorder", icon = Icons.Rounded.History)
+                        RetailerSectionHeader(title = stringResource(R.string.mobile_retailer_ui_quick_reorder), icon = Icons.Rounded.History)
                         Spacer(modifier = Modifier.height(PegasusSpacing.md))
                         QuickReorderRow(
                             products = uiState.recentProducts,
@@ -187,7 +309,7 @@ fun DashboardScreen(
                 if (uiState.predictions.isNotEmpty()) {
                     item {
                         RetailerSectionHeader(
-                            title = "AI predictions",
+                            title = stringResource(R.string.mobile_retailer_ui_ai_predictions),
                             icon = Icons.Rounded.AutoAwesome,
                             count = uiState.predictions.size,
                         )
@@ -221,12 +343,14 @@ fun DashboardScreen(
                         }
                     }
 
-                    items(uiState.predictions, key = { it.id }) { forecast ->
+                    items(uiState.predictions, key = { it.orderId }) { item ->
                         PredictionCard(
-                            forecast = forecast,
-                            onPreorder = { viewModel.requestPreorder(forecast) },
+                            item = item,
+                            onConfirm = { viewModel.confirmAiOrder(item.orderId) },
+                            onReject = { viewModel.rejectAiOrder(item.orderId) },
                         )
                     }
+                }
                 }
 
                 item(span = { GridItemSpan(maxLineSpan) }) { Spacer(modifier = Modifier.height(32.dp)) }

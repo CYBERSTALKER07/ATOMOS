@@ -33,6 +33,27 @@ struct LoginResponse: Decodable {
         token = try container.decodeIfPresent(String.self, forKey: .token)
         refreshToken = try container.decodeIfPresent(String.self, forKey: .refreshToken)
     }
+
+    init(
+        supplierId: String,
+        isRegistered: Bool = true,
+        isConfigured: Bool = true,
+        nextStep: String = "DASHBOARD",
+        token: String? = nil,
+        refreshToken: String? = nil
+    ) {
+        self.supplierId = supplierId
+        self.isRegistered = isRegistered
+        self.isConfigured = isConfigured
+        self.nextStep = nextStep
+        self.token = token
+        self.refreshToken = refreshToken
+    }
+}
+
+struct DeviceTokenRequest: Encodable, Equatable {
+    let token: String
+    let platform: String
 }
 
 struct RegisterResponse: Decodable {
@@ -66,9 +87,14 @@ struct RefreshTokenRequest: Encodable {
 struct SupplierDashboard: Decodable {
     let supplierId: String
     let isConfigured: Bool
-    let inventorySKUs: Int
-    let pendingOrders: Int
+    let inventorySKUs: Int?
+    let pendingOrders: Int?
     let updatedAt: String
+    let ordersByStatus: [String: Int]
+    let todayRevenueMinor: Int64?
+    let deliveriesCompletedToday: Int?
+    let deliveriesAttemptedToday: Int?
+    let manifestsByState: [String: Int]
 
     enum CodingKeys: String, CodingKey {
         case supplierId = "supplier_id"
@@ -76,6 +102,49 @@ struct SupplierDashboard: Decodable {
         case inventorySKUs = "inventory_skus"
         case pendingOrders = "pending_orders"
         case updatedAt = "updated_at"
+        case ordersByStatus = "orders_by_status"
+        case todayRevenueMinor = "today_revenue_minor"
+        case deliveriesCompletedToday = "deliveries_completed_today"
+        case deliveriesAttemptedToday = "deliveries_attempted_today"
+        case manifestsByState = "manifests_by_state"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        supplierId = try c.decode(String.self, forKey: .supplierId)
+        isConfigured = try c.decode(Bool.self, forKey: .isConfigured)
+        inventorySKUs = try c.decodeIfPresent(Int.self, forKey: .inventorySKUs)
+        pendingOrders = try c.decodeIfPresent(Int.self, forKey: .pendingOrders)
+        updatedAt = try c.decodeIfPresent(String.self, forKey: .updatedAt) ?? ""
+        ordersByStatus = try c.decodeIfPresent([String: Int].self, forKey: .ordersByStatus) ?? [:]
+        todayRevenueMinor = try c.decodeIfPresent(Int64.self, forKey: .todayRevenueMinor)
+        deliveriesCompletedToday = try c.decodeIfPresent(Int.self, forKey: .deliveriesCompletedToday)
+        deliveriesAttemptedToday = try c.decodeIfPresent(Int.self, forKey: .deliveriesAttemptedToday)
+        manifestsByState = try c.decodeIfPresent([String: Int].self, forKey: .manifestsByState) ?? [:]
+    }
+
+    init(
+        supplierId: String = "sup-tashkent-01",
+        isConfigured: Bool = true,
+        inventorySKUs: Int = 142,
+        pendingOrders: Int = 18,
+        updatedAt: String = "2026-11-01T10:00:00Z",
+        ordersByStatus: [String: Int] = ["PENDING": 4, "IN_TRANSIT": 8, "DELIVERED": 24],
+        todayRevenueMinor: Int64 = 48_500_000,
+        deliveriesCompletedToday: Int = 24,
+        deliveriesAttemptedToday: Int = 26,
+        manifestsByState: [String: Int] = ["IN_PROGRESS": 3, "COMPLETED": 7]
+    ) {
+        self.supplierId = supplierId
+        self.isConfigured = isConfigured
+        self.inventorySKUs = inventorySKUs
+        self.pendingOrders = pendingOrders
+        self.updatedAt = updatedAt
+        self.ordersByStatus = ordersByStatus
+        self.todayRevenueMinor = todayRevenueMinor
+        self.deliveriesCompletedToday = deliveriesCompletedToday
+        self.deliveriesAttemptedToday = deliveriesAttemptedToday
+        self.manifestsByState = manifestsByState
     }
 }
 
@@ -114,6 +183,13 @@ struct SupplierOrdersResponse: Decodable {
     let total: Int?
     let limit: Int?
     let offset: Int?
+
+    init(orders: [SupplierOrder] = [], total: Int? = nil, limit: Int? = nil, offset: Int? = nil) {
+        self.orders = orders
+        self.total = total ?? orders.count
+        self.limit = limit
+        self.offset = offset
+    }
 }
 
 struct SupplierOrder: Decodable, Identifiable, Hashable {
@@ -127,6 +203,34 @@ struct SupplierOrder: Decodable, Identifiable, Hashable {
     let totalMinor: Int64
     let currency: String
     let updatedAt: String
+    let source: String?
+    let externalOrderId: String?
+
+    init(
+        orderId: String,
+        retailerId: String,
+        warehouseId: String? = nil,
+        status: String,
+        decision: String? = nil,
+        note: String? = nil,
+        totalMinor: Int64,
+        currency: String = "UZS",
+        updatedAt: String,
+        source: String? = nil,
+        externalOrderId: String? = nil
+    ) {
+        self.orderId = orderId
+        self.retailerId = retailerId
+        self.warehouseId = warehouseId
+        self.status = status
+        self.decision = decision
+        self.note = note
+        self.totalMinor = totalMinor
+        self.currency = currency
+        self.updatedAt = updatedAt
+        self.source = source
+        self.externalOrderId = externalOrderId
+    }
 
     enum CodingKeys: String, CodingKey {
         case orderId = "order_id"
@@ -136,11 +240,20 @@ struct SupplierOrder: Decodable, Identifiable, Hashable {
         case totalMinor = "total_minor"
         case currency
         case updatedAt = "updated_at"
+        case source
+        case externalOrderId = "external_order_id"
     }
 }
 
 struct WarehouseOrderLineItem: Decodable, Identifiable, Hashable {
-    var id: String { productId ?? productName ?? UUID().uuidString }
+    var id: String {
+        let product = productId?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if !product.isEmpty { return product }
+        let name = productName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let qty = quantity.map { String($0) } ?? ""
+        let price = unitPrice.map(String.init) ?? ""
+        return "line:\(name):\(qty):\(price)"
+    }
     let productId: String?
     let productName: String?
     let quantity: Double?
@@ -461,6 +574,28 @@ struct SupplierEarnings: Decodable {
         case monthMinor = "month_minor"
         case authoritative
         case updatedAt = "updated_at"
+    }
+}
+
+enum EarningsHonesty {
+    /// A non-authoritative figure is not a today, week, or month total.
+    static func minor(_ value: Int64, authoritative: Bool) -> Int64? {
+        authoritative ? value : nil
+    }
+}
+
+enum MissingNumber {
+    static func label<T: CustomStringConvertible>(_ value: T?) -> String {
+        value.map { String(describing: $0) } ?? "—"
+    }
+}
+
+enum ActionResultText {
+    static func nonEmpty(status: String?, error: String?) -> String? {
+        let statusText = status?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if !statusText.isEmpty { return statusText }
+        let errorText = error?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return errorText.isEmpty ? nil : errorText
     }
 }
 

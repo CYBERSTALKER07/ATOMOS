@@ -30,45 +30,80 @@ enum AppTab: String, CaseIterable {
 
 struct MainTabView: View {
     @State private var selectedTab: AppTab = .dashboard
+    @State private var pendingTransferFilter: String?
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            DashboardView(
-                onOpenSupplyRequests: { selectedTab = .supplyRequests },
-                onOpenPayloadOverride: { selectedTab = .payloadOverride },
-                onOpenManifestExceptions: { selectedTab = .manifestExceptions },
-                onOpenAnalytics: { selectedTab = .analytics },
-                onOpenInsights: { selectedTab = .insights }
-            )
-                .tabItem { Label(AppTab.dashboard.rawValue, systemImage: AppTab.dashboard.icon) }
-                .tag(AppTab.dashboard)
-            LoadingBayView()
-                .tabItem { Label(AppTab.loadingBay.rawValue, systemImage: AppTab.loadingBay.icon) }
-                .tag(AppTab.loadingBay)
-            TransferListView()
-                .tabItem { Label(AppTab.transfers.rawValue, systemImage: AppTab.transfers.icon) }
-                .tag(AppTab.transfers)
-            SupplyRequestsHubView()
-                .tabItem { Label(AppTab.supplyRequests.rawValue, systemImage: AppTab.supplyRequests.icon) }
-                .tag(AppTab.supplyRequests)
-            PayloadOverrideView()
-                .tabItem { Label(AppTab.payloadOverride.rawValue, systemImage: AppTab.payloadOverride.icon) }
-                .tag(AppTab.payloadOverride)
-            FleetView()
-                .tabItem { Label(AppTab.fleet.rawValue, systemImage: AppTab.fleet.icon) }
-                .tag(AppTab.fleet)
-            StaffView()
-                .tabItem { Label(AppTab.staff.rawValue, systemImage: AppTab.staff.icon) }
-                .tag(AppTab.staff)
-            InsightsView()
-                .tabItem { Label(AppTab.insights.rawValue, systemImage: AppTab.insights.icon) }
-                .tag(AppTab.insights)
-            NavigationStack { AnalyticsView() }
-                .tabItem { Label(AppTab.analytics.rawValue, systemImage: AppTab.analytics.icon) }
-                .tag(AppTab.analytics)
-            NavigationStack { ManifestExceptionsView() }
-                .tabItem { Label(AppTab.manifestExceptions.rawValue, systemImage: AppTab.manifestExceptions.icon) }
-                .tag(AppTab.manifestExceptions)
+            NavigationStack {
+                DashboardView(
+                    onOpenSupplyRequests: { selectedTab = .supplyRequests },
+                    onOpenPayloadOverride: { selectedTab = .payloadOverride },
+                    onOpenManifestExceptions: { selectedTab = .manifestExceptions },
+                    onOpenAnalytics: { selectedTab = .analytics },
+                    onOpenInsights: { selectedTab = .insights },
+                    onOpenTransfers: { key in
+                        pendingTransferFilter = key
+                        selectedTab = .transfers
+                    },
+                    onOpenLoadingBay: { selectedTab = .loadingBay }
+                )
+            }
+            .tabItem { Label(AppTab.dashboard.rawValue, systemImage: AppTab.dashboard.icon) }
+            .tag(AppTab.dashboard)
+
+            NavigationStack {
+                LoadingBayView()
+            }
+            .tabItem { Label(AppTab.loadingBay.rawValue, systemImage: AppTab.loadingBay.icon) }
+            .tag(AppTab.loadingBay)
+
+            NavigationStack {
+                TransferListView(initialFilter: pendingTransferFilter)
+            }
+            .tabItem { Label(AppTab.transfers.rawValue, systemImage: AppTab.transfers.icon) }
+            .tag(AppTab.transfers)
+
+            NavigationStack {
+                SupplyRequestsHubView()
+            }
+            .tabItem { Label(AppTab.supplyRequests.rawValue, systemImage: AppTab.supplyRequests.icon) }
+            .tag(AppTab.supplyRequests)
+
+            NavigationStack {
+                PayloadOverrideView()
+            }
+            .tabItem { Label(AppTab.payloadOverride.rawValue, systemImage: AppTab.payloadOverride.icon) }
+            .tag(AppTab.payloadOverride)
+
+            NavigationStack {
+                FleetView()
+            }
+            .tabItem { Label(AppTab.fleet.rawValue, systemImage: AppTab.fleet.icon) }
+            .tag(AppTab.fleet)
+
+            NavigationStack {
+                StaffView()
+            }
+            .tabItem { Label(AppTab.staff.rawValue, systemImage: AppTab.staff.icon) }
+            .tag(AppTab.staff)
+
+            NavigationStack {
+                InsightsView()
+            }
+            .tabItem { Label(AppTab.insights.rawValue, systemImage: AppTab.insights.icon) }
+            .tag(AppTab.insights)
+
+            NavigationStack {
+                AnalyticsView()
+            }
+            .tabItem { Label(AppTab.analytics.rawValue, systemImage: AppTab.analytics.icon) }
+            .tag(AppTab.analytics)
+
+            NavigationStack {
+                ManifestExceptionsView()
+            }
+            .tabItem { Label(AppTab.manifestExceptions.rawValue, systemImage: AppTab.manifestExceptions.icon) }
+            .tag(AppTab.manifestExceptions)
         }
     }
 }

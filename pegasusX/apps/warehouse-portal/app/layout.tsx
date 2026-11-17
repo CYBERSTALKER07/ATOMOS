@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans, EB_Garamond, IBM_Plex_Mono } from "next/font/google";
 import Providers from "@/components/Providers";
+import LocaleBootstrap from "@/components/LocaleBootstrap";
 import "./globals.css";
 
 const fontJakarta = Plus_Jakarta_Sans({
@@ -43,7 +44,7 @@ export default function RootLayout({
           (function(){try{var m=localStorage.getItem('pegasus-warehouse-theme-mode');
           var d=m==='dark'||(m!=='light'&&matchMedia('(prefers-color-scheme:dark)').matches);
           var r=document.documentElement;r.classList.toggle('dark',d);r.style.colorScheme=d?'dark':'light';
-          if(window.__TAURI_INTERNALS__)r.setAttribute('data-tauri','');}catch(e){}})();
+          if(window.__TAURI_INTERNALS__)r.setAttribute('data-tauri','');}catch(e){console.warn('[theme-bootstrap]',e);}})();
         `}} />
       </head>
       <body
@@ -60,6 +61,7 @@ export default function RootLayout({
           </div>
         </div>
 
+        <LocaleBootstrap />
         <Providers>{children}</Providers>
       </body>
     </html>

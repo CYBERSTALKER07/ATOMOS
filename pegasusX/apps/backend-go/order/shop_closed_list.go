@@ -46,7 +46,7 @@ func (s *Service) HandleListActiveShopClosedAttempts(w http.ResponseWriter, r *h
 
 	supplierID, ok := auth.ResolveSupplierID(r.Context())
 	if !ok {
-		supplierID = s.supplierID
+		supplierID = s.resolveSupplierScope(r.Context())
 	}
 	if supplierID == "" {
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": "supplier_scope_required"})
@@ -76,7 +76,7 @@ func (s *Service) HandleListActiveShopClosedAttempts(w http.ResponseWriter, r *h
 		},
 	}
 
-	iter := s.spannerClient.Single().Query(ctx, stmt)
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 
 	active := make([]ShopClosedAttemptDTO, 0)
@@ -158,7 +158,7 @@ func (s *Service) listShopClosedAttemptsLegacy(ctx context.Context, supplierID s
 			"offset":     int64(offset),
 		},
 	}
-	iter := s.spannerClient.Single().Query(ctx, stmt)
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	active := make([]ShopClosedAttemptDTO, 0)
 	for {

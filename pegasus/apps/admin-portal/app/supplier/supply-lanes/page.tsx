@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { apiFetch } from '@/lib/auth';
+import { X } from 'lucide-react';
 
-/* ── Types ──────────────────────────────────────────────────────────────────── */
+/* -- Types -------------------------------------------------------------------- */
 
 interface SupplyLane {
   lane_id: string;
@@ -43,7 +44,7 @@ interface PullMatrixRun {
   source: string;
 }
 
-/* ── Mode Badge Colors ─────────────────────────────────────────────────────── */
+/* -- Mode Badge Colors ------------------------------------------------------- */
 
 const MODE_COLORS: Record<string, { bg: string; text: string }> = {
   SPEED: { bg: 'var(--color-md-error-container, #ffdad6)', text: 'var(--color-md-on-error-container, #410002)' },
@@ -86,7 +87,7 @@ function buildSupplyLaneDeactivateIdempotencyKey(laneId: string): string {
   return ['supply-lane-deactivate', laneId.trim()].join(':');
 }
 
-/* ── Page Component ────────────────────────────────────────────────────────── */
+/* -- Page Component ---------------------------------------------------------- */
 
 export default function SupplyLanesPage() {
   const [analytics, setAnalytics] = useState<NetworkAnalytics | null>(null);
@@ -114,7 +115,7 @@ export default function SupplyLanesPage() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  /* ── Mode Switcher ── */
+  /* -- Mode Switcher -- */
   const changeMode = async (newMode: string) => {
     setModeChanging(true);
     try {
@@ -131,7 +132,7 @@ export default function SupplyLanesPage() {
     }
   };
 
-  /* ── Kill Switch ── */
+  /* -- Kill Switch -- */
   const triggerKillSwitch = async () => {
     if (!confirm('This will cancel ALL automated transfers and set mode to MANUAL_ONLY. Continue?')) return;
     const reason = prompt('Enter reason for kill switch activation:');
@@ -148,7 +149,7 @@ export default function SupplyLanesPage() {
     fetchData();
   };
 
-  /* ── Pull Matrix Manual Trigger ── */
+  /* -- Pull Matrix Manual Trigger -- */
   const triggerPullMatrix = async () => {
     await apiFetch('/v1/supplier/replenishment/pull-matrix', {
       method: 'POST',
@@ -159,7 +160,7 @@ export default function SupplyLanesPage() {
     fetchData();
   };
 
-  /* ── Create Lane ── */
+  /* -- Create Lane -- */
   const handleCreateLane = async () => {
     const body = {
       factory_id: createForm.factory_id,
@@ -189,7 +190,7 @@ export default function SupplyLanesPage() {
     }
   };
 
-  /* ── Deactivate Lane ── */
+  /* -- Deactivate Lane -- */
   const deactivateLane = async (laneId: string) => {
     await apiFetch(`/v1/supplier/supply-lanes/${laneId}`, {
       method: 'DELETE',
@@ -217,7 +218,7 @@ export default function SupplyLanesPage() {
 
   return (
     <div className="p-6 space-y-6">
-      {/* ── Header ── */}
+      {/* -- Header -- */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="md-typescale-headline-small" style={{ color: 'var(--foreground)' }}>
@@ -244,7 +245,7 @@ export default function SupplyLanesPage() {
         </div>
       </div>
 
-      {/* ── KPI Row ── */}
+      {/* -- KPI Row -- */}
       <div className="grid grid-cols-4 gap-4">
         <div className="md-card md-card-elevated md-shape-md p-4" style={{ background: 'var(--surface)' }}>
           <div className="md-typescale-label-medium" style={{ color: 'var(--muted)' }}>Network Mode</div>
@@ -273,7 +274,7 @@ export default function SupplyLanesPage() {
         </div>
       </div>
 
-      {/* ── Mode Switcher ── */}
+      {/* -- Mode Switcher -- */}
       <div className="md-card md-card-elevated md-shape-md p-4" style={{ background: 'var(--surface)' }}>
         <div className="md-typescale-title-medium mb-3" style={{ color: 'var(--foreground)' }}>Optimization Objective</div>
         <div className="flex gap-2 flex-wrap">
@@ -295,7 +296,7 @@ export default function SupplyLanesPage() {
         </div>
       </div>
 
-      {/* ── Tabs ── */}
+      {/* -- Tabs -- */}
       <div className="flex gap-1 border-b" style={{ borderColor: 'var(--border)' }}>
         {(['lanes', 'sla', 'audit'] as const).map(t => (
           <button
@@ -312,7 +313,7 @@ export default function SupplyLanesPage() {
         ))}
       </div>
 
-      {/* ── Tab Content ── */}
+      {/* -- Tab Content -- */}
       {tab === 'lanes' && (
         <div className="md-card md-card-elevated md-shape-md overflow-hidden" style={{ background: 'var(--surface)' }}>
           {lanes.length === 0 ? (
@@ -485,33 +486,33 @@ export default function SupplyLanesPage() {
         </div>
       )}
 
-      {/* ── Create Lane Drawer ── */}
+      {/* -- Create Lane Drawer -- */}
       {creating && (
         <div className="fixed inset-0 z-50 flex justify-end" style={{ background: 'rgba(0,0,0,0.4)' }}>
           <div className="w-[400px] h-full p-6 overflow-auto" style={{ background: 'var(--surface)' }}>
             <div className="flex items-center justify-between mb-6">
               <h2 className="md-typescale-title-large" style={{ color: 'var(--foreground)' }}>New Supply Lane</h2>
-              <button className="md-btn md-btn-icon" onClick={() => setCreating(false)}>✕</button>
+              <button className="md-btn md-btn-icon" onClick={() => setCreating(false)} aria-label="Close drawer"><X className="w-4 h-4" /></button>
             </div>
             <div className="space-y-4">
               <div>
-                <label className="md-typescale-label-medium block mb-1" style={{ color: 'var(--muted)' }}>Factory ID</label>
-                <input className="md-input-outlined w-full px-3 py-2" placeholder="UUID" value={createForm.factory_id}
+                <label htmlFor="lane-factory-id" className="md-typescale-label-medium block mb-1" style={{ color: 'var(--muted)' }}>Factory ID</label>
+                <input id="lane-factory-id" aria-label="Factory ID" className="md-input-outlined w-full px-3 py-2" placeholder="UUID" value={createForm.factory_id}
                   onChange={e => setCreateForm(f => ({ ...f, factory_id: e.target.value }))} />
               </div>
               <div>
-                <label className="md-typescale-label-medium block mb-1" style={{ color: 'var(--muted)' }}>Warehouse ID</label>
-                <input className="md-input-outlined w-full px-3 py-2" placeholder="UUID" value={createForm.warehouse_id}
+                <label htmlFor="lane-warehouse-id" className="md-typescale-label-medium block mb-1" style={{ color: 'var(--muted)' }}>Warehouse ID</label>
+                <input id="lane-warehouse-id" aria-label="Warehouse ID" className="md-input-outlined w-full px-3 py-2" placeholder="UUID" value={createForm.warehouse_id}
                   onChange={e => setCreateForm(f => ({ ...f, warehouse_id: e.target.value }))} />
               </div>
               <div>
-                <label className="md-typescale-label-medium block mb-1" style={{ color: 'var(--muted)' }}>Transit Time (hours)</label>
-                <input className="md-input-outlined w-full px-3 py-2" type="number" value={createForm.transit_time_hours}
+                <label htmlFor="lane-transit-time" className="md-typescale-label-medium block mb-1" style={{ color: 'var(--muted)' }}>Transit Time (hours)</label>
+                <input id="lane-transit-time" aria-label="Transit Time (hours)" className="md-input-outlined w-full px-3 py-2" type="number" value={createForm.transit_time_hours}
                   onChange={e => setCreateForm(f => ({ ...f, transit_time_hours: e.target.value }))} />
               </div>
               <div>
-                <label className="md-typescale-label-medium block mb-1" style={{ color: 'var(--muted)' }}>Freight Cost (minor units)</label>
-                <input className="md-input-outlined w-full px-3 py-2" type="number" value={createForm.freight_cost_minor}
+                <label htmlFor="lane-freight-cost" className="md-typescale-label-medium block mb-1" style={{ color: 'var(--muted)' }}>Freight Cost (minor units)</label>
+                <input id="lane-freight-cost" aria-label="Freight Cost (minor units)" className="md-input-outlined w-full px-3 py-2" type="number" value={createForm.freight_cost_minor}
                   onChange={e => setCreateForm(f => ({ ...f, freight_cost_minor: e.target.value }))} />
               </div>
               <div className="md-card p-3 md-shape-sm" style={{ background: 'var(--color-md-surface-variant, #e7e0ec)', color: 'var(--muted)' }}>
@@ -522,8 +523,8 @@ export default function SupplyLanesPage() {
                 </div>
               </div>
               <div>
-                <label className="md-typescale-label-medium block mb-1" style={{ color: 'var(--muted)' }}>Priority</label>
-                <input className="md-input-outlined w-full px-3 py-2" type="number" value={createForm.priority}
+                <label htmlFor="lane-priority" className="md-typescale-label-medium block mb-1" style={{ color: 'var(--muted)' }}>Priority</label>
+                <input id="lane-priority" aria-label="Priority" className="md-input-outlined w-full px-3 py-2" type="number" value={createForm.priority}
                   onChange={e => setCreateForm(f => ({ ...f, priority: e.target.value }))} />
               </div>
               <button className="md-btn md-btn-filled md-typescale-label-large w-full py-3 mt-4" onClick={handleCreateLane}>

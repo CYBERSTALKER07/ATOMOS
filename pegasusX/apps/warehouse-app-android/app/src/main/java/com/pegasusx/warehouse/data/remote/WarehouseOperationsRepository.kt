@@ -26,6 +26,84 @@ class WarehouseOperationsRepository @Inject constructor(
     suspend fun receiveTransfer(transferId: String): Response<TransferMutationResponse> =
         api.receiveTransfer(transferId, WarehouseIdempotencyKeys.receiveTransfer(transferId))
 
+    suspend fun listBins(): Response<WarehouseBinListResponse> = api.listBins()
+
+    suspend fun listLots(): Response<StockLotListResponse> = api.listLots()
+
+    suspend fun getManifestTemperature(manifestId: String): Response<ManifestTemperatureResponse> =
+        api.getManifestTemperature(manifestId)
+
+    suspend fun createBin(body: WarehouseBinCreateRequest): Response<WarehouseBinLocation> =
+        api.createBin(body, WarehouseIdempotencyKeys.createBin(body.zone.orEmpty()))
+
+    suspend fun putawayLot(body: StockLotPutawayRequest): Response<StockLotPutawayResponse> =
+        api.putawayLot(
+            body,
+            WarehouseIdempotencyKeys.putawayLot(body.productId, body.locationId),
+        )
+
+    suspend fun listPickWaves(manifestId: String? = null): Response<PickWaveListResponse> =
+        api.listPickWaves(manifestId = manifestId)
+
+    suspend fun createPickWave(manifestId: String): Response<PickWave> =
+        api.createPickWave(
+            PickWaveCreateRequest(manifestId = manifestId),
+            WarehouseIdempotencyKeys.createPickWave(manifestId),
+        )
+
+    suspend fun getPickWave(waveId: String): Response<PickWave> = api.getPickWave(waveId)
+
+    suspend fun confirmPickTask(waveId: String, taskId: String, quantityPicked: Long? = null): Response<PickWave> =
+        api.confirmPickTask(
+            waveId,
+            taskId,
+            PickTaskConfirmRequest(quantityPicked = quantityPicked),
+            WarehouseIdempotencyKeys.confirmPickTask(waveId, taskId),
+        )
+
+    suspend fun waivePickShorts(waveId: String): Response<PickWave> =
+        api.waivePickShorts(
+            waveId,
+            WarehouseIdempotencyKeys.waivePickShorts(waveId),
+        )
+
+    suspend fun listCycleCounts(): Response<CycleCountListResponse> = api.listCycleCounts()
+
+    suspend fun createCycleCount(locationId: String, productId: String, expectedQty: Long? = null): Response<CycleCount> =
+        api.createCycleCount(
+            CycleCountCreateRequest(locationId = locationId, productId = productId, expectedQty = expectedQty),
+            WarehouseIdempotencyKeys.createCycleCount(locationId, productId),
+        )
+
+    suspend fun submitCycleCount(
+        countId: String,
+        countedQty: Long,
+        reasonCode: String? = null,
+    ): Response<CycleCount> =
+        api.submitCycleCount(
+            countId,
+            CycleCountSubmitRequest(
+                countedQty = countedQty,
+                reasonCode = reasonCode?.trim()?.takeIf { it.isNotEmpty() },
+            ),
+            WarehouseIdempotencyKeys.submitCycleCount(countId),
+        )
+
+    suspend fun listInventoryAdjustments(): Response<InventoryAdjustmentListResponse> =
+        api.listInventoryAdjustments()
+
+    suspend fun approveInventoryAdjustment(adjustmentId: String): Response<InventoryAdjustment> =
+        api.approveInventoryAdjustment(
+            adjustmentId,
+            WarehouseIdempotencyKeys.approveInventoryAdjustment(adjustmentId),
+        )
+
+    suspend fun rejectInventoryAdjustment(adjustmentId: String): Response<InventoryAdjustment> =
+        api.rejectInventoryAdjustment(
+            adjustmentId,
+            WarehouseIdempotencyKeys.rejectInventoryAdjustment(adjustmentId),
+        )
+
     suspend fun getReplenishmentInsights(): Response<ReplenishmentInsightsResponse> =
         api.getReplenishmentInsights()
 
@@ -83,6 +161,30 @@ class WarehouseOperationsRepository @Inject constructor(
             WarehouseIdempotencyKeys.orderOverflow(orderId),
         )
 
+    suspend fun issuePaymentBypass(orderId: String): Response<Map<String, String>> =
+        api.issuePaymentBypass(
+            mapOf("order_id" to orderId),
+            "warehouse-payment-bypass:$orderId",
+        )
+
+    suspend fun getEarlyCompleteRequest(driverId: String): Response<Map<String, Any>> =
+        api.getEarlyCompleteRequest(driverId)
+
+    suspend fun approveEarlyComplete(
+        driverId: String,
+        action: String,
+        newWindowStart: String? = null,
+        newWindowEnd: String? = null,
+    ): Response<Map<String, Any>> {
+        val map = mutableMapOf<String, String>(
+            "driver_id" to driverId,
+            "action" to action
+        )
+        if (newWindowStart != null) map["newWindowStart"] = newWindowStart
+        if (newWindowEnd != null) map["newWindowEnd"] = newWindowEnd
+        return api.approveEarlyComplete(map, WarehouseIdempotencyKeys.approveEarlyComplete(driverId, action))
+    }
+
     suspend fun recommendReassign(orderId: String): Response<RecommendReassignResponse> =
         api.recommendReassign(
             RecommendReassignRequest(orderId = orderId),
@@ -112,6 +214,9 @@ class WarehouseOperationsRepository @Inject constructor(
 
     suspend fun getSupplyRequest(id: String): Response<WarehouseSupplyRequest> =
         api.getSupplyRequest(id)
+
+    suspend fun getSupplyRequestQC(id: String): Response<SupplyRequestQCResponse> =
+        api.getSupplyRequestQC(id)
 
     suspend fun getPaymentConfig(): Response<PaymentConfigResponse> =
         api.getPaymentConfig()

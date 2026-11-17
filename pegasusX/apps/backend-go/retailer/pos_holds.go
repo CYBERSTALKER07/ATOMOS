@@ -19,7 +19,7 @@ import (
 //   - Never write stock / OnHand on park, resume, or void.
 //   - Resume only when request LocationId matches hold LocationId.
 //   - Default TTL 24h.
-//   - Flag POS_HOLDS_ENABLED (default off).
+//   - Flag POS_HOLDS_ENABLED — pilot default ON when unset; set false/0/off/no to disable (404).
 
 const (
 	PosHoldHELD     = "HELD"
@@ -51,7 +51,11 @@ func (s *Service) posHoldsEnabled() bool {
 		return *s.posHoldsOverride
 	}
 	v := strings.TrimSpace(strings.ToLower(os.Getenv("POS_HOLDS_ENABLED")))
-	return v == "1" || v == "true" || v == "yes" || v == "on"
+	// Pilot default ON: empty/unset → enabled. Explicit disable only.
+	if v == "" {
+		return true
+	}
+	return !(v == "0" || v == "false" || v == "no" || v == "off")
 }
 
 func (s *Service) requirePosHolds(w http.ResponseWriter) bool {
@@ -263,9 +267,9 @@ func (s *Service) handlePosHoldResume(w http.ResponseWriter, r *http.Request) {
 	// Same location only (cross-register OK; cross-store forbidden)
 	if reqLoc == "" || hold.LocationID != reqLoc {
 		writeJSON(w, http.StatusForbidden, map[string]string{
-			"error":             "location_mismatch",
-			"code":              "HOLD_LOCATION_MISMATCH",
-			"hold_location_id":  hold.LocationID,
+			"error":               "location_mismatch",
+			"code":                "HOLD_LOCATION_MISMATCH",
+			"hold_location_id":    hold.LocationID,
 			"request_location_id": reqLoc,
 		})
 		return
@@ -596,7 +600,7 @@ func (s *Service) SweepExpiredPosHolds(ctx context.Context) (int, error) {
 }
 
 // RunPosHoldsSweeper periodically expires past-due HELD carts.
-// Interval default 15m. No-op when POS_HOLDS_ENABLED is off.
+// Interval default 15m. No-op when POS holds disabled.
 func (s *Service) RunPosHoldsSweeper(ctx context.Context, interval time.Duration) {
 	if s == nil {
 		return

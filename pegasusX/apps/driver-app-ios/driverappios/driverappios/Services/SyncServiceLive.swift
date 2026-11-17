@@ -34,7 +34,9 @@ final class SyncServiceLive: SyncServiceProtocol {
             orderSignatures: deliveries.map { "\($0.orderId):\($0.signature)" }
         )
 
-        let url = URL(string: "\(APIClient.shared.apiBaseURL)/v1/sync/batch")!
+        guard let url = URL(string: "\(APIClient.shared.resolvedBaseURL)/v1/sync/batch") else {
+            throw APIError.invalidURL
+        }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")

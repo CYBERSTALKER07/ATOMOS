@@ -18,24 +18,35 @@ struct NotificationsSheet: View {
                         VStack(spacing: 0) {
                             ForEach(viewModel.notifications) { n in
                                 NotificationRow(item: n) {
+                                    PegasusHaptics.selection()
                                     if n.isUnread { viewModel.markNotificationRead(n.notificationId) }
                                 } onHandoffAction: { link in
+                                    PegasusHaptics.light()
                                     Task { await viewModel.handleHandoffLink(link) }
                                 }
                             }
                         }
                         .padding()
                     }
+                    .scrollDismissesKeyboard(.interactively)
                 }
             }
-            .navigationTitle("Notifications")
+            .navigationTitle("portal.nav.notifications")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Close") { viewModel.toggleNotificationsPanel() }
+                    Button("common.action.close") {
+                        PegasusHaptics.light()
+                        viewModel.toggleNotificationsPanel()
+                    }
+                    .frame(minWidth: 44, minHeight: 44)
                 }
                 if viewModel.unreadCount > 0 {
                     ToolbarItem(placement: .topBarTrailing) {
-                        Button("Mark all read") { viewModel.markAllNotificationsRead() }
+                        Button("mobile_payload.ui.mark_all_read") {
+                            PegasusHaptics.light()
+                            viewModel.markAllNotificationsRead()
+                        }
+                        .frame(minWidth: 44, minHeight: 44)
                     }
                 }
             }
@@ -70,8 +81,11 @@ struct NotificationRow: View {
                 }
                 Spacer()
             }
+            .frame(minWidth: 44, minHeight: 44)
             .padding(.vertical, 4)
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(item.title.isEmpty ? item.type : item.title), \(item.body), \(item.isUnread ? "unread" : "read")")
         .buttonStyle(.tactical)
     }
 }

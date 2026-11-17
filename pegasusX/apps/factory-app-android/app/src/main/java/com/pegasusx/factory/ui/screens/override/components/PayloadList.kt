@@ -9,7 +9,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.pegasus.design.PegasusRuntimeTone
+import com.pegasusx.factory.ui.design.PegasusRuntimeTone
 import com.pegasusx.factory.data.model.Manifest
 import com.pegasusx.factory.data.model.ManifestTransfer
 import com.pegasusx.factory.ui.theme.PegasusSpacing

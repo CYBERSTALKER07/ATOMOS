@@ -1,5 +1,6 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 
 type ToastType = 'info' | 'success' | 'error' | 'warning';
@@ -33,8 +34,7 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
 
-function ToastCard({
-  toast,
+function ToastCard({ toast,
   dismiss,
   typeStyle,
 }: {
@@ -42,6 +42,7 @@ function ToastCard({
   dismiss: (id: number) => void;
   typeStyle: { bg: string; fg: string; track: string };
 }) {
+  const t = usePortalT();
   const [offsetX, setOffsetX] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [progressActive, setProgressActive] = useState(false);
@@ -119,7 +120,7 @@ function ToastCard({
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerCancel}
-      title="Swipe left or right to dismiss"
+      title={t("factory_portal.toast.text.swipe_left_or_right_to_dismiss")}
     >
       <span className="flex-1" style={{ paddingRight: 8 }}>{toast.message}</span>
       {toast.action && (
@@ -144,7 +145,7 @@ function ToastCard({
         }}
         className="ml-1 opacity-70 hover:opacity-100"
         style={{ color: typeStyle.fg }}
-        aria-label="Dismiss"
+        aria-label={t("factory_portal.toast.text.dismiss")}
       >
         x
       </button>
@@ -178,6 +179,7 @@ function ToastCard({
 }
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
+  const t = usePortalT();
   const [toasts, setToasts] = useState<Toast[]>([]);
   const timersRef = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
 

@@ -25,5 +25,6 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		r.Post("/v1/webhooks/stripe", d.Service.HandleStripeWebhook)
 		r.Post("/v1/webhooks/payme", d.Service.HandlePaymeWebhook)
 		r.Post("/v1/webhooks/click", d.Service.HandleClickWebhook)
+		r.Post("/v1/webhooks/uzum", d.Service.HandleUzumWebhook)
 	})
 }

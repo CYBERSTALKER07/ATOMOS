@@ -2,27 +2,32 @@
    Import this before app-specific globals.css blocks. */
 
 :root {
-    /* Canonical desktop tokens — Conceptzilla reference vibe
-     (light grey canvas, white cards, 1px crisp hairline borders, vibrant orange accent) */
-    --desk-canvas: #f3f4f6;
+    /* Canonical desktop tokens — monochrome (black, white, grey only) */
+    --desk-canvas: #f5f5f5;
     --desk-surface: #ffffff;
-    --desk-surface-subtle: #f8fafc;
-    --desk-surface-sunken: #eef0f3;
-    --desk-border: #e5e7eb;
-    --desk-border-strong: #cbd5e1;
-    --desk-text-primary: #111827;
-    --desk-text-secondary: #6b7280;
-    --desk-text-tertiary: #9098a4;
-    --desk-accent: #ff7a1a;
-    --desk-accent-strong: #f25a1a;
-    --desk-accent-soft: #fff3ea;
+    --desk-surface-subtle: #fafafa;
+    --desk-surface-sunken: #f0f0f0;
+    --desk-surface-raised: #ffffff;
+    --desk-border: #e5e5e5;
+    --desk-border-strong: #d4d4d4;
+    --desk-text-primary: #000000;
+    --desk-text-secondary: #525252;
+    --desk-text-tertiary: #737373;
+    --desk-accent: #000000;
+    --desk-accent-strong: #171717;
+    --desk-accent-soft: #f5f5f5;
     --desk-accent-on: #ffffff;
-    --desk-success: #16a34a;
-    --desk-warning: #d97706;
-    --desk-danger: #dc2626;
-    --desk-info: #2563eb;
-    --desk-focus-ring: #111827;
-    --desk-ink: #0a0a0a;
+    --desk-accent-rgb: 0, 0, 0;
+    --desk-success: #404040;
+    --desk-warning: #525252;
+    --desk-danger: #171717;
+    --desk-info: #525252;
+    --desk-success-soft: #f5f5f5;
+    --desk-warning-soft: #f5f5f5;
+    --desk-danger-soft: #f5f5f5;
+    --desk-info-soft: #f5f5f5;
+    --desk-focus-ring: #000000;
+    --desk-ink: #000000;
     --desk-on-ink: #ffffff;
 
     /* Elevation — references show flat modular panes with crisp borders */
@@ -136,27 +141,79 @@
     --success: var(--desk-success);
     --warning: var(--desk-warning);
     --danger: var(--desk-danger);
+
+    /* Google Material Design 3 (Material You) System Tokens - Light Palette */
+    --md-sys-color-primary: #005AC1;
+    --md-sys-color-on-primary: #FFFFFF;
+    --md-sys-color-primary-container: #D8E2FF;
+    --md-sys-color-on-primary-container: #001A41;
+    --md-sys-color-secondary: #575E71;
+    --md-sys-color-on-secondary: #FFFFFF;
+    --md-sys-color-secondary-container: #DBE2F9;
+    --md-sys-color-on-secondary-container: #141B2C;
+    --md-sys-color-tertiary: #715573;
+    --md-sys-color-on-tertiary: #FFFFFF;
+    --md-sys-color-tertiary-container: #FBD7FC;
+    --md-sys-color-on-tertiary-container: #29132D;
+    --md-sys-color-error: #BA1A1A;
+    --md-sys-color-on-error: #FFFFFF;
+    --md-sys-color-error-container: #FFDAD6;
+    --md-sys-color-on-error-container: #410002;
+    --md-sys-color-background: #F8FAFC;
+    --md-sys-color-on-background: #0F172A;
+    --md-sys-color-surface: #FFFFFF;
+    --md-sys-color-on-surface: #0F172A;
+    --md-sys-color-surface-variant: #F1F5F9;
+    --md-sys-color-on-surface-variant: #475569;
+    --md-sys-color-surface-container-lowest: #FFFFFF;
+    --md-sys-color-surface-container-low: #F8FAFC;
+    --md-sys-color-surface-container: #F1F5F9;
+    --md-sys-color-surface-container-high: #E2E8F0;
+    --md-sys-color-surface-container-highest: #CBD5E1;
+    --md-sys-color-outline: #94A3B8;
+    --md-sys-color-outline-variant: #E2E8F0;
+    --md-sys-color-shadow: #000000;
+    --md-sys-color-surface-tint: #005AC1;
+    --md-sys-color-inverse-surface: #1E293B;
+    --md-sys-color-inverse-on-surface: #F8FAFC;
+    --md-sys-color-inverse-primary: #ADC6FF;
+
+    /* Material 3 Elevation & Shadow Tokens */
+    --shadow-m3-1: 0 1px 3px 1px rgba(0, 0, 0, 0.15), 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+    --shadow-m3-2: 0 2px 6px 2px rgba(0, 0, 0, 0.15), 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+    --shadow-m3-3: 0 4px 8px 3px rgba(0, 0, 0, 0.15), 0 1px 3px 0 rgba(0, 0, 0, 0.3);
+    --shadow-m3-4: 0 6px 10px 4px rgba(0, 0, 0, 0.15), 0 2px 3px 0 rgba(0, 0, 0, 0.3);
+    --shadow-m3-5: 0 8px 12px 6px rgba(0, 0, 0, 0.15), 0 4px 4px 0 rgba(0, 0, 0, 0.3);
 }
 
 :root.dark,
 .dark {
-    --desk-canvas: oklch(0.14 0.01 95);
-    --desk-surface: oklch(0.18 0.01 95);
-    --desk-surface-subtle: oklch(0.22 0.01 95);
-    --desk-border: oklch(0.32 0.01 95);
-    --desk-border-strong: oklch(0.44 0.01 95);
-    --desk-text-primary: oklch(0.93 0.01 95);
-    --desk-text-secondary: oklch(0.74 0.01 95);
-    --desk-text-tertiary: oklch(0.62 0.01 95);
-    --desk-accent: oklch(0.72 0.17 62);
-    --desk-accent-soft: oklch(0.26 0.03 62);
-    --desk-success: oklch(0.76 0.13 150);
-    --desk-warning: oklch(0.79 0.12 83);
-    --desk-danger: oklch(0.73 0.14 26);
-    --desk-info: oklch(0.7 0.14 250);
-    --desk-focus-ring: oklch(0.93 0.01 95);
+    --desk-canvas: #000000;
+    --desk-surface: #0a0a0a;
+    --desk-surface-subtle: #141414;
+    --desk-surface-sunken: #1a1a1a;
+    --desk-surface-raised: #18181b;
+    --desk-border: #262626;
+    --desk-border-strong: #404040;
+    --desk-text-primary: #ffffff;
+    --desk-text-secondary: #a3a3a3;
+    --desk-text-tertiary: #737373;
+    --desk-accent: #ffffff;
+    --desk-accent-strong: #e5e5e5;
+    --desk-accent-soft: #262626;
+    --desk-accent-on: #000000;
+    --desk-accent-rgb: 255, 255, 255;
+    --desk-success: #d4d4d4;
+    --desk-warning: #a3a3a3;
+    --desk-danger: #fafafa;
+    --desk-info: #a3a3a3;
+    --desk-success-soft: #1a1a1a;
+    --desk-warning-soft: #1a1a1a;
+    --desk-danger-soft: #1a1a1a;
+    --desk-info-soft: #1a1a1a;
+    --desk-focus-ring: #ffffff;
 
-    --desktop-on-accent: oklch(0.16 0.01 95);
+    --desktop-on-accent: #000000;
 
     --glass-bg: var(--desk-surface);
     --glass-border: var(--desk-border);
@@ -165,6 +222,49 @@
     --glass-premium-bg: var(--desk-surface);
     --glass-premium-border: var(--desk-border);
     --glass-premium-shadow: var(--shadow-overlay);
+
+    /* Google Material Design 3 (Material You) System Tokens - Tactical Dark / Obsidian Palette */
+    --md-sys-color-primary: #3B82F6;
+    --md-sys-color-on-primary: #FFFFFF;
+    --md-sys-color-primary-container: #1E3A8A;
+    --md-sys-color-on-primary-container: #DBEAFE;
+    --md-sys-color-secondary: #94A3B8;
+    --md-sys-color-on-secondary: #0F172A;
+    --md-sys-color-secondary-container: #181820;
+    --md-sys-color-on-secondary-container: #F8FAFC;
+    --md-sys-color-tertiary: #E2FD52;
+    --md-sys-color-on-tertiary: #1A2E05;
+    --md-sys-color-tertiary-container: #2E4A08;
+    --md-sys-color-on-tertiary-container: #E2FD52;
+    --md-sys-color-error: #EF4444;
+    --md-sys-color-on-error: #FFFFFF;
+    --md-sys-color-error-container: #450A0A;
+    --md-sys-color-on-error-container: #FCA5A5;
+    --md-sys-color-background: #09090B;
+    --md-sys-color-on-background: #F8FAFC;
+    --md-sys-color-surface: #121216;
+    --md-sys-color-on-surface: #F8FAFC;
+    --md-sys-color-surface-variant: #181820;
+    --md-sys-color-on-surface-variant: #94A3B8;
+    --md-sys-color-surface-container-lowest: #09090B;
+    --md-sys-color-surface-container-low: #0D0D11;
+    --md-sys-color-surface-container: #121216;
+    --md-sys-color-surface-container-high: #181820;
+    --md-sys-color-surface-container-highest: #191924;
+    --md-sys-color-outline: #22222C;
+    --md-sys-color-outline-variant: #333342;
+    --md-sys-color-shadow: #000000;
+    --md-sys-color-surface-tint: #3B82F6;
+    --md-sys-color-inverse-surface: #F8FAFC;
+    --md-sys-color-inverse-on-surface: #09090B;
+    --md-sys-color-inverse-primary: #005AC1;
+
+    /* Material 3 Dark Mode Elevation */
+    --shadow-m3-1: 0 1px 3px 1px rgba(0, 0, 0, 0.4), 0 1px 2px 0 rgba(0, 0, 0, 0.6);
+    --shadow-m3-2: 0 2px 6px 2px rgba(0, 0, 0, 0.4), 0 1px 2px 0 rgba(0, 0, 0, 0.6);
+    --shadow-m3-3: 0 4px 8px 3px rgba(0, 0, 0, 0.4), 0 1px 3px 0 rgba(0, 0, 0, 0.6);
+    --shadow-m3-4: 0 6px 10px 4px rgba(0, 0, 0, 0.4), 0 2px 3px 0 rgba(0, 0, 0, 0.6);
+    --shadow-m3-5: 0 8px 12px 6px rgba(0, 0, 0, 0.4), 0 4px 4px 0 rgba(0, 0, 0, 0.6);
 }
 
 @layer base {
@@ -233,20 +333,18 @@
         text-transform: uppercase;
     }
 
-    :where(.status-chip--ready) {
-        background: var(--success, var(--desk-success));
-        color: #ffffff;
-    }
-
-    :where(.status-chip--in-production) {
-        background: var(--warning, var(--desk-warning));
-        color: #111827;
-    }
-
+    :where(.status-chip--ready),
+    :where(.status-chip--in-production),
     :where(.status-chip--cancelled),
     :where(.status-chip--critical) {
-        background: var(--danger, var(--desk-danger));
-        color: #ffffff;
+        background: var(--desk-text-primary);
+        color: var(--desk-surface);
+    }
+
+    :where(.status-chip--proactive) {
+        background: var(--desk-text-primary);
+        color: var(--desk-surface);
+        border: 1px solid var(--desk-text-primary);
     }
 
     :where(.md-card) {
@@ -365,7 +463,7 @@
     }
 
     .glow-text {
-        text-shadow: 0 0 20px rgba(var(--desk-accent-rgb, 255, 122, 26), 0.3);
+        text-shadow: none;
     }
 
     .text-cinematic {
@@ -425,6 +523,30 @@
         border-color: var(--desk-border-strong);
     }
 
+    .bento-skeleton {
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        border-radius: var(--radius-lg);
+        background: var(--desk-surface);
+        border: 1px solid var(--desk-border);
+        min-height: 240px;
+        position: relative;
+    }
+
+    .bento-skeleton::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: var(--desk-surface-subtle);
+        opacity: 0.5;
+        animation: desk-pulse 1.6s infinite;
+    }
+
+    .bento-stat {
+        grid-column: span 1;
+        grid-row: span 1;
+    }
     .bento-anchor {
         grid-column: span 2;
         grid-row: span 2;
@@ -470,13 +592,13 @@
 
 @keyframes glow-pulse {
     0% {
-        box-shadow: 0 0 5px rgba(var(--desk-accent-rgb, 255, 122, 26), 0.2);
+        box-shadow: 0 0 5px rgba(0, 0, 0, 0.08);
     }
     50% {
-        box-shadow: 0 0 20px rgba(var(--desk-accent-rgb, 255, 122, 26), 0.4);
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.14);
     }
     100% {
-        box-shadow: 0 0 5px rgba(var(--desk-accent-rgb, 255, 122, 26), 0.2);
+        box-shadow: 0 0 5px rgba(0, 0, 0, 0.08);
     }
 }
 
@@ -618,14 +740,10 @@
         color: var(--desk-text-secondary);
     }
 
-    :where(.desk-stat-delta--up) {
-        background: var(--desk-success-soft);
-        color: var(--desk-success);
-    }
-
+    :where(.desk-stat-delta--up),
     :where(.desk-stat-delta--down) {
-        background: var(--desk-danger-soft);
-        color: var(--desk-danger);
+        background: var(--desk-surface-subtle);
+        color: var(--desk-text-secondary);
     }
 
     :where(.desk-stat-delta--neutral) {
@@ -800,25 +918,13 @@
         text-transform: uppercase;
     }
 
-    :where(.desk-pill--hot) {
-        color: var(--desk-danger);
-        border-color: var(--desk-danger-soft);
-        background: var(--desk-danger-soft);
-    }
-    :where(.desk-pill--qualified) {
-        color: var(--desk-success);
-        border-color: var(--desk-success-soft);
-        background: var(--desk-success-soft);
-    }
-    :where(.desk-pill--new) {
-        color: var(--desk-info);
-        border-color: var(--desk-info-soft);
-        background: var(--desk-info-soft);
-    }
+    :where(.desk-pill--hot),
+    :where(.desk-pill--qualified),
+    :where(.desk-pill--new),
     :where(.desk-pill--pending) {
-        color: var(--desk-warning);
-        border-color: var(--desk-warning-soft);
-        background: var(--desk-warning-soft);
+        color: var(--desk-text-primary);
+        border-color: var(--desk-border-strong);
+        background: var(--desk-surface-subtle);
     }
     :where(.desk-pill--open) {
         color: var(--desk-text-primary);
@@ -980,7 +1086,7 @@
 
     :where(.desk-search:focus-within) {
         border-color: var(--desk-text-primary);
-        box-shadow: 0 0 0 3px rgba(var(--desk-accent-rgb), 0.12);
+        box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.08);
     }
 
     :where(.desk-search input) {
@@ -1330,9 +1436,8 @@
         gap: 6px;
         padding: 4px 12px;
         border-radius: var(--radius-pill);
-        border: 1px solid
-            color-mix(in oklch, var(--desk-success) 25%, var(--desk-border));
-        background: color-mix(in oklch, var(--desk-success) 8%, transparent);
+        border: 1px solid var(--desk-border);
+        background: var(--desk-surface-subtle);
         font: 600 11px/16px var(--desktop-font-sans);
         letter-spacing: 0.04em;
         text-transform: uppercase;
@@ -1343,7 +1448,7 @@
         width: 6px;
         height: 6px;
         border-radius: 50%;
-        background: var(--desk-success);
+        background: var(--desk-text-primary);
         animation: desk-pulse 2s ease-in-out infinite;
     }
 
@@ -1380,12 +1485,14 @@
         grid-auto-rows: auto;
     }
 
+    .bento-stat,
     .bento-anchor,
     .bento-list,
     .bento-control,
     .bento-wide,
     .bento-full,
-    .bento-card {
+    .bento-card,
+    .bento-skeleton {
         grid-column: span 1 !important;
         grid-row: span 1 !important;
         min-height: auto;

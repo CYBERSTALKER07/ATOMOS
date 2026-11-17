@@ -7,6 +7,7 @@ import * as SecureStore from 'expo-secure-store';
 import { authFetch } from './authSession';
 import { payloadInboundConfirmKey, payloadInboundScanKey } from './utils/idempotency';
 import { InboundReturnsList } from './components/InboundReturnsList';
+import type { AppTheme } from './theme';
 
 export type InboundRow = {
   return_id: string;
@@ -36,7 +37,7 @@ type QueuedScan = {
 };
 
 type Props = {
-  theme: any;
+  theme: AppTheme;
   isIOS: boolean;
   isOnline?: boolean;
   onBack: () => void;

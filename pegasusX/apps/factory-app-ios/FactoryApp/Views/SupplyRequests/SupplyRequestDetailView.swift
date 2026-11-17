@@ -1,37 +1,36 @@
 import SwiftUI
 
 struct SupplyRequestDetailView: View {
-    let requestId: String
+    @State private var vm: SupplyRequestDetailViewModel
 
-    @State private var request: SupplyRequest?
-    @State private var loading = true
-    @State private var error: String?
-    @State private var actionError: String?
-    @State private var isProcessing = false
+    init(requestId: String) {
+        _vm = State(initialValue: SupplyRequestDetailViewModel(requestId: requestId))
+    }
 
     var body: some View {
         Group {
-            if loading {
+            if vm.loading {
                 FactoryLoadingView(
                     title: "Loading request",
-                    message: "Fetching details for \(requestId.prefix(8))"
+                    message: "Fetching details for \(vm.requestId.prefix(8))"
                 )
-            } else if let error {
+            } else if let error = vm.error {
                 FactoryErrorView(message: error) {
-                    Task { await load() }
+                    Task { await vm.load() }
                 }
-            } else if let request {
+            } else if let request = vm.request {
                 ScrollView {
                     VStack(alignment: .leading, spacing: LabTheme.spacingLG) {
                         headerSection(request)
 
-                        if let actionError {
+                        if let actionError = vm.actionError {
                             Text(actionError)
                                 .font(.caption)
                                 .foregroundStyle(.red)
                                 .padding()
                                 .background(Color.red.opacity(0.1))
-                                .cornerRadius(LabTheme.radiusMD)
+                                .clipShape(RoundedRectangle(cornerRadius: LabTheme.radiusMD, style: .continuous))
+                                .accessibilityLabel("Action error: \(actionError)")
                         }
 
                         actionSection(request)
@@ -40,19 +39,26 @@ struct SupplyRequestDetailView: View {
                     }
                     .padding()
                 }
+                .scrollDismissesKeyboard(.interactively)
             }
         }
-        .navigationTitle("Request Details")
+        .navigationTitle("mobile_factory.ui.request_details")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button("Refresh", systemImage: "arrow.clockwise") {
-                    Task { await load() }
+                Button {
+                    PegasusHaptics.selection()
+                    Task { await vm.load() }
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                        .frame(minWidth: 44, minHeight: 44)
+                        .contentShape(Rectangle())
                 }
-                .disabled(isProcessing)
+                .disabled(vm.isProcessing)
+                .accessibilityLabel("Refresh request details")
             }
         }
-        .task { await load() }
+        .task { await vm.load() }
     }
 
     @ViewBuilder
@@ -65,51 +71,56 @@ struct SupplyRequestDetailView: View {
                 Spacer()
                 FactoryStatusBadge(text: request.state)
             }
-            Text("\(Int(request.totalVolumeVU)) VU")
+            Text(L10n.format("mobile_factory.ui.totalvolumevu_vu", "\(Int(request.totalVolumeVU))"))
                 .font(.largeTitle.bold())
-            Text("Priority: \(request.priority)")
+            Text(L10n.format("mobile_factory.ui.priority_priority", "\(request.priority)"))
                 .font(.headline)
                 .foregroundStyle(request.priority == "URGENT" ? .red : .primary)
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Request \(request.id), state \(request.state), \(Int(request.totalVolumeVU)) volume units, priority \(request.priority)")
     }
 
     @ViewBuilder
     private func actionSection(_ request: SupplyRequest) -> some View {
-        let actions = availableActions(for: request.state)
-        
+        let actions = vm.availableActions(for: request.state)
+
         if !actions.isEmpty {
             VStack(alignment: .leading, spacing: LabTheme.spacingSM) {
-                Text("Actions")
+                Text("retailer_desktop.stock.text.actions")
                     .font(.headline)
-                
+
                 HStack(spacing: LabTheme.spacingMD) {
                     ForEach(actions, id: \.self) { action in
                         Button {
-                            Task { await performAction(action) }
+                            Task { await vm.performAction(action) }
                         } label: {
-                            if isProcessing {
+                            if vm.isProcessing {
                                 ProgressView()
+                                    .frame(maxWidth: .infinity, minHeight: 44)
                                     .padding(.horizontal)
                             } else {
                                 Text(action)
-                                    .frame(maxWidth: .infinity)
+                                    .frame(maxWidth: .infinity, minHeight: 44)
+                                    .contentShape(Rectangle())
                             }
                         }
                         .buttonStyle(.borderedProminent)
-                        .disabled(isProcessing)
+                        .disabled(vm.isProcessing)
+                        .accessibilityLabel("Perform action \(action)")
                     }
                 }
             }
             .padding()
             .background(Color(uiColor: .secondarySystemBackground))
-            .cornerRadius(LabTheme.radiusLG)
+            .clipShape(RoundedRectangle(cornerRadius: LabTheme.radiusLG, style: .continuous))
         }
     }
 
     @ViewBuilder
     private func detailsSection(_ request: SupplyRequest) -> some View {
         VStack(alignment: .leading, spacing: LabTheme.spacingMD) {
-            Text("Details")
+            Text("mobile_factory.ui.details")
                 .font(.headline)
 
             VStack(spacing: LabTheme.spacingSM) {
@@ -125,19 +136,19 @@ struct SupplyRequestDetailView: View {
             }
             .padding()
             .background(Color(uiColor: .secondarySystemBackground))
-            .cornerRadius(LabTheme.radiusLG)
+            .clipShape(RoundedRectangle(cornerRadius: LabTheme.radiusLG, style: .continuous))
 
             if !request.notes.isEmpty {
-                Text("Notes")
+                Text("factory_portal.transfers._id_.text.notes")
                     .font(.headline)
                     .padding(.top, LabTheme.spacingSM)
-                
+
                 Text(request.notes)
                     .font(.body)
                     .padding()
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(Color(uiColor: .secondarySystemBackground))
-                    .cornerRadius(LabTheme.radiusLG)
+                    .clipShape(RoundedRectangle(cornerRadius: LabTheme.radiusLG, style: .continuous))
             }
         }
     }
@@ -150,44 +161,7 @@ struct SupplyRequestDetailView: View {
             Text(value)
                 .font(.subheadline.monospaced())
         }
-    }
-
-    @MainActor
-    private func load() async {
-        loading = true
-        error = nil
-        do {
-            let requests = try await FactoryService.supplyRequests()
-            self.request = requests.first { $0.id == requestId }
-            if self.request == nil {
-                self.error = "Request not found."
-            }
-        } catch {
-            self.error = error.localizedDescription
-        }
-        loading = false
-    }
-
-    @MainActor
-    private func performAction(_ action: String) async {
-        isProcessing = true
-        actionError = nil
-        do {
-            _ = try await FactoryService.transitionSupplyRequest(id: requestId, action: action)
-            await load()
-        } catch {
-            self.actionError = error.localizedDescription
-        }
-        isProcessing = false
-    }
-
-    private func availableActions(for state: String) -> [String] {
-        switch state.uppercased() {
-        case "OPEN": return ["ACKNOWLEDGE"]
-        case "ACKNOWLEDGED": return ["IN_PRODUCTION"]
-        case "PRODUCTION": return ["READY"]
-        case "READY": return ["FULFILL"]
-        default: return []
-        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(label): \(value)")
     }
 }

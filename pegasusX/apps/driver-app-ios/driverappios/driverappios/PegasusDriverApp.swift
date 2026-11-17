@@ -25,19 +25,23 @@ struct LabDriverApp: App {
 struct RootView: View {
     @Environment(TokenStore.self) private var tokenStore
     @State private var driverSocketState = DriverSocketState.shared
-    @State private var clientPolicyMessage: String?
-    @State private var clientPolicyForce = false
-    @State private var pendingManifest: AutoUpdater.Manifest?
+    @State private var rootVM = RootViewModel()
+    @State private var localeManager = DriverLocaleManager.shared
 
     var body: some View {
         VStack(spacing: 0) {
             ClientPolicyBanner(
-                message: clientPolicyMessage,
-                force: clientPolicyForce,
-                onUpdate: clientPolicyMessage == nil ? nil : {
-                    AutoUpdater.promptInstall(manifest: pendingManifest, force: clientPolicyForce)
+                message: rootVM.clientPolicyMessage,
+                force: rootVM.clientPolicyForce,
+                onUpdate: rootVM.clientPolicyMessage == nil ? nil : {
+                    AutoUpdater.promptInstall(
+                        manifest: rootVM.pendingManifest,
+                        force: rootVM.clientPolicyForce
+                    )
                 },
-                onDismiss: clientPolicyForce ? nil : { clientPolicyMessage = nil },
+                onDismiss: rootVM.clientPolicyForce ? nil : {
+                    rootVM.dismissBanner()
+                }
             )
             Group {
                 if tokenStore.isAuthenticated {
@@ -52,9 +56,10 @@ struct RootView: View {
             }
         }
         .buttonStyle(.pressable)
+        .environment(\.locale, localeManager.locale)
         .animation(Anim.snappy, value: tokenStore.isAuthenticated)
         .task(id: tokenStore.isAuthenticated) {
-            await loadClientPolicy()
+            await rootVM.loadClientPolicy()
         }
         .task {
             await PushNotificationManager.shared.requestAuthorization()
@@ -81,60 +86,6 @@ struct RootView: View {
             }
         }
     }
-
-    @MainActor
-    private func loadClientPolicy() async {
-        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
-        do {
-            struct ClientPolicy: Decodable {
-                let outdated: Bool
-                let forceUpdate: Bool
-                let updateDeferred: Bool
-                let minimumVersion: String
-                let recommendedVersion: String?
-                let updateURL: String?
-                let deferReason: String?
-
-                enum CodingKeys: String, CodingKey {
-                    case outdated
-                    case forceUpdate = "force_update"
-                    case updateDeferred = "update_deferred"
-                    case minimumVersion = "minimum_version"
-                    case recommendedVersion = "recommended_version"
-                    case updateURL = "update_url"
-                    case deferReason = "defer_reason"
-                }
-            }
-            var components = URLComponents()
-            components.queryItems = [
-                URLQueryItem(name: "role", value: EnterpriseUpdateConfig.policyRole),
-                URLQueryItem(name: "platform", value: "ios"),
-                URLQueryItem(name: "version", value: version),
-                URLQueryItem(name: "channel", value: EnterpriseUpdateConfig.channel),
-            ]
-            let query = components.percentEncodedQuery.map { "?\($0)" } ?? ""
-            let policy: ClientPolicy = try await APIClient.shared.get(
-                "/v1/platform/client-policy\(query)"
-            )
-            let state = await AutoUpdater.evaluate(
-                outdated: policy.outdated,
-                forceUpdate: policy.forceUpdate,
-                updateDeferred: policy.updateDeferred,
-                minimumVersion: policy.minimumVersion,
-                recommendedVersion: policy.recommendedVersion,
-                deferReason: policy.deferReason,
-                updateURL: policy.updateURL,
-            )
-            clientPolicyMessage = state.message
-            clientPolicyForce = state.force
-            pendingManifest = state.manifest
-            if state.force, state.available {
-                AutoUpdater.promptInstall(manifest: state.manifest, force: true)
-            }
-        } catch {
-            // Policy fetch is optional on local/dev stacks.
-        }
-    }
 }
 
 private struct DriverOutdatedGate: View {
@@ -148,25 +99,26 @@ private struct DriverOutdatedGate: View {
 
             VStack(spacing: LabTheme.s16) {
                 Image(systemName: "arrow.triangle.2.circlepath.circle.fill")
-                    .font(.system(size: 52, weight: .bold))
+                    .font(.largeTitle.weight(.bold))
                     .foregroundStyle(LabTheme.warning)
+                    .accessibilityHidden(true)
 
-                Text("App Update Required")
-                    .font(.system(size: 24, weight: .bold))
+                Text("mobile_driver.ui.app_update_required")
+                    .font(.system(.title2, weight: .bold))
                     .foregroundStyle(LabTheme.fg)
 
                 Text(message)
-                    .font(.system(size: 14, weight: .medium))
+                    .font(.system(.subheadline, weight: .medium))
                     .foregroundStyle(LabTheme.fgSecondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, LabTheme.s24)
 
                 Button(action: onSignOut) {
-                    Text("Sign Out")
-                        .font(.system(size: 15, weight: .bold))
+                    Text("common.action.sign_out")
+                        .font(.system(.subheadline, weight: .bold))
                         .foregroundStyle(LabTheme.buttonFg)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .padding(.vertical, 6)
                         .background(LabTheme.fg, in: .rect(cornerRadius: LabTheme.buttonRadius))
                 }
                 .padding(.horizontal, LabTheme.s24)

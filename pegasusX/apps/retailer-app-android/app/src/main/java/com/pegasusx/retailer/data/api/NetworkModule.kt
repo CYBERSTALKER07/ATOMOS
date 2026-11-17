@@ -1,5 +1,6 @@
 package com.pegasusx.retailer.data.api
 
+
 import com.pegasusx.retailer.BuildConfig
 import com.pegasusx.retailer.data.local.TokenManager
 import com.pegasusx.retailer.data.model.ProblemDetail
@@ -14,6 +15,8 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import okhttp3.Authenticator
+import okhttp3.CertificatePinner
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -44,6 +47,12 @@ object NetworkModule {
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
+            .pingInterval(25, TimeUnit.SECONDS)
+            .apply {
+                configuredCertificatePinner(BuildConfig.BASE_URL, BuildConfig.API_TLS_SPKI_PINS)
+                    ?.let { certificatePinner(it) }
+            }
+            .addInterceptor(com.pegasusx.retailer.ui.design.CellPinInterceptor(BuildConfig.BASE_URL) { tokenManager.getPreferredToken() })
             .addInterceptor { chain ->
                 val token = tokenManager.getPreferredToken()
                 val request = chain.request().newBuilder()
@@ -53,6 +62,7 @@ object NetworkModule {
                 chain.proceed(request)
             }
             .authenticator(TokenRefreshAuthenticator(tokenManager, json))
+            .addInterceptor(com.pegasusx.retailer.ui.design.PegasusHttpResilienceInterceptor())
             .addInterceptor(ProblemDetailInterceptor(json))
             .addInterceptor(HttpLoggingInterceptor().apply {
                 level = if (BuildConfig.DEBUG) {
@@ -85,6 +95,26 @@ object NetworkModule {
     fun provideRetailerWebSocket(tokenManager: TokenManager, json: Json): RetailerWebSocket {
         return RetailerWebSocket(tokenManager, json)
     }
+
+    @Provides
+    @Singleton
+    fun provideCartRealtimeEventSource(webSocket: RetailerWebSocket): CartRealtimeEventSource = webSocket
+}
+
+internal fun configuredCertificatePinner(baseUrl: String, pinsCsv: String): CertificatePinner? {
+    val parsed = baseUrl.trim().toHttpUrlOrNull() ?: return null
+    if (!parsed.isHttps) return null
+    val host = parsed.host.lowercase()
+    if (host == "localhost" || host == "127.0.0.1" || host == "10.0.2.2" || host == "::1") {
+        return null
+    }
+    val pins = pinsCsv.split(',').map { it.trim() }.filter { it.startsWith("sha256/") }
+    if (pins.isEmpty()) return null
+    val builder = CertificatePinner.Builder()
+    for (pin in pins) {
+        builder.add(host, pin)
+    }
+    return builder.build()
 }
 
 // ── Silent 401 → refresh → retry ──
@@ -93,6 +123,16 @@ private class TokenRefreshAuthenticator(
     private val tokenManager: TokenManager,
     private val json: Json,
 ) : Authenticator {
+    private val refreshClient = OkHttpClient.Builder()
+        .connectTimeout(10, TimeUnit.SECONDS)
+        .readTimeout(10, TimeUnit.SECONDS)
+        .apply {
+            configuredCertificatePinner(BuildConfig.BASE_URL, BuildConfig.API_TLS_SPKI_PINS)
+                ?.let { certificatePinner(it) }
+        }
+        .build()
+
+    @Synchronized
     override fun authenticate(route: Route?, response: Response): Request? {
         // Prevent infinite loops
         if (response.request.header("X-Refresh-Attempted") != null) {
@@ -100,6 +140,15 @@ private class TokenRefreshAuthenticator(
             return null
         }
         val currentToken = tokenManager.getToken() ?: return null
+        val requestToken = response.request.header("Authorization")
+            ?.removePrefix("Bearer ")
+            ?.trim()
+        if (!requestToken.isNullOrBlank() && requestToken != currentToken) {
+            return response.request.newBuilder()
+                .header("Authorization", "Bearer $currentToken")
+                .header("X-Refresh-Attempted", "true")
+                .build()
+        }
 
         val refreshUrl = "${BuildConfig.BASE_URL}v1/auth/retailer/refresh"
         val body = "{}".toRequestBody("application/json".toMediaType())
@@ -111,11 +160,7 @@ private class TokenRefreshAuthenticator(
             .build()
 
         return try {
-            val client = OkHttpClient.Builder()
-                .connectTimeout(10, TimeUnit.SECONDS)
-                .readTimeout(10, TimeUnit.SECONDS)
-                .build()
-            val refreshResponse = client.newCall(refreshRequest).execute()
+            val refreshResponse = refreshClient.newCall(refreshRequest).execute()
             if (refreshResponse.isSuccessful) {
                 val responseBody = refreshResponse.body?.string() ?: return null
                 val jsonElement = json.parseToJsonElement(responseBody)
@@ -142,30 +187,31 @@ private class ProblemDetailInterceptor(private val json: Json) : okhttp3.Interce
         val response = chain.proceed(chain.request())
         if (response.code == 429) {
             val bodyStr = response.peekBody(8192).string()
-            try {
-                val jsonElement = json.parseToJsonElement(bodyStr).jsonObject
-                if (jsonElement["error"]?.jsonPrimitive?.content == "rate_limit_exceeded") {
-                    throw ProblemDetailException(
-                        ProblemDetail(
-                            type = "about:blank",
-                            title = "Too many requests",
-                            status = 429,
-                            detail = "Too many requests. Please try again later.",
-                            instance = null,
-                            code = "rate_limit_exceeded",
-                            messageKey = null,
-                            retryable = true,
-                            action = null
-                        )
-                    )
-                }
-            } catch (_: Exception) {}
+            val isRateLimited = runCatching {
+                json.parseToJsonElement(bodyStr).jsonObject["error"]?.jsonPrimitive?.content == "rate_limit_exceeded"
+            }.getOrDefault(false)
+            if (isRateLimited) {
+                throw ProblemDetailException(
+                    ProblemDetail(
+                        type = "about:blank",
+                        title = "Too Many Requests",
+                        status = 429,
+                        detail = "Too many requests. Please try again later.",
+                        instance = null,
+                        code = "rate_limit_exceeded",
+                        // UI layer maps this key to mobile_retailer_ui_too_many_requests for display.
+                        messageKey = "mobile_retailer_ui_too_many_requests",
+                        retryable = true,
+                        action = null,
+                    ),
+                )
+            }
         }
         val contentType = response.header("Content-Type") ?: return response
         if (!contentType.contains("application/problem+json")) return response
         val body = response.peekBody(8192).string()
         val problem = try {
-            json.decodeFromString<ProblemDetail>(body)
+            json.decodeFromString<ProblemDetail>(body).copy(rawBody = body)
         } catch (_: Exception) {
             return response
         }

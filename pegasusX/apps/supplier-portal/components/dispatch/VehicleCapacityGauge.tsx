@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import React from "react";
 
 interface VehicleCapacityGaugeProps {
@@ -11,13 +12,14 @@ export const VehicleCapacityGauge: React.FC<VehicleCapacityGaugeProps> = ({
   capacityPercentage = null,
   vehicleCode = null,
 }) => {
+  const t = usePortalT();
   const hasData = capacityPercentage != null && Number.isFinite(capacityPercentage);
   const pct = hasData ? Math.max(0, Math.min(100, Math.round(capacityPercentage))) : 0;
 
   return (
     <div className="bg-[#121417] border border-gray-800 rounded-2xl p-5 mb-5 select-none shadow-lg">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-semibold text-gray-300 tracking-wide uppercase">Current Truck Capacity</h3>
+        <h3 className="text-sm font-semibold text-gray-300 tracking-wide uppercase">{t("supplier_portal.dispatch.vehicle_capacity_gauge.text.current_truck_capacity")}</h3>
         <span className="text-xs font-bold text-blue-400 bg-blue-950/60 border border-blue-800/60 px-2.5 py-0.5 rounded-full">
           Volumetric Load Factor
         </span>

@@ -26,12 +26,12 @@ func (r *SpannerRepository) GetSupplierReturnPolicy(ctx context.Context, supplie
 		return SupplierReturnPolicy{}, false, err
 	}
 	var (
-		p          SupplierReturnPolicy
-		concealed  spanner.NullInt64
-		updatedBy  spanner.NullString
-		requirePh  bool
-		allowExp   bool
-		updatedAt  time.Time
+		p         SupplierReturnPolicy
+		concealed spanner.NullInt64
+		updatedBy spanner.NullString
+		requirePh bool
+		allowExp  bool
+		updatedAt time.Time
 	)
 	if err := row.Columns(&p.SupplierID, &p.DefaultWindowHours, &concealed, &requirePh, &allowExp, &updatedAt, &updatedBy); err != nil {
 		return SupplierReturnPolicy{}, false, err
@@ -58,12 +58,12 @@ func (r *SpannerRepository) UpsertSupplierReturnPolicy(ctx context.Context, p Su
 	}
 	p.DefaultWindowHours = clampClaimWindowHours(p.DefaultWindowHours)
 	m := map[string]any{
-		"SupplierId":           p.SupplierID,
-		"DefaultWindowHours":   p.DefaultWindowHours,
-		"RequirePhoto":         p.RequirePhoto,
-		"AllowExpiredClaims":   p.AllowExpiredClaims,
-		"UpdatedAt":            spanner.CommitTimestamp,
-		"UpdatedByUserId":      nullableString(p.UpdatedByUserID),
+		"SupplierId":         p.SupplierID,
+		"DefaultWindowHours": p.DefaultWindowHours,
+		"RequirePhoto":       p.RequirePhoto,
+		"AllowExpiredClaims": p.AllowExpiredClaims,
+		"UpdatedAt":          spanner.CommitTimestamp,
+		"UpdatedByUserId":    nullableString(p.UpdatedByUserID),
 	}
 	if p.ConcealedDamageWindowHours != nil {
 		h := clampClaimWindowHours(*p.ConcealedDamageWindowHours)
@@ -92,12 +92,12 @@ func (r *SpannerRepository) GetWarehouseReturnPolicy(ctx context.Context, wareho
 		return WarehouseReturnPolicy{}, false, err
 	}
 	var (
-		p         WarehouseReturnPolicy
-		sla       spanner.NullInt64
-		fileHours spanner.NullInt64
+		p           WarehouseReturnPolicy
+		sla         spanner.NullInt64
+		fileHours   spanner.NullInt64
 		canOverride bool
-		updatedAt time.Time
-		updatedBy spanner.NullString
+		updatedAt   time.Time
+		updatedBy   spanner.NullString
 	)
 	if err := row.Columns(&p.WarehouseID, &p.SupplierID, &sla, &fileHours, &canOverride, &updatedAt, &updatedBy); err != nil {
 		return WarehouseReturnPolicy{}, false, err

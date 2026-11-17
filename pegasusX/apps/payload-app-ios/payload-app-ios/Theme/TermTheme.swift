@@ -5,13 +5,16 @@ import SwiftUI
 // Follows the B&W Tactical Aesthetic with 32px standard iPad radii.
 
 enum TermTheme {
-    // MARK: Colors
-    static let bg = Color(UIColor.systemGroupedBackground)
-    static let card = Color(UIColor.systemBackground)
-    static let accent = Color(UIColor.label)
-    static let secondary = Color(UIColor.secondaryLabel)
-    static let tertiary = Color(UIColor.tertiaryLabel)
-    static let separator = Color(UIColor.separator)
+    // MARK: Colors (Warm Tactile Minimalist)
+    static let bg = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 14/255.0, green: 14/255.0, blue: 16/255.0, alpha: 1.0) : UIColor(red: 237/255.0, green: 237/255.0, blue: 240/255.0, alpha: 1.0) })
+    static let card = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 24/255.0, green: 24/255.0, blue: 27/255.0, alpha: 1.0) : UIColor.white })
+    static let accent = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 244/255.0, green: 244/255.0, blue: 245/255.0, alpha: 1.0) : UIColor(red: 17/255.0, green: 17/255.0, blue: 19/255.0, alpha: 1.0) })
+    static let secondary = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 161/255.0, green: 161/255.0, blue: 170/255.0, alpha: 1.0) : UIColor(red: 113/255.0, green: 113/255.0, blue: 122/255.0, alpha: 1.0) })
+    static let tertiary = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 113/255.0, green: 113/255.0, blue: 122/255.0, alpha: 1.0) : UIColor(red: 161/255.0, green: 161/255.0, blue: 170/255.0, alpha: 1.0) })
+    static let separator = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 39/255.0, green: 39/255.0, blue: 42/255.0, alpha: 1.0) : UIColor(red: 228/255.0, green: 228/255.0, blue: 231/255.0, alpha: 1.0) })
+    static let accentWarm = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 210/255.0, green: 179/255.0, blue: 155/255.0, alpha: 1.0) : UIColor(red: 188/255.0, green: 127/255.0, blue: 112/255.0, alpha: 1.0) })
+    static let accentWarmSoft = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 54/255.0, green: 39/255.0, blue: 35/255.0, alpha: 1.0) : UIColor(red: 245/255.0, green: 236/255.0, blue: 233/255.0, alpha: 1.0) })
+    static let accentBronze = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 228/255.0, green: 191/255.0, blue: 162/255.0, alpha: 1.0) : UIColor(red: 98/255.0, green: 77/255.0, blue: 69/255.0, alpha: 1.0) })
     
     // Status
     static let live = Color(UIColor.systemGreen)
@@ -115,4 +118,5 @@ struct TacticalButtonStyle: ButtonStyle {
 
 extension ButtonStyle where Self == TacticalButtonStyle {
     static var tactical: TacticalButtonStyle { TacticalButtonStyle() }
+    static var pressable: TacticalButtonStyle { TacticalButtonStyle() }
 }

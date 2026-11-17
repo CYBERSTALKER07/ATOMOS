@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.returns
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -48,8 +50,8 @@ import com.pegasusx.warehouse.data.remote.TokenHolder
 import com.pegasusx.warehouse.data.remote.WarehouseApi
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import com.pegasusx.warehouse.util.WarehouseIdempotencyKeys
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import com.pegasusx.warehouse.R
 
 private enum class ReturnsTab { Queue, History, Reverse }
 
@@ -91,14 +93,18 @@ fun ReturnsScreen(
         scope.launch {
             try {
                 val inbound = api.getInboundReturns(physicalStatus = "OPEN")
-                if (inbound.isSuccessful && inbound.body() != null) items = inbound.body()!!.data
-                else error = "Failed (${inbound.code()})"
+                val inboundBody = inbound.body()?.data
+                if (inbound.isSuccessful && inboundBody != null) {
+                    items = inboundBody
+                } else {
+                    error = "Failed (${inbound.code()})"
+                }
                 val hist = api.getReturnsHistory()
-                if (hist.isSuccessful && hist.body() != null) history = hist.body()!!.data
+                hist.body()?.data?.let { history = it }
                 val wh = TokenHolder.warehouseId?.takeIf { it.isNotBlank() }
                 val reverse = api.getReverseLogistics(status = "OPEN", warehouseId = wh)
                 if (reverse.isSuccessful && reverse.body() != null) {
-                    reverseTasks = reverse.body()!!.tasks
+                    reverse.body()?.tasks?.let { reverseTasks = it }
                 }
             } catch (e: Exception) {
                 error = e.message ?: "Network error"
@@ -132,11 +138,8 @@ fun ReturnsScreen(
                 val resp = api.scanInboundReturn(key, body)
                 if (!resp.isSuccessful) throw IllegalStateException("scan_failed")
                 barcode = ""
-                scannerEnabled = false
                 statusMessage = "Scan recorded"
                 load()
-                delay(1500)
-                scannerEnabled = true
             } catch (e: Exception) {
                 statusMessage = e.message
             } finally {
@@ -199,7 +202,7 @@ fun ReturnsScreen(
             }
             error != null -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(error!!, color = MaterialTheme.colorScheme.error)
+                    Text(error.orEmpty(), color = MaterialTheme.colorScheme.error)
                     Spacer(Modifier.height(PegasusSpacing.lg))
                     Button(onClick = { load() }) { Text("Retry") }
                 }
@@ -279,7 +282,7 @@ fun ReturnsScreen(
                                             statusMessage = e.message
                                         }
                                     }
-                                }) { Text("Restock (${selected.size})") }
+                                }) { Text(stringResource(R.string.mobile_warehouse_ui_restock_size, selected.size)) }
                                 TextButton(onClick = {
                                     scope.launch {
                                         try {
@@ -346,7 +349,7 @@ fun ReturnsScreen(
                                             Column(Modifier.weight(1f)) {
                                                 Text(task.taskId, style = MaterialTheme.typography.titleSmall)
                                                 Text(
-                                                    "Order ${task.orderId} · ${task.status}",
+                                                    stringResource(R.string.mobile_warehouse_ui_order_orderid_status, task.orderId, task.status),
                                                     style = MaterialTheme.typography.bodySmall,
                                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                                 )

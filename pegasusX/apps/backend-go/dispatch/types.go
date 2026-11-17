@@ -19,6 +19,10 @@ type GeoOrder struct {
 	ReceivingWindowClose string
 	// SplitGroupID is set when this order belongs to a multi-truck split group.
 	SplitGroupID string
+	// Handling / constraint flags aggregated from line items (OR across lines).
+	HandlingClass     string
+	IsHazardous       bool
+	AccessRestriction string
 }
 
 // DispatchableOrder is the Spanner-backed dispatch candidate row.
@@ -42,6 +46,10 @@ type DispatchableOrder struct {
 	PriorityScore  int64   // allocation / segment priority
 	ShopClosedRisk float64 // 0–1 probability of shop-closed failure
 	VolumeSource   string  // "catalog" | "default_1_0" (honesty for preview)
+	// Handling aggregates from LineItemsJson / Products (OR across lines).
+	HandlingClass     string
+	IsHazardous       bool
+	AccessRestriction string
 }
 
 // DispatchRoute tracks a single truck's load state.
@@ -52,6 +60,8 @@ type DispatchRoute struct {
 	Orders       []GeoOrder
 	// SplitGroupID is non-empty when this route is one leg of a split-retailer delivery.
 	SplitGroupID string
+	// RouteID is set by SplitManifest for overflow chunks (AUTO-{driver}-{ts}-A/B).
+	RouteID string
 }
 
 // VehicleMatch is the result of SelectBestVehicle.
@@ -69,6 +79,16 @@ type AvailableDriver struct {
 	MaxVolumeVU  float64
 	// Optional score input (0 = neutral default in ScoreCandidate).
 	DriverScore int64
+	// Optional live / home start; zero → warehouse depot in optimizerclient.
+	StartLat float64
+	StartLng float64
+	EndLat   float64
+	EndLng   float64
+	// Constraint capabilities (defaults false when Spanner columns absent).
+	HazmatCertified bool
+	ShiftStart      string
+	ShiftEnd        string
+	MaxRouteMinutes int
 }
 
 // AssignmentResult is the output of the bin-packing / optimiser pipeline.
@@ -161,5 +181,8 @@ func (o DispatchableOrder) ToGeo() GeoOrder {
 		IsRecovery:           o.IsRecovery,
 		ReceivingWindowOpen:  o.ReceivingWindowOpen,
 		ReceivingWindowClose: o.ReceivingWindowClose,
+		HandlingClass:        o.HandlingClass,
+		IsHazardous:          o.IsHazardous,
+		AccessRestriction:    o.AccessRestriction,
 	}
 }

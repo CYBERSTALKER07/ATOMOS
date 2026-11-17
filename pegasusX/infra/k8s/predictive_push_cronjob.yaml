@@ -5,34 +5,79 @@ metadata:
   namespace: pegasusx
 spec:
   schedule: "0 1 * * *" # Run daily at 1:00 AM
+  startingDeadlineSeconds: 600
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 3
   jobTemplate:
     spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 3600
+      ttlSecondsAfterFinished: 3600
       template:
         metadata:
           labels:
             app: pegasusx-predictive-push
+            cost-center: platform-engineering
+            workload-tier: batch-cron
+            pricing-model: spot
         spec:
-          containers:
-          - name: ai-worker
-            image: us-central1-docker.pkg.dev/pegasusx-production/pegasusx/ai-worker:latest
-            command:
-            - "/app/ai-worker"
-            env:
-            - name: AI_WORKER_MODE
-              value: "predictive-push-cron"
-            envFrom:
-            - secretRef:
-                name: backend-go-secrets
-            - configMapRef:
-                name: backend-go-config
-            resources:
-              requests:
-                cpu: "500m"
-                memory: "1Gi"
-              limits:
-                cpu: "1"
-                memory: "2Gi"
+          serviceAccountName: ai-worker-sa
+          automountServiceAccountToken: false
+          priorityClassName: pegasusx-batch-spot
+          terminationGracePeriodSeconds: 30
           restartPolicy: OnFailure
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+            fsGroup: 10001
+            seccompProfile:
+              type: RuntimeDefault
+          tolerations:
+            - key: "cloud.google.com/gke-spot"
+              operator: "Equal"
+              value: "true"
+              effect: "NoSchedule"
+          affinity:
+            nodeAffinity:
+              preferredDuringSchedulingIgnoredDuringExecution:
+                - weight: 100
+                  preference:
+                    matchExpressions:
+                      - key: cloud.google.com/gke-spot
+                        operator: In
+                        values:
+                          - "true"
+          containers:
+            - name: ai-worker
+              image: us-central1-docker.pkg.dev/pegasusx-production/pegasusx/ai-worker:latest
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop:
+                    - ALL
+              command:
+                - "/usr/local/bin/pegasusx-ai-worker"
+              env:
+                - name: AI_WORKER_MODE
+                  value: "predictive-push-cron"
+              envFrom:
+                - secretRef:
+                    name: backend-go-secrets
+                - configMapRef:
+                    name: backend-go-config
+              volumeMounts:
+                - name: tmp
+                  mountPath: /tmp
+              resources:
+                requests:
+                  cpu: "500m"
+                  memory: "1Gi"
+                limits:
+                  cpu: "1"
+                  memory: "2Gi"
+          volumes:
+            - name: tmp
+              emptyDir: {}

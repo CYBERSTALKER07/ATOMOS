@@ -54,11 +54,12 @@ func TestPegasusPayloadHasBranding(t *testing.T) {
 	}
 }
 
-func TestPegasusPayloadKZCountry(t *testing.T) {
+func TestPegasusPayload_KZTDoesNotInventKZ(t *testing.T) {
+	t.Setenv("DEFAULT_MARKET_CODE", "UZ")
 	p := PegasusReceiptProvider{PublicBaseURL: "https://api.example.test"}
 	res, err := p.CreateReceipt(t.Context(), FiscalCreateRequest{
-		AttemptID:   "att-kz-1",
-		OrderID:     "ord-kz",
+		AttemptID:   "att-kzt-1",
+		OrderID:     "ord-kzt",
 		AmountMinor: 100,
 		Currency:    "KZT",
 	})
@@ -67,8 +68,23 @@ func TestPegasusPayloadKZCountry(t *testing.T) {
 	}
 	var payload map[string]any
 	_ = json.Unmarshal(res.RawPayload, &payload)
-	if payload["country_code"] != "KZ" {
-		t.Fatalf("country_code = %v, want KZ", payload["country_code"])
+	if payload["country_code"] != "UZ" {
+		t.Fatalf("country_code = %v, want pack UZ not currency KZ", payload["country_code"])
+	}
+}
+
+func TestPegasusPayload_PlannedPackFailsClosed(t *testing.T) {
+	p := PegasusReceiptProvider{PublicBaseURL: "https://api.example.test"}
+	ctx := auth.WithClaims(t.Context(), auth.Claims{MarketCode: "KZ", SupplierID: "sup-1"})
+	_, err := p.CreateReceipt(ctx, FiscalCreateRequest{
+		AttemptID:   "att-kz-planned",
+		OrderID:     "ord-kz",
+		SupplierID:  "sup-1",
+		AmountMinor: 100,
+		Currency:    "KZT",
+	})
+	if err != auth.ErrMarketPackNotShipped {
+		t.Fatalf("err=%v", err)
 	}
 }
 
@@ -107,6 +123,9 @@ func TestBuildAndRenderReceiptHTMLPDF(t *testing.T) {
 	doc := BuildReceiptDocument(fr, nil, PartyCopyRetailer)
 	if doc.PartyLabel == "" || doc.CompanyName == "" {
 		t.Fatalf("doc incomplete: %+v", doc)
+	}
+	if doc.MarketCode != "UZ" || doc.FiscalAdapter != "MY_SOLIQ" {
+		t.Fatalf("pack stamp market=%s adapter=%s", doc.MarketCode, doc.FiscalAdapter)
 	}
 	if len(doc.LineItems) != 1 {
 		t.Fatalf("line items = %d", len(doc.LineItems))
@@ -153,5 +172,39 @@ func TestAuthorizeReceiptParty(t *testing.T) {
 	}
 	if authorizeReceiptParty(auth.Claims{Subject: "wh-1", Role: auth.RoleWarehouse, SupplierID: "sup-other"}, o, PartyCopyWarehouse) {
 		t.Fatal("cross-supplier warehouse forbidden")
+	}
+}
+
+func TestPegasusCorrective_EmptyCurrencyUsesPack(t *testing.T) {
+	t.Setenv("DEFAULT_MARKET_CODE", "UZ")
+	p := PegasusReceiptProvider{PublicBaseURL: "https://api.example.test"}
+	res, err := p.CreateCorrectiveReceipt(t.Context(), FiscalCorrectiveRequest{
+		AttemptID:         "att-cn-empty",
+		OriginalReceiptID: "PX-RCPT-1",
+		AmountMinor:       100,
+	})
+	if err != nil {
+		t.Fatalf("CreateCorrectiveReceipt: %v", err)
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(res.RawPayload, &payload); err != nil {
+		t.Fatalf("payload json: %v", err)
+	}
+	if payload["currency"] != "UZS" {
+		t.Fatalf("currency=%v want UZS from pack", payload["currency"])
+	}
+}
+
+func TestPegasusCorrective_PlannedPackFailsClosed(t *testing.T) {
+	p := PegasusReceiptProvider{PublicBaseURL: "https://api.example.test"}
+	ctx := auth.WithClaims(t.Context(), auth.Claims{MarketCode: "EU", SupplierID: "sup-1"})
+	_, err := p.CreateCorrectiveReceipt(ctx, FiscalCorrectiveRequest{
+		AttemptID:         "att-cn-eu",
+		OriginalReceiptID: "PX-RCPT-1",
+		SupplierID:        "sup-1",
+		AmountMinor:       100,
+	})
+	if err != auth.ErrMarketPackNotShipped {
+		t.Fatalf("err=%v want %v", err, auth.ErrMarketPackNotShipped)
 	}
 }

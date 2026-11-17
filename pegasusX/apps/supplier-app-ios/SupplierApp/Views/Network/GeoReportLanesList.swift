@@ -9,22 +9,22 @@ struct GeoReportLanesList: View {
         ResponsiveGridContentWrapper {
             Section {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Estimated H3 cells in service").font(.caption).foregroundStyle(.secondary)
+                    Text("mobile_supplier.ui.estimated_h3_cells_in_service").font(.caption).foregroundStyle(.secondary)
                     Text("\(totalCells)").font(.title2.bold())
                 }
             }
-            Section("Lane utilization") {
+            Section("mobile_supplier.chrome.lane_utilization") {
                 ForEach(lanes) { lane in
                     VStack(alignment: .leading, spacing: 4) {
                         Text(lane.name.isEmpty ? lane.warehouseId : lane.name).font(.body)
-                        Text(String(format: "%d cells · %.0f%% utilization today", lane.h3Cells, lane.utilizationPct))
+                        Text(L10n.format("mobile_supplier.chrome.lane_utilization_today", "\(lane.h3Cells)", String(format: "%.0f", lane.utilizationPct)))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
                 }
             }
             Section {
-                Text("H3 perimeter coverage and lane utilization from live supplier orders.")
+                Text("supplier_portal.residual.text.h3_perimeter_coverage_and_lane_utilization_from_live_supplier_or")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }

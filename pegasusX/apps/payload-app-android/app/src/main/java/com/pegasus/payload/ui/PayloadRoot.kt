@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -39,7 +40,10 @@ import javax.inject.Inject
  * (auth). Client-policy banner is global across login + authenticated shells.
  */
 @Composable
-fun PayloadRoot(viewModel: RootViewModel = hiltViewModel()) {
+fun PayloadRoot(
+    windowSizeClass: WindowSizeClass? = null,
+    viewModel: RootViewModel = hiltViewModel(),
+) {
     val session by viewModel.session.collectAsStateWithLifecycle()
     val clientPolicyMessage by viewModel.clientPolicyMessage.collectAsStateWithLifecycle()
     val clientPolicyForce by viewModel.clientPolicyForce.collectAsStateWithLifecycle()
@@ -74,6 +78,7 @@ fun PayloadRoot(viewModel: RootViewModel = hiltViewModel()) {
                 session == null -> LoginScreen()
                 showInboundReturns -> InboundReturnsScreen(onBack = { showInboundReturns = false })
                 else -> HomeScreen(
+                    windowSizeClass = windowSizeClass,
                     onLogout = viewModel::logout,
                     onInboundReturns = { showInboundReturns = true },
                 )
@@ -114,8 +119,9 @@ class RootViewModel @Inject constructor(
                     version = BuildConfig.VERSION_NAME,
                     channel = EnterpriseUpdateConfig.CHANNEL,
                 )
-                if (resp.isSuccessful && resp.body() != null) {
-                    val state = autoUpdater.checkFromPolicy(resp.body()!!, autoDownload = false)
+                val policy = resp.body()
+                if (resp.isSuccessful && policy != null) {
+                    val state = autoUpdater.checkFromPolicy(policy, autoDownload = false)
                     _clientPolicyMessage.value = state.message
                     _clientPolicyForce.value = state.force
                     pendingManifest = state.manifest

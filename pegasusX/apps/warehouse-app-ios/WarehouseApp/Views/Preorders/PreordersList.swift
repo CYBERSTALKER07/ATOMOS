@@ -11,20 +11,20 @@ struct PreordersList: View {
             ForEach(rows) { row in
                 VStack(alignment: .leading, spacing: 6) {
                     Text(row.orderId).font(.headline)
-                    Text("Status: \(row.status)").font(.caption)
+                    Text(L10n.format("mobile_warehouse.ui.status_status", "\(row.status)")).font(.caption)
                     if let date = row.requestedDeliveryDate {
-                        Text("Delivery: \(date)").font(.caption2)
+                        Text(L10n.format("mobile_warehouse.ui.delivery_date_2", "\(date)")).font(.caption2)
                     }
                     if let proposed = row.proposedDeliveryDate {
-                        Text("Proposed: \(proposed)")
+                        Text(L10n.format("mobile_warehouse.ui.proposed_proposed_2", "\(proposed)"))
                             .font(.caption2)
                             .foregroundStyle(.tint)
                     }
                     if let reason = row.deliveryProposalReason, !reason.isEmpty {
-                        Text("Reason: \(reason)").font(.caption2).foregroundStyle(.secondary)
+                        Text(L10n.format("mobile_warehouse.ui.reason_reason_2", "\(reason)")).font(.caption2).foregroundStyle(.secondary)
                     }
                     if showsReviewBadge(row) {
-                        Text("Awaiting retailer review")
+                        Text("mobile_warehouse.ui.awaiting_retailer_review")
                             .font(.caption2)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 2)
@@ -32,18 +32,25 @@ struct PreordersList: View {
                             .clipShape(Capsule())
                     }
                     HStack {
-                        Button("Propose date") {
+                        Button("mobile_warehouse.ui.propose_date") {
                             onPropose(row)
                         }
                         .disabled(acting)
-                        Button("Reject", role: .destructive) {
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
+                        Button("mobile_warehouse.ui.reject", role: .destructive) {
                             onReject(row)
                         }
                         .disabled(acting)
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
                     }
                     .font(.subheadline)
                 }
                 .padding(.vertical, 4)
+                .frame(minHeight: 44)
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Pre-order \(row.orderId), status \(row.status)\(row.requestedDeliveryDate.map { ", delivery \($0)" } ?? "")")
             }
         }
     }

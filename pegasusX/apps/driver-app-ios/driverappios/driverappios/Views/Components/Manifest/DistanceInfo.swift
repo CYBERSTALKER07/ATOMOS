@@ -17,7 +17,7 @@ struct DistanceInfo: View {
                     .frame(width: 6, height: 6)
                 
                 Text(formattedDistance(dist))
-                    .font(.system(size: 12, weight: .bold, design: .monospaced))
+                    .font(.system(.caption, design: .monospaced, weight: .bold))
                     .foregroundStyle(inRange ? LabTheme.success : LabTheme.fgSecondary)
             }
         }

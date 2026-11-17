@@ -12,6 +12,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/inventory"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
+	"github.com/pegasusx/pegasusx/apps/backend-go/stocklots"
 	"google.golang.org/api/iterator"
 )
 
@@ -99,7 +101,12 @@ func (r *SpannerRepository) ListSupplyRequests(ctx context.Context, warehouseID 
 		},
 	}
 
-	iter := r.client.Single().Query(ctx, stmt)
+	var iter *spanner.RowIterator
+	if txn := spannerutils.ReadOnlyTxnFromContext(ctx); txn != nil {
+		iter = txn.Query(ctx, stmt)
+	} else {
+		iter = r.client.Single().Query(ctx, stmt)
+	}
 	defer iter.Stop()
 
 	requests := make([]SupplyRequest, 0, limit)
@@ -221,7 +228,12 @@ func (r *SpannerRepository) loadSupplyRequestItems(ctx context.Context, requestI
 		      ORDER BY RequestId, ProductId`,
 		Params: map[string]any{"ids": requestIDs},
 	}
-	iter := r.client.Single().Query(ctx, stmt)
+	var iter *spanner.RowIterator
+	if txn := spannerutils.ReadOnlyTxnFromContext(ctx); txn != nil {
+		iter = txn.Query(ctx, stmt)
+	} else {
+		iter = r.client.Single().Query(ctx, stmt)
+	}
 	defer iter.Stop()
 
 	out := make(map[string][]SupplyRequestItem)
@@ -359,7 +371,7 @@ func (r *SpannerRepository) UpdateSupplyRequestStatus(ctx context.Context, reque
 		mutations := []*spanner.Mutation{spanner.UpdateMap("WarehouseSupplyRequests", map[string]any{
 			"RequestId": requestID,
 			"State":     status,
-			"UpdatedAt": time.Now().UTC(),
+			"UpdatedAt": spanner.CommitTimestamp,
 		})}
 		mutations = append(mutations, outboxMutations(buf.events)...)
 		for _, a := range buf.audits {
@@ -414,23 +426,7 @@ func (r *SpannerRepository) Apply(ctx context.Context, mutate func() error, emit
 func outboxMutations(eventsList []outbox.Event) []*spanner.Mutation {
 	mutations := make([]*spanner.Mutation, 0, len(eventsList))
 	for _, e := range eventsList {
-		createdAt := e.CreatedAt.UTC()
-		if createdAt.IsZero() {
-			createdAt = time.Now().UTC()
-		}
-		row := map[string]any{
-			"EventId":       e.EventID,
-			"AggregateType": e.AggregateType,
-			"AggregateId":   e.AggregateID,
-			"TopicName":     e.TopicName,
-			"Payload":       e.Payload,
-			"CreatedAt":     createdAt,
-			"PublishedAt":   nil,
-		}
-		if e.PublishedAt != nil {
-			row["PublishedAt"] = e.PublishedAt.UTC()
-		}
-		mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", row))
+		mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", outbox.EventRowMap(e)))
 	}
 	return mutations
 }
@@ -648,6 +644,9 @@ func (r *SpannerRepository) loadWarehouseSupplierID(ctx context.Context, warehou
 }
 
 func (r *SpannerRepository) UpdateInventoryQuantity(ctx context.Context, warehouseID, productID string, quantity int64, emit func(outbox.TxnBuffer) error) error {
+	if stocklots.LotsEnabled() {
+		return fmt.Errorf("absolute SupplierInventoryV2 set forbidden when WMS_LOTS_ENABLED — use putaway or cycle-count adjust")
+	}
 	supplierID, err := r.loadWarehouseSupplierID(ctx, warehouseID)
 	if err != nil {
 		return err
@@ -836,13 +835,15 @@ func (r *SpannerRepository) UpdateTransferState(ctx context.Context, transferID,
 			return fmt.Errorf("transfer_forbidden")
 		}
 
-		muts := []*spanner.Mutation{
-			spanner.UpdateMap("FactoryInternalTransfers", map[string]any{
-				"TransferId": transferID,
-				"State":      newState,
-				"UpdatedAt":  spanner.CommitTimestamp,
-			}),
+		transferUpdate := map[string]any{
+			"TransferId": transferID,
+			"State":      newState,
+			"UpdatedAt":  spanner.CommitTimestamp,
 		}
+		if strings.EqualFold(newState, "RECEIVED") {
+			transferUpdate["ReceivedAt"] = spanner.CommitTimestamp
+		}
+		muts := []*spanner.Mutation{spanner.UpdateMap("FactoryInternalTransfers", transferUpdate)}
 		if strings.EqualFold(newState, "RECEIVED") && !strings.EqualFold(state, "RECEIVED") && strings.TrimSpace(warehouseID) != "" {
 			units := int64(totalVolume)
 			if units <= 0 {
@@ -885,7 +886,12 @@ func (r *SpannerRepository) GetAutoDispatch(ctx context.Context, warehouseID str
 		SQL:    `SELECT AutoDispatchEnabled FROM Warehouses WHERE WarehouseId = @wid`,
 		Params: map[string]any{"wid": warehouseID},
 	}
-	iter := r.client.Single().Query(ctx, stmt)
+	var iter *spanner.RowIterator
+	if txn := spannerutils.ReadOnlyTxnFromContext(ctx); txn != nil {
+		iter = txn.Query(ctx, stmt)
+	} else {
+		iter = r.client.Single().Query(ctx, stmt)
+	}
 	defer iter.Stop()
 
 	row, err := iter.Next()

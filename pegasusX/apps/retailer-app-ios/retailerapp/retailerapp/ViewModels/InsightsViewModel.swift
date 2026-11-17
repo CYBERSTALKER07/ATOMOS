@@ -1,0 +1,49 @@
+import Foundation
+
+@Observable
+@MainActor
+final class InsightsViewModel {
+    var analytics: RetailerAnalytics?
+    var detailed: RetailerDetailedAnalytics?
+    var predictions: [RetailerAIPrediction] = []
+    var isLoading = false
+    var selectedRange: DateRange = .month
+    var correctingId: String?
+
+    private let api = APIClient.shared
+
+    var delta: Int {
+        guard let a = analytics else { return 0 }
+        guard a.totalLastMonth > 0 else { return 0 }
+        return Int((a.totalThisMonth - a.totalLastMonth) * 100 / a.totalLastMonth)
+    }
+
+    func loadAnalytics() async {
+        isLoading = true
+        defer { isLoading = false }
+        do {
+            analytics = try await api.get(path: "/v1/retailer/analytics/expenses")
+        } catch {
+            analytics = nil
+        }
+        predictions = []
+    }
+
+    private static let fullDateFormatter: ISO8601DateFormatter = {
+        let fmt = ISO8601DateFormatter()
+        fmt.formatOptions = [.withFullDate]
+        return fmt
+    }()
+
+    func loadDetailedAnalytics() async {
+        let to = Date()
+        let from = Calendar.current.date(byAdding: .day, value: -selectedRange.days, to: to) ?? to
+        let fromStr = Self.fullDateFormatter.string(from: from)
+        let toStr = Self.fullDateFormatter.string(from: to)
+        do {
+            detailed = try await api.get(path: "/v1/retailer/analytics/detailed?from=\(fromStr)&to=\(toStr)")
+        } catch {
+            detailed = nil
+        }
+    }
+}

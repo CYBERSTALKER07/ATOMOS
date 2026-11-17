@@ -1,0 +1,69 @@
+# Kubernetes Gateway API Progressive Delivery & Canary Traffic Splitting (GKE Gateway Controller)
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: pegasusx-external-gateway
+  namespace: pegasusx
+  labels:
+    app.kubernetes.io/part-of: pegasusx
+spec:
+  gatewayClassName: gke-l7-global-external-managed
+  listeners:
+    - name: https
+      protocol: HTTPS
+      port: 443
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: pegasusx-api-tls
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: pegasusx-api-canary-route
+  namespace: pegasusx
+  labels:
+    app.kubernetes.io/part-of: pegasusx
+spec:
+  parentRefs:
+    - name: pegasusx-external-gateway
+  hostnames:
+    - "api.pegasusx.io"
+    - "api.pegasusx.app"
+  rules:
+    # 1. WebSocket & SSE Realtime Streams pinned to dedicated WS service
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /v1/ws
+        - path:
+            type: PathPrefix
+            value: /v1/events
+        - path:
+            type: PathPrefix
+            value: /v1/supplier/events
+      backendRefs:
+        - name: backend-go-ws
+          port: 80
+          weight: 100
+    # 2. REST API Progressive Delivery (90% Stable / 10% Canary weight split)
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /v1
+        - path:
+            type: PathPrefix
+            value: /partner
+        - path:
+            type: PathPrefix
+            value: /healthz
+        - path:
+            type: PathPrefix
+            value: /ready
+      backendRefs:
+        - name: backend-go
+          port: 80
+          weight: 90
+        - name: backend-go-canary
+          port: 80
+          weight: 10

@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.components
 
+import androidx.compose.ui.res.stringResource
+
 import android.Manifest
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -38,6 +40,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import com.pegasusx.warehouse.R
 
 data class AddressLocationValue(
     val address: String = "",
@@ -75,8 +78,9 @@ fun AddressLocationField(
         val trimmed = text.trim()
         if (trimmed.isEmpty()) return false
         val top = runCatching { geocodeApi.autocomplete(trimmed).predictions.firstOrNull() }.getOrNull()
-        if (!top?.placeId.isNullOrBlank()) {
-            val byPlace = runCatching { geocodeApi.resolvePlace(top!!.placeId) }.getOrNull()
+        val placeId = top?.placeId
+        if (!placeId.isNullOrBlank()) {
+            val byPlace = runCatching { geocodeApi.resolvePlace(placeId) }.getOrNull()
             if (byPlace != null && GeocodeLocationSupport.hasValidCoordinates(byPlace.lat, byPlace.lng)) {
                 applyResolved(byPlace.address.ifBlank { trimmed }, byPlace.lat, byPlace.lng, byPlace.placeId)
                 return true
@@ -183,21 +187,22 @@ fun AddressLocationField(
         when {
             GeocodeLocationSupport.hasValidCoordinates(value.lat, value.lng) -> {
                 Text(
-                    text = "Pinned for dispatch routing",
+                    text = stringResource(R.string.supplier_portal_location_picker_text_pinned_for_dispatch_routing),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
             resolving -> {
                 Text(
-                    text = "Resolving address…",
+                    text = stringResource(R.string.factory_portal_location_picker_text_resolving_address),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
-        if (!error.isNullOrBlank()) {
-            Text(text = error!!, color = MaterialTheme.colorScheme.error)
+        val currentError = error
+        if (!currentError.isNullOrBlank()) {
+            Text(text = currentError, color = MaterialTheme.colorScheme.error)
         }
     }
 }

@@ -6,10 +6,10 @@ struct SupplierSectionHeader: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: SupplierTheme.spacingXS) {
-            Text(title)
+            Text(LocalizedStringKey(title))
                 .font(.headline)
             if let subtitle, !subtitle.isEmpty {
-                Text(subtitle)
+                Text(LocalizedStringKey(subtitle))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

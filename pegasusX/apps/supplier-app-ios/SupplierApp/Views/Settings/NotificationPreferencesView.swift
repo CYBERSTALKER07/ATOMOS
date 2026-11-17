@@ -1,54 +1,47 @@
 import SwiftUI
 
 struct NotificationPreferencesView: View {
-    @State private var prefs: [NotificationPreferenceRow] = []
-    @State private var loading = true
-    @State private var saved = false
+    @State private var vm = NotificationPreferencesViewModel()
 
     var body: some View {
+        @Bindable var vm = vm
         Group {
-            if loading {
-                SupplierLoadingView(title: "Loading preferences…")
+            if vm.loading && vm.items.isEmpty {
+                SupplierLoadingView(title: "mobile_supplier.loading.preferences")
+            } else if let error = vm.error, vm.items.isEmpty {
+                SupplierErrorView(message: error) { Task { await vm.load() } }
             } else {
                 List {
-                    if saved {
-                        Text("Saved").foregroundStyle(SupplierTheme.success)
+                    if vm.saved {
+                        Text("mobile_supplier.ui.saved").foregroundStyle(SupplierTheme.success)
                     }
-                    ForEach(prefs.indices, id: \.self) { idx in
-                        let p = prefs[idx]
+                    if let error = vm.error {
+                        Text(error).font(.caption).foregroundStyle(SupplierTheme.destructive)
+                    }
+                    ForEach($vm.items) { $item in
                         VStack(alignment: .leading) {
-                            Text(p.eventType).font(.caption.monospaced())
-                            Text(p.channel).font(.caption)
-                            Toggle("Enabled", isOn: Binding(
-                                get: { prefs[idx].enabled },
-                                set: { newVal in
-                                    prefs[idx] = NotificationPreferenceRow(
-                                        eventType: p.eventType,
-                                        channel: p.channel,
-                                        enabled: newVal
-                                    )
+                            Text(item.eventType).font(.caption.monospaced())
+                            Text(item.channel).font(.caption)
+                            Toggle("mobile_supplier.chrome.enabled", isOn: $item.enabled)
+                                .onChange(of: item.enabled) { _, _ in
+                                    PegasusHaptics.selection()
                                 }
-                            ))
                         }
+                        .accessibilityElement(children: .combine)
                     }
                 }
+                .scrollDismissesKeyboard(.interactively)
             }
         }
-        .navigationTitle("Notification preferences")
+        .navigationTitle("supplier_portal.settings.notification_preferences.text.notification_preferences")
         .toolbar {
-            Button("Save") {
-                Task {
-                    _ = try? await SupplierOperationsService.patchNotificationPreferences(prefs)
-                    saved = true
-                }
+            Button("common.action.save") {
+                PegasusHaptics.light()
+                Task { await vm.save() }
             }
+            .frame(minWidth: 44, minHeight: 44)
         }
-        .task {
-            loading = true
-            if let resp = try? await SupplierOperationsService.notificationPreferences() {
-                prefs = resp.preferences
-            }
-            loading = false
-        }
+        .task { await vm.load() }
+        .refreshable { await vm.load() }
     }
 }

@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useLocale } from '@/hooks/useLocale';
 import { useTheme } from '@/components/ThemeProvider';
 
-// ─── Theme toggle icon (sun/moon) ──────────────────────────────────────────
+// --- Theme toggle icon (sun/moon) ------------------------------------------
 function ThemeToggle({
   isDark,
   onToggle,
@@ -68,7 +68,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
 
   return (
     <div className={`auth-shell ${isDark ? 'auth-dark' : 'auth-light'}`}>
-      {/* ── Splash Screen ── */}
+      {/* -- Splash Screen -- */}
       {!splashDone && (
         <div className={`auth-splash ${mounted ? 'auth-splash-exit' : ''}`}>
           <Image
@@ -82,7 +82,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         </div>
       )}
 
-      {/* ── Left: Branding Panel ── */}
+      {/* -- Left: Branding Panel -- */}
       <div className="auth-brand-panel">
         <div className={`auth-brand-content relative z-10 ${mounted ? 'auth-brand-enter' : ''}`}>
           <div className="auth-brand-logo">
@@ -102,7 +102,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         </p>
       </div>
 
-      {/* ── Right: Form Panel ── */}
+      {/* -- Right: Form Panel -- */}
       <div className="auth-form-panel">
         <div className="flex items-center justify-end pt-4 pr-6 px-6 shrink-0 relative z-10">
           <ThemeToggle

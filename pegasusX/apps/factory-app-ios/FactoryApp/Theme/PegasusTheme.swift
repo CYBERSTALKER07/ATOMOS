@@ -15,7 +15,13 @@ struct LabCardModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .padding(LabTheme.spacingLG)
-            .background(LabTheme.secondaryBackground, in: RoundedRectangle(cornerRadius: LabTheme.radiusMD))
+            .background(LabTheme.card)
+            .clipShape(RoundedRectangle(cornerRadius: LabTheme.radiusMD, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: LabTheme.radiusMD, style: .continuous)
+                    .stroke(LabTheme.cardBorder, lineWidth: 1)
+            )
+            .shadow(color: Color.black.opacity(0.03), radius: 6, x: 0, y: 2)
     }
 }
 
@@ -37,4 +43,8 @@ struct PressableButtonStyle: ButtonStyle {
             .opacity(configuration.isPressed ? 0.85 : 1.0)
             .animation(Anim.quick, value: configuration.isPressed)
     }
+}
+
+extension ButtonStyle where Self == PressableButtonStyle {
+    static var pressable: PressableButtonStyle { PressableButtonStyle() }
 }

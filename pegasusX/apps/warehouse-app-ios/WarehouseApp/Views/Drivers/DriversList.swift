@@ -33,7 +33,7 @@ struct DriversList: View {
                             .padding(.vertical, LabTheme.spacingXS)
                             .background(.quaternary, in: Capsule())
                         Menu {
-                            Button("Unassign") {
+                            Button("mobile_warehouse.ui.unassign") {
                                 onAssign(driver.driverId, nil)
                             }
                             ForEach(assignableVehicles(for: driver)) { vehicle in
@@ -48,11 +48,16 @@ struct DriversList: View {
                             } else {
                                 Label(driver.vehicleId == nil ? "Assign" : "Reassign", systemImage: "truck.box")
                                     .font(.caption)
+                                    .frame(minWidth: 44, minHeight: 44)
+                                    .contentShape(Rectangle())
                             }
                         }
                         .disabled(updatingDriverId == driver.driverId)
                     }
                 }
+                .frame(minHeight: 44)
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("\(driver.name), phone \(driver.phone), status \(driver.truckStatus.isEmpty ? "IDLE" : driver.truckStatus), \(assignedVehicleLabel(for: driver))")
             }
         }
     }

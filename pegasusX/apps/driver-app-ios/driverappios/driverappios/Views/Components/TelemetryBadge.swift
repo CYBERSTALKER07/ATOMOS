@@ -18,7 +18,7 @@ struct TelemetryBadge: View {
                 .opacity(pulse && isLive ? 0.6 : 1)
 
             Text(isLive ? "LIVE" : "OFFLINE")
-                .font(.system(size: 10, weight: .heavy, design: .monospaced))
+                .font(.system(.caption2, design: .monospaced, weight: .heavy))
                 .foregroundStyle(isLive ? LabTheme.live : LabTheme.offline)
         }
         .padding(.horizontal, 10)

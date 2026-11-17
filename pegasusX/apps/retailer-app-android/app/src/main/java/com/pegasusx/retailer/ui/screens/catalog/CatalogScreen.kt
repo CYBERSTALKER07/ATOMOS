@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.screens.catalog
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -32,7 +34,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 
 import androidx.compose.ui.Alignment
@@ -43,12 +45,13 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.pegasusx.retailer.data.model.ProductCategory
 import com.pegasusx.retailer.ui.components.ProductCard
-import com.pegasus.design.PegasusLoadingState
+import com.pegasusx.retailer.ui.design.PegasusLoadingState
 import com.pegasusx.retailer.ui.components.RetailerSectionHeader
-import com.pegasus.design.PegasusStateKind
-import com.pegasus.design.PegasusStatePane
+import com.pegasusx.retailer.ui.design.PegasusStateKind
+import com.pegasusx.retailer.ui.design.PegasusStatePane
 import com.pegasusx.retailer.ui.theme.PegasusSpacing
 import com.pegasusx.retailer.ui.theme.PillShape
+import com.pegasusx.retailer.R
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -58,7 +61,7 @@ fun CatalogScreen(
     onNavigateToSuppliers: () -> Unit = {},
     viewModel: CatalogViewModel = hiltViewModel(),
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val isSearching = uiState.searchQuery.length >= 2
     val buyFilters = listOf("Categories", "All products", "Suppliers")
 
@@ -73,7 +76,7 @@ fun CatalogScreen(
             leadingIcon = {
                 Icon(
                     imageVector = Icons.Outlined.Search,
-                    contentDescription = "Search catalog",
+                    contentDescription = stringResource(R.string.retailer_desktop_retailer_shell_text_search_catalog),
                 )
             },
             singleLine = true,
@@ -132,7 +135,7 @@ fun CatalogScreen(
                 ) {
                     item(span = { GridItemSpan(maxLineSpan) }) {
                         RetailerSectionHeader(
-                            title = "Buy results",
+                            title = stringResource(R.string.mobile_retailer_ui_buy_results),
                             subtitle = "${uiState.filteredProducts.size} products",
                         )
                     }
@@ -158,7 +161,7 @@ fun CatalogScreen(
             uiState.browseMode == CatalogBrowseMode.ALL_PRODUCTS -> {
                 if (uiState.isLoadingProducts && uiState.products.isEmpty()) {
                     PegasusLoadingState(
-                        title = "Loading catalog",
+                        title = stringResource(R.string.mobile_retailer_ui_loading_catalog),
                         body = "Fetching all products from connected suppliers…",
                     )
                 } else if (uiState.error != null && uiState.products.isEmpty()) {
@@ -210,7 +213,7 @@ fun CatalogScreen(
                         }
                         item(span = { GridItemSpan(maxLineSpan) }) {
                             RetailerSectionHeader(
-                                title = "All products",
+                                title = stringResource(R.string.supplier_portal_pricing_retailer_overrides_text_all_products),
                                 subtitle = "${uiState.displayedProducts.size} SKUs from connected suppliers",
                             )
                         }
@@ -227,7 +230,7 @@ fun CatalogScreen(
             else -> {
                 if (uiState.isLoading && uiState.categories.isEmpty()) {
                     PegasusLoadingState(
-                        title = "Loading categories",
+                        title = stringResource(R.string.mobile_retailer_ui_loading_categories),
                         body = "Fetching product categories…",
                     )
                 } else if (uiState.error != null && uiState.categories.isEmpty()) {
@@ -248,7 +251,7 @@ fun CatalogScreen(
                     ) {
                     item(span = { GridItemSpan(maxLineSpan) }) {
                         RetailerSectionHeader(
-                            title = "Buy workspace",
+                            title = stringResource(R.string.mobile_retailer_ui_buy_workspace),
                             subtitle = "Pick a category to browse supplier catalogs",
                         )
                     }
@@ -311,10 +314,10 @@ private fun CategoryCard(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     category.productCount?.let {
-                        CategoryMetaPill(label = "$it products")
+                        CategoryMetaPill(label = stringResource(R.string.mobile_retailer_ui_it_products))
                     }
                     category.supplierCount?.let {
-                        CategoryMetaPill(label = "$it suppliers")
+                        CategoryMetaPill(label = stringResource(R.string.mobile_retailer_ui_it_suppliers))
                     }
                 }
             }

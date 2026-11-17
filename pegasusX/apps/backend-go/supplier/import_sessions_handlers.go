@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -16,6 +17,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/migration/parser"
 	"github.com/pegasusx/pegasusx/apps/backend-go/storage"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
 )
@@ -32,6 +34,24 @@ func importSupplierIDFromContext(r *http.Request) (string, error) {
 	return supplierID, nil
 }
 
+func enforceImportAuditorActive(w http.ResponseWriter, r *http.Request) bool {
+	allowed := false
+	next := http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		allowed = true
+	})
+	auth.RequireAuditorActive(next).ServeHTTP(w, r)
+	return allowed
+}
+
+func enforceImportMutationAuth(w http.ResponseWriter, r *http.Request) bool {
+	allowed := false
+	next := http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		allowed = true
+	})
+	auth.RequireAuditorActive(auth.RejectAuditorOrAgentMutation(true)(next)).ServeHTTP(w, r)
+	return allowed
+}
+
 func writeImportJSON(w http.ResponseWriter, statusCode int, payload any) {
 	writeJSON(w, statusCode, payload)
 }
@@ -45,6 +65,9 @@ func handleCreateImportSession(repo *ImportRepository, svc *Service) http.Handle
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			writeImportJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+			return
+		}
+		if !enforceImportMutationAuth(w, r) {
 			return
 		}
 		supplierID, err := importSupplierIDFromContext(r)
@@ -136,6 +159,9 @@ func handleGetImportSession(repo *ImportRepository) http.HandlerFunc {
 			writeImportJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 			return
 		}
+		if !enforceImportAuditorActive(w, r) {
+			return
+		}
 		supplierID, err := importSupplierIDFromContext(r)
 		if err != nil {
 			writeImportJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
@@ -182,6 +208,9 @@ func handleGetImportRows(repo *ImportRepository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			writeImportJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+			return
+		}
+		if !enforceImportAuditorActive(w, r) {
 			return
 		}
 
@@ -232,6 +261,9 @@ func handleGetImportMapping(repo *ImportRepository) http.HandlerFunc {
 			writeImportJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 			return
 		}
+		if !enforceImportAuditorActive(w, r) {
+			return
+		}
 
 		supplierID, err := importSupplierIDFromContext(r)
 		if err != nil {
@@ -276,7 +308,18 @@ func handleGetImportMapping(repo *ImportRepository) http.HandlerFunc {
 	}
 }
 
-func handlePostImportUploaded(repo *ImportRepository) http.HandlerFunc {
+func loadImportWarehouseIDs(ctx context.Context, repo *ImportRepository, svc *Service, supplierID string) (map[string]struct{}, error) {
+	if svc != nil && svc.repo != nil {
+		topology, err := svc.repo.GetTopology(ctx, supplierID)
+		if err != nil {
+			return nil, err
+		}
+		return warehouseIDSet(topology), nil
+	}
+	return repo.LoadWarehouseIDSet(ctx, supplierID)
+}
+
+func handlePostImportUploaded(repo *ImportRepository, svc *Service) http.HandlerFunc {
 	type request struct {
 		GCSPath string `json:"gcs_path"`
 	}
@@ -284,6 +327,9 @@ func handlePostImportUploaded(repo *ImportRepository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			writeImportJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+			return
+		}
+		if !enforceImportMutationAuth(w, r) {
 			return
 		}
 		supplierID, err := importSupplierIDFromContext(r)
@@ -340,6 +386,31 @@ func handlePostImportUploaded(repo *ImportRepository) http.HandlerFunc {
 			return
 		}
 
+		// Sandbox/emulator: discover immediately when the object is already on disk.
+		// Worker remains the GCS path; MarkSessionDiscovering is idempotent.
+		if opener, oerr := NewImportObjectOpenerFromEnv(r.Context()); oerr == nil && opener != nil && opener.localRoot != "" {
+			discoverCtx, discoverCancel := context.WithTimeout(r.Context(), 30*time.Second)
+			warehouses, whErr := loadImportWarehouseIDs(discoverCtx, repo, svc, supplierID)
+			if whErr != nil {
+				slog.ErrorContext(r.Context(), "import local discover warehouse load failed",
+					"err", whErr, "session_id", sessionID, "supplier_id", supplierID)
+			}
+			if procErr := repo.ProcessImportUploaded(discoverCtx, opener, supplierID, sessionID, expectedGCSPath, warehouses); procErr != nil {
+				slog.ErrorContext(r.Context(), "import local discover after uploaded failed",
+					"err", procErr, "session_id", sessionID, "supplier_id", supplierID)
+			}
+			discoverCancel()
+			_ = opener.Close()
+			if updatedSess, gErr := repo.GetSession(r.Context(), supplierID, sessionID); gErr == nil &&
+				strings.Contains(string(updatedSess.ErrorSummary), parser.ErrPasswordProtectedWorkbook.Error()) {
+				writeImportJSON(w, http.StatusUnprocessableEntity, map[string]string{
+					"error":  "password_protected_workbook",
+					"detail": string(updatedSess.ErrorSummary),
+				})
+				return
+			}
+		}
+
 		writeImportJSON(w, http.StatusAccepted, map[string]any{
 			"session_id": sessionID,
 			"status":     "UPLOADED",
@@ -354,6 +425,9 @@ func handlePostImportIngest(repo *ImportRepository, svc *Service) http.HandlerFu
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			writeImportJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+			return
+		}
+		if !enforceImportMutationAuth(w, r) {
 			return
 		}
 		supplierID, err := importSupplierIDFromContext(r)
@@ -413,21 +487,10 @@ func handlePostImportIngest(repo *ImportRepository, svc *Service) http.HandlerFu
 			return
 		}
 
-		warehouseIDs := map[string]struct{}{}
-		if svc != nil && svc.repo != nil {
-			topology, topoErr := svc.repo.GetTopology(ctx, supplierID)
-			if topoErr != nil {
-				writeImportJSON(w, http.StatusInternalServerError, map[string]string{"error": "load_supplier_topology_failed"})
-				return
-			}
-			warehouseIDs = warehouseIDSet(topology)
-		} else {
-			var topoErr error
-			warehouseIDs, topoErr = repo.LoadWarehouseIDSet(ctx, supplierID)
-			if topoErr != nil {
-				writeImportJSON(w, http.StatusInternalServerError, map[string]string{"error": "load_supplier_topology_failed"})
-				return
-			}
+		warehouseIDs, topoErr := loadImportWarehouseIDs(ctx, repo, svc, supplierID)
+		if topoErr != nil {
+			writeImportJSON(w, http.StatusInternalServerError, map[string]string{"error": "load_supplier_topology_failed"})
+			return
 		}
 
 		if status == "INITIALIZED" {
@@ -437,11 +500,21 @@ func handlePostImportIngest(repo *ImportRepository, svc *Service) http.HandlerFu
 			}
 		}
 
-		summary, err := repo.IngestImportBytes(ctx, supplierID, sessionID, body, delimiter, warehouseIDs)
+		summary, err := repo.IngestImportArtifact(ctx, supplierID, sessionID, session.FileName, body, delimiter, warehouseIDs)
 		if err != nil {
 			switch {
 			case errors.Is(err, errImportSessionNotFound):
 				writeImportJSON(w, http.StatusNotFound, map[string]string{"error": "session not found"})
+			case errors.Is(err, parser.ErrPasswordProtectedWorkbook):
+				writeImportJSON(w, http.StatusUnprocessableEntity, map[string]string{
+					"error":  "password_protected_workbook",
+					"detail": err.Error(),
+				})
+			case errors.Is(err, parser.ErrFileFormatMismatch), errors.Is(err, parser.ErrMalformedArtifact):
+				writeImportJSON(w, http.StatusBadRequest, map[string]string{
+					"error":  "invalid_import_artifact",
+					"detail": err.Error(),
+				})
 			case strings.Contains(err.Error(), "import_empty"), strings.Contains(err.Error(), "import_too_many_rows"), strings.Contains(err.Error(), "no headers"):
 				writeImportJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 			default:
@@ -487,6 +560,9 @@ func handlePostImportMapping(repo *ImportRepository) http.HandlerFunc {
 			writeImportJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 			return
 		}
+		if !enforceImportMutationAuth(w, r) {
+			return
+		}
 		supplierID, err := importSupplierIDFromContext(r)
 		if err != nil {
 			writeImportJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
@@ -502,6 +578,7 @@ func handlePostImportMapping(repo *ImportRepository) http.HandlerFunc {
 			return
 		}
 
+		r.Body = http.MaxBytesReader(w, r.Body, 2<<20)
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
 			writeImportJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request body"})
@@ -542,6 +619,9 @@ func handlePostImportApprove(repo *ImportRepository, svc *Service) http.HandlerF
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			writeImportJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+			return
+		}
+		if !enforceImportMutationAuth(w, r) {
 			return
 		}
 		supplierID, err := importSupplierIDFromContext(r)
@@ -611,6 +691,9 @@ func handlePostImportApply(repo *ImportRepository, svc *Service, supplierHub, wa
 			writeImportJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 			return
 		}
+		if !enforceImportMutationAuth(w, r) {
+			return
+		}
 		supplierID, err := importSupplierIDFromContext(r)
 		if err != nil {
 			writeImportJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
@@ -644,11 +727,14 @@ func handlePostImportApply(repo *ImportRepository, svc *Service, supplierHub, wa
 
 		summary, err := repo.ApplyImportSession(ctx, supplierID, sessionID)
 		if err != nil {
+			slog.Error("apply import session", "supplier_id", supplierID, "session_id", sessionID, "err", err)
 			switch {
 			case errors.Is(err, errImportSessionNotFound):
 				writeImportJSON(w, http.StatusNotFound, map[string]string{"error": "session not found"})
 			case errors.Is(err, errImportAccessDenied):
 				writeImportJSON(w, http.StatusForbidden, map[string]string{"error": "session does not belong to supplier"})
+			case errors.Is(err, errImportNoApplicableRows):
+				writeImportJSON(w, http.StatusConflict, map[string]string{"error": "no_applicable_rows"})
 			case errors.Is(err, errImportStateConflict):
 				writeImportJSON(w, http.StatusConflict, map[string]string{"error": "session not ready for apply"})
 			default:

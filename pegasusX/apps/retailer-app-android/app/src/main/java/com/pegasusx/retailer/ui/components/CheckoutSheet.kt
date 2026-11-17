@@ -1,5 +1,8 @@
 package com.pegasusx.retailer.ui.components
 
+import androidx.annotation.StringRes
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -50,18 +53,36 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pegasusx.retailer.R
 
 enum class CheckoutPhase { REVIEW, PROCESSING, COMPLETE }
 
 data class CheckoutPaymentOption(
     val gateway: String,
     val label: String,
+    @param:StringRes val labelRes: Int? = null,
 )
 
 val DefaultCheckoutPaymentOptions = listOf(
-    CheckoutPaymentOption(gateway = "CASH", label = "Cash on Delivery"),
-    CheckoutPaymentOption(gateway = "GLOBAL_PAY", label = "GlobalPay"),
+    CheckoutPaymentOption(gateway = "CASH", label = "Cash on Delivery", labelRes = R.string.supplier_portal_billing_setup_gateway_cash_label),
+    CheckoutPaymentOption(gateway = "GLOBAL_PAY", label = "GlobalPay", labelRes = R.string.mobile_retailer_ui_globalpay),
 )
+
+/** Localized label for a payment option: known gateways resolve via [labelRes], dynamic cards use [label]. */
+@Composable
+fun CheckoutPaymentOption.displayLabel(): String =
+    labelRes?.let { stringResource(it) } ?: label
+
+/** Localized label for the selected gateway — composable counterpart of the former ViewModel helper. */
+@Composable
+fun checkoutPaymentLabel(gateway: String, options: List<CheckoutPaymentOption>): String {
+    return options.find { it.gateway == gateway }?.displayLabel() ?: when (gateway.trim().uppercase()) {
+        "GLOBAL_PAY" -> stringResource(R.string.mobile_retailer_ui_globalpay)
+        "ADYEN" -> stringResource(R.string.supplier_portal_residual_text_adyen)
+        "CASH" -> stringResource(R.string.supplier_portal_billing_setup_gateway_cash_label)
+        else -> gateway
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -78,6 +99,8 @@ fun CheckoutSheet(
     paymentOptions: List<CheckoutPaymentOption>,
     stockWarnings: List<com.pegasusx.retailer.data.model.StockWarning> = emptyList(),
     oosItems: List<String> = emptyList(),
+    packSuggestions: List<com.pegasusx.retailer.util.PackMultipleSuggestion> = emptyList(),
+    ownerApprovalRequired: com.pegasusx.retailer.util.OwnerApprovalRequiredDetail? = null,
     previewLoading: Boolean = false,
     deliveryMode: String = "STANDARD",
     deliveryDate: String? = null,
@@ -86,9 +109,20 @@ fun CheckoutSheet(
     deliveryFeeLabel: String = "Free",
     deliveryDistanceKm: Double = 0.0,
     expressPriority: Boolean = false,
+    autoConfirmOptIn: Boolean = false,
+    currencyPickerEnabled: Boolean = false,
+    currencyAllowlist: List<String> = emptyList(),
+    operatingCurrency: String = "",
+    orderCurrency: String = "",
     onDeliveryModeChange: (String) -> Unit = {},
     onDeliveryDateChange: (String?) -> Unit = {},
     onExpressPriorityChange: (Boolean) -> Unit = {},
+    onAutoConfirmOptInChange: (Boolean) -> Unit = {},
+    onApplyPackSuggestion: (skuId: String, quantity: Int) -> Unit = { _, _ -> },
+    onDismissPackSuggestions: () -> Unit = {},
+    onRetryFallbackPaymentMethod: (String) -> Unit = {},
+    onDismissOwnerApproval: () -> Unit = {},
+    onOrderCurrencyChange: (String) -> Unit = {},
     onBuy: () -> Unit,
     onSelectPayment: (String) -> Unit,
     onDismiss: () -> Unit,
@@ -154,6 +188,48 @@ fun CheckoutSheet(
                 onExpressPriorityChange = onExpressPriorityChange,
             )
 
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = SoftSquircleShape,
+                color = MaterialTheme.colorScheme.surfaceContainerLow,
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            "Auto-confirm preorder",
+                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
+                        )
+                        Text(
+                            "Confirm eligible preorders automatically without manual review.",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f),
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(10.dp))
+                    androidx.compose.material3.Switch(
+                        checked = autoConfirmOptIn,
+                        onCheckedChange = onAutoConfirmOptInChange,
+                    )
+                }
+            }
+
+            if (packSuggestions.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(10.dp))
+                PackSuggestionBanner(
+                    suggestions = packSuggestions,
+                    onApply = onApplyPackSuggestion,
+                    onDismiss = onDismissPackSuggestions,
+                )
+            }
+
             Spacer(modifier = Modifier.height(12.dp))
 
             if (stockWarnings.isNotEmpty()) {
@@ -174,7 +250,7 @@ fun CheckoutSheet(
                         )
                         stockWarnings.forEach { warning ->
                             Text(
-                                "${warning.sku}: ${warning.backorderQty} of ${warning.requested} backordered",
+                                stringResource(R.string.mobile_retailer_ui_sku_backorderqty_of_requested_backordered, warning.sku, warning.backorderQty, warning.requested),
                                 style = MaterialTheme.typography.labelSmall,
                                 fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
                             )
@@ -201,6 +277,17 @@ fun CheckoutSheet(
                         }
                     }
                 }
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+
+            ownerApprovalRequired?.let { approval ->
+                OwnerApprovalRequiredBanner(
+                    detail = approval,
+                    isSubmitting = phase == CheckoutPhase.PROCESSING,
+                    onPayCash = { onRetryFallbackPaymentMethod("CASH") },
+                    onPayCard = { onRetryFallbackPaymentMethod("CARD") },
+                    onDismiss = onDismissOwnerApproval,
+                )
                 Spacer(modifier = Modifier.height(12.dp))
             }
 
@@ -260,13 +347,13 @@ private fun DeliveryIntentSection(
             Text("Delivery", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 DeliveryModeChip(
-                    label = "Standard",
+                    label = stringResource(R.string.mobile_retailer_ui_standard),
                     selected = deliveryMode != "SCHEDULED",
                     onClick = { onDeliveryModeChange("STANDARD") },
                     modifier = Modifier.weight(1f),
                 )
                 DeliveryModeChip(
-                    label = "Scheduled",
+                    label = stringResource(R.string.supplier_portal_demand_signals_text_scheduled),
                     subtitle = "T+${preorderMinLeadDays}${if (preorderMaxLeadDays > 0) "–T+$preorderMaxLeadDays" else "+"}",
                     selected = deliveryMode == "SCHEDULED",
                     onClick = { onDeliveryModeChange("SCHEDULED") },
@@ -421,7 +508,7 @@ private fun ReviewContent(
     Spacer(modifier = Modifier.height(20.dp))
 
     Text(
-        text = "Payment Method",
+        text = stringResource(R.string.mobile_retailer_ui_payment_method),
         style = MaterialTheme.typography.labelLarge,
         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f),
     )
@@ -477,7 +564,7 @@ private fun ReviewContent(
                     Spacer(modifier = Modifier.width(8.dp))
                     Icon(
                         Icons.Rounded.KeyboardArrowDown,
-                        contentDescription = "Payment options",
+                        contentDescription = stringResource(R.string.mobile_retailer_ui_payment_options),
                         modifier = Modifier.size(20.dp),
                         tint = MaterialTheme.colorScheme.onPrimary,
                     )
@@ -490,7 +577,7 @@ private fun ReviewContent(
             ) {
                 paymentOptions.forEach { option ->
                     DropdownMenuItem(
-                        text = { Text(option.label) },
+                        text = { Text(option.displayLabel()) },
                         onClick = {
                             paymentMenuExpanded = false
                             onSelectPayment(option.gateway)

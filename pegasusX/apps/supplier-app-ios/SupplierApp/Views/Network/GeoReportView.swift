@@ -1,35 +1,26 @@
 import SwiftUI
 
 struct GeoReportView: View {
-    @State private var loading = true
-    @State private var error: String?
-    @State private var lanes: [SupplierSupplyLaneRow] = []
+    @State private var vm = SupplyLanesViewModel()
 
     var body: some View {
         Group {
-            if loading {
-                SupplierLoadingView(title: "Loading geo report…")
-            } else if let error {
-                SupplierErrorView(message: error) { Task { await load() } }
-            } else if lanes.isEmpty {
-                SupplierEmptyView(title: "No coverage", message: "No active lanes to report on.")
+            if vm.loading && vm.lanes.isEmpty {
+                SupplierLoadingView(title: "mobile_supplier.loading.geo_report")
+            } else if let error = vm.error, vm.lanes.isEmpty {
+                SupplierErrorView(message: error) { Task { await vm.load() } }
+            } else if vm.lanes.isEmpty {
+                SupplierEmptyView(title: "mobile_supplier.empty.no_coverage", message: "mobile_supplier.empty.coverage_lanes")
             } else {
-                GeoReportLanesList(lanes: lanes)
+                GeoReportLanesList(lanes: vm.lanes)
             }
         }
         .background(SupplierTheme.background)
-        .navigationTitle("Geo report")
-        .task { await load() }
-    }
-
-    private func load() async {
-        loading = true
-        error = nil
-        defer { loading = false }
-        do {
-            lanes = try await SupplierOperationsService.supplyLanes()
-        } catch {
-            self.error = error.localizedDescription
+        .navigationTitle("supplier_portal.geo_report.text.geo_report")
+        .task { await vm.load() }
+        .refreshable {
+            PegasusHaptics.light()
+            await vm.load(silent: true)
         }
     }
 }

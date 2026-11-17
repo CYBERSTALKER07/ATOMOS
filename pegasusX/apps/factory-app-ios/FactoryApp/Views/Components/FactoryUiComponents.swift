@@ -8,12 +8,26 @@ struct KpiTile: View {
     var supporting: String? = nil
     var chip: (text: String, tint: Color)? = nil
     var staggerIndex: Int? = nil
+    var showChevron: Bool = true
+
+    private var voiceOverSummary: String {
+        var parts = [title, value]
+        if let chip { parts.append(chip.text) }
+        if let supporting, !supporting.isEmpty { parts.append(supporting) }
+        return parts.joined(separator: ", ")
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: LabTheme.spacingSM) {
-            HStack {
-                Image(systemName: systemImage)
-                    .foregroundStyle(tint)
+            HStack(alignment: .center) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: LabTheme.radiusSM, style: .continuous)
+                        .fill(tint.opacity(0.12))
+                        .frame(width: 32, height: 32)
+                    Image(systemName: systemImage)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(tint)
+                }
                 Spacer()
                 if let chip {
                     Text(chip.text)
@@ -22,6 +36,10 @@ struct KpiTile: View {
                         .padding(.vertical, LabTheme.spacingXS)
                         .foregroundStyle(chip.tint)
                         .background(chip.tint.opacity(0.14), in: Capsule())
+                } else if showChevron {
+                    Image(systemName: "chevron.right")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(LabTheme.tertiaryLabel)
                 }
             }
             Text(value)
@@ -30,14 +48,18 @@ struct KpiTile: View {
                 .lineLimit(1)
             Text(title)
                 .font(.subheadline.bold())
+                .foregroundStyle(LabTheme.label)
             if let supporting, !supporting.isEmpty {
                 Text(supporting)
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
         .labCard()
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(voiceOverSummary)
         .modifier(OptionalStaggerModifier(index: staggerIndex))
     }
 }
@@ -62,13 +84,18 @@ extension View {
 
 private struct StaggeredAppearModifier: ViewModifier {
     let index: Int
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var appeared = false
-    
+
     func body(content: Content) -> some View {
         content
-            .opacity(appeared ? 1 : 0)
-            .offset(y: appeared ? 0 : 20)
+            .opacity(appeared || reduceMotion ? 1 : 0)
+            .offset(y: appeared || reduceMotion ? 0 : 20)
             .onAppear {
+                guard !reduceMotion else {
+                    appeared = true
+                    return
+                }
                 withAnimation(.easeOut(duration: 0.3).delay(Double(index) * 0.05)) {
                     appeared = true
                 }
@@ -103,27 +130,6 @@ struct FactorySectionHeader: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-    }
-}
-
-struct FactoryStatusBadge: View {
-    let text: String
-    var tint: Color? = nil
-    var emphasized: Bool = true
-
-    private var resolvedTint: Color {
-        tint ?? LabTheme.statusTint(for: text)
-    }
-
-    var body: some View {
-        Text(text.replacingOccurrences(of: "_", with: " "))
-            .font(emphasized ? .caption.bold() : .caption2.bold())
-            .padding(.horizontal, LabTheme.spacingSM)
-            .padding(.vertical, LabTheme.spacingXS)
-            .foregroundStyle(emphasized ? resolvedTint : LabTheme.secondaryLabel)
-            .background(
-                emphasized ? resolvedTint.opacity(0.14) : LabTheme.tertiaryBackground,
-                in: Capsule()
-            )
+        .accessibilityElement(children: .combine)
     }
 }

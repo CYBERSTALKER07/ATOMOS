@@ -30,6 +30,74 @@ struct ProblemDetail: Decodable {
     let retryable: Bool?
 }
 
+private actor PayloadHTTPCoalescer {
+    private struct CacheEntry {
+        let data: Data
+        let response: URLResponse
+        let timestamp: Date
+    }
+
+    private var inFlightGets: [String: Task<(Data, URLResponse), Error>] = [:]
+    private var microCache: [String: CacheEntry] = [:]
+    private let microCacheTTL: TimeInterval = 2.0
+    private var refreshTask: Task<Bool, Error>?
+
+    func fetchGet(
+        key: String,
+        operation: @Sendable @escaping () async throws -> (Data, URLResponse)
+    ) async throws -> (Data, URLResponse) {
+        let now = Date()
+        if let cached = microCache[key], now.timeIntervalSince(cached.timestamp) < microCacheTTL {
+            return (cached.data, cached.response)
+        }
+        if let existing = inFlightGets[key] {
+            return try await existing.value
+        }
+        let task = Task<(Data, URLResponse), Error> {
+            try await operation()
+        }
+        inFlightGets[key] = task
+        do {
+            let result = try await task.value
+            inFlightGets.removeValue(forKey: key)
+            if let http = result.1 as? HTTPURLResponse, (200...299).contains(http.statusCode) {
+                microCache[key] = CacheEntry(data: result.0, response: result.1, timestamp: Date())
+            }
+            return result
+        } catch {
+            inFlightGets.removeValue(forKey: key)
+            throw error
+        }
+    }
+
+    func invalidateCache() {
+        microCache.removeAll()
+    }
+
+    func refreshSingleFlight(
+        operation: @Sendable @escaping () async throws -> Bool
+    ) async throws -> Bool {
+        if let existing = refreshTask {
+            return try await existing.value
+        }
+        let task = Task<Bool, Error> {
+            try await operation()
+        }
+        refreshTask = task
+        do {
+            let ok = try await task.value
+            refreshTask = nil
+            if ok {
+                microCache.removeAll()
+            }
+            return ok
+        } catch {
+            refreshTask = nil
+            throw error
+        }
+    }
+}
+
 final class APIClient: @unchecked Sendable {
     static let shared = APIClient()
 
@@ -37,7 +105,7 @@ final class APIClient: @unchecked Sendable {
     /// Simulator: localhost. Physical iPad: set `PEGASUS_DEV_HOST`
     /// env var (Edit Scheme → Run → Environment Variables)
     /// to your Mac's LAN IP.
-    let baseURL: String = {
+    let bootstrapURL: String = {
         let raw = (ProcessInfo.processInfo.environment["PEGASUS_DEV_HOST"] ?? "")
             .trimmingCharacters(in: .whitespaces)
         if raw.isEmpty { return "http://localhost:8180" }
@@ -45,8 +113,21 @@ final class APIClient: @unchecked Sendable {
         return raw.contains(":") ? "http://\(raw)" : "http://\(raw):8180"
     }()
     #else
-    let baseURL = "https://api.pegasus.uz"
+    let bootstrapURL: String = {
+        let raw = (ProcessInfo.processInfo.environment["PEGASUSX_API_BASE_URL"] ?? "")
+            .trimmingCharacters(in: .whitespaces)
+        if raw.isEmpty { return "https://api.pegasusx.app" }
+        return raw.hasSuffix("/") ? String(raw.dropLast()) : raw
+    }()
     #endif
+
+    var baseURL: String {
+        CellApi.pinApiBaseUrl(
+            bootstrap: bootstrapURL,
+            homeCell: CellApi.homeCellFromJwt(CellTokenCache.token),
+            sessionApiUrl: MarketPackStore.sessionApiUrl
+        )
+    }
 
     /// WebSocket origin derived from baseURL: http → ws, https → wss.
     var wsBaseURL: String {
@@ -62,6 +143,7 @@ final class APIClient: @unchecked Sendable {
     private let session: URLSession
     private let decoder: JSONDecoder
     private let encoder: JSONEncoder
+    private let coalescer = PayloadHTTPCoalescer()
 
     private init() {
         let cfg = URLSessionConfiguration.default
@@ -153,16 +235,16 @@ final class APIClient: @unchecked Sendable {
 
     // MARK: - Supplier Manifests
     func supplierManifests(state: String = "DRAFT") async throws -> ManifestsResponse {
-        return try await get("v1/supplier/manifests?state=\(state)")
+        return try await get("v1/payloader/manifests?state=\(state)")
     }
 
     func supplierManifestDetail(_ manifestId: String) async throws -> Manifest {
-        return try await get("v1/supplier/manifests/\(manifestId)")
+        return try await get("v1/payloader/manifests/\(manifestId)")
     }
 
     func supplierStartLoading(manifestId: String) async throws -> StatusResponse {
         try await post(
-            "v1/supplier/manifests/\(manifestId)/start-loading",
+            "v1/payloader/manifests/\(manifestId)/start-loading",
             body: [String: String](),
             idempotencyKey: PayloadIdempotency.supplierStartLoading(manifestId: manifestId)
         )
@@ -170,7 +252,56 @@ final class APIClient: @unchecked Sendable {
 
     func supplierSealManifest(manifestId: String) async throws -> SealManifestResponse {
         let key = PayloadIdempotency.key(action: "supplier-seal-manifest", entityId: manifestId)
-        return try await post("v1/supplier/manifests/\(manifestId)/seal", body: [String: String](), idempotencyKey: key)
+        return try await post("v1/payloader/manifests/\(manifestId)/seal", body: [String: String](), idempotencyKey: key)
+    }
+
+    // MARK: - Factory loading-bay (P1-18 / P2-25 parity with Expo terminal)
+    func factoryManifests(state: String = "DRAFT") async throws -> ManifestsResponse {
+        try await get("v1/factory/manifests?state=\(state)")
+    }
+
+    func factoryManifestDetail(_ manifestId: String) async throws -> Manifest {
+        try await get("v1/factory/manifests/\(manifestId)")
+    }
+
+    func factoryStartLoading(manifestId: String) async throws -> StatusResponse {
+        try await post(
+            "v1/factory/manifests/\(manifestId)/start-loading",
+            body: [String: String](),
+            idempotencyKey: PayloadIdempotency.supplierStartLoading(manifestId: manifestId)
+        )
+    }
+
+    func factorySealManifest(manifestId: String) async throws -> SealManifestResponse {
+        try await post(
+            "v1/factory/manifests/\(manifestId)/seal",
+            body: [String: String](),
+            idempotencyKey: PayloadIdempotency.sealCompleted(manifestIds: [manifestId])
+        )
+    }
+
+    /// Payloader + factory manifests; payloader wins on id collision.
+    func listLoadingBayManifests(state: String = "DRAFT") async throws -> [Manifest] {
+        async let primaryTask: ManifestsResponse? = try? get("v1/payloader/manifests?state=\(state)")
+        async let factoryTask: ManifestsResponse? = try? factoryManifests(state: state)
+        let (primaryOpt, factoryOpt) = await (primaryTask, factoryTask)
+
+        var out: [String: Manifest] = [:]
+        let payloaderManifests: [Manifest]
+        if let primary = primaryOpt {
+            payloaderManifests = primary.manifests
+        } else {
+            payloaderManifests = (try? await supplierManifests(state: state))?.manifests ?? []
+        }
+        for m in payloaderManifests {
+            out[m.manifestId] = m.withSource("payloader")
+        }
+        if let factory = factoryOpt {
+            for m in factory.manifests where out[m.manifestId] == nil {
+                out[m.manifestId] = m.withSource("factory")
+            }
+        }
+        return Array(out.values)
     }
 
     func sealCompletedManifests(manifestIds: [String]) async throws -> SealCompletedManifestsResponse {
@@ -183,14 +314,23 @@ final class APIClient: @unchecked Sendable {
         )
     }
 
+    func sealAllManifests() async throws -> SealCompletedManifestsResponse {
+        try await post(
+            "v1/payloader/manifests/seal-all",
+            body: EmptyBody(),
+            idempotencyKey: PayloadIdempotency.key(action: "seal-all", entityId: "payloader")
+        )
+    }
+
     func loadingManifests() async throws -> ManifestsResponse {
-        try await supplierManifests(state: "LOADING")
+        let manifests = try await listLoadingBayManifests(state: "LOADING")
+        return ManifestsResponse(manifests: manifests)
     }
 
     func supplierInjectOrder(manifestId: String, orderId: String) async throws -> StatusResponse {
         let payload = ["order_id": orderId]
         return try await post(
-            "v1/supplier/manifests/\(manifestId)/inject-order",
+            "v1/payloader/manifests/\(manifestId)/inject-order",
             body: payload,
             idempotencyKey: PayloadIdempotency.supplierInjectOrder(manifestId: manifestId, orderId: orderId)
         )
@@ -199,10 +339,10 @@ final class APIClient: @unchecked Sendable {
     // MARK: - Per-order seal / exception
     /// Backend wants {order_id, terminal_id, manifest_cleared}. Per Expo,
     /// terminal_id is the active vehicle/truck id.
-    func sealOrder(orderId: String, terminalId: String) async throws -> SealOrderResponse {
+    func sealOrder(manifestId: String, orderId: String, terminalId: String) async throws -> SealOrderResponse {
         try await post(
             "v1/payload/seal",
-            body: SealOrderRequest(orderId: orderId, terminalId: terminalId, manifestCleared: true),
+            body: SealOrderRequest(manifestId: manifestId, orderId: orderId, terminalId: terminalId, manifestCleared: true),
             headers: ["Idempotency-Key": PayloadIdempotency.orderSeal(orderId: orderId)]
         )
     }
@@ -229,8 +369,9 @@ final class APIClient: @unchecked Sendable {
 
     /// Best-effort GET drain after WS reconnect — matches Android/Expo session reconcile.
     func reconcileSession() async {
-        _ = try? await trucks()
-        let _: ManifestsResponse? = try? await get("v1/payloader/manifests")
+        async let t = try? trucks()
+        async let m: ManifestsResponse? = try? get("v1/payloader/manifests")
+        _ = await (t, m)
     }
 
     // MARK: - Fleet reassign
@@ -331,11 +472,11 @@ final class APIClient: @unchecked Sendable {
 
     // MARK: - FCM
     func registerDeviceToken(_ token: String) async throws -> StatusResponse {
-        try await post("v1/user/device-token", body: DeviceTokenRequest(token: token, platform: "IOS"))
+        try await post("v1/user/device-token", body: DeviceTokenRequest(token: token, platform: "ios"))
     }
     func unregisterDeviceToken(_ token: String) async throws -> StatusResponse {
         var req = try buildRequest(path: "v1/user/device-token", method: "DELETE")
-        req.httpBody = try encoder.encode(DeviceTokenRequest(token: token, platform: "IOS"))
+        req.httpBody = try encoder.encode(DeviceTokenRequest(token: token, platform: "ios"))
         return try await execute(req)
     }
 
@@ -398,16 +539,32 @@ final class APIClient: @unchecked Sendable {
     }
 
     private func execute<T: Decodable>(_ request: URLRequest) async throws -> T {
-        let data: Data; let response: URLResponse
-        do { (data, response) = try await dataForRequestWithFallback(request) }
-        catch { throw APIError.networkError }
+        let method = (request.httpMethod ?? "GET").uppercased()
+        if method != "GET" {
+            await coalescer.invalidateCache()
+        }
+        let data: Data
+        let response: URLResponse
+        do {
+            if method == "GET", let key = request.url?.absoluteString {
+                (data, response) = try await coalescer.fetchGet(key: key) { [self] in
+                    try await self.dataForRequestWithFallback(request)
+                }
+            } else {
+                (data, response) = try await dataForRequestWithFallback(request)
+            }
+        } catch {
+            throw APIError.networkError
+        }
 
         guard let http = response as? HTTPURLResponse else { throw APIError.networkError }
         switch http.statusCode {
         case 200...299:
             if T.self == StatusResponse.self, data.isEmpty {
                 // Backend may return empty body on no-content success.
-                return StatusResponse(status: "ok") as! T
+                if let status = StatusResponse(status: "ok") as? T {
+                    return status
+                }
             }
             do { return try decoder.decode(T.self, from: data) }
             catch { throw APIError.decodingError }
@@ -422,7 +579,9 @@ final class APIClient: @unchecked Sendable {
                 guard let retryHttp = retryResponse as? HTTPURLResponse else { throw APIError.networkError }
                 if (200...299).contains(retryHttp.statusCode) {
                     if T.self == StatusResponse.self, retryData.isEmpty {
-                        return StatusResponse(status: "ok") as! T
+                        if let status = StatusResponse(status: "ok") as? T {
+                            return status
+                        }
                     }
                     do { return try decoder.decode(T.self, from: retryData) }
                     catch { throw APIError.decodingError }
@@ -447,24 +606,59 @@ final class APIClient: @unchecked Sendable {
     }
 
     private func attemptRefresh() async throws -> Bool {
-        let refresh = await MainActor.run { TokenStore.shared.refreshToken }
-        guard let refresh, !refresh.isEmpty else { return false }
-        var request = URLRequest(url: URL(string: "\(baseURL)/v1/auth/payloader/refresh")!)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try encoder.encode(RefreshTokenRequest(refreshToken: refresh))
-        let (data, response) = try await dataForRequestWithFallback(request)
-        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
-            await MainActor.run { TokenStore.shared.logout() }
-            return false
+        try await coalescer.refreshSingleFlight { [self] in
+            let refresh = await MainActor.run { TokenStore.shared.refreshToken }
+            guard let refresh, !refresh.isEmpty else { return false }
+            guard let url = URL(string: "\(self.baseURL)/v1/auth/payloader/refresh") else { return false }
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.httpBody = try self.encoder.encode(RefreshTokenRequest(refreshToken: refresh))
+            let (data, response) = try await self.session.data(for: request)
+            guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+                await MainActor.run { TokenStore.shared.logout() }
+                return false
+            }
+            let auth = try self.decoder.decode(RefreshTokenResponse.self, from: data)
+            let nextRefresh = auth.refreshToken ?? refresh
+            await MainActor.run { TokenStore.shared.updateTokens(token: auth.token, refresh: nextRefresh) }
+            return true
         }
-        let auth = try decoder.decode(RefreshTokenResponse.self, from: data)
-        let nextRefresh = auth.refreshToken ?? refresh
-        await MainActor.run { TokenStore.shared.updateTokens(token: auth.token, refresh: nextRefresh) }
-        return true
     }
 
     private func dataForRequestWithFallback(_ request: URLRequest) async throws -> (Data, URLResponse) {
-        try await session.data(for: request)
+        let method = (request.httpMethod ?? "GET").uppercased()
+        let isIdempotent = method == "GET"
+            || request.value(forHTTPHeaderField: "Idempotency-Key") != nil
+            || request.value(forHTTPHeaderField: "X-Idempotency-Key") != nil
+        let maxAttempts = isIdempotent ? 3 : 1
+        var lastError: Error?
+
+        for attempt in 0..<maxAttempts {
+            try Task.checkCancellation()
+            do {
+                let (data, response) = try await session.data(for: request)
+                if let http = response as? HTTPURLResponse,
+                   (http.statusCode == 502 || http.statusCode == 503 || http.statusCode == 504 || http.statusCode == 429),
+                   attempt + 1 < maxAttempts {
+                    let delayMs = UInt64(300 * (1 << attempt) + Int.random(in: 0...120))
+                    try await Task.sleep(nanoseconds: delayMs * 1_000_000)
+                    continue
+                }
+                return (data, response)
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch let urlError as URLError where urlError.code == .cancelled {
+                throw CancellationError()
+            } catch {
+                lastError = error
+                if attempt + 1 < maxAttempts {
+                    let delayMs = UInt64(300 * (1 << attempt) + Int.random(in: 0...120))
+                    try? await Task.sleep(nanoseconds: delayMs * 1_000_000)
+                    continue
+                }
+            }
+        }
+        throw lastError ?? APIError.networkError
     }
 }

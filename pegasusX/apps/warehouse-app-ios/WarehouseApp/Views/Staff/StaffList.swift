@@ -13,21 +13,21 @@ struct StaffList: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if let error, staff.isEmpty {
                 ContentUnavailableView {
-                    Label("Error", systemImage: "exclamationmark.triangle")
+                    Label("mobile_warehouse.ui.error", systemImage: "exclamationmark.triangle")
                 } description: {
                     Text(error)
                 } actions: {
-                    Button("Retry") { onRetry() }
+                    Button("common.action.retry") { onRetry() }
                 }
             } else if staff.isEmpty {
-                ContentUnavailableView("No Staff", systemImage: "person.2", description: Text("Add staff members"))
+                ContentUnavailableView("No Staff", systemImage: "person.2", description: Text("mobile_warehouse.ui.add_staff_members"))
             } else {
                 ResponsiveGridView(data: staff) { member in
                     HStack {
                         VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
                             Text(member.name)
                                 .font(.headline)
-                            Text("\(member.role) · \(member.phone)")
+                            Text(L10n.format("mobile_warehouse.ui.role_phone", "\(member.role)", "\(member.phone)"))
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                         }
@@ -36,14 +36,17 @@ struct StaffList: View {
                             .font(.caption.bold())
                             .padding(.horizontal, LabTheme.spacingSM)
                             .padding(.vertical, LabTheme.spacingXS)
-                            .foregroundStyle(member.isActive ? Color.primary : Color.white)
-                            .background(member.isActive ? AnyShapeStyle(Color.clear) : AnyShapeStyle(Color.red), in: Capsule())
+                            .foregroundStyle(member.isActive ? PegasusMonochromeTheme.label : PegasusMonochromeTheme.onPrimaryAction)
+                            .background(member.isActive ? AnyShapeStyle(Color.clear) : AnyShapeStyle(PegasusMonochromeTheme.destructive), in: Capsule())
                             .overlay {
                                 if member.isActive {
-                                    Capsule().strokeBorder(Color.gray.opacity(0.3))
+                                    Capsule().strokeBorder(PegasusMonochromeTheme.cardBorder)
                                 }
                             }
                     }
+                    .frame(minHeight: 44)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("\(member.name), role \(member.role), phone \(member.phone), \(member.isActive ? "Active" : "Inactive")")
                 }
             }
         }

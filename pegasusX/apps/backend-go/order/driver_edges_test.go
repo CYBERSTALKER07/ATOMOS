@@ -20,6 +20,7 @@ func TestHandleCreditDeliveryDriverSuccess(t *testing.T) {
 
 	body := `{"order_id":"ord-1","photo_proof_url":"https://proof.example.com/photo.jpg"}`
 	req := httptest.NewRequest(http.MethodPost, "/v1/delivery/credit-delivery", strings.NewReader(body))
+	req.Header.Set("Idempotency-Key", "driver-credit-delivery:ord-1")
 	req = req.WithContext(auth.WithClaims(req.Context(), driverClaims()))
 	rr := httptest.NewRecorder()
 
@@ -81,6 +82,7 @@ func TestHandleCreditDeliveryRejectsMissingOrderID(t *testing.T) {
 
 	body := `{}`
 	req := httptest.NewRequest(http.MethodPost, "/v1/delivery/credit-delivery", strings.NewReader(body))
+	req.Header.Set("Idempotency-Key", "driver-credit-delivery:missing-order")
 	req = req.WithContext(auth.WithClaims(req.Context(), driverClaims()))
 	rr := httptest.NewRecorder()
 
@@ -88,6 +90,27 @@ func TestHandleCreditDeliveryRejectsMissingOrderID(t *testing.T) {
 
 	if rr.Code != http.StatusBadRequest {
 		t.Fatalf("status=%d, want %d", rr.Code, http.StatusBadRequest)
+	}
+}
+
+func TestHandleCreditDeliveryRejectsMissingPhoto(t *testing.T) {
+	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	order := deliveryTestOrder(StatusArrived)
+	svc := newTestService(&testRepo{found: true, order: order}, now)
+
+	body := `{"order_id":"ord-1"}`
+	req := httptest.NewRequest(http.MethodPost, "/v1/delivery/credit-delivery", strings.NewReader(body))
+	req.Header.Set("Idempotency-Key", "driver-credit-delivery:missing-photo")
+	req = req.WithContext(auth.WithClaims(req.Context(), driverClaims()))
+	rr := httptest.NewRecorder()
+
+	svc.HandleCreditDelivery(rr, req)
+
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("status=%d body=%s, want 400", rr.Code, rr.Body.String())
+	}
+	if !strings.Contains(rr.Body.String(), "photo_proof_url_required") {
+		t.Fatalf("body=%s, want photo_proof_url_required", rr.Body.String())
 	}
 }
 

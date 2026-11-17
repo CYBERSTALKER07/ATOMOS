@@ -16,6 +16,8 @@ settings:
     INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
     TARGETED_DEVICE_FAMILY: "2" # iPad only
     INFOPLIST_KEY_NSCameraUsageDescription: "Scan product barcodes during inbound returns and manifest loading"
+    INFOPLIST_KEY_NSLocationWhenInUseUsageDescription: "Location is used to verify terminal facility and staging dock geofences."
+    INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription: "Location is used to track dock loading positions and dispatch geofences."
     INFOPLIST_KEY_NSUserNotificationsUsageDescription: "Receive load-out and dispatch alerts"
 packages:
   Firebase:
@@ -43,8 +45,16 @@ targets:
 
           mkdir -p "$SRCROOT/payload-app-ios/Generated"
           cd "$BACKEND_DIR"
-          go run ./cmd/gen-contracts -source events -mode json-schema -schema-out "$SCHEMA_PATH" -pretty=true
-          quicktype --lang swift --src-lang schema --src "$SCHEMA_PATH" --top-level PegasusWSEventEnvelope --out "$OUTPUT_PATH"
+          go run ./cmd/gen-contracts -source events -mode json-schema -schema-out "$SCHEMA_PATH" -pretty=true -strict=true
+          # Stream quicktype -> perl -> declared output. In-place edits (perl -i / sed -i)
+          # need a sibling temp file, which ENABLE_USER_SCRIPT_SANDBOXING denies silently.
+          quicktype --lang swift --src-lang schema --src "$SCHEMA_PATH" --top-level PegasusWSEventEnvelope \
+            | perl -pe 's/let key = JSONCodingKey\(stringValue: key\)!/guard let key = JSONCodingKey(stringValue: key) else { continue }/g' \
+            > "$OUTPUT_PATH"
+          if grep -n 'JSONCodingKey(stringValue: key)!' "$OUTPUT_PATH"; then
+            echo "error: generated contract still contains a force-unwrap; update the post-processing rule." >&2
+            exit 1
+          fi
         outputFiles:
           - "$(SRCROOT)/payload-app-ios/Generated/PegasusWSEventEnvelope.swift"
     sources:
@@ -54,24 +64,33 @@ targets:
       - path: ../../packages/mobile-ios-barcode
         includes:
           - EANBarcodeScannerView.swift
-      - path: ../../packages/mobile-ios-design
     resources:
+      # pegasusx-i18n-generated
+      - path: ../../packages/i18n/generated/ios/en.lproj
+      - path: ../../packages/i18n/generated/ios/ru.lproj
+      - path: ../../packages/i18n/generated/ios/uz.lproj
       - path: payload-app-ios/Assets.xcassets
       - path: payload-app-ios/GoogleService-Info.plist
+      - path: payload-app-ios/PrivacyInfo.xcprivacy
     info:
       path: payload-app-ios/Info.plist
       properties:
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
+        UIBackgroundModes:
+          - remote-notification
     dependencies:
       - package: Firebase
         product: FirebaseAuth
       - package: Firebase
         product: FirebaseCore
+      - package: Firebase
+        product: FirebaseMessaging
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.pegasus.payload
         INFOPLIST_FILE: payload-app-ios/Info.plist
+        CODE_SIGN_ENTITLEMENTS: payload-app-ios/PayloadApp.entitlements
   payload-app-iosTests:
     type: bundle.unit-test
     platform: iOS
@@ -79,3 +98,12 @@ targets:
       - path: payload-app-iosTests
     dependencies:
       - target: payload-app-ios
+schemes:
+  payload-app-ios:
+    build:
+      targets:
+        payload-app-ios: all
+        payload-app-iosTests: [test]
+    test:
+      targets:
+        - name: payload-app-iosTests

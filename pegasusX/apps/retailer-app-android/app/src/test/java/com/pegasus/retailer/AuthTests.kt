@@ -29,7 +29,7 @@ class AuthTests {
         assertEquals("jwt_token_123", response.token)
         assertEquals("fb_token_123", response.firebaseToken)
         assertNotNull(response.user)
-        assertEquals("usr_123", response.user!!.id)
+        assertEquals("usr_123", checkNotNull(response.user).id)
     }
 
     @Test

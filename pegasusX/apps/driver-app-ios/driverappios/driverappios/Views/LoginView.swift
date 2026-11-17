@@ -11,9 +11,10 @@ struct LoginView: View {
     @State private var viewModel = LoginViewModel()
     @FocusState private var focusedField: Field?
 
-    private enum Field { case phone, otp, pin }
+    private enum Field: Hashable { case phone, otp, pin }
 
     var body: some View {
+        @Bindable var viewModel = viewModel
         ZStack {
             LabTheme.bg.ignoresSafeArea()
 
@@ -23,19 +24,20 @@ struct LoginView: View {
 
                     VStack(spacing: LabTheme.s8) {
                         Image(systemName: "shippingbox.fill")
-                            .font(.system(size: 48, weight: .medium))
+                            .font(.system(.largeTitle, weight: .medium))
                             .foregroundStyle(LabTheme.fg)
-                        Text("PEGASUS DRIVER")
-                            .font(.system(size: 12, weight: .black, design: .monospaced))
+                            .accessibilityHidden(true)
+                        Text("mobile_driver.ui.pegasus_driver_2")
+                            .font(.system(.caption, design: .monospaced, weight: .black))
                             .foregroundStyle(LabTheme.fgSecondary)
                             .tracking(2)
-                        Text("TERMINAL ACCESS")
-                            .font(.system(size: 28, weight: .black, design: .monospaced))
+                        Text("mobile_driver.ui.terminal_access")
+                            .font(.system(.title, design: .monospaced, weight: .black))
                             .foregroundStyle(LabTheme.fg)
                         Text(viewModel.mode == .otp
                              ? "Sign in with fleet phone OTP."
                              : "Dev login with phone and 6-digit PIN.")
-                            .font(.system(size: 13, weight: .medium))
+                            .font(.system(.footnote, weight: .medium))
                             .foregroundStyle(LabTheme.fgSecondary)
                             .multilineTextAlignment(.center)
                     }
@@ -44,17 +46,17 @@ struct LoginView: View {
                     VStack(alignment: .leading, spacing: LabTheme.s16) {
                         VStack(alignment: .leading, spacing: LabTheme.s8) {
                             Text("PHONE")
-                                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                                .font(.system(.caption2, design: .monospaced, weight: .bold))
                                 .foregroundStyle(LabTheme.fgTertiary)
                             HStack(spacing: LabTheme.s12) {
                                 Image(systemName: "phone.fill")
-                                    .font(.system(size: 14))
+                                    .font(.system(.subheadline))
                                     .foregroundStyle(LabTheme.fgTertiary)
-                                TextField("+998 …", text: $viewModel.phone)
+                                TextField("mobile_driver.ui.998", text: $viewModel.phone)
                                     .keyboardType(.phonePad)
                                     .textContentType(.telephoneNumber)
                                     .focused($focusedField, equals: .phone)
-                                    .font(.system(size: 18, weight: .bold, design: .monospaced))
+                                    .font(.system(.headline, design: .monospaced, weight: .bold))
                                     .foregroundStyle(LabTheme.fg)
                             }
                             .padding(LabTheme.s16)
@@ -71,49 +73,49 @@ struct LoginView: View {
 
                         if viewModel.mode == .otp, viewModel.otpSent {
                             VStack(alignment: .leading, spacing: LabTheme.s8) {
-                                Text("VERIFICATION CODE")
-                                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                                Text("mobile_driver.ui.verification_code")
+                                    .font(.system(.caption2, design: .monospaced, weight: .bold))
                                     .foregroundStyle(LabTheme.fgTertiary)
-                                TextField("000000", text: Binding(
-                                    get: { viewModel.otpCode },
-                                    set: { viewModel.setOtp($0) }
-                                ))
-                                .keyboardType(.numberPad)
-                                .textContentType(.oneTimeCode)
-                                .focused($focusedField, equals: .otp)
-                                .font(.system(size: 24, weight: .black, design: .monospaced))
-                                .foregroundStyle(LabTheme.fg)
-                                .padding(LabTheme.s16)
-                                .background(LabTheme.card, in: RoundedRectangle(cornerRadius: LabTheme.buttonRadius, style: .continuous))
-                                .overlay {
-                                    RoundedRectangle(cornerRadius: LabTheme.buttonRadius, style: .continuous)
-                                        .stroke(
-                                            focusedField == .otp ? LabTheme.fg.opacity(0.3) : LabTheme.separator,
-                                            lineWidth: 0.5
-                                        )
-                                }
-                                .disabled(viewModel.loading)
+                                TextField("000000", text: $viewModel.otpCode)
+                                    .onChange(of: viewModel.otpCode) { _, newValue in
+                                        viewModel.setOtp(newValue)
+                                    }
+                                    .keyboardType(.numberPad)
+                                    .textContentType(.oneTimeCode)
+                                    .focused($focusedField, equals: .otp)
+                                    .font(.system(.title2, design: .monospaced, weight: .black))
+                                    .foregroundStyle(LabTheme.fg)
+                                    .padding(LabTheme.s16)
+                                    .background(LabTheme.card, in: RoundedRectangle(cornerRadius: LabTheme.buttonRadius, style: .continuous))
+                                    .overlay {
+                                        RoundedRectangle(cornerRadius: LabTheme.buttonRadius, style: .continuous)
+                                            .stroke(
+                                                focusedField == .otp ? LabTheme.fg.opacity(0.3) : LabTheme.separator,
+                                                lineWidth: 0.5
+                                            )
+                                    }
+                                    .disabled(viewModel.loading)
                             }
                         }
 
                         if viewModel.mode == .pinDev {
                             VStack(alignment: .leading, spacing: LabTheme.s8) {
-                                Text("6-DIGIT PIN")
-                                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                                Text("mobile_driver.ui.6_digit_pin")
+                                    .font(.system(.caption2, design: .monospaced, weight: .bold))
                                     .foregroundStyle(LabTheme.fgTertiary)
                                 HStack(spacing: LabTheme.s12) {
                                     Image(systemName: "lock.fill")
-                                        .font(.system(size: 14))
+                                        .font(.system(.subheadline))
                                         .foregroundStyle(LabTheme.fgTertiary)
-                                    SecureField("••••••", text: Binding(
-                                        get: { viewModel.pin },
-                                        set: { viewModel.setPin($0) }
-                                    ))
-                                    .keyboardType(.numberPad)
-                                    .textContentType(.oneTimeCode)
-                                    .focused($focusedField, equals: .pin)
-                                    .font(.system(size: 24, weight: .black, design: .monospaced))
-                                    .foregroundStyle(LabTheme.fg)
+                                    SecureField("••••••", text: $viewModel.pin)
+                                        .onChange(of: viewModel.pin) { _, newValue in
+                                            viewModel.setPin(newValue)
+                                        }
+                                        .keyboardType(.numberPad)
+                                        .textContentType(.oneTimeCode)
+                                        .focused($focusedField, equals: .pin)
+                                        .font(.system(.title2, design: .monospaced, weight: .black))
+                                        .foregroundStyle(LabTheme.fg)
                                 }
                                 .padding(LabTheme.s16)
                                 .background(LabTheme.card, in: RoundedRectangle(cornerRadius: LabTheme.buttonRadius, style: .continuous))
@@ -145,6 +147,7 @@ struct LoginView: View {
                     if viewModel.mode == .otp {
                         if !viewModel.otpSent {
                             Button {
+                                Haptics.light()
                                 Task { await viewModel.sendOtp() }
                             } label: {
                                 authButtonLabel("SEND CODE")
@@ -153,6 +156,7 @@ struct LoginView: View {
                             .buttonStyle(.pressable)
                         } else {
                             Button {
+                                Haptics.light()
                                 Task { await completeAuth { await viewModel.verifyOtp() } }
                             } label: {
                                 authButtonLabel("VERIFY & SIGN IN")
@@ -161,10 +165,11 @@ struct LoginView: View {
                             .buttonStyle(.pressable)
 
                             Button {
+                                Haptics.light()
                                 Task { await viewModel.sendOtp() }
                             } label: {
-                                Text("RESEND CODE")
-                                    .font(.system(size: 14, weight: .bold, design: .monospaced))
+                                Text("mobile_driver.ui.resend_code")
+                                    .font(.system(.subheadline, design: .monospaced, weight: .bold))
                                     .frame(maxWidth: .infinity, minHeight: 48)
                             }
                             .disabled(viewModel.loading)
@@ -172,6 +177,7 @@ struct LoginView: View {
                         }
                     } else {
                         Button {
+                            Haptics.light()
                             Task { await completeAuth { await viewModel.submitPin() } }
                         } label: {
                             authButtonLabel("AUTHENTICATE")
@@ -181,11 +187,15 @@ struct LoginView: View {
                     }
 
                     Button {
+                        Haptics.selection()
                         viewModel.setMode(viewModel.mode == .otp ? .pinDev : .otp)
+                        focusedField = .phone
                     } label: {
                         Text(viewModel.mode == .otp ? "Use PIN (dev)" : "Use phone OTP")
-                            .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                            .font(.system(.footnote, design: .monospaced, weight: .semibold))
                             .foregroundStyle(LabTheme.fgSecondary)
+                            .frame(minHeight: 44)
+                            .contentShape(Rectangle())
                     }
                     .disabled(viewModel.loading)
 
@@ -194,11 +204,36 @@ struct LoginView: View {
                 .padding(.horizontal, LabTheme.s32)
                 .labReadableWidth()
             }
+            .scrollDismissesKeyboard(.interactively)
         }
+        .defaultFocus($focusedField, .phone)
         .animation(Anim.snappy, value: viewModel.error)
         .onAppear {
             FirebaseAuthHelper.shared.configure()
             focusedField = .phone
+        }
+        .onChange(of: viewModel.otpSent) { _, sent in
+            focusedField = sent ? .otp : .phone
+        }
+        .onSubmit {
+            switch focusedField {
+            case .phone:
+                if viewModel.mode == .pinDev {
+                    focusedField = .pin
+                } else if !viewModel.phone.trimmingCharacters(in: .whitespaces).isEmpty {
+                    Task { await viewModel.sendOtp() }
+                }
+            case .otp:
+                if viewModel.otpCode.count == 6 {
+                    Task { await completeAuth { await viewModel.verifyOtp() } }
+                }
+            case .pin:
+                if viewModel.pin.count == 6 {
+                    Task { await completeAuth { await viewModel.submitPin() } }
+                }
+            case nil:
+                break
+            }
         }
     }
 
@@ -211,7 +246,7 @@ struct LoginView: View {
             } else {
                 Image(systemName: "lock.shield.fill")
                 Text(title)
-                    .font(.system(size: 16, weight: .black, design: .monospaced))
+                    .font(.system(.callout, design: .monospaced, weight: .black))
             }
         }
         .frame(maxWidth: .infinity, minHeight: 52)
@@ -225,11 +260,7 @@ struct LoginView: View {
         guard TokenStore.shared.isAuthenticated else { return }
         Haptics.success()
         onAuthenticated()
-        if let pushToken = PushNotificationManager.shared.deviceToken
-            ?? UserDefaults.standard.string(forKey: "pegasus_push_token"),
-           !pushToken.isEmpty {
-            try? await APIClient.shared.registerDeviceToken(token: pushToken)
-        }
+        await PushNotificationManager.shared.uploadStoredTokenIfPossible()
     }
 }
 

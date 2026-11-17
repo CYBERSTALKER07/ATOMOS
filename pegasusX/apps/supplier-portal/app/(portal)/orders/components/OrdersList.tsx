@@ -1,14 +1,18 @@
+"use client";
+
+import { usePortalT } from "@/lib/i18n";
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { VirtualScrollList } from '@pegasusx/ui-kit/desktop';
+import { VirtualScrollList } from '@/components/ui';
 import type { SupplierOrder } from '@pegasusx/types';
-import { ApiError } from '@pegasusx/api-client';
+import { ApiError } from '@pegasusx/api-core';
 import { orderActionFlags } from '@/lib/order-actions';
 import { supplierWarehouseOps } from '@/lib/supplier-warehouse-ops';
 import { canAdminOrderOps } from '@/lib/admin-scope';
 import { OrderActionDialog, OrderOpsCard, ReDispatchDialog, ProposeDelayDialog } from '@/components/orders';
 import { useToast } from '@/components/Toast';
 import EmptyState from '@/components/EmptyState';
+import { formatMinorUnits } from '@/lib/money';
 
 export type OrderFilter = 'ACTIVE' | 'SCHEDULED' | 'COMPLETED' | 'CANCELLED';
 
@@ -20,15 +24,11 @@ const filterLabels: Record<OrderFilter, string> = {
 };
 
 function formatMoney(order: SupplierOrder) {
-  try {
-    return new Intl.NumberFormat(undefined, {
-      style: 'currency',
-      currency: order.currency,
-      maximumFractionDigits: 2,
-    }).format(order.total_minor / 100);
-  } catch {
-    return `${order.total_minor} ${order.currency}`;
-  }
+  return formatMinorUnits(order.total_minor, {
+    currency: order.currency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 }
 
 function formatTimestamp(value: string) {
@@ -58,6 +58,7 @@ export interface OrdersListProps {
 }
 
 export function OrdersList({ orders, filter, loading, error, onRefresh }: OrdersListProps) {
+  const t = usePortalT();
   const router = useRouter();
   const { push: toast } = useToast();
   
@@ -128,7 +129,7 @@ export function OrdersList({ orders, filter, loading, error, onRefresh }: Orders
   }
 
   if (error) {
-    return <EmptyState icon="error" headline="Could not load orders" body={error} />;
+    return <EmptyState icon="error" headline={t("supplier_portal.residual.text.could_not_load_orders")} body={error} />;
   }
 
   if (orders.length === 0) {
@@ -136,7 +137,7 @@ export function OrdersList({ orders, filter, loading, error, onRefresh }: Orders
       <EmptyState
         icon="orders"
         headline={`No ${filterLabels[filter].toLowerCase()}`}
-        body="Orders matching this filter will appear here."
+        body={t("supplier_portal.residual.text.orders_matching_this_filter_will_appear_here")}
       />
     );
   }
@@ -195,8 +196,8 @@ export function OrdersList({ orders, filter, loading, error, onRefresh }: Orders
 
       <OrderActionDialog
         open={dialog?.kind === 'reject'}
-        title="Cancel order"
-        description="Cancels the order and notifies the retailer immediately. Reason is required."
+        title={t("supplier_portal.orders.components.orders_list.text.cancel_order")}
+        description={t("supplier_portal.residual.text.cancels_the_order_and_notifies_the_retailer_immediately_reason_i")}
         confirmLabel="Cancel order"
         destructive
         reason={reason}

@@ -42,6 +42,9 @@ class MainActivity : ComponentActivity() {
         }
         lifecycleScope.launch {
             supplierWebSocket.messages.collect { msg ->
+                msg.migrationApplyProgress()?.let { progress ->
+                    realtimeSignals.updateMigrationProgress(progress)
+                }
                 if (!msg.type.startsWith("SYSTEM")) {
                     realtimeSignals.bump()
                 }

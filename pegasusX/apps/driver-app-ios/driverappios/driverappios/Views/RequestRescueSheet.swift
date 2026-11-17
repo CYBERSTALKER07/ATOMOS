@@ -2,62 +2,64 @@ import SwiftUI
 
 struct RequestRescueSheet: View {
     @Environment(\.dismiss) private var dismiss
-    @State private var reason: String = "Engine Failure"
-    @State private var note: String = ""
-    @State private var isSubmitting = false
-    
-    let reasons = ["Engine Failure", "Flat Tire", "Accident", "Other"]
-    
+    @State private var vm = RequestRescueViewModel()
+
     var body: some View {
+        @Bindable var vm = vm
         NavigationStack {
             Form {
-                Section(header: Text("Rescue Reason")) {
-                    Picker("Reason", selection: $reason) {
-                        ForEach(reasons, id: \.self) {
+                Section(header: Text("mobile_driver.ui.rescue_reason")) {
+                    Picker("Reason", selection: $vm.reason) {
+                        ForEach(RequestRescueViewModel.availableReasons, id: \.self) {
                             Text($0)
                         }
                     }
                     .pickerStyle(.menu)
                 }
-                
-                Section(header: Text("Additional Notes")) {
-                    TextField("Optional details...", text: $note)
+
+                Section(header: Text("mobile_driver.ui.additional_notes")) {
+                    TextField("mobile_driver.ui.optional_details", text: $vm.note)
                 }
-                
-                Button(action: submitRescue) {
-                    if isSubmitting {
+
+                if let error = vm.errorMessage {
+                    Section {
+                        Text(error)
+                            .font(.footnote)
+                            .foregroundStyle(LabTheme.destructive)
+                    }
+                }
+
+                Button {
+                    Task {
+                        if await vm.submitRescue() {
+                            dismiss()
+                        }
+                    }
+                } label: {
+                    if vm.isSubmitting {
                         ProgressView()
+                            .tint(.white)
+                            .frame(maxWidth: .infinity, minHeight: 44)
                     } else {
-                        Text("Request Rescue")
-                            .frame(maxWidth: .infinity)
+                        Text("mobile_driver.ui.request_rescue")
+                            .frame(maxWidth: .infinity, minHeight: 44)
                             .foregroundStyle(.white)
                     }
                 }
                 .padding()
                 .background(LabTheme.warning)
-                .cornerRadius(10)
-                .disabled(isSubmitting)
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .disabled(vm.isSubmitting)
             }
-            .navigationTitle("Request Rescue")
+            .scrollDismissesKeyboard(.interactively)
+            .navigationTitle("mobile_driver.ui.request_rescue")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button("common.action.cancel") { dismiss() }
+                        .frame(minWidth: 44, minHeight: 44)
                 }
             }
-        }
-    }
-    
-    private func submitRescue() {
-        isSubmitting = true
-        Task {
-            do {
-                try await FleetServiceLive.shared.requestRescue(reason: reason, note: note)
-                dismiss()
-            } catch {
-                print("Failed to request rescue: \(error)")
-            }
-            isSubmitting = false
         }
     }
 }

@@ -12,6 +12,7 @@ import (
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
 	"github.com/pegasusx/pegasusx/packages/handoff"
 	"google.golang.org/api/iterator"
 )
@@ -24,14 +25,43 @@ type SpannerRepository struct {
 }
 
 func retailerPersistenceMap(ret Retailer) map[string]any {
+	legalStatus := strings.TrimSpace(ret.LegalEntityStatus)
+	if legalStatus == "" {
+		if strings.TrimSpace(ret.NormalizedTaxID) != "" {
+			legalStatus = LegalEntityVerified
+		} else {
+			legalStatus = LegalEntityInformalPhone
+		}
+	}
 	row := map[string]any{
-		"RetailerId":  ret.RetailerID,
-		"Phone":       ret.Phone,
-		"Name":        ret.Name,
-		"CountryCode": ret.CountryCode,
-		"Lat":         ret.Lat,
-		"Lng":         ret.Lng,
-		"H3Cell":      ret.H3Cell,
+		"RetailerId":        ret.RetailerID,
+		"Phone":             ret.Phone,
+		"Name":              ret.Name,
+		"CountryCode":       ret.CountryCode,
+		"Lat":               ret.Lat,
+		"Lng":               ret.Lng,
+		"H3Cell":            ret.H3Cell,
+		"LegalEntityStatus": legalStatus,
+	}
+	if taxID := strings.TrimSpace(ret.TaxID); taxID != "" {
+		row["TaxId"] = taxID
+	} else {
+		row["TaxId"] = nil
+	}
+	if normTaxID := strings.TrimSpace(ret.NormalizedTaxID); normTaxID != "" {
+		row["NormalizedTaxId"] = normTaxID
+	} else {
+		row["NormalizedTaxId"] = nil
+	}
+	if homeCell := strings.TrimSpace(ret.HomeCell); homeCell != "" {
+		row["HomeCell"] = homeCell
+	} else {
+		row["HomeCell"] = nil
+	}
+	if ret.InnVerifiedAt != nil && !ret.InnVerifiedAt.IsZero() {
+		row["InnVerifiedAt"] = ret.InnVerifiedAt.UTC()
+	} else {
+		row["InnVerifiedAt"] = nil
 	}
 	if addr := strings.TrimSpace(ret.DeliveryAddress); addr != "" {
 		row["DeliveryAddress"] = addr
@@ -50,6 +80,28 @@ func retailerPersistenceMap(ret Retailer) map[string]any {
 		row["ReceivingWindowClose"] = nil
 	}
 	return row
+}
+
+func applyRetailerIdentityColumns(ret *Retailer, rwOpen, rwClose, taxID, normTaxID, homeCell, legalStatus spanner.NullString, innVerifiedAt spanner.NullTime) {
+	applyRetailerWindowColumns(ret, rwOpen, rwClose)
+	if taxID.Valid {
+		ret.TaxID = taxID.StringVal
+	}
+	if normTaxID.Valid {
+		ret.NormalizedTaxID = normTaxID.StringVal
+	}
+	if homeCell.Valid {
+		ret.HomeCell = homeCell.StringVal
+	}
+	if legalStatus.Valid && strings.TrimSpace(legalStatus.StringVal) != "" {
+		ret.LegalEntityStatus = legalStatus.StringVal
+	} else {
+		ret.LegalEntityStatus = LegalEntityInformalPhone
+	}
+	if innVerifiedAt.Valid {
+		ts := innVerifiedAt.Time
+		ret.InnVerifiedAt = &ts
+	}
 }
 
 func applyRetailerWindowColumns(ret *Retailer, rwOpen, rwClose spanner.NullString) {
@@ -102,6 +154,10 @@ func (b *spannerTxnBuffer) BufferAudit(_ context.Context, e outbox.AuditEntry) e
 	return nil
 }
 
+func outboxEventMutation(e outbox.Event) *spanner.Mutation {
+	return spanner.InsertOrUpdateMap("OutboxEvents", outbox.EventRowMap(e))
+}
+
 // Flush writes buffered outbox/audit rows into the active Spanner RW transaction.
 func (b *spannerTxnBuffer) Flush(txn *spanner.ReadWriteTransaction) error {
 	if b == nil || txn == nil {
@@ -109,23 +165,7 @@ func (b *spannerTxnBuffer) Flush(txn *spanner.ReadWriteTransaction) error {
 	}
 	var mutations []*spanner.Mutation
 	for _, e := range b.events {
-		createdAt := e.CreatedAt.UTC()
-		if createdAt.IsZero() {
-			createdAt = time.Now().UTC()
-		}
-		row := map[string]any{
-			"EventId":       e.EventID,
-			"AggregateType": e.AggregateType,
-			"AggregateId":   e.AggregateID,
-			"TopicName":     e.TopicName,
-			"Payload":       e.Payload,
-			"CreatedAt":     createdAt,
-			"PublishedAt":   nil,
-		}
-		if e.PublishedAt != nil {
-			row["PublishedAt"] = e.PublishedAt.UTC()
-		}
-		mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", row))
+		mutations = append(mutations, outboxEventMutation(e))
 	}
 	for _, a := range b.audits {
 		mutations = append(mutations, spanner.InsertMap("AuditLog", a.AuditRowMap()))
@@ -151,31 +191,13 @@ func (r *SpannerRepository) CreateRetailer(ctx context.Context, ret Retailer, em
 		}
 
 		insertMap := retailerPersistenceMap(ret)
-		insertMap["CreatedAt"] = ret.CreatedAt.UTC()
+		insertMap["CreatedAt"] = spanner.CommitTimestamp
 		mutations := []*spanner.Mutation{
 			spanner.InsertMap("Retailers", insertMap),
 		}
 
 		for _, e := range buf.events {
-			createdAt := e.CreatedAt.UTC()
-			if createdAt.IsZero() {
-				createdAt = time.Now().UTC()
-			}
-
-			row := map[string]any{
-				"EventId":       e.EventID,
-				"AggregateType": e.AggregateType,
-				"AggregateId":   e.AggregateID,
-				"TopicName":     e.TopicName,
-				"Payload":       e.Payload,
-				"CreatedAt":     createdAt,
-				"PublishedAt":   nil,
-			}
-			if e.PublishedAt != nil {
-				row["PublishedAt"] = e.PublishedAt.UTC()
-			}
-
-			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", row))
+			mutations = append(mutations, outboxEventMutation(e))
 		}
 		for _, a := range buf.audits {
 			mutations = append(mutations, spanner.InsertMap("AuditLog", a.AuditRowMap()))
@@ -198,7 +220,9 @@ func (r *SpannerRepository) FindByPhone(ctx context.Context, phone string) (Reta
 
 	stmt := spanner.Statement{
 		SQL: `SELECT RetailerId, Phone, Name, CountryCode, Lat, Lng, H3Cell,
-			         ReceivingWindowOpen, ReceivingWindowClose, CreatedAt
+			         ReceivingWindowOpen, ReceivingWindowClose,
+			         TaxId, NormalizedTaxId, HomeCell, LegalEntityStatus, InnVerifiedAt,
+			         CreatedAt
 			  FROM Retailers
 			  WHERE Phone = @Phone
 			  LIMIT 1`,
@@ -219,7 +243,8 @@ func (r *SpannerRepository) FindByPhone(ctx context.Context, phone string) (Reta
 	}
 
 	var ret Retailer
-	var rwOpen, rwClose spanner.NullString
+	var rwOpen, rwClose, taxID, normTaxID, homeCell, legalStatus spanner.NullString
+	var innVerifiedAt spanner.NullTime
 	if err := row.Columns(
 		&ret.RetailerID,
 		&ret.Phone,
@@ -230,11 +255,16 @@ func (r *SpannerRepository) FindByPhone(ctx context.Context, phone string) (Reta
 		&ret.H3Cell,
 		&rwOpen,
 		&rwClose,
+		&taxID,
+		&normTaxID,
+		&homeCell,
+		&legalStatus,
+		&innVerifiedAt,
 		&ret.CreatedAt,
 	); err != nil {
 		return Retailer{}, false, fmt.Errorf("scan retailer by phone: %w", err)
 	}
-	applyRetailerWindowColumns(&ret, rwOpen, rwClose)
+	applyRetailerIdentityColumns(&ret, rwOpen, rwClose, taxID, normTaxID, homeCell, legalStatus, innVerifiedAt)
 	ret.SupplierID = r.supplierID
 
 	return ret, true, nil
@@ -258,6 +288,11 @@ func (r *SpannerRepository) GetRetailer(ctx context.Context, retailerID string) 
 		"PlaceId",
 		"ReceivingWindowOpen",
 		"ReceivingWindowClose",
+		"TaxId",
+		"NormalizedTaxId",
+		"HomeCell",
+		"LegalEntityStatus",
+		"InnVerifiedAt",
 		"CreatedAt",
 	})
 	if err != nil {
@@ -270,6 +305,8 @@ func (r *SpannerRepository) GetRetailer(ctx context.Context, retailerID string) 
 	var ret Retailer
 	var rwOpen, rwClose spanner.NullString
 	var deliveryAddress, placeID spanner.NullString
+	var taxID, normTaxID, homeCell, legalStatus spanner.NullString
+	var innVerifiedAt spanner.NullTime
 	if err := row.Columns(
 		&ret.RetailerID,
 		&ret.Phone,
@@ -282,6 +319,11 @@ func (r *SpannerRepository) GetRetailer(ctx context.Context, retailerID string) 
 		&placeID,
 		&rwOpen,
 		&rwClose,
+		&taxID,
+		&normTaxID,
+		&homeCell,
+		&legalStatus,
+		&innVerifiedAt,
 		&ret.CreatedAt,
 	); err != nil {
 		return Retailer{}, false, fmt.Errorf("scan retailer %s: %w", retailerID, err)
@@ -292,7 +334,7 @@ func (r *SpannerRepository) GetRetailer(ctx context.Context, retailerID string) 
 	if placeID.Valid {
 		ret.PlaceID = placeID.StringVal
 	}
-	applyRetailerWindowColumns(&ret, rwOpen, rwClose)
+	applyRetailerIdentityColumns(&ret, rwOpen, rwClose, taxID, normTaxID, homeCell, legalStatus, innVerifiedAt)
 	ret.SupplierID = r.supplierID
 
 	return ret, true, nil
@@ -317,25 +359,7 @@ func (r *SpannerRepository) UpdateRetailer(ctx context.Context, ret Retailer, em
 		}
 
 		for _, e := range buf.events {
-			createdAt := e.CreatedAt.UTC()
-			if createdAt.IsZero() {
-				createdAt = time.Now().UTC()
-			}
-
-			row := map[string]any{
-				"EventId":       e.EventID,
-				"AggregateType": e.AggregateType,
-				"AggregateId":   e.AggregateID,
-				"TopicName":     e.TopicName,
-				"Payload":       e.Payload,
-				"CreatedAt":     createdAt,
-				"PublishedAt":   nil,
-			}
-			if e.PublishedAt != nil {
-				row["PublishedAt"] = e.PublishedAt.UTC()
-			}
-
-			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", row))
+			mutations = append(mutations, outboxEventMutation(e))
 		}
 		for _, a := range buf.audits {
 			mutations = append(mutations, spanner.InsertMap("AuditLog", a.AuditRowMap()))
@@ -356,15 +380,6 @@ func (r *SpannerRepository) ListRetailersBySupplier(ctx context.Context, supplie
 		return nil, fmt.Errorf("spanner retailer repository: nil client")
 	}
 
-	stmt := spanner.Statement{
-		SQL: `SELECT RetailerId, Phone, Name, CountryCode, Lat, Lng, H3Cell,
-			         ReceivingWindowOpen, ReceivingWindowClose, CreatedAt
-			  FROM Retailers`,
-	}
-
-	iter := r.client.Single().Query(ctx, stmt)
-	defer iter.Stop()
-
 	effectiveSupplierID := strings.TrimSpace(supplierID)
 	if effectiveSupplierID == "" {
 		effectiveSupplierID = r.supplierID
@@ -372,6 +387,29 @@ func (r *SpannerRepository) ListRetailersBySupplier(ctx context.Context, supplie
 	if r.supplierID != "" && effectiveSupplierID != "" && effectiveSupplierID != r.supplierID {
 		return []Retailer{}, nil
 	}
+	if effectiveSupplierID == "" {
+		return []Retailer{}, nil
+	}
+
+	stmt := spanner.Statement{
+		SQL: `SELECT r.RetailerId, r.Phone, r.Name, r.CountryCode, r.Lat, r.Lng, r.H3Cell,
+			         r.ReceivingWindowOpen, r.ReceivingWindowClose, r.CreatedAt
+			  FROM Retailers r
+			  WHERE r.RetailerId IN (
+			      SELECT DISTINCT o.RetailerId FROM Orders o WHERE o.SupplierId = @SupplierId
+			  )`,
+		Params: map[string]interface{}{
+			"SupplierId": effectiveSupplierID,
+		},
+	}
+
+	var iter *spanner.RowIterator
+	if txn := spannerutils.ReadOnlyTxnFromContext(ctx); txn != nil {
+		iter = txn.Query(ctx, stmt)
+	} else {
+		iter = r.client.Single().Query(ctx, stmt)
+	}
+	defer iter.Stop()
 
 	var retailers []Retailer
 	for {
@@ -437,7 +475,8 @@ func (r *SpannerRepository) ListTrackingOrders(ctx context.Context, retailerID s
 		             COALESCE(o.DeliveryPriority, 'STANDARD'), COALESCE(o.ConfirmationStatus, 'CONFIRMED'),
 		             o.ProposedDeliveryDate, COALESCE(o.ReceivingWindowOpen, ''), COALESCE(o.ReceivingWindowClose, ''),
 		             COALESCE(v.LicensePlate, ''),
-		             COALESCE(o.FiscalStatus, ''), COALESCE(o.LatestFiscalReceiptId, '')
+		             COALESCE(o.FiscalStatus, ''), COALESCE(o.LatestFiscalReceiptId, ''),
+		             COALESCE(o.ParentOrderId, '')
 		      FROM Orders@{FORCE_INDEX=Idx_Orders_ByRetailerCreated} o
 		      LEFT JOIN Vehicles v ON v.VehicleId = o.VehicleId
 		      WHERE o.RetailerId = @RetailerId
@@ -492,7 +531,8 @@ func (r *SpannerRepository) ListRecentReceipts(ctx context.Context, retailerID s
 		             COALESCE(o.DeliveryPriority, 'STANDARD'), COALESCE(o.ConfirmationStatus, 'CONFIRMED'),
 		             o.ProposedDeliveryDate, COALESCE(o.ReceivingWindowOpen, ''), COALESCE(o.ReceivingWindowClose, ''),
 		             COALESCE(v.LicensePlate, ''),
-		             COALESCE(o.FiscalStatus, ''), COALESCE(o.LatestFiscalReceiptId, '')
+		             COALESCE(o.FiscalStatus, ''), COALESCE(o.LatestFiscalReceiptId, ''),
+		             COALESCE(o.ParentOrderId, '')
 		      FROM Orders o
 		      LEFT JOIN Vehicles v ON v.VehicleId = o.VehicleId
 		      WHERE o.RetailerId = @RetailerId
@@ -539,7 +579,7 @@ func (r *SpannerRepository) attachFiscalReceipts(ctx context.Context, orders []T
 		},
 	}
 
-	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
+	iter := r.client.Single().Query(ctx, stmt)
 	defer iter.Stop()
 
 	type fiscalSnap struct {
@@ -680,7 +720,7 @@ func (r *SpannerRepository) listOrderPaymentTimeline(ctx context.Context, orderI
 		},
 	}
 
-	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
+	iter := r.client.Single().Query(ctx, stmt)
 	defer iter.Stop()
 
 	timelineByOrder := make(map[string][]trackingReceiptPaymentRecordSnapshot, len(orderIDs))
@@ -757,7 +797,7 @@ func (r *SpannerRepository) listSessionPaymentTimeline(ctx context.Context, sess
 		},
 	}
 
-	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
+	iter := r.client.Single().Query(ctx, stmt)
 	defer iter.Stop()
 
 	timelineBySession := make(map[string][]trackingReceiptPaymentRecordSnapshot, len(sessionIDs))
@@ -831,7 +871,7 @@ func (r *SpannerRepository) listOrderGatewayWebhooks(ctx context.Context, orderI
 		},
 	}
 
-	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
+	iter := r.client.Single().Query(ctx, stmt)
 	defer iter.Stop()
 
 	webhooksByOrder := make(map[string][]TrackingReceiptGatewayWebhook, len(orderIDs))
@@ -891,7 +931,12 @@ func (r *SpannerRepository) listOrderDeliveryProofs(ctx context.Context, orderID
 		},
 	}
 
-	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
+	var iter *spanner.RowIterator
+	if txn := spannerutils.ReadOnlyTxnFromContext(ctx); txn != nil {
+		iter = txn.Query(ctx, stmt)
+	} else {
+		iter = r.client.Single().Query(ctx, stmt)
+	}
 	defer iter.Stop()
 
 	proofsByOrder := make(map[string][]TrackingReceiptDeliveryProof, len(orderIDs))
@@ -967,7 +1012,7 @@ func (r *SpannerRepository) listOrderChargebacks(ctx context.Context, orderIDs [
 		},
 	}
 
-	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
+	iter := r.client.Single().Query(ctx, stmt)
 	defer iter.Stop()
 
 	chargebacksByOrder := make(map[string][]TrackingReceiptChargebackRecord, len(orderIDs))
@@ -1015,7 +1060,7 @@ func (r *SpannerRepository) listSessionReversals(ctx context.Context, sessionIDs
 		},
 	}
 
-	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
+	iter := r.client.Single().Query(ctx, stmt)
 	defer iter.Stop()
 
 	reversalsBySession := make(map[string][]TrackingReceiptReversalRecord, len(sessionIDs))
@@ -1239,7 +1284,12 @@ func uniqueTrackingSessionIDs(sessionIDsByOrder map[string]string) []string {
 
 func (r *SpannerRepository) queryTrackingOrders(ctx context.Context, stmt spanner.Statement, op string) ([]TrackingOrder, error) {
 
-	iter := r.client.Single().Query(ctx, stmt)
+	var iter *spanner.RowIterator
+	if txn := spannerutils.ReadOnlyTxnFromContext(ctx); txn != nil {
+		iter = txn.Query(ctx, stmt)
+	} else {
+		iter = r.client.Single().Query(ctx, stmt)
+	}
 	defer iter.Stop()
 
 	orders := make([]TrackingOrder, 0, 8)
@@ -1310,6 +1360,7 @@ func decodeTrackingOrder(row *spanner.Row) (TrackingOrder, error) {
 		&licensePlate,
 		&fiscalStatus,
 		&latestFiscalReceipt,
+		&tracking.ParentOrderID,
 	); err != nil {
 		return TrackingOrder{}, fmt.Errorf("scan retailer tracking order: %w", err)
 	}

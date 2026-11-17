@@ -10,10 +10,10 @@ import (
 
 // OperatingSchedule is warehouse order-acceptance hours (optional enforcement).
 type OperatingSchedule struct {
-	Is24h                  bool                  `json:"is_24h,omitempty"`
-	EnforceOrderAcceptance bool                  `json:"enforce_order_acceptance,omitempty"`
-	Timezone               string                `json:"timezone,omitempty"`
-	Schedules              map[string]DayWindow  `json:"schedules,omitempty"`
+	Is24h                  bool                 `json:"is_24h,omitempty"`
+	EnforceOrderAcceptance bool                 `json:"enforce_order_acceptance,omitempty"`
+	Timezone               string               `json:"timezone,omitempty"`
+	Schedules              map[string]DayWindow `json:"schedules,omitempty"`
 }
 
 // DayWindow is one day's open/close window (HH:MM, 24h).

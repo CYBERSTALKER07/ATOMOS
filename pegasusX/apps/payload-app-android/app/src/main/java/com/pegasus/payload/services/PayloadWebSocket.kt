@@ -25,7 +25,7 @@ import javax.inject.Singleton
 
 /**
  * PayloadWebSocket — process-singleton wrapper around an OkHttp [WebSocket]
- * pointed at `${BuildConfig.WS_BASE_URL}/v1/ws?token=...`.
+ * pointed at `${BuildConfig.WS_BASE_URL}/v1/ws` with Authorization: Bearer.
  *
  * Mirrors the Expo `payload-terminal/App.tsx` behaviour:
  *   - reconnects 3s after every close/error while a token is configured
@@ -57,9 +57,11 @@ class PayloadWebSocket @Inject constructor(
 
     private var socket: WebSocket? = null
     private var reconnectJob: Job? = null
+    private var syncCoalesceJob: Job? = null
     private var reconnectAttempt = 0
     private var pendingRetryAfterMs: Long? = null
     private var token: String? = null
+    @Volatile private var lastEventId: String? = null
 
     fun connect(authToken: String) {
         if (token == authToken && socket != null) return
@@ -71,6 +73,7 @@ class PayloadWebSocket @Inject constructor(
     fun disconnect() {
         token = null
         reconnectJob?.cancel(); reconnectJob = null
+        syncCoalesceJob?.cancel(); syncCoalesceJob = null
         socket?.close(NORMAL_CLOSURE, "logout")
         socket = null
         _online.value = false
@@ -79,9 +82,20 @@ class PayloadWebSocket @Inject constructor(
     private fun openSocket() {
         val authToken = token ?: return
         socket?.close(NORMAL_CLOSURE, "reopen")
-        val url = BuildConfig.WS_BASE_URL.trimEnd('/') +
-            "/v1/ws?token=" + java.net.URLEncoder.encode(authToken, "UTF-8")
-        val req = Request.Builder().url(url).build()
+        val base = BuildConfig.WS_BASE_URL.trimEnd('/') + "/v1/ws"
+        val currentLastId = lastEventId
+        val url = if (!currentLastId.isNullOrBlank()) {
+            "$base?last_event_id=$currentLastId"
+        } else {
+            base
+        }
+        val reqBuilder = Request.Builder()
+            .url(url)
+            .addHeader("Authorization", "Bearer $authToken")
+        if (!currentLastId.isNullOrBlank()) {
+            reqBuilder.addHeader("Last-Event-ID", currentLastId)
+        }
+        val req = reqBuilder.build()
         socket = okHttp.newWebSocket(req, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
                 reconnectAttempt = 0
@@ -92,9 +106,21 @@ class PayloadWebSocket @Inject constructor(
             override fun onMessage(webSocket: WebSocket, text: String) {
                 val frame = runCatching { json.decodeFromString(WsMessage.serializer(), text) }
                     .getOrNull() ?: return
-                val isPayloadSync = frame.type == "PAYLOAD_SYNC"
+                val eid = frame.eventId?.takeIf { it.isNotBlank() } ?: frame.id?.takeIf { it.isNotBlank() }
+                if (eid != null) {
+                    lastEventId = eid
+                }
+                val isPayloadSync = frame.type == "PAYLOAD_SYNC" || frame.type.startsWith("MANIFEST_")
                 if (!isPayloadSync && frame.title.isNullOrEmpty() && frame.body.isNullOrEmpty()) return
-                scope.launch { _frames.emit(frame) }
+                if (isPayloadSync && frame.title.isNullOrEmpty() && frame.body.isNullOrEmpty()) {
+                    syncCoalesceJob?.cancel()
+                    syncCoalesceJob = scope.launch {
+                        delay(SYNC_COALESCE_MS)
+                        _frames.emit(frame)
+                    }
+                } else {
+                    scope.launch { _frames.emit(frame) }
+                }
             }
 
             override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
@@ -135,5 +161,6 @@ class PayloadWebSocket @Inject constructor(
         const val NORMAL_CLOSURE = 1000
         const val RECONNECT_BASE_MS = 3_000L
         const val RECONNECT_MAX_MS = 60_000L
+        const val SYNC_COALESCE_MS = 180L
     }
 }

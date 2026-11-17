@@ -25,10 +25,10 @@ type SupplierReturn struct {
 const DefaultPostDeliveryAmendWindow = 48 * time.Hour
 
 var validAmendReasons = map[string]struct{}{
-	"DAMAGED":     {},
-	"MISSING":     {},
-	"WRONG_ITEM":  {},
-	"OTHER":       {},
+	"DAMAGED":    {},
+	"MISSING":    {},
+	"WRONG_ITEM": {},
+	"OTHER":      {},
 }
 
 // postDeliveryAmendReasons may be applied after COMPLETED within the claim window.

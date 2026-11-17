@@ -30,6 +30,10 @@ type RetailerUser struct {
 // EnsureOwnerUser guarantees a durable OWNER row for the retailer shop.
 // Idempotent: returns existing owner/phone match when present.
 func (s *Service) EnsureOwnerUser(ctx context.Context, ret Retailer) (RetailerUser, error) {
+	return s.ensureOwnerUserWithPassword(ctx, ret, "")
+}
+
+func (s *Service) ensureOwnerUserWithPassword(ctx context.Context, ret Retailer, passwordHash string) (RetailerUser, error) {
 	if s == nil {
 		return RetailerUser{}, fmt.Errorf("nil service")
 	}
@@ -61,7 +65,7 @@ func (s *Service) EnsureOwnerUser(ctx context.Context, ret Retailer) (RetailerUs
 		} else if ok {
 			return u, nil
 		}
-		return s.insertOwnerUser(ctx, ret)
+		return s.insertOwnerUser(ctx, ret, passwordHash)
 	}
 
 	// Memory fallback for unit tests without Spanner.
@@ -88,6 +92,7 @@ func (s *Service) EnsureOwnerUser(ctx context.Context, ret Retailer) (RetailerUs
 		RetailerID:   ret.RetailerID,
 		Phone:        phone,
 		Name:         coalesceRetailerName(ret.Name),
+		PasswordHash: strings.TrimSpace(passwordHash),
 		RetailerRole: "OWNER",
 		IsOwner:      true,
 		IsActive:     true,
@@ -109,12 +114,13 @@ func (s *Service) EnsureOwnerUser(ctx context.Context, ret Retailer) (RetailerUs
 	return u, nil
 }
 
-func (s *Service) insertOwnerUser(ctx context.Context, ret Retailer) (RetailerUser, error) {
+func (s *Service) insertOwnerUser(ctx context.Context, ret Retailer, passwordHash string) (RetailerUser, error) {
 	u := RetailerUser{
 		UserID:       s.newID(),
 		RetailerID:   ret.RetailerID,
 		Phone:        strings.TrimSpace(ret.Phone),
 		Name:         coalesceRetailerName(ret.Name),
+		PasswordHash: strings.TrimSpace(passwordHash),
 		RetailerRole: "OWNER",
 		IsOwner:      true,
 		IsActive:     true,
@@ -122,7 +128,7 @@ func (s *Service) insertOwnerUser(ctx context.Context, ret Retailer) (RetailerUs
 		UpdatedAt:    s.now(),
 	}
 	_, err := s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-		m := spanner.InsertMap("RetailerUsers", map[string]any{
+		rowMap := map[string]any{
 			"UserId":       u.UserID,
 			"RetailerId":   u.RetailerID,
 			"Phone":        u.Phone,
@@ -132,7 +138,11 @@ func (s *Service) insertOwnerUser(ctx context.Context, ret Retailer) (RetailerUs
 			"IsActive":     true,
 			"CreatedAt":    spanner.CommitTimestamp,
 			"UpdatedAt":    spanner.CommitTimestamp,
-		})
+		}
+		if u.PasswordHash != "" {
+			rowMap["PasswordHash"] = u.PasswordHash
+		}
+		m := spanner.InsertMap("RetailerUsers", rowMap)
 		if err := txn.BufferWrite([]*spanner.Mutation{m}); err != nil {
 			return err
 		}
@@ -143,7 +153,7 @@ func (s *Service) insertOwnerUser(ctx context.Context, ret Retailer) (RetailerUs
 			RetailerID: u.RetailerID,
 			Phone:      u.Phone,
 			Name:       u.Name,
-			SupplierID: s.supplierID,
+			SupplierID: s.resolveSupplierScope(ctx),
 			UserID:     u.UserID,
 		}); err != nil {
 			return err
@@ -190,6 +200,20 @@ func (s *Service) findOwnerUser(ctx context.Context, retailerID string) (Retaile
 
 func (s *Service) findRetailerUserByID(ctx context.Context, userID string) (RetailerUser, bool, error) {
 	if s.spannerClient == nil {
+		s.mu.RLock()
+		defer s.mu.RUnlock()
+		for _, u := range s.ownerByRetailer {
+			if u.UserID == userID {
+				return u, true, nil
+			}
+		}
+		for _, list := range s.staffByRetailer {
+			for _, u := range list {
+				if u.UserID == userID {
+					return u, true, nil
+				}
+			}
+		}
 		return RetailerUser{}, false, nil
 	}
 	row, err := s.spannerClient.Single().ReadRow(ctx, "RetailerUsers", spanner.Key{userID},

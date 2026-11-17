@@ -8,7 +8,9 @@ struct RootView: View {
             if !tokenStore.isAuthenticated {
                 LoginView()
             } else if !tokenStore.isConfigured {
-                LocationSetupView()
+                NavigationStack {
+                    LocationSetupView()
+                }
             } else {
                 FactoryAdaptiveShell()
             }
@@ -16,5 +18,8 @@ struct RootView: View {
         .buttonStyle(PressableButtonStyle())
         .animation(.smooth, value: tokenStore.isAuthenticated)
         .animation(.smooth, value: tokenStore.isConfigured)
+        .task {
+            await PushNotificationManager.shared.requestAuthorization()
+        }
     }
 }

@@ -1,6 +1,7 @@
 package com.pegasus.payload.data.remote
 
 import com.pegasus.payload.BuildConfig
+import com.pegasus.payload.di.configuredCertificatePinner
 import com.pegasus.payload.data.local.SecureStore
 import com.pegasus.payload.data.model.RefreshTokenRequest
 import com.pegasus.payload.data.model.RefreshTokenResponse
@@ -21,12 +22,33 @@ class TokenRefreshAuthenticator @Inject constructor(
     private val secureStore: SecureStore,
     private val json: Json,
 ) : Authenticator {
+    private val refreshClient = OkHttpClient.Builder()
+        .connectTimeout(10, TimeUnit.SECONDS)
+        .readTimeout(10, TimeUnit.SECONDS)
+        .apply {
+            configuredCertificatePinner(BuildConfig.API_BASE_URL, BuildConfig.API_TLS_SPKI_PINS)
+                ?.let { certificatePinner(it) }
+        }
+        .build()
+
+    @Synchronized
     override fun authenticate(route: Route?, response: Response): Request? {
         if (response.code != 401) return null
         if (response.request.header("X-Refresh-Attempted") != null) {
             secureStore.clear()
             return null
         }
+        val currentToken = secureStore.token
+        val requestToken = response.request.header("Authorization")
+            ?.removePrefix("Bearer ")
+            ?.trim()
+        if (!currentToken.isNullOrBlank() && !requestToken.isNullOrBlank() && requestToken != currentToken) {
+            return response.request.newBuilder()
+                .header("Authorization", "Bearer $currentToken")
+                .header("X-Refresh-Attempted", "true")
+                .build()
+        }
+
         val refresh = secureStore.refreshToken ?: return null
         val baseUrl = BuildConfig.API_BASE_URL.trimEnd('/') + "/"
         val body = json.encodeToString(RefreshTokenRequest.serializer(), RefreshTokenRequest(refresh))
@@ -34,10 +56,6 @@ class TokenRefreshAuthenticator @Inject constructor(
         val refreshRequest = Request.Builder()
             .url("${baseUrl}v1/auth/payloader/refresh")
             .post(body)
-            .build()
-        val refreshClient = OkHttpClient.Builder()
-            .connectTimeout(10, TimeUnit.SECONDS)
-            .readTimeout(10, TimeUnit.SECONDS)
             .build()
         return try {
             val refreshResponse = refreshClient.newCall(refreshRequest).execute()

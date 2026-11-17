@@ -1,0 +1,50 @@
+flowchart TD
+    subgraph Phase1["Phase 1: Driver Onboarding, KYB & Peripheral Pairing"]
+        D1["Driver Submits CDL License, Identity Proof & Medical Certificate"] --> D2["Carrier Fleet Manager Approves Profile & Assigns Delivery Vehicle"]
+        D2 --> D3["Install PegasusX Driver App on Ruggedized Android / iOS Device"]
+        D3 --> D4["Pair In-Cab Bluetooth Reefer Thermometer & Mobile Card POS Terminal"]
+        D4 --> D5["Authenticate Driver Session: Initialize Foreground Telemetry Service"]
+    end
+
+    subgraph Phase2["Phase 2: Mandatory 8-Point Pre-Trip DVIR Safety Inspection"]
+        D5 --> E1["Conduct 8-Point Vehicle Walkaround: Tires, Brakes, Lights, Steering, Horn"]
+        E1 --> E2["Capture Mandatory Photo Evidence of Vehicle Exterior & Tires"]
+        E2 --> E3["Query Bluetooth Telematics Sensor: Verify Reefer Storage Temperature"]
+        E3 --> E4{"Reefer Excursion or Mechanical Defect?"}
+        E4 -- "Red-Flag Defect (Temp Spiked / Brakes Bad)" --> E5["Submit Red-Tag Defect: Route Blocked & Maintenance Escalated"]
+        E4 -- "Inspection Passed (Nominal)" --> E6["Driver Digitally Signs Electronic DVIR Certification"]
+        E6 --> F1["Vehicle Cleared for Warehouse Bay Loading"]
+    end
+
+    subgraph Phase3["Phase 3: Route Ingestion & Turn-by-Turn Telematics Navigation"]
+        F1 --> F2["Ingest Daily Optimized Multi-Stop Delivery Sequence via H3 Spatial Dispatch"]
+        F2 --> F3["Scan Outbound SSCC-18 Carton Barcodes into Vehicle Custody"]
+        F3 --> F4["Yard Marshal Clears Gate: Driver Starts Route Navigation"]
+        F4 --> F5["Turn-by-Turn Offline Navigation: MapLibre GL Vector Map Guidance"]
+        F5 --> F6["Continuous GPS & Sensor Beaconing: Stream Lat/Lng, Velocity & Temp"]
+    end
+
+    subgraph Phase4["Phase 4: Doorstep Geofence Unlock, Scan & Payment Collection"]
+        F6 --> G1["Arrive at Retailer Storefront Location"]
+        G1 --> G2["System Evaluates Settlement Proximity: 100m Geofence & H3 Cell Match"]
+        G2 --> G3["Proximity Velocity Guard: Validate Speed < 120 km/h from Last Cellular Fix"]
+        G3 --> G4{"Proximity & Anti-Spoofing Verified?"}
+        G4 -- "Failed (Spoofed/Out-of-Fence)" --> G5["Lock Payment Modes: Doorstep Actions Prohibited"]
+        G4 -- "Verified at Storefront" --> G6["Unlock Doorstep Actions: Scan Offloaded Carton SSCC Labels"]
+        G6 --> G7{"Damaged or Missing Items (OS&D)?"}
+        G7 -- "Damaged Stock" --> G8["Log Photographic Damage Report: Adjust Invoice Total in Spanner"]
+        G7 -- "Full Order Intact" --> G9["Present Payment Collection: Cash COD, Card Tap or Credit Terms"]
+        G8 --> G9
+        G9 --> H1["Retailer Scans Dynamic Single-Use Delivery QR Code on Driver Phone"]
+        H1 --> H2["Instant Electronic Proof of Delivery (EPOD) & Soliq Fiscal Factura Issued"]
+    end
+
+    subgraph Phase5["Phase 5: Route Completion & Depot Blind Cash Turn-In"]
+        H2 --> J1{"More Delivery Stops Remaining on Route?"}
+        J1 -- "Yes (Next Stop)" --> F4
+        J1 -- "No (Route Complete)" --> J2["Drive Vehicle Back to Regional Warehouse Depot"]
+        J2 --> J3["Consolidate Collected Banknotes into Heavy-Duty Tamper-Evident Bag"]
+        J3 --> J4["Seal Cash Bag: Record Void-Tape Serial Number in Driver App"]
+        J4 --> J5["Present Sealed Bag at Warehouse Cash Desk for Zero-Trust Blind Turn-In"]
+        J5 --> J6(["Shift Complete & Driver Released"])
+    end

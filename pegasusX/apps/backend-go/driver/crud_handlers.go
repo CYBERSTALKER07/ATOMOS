@@ -1,10 +1,13 @@
 package driver
 
 import (
+	"golang.org/x/crypto/bcrypt"
+
 	"encoding/json"
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -16,6 +19,7 @@ import (
 
 // HandleCreateDriver serves POST /v1/drivers
 func (s *Service) HandleCreateDriver(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		web.JSONError(w, "invalid request body", http.StatusBadRequest)
@@ -25,10 +29,21 @@ func (s *Service) HandleCreateDriver(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req Driver
-	if err := json.Unmarshal(body, &req); err != nil {
+	var reqPayload struct {
+		Driver
+		Pin string `json:"pin"`
+	}
+	if err := json.Unmarshal(body, &reqPayload); err != nil {
 		web.JSONError(w, "invalid request body", http.StatusBadRequest)
 		return
+	}
+	req := reqPayload.Driver
+	if reqPayload.Pin != "" {
+		hash, err := bcrypt.GenerateFromPassword([]byte(reqPayload.Pin), bcrypt.DefaultCost)
+		if err == nil {
+			h := string(hash)
+			req.PinHash = &h
+		}
 	}
 
 	supplierID, ok := auth.ResolveSupplierID(r.Context())
@@ -41,6 +56,19 @@ func (s *Service) HandleCreateDriver(w http.ResponseWriter, r *http.Request) {
 	if req.Name == "" || req.Phone == "" {
 		web.JSONError(w, "missing required fields", http.StatusBadRequest)
 		return
+	}
+
+	if claims, hasClaims := auth.FromContext(r.Context()); hasClaims {
+		isNodeAdmin := claims.Role == auth.RoleWarehouseAdmin || claims.Role == auth.RoleFactoryAdmin ||
+			claims.SupplierRole == auth.RoleWarehouseAdmin || claims.SupplierRole == auth.RoleFactoryAdmin
+		if isNodeAdmin && claims.HomeNodeID != "" {
+			if req.HomeNodeID == "" {
+				req.HomeNodeID = claims.HomeNodeID
+			} else if req.HomeNodeID != claims.HomeNodeID {
+				web.JSONError(w, "forbidden: cannot assign driver to a different home node", http.StatusForbidden)
+				return
+			}
+		}
 	}
 
 	if req.DriverID == "" {
@@ -76,9 +104,26 @@ func (s *Service) HandleGetDriver(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	claims, ok := auth.FromContext(r.Context())
+	if !ok {
+		web.JSONError(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	d, err := s.repo.GetDriver(r.Context(), driverID)
 	if err != nil {
 		web.JSONError(w, "failed to get driver: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Fail-closed: drivers may only read themselves; others must match tenant supplier.
+	if claims.Role == auth.RoleDriver {
+		if strings.TrimSpace(claims.Subject) == "" || strings.TrimSpace(claims.Subject) != strings.TrimSpace(driverID) {
+			web.JSONError(w, "driver_not_found", http.StatusNotFound)
+			return
+		}
+	} else if !auth.EntitySupplierAllowed(r.Context(), d.SupplierID) {
+		web.JSONError(w, "driver_not_found", http.StatusNotFound)
 		return
 	}
 
@@ -93,6 +138,7 @@ func (s *Service) HandleUpdateDriver(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		web.JSONError(w, "invalid request body", http.StatusBadRequest)
@@ -102,10 +148,21 @@ func (s *Service) HandleUpdateDriver(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req Driver
-	if err := json.Unmarshal(body, &req); err != nil {
+	var reqPayload struct {
+		Driver
+		Pin string `json:"pin"`
+	}
+	if err := json.Unmarshal(body, &reqPayload); err != nil {
 		web.JSONError(w, "invalid request body", http.StatusBadRequest)
 		return
+	}
+	req := reqPayload.Driver
+	if reqPayload.Pin != "" {
+		hash, err := bcrypt.GenerateFromPassword([]byte(reqPayload.Pin), bcrypt.DefaultCost)
+		if err == nil {
+			h := string(hash)
+			req.PinHash = &h
+		}
 	}
 	req.DriverID = driverID
 
@@ -115,6 +172,17 @@ func (s *Service) HandleUpdateDriver(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	req.SupplierID = supplierID
+
+	if claims, hasClaims := auth.FromContext(r.Context()); hasClaims {
+		isNodeAdmin := claims.Role == auth.RoleWarehouseAdmin || claims.Role == auth.RoleFactoryAdmin ||
+			claims.SupplierRole == auth.RoleWarehouseAdmin || claims.SupplierRole == auth.RoleFactoryAdmin
+		if isNodeAdmin && claims.HomeNodeID != "" {
+			if req.HomeNodeID != "" && req.HomeNodeID != claims.HomeNodeID {
+				web.JSONError(w, "forbidden: cannot assign driver to a different home node", http.StatusForbidden)
+				return
+			}
+		}
+	}
 
 	emit := func(buf outbox.TxnBuffer) error {
 		return outbox.EmitJSON(r.Context(), buf, events.AggregateDriver, req.DriverID, events.TopicMain, events.DriverEvent{
@@ -177,6 +245,7 @@ func (s *Service) HandleListDrivers(w http.ResponseWriter, r *http.Request) {
 
 // HandleCreateVehicle serves POST /v1/vehicles
 func (s *Service) HandleCreateVehicle(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		web.JSONError(w, "invalid request body", http.StatusBadRequest)
@@ -198,6 +267,17 @@ func (s *Service) HandleCreateVehicle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	req.SupplierID = supplierID
+
+	if claims, hasClaims := auth.FromContext(r.Context()); hasClaims {
+		isNodeAdmin := claims.Role == auth.RoleWarehouseAdmin || claims.Role == auth.RoleFactoryAdmin ||
+			claims.SupplierRole == auth.RoleWarehouseAdmin || claims.SupplierRole == auth.RoleFactoryAdmin
+		if isNodeAdmin && claims.HomeNodeID != "" {
+			if req.HomeNodeID != "" && req.HomeNodeID != claims.HomeNodeID {
+				web.JSONError(w, "forbidden: cannot assign driver to a different home node", http.StatusForbidden)
+				return
+			}
+		}
+	}
 
 	if req.LicensePlate == "" {
 		web.JSONError(w, "missing required fields", http.StatusBadRequest)
@@ -237,9 +317,19 @@ func (s *Service) HandleGetVehicle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if _, ok := auth.FromContext(r.Context()); !ok {
+		web.JSONError(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	v, err := s.repo.GetVehicle(r.Context(), vehicleID)
 	if err != nil {
 		web.JSONError(w, "failed to get vehicle: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if !auth.EntitySupplierAllowed(r.Context(), v.SupplierID) {
+		web.JSONError(w, "vehicle_not_found", http.StatusNotFound)
 		return
 	}
 
@@ -254,6 +344,7 @@ func (s *Service) HandleUpdateVehicle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		web.JSONError(w, "invalid request body", http.StatusBadRequest)
@@ -263,37 +354,59 @@ func (s *Service) HandleUpdateVehicle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req Vehicle
+	var req map[string]any
 	if err := json.Unmarshal(body, &req); err != nil {
 		web.JSONError(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
-	req.VehicleID = vehicleID
+	
+	// Format keys for Spanner (e.g. from JSON snake_case to PascalCase if needed, but our API uses PascalCase or we map them)
+	// We'll just pass the map, assuming the payload sends the correct column names or we map them.
+	// Actually, let's just create a typed map to ensure valid keys.
+	var parsedReq Vehicle
+	if err := json.Unmarshal(body, &parsedReq); err != nil {
+		web.JSONError(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
 
 	supplierID, ok := auth.ResolveSupplierID(r.Context())
 	if !ok || supplierID == "" {
 		web.JSONError(w, "missing supplier scope", http.StatusUnauthorized)
 		return
 	}
-	req.SupplierID = supplierID
+	
+	updates := make(map[string]any)
+	updates["SupplierId"] = supplierID
+	if v, ok := req["is_active"]; ok { updates["IsActive"] = v }
+	if v, ok := req["home_node_id"]; ok { updates["HomeNodeId"] = v }
+	if v, ok := req["home_node_type"]; ok { updates["HomeNodeType"] = v }
+	if v, ok := req["driver_id"]; ok { updates["DriverId"] = v }
+	if v, ok := req["make"]; ok { updates["Make"] = v }
+	if v, ok := req["model"]; ok { updates["Model"] = v }
+	if v, ok := req["year"]; ok { updates["Year"] = v }
+	if v, ok := req["license_plate"]; ok { updates["LicensePlate"] = v }
+	if v, ok := req["class"]; ok { updates["Class"] = v }
+	if v, ok := req["max_volume_vu"]; ok { updates["MaxVolumeVU"] = v }
+	if v, ok := req["max_weight_kg"]; ok { updates["MaxWeightKg"] = v }
+	if v, ok := req["capacity_tags"]; ok { updates["CapacityTags"] = v }
 
 	emit := func(buf outbox.TxnBuffer) error {
-		return outbox.EmitJSON(r.Context(), buf, events.AggregateVehicle, req.VehicleID, events.TopicMain, events.VehicleEvent{
+		return outbox.EmitJSON(r.Context(), buf, events.AggregateVehicle, vehicleID, events.TopicMain, events.VehicleEvent{
 			BaseEvent:    events.BaseEvent{Type: events.EventVehicleAvailabilityChanged, Version: 1},
-			VehicleID:    req.VehicleID,
-			SupplierID:   req.SupplierID,
-			HomeNodeID:   req.HomeNodeID,
-			HomeNodeType: req.HomeNodeType,
-			IsActive:     req.IsActive,
+			VehicleID:    vehicleID,
+			SupplierID:   supplierID,
+			HomeNodeID:   parsedReq.HomeNodeID,
+			HomeNodeType: parsedReq.HomeNodeType,
+			IsActive:     parsedReq.IsActive,
 		})
 	}
-	if err := s.repo.UpdateVehicle(r.Context(), req, emit); err != nil {
+	if err := s.repo.UpdateVehicle(r.Context(), vehicleID, updates, emit); err != nil {
 		web.JSONError(w, "failed to update vehicle: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	if s.cache != nil {
-		s.cache.Invalidate(r.Context(), vehicleCacheKey(req.VehicleID), vehiclesListCacheKey(req.SupplierID))
+		s.cache.Invalidate(r.Context(), vehicleCacheKey(vehicleID), vehiclesListCacheKey(supplierID))
 	}
 
 	web.JSONResponse(w, http.StatusOK, req)

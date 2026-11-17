@@ -6,6 +6,9 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 )
 
+// SpannerTxnBuffer exports the outbox transaction buffer for Repository test doubles.
+type SpannerTxnBuffer = spannerTxnBuffer
+
 type spannerTxnBuffer struct {
 	events []outbox.Event
 }

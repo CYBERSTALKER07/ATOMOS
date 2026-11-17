@@ -36,7 +36,8 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
       if (!token && isTauri()) {
         const storedToken = await getStoredToken();
         if (storedToken) {
-          document.cookie = `pegasus_factory_jwt=${encodeURIComponent(storedToken)}; path=/; max-age=86400; SameSite=Lax`;
+          const secureFlag = typeof location !== "undefined" && location.protocol === "https:" ? "; Secure" : "";
+          document.cookie = `pegasus_factory_jwt=${encodeURIComponent(storedToken)}; path=/; max-age=86400; SameSite=Strict${secureFlag}`;
           token = storedToken;
         }
       }

@@ -40,9 +40,11 @@ export interface VerificationStep {
 }
 
 export interface ProfileStep {
+  taxId: string;
   legalName: string;
   contactName: string;
   email: string;
+  password: string;
 }
 
 export interface WizardState {
@@ -63,9 +65,11 @@ export const INITIAL_STATE: WizardState = {
     idToken: "",
   },
   profile: {
+    taxId: "",
     legalName: "",
     contactName: "",
     email: "",
+    password: "",
   },
 };
 
@@ -92,8 +96,11 @@ export function validateVerification(s: VerificationStep): Record<string, string
 
 export function validateProfile(s: ProfileStep): Record<string, string> {
   const e: Record<string, string> = {};
+  const cleanedInn = s.taxId.replace(/\D/g, "");
+  if (cleanedInn.length !== 9) e.taxId = "Enter valid 9-digit INN";
   if (s.legalName.trim().length < 2) e.legalName = "Legal name is required";
   if (s.contactName.trim().length < 2) e.contactName = "Contact name is required";
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s.email)) e.email = "Valid email is required";
+  if (s.password.trim().length < 6) e.password = "Password must be at least 6 characters";
   return e;
 }

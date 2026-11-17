@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.manifests
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -16,6 +18,7 @@ import com.pegasusx.warehouse.data.model.Manifest
 import com.pegasusx.warehouse.data.remote.WarehouseApi
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
+import com.pegasusx.warehouse.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -33,7 +36,8 @@ fun ManifestsScreen(
         scope.launch {
             try {
                 val resp = api.getManifests()
-                if (resp.isSuccessful && resp.body() != null) manifests = resp.body()!!.manifests
+                val respBody = resp.body()
+                if (resp.isSuccessful && respBody != null) manifests = respBody.manifests
                 else error = "Failed (${resp.code()})"
             } catch (e: Exception) { error = e.message ?: "Network error" }
             finally { loading = false }
@@ -55,7 +59,7 @@ fun ManifestsScreen(
             loading -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
             error != null -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(error!!, color = MaterialTheme.colorScheme.error)
+                    Text(error.orEmpty(), color = MaterialTheme.colorScheme.error)
                     Spacer(Modifier.height(PegasusSpacing.lg))
                     Button(onClick = { load() }) { Text("Retry") }
                 }
@@ -76,7 +80,7 @@ fun ManifestsScreen(
                             Text(m.manifestId.take(8), style = MaterialTheme.typography.titleSmall)
                             Spacer(Modifier.height(PegasusSpacing.xs))
                             Text(
-                                "Driver: ${m.driverName} · Vehicle: ${m.vehicleLabel} · ${m.stopCount} stops",
+                                stringResource(R.string.mobile_warehouse_ui_driver_drivername_vehicle_vehiclelabel_stopcount_stops, m.driverName, m.vehicleLabel, m.stopCount),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )

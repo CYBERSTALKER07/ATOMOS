@@ -71,11 +71,12 @@ class RouteDeviationTracker {
             offRouteSinceMs = null
             return RouteDeviationAction.None
         }
-        if (offRouteSinceMs == null) {
+        val since = offRouteSinceMs
+        if (since == null) {
             offRouteSinceMs = nowMs
             return RouteDeviationAction.None
         }
-        if (nowMs - offRouteSinceMs!! < SUSTAINED_OFF_ROUTE_MS) {
+        if (nowMs - since < SUSTAINED_OFF_ROUTE_MS) {
             return RouteDeviationAction.None
         }
         if (lastRerouteAtMs > 0L && nowMs - lastRerouteAtMs < MIN_REROUTE_INTERVAL_MS) {

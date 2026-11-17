@@ -5,9 +5,8 @@ export type StepId = "identity" | "verification" | "profile";
 export {
   AUTH_COUNTRIES as COUNTRIES,
   dialCodeForCountry,
-} from "@pegasusx/ui-kit/auth";
-
-export type { AuthCountry as Country } from "@pegasusx/ui-kit/auth";
+  type AuthCountry as Country,
+} from "@/components/ui/countries";
 
 export interface IdentityStep {
   countryCode: string;

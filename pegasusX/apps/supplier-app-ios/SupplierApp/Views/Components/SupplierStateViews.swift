@@ -6,8 +6,8 @@ typealias SupplierEmptyView = PegasusEmptyView
 
 enum MoneyFormat {
     static func minor(_ amount: Int64, currency: String) -> String {
-        let major = Double(amount) / 100.0
-        let code = currency.isEmpty ? "UZS" : currency
-        return String(format: "%.2f %@", major, code)
+        let number = formatMinorUnits(amount, fractionDigits: 2, trimTrailingZeros: false)
+        let code = currency.isEmpty ? packCurrency(MarketPackStore.pack) : currency
+        return "\(number) \(code)"
     }
 }

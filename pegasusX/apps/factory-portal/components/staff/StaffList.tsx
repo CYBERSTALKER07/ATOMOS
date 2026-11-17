@@ -1,5 +1,6 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 
@@ -17,6 +18,7 @@ interface StaffListProps {
 }
 
 export function StaffList({ staff }: StaffListProps) {
+  const t = usePortalT();
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -26,11 +28,11 @@ export function StaffList({ staff }: StaffListProps) {
       <table className="w-full text-sm">
         <thead>
           <tr className="table__header border-b border-[var(--border)] bg-[var(--default)]">
-            <th className="table__column text-left py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Name</th>
-            <th className="table__column text-left py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Phone</th>
-            <th className="table__column text-left py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Role</th>
-            <th className="table__column text-left py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Status</th>
-            <th className="table__column text-right py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Joined</th>
+            <th className="table__column text-left py-3 px-4 font-medium uppercase tracking-wider text-[11px]">{t("factory_portal.staff.staff_list.text.name")}</th>
+            <th className="table__column text-left py-3 px-4 font-medium uppercase tracking-wider text-[11px]">{t("common.field.phone")}</th>
+            <th className="table__column text-left py-3 px-4 font-medium uppercase tracking-wider text-[11px]">{t("factory_portal.staff.staff_list.text.role")}</th>
+            <th className="table__column text-left py-3 px-4 font-medium uppercase tracking-wider text-[11px]">{t("factory_portal.fleet.text.status")}</th>
+            <th className="table__column text-right py-3 px-4 font-medium uppercase tracking-wider text-[11px]">{t("factory_portal.staff._id_.text.joined")}</th>
             <th className="table__column text-right py-3 px-4 font-medium uppercase tracking-wider text-[11px]"></th>
           </tr>
         </thead>

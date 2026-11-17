@@ -1,5 +1,7 @@
 package com.pegasusx.driver.ui.screens.map
 
+import androidx.compose.ui.res.stringResource
+
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -20,6 +22,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MyLocation
@@ -32,7 +35,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -92,6 +95,7 @@ import kotlinx.coroutines.flow.emptyFlow
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
+import com.pegasusx.driver.R
 
 private fun locationFlow(context: android.content.Context): Flow<Location> = callbackFlow {
     val client = LocationServices.getFusedLocationProviderClient(context)
@@ -116,7 +120,7 @@ fun MapScreen(
 ) {
     val lab = LocalPegasusColors.current
     val context = LocalContext.current
-    val uiState by viewModel.state.collectAsState()
+    val uiState by viewModel.state.collectAsStateWithLifecycle()
     var showRescueSheet by remember { mutableStateOf(false) }
 
     if (showRescueSheet) {
@@ -163,8 +167,8 @@ fun MapScreen(
         }
     }
 
-    // Default center: Tashkent
-    val defaultPosition = LatLng(41.2995, 69.2401)
+    val packCenter = com.pegasusx.driver.ui.design.sessionMapCenter()
+    val defaultPosition = LatLng(packCenter?.lat ?: 0.0, packCenter?.lng ?: 0.0)
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(defaultPosition, 12f)
     }
@@ -177,8 +181,8 @@ fun MapScreen(
     val locationFlow = remember(hasLocationPermission) {
         if (hasLocationPermission) locationFlow(context) else emptyFlow()
     }
-    val currentLocation by locationFlow.collectAsState(initial = null)
-    val trailPoints by LocationTrail.points.collectAsState()
+    val currentLocation by locationFlow.collectAsStateWithLifecycle(initialValue = null)
+    val trailPoints by LocationTrail.points.collectAsStateWithLifecycle()
 
     LaunchedEffect(currentLocation) {
         currentLocation?.let { locationInterpolator.onGps(it) }
@@ -191,9 +195,9 @@ fun MapScreen(
         }
     }
 
-    val displayPosition by locationInterpolator.position.collectAsState()
-    val displayBearing by locationInterpolator.bearing.collectAsState()
-    val displaySpeed by locationInterpolator.speedMps.collectAsState()
+    val displayPosition by locationInterpolator.position.collectAsStateWithLifecycle()
+    val displayBearing by locationInterpolator.bearing.collectAsStateWithLifecycle()
+    val displaySpeed by locationInterpolator.speedMps.collectAsStateWithLifecycle()
 
     LaunchedEffect(displayPosition, uiState.routeSteps, uiState.routeGeometry, mapPhase, activeOrder?.routeId) {
         val position = displayPosition ?: return@LaunchedEffect
@@ -265,7 +269,11 @@ fun MapScreen(
         if (!isCameraLocked && activeOrders.isNotEmpty() && mapPhase != MapPhase.NAVIGATING) {
             val boundsBuilder = LatLngBounds.builder()
             activeOrders.forEach { order ->
-                boundsBuilder.include(LatLng(order.latitude!!, order.longitude!!))
+                val lat = order.latitude
+                val lng = order.longitude
+                if (lat != null && lng != null) {
+                    boundsBuilder.include(LatLng(lat, lng))
+                }
             }
             try {
                 val bounds = boundsBuilder.build()
@@ -275,12 +283,14 @@ fun MapScreen(
                 )
             } catch (_: Exception) {
                 // Single point — just zoom to it
-                val first = activeOrders.first()
-                cameraPositionState.animate(
-                    CameraUpdateFactory.newLatLngZoom(
-                        LatLng(first.latitude!!, first.longitude!!), 14f
+                val first = activeOrders.firstOrNull { it.latitude != null && it.longitude != null }
+                if (first != null) {
+                    cameraPositionState.animate(
+                        CameraUpdateFactory.newLatLngZoom(
+                            LatLng(first.latitude ?: 0.0, first.longitude ?: 0.0), 14f
+                        )
                     )
-                )
+                }
             }
         }
     }
@@ -335,30 +345,34 @@ fun MapScreen(
             if (isCameraLocked && mapPhase == MapPhase.NAVIGATING && driverPin != null) {
                 Marker(
                     state = MarkerState(position = driverPin),
-                    title = "You",
+                    title = stringResource(R.string.mobile_driver_ui_you),
                     rotation = displayBearing,
                     flat = true,
                     icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE),
                 )
             }
             activeOrders.forEach { order ->
-                val position = LatLng(order.latitude!!, order.longitude!!)
-                val hue = when (order.state) {
-                    OrderState.IN_TRANSIT -> BitmapDescriptorFactory.HUE_AZURE
-                    OrderState.ARRIVING, OrderState.ARRIVED -> BitmapDescriptorFactory.HUE_GREEN
-                    OrderState.LOADED -> BitmapDescriptorFactory.HUE_ORANGE
-                    else -> BitmapDescriptorFactory.HUE_RED
-                }
-                Marker(
-                    state = MarkerState(position = position),
-                    title = order.retailerName,
-                    snippet = order.state.name,
-                    icon = BitmapDescriptorFactory.defaultMarker(hue),
-                    onClick = {
-                        selectedOrder = order
-                        true
+                val lat = order.latitude
+                val lng = order.longitude
+                if (lat != null && lng != null) {
+                    val position = LatLng(lat, lng)
+                    val hue = when (order.state) {
+                        OrderState.IN_TRANSIT -> BitmapDescriptorFactory.HUE_AZURE
+                        OrderState.ARRIVING, OrderState.ARRIVED -> BitmapDescriptorFactory.HUE_GREEN
+                        OrderState.LOADED -> BitmapDescriptorFactory.HUE_ORANGE
+                        else -> BitmapDescriptorFactory.HUE_RED
                     }
-                )
+                    Marker(
+                        state = MarkerState(position = position),
+                        title = order.retailerName,
+                        snippet = order.state.name,
+                        icon = BitmapDescriptorFactory.defaultMarker(hue),
+                        onClick = {
+                            selectedOrder = order
+                            true
+                        }
+                    )
+                }
             }
         }
 
@@ -373,9 +387,10 @@ fun MapScreen(
             )
         }
 
-        if (mapPhase == MapPhase.NAVIGATING && uiState.navigationCue != null) {
+        val cue = uiState.navigationCue
+        if (mapPhase == MapPhase.NAVIGATING && cue != null) {
             NavigationCueBanner(
-                cue = uiState.navigationCue!!,
+                cue = cue,
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .padding(top = 88.dp)
@@ -384,16 +399,22 @@ fun MapScreen(
 
         // Selected order info card
         selectedOrder?.let { order ->
-            OrderInfoCard(
-                order = order,
-                activeOrder = activeOrder,
-                onOpenScanner = onOpenScanner,
-                onOpenCorrection = onOpenCorrection,
-                onRequestRescue = { showRescueSheet = true },
+            Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(16.dp)
-            )
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                contentAlignment = Alignment.BottomCenter
+            ) {
+                OrderInfoCard(
+                    order = order,
+                    activeOrder = activeOrder,
+                    onOpenScanner = onOpenScanner,
+                    onOpenCorrection = onOpenCorrection,
+                    onRequestRescue = { showRescueSheet = true },
+                    modifier = Modifier.widthIn(max = 520.dp).fillMaxWidth()
+                )
+            }
         }
 
         // Camera Lock FAB

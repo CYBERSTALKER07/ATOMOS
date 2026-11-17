@@ -18,7 +18,8 @@ val localProps = Properties().also { props ->
 }
 val devHost: String = localProps.getProperty("dev.host", "10.0.2.2")
 val devPortalHost: String = localProps.getProperty("dev.portal.host", devHost)
-val prodApiBaseUrl: String = localProps.getProperty("prod.api.base.url", "https://api.pegasus.uz")
+val prodApiBaseUrl: String = localProps.getProperty("prod.api.base.url", "https://api.pegasusx.app")
+val prodApiSpkiPins: String = localProps.getProperty("prod.api.spki.pins", System.getenv("PEGASUSX_API_TLS_SPKI_PINS") ?: "")
 val prodPortalBaseUrl: String = localProps.getProperty("prod.portal.base.url", "https://warehouse.pegasus.uz")
 val quicktypeBinary: String = localProps.getProperty("quicktype.path", "quicktype")
 
@@ -99,6 +100,14 @@ if (wsCodegenEnabled) {
 }
 
 android {
+
+    // pegasusx-i18n-generated: shared en/ru/uz string catalogs
+    sourceSets {
+        getByName("main") {
+            res.srcDir(rootProject.file("../../packages/i18n/generated/android"))
+        }
+    }
+
     namespace = "com.pegasusx.warehouse"
     compileSdk = 35
 
@@ -106,12 +115,13 @@ android {
         applicationId = "com.pegasusx.warehouse"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.0.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         buildConfigField("String", "API_BASE_URL", "\"http://$devHost:8180\"")
+        buildConfigField("String", "API_TLS_SPKI_PINS", "\"\"")
         buildConfigField("String", "PORTAL_BASE_URL", "\"http://$devPortalHost:3002\"")
         buildConfigField("boolean", "FIREBASE_AUTH_EMULATOR", firebaseAuthEmulator.toString())
         buildConfigField("String", "FIREBASE_AUTH_EMULATOR_HOST", "\"$firebaseAuthEmulatorHost\"")
@@ -149,6 +159,7 @@ android {
                 "proguard-rules.pro"
             )
             buildConfigField("String", "API_BASE_URL", "\"$prodApiBaseUrl\"")
+            buildConfigField("String", "API_TLS_SPKI_PINS", "\"$prodApiSpkiPins\"")
             buildConfigField("String", "PORTAL_BASE_URL", "\"$prodPortalBaseUrl\"")
         }
     }
@@ -169,8 +180,6 @@ android {
 dependencies {
     val composeBom = platform("androidx.compose:compose-bom:2024.12.01")
     implementation(composeBom)
-    implementation(project(":mobile-design"))
-
     // Compose
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
@@ -198,6 +207,7 @@ dependencies {
 
     implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
     implementation("com.google.firebase:firebase-auth-ktx")
+    implementation("com.google.firebase:firebase-messaging-ktx")
 
     // MapLibre (fleet live map polylines)
     implementation("org.maplibre.gl:android-sdk:11.7.1")

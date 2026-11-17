@@ -112,9 +112,10 @@
 				2E5380432F6B10CF00C3D5C6 /* driverappios */,
 			);
 			name = driverappios;
-			packageProductDependencies = (
+            packageProductDependencies = (
 				DR11FB000000000000000002 /* FirebaseAuth */,
 				DR11FB000000000000000003 /* FirebaseCore */,
+				DR11FB000000000000000004 /* FirebaseMessaging */,
 			);
 			productName = driverappios;
 			productReference = 2E5380412F6B10CF00C3D5C6 /* driverappios.app */;
@@ -193,8 +194,10 @@
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
-				en,
 				Base,
+				en,
+				ru,
+				uz,
 			);
 			mainGroup = 2E5380382F6B10CF00C3D5C6;
 			minimizedProjectReferenceProxies = 1;
@@ -280,7 +283,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -euo pipefail\nexport PATH=\"/opt/homebrew/bin:/usr/local/bin:/usr/local/go/bin:$PATH\"\nREPO_ROOT=\"$SRCROOT/../../..\"\nBACKEND_DIR=\"$REPO_ROOT/apps/backend-go\"\nSCHEMA_PATH=\"$REPO_ROOT/contracts/events.schema.json\"\nOUTPUT_PATH=\"$SRCROOT/driverappios/Generated/PegasusWSEventEnvelope.swift\"\n\nif ! command -v quicktype >/dev/null 2>&1; then\n  echo \"error: quicktype not found. Install quicktype and ensure it is on PATH.\" >&2\n  exit 1\nfi\n\nmkdir -p \"$SRCROOT/driverappios/Generated\"\ncd \"$BACKEND_DIR\"\ngo run ./cmd/gen-contracts -source events -mode json-schema -schema-out \"$SCHEMA_PATH\" -pretty=true\nquicktype --lang swift --src-lang schema --src \"$SCHEMA_PATH\" --top-level PegasusWSEventEnvelope --just-types --out \"$OUTPUT_PATH\"\n";
+			shellScript = "set -euo pipefail\nexport PATH=\"/opt/homebrew/bin:/usr/local/bin:/usr/local/go/bin:$PATH\"\nREPO_ROOT=\"$SRCROOT/../../..\"\nBACKEND_DIR=\"$REPO_ROOT/apps/backend-go\"\nSCHEMA_PATH=\"$REPO_ROOT/contracts/events.schema.json\"\nOUTPUT_PATH=\"$SRCROOT/driverappios/Generated/PegasusWSEventEnvelope.swift\"\n\nif ! command -v quicktype >/dev/null 2>&1; then\n  echo \"error: quicktype not found. Install quicktype and ensure it is on PATH.\" >&2\n  exit 1\nfi\n\nmkdir -p \"$SRCROOT/driverappios/Generated\"\ncd \"$BACKEND_DIR\"\ngo run ./cmd/gen-contracts -source events -mode json-schema -schema-out \"$SCHEMA_PATH\" -pretty=true -strict=true\nquicktype --lang swift --src-lang schema --src \"$SCHEMA_PATH\" --top-level PegasusWSEventEnvelope --just-types --out \"$OUTPUT_PATH\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -296,6 +299,7 @@
 			targetProxy = 2E53805E2F6B10D000C3D5C6 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
+
 
 /* Begin XCRemoteSwiftPackageReference section */
 		DR11FB000000000000000001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
@@ -318,6 +322,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = DR11FB000000000000000001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseCore;
+		};
+		DR11FB000000000000000004 /* FirebaseMessaging */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = DR11FB000000000000000001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseMessaging;
 		};
 /* End XCSwiftPackageProductDependency section */
 
@@ -374,7 +383,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
@@ -431,7 +440,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
@@ -456,7 +465,6 @@
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Location is used to navigate to delivery targets and verify geofence proximity.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UIBackgroundModes = "(location)";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -492,7 +500,6 @@
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Location is used to navigate to delivery targets and verify geofence proximity.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UIBackgroundModes = "(location)";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -520,7 +527,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.pegasusx.driverappiosTests";
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -541,7 +548,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.pegasusx.driverappiosTests";
 				PRODUCT_NAME = "$(TARGET_NAME)";

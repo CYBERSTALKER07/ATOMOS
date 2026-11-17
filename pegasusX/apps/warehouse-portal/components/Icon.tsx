@@ -5,7 +5,7 @@ import {
   ArrowDownUp, Lightbulb, Plus, ChevronRight, ChevronLeft,
   FileText, Send, CheckCircle, XCircle, Clock, BarChart3,
   ShoppingCart, Boxes, PackageOpen, CreditCard, DollarSign,
-  UserCheck, Route, Settings,
+  UserCheck, Route, Settings, Keyboard,
 } from 'lucide-react';
 
 const iconMap: Record<string, LucideIcon> = {
@@ -43,6 +43,7 @@ const iconMap: Record<string, LucideIcon> = {
   payment: CreditCard,
   treasury: DollarSign,
   crm: UserCheck,
+  keyboard: Keyboard,
 };
 
 export default function Icon({ name, size = 24, className = '' }: { name: string; size?: number; className?: string }) {

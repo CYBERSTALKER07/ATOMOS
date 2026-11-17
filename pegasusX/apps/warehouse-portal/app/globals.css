@@ -1,10 +1,10 @@
 @import "tailwindcss";
 @import "@heroui/styles";
-@import "@pegasusx/ui-kit/styles/desktop-foundation.css";
-@import "@pegasusx/ui-kit/styles/auth-layout.css";
-@import "@pegasusx/ui-kit/styles/auth-desktop.css";
-@import "@pegasusx/ui-kit/styles/portal-ui.css";
-@import "@pegasusx/ui-kit/styles/setup-onboarding.css";
+@import "./styles/desktop-foundation.css";
+@import "./styles/auth-layout.css";
+@import "./styles/auth-desktop.css";
+@import "./styles/portal-ui.css";
+@import "./styles/setup-onboarding.css";
 @import "../styles/warehouse-desktop.css";
 
 /* ═══════════════════════════════════════════════════════════════════════════ */
@@ -2637,7 +2637,7 @@ body {
     padding-top: env(titlebar-area-height, 28px);
 }
 
-/* Auth + setup full-bleed: see @pegasusx/ui-kit/styles/auth-desktop.css */
+/* Auth + setup full-bleed: see ./styles/auth-desktop.css */
 
 /* Sidebar: keep default background in desktop mode (vibrancy disabled) */
 /* When vibrancy is re-enabled with transparent:true, uncomment below:
@@ -2924,7 +2924,7 @@ body {
     pointer-events: none;
 }
 
-/* The following premium utilities are now inherited from @pegasus/ui-kit/desktop-foundation.css:
+/* The following premium utilities are now inherited from ./styles/desktop-foundation.css:
    .glass-premium, .orb-container, .gradient-orb-*, .animate-float, .animate-glow, .hover-lift, .active-press, .skeleton-shimmer
 */
 

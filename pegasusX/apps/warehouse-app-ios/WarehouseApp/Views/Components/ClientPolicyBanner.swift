@@ -11,7 +11,7 @@ struct ClientPolicyBanner: View {
             VStack(alignment: .leading, spacing: LabTheme.spacingSM) {
                 HStack(alignment: .top, spacing: LabTheme.spacingSM) {
                     Image(systemName: force ? "exclamationmark.triangle.fill" : "arrow.down.app.fill")
-                        .foregroundStyle(force ? Color.orange : Color.accentColor)
+                        .foregroundStyle(force ? PegasusMonochromeTheme.warning : TacticalTheme.accentCobalt)
                     Text(message)
                         .font(.subheadline)
                         .foregroundStyle(.primary)
@@ -20,7 +20,7 @@ struct ClientPolicyBanner: View {
                     HStack {
                         Spacer()
                         if !force, let onDismiss {
-                            Button("Later", action: onDismiss)
+                            Button("mobile_warehouse.ui.later", action: onDismiss)
                                 .buttonStyle(.borderless)
                         }
                         Button(force ? "Update now" : "Update") {
@@ -32,7 +32,7 @@ struct ClientPolicyBanner: View {
             }
             .padding(LabTheme.spacingMD)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background((force ? Color.orange : Color.accentColor).opacity(0.12))
+            .background((force ? PegasusMonochromeTheme.warning : TacticalTheme.accentCobalt).opacity(0.12))
             .clipShape(RoundedRectangle(cornerRadius: LabTheme.radiusMD))
             .padding(.horizontal)
         }

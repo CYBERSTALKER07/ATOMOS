@@ -31,11 +31,11 @@ func resolveOutOfStockPolicy(warehouseDefault, productOverride string) string {
 
 // InventoryCheckoutError is returned when checkout cannot proceed under warehouse policy.
 type InventoryCheckoutError struct {
-	Code          string            `json:"code"`
-	Message       string            `json:"message"`
-	OOSItems      []string          `json:"oos_items,omitempty"`
-	Shortfall     map[string]int64  `json:"shortfall,omitempty"`
-	RejectedSKUs  []string          `json:"rejected_skus,omitempty"`
+	Code         string           `json:"code"`
+	Message      string           `json:"message"`
+	OOSItems     []string         `json:"oos_items,omitempty"`
+	Shortfall    map[string]int64 `json:"shortfall,omitempty"`
+	RejectedSKUs []string         `json:"rejected_skus,omitempty"`
 }
 
 func (e *InventoryCheckoutError) Error() string {
@@ -47,10 +47,11 @@ func (e *InventoryCheckoutError) Error() string {
 
 // InventoryPlan splits requested lines into fulfillable vs backorder quantities.
 type InventoryPlan struct {
-	Fulfillable      []LineItem
-	Backorder        []LineItem
-	BackorderCount   int
-	Warnings         []StockWarning
+	Fulfillable    []LineItem
+	Backorder      []LineItem
+	BackorderCount int
+	Warnings       []StockWarning
+	AvailableStock map[string]int64
 }
 
 // StockWarning is surfaced to retailers when backorder policy allows checkout.
@@ -60,6 +61,11 @@ type StockWarning struct {
 	Available        int64  `json:"available"`
 	BackorderQty     int64  `json:"backorder_qty"`
 	AcceptsBackorder bool   `json:"accepts_backorder"`
+}
+
+type spannerReader interface {
+	Read(ctx context.Context, table string, keys spanner.KeySet, columns []string) *spanner.RowIterator
+	ReadRow(ctx context.Context, table string, key spanner.Key, columns []string) (*spanner.Row, error)
 }
 
 // PlanInventoryCheckout reads warehouse + SKU policy and available stock.
@@ -74,6 +80,20 @@ func PlanInventoryCheckout(
 	return PlanInventoryCheckoutWithCredit(ctx, client, supplierID, warehouseID, items, warehousePolicyOverride, nil)
 }
 
+// PlanInventoryCheckoutInTxn plans fulfillable vs backorder lines using the caller's active Spanner RW transaction.
+func PlanInventoryCheckoutInTxn(
+	ctx context.Context,
+	txn *spanner.ReadWriteTransaction,
+	supplierID, warehouseID string,
+	items []LineItem,
+	warehousePolicyOverride string,
+) (InventoryPlan, error) {
+	if txn == nil || warehouseID == "" || len(items) == 0 {
+		return InventoryPlan{Fulfillable: append([]LineItem(nil), items...)}, nil
+	}
+	return planInventoryCheckoutWithReader(ctx, txn, supplierID, warehouseID, items, warehousePolicyOverride, nil)
+}
+
 func PlanInventoryCheckoutWithCredit(
 	ctx context.Context,
 	client *spanner.Client,
@@ -82,13 +102,27 @@ func PlanInventoryCheckoutWithCredit(
 	warehousePolicyOverride string,
 	reservationCredit map[string]int64,
 ) (InventoryPlan, error) {
-	plan := InventoryPlan{}
 	if client == nil || warehouseID == "" || len(items) == 0 {
+		return InventoryPlan{Fulfillable: append([]LineItem(nil), items...)}, nil
+	}
+	return planInventoryCheckoutWithReader(ctx, client.Single(), supplierID, warehouseID, items, warehousePolicyOverride, reservationCredit)
+}
+
+func planInventoryCheckoutWithReader(
+	ctx context.Context,
+	reader spannerReader,
+	supplierID, warehouseID string,
+	items []LineItem,
+	warehousePolicyOverride string,
+	reservationCredit map[string]int64,
+) (InventoryPlan, error) {
+	plan := InventoryPlan{}
+	if reader == nil || warehouseID == "" || len(items) == 0 {
 		plan.Fulfillable = append([]LineItem(nil), items...)
 		return plan, nil
 	}
 
-	warehouseDefault, err := loadWarehouseDefaultPolicy(ctx, client, warehouseID)
+	warehouseDefault, err := loadWarehouseDefaultPolicyWithReader(ctx, reader, warehouseID)
 	if err != nil {
 		return plan, err
 	}
@@ -116,7 +150,7 @@ func PlanInventoryCheckoutWithCredit(
 	for sku := range states {
 		keys = append(keys, spanner.Key{supplierID, warehouseID, sku})
 	}
-	iter := client.Single().Read(ctx, "SupplierInventoryV2", spanner.KeySets(keys...),
+	iter := reader.Read(ctx, "SupplierInventoryV2", spanner.KeySets(keys...),
 		[]string{"ProductId", "QuantityOnHand", "QuantityReserved", "OutOfStockPolicy"})
 	defer iter.Stop()
 	for {
@@ -168,7 +202,7 @@ func PlanInventoryCheckoutWithCredit(
 
 // buildInventoryPlan splits lines using pre-resolved per-SKU availability and policy (unit-test seam).
 func buildInventoryPlan(warehouseDefault string, items []LineItem, states map[string]skuPlanState) (InventoryPlan, error) {
-	plan := InventoryPlan{}
+	plan := InventoryPlan{AvailableStock: make(map[string]int64)}
 	rejected := make([]string, 0)
 	shortfall := make(map[string]int64)
 	oosAll := make([]string, 0)
@@ -184,6 +218,7 @@ func buildInventoryPlan(warehouseDefault string, items []LineItem, states map[st
 		}
 		available := st.available
 		requested := item.Quantity
+		plan.AvailableStock[sku] = available
 
 		if available >= requested {
 			plan.Fulfillable = append(plan.Fulfillable, item)
@@ -250,8 +285,8 @@ type skuPlanState struct {
 	policy    string
 }
 
-func loadWarehouseDefaultPolicy(ctx context.Context, client *spanner.Client, warehouseID string) (string, error) {
-	row, err := client.Single().ReadRow(ctx, "Warehouses", spanner.Key{warehouseID},
+func loadWarehouseDefaultPolicyWithReader(ctx context.Context, reader spannerReader, warehouseID string) (string, error) {
+	row, err := reader.ReadRow(ctx, "Warehouses", spanner.Key{warehouseID},
 		[]string{"DefaultOutOfStockPolicy"})
 	if err != nil {
 		if spanner.ErrCode(err) == 5 {

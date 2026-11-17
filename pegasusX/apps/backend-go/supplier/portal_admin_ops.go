@@ -17,6 +17,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/manifest"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/planning"
 	"github.com/pegasusx/pegasusx/apps/backend-go/replenishment"
 	"github.com/pegasusx/pegasusx/apps/backend-go/routing"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
@@ -39,6 +40,8 @@ type PortalOpsConfig struct {
 	FallbackDepotLat     float64
 	FallbackDepotLng     float64
 	ReplenishmentEngine  *replenishment.Engine
+	FactoryPlanning      FactoryPlanner
+	UnifiedGraph         planning.UnifiedGraphProvider
 }
 
 // SetPortalOps attaches cross-cutting deps used by supplier admin-parity handlers.
@@ -57,6 +60,17 @@ func (s *Service) SetPortalOps(cfg PortalOpsConfig) {
 	s.fallbackDepotLat = cfg.FallbackDepotLat
 	s.fallbackDepotLng = cfg.FallbackDepotLng
 	s.replenishmentEngine = cfg.ReplenishmentEngine
+	s.factoryPlanning = cfg.FactoryPlanning
+	if cfg.UnifiedGraph != nil {
+		s.unifiedGraph = cfg.UnifiedGraph
+	}
+}
+
+// SetUnifiedGraph attaches the ontology-backed UnifiedGraphProvider to the supplier service.
+func (s *Service) SetUnifiedGraph(p planning.UnifiedGraphProvider) {
+	if s != nil {
+		s.unifiedGraph = p
+	}
 }
 
 // SetControlTower wires playbook scoring for exception enrichment.
@@ -91,7 +105,7 @@ func (s *Service) HandleEmpathyAdoption(w http.ResponseWriter, r *http.Request) 
 	adoption := EmpathyAdoption{}
 
 	count := func(sql string, params map[string]any) int64 {
-		iter := s.portalSpanner.Single().Query(ctx, spanner.Statement{SQL: sql, Params: params})
+		iter := s.portalSpanner.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, spanner.Statement{SQL: sql, Params: params})
 		defer iter.Stop()
 		row, err := iter.Next()
 		if err != nil {
@@ -110,7 +124,7 @@ func (s *Service) HandleEmpathyAdoption(w http.ResponseWriter, r *http.Request) 
 	)
 
 	statusSQL := `SELECT Status, COUNT(*) AS c FROM AIPredictions WHERE SupplierId = @sid GROUP BY Status`
-	iter := s.portalSpanner.Single().Query(ctx, spanner.Statement{
+	iter := s.portalSpanner.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, spanner.Statement{
 		SQL: statusSQL, Params: map[string]any{"sid": sid},
 	})
 	defer iter.Stop()
@@ -175,25 +189,72 @@ func (s *Service) HandleBroadcast(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sid := s.scopedSupplierID(r)
+	if s.portalSpanner == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "broadcast_unavailable"})
+		return
+	}
 	if s.portalSupplierHub == nil {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "broadcast_unavailable"})
 		return
 	}
 
 	targetRole := strings.ToUpper(strings.TrimSpace(req.Role))
+	if targetRole == "" {
+		targetRole = "ALL"
+	}
+	broadcastID := uuid.NewString()
+	nowTS := s.now().UTC()
+	claims, _ := auth.FromContext(r.Context())
+	createdBy := strings.TrimSpace(claims.Subject)
+
+	_, err := s.portalSpanner.ReadWriteTransaction(r.Context(), func(txnCtx context.Context, txn *spanner.ReadWriteTransaction) error {
+		buf := &supplierSpannerTxnBuf{}
+		if err := outbox.EmitJSON(txnCtx, buf, events.AggregateSupplier, sid, events.TopicMain, map[string]any{
+			"type":         events.EventSupplierBroadcast,
+			"broadcast_id": broadcastID,
+			"title":        req.Title,
+			"body":         req.Body,
+			"target_role":  targetRole,
+			"supplier_id":  sid,
+			"timestamp":    nowTS.Format(time.RFC3339Nano),
+		}); err != nil {
+			return err
+		}
+		mutations := []*spanner.Mutation{spanner.InsertMap("OpsBroadcasts", map[string]any{
+			"BroadcastId": broadcastID,
+			"SupplierId":  sid,
+			"Scope":       "SUPPLIER",
+			"Title":       req.Title,
+			"Body":        req.Body,
+			"TargetRole":  targetRole,
+			"CreatedBy":   createdBy,
+			"CreatedAt":   spanner.CommitTimestamp,
+		})}
+		for _, e := range buf.events {
+			mutations = append(mutations, portalOutboxMutation(e))
+		}
+		return txn.BufferWrite(mutations)
+	})
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "broadcast_persist_failed"})
+		return
+	}
+
 	payload, _ := json.Marshal(map[string]any{
-		"type":        "SUPPLIER_BROADCAST",
-		"title":       req.Title,
-		"body":        req.Body,
-		"target_role": targetRole,
-		"supplier_id": sid,
-		"timestamp":   s.now().UTC().Format(time.RFC3339Nano),
+		"type":         events.EventSupplierBroadcast,
+		"broadcast_id": broadcastID,
+		"title":        req.Title,
+		"body":         req.Body,
+		"target_role":  targetRole,
+		"supplier_id":  sid,
+		"timestamp":    nowTS.Format(time.RFC3339Nano),
 	})
 	s.broadcastAdminMessage(r.Context(), sid, targetRole, payload)
 
 	resp := map[string]any{
-		"status":      "broadcast_sent",
-		"supplier_id": sid,
+		"status":       "broadcast_sent",
+		"supplier_id":  sid,
+		"broadcast_id": broadcastID,
 	}
 	respBytes, _ := json.Marshal(resp)
 	w.Header().Set("Content-Type", "application/json")
@@ -373,21 +434,6 @@ func (b *supplierSpannerTxnBuf) BufferOutbox(_ context.Context, e outbox.Event) 
 }
 
 func portalOutboxMutation(e outbox.Event) *spanner.Mutation {
-	createdAt := e.CreatedAt.UTC()
-	if createdAt.IsZero() {
-		createdAt = time.Now().UTC()
-	}
-	row := map[string]any{
-		"EventId":       e.EventID,
-		"AggregateType": e.AggregateType,
-		"AggregateId":   e.AggregateID,
-		"TopicName":     e.TopicName,
-		"Payload":       e.Payload,
-		"CreatedAt":     createdAt,
-		"PublishedAt":   nil,
-	}
-	if e.PublishedAt != nil {
-		row["PublishedAt"] = e.PublishedAt.UTC()
-	}
-	return spanner.InsertOrUpdateMap("OutboxEvents", row)
+	// EventRowMap stamps required OutboxEvents.SupplierId (NOT NULL after 20260819).
+	return spanner.InsertOrUpdateMap("OutboxEvents", outbox.EventRowMap(e))
 }

@@ -1,19 +1,23 @@
 import SwiftUI
 
-struct MoveCandidate {
+struct MoveCandidate: Identifiable {
     let sourceManifestId: String
     let transfer: ManifestTransfer
+
+    var id: String { "\(sourceManifestId):\(transfer.id)" }
 }
 
-struct CancelTransferCandidate {
+struct CancelTransferCandidate: Identifiable {
     let manifestId: String
     let transfer: ManifestTransfer
+
+    var id: String { "\(manifestId):\(transfer.id)" }
 }
 
 struct MetricBox: View {
     let label: String
     let value: String
-    
+
     var body: some View {
         VStack(spacing: LabTheme.spacingXS) {
             Text(value)
@@ -25,6 +29,8 @@ struct MetricBox: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, LabTheme.spacingSM)
         .background(Color(uiColor: .systemBackground))
-        .cornerRadius(LabTheme.radiusSM)
+        .clipShape(RoundedRectangle(cornerRadius: LabTheme.radiusSM, style: .continuous))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(label): \(value)")
     }
 }

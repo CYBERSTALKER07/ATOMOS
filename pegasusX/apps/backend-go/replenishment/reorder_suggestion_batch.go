@@ -2,16 +2,47 @@ package replenishment
 
 import (
 	"context"
+	"encoding/json"
+	"math"
+	"strings"
 	"time"
 
 	"cloud.google.com/go/civil"
 	"cloud.google.com/go/spanner"
-	"strings"
-
 	"google.golang.org/api/iterator"
 )
 
 const batchLeadTimeDays = 2.0
+
+// retailerSafetyStock returns the SS component for retailer reorder suggestions.
+// When v2 is off, callers use demand·0.15 instead.
+func retailerSafetyStock(dBar, sigmaD, leadDays, leadSigma, serviceLevel float64, sigmaDAssumed, leadSigmaAssumed bool) float64 {
+	if dBar < 0 {
+		dBar = 0
+	}
+	if sigmaD <= 0 {
+		sigmaD = math.Max(dBar*0.25, 1)
+		sigmaDAssumed = true
+	}
+	if leadDays <= 0 {
+		leadDays = batchLeadTimeDays
+	}
+	if leadSigma < 0 {
+		leadSigma = 1.0
+	}
+	if serviceLevel <= 0 {
+		serviceLevel = 0.98
+	}
+	return SafetyStockUnits(SafetyStockInputs{
+		DBar:             dBar,
+		SigmaD:           sigmaD,
+		SigmaDAssumed:    sigmaDAssumed,
+		L:                leadDays,
+		SigmaL:           leadSigma,
+		LeadSigmaAssumed: leadSigmaAssumed,
+		ServiceLevel:     serviceLevel,
+	})
+}
 
 // RunBatch builds reorder suggestions from today's demand adjustments for one supplier.
 // L3.3: merges POS sell-through velocity (max with base) and tags sources.
@@ -22,6 +53,33 @@ func (w *ReorderSuggestionWorker) RunBatch(ctx context.Context, supplierID strin
 	now := w.Now()
 	today := civil.DateOf(now)
 	tomorrow := today.AddDays(1)
+
+	leadDays := batchLeadTimeDays
+	leadSigma := 1.0
+	serviceLevel := 0.98
+	leadAssumed := true
+	useV2 := SafetyStockV2Enabled()
+	if useV2 && strings.TrimSpace(supplierID) != "" {
+		if policy, err := LoadPolicy(ctx, w.Spanner, supplierID); err == nil {
+			if policy.LeadTimeDays > 0 {
+				leadDays = float64(policy.LeadTimeDays)
+			}
+			if policy.LeadTimeSigmaDays >= 0 {
+				leadSigma = policy.LeadTimeSigmaDays
+			}
+			if policy.TargetServiceLevel > 0 {
+				serviceLevel = policy.TargetServiceLevel
+			}
+		}
+		if obs, err := ObservedLeadStats(ctx, w.Spanner, supplierID); err == nil && !obs.Assumed {
+			leadDays = obs.MeanDays
+			if leadDays < 1 {
+				leadDays = 1
+			}
+			leadSigma = obs.SigmaDays
+			leadAssumed = false
+		}
+	}
 
 	iter := w.Spanner.Single().Query(ctx, spanner.Statement{
 		SQL: `
@@ -94,7 +152,17 @@ func (w *ReorderSuggestionWorker) RunBatch(ctx context.Context, supplierID strin
 		}
 
 		inFlight := w.inFlightQty(ctx, item.retailerID, item.sku)
-		safety := demand * 0.15
+		var safety float64
+		if useV2 {
+			sigmaD, _, ok, _ := ResidualSigmaD(ctx, w.Spanner, supplierID, "", item.sku)
+			sigmaAssumed := !ok
+			if !ok {
+				sigmaD = math.Max(demand*0.25, 1)
+			}
+			safety = retailerSafetyStock(demand, sigmaD, leadDays, leadSigma, serviceLevel, sigmaAssumed, leadAssumed)
+		} else {
+			safety = demand * 0.15
+		}
 		suggestion := ReorderSuggestion{
 			RetailerId:      item.retailerID,
 			Sku:             item.sku,
@@ -108,7 +176,11 @@ func (w *ReorderSuggestionWorker) RunBatch(ctx context.Context, supplierID strin
 			SellThroughVel:  stVel,
 			BaseDemand:      base,
 		}
-		if err := w.ProcessSuggestion(ctx, supplierID, suggestion, batchLeadTimeDays); err != nil {
+		effLead := leadDays
+		if !useV2 {
+			effLead = batchLeadTimeDays
+		}
+		if err := w.ProcessSuggestion(ctx, supplierID, suggestion, effLead); err != nil {
 			continue
 		}
 	}
@@ -158,25 +230,73 @@ func (w *ReorderSuggestionWorker) sellThroughUnits(ctx context.Context, retailer
 }
 
 func (w *ReorderSuggestionWorker) inFlightQty(ctx context.Context, retailerID, sku string) int64 {
+	if w.Spanner == nil {
+		return 0
+	}
 	iter := w.Spanner.Single().Query(ctx, spanner.Statement{
 		SQL: `
-			SELECT COALESCE(SUM(l.OrderedQty - l.DeliveredQty), 0)
-			FROM Orders o
-			JOIN OrderLines l ON l.OrderId = o.OrderId
-			WHERE o.RetailerId = @rid AND l.Sku = @sku
-			  AND o.Status IN ('PENDING','LOADED','IN_TRANSIT','ARRIVED')`,
-		Params: map[string]any{"rid": retailerID, "sku": sku},
+			SELECT LineItemsJson
+			FROM Orders
+			WHERE RetailerId = @rid
+			  AND Status IN ('PENDING','LOADED','IN_TRANSIT','ARRIVED')`,
+		Params: map[string]any{"rid": retailerID},
 	})
 	defer iter.Stop()
-	row, err := iter.Next()
-	if err != nil {
-		return 0
+
+	targetSKU := strings.TrimSpace(sku)
+	var totalInFlight int64
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return 0
+		}
+		var raw []byte
+		if err := row.ColumnByName("LineItemsJson", &raw); err != nil {
+			var rawStr string
+			if errStr := row.ColumnByName("LineItemsJson", &rawStr); errStr == nil {
+				raw = []byte(rawStr)
+			} else {
+				continue
+			}
+		}
+		if len(raw) == 0 {
+			continue
+		}
+		var lines []struct {
+			SKU          string `json:"sku"`
+			ProductID    string `json:"product_id"`
+			OrderedQty   int64  `json:"ordered_qty"`
+			Quantity     int64  `json:"quantity"`
+			Qty          int64  `json:"qty"`
+			DeliveredQty int64  `json:"delivered_qty"`
+		}
+		if err := json.Unmarshal(raw, &lines); err != nil {
+			continue
+		}
+		for _, l := range lines {
+			lineSKU := strings.TrimSpace(l.SKU)
+			if lineSKU == "" {
+				lineSKU = strings.TrimSpace(l.ProductID)
+			}
+			if lineSKU == targetSKU {
+				ordered := l.OrderedQty
+				if ordered == 0 {
+					ordered = l.Quantity
+				}
+				if ordered == 0 {
+					ordered = l.Qty
+				}
+				rem := ordered - l.DeliveredQty
+				if rem > 0 {
+					totalInFlight += rem
+				}
+			}
+		}
 	}
-	var qty int64
-	if err := row.Column(0, &qty); err != nil {
-		return 0
-	}
-	return qty
+	return totalInFlight
 }
 
 func (w *ReorderSuggestionWorker) retailerStockEstimate(ctx context.Context, retailerID, sku string) int64 {
@@ -220,24 +340,60 @@ func (w *ReorderSuggestionWorker) retailerStockEstimate(ctx context.Context, ret
 	// Legacy estimate: last completed line delivered qty (pre store-stock).
 	iter := w.Spanner.Single().Query(ctx, spanner.Statement{
 		SQL: `
-			SELECT COALESCE(l.DeliveredQty, 0)
-			FROM Orders o
-			JOIN OrderLines l ON l.OrderId = o.OrderId
-			WHERE o.RetailerId = @rid AND l.Sku = @sku AND o.Status = 'COMPLETED'
-			ORDER BY o.UpdatedAt DESC
-			LIMIT 1`,
-		Params: map[string]any{"rid": retailerID, "sku": sku},
+			SELECT LineItemsJson
+			FROM Orders
+			WHERE RetailerId = @rid AND Status = 'COMPLETED'
+			ORDER BY UpdatedAt DESC
+			LIMIT 50`,
+		Params: map[string]any{"rid": retailerID},
 	})
 	defer iter.Stop()
-	row, err := iter.Next()
-	if err != nil {
-		return 0
+	targetSKU := strings.TrimSpace(sku)
+	for {
+		row, err := iter.Next()
+		if err != nil {
+			break
+		}
+		var raw []byte
+		if err := row.ColumnByName("LineItemsJson", &raw); err != nil {
+			var rawStr string
+			if errStr := row.ColumnByName("LineItemsJson", &rawStr); errStr == nil {
+				raw = []byte(rawStr)
+			} else {
+				continue
+			}
+		}
+		if len(raw) == 0 {
+			continue
+		}
+		var lines []struct {
+			SKU          string `json:"sku"`
+			ProductID    string `json:"product_id"`
+			Quantity     int64  `json:"quantity"`
+			Qty          int64  `json:"qty"`
+			DeliveredQty int64  `json:"delivered_qty"`
+		}
+		if err := json.Unmarshal(raw, &lines); err != nil {
+			continue
+		}
+		for _, l := range lines {
+			lineSKU := strings.TrimSpace(l.SKU)
+			if lineSKU == "" {
+				lineSKU = strings.TrimSpace(l.ProductID)
+			}
+			if lineSKU == targetSKU {
+				qty := l.DeliveredQty
+				if qty == 0 {
+					qty = l.Quantity
+				}
+				if qty == 0 {
+					qty = l.Qty
+				}
+				return qty
+			}
+		}
 	}
-	var qty int64
-	if err := row.Column(0, &qty); err != nil {
-		return 0
-	}
-	return qty
+	return 0
 }
 
 // RunBatchAllSuppliers runs reorder suggestions for every supplier with recent order activity.

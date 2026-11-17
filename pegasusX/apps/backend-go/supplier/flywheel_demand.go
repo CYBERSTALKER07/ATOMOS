@@ -115,7 +115,7 @@ func (s *Service) listFlywheelDemand(ctx context.Context, supplierID string, day
 	sql += ` ORDER BY CreatedAt DESC LIMIT @limit`
 	params["limit"] = int64(limit)
 
-	iter := s.portalSpanner.Single().Query(ctx, spanner.Statement{SQL: sql, Params: params})
+	iter := s.portalSpanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{SQL: sql, Params: params})
 	defer iter.Stop()
 
 	var out []FlywheelDemandItem

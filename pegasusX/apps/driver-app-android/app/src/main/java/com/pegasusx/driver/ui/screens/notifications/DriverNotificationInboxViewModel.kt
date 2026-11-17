@@ -107,7 +107,10 @@ class DriverNotificationInboxViewModel @Inject constructor(
                         unreadCount = (state.unreadCount - 1).coerceAtLeast(0),
                     )
                 }
-            } catch (_: Exception) {}
+            } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
+                _uiState.update { state -> state.copy(error = e.message) }
+            }
         }
     }
 
@@ -118,7 +121,10 @@ class DriverNotificationInboxViewModel @Inject constructor(
                 _uiState.update { state ->
                     state.copy(items = state.items.map { it.copy(readAt = it.readAt ?: "now") }, unreadCount = 0)
                 }
-            } catch (_: Exception) {}
+            } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
+                _uiState.update { state -> state.copy(error = e.message) }
+            }
         }
     }
 }

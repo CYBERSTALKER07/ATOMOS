@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback } from "react";
 import { PageChrome } from "@/components/PageChrome";
 import { PageSection } from "@/components/PageSection";
@@ -18,6 +19,7 @@ type SupplierActivityResponse = {
 };
 
 export default function ActivityPage() {
+  const t = usePortalT();
   const {
     data,
     loading,
@@ -36,8 +38,8 @@ export default function ActivityPage() {
     <div className="min-h-full p-6 md:p-8" style={{ background: "var(--desk-canvas)" }}>
       <PageChrome
         icon="overview"
-        title="Activity"
-        description="Stream of operational events and recent actions."
+        title={t("portal.nav.activity")}
+        description={t("supplier_portal.residual.text.stream_of_operational_events_and_recent_actions")}
         loading={loading}
         skeletonVariant="table"
         actions={
@@ -63,13 +65,13 @@ export default function ActivityPage() {
           </div>
         )}
 
-        <PageSection title="Recent Activity" description="Latest events across your network.">
+        <PageSection title={t("supplier_portal.activity.text.recent_activity")} description={t("supplier_portal.residual.text.latest_events_across_your_network")}>
           <div className="bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-2xl shadow-[var(--shadow-sm)] overflow-hidden">
             {rows.length === 0 ? (
               <div className="p-12 text-center text-[var(--desk-text-tertiary)] flex flex-col items-center">
                 <Activity size={48} className="opacity-20 mb-4" />
-                <p className="md-typescale-body-large">No recent activity.</p>
-                <p className="md-typescale-body-small mt-1">Operational events will stream here.</p>
+                <p className="md-typescale-body-large">{t("supplier_portal.activity.text.no_recent_activity")}</p>
+                <p className="md-typescale-body-small mt-1">{t("supplier_portal.activity.text.operational_events_will_stream_here")}</p>
               </div>
             ) : (
               <div className="divide-y divide-[var(--desk-border)]">

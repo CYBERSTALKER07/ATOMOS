@@ -1,5 +1,6 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from 'react';
 import { useTheme } from '@/components/ThemeProvider';
 
@@ -51,6 +52,7 @@ function BrandMark({ size = 96 }: { size?: number }) {
 }
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
+  const t = usePortalT();
   const { resolved, setMode } = useTheme();
   const [mounted, setMounted] = useState(false);
   const isDark = resolved === 'dark';
@@ -81,23 +83,23 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         </div>
       )}
 
-      <aside className="auth-brand-panel px-auth-brand" aria-label="pegasusX Retailer">
+      <aside className="auth-brand-panel px-auth-brand" aria-label={t("retailer_desktop.auth.text.pegasusx_retailer")}>
         <div className={`auth-brand-content px-auth-brand-content ${mounted ? 'auth-brand-enter' : ''}`}>
           <BrandMark size={88} />
           <div className="px-auth-brand-copy">
-            <p className="px-auth-brand-eyebrow">pegasusX</p>
-            <h1 className="px-auth-brand-title">Retailer node</h1>
+            <p className="px-auth-brand-eyebrow">{t("retailer_desktop.residual.text.pegasusx")}</p>
+            <h1 className="px-auth-brand-title">{t("retailer_desktop.auth.text.retailer_node")}</h1>
             <p className="px-auth-brand-sub">
               Catalog, ordering, and checkout for your store — one account, one storefront.
             </p>
           </div>
         </div>
-        <p className="auth-brand-footer px-auth-brand-footer">pegasusX &copy; 2026</p>
+        <p className="auth-brand-footer px-auth-brand-footer">{t("retailer_desktop.auth.text.pegasusx_and_copy_2026")}</p>
       </aside>
 
       <div className="auth-form-panel px-auth-form">
         <div className="px-auth-form-top">
-          <p className="px-auth-form-kicker lg:hidden">pegasusX Retailer</p>
+          <p className="px-auth-form-kicker lg:hidden">{t("retailer_desktop.auth.text.pegasusx_retailer")}</p>
           <ThemeToggle
             isDark={isDark}
             onToggle={toggleTheme}

@@ -3,46 +3,36 @@ import SwiftUI
 struct BillingGateView: View {
     @Environment(TokenStore.self) private var tokenStore
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @State private var bankName = ""
-    @State private var accountHolder = ""
-    @State private var accountNumber = ""
-    @State private var swiftBic = ""
-    @State private var iban = ""
-    @State private var gateways: Set<String> = ["CASH"]
-    @State private var loading = false
-    @State private var error: String?
-
-    private let gatewayOptions = ["GLOBAL_PAY", "ADYEN", "AIRWALLEX", "CASH"]
+    @State private var vm = BillingGateViewModel()
 
     var body: some View {
+        @Bindable var vm = vm
         NavigationStack {
             Form {
                 Section {
-                    Text("Complete billing to unlock payouts and gateway routing. You can skip and finish later in the web portal.")
+                    Text("mobile_supplier.ui.complete_billing_to_unlock_payouts_and_gateway_routing_you_can_s")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
 
-                Section("Bank account") {
-                    TextField("Bank name", text: $bankName)
-                    TextField("Account holder", text: $accountHolder)
-                    TextField("Account number", text: $accountNumber)
-                    TextField("SWIFT / BIC", text: $swiftBic)
-                    TextField("IBAN (optional)", text: $iban)
+                Section("mobile_supplier.chrome.bank_account") {
+                    TextField("supplier_portal.residual.text.bank_name", text: $vm.bankName)
+                    TextField("mobile_supplier.ui.account_holder", text: $vm.accountHolder)
+                    TextField("supplier_portal.residual.text.account_number", text: $vm.accountNumber)
+                    TextField("supplier_portal.residual.text.swift_bic", text: $vm.swiftBic)
+                    TextField("mobile_supplier.ui.iban_optional", text: $vm.iban)
                 }
 
-                Section("Payment gateways") {
-                    ForEach(gatewayOptions, id: \.self) { gateway in
-                        Toggle(gateway, isOn: Binding(
-                            get: { gateways.contains(gateway) },
-                            set: { on in
-                                if on { gateways.insert(gateway) } else { gateways.remove(gateway) }
+                Section("mobile_supplier.chrome.payment_gateways") {
+                    ForEach($vm.gatewayOptions) { $option in
+                        Toggle(option.id, isOn: $option.isSelected)
+                            .onChange(of: option.isSelected) { _, _ in
+                                PegasusHaptics.selection()
                             }
-                        ))
                     }
                 }
 
-                if let error {
+                if let error = vm.error {
                     Section {
                         Text(error)
                             .foregroundStyle(SupplierTheme.destructive)
@@ -52,53 +42,29 @@ struct BillingGateView: View {
 
                 Section {
                     Button {
-                        submit()
+                        PegasusHaptics.light()
+                        Task { await vm.submit(tokenStore: tokenStore) }
                     } label: {
                         HStack {
                             Spacer()
-                            if loading { ProgressView() } else { Text("Save & continue") }
+                            if vm.loading { ProgressView() } else { Text("supplier_portal.residual.text.save_and_continue") }
                             Spacer()
                         }
+                        .frame(minHeight: 44)
                     }
-                    .disabled(loading || !canSubmit)
+                    .disabled(vm.loading || !vm.canSubmit)
 
-                    Button("Skip for now", role: .cancel) {
+                    Button("common.action.skip_for_now", role: .cancel) {
                         tokenStore.dismissBillingGate()
                     }
-                    .disabled(loading)
+                    .frame(minHeight: 44)
+                    .disabled(vm.loading)
                 }
             }
-            .navigationTitle("Billing setup")
+            .scrollDismissesKeyboard(.interactively)
+            .navigationTitle("mobile_supplier.ui.billing_setup")
             .frame(maxWidth: horizontalSizeClass == .regular ? 560 : .infinity)
             .frame(maxWidth: .infinity)
-        }
-    }
-
-    private var canSubmit: Bool {
-        !bankName.isEmpty && !accountHolder.isEmpty && !accountNumber.isEmpty
-            && !swiftBic.isEmpty && !gateways.isEmpty
-    }
-
-    private func submit() {
-        loading = true
-        error = nil
-        Task {
-            do {
-                let resp = try await SupplierService.configureBilling(
-                    BillingSetupRequest(
-                        bankName: bankName,
-                        accountHolder: accountHolder,
-                        accountNumber: accountNumber,
-                        swiftBic: swiftBic,
-                        iban: iban.isEmpty ? nil : iban,
-                        selectedGateways: Array(gateways).sorted()
-                    )
-                )
-                tokenStore.markConfigured(resp.isConfigured)
-            } catch {
-                self.error = error.localizedDescription
-            }
-            loading = false
         }
     }
 }

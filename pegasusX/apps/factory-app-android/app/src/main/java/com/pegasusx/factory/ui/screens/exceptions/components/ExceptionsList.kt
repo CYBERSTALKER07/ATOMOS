@@ -13,8 +13,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.pegasus.design.PegasusStateKind
-import com.pegasus.design.PegasusStatePane
+import com.pegasusx.factory.ui.design.PegasusStateKind
+import com.pegasusx.factory.ui.design.PegasusStatePane
 import com.pegasusx.factory.data.model.ManifestException
 import com.pegasusx.factory.ui.theme.PegasusSpacing
 

@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.screens.settings
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -38,6 +40,8 @@ import com.pegasusx.retailer.data.api.PegasusApi
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.pegasusx.retailer.R
+import com.pegasusx.retailer.data.json.*
 
 data class AssistTicketRow(val id: String, val note: String, val status: String)
 data class SectionPick(val id: String, val name: String)
@@ -105,7 +109,7 @@ fun AssistScreen(
                 title = { Text("Floor assist") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                     }
                 },
             )
@@ -120,7 +124,7 @@ fun AssistScreen(
             item {
                 Card {
                     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("Section: $sectionLabel", style = MaterialTheme.typography.titleSmall)
+                        Text(stringResource(R.string.mobile_retailer_ui_section_sectionlabel, sectionLabel), style = MaterialTheme.typography.titleSmall)
                         if (sections.size > 1) {
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 sections.take(4).forEach { s ->
@@ -164,7 +168,7 @@ fun AssistScreen(
             items(tickets) { t ->
                 Card {
                     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text("${t.status} · ${t.note}")
+                        Text(stringResource(R.string.mobile_retailer_ui_status_note, t.status, t.note))
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             if (t.status == "OPEN") {
                                 OutlinedButton(onClick = {

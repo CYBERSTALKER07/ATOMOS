@@ -13,8 +13,9 @@ const (
 
 // TimeoutConfig contains knobs for the timeout matrix.
 type TimeoutConfig struct {
-	MaxAutoCreditMinor int64 // e.g. 5_000_000 tiyin; 0 = no extra cap
-	AllowForceBypass   bool  // usually false in production
+	MaxAutoCreditMinor     int64 // e.g. 5_000_000 tiyin; 0 = no extra cap
+	AllowForceBypass       bool  // usually false in production
+	MaxClosedShopLeaves14d int   // max leaves allowed in 14 days before abuse cutoff (default 3)
 }
 
 // DecideShopClosedTimeout applies the decision matrix.

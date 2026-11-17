@@ -1,35 +1,26 @@
 import SwiftUI
 
 struct SupplyLanesView: View {
-    @State private var loading = true
-    @State private var error: String?
-    @State private var lanes: [SupplierSupplyLaneRow] = []
+    @State private var vm = SupplyLanesViewModel()
 
     var body: some View {
         Group {
-            if loading {
-                SupplierLoadingView(title: "Loading supply lanes…")
-            } else if let error {
-                SupplierErrorView(message: error) { Task { await load() } }
-            } else if lanes.isEmpty {
-                SupplierEmptyView(title: "No lanes", message: "No active warehouse lanes. Configure nodes on topology.")
+            if vm.loading && vm.lanes.isEmpty {
+                SupplierLoadingView(title: "mobile_supplier.loading.supply_lanes")
+            } else if let error = vm.error, vm.lanes.isEmpty {
+                SupplierErrorView(message: error) { Task { await vm.load() } }
+            } else if vm.lanes.isEmpty {
+                SupplierEmptyView(title: "mobile_supplier.empty.no_lanes", message: "mobile_supplier.empty.lanes_message")
             } else {
-                SupplyLanesList(lanes: lanes)
+                SupplyLanesList(lanes: vm.lanes)
             }
         }
         .background(SupplierTheme.background)
-        .navigationTitle("Supply lanes")
-        .task { await load() }
-    }
-
-    private func load() async {
-        loading = true
-        error = nil
-        defer { loading = false }
-        do {
-            lanes = try await SupplierOperationsService.supplyLanes()
-        } catch {
-            self.error = error.localizedDescription
+        .navigationTitle("supplier_portal.supply_lanes.text.supply_lanes")
+        .task { await vm.load() }
+        .refreshable {
+            PegasusHaptics.light()
+            await vm.load(silent: true)
         }
     }
 }

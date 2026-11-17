@@ -2,6 +2,7 @@ package handoff
 
 import (
 	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/hex"
 	"errors"
 	"os"
@@ -13,7 +14,8 @@ import (
 // Config controls token generation and backward-compatible dev behaviour.
 type Config struct {
 	// LegacyOrderIDFallback accepts order_id as the delivery token when no
-	// persisted DeliveryToken exists. Defaults to true for local docker sims.
+	// persisted DeliveryToken exists. Off unless a local sim sets it.
+	// Production startup rejects the env flag when it is on.
 	LegacyOrderIDFallback bool
 	Mint                  func() string
 }
@@ -37,12 +39,20 @@ func New(cfg Config) *Engine {
 }
 
 // FromEnv builds the process-default engine. HANDOFF_LEGACY_ORDER_ID_FALLBACK
-// defaults to true so existing docker simulations keep working without migration
-// backfill for rows that predate DeliveryToken.
+// defaults to false. An empty stored token is not the order id. Local
+// docker-compose.yml opts in with "true"; production must not.
 func FromEnv() *Engine {
 	return New(Config{
-		LegacyOrderIDFallback: envBool("HANDOFF_LEGACY_ORDER_ID_FALLBACK", true),
+		LegacyOrderIDFallback: envBool("HANDOFF_LEGACY_ORDER_ID_FALLBACK", false),
 	})
+}
+
+// LegacyOrderIDFallback reports whether an empty stored token accepts the order id.
+func (e *Engine) LegacyOrderIDFallback() bool {
+	if e == nil {
+		return false
+	}
+	return e.legacyOrderIDFallback
 }
 
 // StatusesWithPublicToken lists order states where retailers may show a QR code.
@@ -105,7 +115,7 @@ func (e *Engine) ApplyTransition(storedToken *string, previousStatus, nextStatus
 		*storedToken = e.Mint()
 		return
 	}
-	if e.ShouldMintOnTransition(previousStatus, nextStatus) && strings.TrimSpace(*storedToken) == "" {
+	if (e.ShouldMintOnTransition(previousStatus, nextStatus) || e.statusExposesToken(nextStatus)) && strings.TrimSpace(*storedToken) == "" {
 		*storedToken = e.Mint()
 	}
 }
@@ -137,13 +147,18 @@ func (e *Engine) ExpectedToken(orderID, storedToken string) string {
 	return ""
 }
 
+// ConstantTimeEqual reports whether a and b match using constant-time byte comparison.
+func ConstantTimeEqual(a, b string) bool {
+	return subtle.ConstantTimeCompare([]byte(a), []byte(b)) == 1
+}
+
 // Validate checks a scanned token against the persisted order token.
 func (e *Engine) Validate(orderID, storedToken, presented string) error {
 	expected := e.ExpectedToken(orderID, storedToken)
 	if expected == "" {
 		return errors.New("delivery token not active")
 	}
-	if strings.TrimSpace(presented) != expected {
+	if !ConstantTimeEqual(strings.TrimSpace(presented), expected) {
 		return errors.New("invalid qr token")
 	}
 	return nil

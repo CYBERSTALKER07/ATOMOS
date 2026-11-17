@@ -2,7 +2,7 @@ export const supportedLocales = ["en", "ru", "uz"] as const;
 
 export type Locale = (typeof supportedLocales)[number];
 
-export const defaultLocale: Locale = "en";
+export const defaultLocale: Locale = "uz";
 export const localeCookieKey = "pegasus_locale";
 
 export const localeLabels: Record<Locale, string> = {

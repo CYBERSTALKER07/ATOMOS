@@ -77,7 +77,7 @@ export default function EmpathyDashboard() {
         color: "var(--foreground)",
       }}
     >
-      {/* ── Header ───────────────────────────────────────────────── */}
+      {/* -- Header ------------------------------------------------- */}
       <header
         className="mb-10 pb-6 flex justify-between items-end"
         style={{ borderBottom: "1px solid var(--border)" }}
@@ -120,7 +120,7 @@ export default function EmpathyDashboard() {
         </div>
       </header>
 
-      {/* ── Adoption KPIs ────────────────────────────────────────── */}
+      {/* -- Adoption KPIs ------------------------------------------ */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
         <KpiCard
           label={t("supplier_portal.admin.empathy.kpi.adoption_rate")}
@@ -155,7 +155,7 @@ export default function EmpathyDashboard() {
         />
       </div>
 
-      {/* ── Prediction Pipeline ──────────────────────────────────── */}
+      {/* -- Prediction Pipeline ------------------------------------ */}
       <div className="mb-10">
         <h2 className="md-typescale-title-medium mb-4">{t("supplier_portal.admin.empathy.section.pipeline")}</h2>
         <div className="md-card md-card-elevated p-6 md-animate-in">
@@ -200,7 +200,7 @@ export default function EmpathyDashboard() {
         </div>
       </div>
 
-      {/* ── Resolution Hierarchy ─────────────────────────────────── */}
+      {/* -- Resolution Hierarchy ----------------------------------- */}
       <div>
         <h2 className="md-typescale-title-medium mb-4">{t("supplier_portal.admin.empathy.section.hierarchy")}</h2>
         <div className="md-card md-card-filled p-6 md-animate-in" style={{ animationDelay: "100ms" }}>
@@ -274,7 +274,7 @@ export default function EmpathyDashboard() {
   );
 }
 
-/* ── Reusable KPI Card ─────────────────────────────────────────────── */
+/* -- Reusable KPI Card ----------------------------------------------- */
 function KpiCard({
   label,
   value,

@@ -30,7 +30,7 @@ func (m *memNotifWriter) ListForRecipient(context.Context, string, int, int) ([]
 	return nil, nil
 }
 func (m *memNotifWriter) MarkRead(context.Context, string, []string) error { return nil }
-func (m *memNotifWriter) MarkAllRead(context.Context, string) error         { return nil }
+func (m *memNotifWriter) MarkAllRead(context.Context, string) error        { return nil }
 func (m *memNotifWriter) UnreadCount(context.Context, string) (int64, error) {
 	return 0, nil
 }

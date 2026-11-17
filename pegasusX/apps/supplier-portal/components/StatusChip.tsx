@@ -27,8 +27,19 @@ const STATUS_MAP: Record<string, { tone: string }> = {
   VERIFIED:                { tone: 'success' },
   UNVERIFIED:              { tone: 'warning' },
   APPROVED:                { tone: 'success-strong' },
+  EXECUTED:                { tone: 'success-strong' },
+  APPLIED:                 { tone: 'success-strong' },
+  CONVERTED:               { tone: 'success-strong' },
   REJECTED:                { tone: 'danger' },
   SUSPENDED:               { tone: 'danger' },
+  SUPERSEDED:              { tone: 'neutral' },
+  LOW:                     { tone: 'success' },
+  MEDIUM:                  { tone: 'warning' },
+  HIGH:                    { tone: 'warning-strong' },
+  BLOCK:                   { tone: 'danger-strong' },
+  CRITICAL:                { tone: 'danger-strong' },
+  GEMINI:                  { tone: 'accent' },
+  CLASSIC:                 { tone: 'neutral' },
 
   AVAILABLE:               { tone: 'success' },
   ON_ROUTE:                { tone: 'accent-strong' },
@@ -49,6 +60,23 @@ const STATUS_MAP: Record<string, { tone: string }> = {
 
   PENDING_REVIEW:          { tone: 'warning' },
   UNDER_REVIEW:            { tone: 'accent' },
+
+  OPEN:                    { tone: 'success' },
+  SOFT_CLOSED:             { tone: 'warning' },
+  CLOSED:                  { tone: 'neutral' },
+  REOPENED:                { tone: 'warning-strong' },
+  PENDING_APPROVAL:        { tone: 'warning' },
+  APPROVAL_REQUIRED:       { tone: 'warning' },
+  DRAFT:                   { tone: 'neutral' },
+  SUBMITTED:               { tone: 'accent' },
+  ACCEPTED:                { tone: 'success-strong' },
+  EXPIRED:                 { tone: 'warning' },
+  REVOKED:                 { tone: 'danger' },
+  PASS:                    { tone: 'success-strong' },
+  FAIL:                    { tone: 'danger-strong' },
+  WARN:                    { tone: 'warning' },
+  OUTBOUND:                { tone: 'accent' },
+  INBOUND:                 { tone: 'success' },
 };
 
 const TONE_STYLE: Record<string, React.CSSProperties> = {

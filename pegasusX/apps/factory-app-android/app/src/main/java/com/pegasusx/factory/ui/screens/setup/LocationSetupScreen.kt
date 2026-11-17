@@ -1,5 +1,7 @@
 package com.pegasusx.factory.ui.screens.setup
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -9,7 +11,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
-import com.pegasus.design.PegasusLoadingState
+import com.pegasusx.factory.ui.design.PegasusLoadingState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -34,6 +36,7 @@ import com.pegasusx.factory.ui.theme.PegasusSpacing
 import com.pegasusx.factory.util.GeocodeLocationSupport
 import com.pegasusx.factory.util.FactoryIdempotencyKeys
 import kotlinx.coroutines.launch
+import com.pegasusx.factory.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -147,7 +150,7 @@ fun LocationSetupScreen(
     ) { padding ->
         if (loading) {
             PegasusLoadingState(
-                title = "Saving...",
+                title = stringResource(R.string.common_status_saving),
                 body = "Configuring factory location.",
                 modifier = Modifier.padding(padding).fillMaxSize()
             )
@@ -185,10 +188,10 @@ fun LocationSetupScreen(
                 geocodeApi = geocodeApi,
                 value = location,
                 onValueChange = { location = it },
-                label = "Factory address",
+                label = stringResource(R.string.factory_portal_residual_text_factory_address),
             )
             if (!error.isNullOrBlank()) {
-                Text(error!!, color = MaterialTheme.colorScheme.error)
+                Text(error.orEmpty(), color = MaterialTheme.colorScheme.error)
             }
             Button(onClick = { submit() }, enabled = !submitting, modifier = Modifier.fillMaxWidth()) {
                 Text(if (submitting) "Saving…" else "Complete setup")

@@ -14,12 +14,12 @@ struct OrderPickerSheet: View {
             SheetHandle()
 
             VStack(alignment: .leading, spacing: 4) {
-                Text("SELECT ORDER")
-                    .font(.system(size: 9, weight: .heavy, design: .monospaced))
+                Text("mobile_driver.ui.select_order")
+                    .font(.system(.caption2, design: .monospaced, weight: .heavy))
                     .foregroundStyle(LabTheme.fgTertiary)
                     .tracking(1)
-                Text("Choose a delivery")
-                    .font(.system(size: 20, weight: .bold))
+                Text("mobile_driver.ui.choose_a_delivery")
+                    .font(.system(.title3, weight: .bold))
                     .foregroundStyle(LabTheme.fg)
             }
             .padding(.horizontal, LabTheme.s20)
@@ -50,15 +50,15 @@ struct OrderPickerSheet: View {
     private var loadingRow: some View {
         HStack(spacing: 8) {
             ProgressView().tint(LabTheme.fg)
-            Text("Loading...").font(.subheadline).foregroundStyle(LabTheme.fgSecondary)
+            Text("supplier_portal.admin.audit_log.state.loading").font(.subheadline).foregroundStyle(LabTheme.fgSecondary)
         }
         .frame(maxWidth: .infinity).padding(.vertical, 40)
     }
 
     private var emptyRow: some View {
         VStack(spacing: 8) {
-            Image(systemName: "shippingbox").font(.system(size: 24)).foregroundStyle(LabTheme.fgTertiary)
-            Text("No pending deliveries").font(.subheadline.weight(.medium)).foregroundStyle(LabTheme.fgSecondary)
+            Image(systemName: "shippingbox").font(.system(.title2)).foregroundStyle(LabTheme.fgTertiary)
+            Text("mobile_driver.ui.no_pending_deliveries").font(.subheadline.weight(.medium)).foregroundStyle(LabTheme.fgSecondary)
         }
         .frame(maxWidth: .infinity).padding(.vertical, 40)
     }
@@ -79,20 +79,20 @@ struct OrderPickerSheet: View {
                         .fill(LabTheme.fg.opacity(0.06))
                         .frame(width: 38, height: 38)
                     Image(systemName: "shippingbox.fill")
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(.system(.footnote, weight: .semibold))
                         .foregroundStyle(LabTheme.fg)
                 }
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("ORD-\(mission.order_id.suffix(4).uppercased())")
-                        .font(.system(size: 13, weight: .black, design: .monospaced))
+                    Text(L10n.format("mobile_driver.ui.ord_uppercased", "\(mission.order_id.suffix(4).uppercased())"))
+                        .font(.system(.footnote, design: .monospaced, weight: .black))
                         .foregroundStyle(LabTheme.fg)
                     HStack(spacing: 4) {
                         Text(mission.gateway.uppercased())
                         Text("—")
                         Text(mission.amount.formattedAmount)
                     }
-                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                    .font(.system(.caption2, design: .monospaced, weight: .bold))
                     .foregroundStyle(LabTheme.fgSecondary)
                 }
 
@@ -101,12 +101,12 @@ struct OrderPickerSheet: View {
                 if let loc = vm.location {
                     let d = haversineDistance(from: loc, to: CLLocationCoordinate2D(latitude: mission.target_lat, longitude: mission.target_lng))
                     Text(formattedDistance(d))
-                        .font(.system(size: 10, weight: .black, design: .monospaced))
+                        .font(.system(.caption2, design: .monospaced, weight: .black))
                         .foregroundStyle(LabTheme.fgTertiary)
                 }
 
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 10, weight: .bold))
+                    .font(.system(.caption2, weight: .bold))
                     .foregroundStyle(LabTheme.fgTertiary)
             }
             .padding(LabTheme.s16)

@@ -1,9 +1,13 @@
 "use client";
 
-import { useState } from "react";
-import { supplierFetch } from "@/lib/auth";
+import { usePortalT } from "@/lib/i18n";
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { persistSession, supplierFetch } from "@/lib/auth";
 import { supplierScopeId } from "@/lib/supplier-scope";
-import { supplierBusinessSetupKey } from "@pegasusx/api-client";
+import { createSupplierApi } from "@/lib/api";
+import { supplierBusinessSetupKey } from "@pegasusx/api-core";
+import type { INNLookupResponse, JoinRequestConflictPayload } from "@pegasusx/types";
 import {
   SetupCallout,
   SetupField,
@@ -30,14 +34,87 @@ const INITIAL: BusinessState = {
 };
 
 export default function BusinessSetupPage() {
+  const t = usePortalT();
+  const api = useMemo(() => createSupplierApi(), []);
   const [state, setState] = useState<BusinessState>(INITIAL);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [verifyingInn, setVerifyingInn] = useState(false);
+  const [innLookup, setInnLookup] = useState<INNLookupResponse | null>(null);
+  const [innError, setInnError] = useState<string | null>(null);
+  const [joinPending, setJoinPending] = useState<JoinRequestConflictPayload | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
+  useEffect(() => {
+    let cancelled = false;
+    void api
+      .getSupplierProfile()
+      .then((profile) => {
+        if (cancelled) return;
+        const knownInn = (profile.normalized_tax_id || profile.tax_id || "").trim();
+        if (!knownInn) return;
+        setState((s) => (s.taxId.trim() ? s : { ...s, taxId: knownInn }));
+        setInnLookup((prev) =>
+          prev ?? {
+            status: "FOUND",
+            inn: knownInn,
+            normalized_inn: knownInn,
+            legal_name: profile.legal_name,
+            cached: false,
+            existing_join_eligible: false,
+          },
+        );
+      })
+      .catch(() => {
+        // Profile fetch is best-effort prefill on /setup/business.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [api]);
+
+  async function verifyInn() {
+    const cleaned = state.taxId.replace(/\D/g, "");
+    if (cleaned.length !== 9) {
+      setErrors((prev) => ({ ...prev, taxId: t("supplier_portal.onboarding_inn.invalid_inn") }));
+      return;
+    }
+    setVerifyingInn(true);
+    setInnError(null);
+    setErrors((prev) => ({ ...prev, taxId: "" }));
+    try {
+      const res = await api.lookupPlatformINN({
+        inn: cleaned,
+        tenant_type: "SUPPLIER",
+      });
+      setInnLookup(res);
+      if (res.status === "UNAVAILABLE") {
+        setInnError(t("supplier_portal.onboarding_inn.registry_unavailable"));
+        return;
+      }
+      if (res.status !== "FOUND") {
+        setInnError(t("supplier_portal.onboarding_inn.invalid_inn"));
+        return;
+      }
+      if (res.address && !state.headquartersAddress.trim()) {
+        setState((s) => ({ ...s, headquartersAddress: res.address ?? "" }));
+      }
+    } catch (err) {
+      setInnError(
+        err instanceof Error ? err.message : t("supplier_portal.onboarding_inn.registry_unavailable"),
+      );
+    } finally {
+      setVerifyingInn(false);
+    }
+  }
+
   function validate(): Record<string, string> {
     const e: Record<string, string> = {};
-    if (state.taxId.trim().length < 5) e.taxId = "Enter a valid tax ID (VAT, TIN, or equivalent)";
+    const cleanedInn = state.taxId.replace(/\D/g, "");
+    if (cleanedInn.length !== 9) e.taxId = t("supplier_portal.onboarding_inn.invalid_inn");
+    if (innLookup?.status === "UNAVAILABLE") {
+      e.taxId = t("supplier_portal.onboarding_inn.registry_unavailable");
+    }
     if (state.headquartersAddress.trim().length < 5) e.headquartersAddress = "Street address is required";
     if (state.city.trim().length < 2) e.city = "City is required";
     return e;
@@ -47,8 +124,13 @@ export default function BusinessSetupPage() {
     const e = validate();
     setErrors(e);
     if (Object.keys(e).length > 0) return;
+    if (!innLookup || innLookup.status !== "FOUND") {
+      await verifyInn();
+      return;
+    }
     setSubmitting(true);
     setSubmitError(null);
+    setJoinPending(null);
     try {
       const body = JSON.stringify(state);
       const res = await supplierFetch("/v1/supplier/business/setup", {
@@ -58,9 +140,20 @@ export default function BusinessSetupPage() {
         },
         body,
       });
+      if (res.status === 409) {
+        const conflict = (await res.json().catch(() => null)) as JoinRequestConflictPayload | null;
+        if (conflict) {
+          setJoinPending(conflict);
+          return;
+        }
+      }
       if (!res.ok) {
-        const body = await res.text();
-        throw new Error(body || `business setup failed: ${res.status}`);
+        const errBody = await res.text();
+        throw new Error(errBody || `business setup failed: ${res.status}`);
+      }
+      const data = (await res.json().catch(() => null)) as { token?: string } | null;
+      if (data?.token) {
+        persistSession(data.token);
       }
       window.location.href = "/setup/billing";
     } catch (err) {
@@ -78,35 +171,96 @@ export default function BusinessSetupPage() {
     <>
       <SetupPageHeader
         icon="supplier"
-        title="Business details"
-        subtitle="Legal and location information used for invoicing, compliance, and delivery routing."
+        title={t("supplier_portal.auth.register.header.business_title")}
+        subtitle={t("supplier_portal.residual.text.legal_and_location_information_used_for_invoicing_compliance_and")}
       />
 
       <SetupCallout>
         This information appears on retailer invoices and tax documents. You can update it later in Profile settings.
       </SetupCallout>
 
+      {joinPending && (
+        <SetupCallout>
+          <div className="flex flex-col gap-1">
+            <strong>{t("supplier_portal.onboarding_inn.existing_company_title")}</strong>
+            <span>
+              {t("supplier_portal.onboarding_inn.existing_company_message", {
+                legal_name: joinPending.legal_name || "Registered Supplier",
+                inn: joinPending.normalized_inn || state.taxId,
+              })}
+            </span>
+            <span className="text-xs font-mono">
+              {t("supplier_portal.onboarding_inn.join_request_sent")} (#{joinPending.request_id})
+            </span>
+            <Link href="/auth/login" className="underline text-xs mt-1">
+              {t("supplier_portal.join_requests.status_pending")}
+            </Link>
+          </div>
+        </SetupCallout>
+      )}
+
       <SetupSection
         icon="kyc"
-        title="Tax & registration"
-        description="Required for compliance and payout verification."
+        title={t("supplier_portal.setup.business.text.tax_and_registration")}
+        description={t("supplier_portal.residual.text.required_for_compliance_and_payout_verification")}
       >
-        <SetupField id="taxId" label="Tax ID (VAT / TIN)" error={errors.taxId} hint="Minimum 5 characters.">
-          <SetupInput
-            id="taxId"
-            error={errors.taxId}
-            value={state.taxId}
-            autoComplete="off"
-            placeholder="e.g. GB123456789"
-            onChange={(e) => setState((s) => ({ ...s, taxId: e.target.value }))}
-          />
+        <SetupField
+          id="taxId"
+          label={t("supplier_portal.onboarding_inn.tax_id_label")}
+          error={errors.taxId || innError || undefined}
+          hint={t("supplier_portal.onboarding_inn.tax_id_placeholder")}
+        >
+          <div className="flex flex-wrap gap-2 items-center">
+            <SetupInput
+              id="taxId"
+              error={errors.taxId || innError || undefined}
+              value={state.taxId}
+              autoComplete="off"
+              placeholder={t("supplier_portal.onboarding_inn.tax_id_placeholder")}
+              onChange={(e) => {
+                setInnLookup(null);
+                setInnError(null);
+                setState((s) => ({ ...s, taxId: e.target.value }));
+              }}
+            />
+            <button
+              type="button"
+              disabled={verifyingInn}
+              onClick={() => void verifyInn()}
+              className="md-btn md-btn-outlined px-3 py-2 text-xs"
+            >
+              {verifyingInn
+                ? t("supplier_portal.onboarding_inn.verifying")
+                : t("supplier_portal.onboarding_inn.verify_button")}
+            </button>
+          </div>
         </SetupField>
-        <SetupField id="registrationNumber" label="Company registration number" optional error={errors.registrationNumber}>
+
+        {innLookup?.status === "FOUND" && (
+          <SetupCallout>
+            <div className="flex flex-col gap-1 text-xs">
+              <span className="font-semibold">
+                {t("supplier_portal.onboarding_inn.verified_badge")}: {innLookup.legal_name} (
+                {innLookup.normalized_inn})
+              </span>
+              {innLookup.existing_join_eligible && (
+                <span>
+                  {t("supplier_portal.onboarding_inn.existing_company_message", {
+                    legal_name: innLookup.existing_legal_name || innLookup.legal_name || "",
+                    inn: innLookup.normalized_inn,
+                  })}
+                </span>
+              )}
+            </div>
+          </SetupCallout>
+        )}
+
+        <SetupField id="registrationNumber" label={t("supplier_portal.residual.text.company_registration_number")} optional error={errors.registrationNumber}>
           <SetupInput
             id="registrationNumber"
             value={state.registrationNumber}
             autoComplete="off"
-            placeholder="Companies House or local registry ID"
+            placeholder={t("supplier_portal.setup.business.text.companies_house_or_local_registry_id")}
             onChange={(e) => setState((s) => ({ ...s, registrationNumber: e.target.value }))}
           />
         </SetupField>
@@ -114,21 +268,21 @@ export default function BusinessSetupPage() {
 
       <SetupSection
         icon="pin"
-        title="Headquarters location"
-        description="Your registered business address — not a warehouse dispatch point."
+        title={t("supplier_portal.setup.business.text.headquarters_location")}
+        description={t("supplier_portal.residual.text.your_registered_business_address_not_a_warehouse_dispatch_point")}
       >
-        <SetupField id="headquartersAddress" label="Street address" error={errors.headquartersAddress}>
+        <SetupField id="headquartersAddress" label={t("supplier_portal.residual.text.street_address")} error={errors.headquartersAddress}>
           <SetupInput
             id="headquartersAddress"
             error={errors.headquartersAddress}
             value={state.headquartersAddress}
             autoComplete="street-address"
-            placeholder="Building, street, suite"
+            placeholder={t("supplier_portal.setup.business.text.building_street_suite")}
             onChange={(e) => setState((s) => ({ ...s, headquartersAddress: e.target.value }))}
           />
         </SetupField>
         <div className="setup-grid-2">
-          <SetupField id="city" label="City" error={errors.city}>
+          <SetupField id="city" label={t("supplier_portal.analytics.demand.signals.text.city")} error={errors.city}>
             <SetupInput
               id="city"
               error={errors.city}
@@ -137,7 +291,7 @@ export default function BusinessSetupPage() {
               onChange={(e) => setState((s) => ({ ...s, city: e.target.value }))}
             />
           </SetupField>
-          <SetupField id="postalCode" label="Postal code" error={errors.postalCode}>
+          <SetupField id="postalCode" label={t("supplier_portal.residual.text.postal_code")} error={errors.postalCode}>
             <SetupInput
               id="postalCode"
               value={state.postalCode}
@@ -151,8 +305,8 @@ export default function BusinessSetupPage() {
       {submitError ? <SetupCallout variant="error">{submitError}</SetupCallout> : null}
 
       <SetupFooter
-        skip={{ label: "Skip for now", onClick: skip, disabled: submitting }}
-        primary={{ label: "Save & continue", onClick: submit, disabled: submitting, loading: submitting }}
+        skip={{ label: t("common.action.skip_for_now"), onClick: skip, disabled: submitting }}
+        primary={{ label: t("supplier_portal.residual.text.save_and_continue"), onClick: submit, disabled: submitting, loading: submitting }}
       />
     </>
   );

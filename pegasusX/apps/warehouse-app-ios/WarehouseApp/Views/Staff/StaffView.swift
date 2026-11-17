@@ -2,115 +2,104 @@ import SwiftUI
 
 struct StaffView: View {
     @Environment(WarehouseRealtimeHub.self) private var realtimeHub
-    @State private var staff: [StaffMember] = []
-    @State private var loading = true
-    @State private var error: String?
-    @State private var showCreate = false
-    @State private var createdPin: String?
+    @State private var vm = StaffViewModel()
 
     var body: some View {
-        NavigationStack {
-            StaffList(staff: staff, loading: loading, error: error, onRetry: { load() })
-            .background(LabTheme.background)
-            .navigationTitle("Staff")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Refresh", systemImage: "arrow.clockwise") { load() }
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Add Staff", systemImage: "plus") { showCreate = true }
-                }
+        @Bindable var vm = vm
+        StaffList(
+            staff: vm.staff,
+            loading: vm.loading,
+            error: vm.error,
+            onRetry: {
+                PegasusHaptics.light()
+                Task { await vm.load() }
             }
-            .task { load() }
-            .refreshable { load(silent: false) }
-            .silentRealtimeRefresh(refreshEpoch: realtimeHub.refreshEpoch, reconnectEpoch: realtimeHub.reconnectEpoch) { silent in
-                load(silent: silent)
-            }
-            .sheet(isPresented: $showCreate) {
-                CreateStaffSheet { pin in
-                    createdPin = pin
-                    load()
+        )
+        .background(LabTheme.background)
+        .navigationTitle("portal.nav.staff")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    PegasusHaptics.light()
+                    Task { await vm.load() }
+                } label: {
+                    Label("portal.page.orders.action.refresh", systemImage: "arrow.clockwise")
+                        .frame(minWidth: 44, minHeight: 44)
+                        .contentShape(Rectangle())
                 }
+                .accessibilityLabel("Refresh staff")
             }
-            .alert("Staff Created", isPresented: Binding(
-                get: { createdPin != nil },
-                set: { if !$0 { createdPin = nil } }
-            )) {
-                Button("Done") { createdPin = nil }
-            } message: {
-                Text("One-time PIN: \(createdPin ?? "")\nSave it now.")
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    PegasusHaptics.light()
+                    vm.prepareCreateSheet()
+                } label: {
+                    Label("mobile_warehouse.ui.add_staff", systemImage: "plus")
+                        .frame(minWidth: 44, minHeight: 44)
+                        .contentShape(Rectangle())
+                }
+                .accessibilityLabel("Add staff")
             }
         }
-    }
-
-    private func load(silent: Bool = false) {
-        if !silent { loading = true }
-        error = nil
-        Task {
-            do {
-                let resp = try await WarehouseService.staff()
-                staff = resp.staff
-            } catch {
-                if !silent { self.error = error.localizedDescription }
+        .task { await vm.load() }
+        .refreshable { await vm.load(silent: false) }
+        .silentRealtimeRefresh(refreshEpoch: realtimeHub.refreshEpoch, reconnectEpoch: realtimeHub.reconnectEpoch) { silent in
+            Task { await vm.load(silent: silent) }
+        }
+        .sheet(isPresented: $vm.showCreate) {
+            CreateStaffSheet(vm: vm)
+        }
+        .alert("Staff Created", isPresented: $vm.showPinAlert) {
+            Button("warehouse_portal.kpi_stat_card.text.done") {
+                vm.acknowledgePin()
             }
-            if !silent { loading = false }
+        } message: {
+            Text(L10n.format("mobile_warehouse.ui.one_time_pin_createdpin_nsave_it_now", "\(vm.createdPin ?? "")"))
         }
     }
 }
 
 private struct CreateStaffSheet: View {
-    let onCreated: (String) -> Void
+    @Bindable var vm: StaffViewModel
     @Environment(\.dismiss) private var dismiss
     @Environment(WarehouseRealtimeHub.self) private var realtimeHub
-    @State private var name = ""
-    @State private var phone = ""
-    @State private var role = "WAREHOUSE_ADMIN"
-    @State private var submitting = false
-    @State private var error: String?
 
     var body: some View {
         NavigationStack {
             Form {
-                TextField("Name", text: $name)
-                TextField("Phone", text: $phone)
+                TextField("retailer_desktop.pos.text.name", text: $vm.draftName)
+                TextField("common.field.phone", text: $vm.draftPhone)
                     .textContentType(.telephoneNumber)
                     .keyboardType(.phonePad)
-                TextField("Role", text: $role)
-                if let error {
+                TextField("warehouse_portal.staff.text.role", text: $vm.draftRole)
+                if let error = vm.createError {
                     Text(error).foregroundStyle(.red).font(.caption)
                 }
             }
-            .navigationTitle("Add Staff")
+            .scrollDismissesKeyboard(.interactively)
+            .navigationTitle("mobile_warehouse.ui.add_staff")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button("common.action.cancel") { dismiss() }
+                        .frame(minWidth: 44, minHeight: 44)
+                        .contentShape(Rectangle())
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Create") { create() }
-                        .disabled(submitting || name.isEmpty || phone.isEmpty)
+                    Button("mobile_warehouse.ui.create") {
+                        Task {
+                            if await vm.createStaff() {
+                                dismiss()
+                            }
+                        }
+                    }
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
+                    .disabled(!vm.canCreate)
                 }
             }
             .onChange(of: realtimeHub.reconnectEpoch) { _, _ in
-                if submitting {
-                    submitting = false
-                    error = "Connection restored — verify status before retrying."
-                }
+                vm.handleReconnectDuringCreate()
             }
-        }
-    }
-
-    private func create() {
-        submitting = true
-        error = nil
-        Task {
-            do {
-                let resp = try await WarehouseService.createStaff(name: name, phone: phone, role: role)
-                dismiss()
-                onCreated(resp.pin)
-            } catch {
-                self.error = error.localizedDescription
-            }
-            submitting = false
         }
     }
 }

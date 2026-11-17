@@ -1,0 +1,44 @@
+flowchart TD
+    subgraph Phase1["Phase 1: DC Setup, Bin Topology & Hardware Pairing"]
+        W1["Configure Distribution Center (DC): GPS Geofence, Loading Docks & Cold Rooms"] --> W2["Define Warehouse Topology: Zones, Aisles, Bays, Tiers & Bin Storage Addresses"]
+        W2 --> W3["Provision Zebra Android RF Terminals with Hardware DataWedge Scanner API"]
+        W3 --> W4["Onboard Warehouse Staff: Pickers, Packers, Forklift Drivers & Supervisors"]
+        W4 --> W5["Hydrate Real-Time WMS State with Cloud Spanner Inventory Tables"]
+    end
+
+    subgraph Phase2["Phase 2: Inbound Receiving & Automated FEFO Putaway"]
+        W5 --> X1["Ingest Advanced Shipping Notice (ASN) from Factory or Supplier"]
+        X1 --> X2["Unload Truck at Inbound Receiving Dock & Scan Inbound Pallet Barcodes"]
+        X2 --> X3["Execute FEFO (First-Expired, First-Out) Slotting Optimization Algorithm"]
+        X3 --> X4["Direct Forklift Drivers to Optimal Storage Bins via RF Terminal Prompts"]
+        X4 --> X5["Confirm Bin Location Barcode Scan: Update Spanner StockLots atomically"]
+    end
+
+    subgraph Phase3["Phase 3: Wave Planning & Dynamic Pick Execution"]
+        X5 --> Y1["Ingest Inbound Orders: Aggregate by Geographic Zone, Cutoff & Truck Cube"]
+        Y1 --> Y2["Evaluate Warehouse Labor Capacity & Picker Bandwidth"]
+        Y2 --> Y3{"Labor Capacity Normal?"}
+        Y3 -- "Bottleneck Detected" --> Y4["Trigger Dynamic Resequencing & Re-allocate Pick Tasks"]
+        Y3 -- "Capacity OK" --> Y5["Release Picking Wave: Generate Optimized Snake-Walk Pick Paths"]
+        Y4 --> Y5
+        Y5 --> Y6["Pickers Scan Bin & SKU Barcodes: Zero-Tolerance Hardware Verification"]
+    end
+
+    subgraph Phase4["Phase 4: Cold-Chain Verification & Carton Consolidation"]
+        Y6 --> Z1["Transfer Picked Stock to Packing Station for Cartonization"]
+        Z1 --> Z2["Consolidate Items into Outbound Shipping Cartons: Print SSCC-18 Labels"]
+        Z2 --> Z3["Stage Goods in Temperature-Controlled Outbound Staging Bays"]
+        Z3 --> Z4["Query Wireless BLE Cold-Chain Sensor: Validate Reefer Storage Range"]
+        Z4 --> Z5{"Temperature Excursion Detected?"}
+        Z5 -- "Yes (Temp Spiked)" --> Z6["Halt Staging: Quarantine Affected Cartons & Re-pick from Cold Chamber"]
+        Z5 -- "No (Nominal Range)" --> Z7["Authorize Pallet for Vehicle Loading"]
+        Z6 --> Y5
+    end
+
+    subgraph Phase5["Phase 5: Manifest Finalization & Yard Gate Departure"]
+        Z7 --> M1["Aggregate Staged Orders into Delivery Truck Manifest"]
+        M1 --> M2["Load Delivery Vehicle according to LIFO (Last-In, First-Out) Drop Order"]
+        M2 --> M3["Apply Tamper-Evident Security Bolt Seal & Record Seal Number in Manifest"]
+        M3 --> M4["Transfer Vehicle Manifest to Yard Marshal for Gate Outbound Clearance"]
+        M4 --> M5(["Truck Cleared for Last-Mile Route Execution"])
+    end

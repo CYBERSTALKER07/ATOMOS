@@ -23,20 +23,20 @@ struct MissionDetailSheet: View {
             // MARK: - Header
             ZStack(alignment: .topTrailing) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("ORD-\(mission.order_id.suffix(6).uppercased())") // Increased tactical length
-                        .font(.system(size: 26, weight: .black, design: .monospaced)) // Black weight
+                    Text(L10n.format("mobile_driver.ui.ord_uppercased", "\(mission.order_id.suffix(6).uppercased())")) // Increased tactical length
+                        .font(.system(.title, design: .monospaced, weight: .black)) // Black weight
                         .foregroundStyle(LabTheme.fg)
                         .tracking(1.2)
 
                     HStack(spacing: 6) {
                         Text(mission.gateway.uppercased())
-                            .font(.system(size: 10, weight: .black, design: .monospaced)) // Tactical badge
+                            .font(.system(.caption2, design: .monospaced, weight: .black)) // Tactical badge
                             .padding(.horizontal, 10)
                             .padding(.vertical, 4)
                             .background(LabTheme.fg.opacity(0.1), in: Capsule())
                         
                         Text(mission.amount.formattedAmount)
-                            .font(.system(size: 14, weight: .bold, design: .monospaced)) // Bold mono
+                            .font(.system(.subheadline, design: .monospaced, weight: .bold)) // Bold mono
                             .foregroundStyle(LabTheme.fgSecondary)
                     }
                 }
@@ -44,7 +44,7 @@ struct MissionDetailSheet: View {
 
                 Button { dismiss() } label: {
                     Image(systemName: "xmark")
-                        .font(.system(size: 11, weight: .bold))
+                        .font(.system(.caption2, weight: .bold))
                         .foregroundStyle(LabTheme.fgSecondary)
                         .frame(width: 28, height: 28)
                         .background(LabTheme.fg.opacity(0.06), in: Circle())
@@ -57,13 +57,13 @@ struct MissionDetailSheet: View {
 
             // MARK: - Delivery Endpoint Card
             VStack(alignment: .leading, spacing: 10) {
-                Text("TACTICAL ENDPOINT") // Strategic relabel
-                    .font(.system(size: 10, weight: .black, design: .monospaced))
+                Text("mobile_driver.ui.tactical_endpoint") // Strategic relabel
+                    .font(.system(.caption2, design: .monospaced, weight: .black))
                     .foregroundStyle(LabTheme.fgTertiary)
                     .tracking(1.4)
 
                 Text(String(format: "%.5f, %.5f", mission.target_lat, mission.target_lng)) // High precision
-                    .font(.system(size: 16, weight: .bold, design: .monospaced))
+                    .font(.system(.callout, design: .monospaced, weight: .bold))
                     .foregroundStyle(LabTheme.fg)
 
                 HStack(spacing: 8) {
@@ -73,11 +73,11 @@ struct MissionDetailSheet: View {
 
                     if let dist = distance {
                         Text(formattedDistance(dist))
-                            .font(.system(size: 13, weight: .black, design: .monospaced)) // Black mono
+                            .font(.system(.footnote, design: .monospaced, weight: .black)) // Black mono
                     }
 
                     Text(isInRange ? "GEOFENCE_CLEARED" : "PROXIMITY_FAULT") // Tactical caps
-                        .font(.system(size: 12, weight: .black, design: .monospaced))
+                        .font(.system(.caption, design: .monospaced, weight: .black))
                         .foregroundStyle(isInRange ? LabTheme.success : LabTheme.warning)
                 }
             }
@@ -102,9 +102,9 @@ struct MissionDetailSheet: View {
             } label: {
                 HStack(spacing: 8) {
                     Image(systemName: "pencil.and.list.clipboard")
-                        .font(.system(size: 14, weight: .bold))
+                        .font(.system(.subheadline, weight: .bold))
                     Text("PROCEDURAL_CORRECTION")
-                        .font(.system(size: 11, weight: .black, design: .monospaced))
+                        .font(.system(.caption2, design: .monospaced, weight: .black))
                         .tracking(1.2)
                 }
                 .foregroundStyle(LabTheme.fgSecondary)
@@ -134,7 +134,7 @@ struct MissionDetailSheet: View {
                 }
             } label: {
                 Text(isInRange ? "INITIATE_POD" : "AWAITING_PROXIMITY")
-                    .font(.system(size: 14, weight: .black, design: .monospaced))
+                    .font(.system(.subheadline, design: .monospaced, weight: .black))
                     .tracking(1.2)
                     .foregroundStyle(isInRange ? LabTheme.buttonFg : LabTheme.fgSecondary)
                     .frame(maxWidth: .infinity)
@@ -157,7 +157,7 @@ struct MissionDetailSheet: View {
         .alert("Out of Range", isPresented: $showOutOfRangeAlert) {
             Button("OK", role: .cancel) { }
         } message: {
-            Text("You must be within the geofence boundary to initiate proof of delivery.")
+            Text("mobile_driver.ui.you_must_be_within_the_geofence_boundary_to_initiate_proof_of_de")
         }
     }
 }

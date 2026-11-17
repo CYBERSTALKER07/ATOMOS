@@ -113,7 +113,7 @@ func runNegotiationE2E(ctx context.Context, client *http.Client, base string, cf
 			{"sku_id": "SSMR-SKU-1", "original_qty": 2, "proposed_qty": 1},
 		},
 	})
-	status, respBody, _, err = clientPost(ctx, client, base+"/v1/delivery/negotiate", negotiateBody, driverToken, "")
+	status, respBody, _, err = clientPost(ctx, client, base+"/v1/delivery/negotiate", negotiateBody, driverToken, "smokecheck-negotiate-propose:"+orderID)
 	if err != nil {
 		return err
 	}
@@ -217,7 +217,7 @@ func runShopClosedE2E(ctx context.Context, client *http.Client, base string, cfg
 		return fmt.Errorf("issue driver jwt: %w", err)
 	}
 	arriveBody, _ := json.Marshal(map[string]string{"order_id": orderID})
-	status, respBody, _, err = clientPost(ctx, client, base+"/v1/delivery/arrive", arriveBody, driverToken, "")
+	status, respBody, _, err = clientPost(ctx, client, base+"/v1/delivery/arrive", arriveBody, driverToken, fmt.Sprintf("driver-arrive-%s-%d", orderID, time.Now().UnixNano()))
 	if err != nil {
 		return err
 	}
@@ -226,7 +226,8 @@ func runShopClosedE2E(ctx context.Context, client *http.Client, base string, cfg
 	}
 
 	shopBody, _ := json.Marshal(map[string]any{
-		"reason": "CLOSED",
+		"reason":    "CLOSED",
+		"photo_url": fmt.Sprintf("ssmr://evidence/shop-closed/%s/%d", orderID, time.Now().UnixNano()),
 		"location": map[string]any{
 			"lat":            cfg.DeliveryZoneCenterLat,
 			"lng":            cfg.DeliveryZoneCenterLng,

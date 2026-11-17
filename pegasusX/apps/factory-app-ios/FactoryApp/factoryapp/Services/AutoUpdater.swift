@@ -72,7 +72,7 @@ final class AutoUpdater {
 
         let manifestURLString = (updateURL?.trimmingCharacters(in: .whitespacesAndNewlines)).flatMap {
             $0.isEmpty ? nil : $0
-        } ?? EnterpriseUpdateConfig.defaultManifestURL.absoluteString
+        } ?? EnterpriseUpdateConfig.defaultManifestURLString
 
         let manifest = await fetchManifest(from: manifestURLString)
         lastManifest = manifest

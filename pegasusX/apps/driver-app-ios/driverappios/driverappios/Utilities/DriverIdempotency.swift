@@ -73,6 +73,14 @@ enum DriverIdempotency {
         return "driver-sync-batch:\(driverId()):\(stableHash(sorted.joined(separator: ",")))"
     }
 
+    static func syncEscalation(itemIds: [String]) -> String {
+        let sorted = itemIds
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .sorted()
+        return "driver-sync-escalation:\(driverId()):\(stableHash(sorted.joined(separator: ",")))"
+    }
+
     static func markArrived(orderId: String) -> String {
         "driver-mark-arrived-\(orderId)"
     }
@@ -93,8 +101,21 @@ enum DriverIdempotency {
         "driver-report-damage:\(driverId()):\(orderId)"
     }
 
+    static func reportCondition(orderId: String, conditionType: String) -> String {
+        "report-condition:\(driverId()):\(orderId):\(conditionType.trimmingCharacters(in: .whitespacesAndNewlines).uppercased())"
+    }
+
     static func requestEarlyComplete(reason: String) -> String {
         "driver-request-early-complete:\(driverId()):\(stableHash(reason))"
+    }
+
+    static func requestRescue(reason: String, note: String) -> String {
+        let fingerprint = "\(reason.trimmingCharacters(in: .whitespacesAndNewlines)):\(note.trimmingCharacters(in: .whitespacesAndNewlines))"
+        return "driver-rescue-request:\(driverId()):\(stableHash(fingerprint))"
+    }
+
+    static func respondRescue(rescueId: String, accept: Bool) -> String {
+        "driver-rescue-respond:\(driverId()):\(rescueId):\(accept)"
     }
 
     static func routeReorder(routeId: String, orderSequence: [String]) -> String {

@@ -48,16 +48,16 @@ struct ActiveRideBar: View {
                 // Order info
                 VStack(alignment: .leading, spacing: 2) {
                     Text(mission.order_id)
-                        .font(.system(size: 13, weight: .bold, design: .monospaced))
+                        .font(.system(.footnote, design: .monospaced, weight: .bold))
                         .foregroundStyle(LabTheme.fg)
 
                     HStack(spacing: 4) {
                         Text(mission.gateway)
-                            .font(.system(size: 11, weight: .medium))
+                            .font(.system(.caption2, weight: .medium))
                         if let dist = distance {
                             Text("·")
                             Text(formattedDistance(dist))
-                                .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                                .font(.system(.caption2, design: .monospaced, weight: .semibold))
                         }
                     }
                     .foregroundStyle(LabTheme.fgSecondary)
@@ -67,7 +67,7 @@ struct ActiveRideBar: View {
 
                 // Chevron
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .bold))
+                    .font(.system(.caption, weight: .bold))
                     .foregroundStyle(LabTheme.fgTertiary)
             }
             .padding(.horizontal, 16)

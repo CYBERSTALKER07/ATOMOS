@@ -4,8 +4,8 @@
 //
 
 import MapKit
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 // MARK: - Map Flow States
 
@@ -20,7 +20,7 @@ enum ZoomFocus: Int {
     case destination = 1
     case both = 2
 
-    var next: ZoomFocus { ZoomFocus(rawValue: (rawValue + 1) % 3)! }
+    var next: ZoomFocus { ZoomFocus(rawValue: (rawValue + 1) % 3) ?? .me }
 
     var icon: String {
         switch self {
@@ -43,27 +43,18 @@ enum ZoomFocus: Int {
 
 struct FleetMapView: View {
     @Environment(\.colorScheme) private var cs
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.modelContext) private var modelContext
     @Bindable var vm: FleetViewModel
     var goBack: () -> Void = {}
 
+    @State private var mapVM = FleetMapViewModel()
     @State private var telemetryVM = TelemetryViewModel()
     @State private var driverSocketState = DriverSocketState.shared
-    @State private var navPath = NavigationPath()
-    @State private var cameraPosition: MapCameraPosition = .userLocation(followsHeading: true, fallback: .automatic)
-    @State private var isCameraLocked: Bool = false
-    @State private var userPannedAt: Date?
-
-    @State private var phase: MapPhase = .pickingOrder
-    @State private var selectedMission: Mission?
-    @State private var zoomFocus: ZoomFocus = .both
-    @State private var validatedQR: ValidateQRResponse?
-    @State private var scannedQRToken: String = ""
-    @State private var offloadResponse: ConfirmOffloadResponse?
-    @State private var showRescueSheet = false
 
     var body: some View {
-        NavigationStack(path: $navPath) {
+        @Bindable var mapVM = mapVM
+        NavigationStack(path: $mapVM.navPath) {
             mapBody
                 .toolbar(.hidden, for: .navigationBar)
                 .navigationDestination(for: String.self) { route in
@@ -71,61 +62,68 @@ struct FleetMapView: View {
                     case "scanner":
                         QRScannerView(
                             onValidated: { response, token in
-                                validatedQR = response
-                                scannedQRToken = token
-                                navPath.append("offload-review")
+                                mapVM.handleValidatedQR(response, token: token)
                             },
-                            onCancel: { navPath = NavigationPath() }
+                            onCancel: { mapVM.navPath = NavigationPath() }
                         )
                         .toolbar(.hidden, for: .navigationBar)
                     case "offload-review":
-                        if let qr = validatedQR {
+                        if let qr = mapVM.validatedQR {
                             OffloadReviewView(
                                 response: qr,
-                                scannedToken: scannedQRToken,
+                                scannedToken: mapVM.scannedQRToken,
                                 driverId: vm.driverId,
                                 onConfirm: { result in
-                                    offloadResponse = result
-                                    navPath.append("payment-waiting")
+                                    mapVM.handleConfirmedOffload(result)
                                 },
-                                onCancel: { navPath = NavigationPath() },
-                                onShopClosed: { orderId in
-                                    navPath.append("shop-closed-waiting")
+                                onCancel: { mapVM.navPath = NavigationPath() },
+                                onShopClosed: { _ in
+                                    mapVM.navPath.append("shop-closed-waiting")
                                 },
-                                onCreditDelivery: { orderId in
-                                    Task { await vm.markCreditDelivery(orderId: orderId) }
+                                onCreditDelivery: { orderId, photoUrl, signatureUrl, photoLocal, sigLocal in
+                                    Task {
+                                        await vm.markCreditDelivery(
+                                            orderId: orderId,
+                                            photoProofUrl: photoUrl.isEmpty ? nil : photoUrl,
+                                            signatureUrl: signatureUrl.isEmpty ? nil : signatureUrl,
+                                            photoLocalPath: photoLocal,
+                                            signatureLocalPath: sigLocal
+                                        )
+                                    }
                                 }
                             )
                             .toolbar(.hidden, for: .navigationBar)
                         }
                     case "payment-waiting":
-                        if let offload = offloadResponse {
+                        if let offload = mapVM.offloadResponse {
                             PaymentWaitingView(
                                 orderId: offload.orderId,
                                 amount: offload.amount,
                                 driverId: vm.driverId,
                                 onCompleted: {
                                     vm.markCompleted(offload.orderId)
-                                    navPath = NavigationPath()
-                                    withAnimation(Anim.snappy) { phase = .pickingOrder; selectedMission = nil }
+                                    withAnimation(Anim.snappy) {
+                                        mapVM.resetNavigationAndReturnToPicker()
+                                    }
                                 },
                                 onCashCollectionRequired: {
-                                    navPath.append("cash-collection")
+                                    mapVM.navPath.append("cash-collection")
                                 }
                             )
                             .toolbar(.hidden, for: .navigationBar)
                         }
                     case "cash-collection":
-                        if let offload = offloadResponse {
+                        if let offload = mapVM.offloadResponse {
                             CashCollectionView(
                                 orderId: offload.orderId,
                                 amount: offload.amount,
                                 onCompleted: {
                                     vm.markCompleted(offload.orderId)
-                                    navPath = NavigationPath()
-                                    withAnimation(Anim.snappy) { phase = .pickingOrder; selectedMission = nil }
+                                    withAnimation(Anim.snappy) {
+                                        mapVM.resetNavigationAndReturnToPicker()
+                                    }
                                 },
-                                onCancel: { navPath = NavigationPath() },
+                                onCancel: { mapVM.navPath = NavigationPath() },
                                 onSplitPayment: { orderId, amount in
                                     Task { await vm.recordSplitPayment(orderId: orderId, totalAmount: amount) }
                                 }
@@ -139,25 +137,27 @@ struct FleetMapView: View {
                                 orderId: m.order_id,
                                 driverId: vm.driverId,
                                 isPartial: order?.isPartial ?? false,
-                                onClose: { navPath = NavigationPath() },
+                                onClose: { mapVM.navPath = NavigationPath() },
                                 onAmended: {
                                     vm.markCompleted(m.order_id)
-                                    navPath = NavigationPath()
-                                    withAnimation(Anim.snappy) { phase = .pickingOrder; selectedMission = nil }
+                                    withAnimation(Anim.snappy) {
+                                        mapVM.resetNavigationAndReturnToPicker()
+                                    }
                                 }
                             )
                             .toolbar(.hidden, for: .navigationBar)
                         }
                     case "shop-closed-waiting":
                         ShopClosedWaitingView(
-                            orderId: validatedQR?.orderId ?? "",
+                            orderId: mapVM.validatedQR?.orderId ?? "",
                             driverId: vm.driverId,
                             onResolved: {
-                                if let oid = validatedQR?.orderId { vm.markCompleted(oid) }
-                                navPath = NavigationPath()
-                                withAnimation(Anim.snappy) { phase = .pickingOrder; selectedMission = nil }
+                                if let oid = mapVM.validatedQR?.orderId { vm.markCompleted(oid) }
+                                withAnimation(Anim.snappy) {
+                                    mapVM.resetNavigationAndReturnToPicker()
+                                }
                             },
-                            onCancel: { navPath = NavigationPath() }
+                            onCancel: { mapVM.navPath = NavigationPath() }
                         )
                         .toolbar(.hidden, for: .navigationBar)
                     default: EmptyView()
@@ -169,16 +169,17 @@ struct FleetMapView: View {
     // MARK: - Map Body
 
     private var mapBody: some View {
-        ZStack {
-            Map(position: $cameraPosition) {
-                if !(isCameraLocked && phase == .activeDelivery) {
+        @Bindable var mapVM = mapVM
+        return ZStack {
+            Map(position: $mapVM.cameraPosition) {
+                if !(mapVM.isCameraLocked && mapVM.phase == .activeDelivery) {
                     UserAnnotation()
                 }
 
-                if isCameraLocked, phase == .activeDelivery, let coord = vm.displayLocation {
+                if mapVM.isCameraLocked, mapVM.phase == .activeDelivery, let coord = vm.displayLocation {
                     Annotation("You", coordinate: coord) {
                         Image(systemName: "location.north.fill")
-                            .font(.system(size: 14, weight: .bold))
+                            .font(.system(.subheadline, weight: .bold))
                             .foregroundStyle(LabTheme.buttonFg)
                             .padding(8)
                             .background(LabTheme.fg, in: Circle())
@@ -215,8 +216,8 @@ struct FleetMapView: View {
             .mapStyle(.standard(elevation: .realistic))
             .mapControls { MapCompass() }
             .onMapCameraChange(frequency: .onEnd) {
-                isCameraLocked = false
-                userPannedAt = Date()
+                mapVM.isCameraLocked = false
+                mapVM.userPannedAt = Date()
             }
             .ignoresSafeArea()
 
@@ -229,12 +230,12 @@ struct FleetMapView: View {
 
             // Top bar
             MapTopOverlay(
-                phase: $phase,
-                selectedMission: $selectedMission,
-                isCameraLocked: $isCameraLocked,
-                userPannedAt: $userPannedAt,
-                cameraPosition: $cameraPosition,
-                zoomFocus: $zoomFocus,
+                phase: $mapVM.phase,
+                selectedMission: $mapVM.selectedMission,
+                isCameraLocked: $mapVM.isCameraLocked,
+                userPannedAt: $mapVM.userPannedAt,
+                cameraPosition: $mapVM.cameraPosition,
+                zoomFocus: $mapVM.zoomFocus,
                 currentTarget: currentTarget,
                 vm: vm,
                 isLive: telemetryVM.isLive,
@@ -246,8 +247,11 @@ struct FleetMapView: View {
             VStack {
                 Spacer()
                 bottomSheet
+                    .frame(maxWidth: horizontalSizeClass == .regular ? 500 : .infinity)
             }
-            .animation(Anim.sheetReveal, value: phase)
+            .padding(.horizontal, horizontalSizeClass == .regular ? LabTheme.s24 : 0)
+            .padding(.bottom, horizontalSizeClass == .regular ? LabTheme.s20 : 0)
+            .animation(Anim.sheetReveal, value: mapVM.phase)
         }
         .ignoresSafeArea(edges: .bottom)
         .task {
@@ -255,31 +259,26 @@ struct FleetMapView: View {
             vm.startLocationInterpolation()
             await vm.loadMissions()
             if let active = vm.activeMission {
-                selectedMission = active
-                phase = .activeDelivery
-                isCameraLocked = true
+                mapVM.selectedMission = active
+                mapVM.phase = .activeDelivery
+                mapVM.isCameraLocked = true
                 await telemetryVM.start()
             }
         }
-        .onChange(of: phase) { _, newPhase in
+        .onChange(of: mapVM.phase) { _, newPhase in
             if newPhase == .activeDelivery {
-                isCameraLocked = true
-                userPannedAt = nil
+                mapVM.isCameraLocked = true
+                mapVM.userPannedAt = nil
                 vm.refreshPlannedRoute()
             }
         }
-        .task(id: userPannedAt) {
-            guard let pannedAt = userPannedAt, phase == .activeDelivery else { return }
-            try? await Task.sleep(nanoseconds: MapCameraConfig.idleRecenterMs)
-            if userPannedAt == pannedAt {
-                isCameraLocked = true
-                userPannedAt = nil
-            }
+        .task(id: mapVM.userPannedAt) {
+            await mapVM.handleIdleRecenter(for: mapVM.userPannedAt)
         }
         .onChange(of: vm.displayLocation) { _, coordinate in
-            guard isCameraLocked, phase == .activeDelivery, let coordinate else { return }
+            guard mapVM.isCameraLocked, mapVM.phase == .activeDelivery, let coordinate else { return }
             withAnimation(.easeInOut(duration: MapCameraConfig.cameraAnimationSeconds)) {
-                cameraPosition = .camera(
+                mapVM.cameraPosition = .camera(
                     MapCameraMath.trackingCamera(
                         coordinate: coordinate,
                         bearing: vm.displayBearing,
@@ -289,8 +288,8 @@ struct FleetMapView: View {
             }
         }
         .onChange(of: vm.displayBearing) { _, _ in
-            guard isCameraLocked, phase == .activeDelivery, let coordinate = vm.displayLocation else { return }
-            cameraPosition = .camera(
+            guard mapVM.isCameraLocked, mapVM.phase == .activeDelivery, let coordinate = vm.displayLocation else { return }
+            mapVM.cameraPosition = .camera(
                 MapCameraMath.trackingCamera(
                     coordinate: coordinate,
                     bearing: vm.displayBearing,
@@ -302,7 +301,6 @@ struct FleetMapView: View {
             vm.stopLocationInterpolation()
         }
         .onChange(of: vm.latestTransmitLocation) { _, loc in
-            // V.O.I.D. Adaptive Transmission Protocol Filtered Execution
             if let loc {
                 telemetryVM.sendLocation(loc.coordinate, accuracy: loc.horizontalAccuracy)
             }
@@ -327,7 +325,7 @@ struct FleetMapView: View {
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
         }
-        .sheet(isPresented: $showRescueSheet) {
+        .sheet(isPresented: $mapVM.showRescueSheet) {
             RequestRescueSheet()
                 .presentationDetents([.medium])
                 .presentationDragIndicator(.visible)
@@ -335,33 +333,34 @@ struct FleetMapView: View {
     }
 
     private var currentTarget: Mission? {
-        selectedMission ?? vm.activeMission
+        mapVM.selectedMission ?? vm.activeMission
     }
 
     // MARK: - Bottom Sheet Router
 
     @ViewBuilder
     private var bottomSheet: some View {
-        switch phase {
+        @Bindable var mapVM = mapVM
+        switch mapVM.phase {
         case .pickingOrder:
             OrderPickerSheet(
                 vm: vm,
-                selectedMission: $selectedMission,
-                phase: $phase,
-                zoomFocus: $zoomFocus,
+                selectedMission: $mapVM.selectedMission,
+                phase: $mapVM.phase,
+                zoomFocus: $mapVM.zoomFocus,
                 bottomInset: bottomInset,
                 zoomTo: zoomTo
             ).transition(.move(edge: .bottom).combined(with: .opacity))
         case .previewingOrder:
-            if let m = selectedMission {
+            if let m = mapVM.selectedMission {
                 OrderPreviewSheet(
                     mission: m,
                     vm: vm,
                     bottomInset: bottomInset,
-                    phase: $phase,
-                    selectedMission: $selectedMission,
-                    isCameraLocked: $isCameraLocked,
-                    userPannedAt: $userPannedAt,
+                    phase: $mapVM.phase,
+                    selectedMission: $mapVM.selectedMission,
+                    isCameraLocked: $mapVM.isCameraLocked,
+                    userPannedAt: $mapVM.userPannedAt,
                     startTelemetry: { Task { await telemetryVM.start() } }
                 ).transition(.move(edge: .bottom).combined(with: .opacity))
             }
@@ -371,8 +370,8 @@ struct FleetMapView: View {
                     mission: m,
                     vm: vm,
                     bottomInset: bottomInset,
-                    navPath: $navPath,
-                    showRescueSheet: $showRescueSheet
+                    navPath: $mapVM.navPath,
+                    showRescueSheet: $mapVM.showRescueSheet
                 ).transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
@@ -381,8 +380,8 @@ struct FleetMapView: View {
     // MARK: - 3-State Zoom
 
     private func cycleZoom() {
-        zoomFocus = zoomFocus.next
-        if let m = currentTarget { zoomTo(zoomFocus, mission: m) }
+        mapVM.zoomFocus = mapVM.zoomFocus.next
+        if let m = currentTarget { zoomTo(mapVM.zoomFocus, mission: m) }
     }
 
     private func zoomTo(_ focus: ZoomFocus, mission: Mission) {
@@ -392,11 +391,11 @@ struct FleetMapView: View {
         withAnimation(Anim.settle) {
             switch focus {
             case .me:
-                cameraPosition = .region(MKCoordinateRegion(
+                mapVM.cameraPosition = .region(MKCoordinateRegion(
                     center: me, span: MKCoordinateSpan(latitudeDelta: 0.008, longitudeDelta: 0.008)
                 ))
             case .destination:
-                cameraPosition = .region(MKCoordinateRegion(
+                mapVM.cameraPosition = .region(MKCoordinateRegion(
                     center: dest, span: MKCoordinateSpan(latitudeDelta: 0.008, longitudeDelta: 0.008)
                 ))
             case .both:
@@ -407,7 +406,7 @@ struct FleetMapView: View {
                 let center = CLLocationCoordinate2D(latitude: (minLat + maxLat) / 2, longitude: (minLng + maxLng) / 2)
                 let spanLat = max((maxLat - minLat) * 1.6, 0.01)
                 let spanLng = max((maxLng - minLng) * 1.6, 0.01)
-                cameraPosition = .region(MKCoordinateRegion(center: center, span: MKCoordinateSpan(latitudeDelta: spanLat, longitudeDelta: spanLng)))
+                mapVM.cameraPosition = .region(MKCoordinateRegion(center: center, span: MKCoordinateSpan(latitudeDelta: spanLat, longitudeDelta: spanLng)))
             }
         }
     }
@@ -422,14 +421,14 @@ struct FleetMapView: View {
 
     @ViewBuilder
     private func missionPin(for mission: Mission) -> some View {
-        let isSelected = selectedMission?.id == mission.id || vm.activeMission?.id == mission.id
+        let isSelected = mapVM.selectedMission?.id == mission.id || vm.activeMission?.id == mission.id
         Button {
             Haptics.medium()
-            if phase == .pickingOrder {
+            if mapVM.phase == .pickingOrder {
                 withAnimation(Anim.sheetReveal) {
-                    selectedMission = mission
-                    phase = .previewingOrder
-                    zoomFocus = .both
+                    mapVM.selectedMission = mission
+                    mapVM.phase = .previewingOrder
+                    mapVM.zoomFocus = .both
                 }
                 zoomTo(.both, mission: mission)
             }
@@ -437,26 +436,28 @@ struct FleetMapView: View {
             VStack(spacing: 0) {
                 ZStack {
                     Circle()
-                        .fill(isSelected ? LabTheme.fg : LabTheme.bg) // Toggle bg/fg
-                        .frame(width: isSelected ? 42 : 36, height: isSelected ? 42 : 36)
+                        .fill(isSelected ? LabTheme.fg : LabTheme.bg)
+                        .frame(width: isSelected ? 44 : 40, height: isSelected ? 44 : 40)
                         .overlay {
                             Circle()
                                 .stroke(isSelected ? LabTheme.fg : LabTheme.separator.opacity(0.12), lineWidth: 1)
                         }
                     Image(systemName: "shippingbox.fill")
-                        .font(.system(size: isSelected ? 18 : 14, weight: .black)) // Tactical weights
+                        .font(.system(isSelected ? .body : .subheadline, weight: .black))
                         .foregroundStyle(isSelected ? LabTheme.buttonFg : LabTheme.fg)
                 }
                 .shadow(color: .black.opacity(0.1), radius: 6, y: 3)
                 .animation(Anim.snappy, value: isSelected)
 
                 Image(systemName: "triangle.fill")
-                    .font(.system(size: 7))
+                    .font(.caption2)
                     .foregroundStyle(isSelected ? LabTheme.fg : LabTheme.fg.opacity(0.5))
                     .rotationEffect(.degrees(180))
                     .offset(y: -3)
             }
+            .frame(minWidth: 44, minHeight: 44)
         }
+        .accessibilityLabel("Mission \(mission.order_id)")
     }
 }
 

@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { Button } from '@heroui/react';
 import { useSupplierShift } from '@/hooks/useSupplierShift';
 
-// ── Types ─────────────────────────────────────────────────────────────────
+// -- Types -----------------------------------------------------------------
 
 type DayWindow = { open: string; close: string };
 type ScheduleKey = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
@@ -23,7 +23,7 @@ const DAY_KEYS: ScheduleKey[] = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'
 
 const DEFAULT_WINDOW: DayWindow = { open: '09:00', close: '18:00' };
 
-// ── Component ─────────────────────────────────────────────────────────────
+// -- Component -------------------------------------------------------------
 
 export default function SupplierSettingsPage() {
   const shift = useSupplierShift();
@@ -113,7 +113,7 @@ export default function SupplierSettingsPage() {
         Configure your business hours and shift availability.
       </p>
 
-      {/* ── Shift Status Section ── */}
+      {/* -- Shift Status Section -- */}
       <section
         className="md-card md-elevation-1 md-shape-md p-5 mb-6"
         style={{ background: 'var(--surface)' }}
@@ -169,7 +169,7 @@ export default function SupplierSettingsPage() {
         </div>
       </section>
 
-      {/* ── Business Hours Section ── */}
+      {/* -- Business Hours Section -- */}
       <section
         className="md-card md-elevation-1 md-shape-md p-5 mb-6"
         style={{ background: 'var(--surface)' }}
@@ -204,8 +204,9 @@ export default function SupplierSettingsPage() {
               >
                 {/* Enabled checkbox */}
                 <input
-                  type="checkbox"
                   id={`day-${day}`}
+                  aria-label={DAY_LABELS[day]}
+                  type="checkbox"
                   checked={isEnabled}
                   onChange={() => toggleDay(day)}
                   className="cursor-pointer"
@@ -225,7 +226,10 @@ export default function SupplierSettingsPage() {
 
                 {isEnabled ? (
                   <div className="flex items-center gap-2 flex-1">
+                    <label htmlFor={`day-${day}-open`} className="sr-only">{DAY_LABELS[day]} open time</label>
                     <input
+                      id={`day-${day}-open`}
+                      aria-label={`${DAY_LABELS[day]} open time`}
                       type="time"
                       value={window.open}
                       onChange={(e) => updateWindow(day, 'open', e.target.value)}
@@ -243,7 +247,10 @@ export default function SupplierSettingsPage() {
                     >
                       to
                     </span>
+                    <label htmlFor={`day-${day}-close`} className="sr-only">{DAY_LABELS[day]} close time</label>
                     <input
+                      id={`day-${day}-close`}
+                      aria-label={`${DAY_LABELS[day]} close time`}
                       type="time"
                       value={window.close}
                       onChange={(e) => updateWindow(day, 'close', e.target.value)}
@@ -270,7 +277,7 @@ export default function SupplierSettingsPage() {
         </div>
       </section>
 
-      {/* ── Save Button ── */}
+      {/* -- Save Button -- */}
       <div className="flex items-center gap-4">
         <Button
           variant="primary"

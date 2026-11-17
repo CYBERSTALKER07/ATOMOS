@@ -5,8 +5,11 @@ import (
 	"strings"
 	"time"
 
+	"cloud.google.com/go/civil"
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch"
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"google.golang.org/api/iterator"
 )
 
@@ -20,12 +23,12 @@ func (s *Service) demandBaselineByProduct(ctx context.Context, supplierID, wareh
 	}
 	end := time.Now().UTC().Truncate(24 * time.Hour)
 	start := end.AddDate(0, 0, -forecastDays+1)
-	iter := s.spannerClient.Single().Query(ctx, spanner.Statement{
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL: `SELECT ProductId, SUM(BaselineQty) FROM DemandForecastBaseline
 		      WHERE SupplierId = @sid AND WarehouseId = @wh
 		        AND ForecastDate BETWEEN @start AND @end
 		      GROUP BY ProductId`,
-		Params: map[string]any{"sid": supplierID, "wh": warehouseID, "start": start, "end": end},
+		Params: map[string]any{"sid": supplierID, "wh": warehouseID, "start": civil.DateOf(start), "end": civil.DateOf(end)},
 	})
 	defer iter.Stop()
 	for {
@@ -49,7 +52,7 @@ func (s *Service) loadActiveZoneOverrides(ctx context.Context, supplierID string
 	if s == nil || s.spannerClient == nil || supplierID == "" {
 		return nil, nil
 	}
-	iter := s.spannerClient.Single().Query(ctx, spanner.Statement{
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL: `SELECT OverrideId, SupplierId, COALESCE(WarehouseId,''), Action, PolygonGeoJSON
 		      FROM ControlTowerZoneOverrides
 		      WHERE SupplierId = @sid AND IsActive = true AND TtlExpiresAt > CURRENT_TIMESTAMP()`,
@@ -92,7 +95,7 @@ func (s *Service) seedDemandBaselineFromInsights(ctx context.Context, supplierID
 	if len(insights) == 0 && len(adjustments) == 0 {
 		return
 	}
-	today := time.Now().UTC().Truncate(24 * time.Hour)
+	today := civil.DateOf(time.Now().UTC())
 	for productID, insight := range insights {
 		qty := insight.ReorderQuantity
 		burn := insight.AvgDailyVelocity
@@ -103,7 +106,7 @@ func (s *Service) seedDemandBaselineFromInsights(ctx context.Context, supplierID
 			qty = int64(burn * 7)
 		}
 		_, _ = s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-			return txn.BufferWrite([]*spanner.Mutation{
+			muts := []*spanner.Mutation{
 				spanner.InsertOrUpdateMap("DemandForecastBaseline", map[string]any{
 					"SupplierId":   supplierID,
 					"ForecastDate": today,
@@ -114,7 +117,21 @@ func (s *Service) seedDemandBaselineFromInsights(ctx context.Context, supplierID
 					"Source":       strings.TrimSpace(insight.Urgency),
 					"CreatedAt":    spanner.CommitTimestamp,
 				}),
-			})
+			}
+			buf := outbox.NewSpannerTxnBuffer(txn)
+			if err := outbox.EmitJSON(ctx, buf, "DemandForecastBaseline", supplierID+":"+productID, events.TopicDemand, map[string]any{
+				"type":         "DEMAND_FORECAST_BASELINE_UPDATED",
+				"supplier_id":  supplierID,
+				"warehouse_id": warehouseID,
+				"product_id":   productID,
+				"baseline_qty": qty,
+			}); err != nil {
+				return err
+			}
+			if err := buf.Flush(ctx); err != nil {
+				return err
+			}
+			return txn.BufferWrite(muts)
 		})
 	}
 }

@@ -1,15 +1,23 @@
 import { useState, useEffect } from 'react';
+import { homeCellFromJwt, pinApiBaseUrl, readCachedAuthSession, reconnectDelayMs } from '@pegasusx/api-core';
 import { isTauri, getStoredToken, storeToken, clearStoredToken } from './bridge';
-import { getFirebaseIdToken, firebaseSignOut } from './firebase';
 import { runFactorySessionReconcile } from './session-reconcile';
 
-export const factoryApiBaseUrl = (
+const BOOTSTRAP = (
   process.env.NEXT_PUBLIC_API_URL ||
   process.env.NEXT_PUBLIC_FACTORY_BACKEND_BASE_URL ||
   process.env.NEXT_PUBLIC_BACKEND_BASE_URL ||
   'http://localhost:8180'
 ).replace(/\/$/, '');
-const API = factoryApiBaseUrl;
+
+/** GS-C5: pin to JWT home_cell. Login (no token) stays on bootstrap. */
+export function factoryApiBaseUrl(): string {
+  return pinApiBaseUrl({
+    bootstrap: BOOTSTRAP,
+    homeCell: homeCellFromJwt(readTokenFromCookie()),
+    sessionApiUrl: readCachedAuthSession()?.api_url,
+  });
+}
 
 const FACTORY_JWT_COOKIE = 'pegasus_factory_jwt';
 const FACTORY_REFRESH_COOKIE = 'pegasus_factory_refresh';
@@ -24,7 +32,7 @@ const FACTORY_LIVE_EVENT_TYPES = [
 type FactoryLiveEventType = (typeof FACTORY_LIVE_EVENT_TYPES)[number];
 
 export interface FactoryLiveEvent {
-  type: FactoryLiveEventType;
+  type: string;
   [key: string]: unknown;
 }
 
@@ -46,9 +54,10 @@ function readRefreshFromCookie(): string {
 
 export function persistSession(token: string, refreshToken?: string) {
   if (typeof document !== 'undefined') {
-    document.cookie = `${FACTORY_JWT_COOKIE}=${encodeURIComponent(token)}; path=/; max-age=86400; SameSite=Lax`;
+    const secureFlag = typeof location !== 'undefined' && location.protocol === 'https:' ? '; Secure' : '';
+    document.cookie = `${FACTORY_JWT_COOKIE}=${encodeURIComponent(token)}; path=/; max-age=86400; SameSite=Strict${secureFlag}`;
     if (refreshToken) {
-      document.cookie = `${FACTORY_REFRESH_COOKIE}=${encodeURIComponent(refreshToken)}; path=/; max-age=604800; SameSite=Lax`;
+      document.cookie = `${FACTORY_REFRESH_COOKIE}=${encodeURIComponent(refreshToken)}; path=/; max-age=604800; SameSite=Strict${secureFlag}`;
     }
   }
   if (isTauri()) {
@@ -79,7 +88,7 @@ export async function refreshFactorySession(): Promise<{ ok: boolean; isConfigur
   const refresh = readRefreshFromCookie();
   if (!refresh) return { ok: false };
   try {
-    const res = await fetch(`${API}/v1/auth/factory/refresh`, {
+    const res = await fetch(`${factoryApiBaseUrl()}/v1/auth/factory/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ refresh_token: refresh }),
@@ -108,13 +117,23 @@ export async function getFactoryToken(): Promise<string> {
   throw new Error('No auth token available. Please log in.');
 }
 
+/** Session JWT for HTTP Bearer. Firebase ID is OTP `id_token` body only — never Authorization. */
+export function httpAuthorizationToken(sessionJwt: string, firebaseIdToken?: string): string {
+  const jwt = sessionJwt.trim();
+  if (jwt) return jwt;
+  if (firebaseIdToken) {
+    return '';
+  }
+  return '';
+}
+
 let refreshInFlight: Promise<string | null> | null = null;
 
 async function tryRefreshToken(): Promise<string | null> {
   const refresh = readRefreshFromCookie();
   if (!refresh) return null;
   try {
-    const res = await fetch(`${API}/v1/auth/factory/refresh`, {
+    const res = await fetch(`${factoryApiBaseUrl()}/v1/auth/factory/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ refresh_token: refresh }),
@@ -130,10 +149,7 @@ async function tryRefreshToken(): Promise<string | null> {
 }
 
 export async function apiFetch(path: string, init?: RequestInit): Promise<Response> {
-  let token = await getFirebaseIdToken();
-  if (!token) {
-    token = await getFactoryToken();
-  }
+  const token = httpAuthorizationToken(await getFactoryToken());
   const headers: Record<string, string> = {
     Authorization: `Bearer ${token}`,
     'Content-Type': 'application/json',
@@ -141,7 +157,7 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
     ...(init?.headers as Record<string, string>),
   };
 
-  const res = await fetch(`${API}${path}`, { ...init, headers });
+  const res = await fetch(`${factoryApiBaseUrl()}${path}`, { ...init, headers });
 
   if (res.status === 401) {
     if (!refreshInFlight) {
@@ -153,11 +169,11 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
         ...headers,
         Authorization: `Bearer ${newToken}`,
       };
-      return fetch(`${API}${path}`, { ...init, headers: retryHeaders });
+      return fetch(`${factoryApiBaseUrl()}${path}`, { ...init, headers: retryHeaders });
     }
     document.cookie = `${FACTORY_JWT_COOKIE}=; Max-Age=0; path=/`;
     document.cookie = `${FACTORY_REFRESH_COOKIE}=; Max-Age=0; path=/`;
-    firebaseSignOut().catch(() => {});
+    import('./firebase').then(({ firebaseSignOut }) => firebaseSignOut()).catch(() => {});
     if (isTauri()) {
       clearStoredToken().catch(() => {});
     }
@@ -173,15 +189,20 @@ function toWSBaseUrl(baseUrl: string): string {
 }
 
 async function readFactorySocketToken(): Promise<string> {
-  try {
-    return await getFactoryToken();
-  } catch {
-    return '';
+  const res = await apiFetch('/v1/factory/ws-session', { method: 'GET', cache: 'no-store' });
+  const payload = (await res.json().catch(() => null)) as { token?: string } | null;
+  if (!res.ok || typeof payload?.token !== 'string' || !payload.token) {
+    throw new Error('Failed to mint factory WebSocket session');
   }
+  return payload.token;
 }
 
-function isFactoryEventType(value: string): value is FactoryLiveEventType {
-  return (FACTORY_LIVE_EVENT_TYPES as readonly string[]).includes(value);
+function isFactoryEventType(value: string): boolean {
+  return value.startsWith('MANIFEST_') || 
+         value.startsWith('WAREHOUSE_TRANSFER_') || 
+         value.startsWith('SUPPLY_TRANSFER_') || 
+         value.startsWith('FACTORY_') || 
+         value.startsWith('TRANSFER_');
 }
 
 export function parseFactoryLiveEvent(rawPayload: string): FactoryLiveEvent | null {
@@ -208,6 +229,7 @@ export function subscribeFactoryWS(options: {
   let reconnectTimer: number | null = null;
   let reconnectAttempt = 0;
   let hasConnectedOnce = false;
+  let lastEventId: string | null = null;
   let disposed = false;
 
   const clearReconnect = () => {
@@ -226,11 +248,27 @@ export function subscribeFactoryWS(options: {
 
     options.onStatusChange?.(isReconnect ? 'reconnecting' : 'connecting');
 
-    const token = await readFactorySocketToken();
+    let token = '';
+    try {
+      token = await readFactorySocketToken();
+    } catch {
+      token = '';
+    }
     if (disposed) return;
+    if (!token) {
+      const delay = reconnectDelayMs(reconnectAttempt, { baseMs: 1_000, maxMs: 30_000 });
+      reconnectAttempt += 1;
+      options.onStatusChange?.('reconnecting');
+      clearReconnect();
+      reconnectTimer = window.setTimeout(() => {
+        void openSocket(true);
+      }, delay);
+      return;
+    }
 
-    const wsBase = toWSBaseUrl(API);
-    socket = new WebSocket(`${wsBase}/v1/ws?token=${encodeURIComponent(token)}`);
+    const wsBase = toWSBaseUrl(factoryApiBaseUrl());
+    const lastIdParam = lastEventId ? `&last_event_id=${encodeURIComponent(lastEventId)}` : '';
+    socket = new WebSocket(`${wsBase}/v1/ws?token=${encodeURIComponent(token)}${lastIdParam}`);
 
     socket.onopen = () => {
       const wasReconnect = hasConnectedOnce;
@@ -243,7 +281,21 @@ export function subscribeFactoryWS(options: {
     };
 
     socket.onmessage = event => {
-      options.onMessage(String(event.data));
+      const raw = String(event.data);
+      try {
+        const parsed = JSON.parse(raw) as { event_id?: unknown; id?: unknown };
+        const eid = typeof parsed?.event_id === 'string' && parsed.event_id.trim()
+          ? parsed.event_id.trim()
+          : typeof parsed?.id === 'string' && parsed.id.trim()
+            ? parsed.id.trim()
+            : null;
+        if (eid) {
+          lastEventId = eid;
+        }
+      } catch {
+        // ignore non-json
+      }
+      options.onMessage(raw);
     };
 
     socket.onerror = () => {
@@ -260,11 +312,13 @@ export function subscribeFactoryWS(options: {
         options.onStatusChange?.('offline');
         return;
       }
+      const delay = reconnectDelayMs(reconnectAttempt, { baseMs: 1_000, maxMs: 30_000 });
       reconnectAttempt += 1;
       options.onStatusChange?.('reconnecting');
+      clearReconnect();
       reconnectTimer = window.setTimeout(() => {
         void openSocket(true);
-      }, Math.min(30_000, 1_000 * 2 ** (reconnectAttempt - 1)));
+      }, delay);
     };
   };
 

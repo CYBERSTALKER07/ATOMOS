@@ -17,8 +17,9 @@ val localProps = Properties().also { props ->
     if (f.exists()) props.load(f.inputStream())
 }
 val devHost: String = localProps.getProperty("dev.host", "10.0.2.2")
-val prodApiBaseUrl: String = localProps.getProperty("prod.api.base.url", "https://api.pegasus.uz")
-val prodWsBaseUrl: String = localProps.getProperty("prod.ws.base.url", "wss://api.pegasus.uz")
+val prodApiBaseUrl: String = localProps.getProperty("prod.api.base.url", "https://api.pegasusx.app")
+val prodApiSpkiPins: String = localProps.getProperty("prod.api.spki.pins", System.getenv("PEGASUSX_API_TLS_SPKI_PINS") ?: "")
+val prodWsBaseUrl: String = localProps.getProperty("prod.ws.base.url", "wss://api.pegasusx.app")
 val quicktypeBinary: String = localProps.getProperty("quicktype.path", "quicktype")
 val firebaseAuthEmulator = localProps.getProperty("firebase.auth.emulator", "false") == "true"
 val firebaseAuthEmulatorHost = localProps.getProperty("firebase.auth.emulator.host", "10.0.2.2")
@@ -28,6 +29,7 @@ val backendGoDir = rootProject.file("../../apps/backend-go")
 val generatedWsModelFile = rootProject.file(
     "app/src/main/java/com/pegasus/payload/generated/contracts/PegasusWSEventEnvelope.kt"
 )
+val wsCodegenEnabled = localProps.getProperty("payload.ws.codegen", "false") == "true"
 
 fun assertCommandAvailable(command: String) {
     val process = ProcessBuilder("sh", "-c", "command -v \"$command\" >/dev/null 2>&1").start()
@@ -54,6 +56,7 @@ val generateEventSchema by tasks.registering(Exec::class) {
         "-schema-out",
         contractsSchemaFile.absolutePath,
         "-pretty=true",
+        "-strict=true",
     )
     outputs.file(contractsSchemaFile)
 }
@@ -90,11 +93,21 @@ val generateWsEventModels by tasks.registering(Exec::class) {
     )
 }
 
-tasks.named("preBuild") {
-    dependsOn(generateWsEventModels)
+if (wsCodegenEnabled) {
+    tasks.named("preBuild") {
+        dependsOn(generateWsEventModels)
+    }
 }
 
 android {
+
+    // pegasusx-i18n-generated: shared en/ru/uz string catalogs
+    sourceSets {
+        getByName("main") {
+            res.srcDir(rootProject.file("../../packages/i18n/generated/android"))
+        }
+    }
+
     namespace = "com.pegasus.payload"
     compileSdk = 35
 
@@ -102,12 +115,13 @@ android {
         applicationId = "com.pegasus.payload"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.0.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         buildConfigField("String", "API_BASE_URL", "\"http://$devHost:8180\"")
+        buildConfigField("String", "API_TLS_SPKI_PINS", "\"\"")
         buildConfigField("String", "WS_BASE_URL", "\"ws://$devHost:8180\"")
         buildConfigField("boolean", "FIREBASE_AUTH_EMULATOR", firebaseAuthEmulator.toString())
         buildConfigField("String", "FIREBASE_AUTH_EMULATOR_HOST", "\"$firebaseAuthEmulatorHost\"")
@@ -145,6 +159,7 @@ android {
                 "proguard-rules.pro"
             )
             buildConfigField("String", "API_BASE_URL", "\"$prodApiBaseUrl\"")
+            buildConfigField("String", "API_TLS_SPKI_PINS", "\"$prodApiSpkiPins\"")
             buildConfigField("String", "WS_BASE_URL", "\"$prodWsBaseUrl\"")
         }
     }
@@ -165,13 +180,13 @@ android {
 dependencies {
     val composeBom = platform("androidx.compose:compose-bom:2024.12.01")
     implementation(composeBom)
-    implementation(project(":mobile-design"))
 
     // Compose
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
+    implementation("androidx.compose.material3:material3-window-size-class")
     implementation("androidx.compose.material3.adaptive:adaptive:1.0.0")
     implementation("androidx.compose.material3.adaptive:adaptive-layout:1.0.0")
     implementation("androidx.compose.material3.adaptive:adaptive-navigation:1.0.0")

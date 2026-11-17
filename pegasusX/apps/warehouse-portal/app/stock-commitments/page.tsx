@@ -1,5 +1,6 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from 'react';
 import { warehouseApi } from '@/lib/warehouse-api';
 import PageTransition from '@/components/PageTransition';
@@ -18,6 +19,7 @@ interface StockRow {
 }
 
 export default function StockCommitmentsPage() {
+  const t = usePortalT();
   const [items, setItems] = useState<StockRow[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -40,11 +42,11 @@ export default function StockCommitmentsPage() {
     <PageTransition>
       <PageChrome
         icon="inventory"
-        title="Stock commitments"
-        description="SKU-level ASAP + scheduled demand vs on-hand"
+        title={t("portal.nav.stock_commitments")}
+        description={t("warehouse_portal.residual.text.sku_level_asap_scheduled_demand_vs_on_hand")}
         loading={loading}
         empty={!loading && items.length === 0}
-        emptyMessage="Active orders have not reserved stock yet."
+        emptyMessage={t("warehouse_portal.residual.text.active_orders_have_not_reserved_stock_yet")}
       >
         {items.length > 0 ? (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -68,7 +70,7 @@ export default function StockCommitmentsPage() {
             ))}
           </div>
         ) : !loading ? (
-          <EmptyState headline="No commitments" body="Active orders have not reserved stock yet." />
+          <EmptyState headline={t("warehouse_portal.residual.text.no_commitments")} body={t("warehouse_portal.residual.text.active_orders_have_not_reserved_stock_yet")} />
         ) : null}
       </PageChrome>
     </PageTransition>

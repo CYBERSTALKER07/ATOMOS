@@ -3,12 +3,19 @@ package controltower
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
+)
+
+var (
+	ErrForbidden        = errors.New("forbidden")
+	ErrPlaybookNotFound = errors.New("playbook_not_found")
+	ErrRunNotFound      = errors.New("run_not_found")
 )
 
 // Service is the application facade for playbook HTTP and worker entrypoints.
@@ -26,6 +33,14 @@ func (s *Service) Enabled() bool {
 	return s != nil && s.cfg.Enabled
 }
 
+// ActionExecutor exposes the underlying domain ActionExecutor for governed proposal execution.
+func (s *Service) ActionExecutor() *ActionExecutor {
+	if s == nil || s.engine == nil {
+		return nil
+	}
+	return s.engine.ActionExecutor()
+}
+
 func (s *Service) Evaluate(ctx context.Context, supplierID string, exceptionIDs []string) error {
 	if s.engine == nil {
 		return nil
@@ -33,17 +48,23 @@ func (s *Service) Evaluate(ctx context.Context, supplierID string, exceptionIDs 
 	return s.engine.Evaluate(ctx, supplierID, exceptionIDs)
 }
 
-func (s *Service) ApproveRun(ctx context.Context, runID, actor string) error {
-	return s.engine.ApproveRun(ctx, runID, actor)
+func (s *Service) ApproveRun(ctx context.Context, supplierID, runID, actor string) error {
+	if s.engine == nil {
+		return fmt.Errorf("engine_unavailable")
+	}
+	return s.engine.ApproveRun(ctx, supplierID, runID, actor)
 }
 
-func (s *Service) SkipRun(ctx context.Context, runID, actor string) error {
-	return s.engine.SkipRun(ctx, runID, actor)
+func (s *Service) SkipRun(ctx context.Context, supplierID, runID, actor string) error {
+	if s.engine == nil {
+		return fmt.Errorf("engine_unavailable")
+	}
+	return s.engine.SkipRun(ctx, supplierID, runID, actor)
 }
 
 func (s *Service) ListPlaybooks(ctx context.Context, supplierID string) ([]Playbook, error) {
-	if s.repo == nil {
-		return nil, nil
+	if s == nil || s.repo == nil {
+		return nil, fmt.Errorf("repository_unavailable")
 	}
 	return s.repo.ListActivePlaybooks(ctx, supplierID)
 }
@@ -80,7 +101,23 @@ func (s *Service) CreatePlaybook(ctx context.Context, supplierID, actor string, 
 	return pb, nil
 }
 
-func (s *Service) UpdatePlaybook(ctx context.Context, playbookID string, in UpdatePlaybookInput) error {
+func (s *Service) UpdatePlaybook(ctx context.Context, supplierID, playbookID string, in UpdatePlaybookInput) error {
+	if s == nil || s.repo == nil {
+		return fmt.Errorf("repository_unavailable")
+	}
+	if supplierID == "" {
+		return ErrForbidden
+	}
+	pb, err := s.repo.GetPlaybook(ctx, playbookID)
+	if err != nil {
+		return ErrPlaybookNotFound
+	}
+	if pb.PlaybookID == "" {
+		return ErrPlaybookNotFound
+	}
+	if pb.SupplierID == "" || pb.SupplierID != supplierID {
+		return ErrForbidden
+	}
 	fields := map[string]any{}
 	if in.Name != nil {
 		fields["Name"] = *in.Name
@@ -111,16 +148,41 @@ func (s *Service) UpdatePlaybook(ctx context.Context, playbookID string, in Upda
 	return s.repo.UpdatePlaybook(ctx, playbookID, fields)
 }
 
-func (s *Service) DeactivatePlaybook(ctx context.Context, playbookID string) error {
+func (s *Service) DeactivatePlaybook(ctx context.Context, supplierID, playbookID string) error {
+	if s == nil || s.repo == nil {
+		return fmt.Errorf("repository_unavailable")
+	}
+	if supplierID == "" {
+		return ErrForbidden
+	}
+	pb, err := s.repo.GetPlaybook(ctx, playbookID)
+	if err != nil {
+		return ErrPlaybookNotFound
+	}
+	if pb.PlaybookID == "" {
+		return ErrPlaybookNotFound
+	}
+	if pb.SupplierID == "" || pb.SupplierID != supplierID {
+		return ErrForbidden
+	}
 	return s.repo.DeactivatePlaybook(ctx, playbookID)
 }
 
 func (s *Service) ListRuns(ctx context.Context, supplierID, status string) ([]PlaybookRun, error) {
+	if s == nil || s.repo == nil {
+		return nil, fmt.Errorf("repository_unavailable")
+	}
 	return s.repo.ListRuns(ctx, supplierID, status, 100)
 }
 
-func (s *Service) ListRunsForException(ctx context.Context, exceptionID string) ([]PlaybookRun, error) {
-	return s.repo.ListRunsForException(ctx, exceptionID)
+func (s *Service) ListRunsForException(ctx context.Context, supplierID, exceptionID string) ([]PlaybookRun, error) {
+	if s == nil || s.repo == nil {
+		return nil, fmt.Errorf("repository_unavailable")
+	}
+	if supplierID == "" {
+		return nil, ErrForbidden
+	}
+	return s.repo.ListRunsForException(ctx, supplierID, exceptionID)
 }
 
 func (s *Service) SeedIfEmpty(ctx context.Context) error {
@@ -136,8 +198,11 @@ func (s *Service) ListSupplierIDsWithOpenExceptions(ctx context.Context) ([]stri
 
 // ListOpenScored ranks open exceptions and attaches matching playbook recommendations.
 func (s *Service) ListOpenScored(ctx context.Context, supplierID string, limit int) ([]ScoredException, error) {
-	if s == nil || s.repo == nil || !s.Enabled() {
-		return nil, nil
+	if s == nil || s.repo == nil {
+		return nil, fmt.Errorf("repository_unavailable")
+	}
+	if !s.Enabled() {
+		return nil, fmt.Errorf("playbooks_disabled")
 	}
 	if limit <= 0 {
 		limit = 50
@@ -195,4 +260,8 @@ func (s *Service) ScoredByOrderID(ctx context.Context, supplierID string) (map[s
 		}
 	}
 	return out, nil
+}
+
+func (s *Service) AbortManifest(ctx context.Context, manifestID, supplierID, operatorID, reasonCode, notes string) error {
+	return s.repo.RecordIntervention(ctx, manifestID, supplierID, operatorID, "ABORT_MANIFEST", reasonCode, notes)
 }

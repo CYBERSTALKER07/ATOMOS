@@ -1,5 +1,6 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import type { ForecastConfidence } from '@pegasusx/types';
 import {
   formatSourceBadge,
@@ -20,6 +21,7 @@ function confidenceColor(pct?: number): string {
 }
 
 export function ForecastConfidenceView({ confidence, compact = false }: Props) {
+  const t = usePortalT();
   const blocked = isForecastBlocked(confidence);
   const seasonal = isSeasonalTemplateActive(confidence);
   const low = confidence.low_units ?? 0;
@@ -44,7 +46,7 @@ export function ForecastConfidenceView({ confidence, compact = false }: Props) {
           </span>
         )}
         {seasonal && (
-          <span className="text-[10px] font-medium text-[var(--warning)]">Seasonal template active</span>
+          <span className="text-[10px] font-medium text-[var(--warning)]">{t("warehouse_portal.forecast_confidence_view.text.seasonal_template_active")}</span>
         )}
       </div>
     );
@@ -53,7 +55,7 @@ export function ForecastConfidenceView({ confidence, compact = false }: Props) {
   return (
     <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3 space-y-1.5">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-xs font-medium text-[var(--muted)]">Forecast confidence</span>
+        <span className="text-xs font-medium text-[var(--muted)]">{t("warehouse_portal.forecast_confidence_view.text.forecast_confidence")}</span>
         {confidence.baseline_source && (
           <span className="text-[10px] uppercase tracking-wide rounded-full bg-[var(--default)] px-2 py-0.5 text-[var(--muted)]">
             {formatSourceBadge(confidence.baseline_source)}
@@ -61,7 +63,7 @@ export function ForecastConfidenceView({ confidence, compact = false }: Props) {
         )}
       </div>
       {blocked ? (
-        <p className="text-sm text-amber-700">Insufficient history — predictive forecast blocked</p>
+        <p className="text-sm text-amber-700">{t("warehouse_portal.forecast_confidence_view.text.insufficient_history_predictive_forecast_blocked")}</p>
       ) : (
         <p className="text-sm font-semibold tabular-nums font-mono">
           {low.toLocaleString()} – {high.toLocaleString()} units
@@ -71,7 +73,7 @@ export function ForecastConfidenceView({ confidence, compact = false }: Props) {
         <p className={`text-xs ${confidenceColor(pct)}`}>{pct}% confidence</p>
       )}
       {seasonal && (
-        <p className="text-xs text-[var(--warning)]">Seasonal template active — ML extrapolation disabled</p>
+        <p className="text-xs text-[var(--warning)]">{t("warehouse_portal.forecast_confidence_view.text.seasonal_template_active_ml_extrapolation_disabled")}</p>
       )}
     </div>
   );

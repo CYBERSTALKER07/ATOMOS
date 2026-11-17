@@ -1,23 +1,23 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { retailerSetupKey } from "@pegasusx/api-client";
-import { getRetailerId } from "@/lib/retailer-profile";
+import { getRetailerProfileFromServer, setupRetailer } from "@/lib/api";
+import { persistFullAuthTokens } from "@/lib/multi-org-auth";
+import { forwardGeocode } from "@/lib/geocode";
+import { getRetailerId, setRetailerProfile } from "@/lib/retailer-profile";
 import { PortalField, PortalInput, PortalActions, FormAlert } from "@/components/portal";
-import { SETUP_TAX_KEY } from "@/components/setup/constants";
-
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8180";
-
-function getCookie(name: string) {
-  const value = `; ${document.cookie}`;
-  const parts = value.split(`; ${name}=`);
-  if (parts.length === 2) return parts.pop()?.split(";").shift();
-}
+import {
+  clearTaxSetupDraft,
+  readTaxSetupDraft,
+  type TaxIdentitySetupDraft,
+} from "@/components/setup/constants";
 
 export default function SetupAddressPage() {
+  const t = usePortalT();
   const router = useRouter();
-  const [taxId, setTaxId] = useState("");
+  const [taxDraft, setTaxDraft] = useState<TaxIdentitySetupDraft | null>(null);
   const [billingAddress, setBillingAddress] = useState("");
   const [shippingAddress, setShippingAddress] = useState("");
   const [city, setCity] = useState("");
@@ -26,12 +26,32 @@ export default function SetupAddressPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const stored = sessionStorage.getItem(SETUP_TAX_KEY);
-    if (!stored) {
-      router.replace("/setup/tax");
+    const stored = readTaxSetupDraft();
+    if (stored) {
+      setTaxDraft(stored);
       return;
     }
-    setTaxId(stored);
+    let cancelled = false;
+    void getRetailerProfileFromServer().then((profile) => {
+      if (cancelled) return;
+      if (profile?.tax_id) {
+        setTaxDraft({
+          mode: "LEGAL_VERIFIED",
+          taxId: profile.tax_id,
+          legalName: profile.name,
+          persisted: true,
+        });
+        return;
+      }
+      if (profile?.legal_entity_status === "INFORMAL_PHONE") {
+        setTaxDraft({ mode: "INFORMAL_PHONE", taxId: "", persisted: true });
+        return;
+      }
+      router.replace("/setup/tax");
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [router]);
 
   async function handleSubmit() {
@@ -48,43 +68,51 @@ export default function SetupAddressPage() {
     setError(null);
 
     try {
-      const token = getCookie("pegasus_retailer_jwt");
-      const retailerId = getRetailerId();
-      const res = await fetch(`${API}/v1/retailer/setup`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          ...(retailerId
-            ? { "Idempotency-Key": retailerSetupKey(retailerId) }
-            : {}),
-        },
-        body: JSON.stringify({
-          taxId,
+      const retailerId = getRetailerId() || "retailer";
+      const isInformal = taxDraft?.mode === "INFORMAL_PHONE";
+      const fullShipping = [shippingAddress.trim(), city.trim(), postalCode.trim()].filter(Boolean).join(", ");
+      const geo = await forwardGeocode(fullShipping).catch(() => null);
+      const res = await setupRetailer(
+        {
+          ...(isInformal
+            ? { informal_shop: true, legal_entity_status: "INFORMAL_PHONE" }
+            : {
+                tax_id: taxDraft?.taxId || "",
+                inn: taxDraft?.taxId || "",
+                legal_entity_status: "LEGAL_VERIFIED",
+              }),
+          ...(taxDraft?.legalName ? { name: taxDraft.legalName } : {}),
           billingAddress: billingAddress.trim(),
           shippingAddress: shippingAddress.trim(),
+          billing_address: billingAddress.trim(),
+          delivery_address: shippingAddress.trim(),
           city: city.trim(),
           postalCode: postalCode.trim(),
-        }),
-      });
+          ...(geo ? { lat: geo.lat, lng: geo.lng } : {}),
+        },
+        retailerId,
+      );
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => null);
-        throw new Error(errorData?.message || "Setup failed");
+        throw new Error(errorData?.message || errorData?.error || "Setup failed");
       }
 
       const data = await res.json();
       if (data?.token) {
-        document.cookie = `pegasus_retailer_jwt=${encodeURIComponent(data.token)}; path=/; max-age=86400; SameSite=Lax`;
+        persistFullAuthTokens({
+          token: data.token,
+          refresh_token: data.refresh_token,
+        });
       }
-      if (data?.refresh_token) {
-        document.cookie = `pegasus_retailer_refresh=${encodeURIComponent(data.refresh_token)}; path=/; max-age=604800; SameSite=Lax`;
+      if (data?.retailer) {
+        await setRetailerProfile(data.retailer);
       }
 
-      sessionStorage.removeItem(SETUP_TAX_KEY);
+      clearTaxSetupDraft();
       window.location.href = "/dashboard";
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Setup failed");
+      setError(err instanceof Error ? err.message : t("supplier_portal.billing_setup.error.setup_failed"));
       setSubmitting(false);
     }
   }
@@ -92,13 +120,13 @@ export default function SetupAddressPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="setup-form-title">Delivery addresses</h1>
-        <p className="setup-form-sub">Where should we bill and deliver your orders?</p>
+        <h1 className="setup-form-title">{t("retailer_desktop.setup.address.text.delivery_addresses")}</h1>
+        <p className="setup-form-sub">{t("retailer_desktop.setup.address.text.where_should_we_bill_and_deliver_your_orders")}</p>
       </div>
 
       {error ? <FormAlert variant="error">{error}</FormAlert> : null}
 
-      <PortalField id="billing-address" label="Billing address">
+      <PortalField id="billing-address" label={t("retailer_desktop.residual.text.billing_address")}>
         <PortalInput
           id="billing-address"
           value={billingAddress}
@@ -107,7 +135,7 @@ export default function SetupAddressPage() {
         />
       </PortalField>
 
-      <PortalField id="shipping-address" label="Shipping address (default)">
+      <PortalField id="shipping-address" label={t("retailer_desktop.residual.text.shipping_address_default")}>
         <PortalInput
           id="shipping-address"
           value={shippingAddress}
@@ -117,16 +145,16 @@ export default function SetupAddressPage() {
       </PortalField>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <PortalField id="city" label="City">
+        <PortalField id="city" label={t("supplier_portal.analytics.demand.signals.text.city")}>
           <PortalInput id="city" value={city} onChange={(e) => setCity(e.target.value)} />
         </PortalField>
-        <PortalField id="postal" label="Postal code" optional>
+        <PortalField id="postal" label={t("retailer_desktop.residual.text.postal_code")} optional>
           <PortalInput id="postal" value={postalCode} onChange={(e) => setPostalCode(e.target.value)} />
         </PortalField>
       </div>
 
       <PortalActions
-        back={{ label: "Back", onClick: () => router.push("/setup/tax") }}
+        back={{ label: t("common.action.back"), onClick: () => router.push("/setup/tax") }}
         primary={{ label: submitting ? "Saving…" : "Complete setup", onClick: handleSubmit, loading: submitting }}
       />
     </div>

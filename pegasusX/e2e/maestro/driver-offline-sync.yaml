@@ -1,0 +1,27 @@
+appId: com.pegasusx.driver
+env:
+  TOXIPROXY_URL: "http://127.0.0.1:8474"
+---
+- launchApp:
+    clearState: true
+- assertVisible:
+    text: ".*Sign In.*|.*Driver.*|.*Dashboard.*"
+- runScript:
+    file: ../scripts/driver_offline_toggle.js
+    env:
+      MODE: "status"
+- tapOn:
+    text: "Deliver Order|Mark Delivered"
+    optional: true
+- runFlow:
+    when:
+      visible: "Saved Offline"
+    commands:
+      - assertVisible: "Saved Offline"
+      - runScript:
+          file: ../scripts/driver_offline_toggle.js
+          env:
+            MODE: "online"
+      - extendedWaitUntil:
+          visible: "Successfully Synced|Synced|Pending \\(0\\)"
+          timeout: 15000

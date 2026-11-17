@@ -59,6 +59,26 @@ func (r *testCreditRepo) ListBySupplier(_ context.Context, supplierID, status st
 	return out, nil
 }
 
+func (r *testCreditRepo) ListDelinquentCandidates(_ context.Context, limit int) ([]Profile, error) {
+	if r.getErr != nil {
+		return nil, r.getErr
+	}
+	if !r.found {
+		return nil, nil
+	}
+	if r.profile.Status != StatusActive {
+		return nil, nil
+	}
+	if r.profile.DelinquencyCount == 0 && r.profile.CurrentBalanceMinor == 0 {
+		return nil, nil
+	}
+	out := []Profile{r.profile}
+	if limit > 0 && len(out) > limit {
+		out = out[:limit]
+	}
+	return out, nil
+}
+
 func (r *testCreditRepo) UpsertProfile(_ context.Context, p Profile, emit func(outbox.TxnBuffer) error) error {
 	if r.upsertErr != nil {
 		return r.upsertErr
@@ -138,6 +158,19 @@ func TestListSupplierProfiles_SortsCollectionsFirst(t *testing.T) {
 	sortProfilesForCollections(list)
 	if list[0].RetailerID != "r-bl" || list[1].RetailerID != "r-frozen" || list[2].RetailerID != "r-bal" {
 		t.Fatalf("order=%v %v %v %v", list[0].RetailerID, list[1].RetailerID, list[2].RetailerID, list[3].RetailerID)
+	}
+}
+
+func TestSortProfilesForCollections_RiskScoreAndBalanceTieBreak(t *testing.T) {
+	list := []Profile{
+		{RetailerID: "r-hi-score", SupplierID: "s1", Status: StatusActive, CurrentBalanceMinor: 90_000, RiskScore: 80},
+		{RetailerID: "r-lo-score", SupplierID: "s1", Status: StatusActive, CurrentBalanceMinor: 10_000, RiskScore: 20},
+		{RetailerID: "r-zero-hi-bal", SupplierID: "s1", Status: StatusActive, CurrentBalanceMinor: 70_000, RiskScore: 0},
+		{RetailerID: "r-zero-lo-bal", SupplierID: "s1", Status: StatusActive, CurrentBalanceMinor: 30_000, RiskScore: 0},
+	}
+	sortProfilesForCollections(list)
+	if list[0].RetailerID != "r-lo-score" {
+		t.Fatalf("expected lowest positive risk score first, got %s", list[0].RetailerID)
 	}
 }
 
@@ -319,5 +352,45 @@ func TestCheckOrder_RepositoryError(t *testing.T) {
 	_, err := svc.CheckOrder(context.Background(), "ret-1", "sup-1", 1000)
 	if err == nil {
 		t.Fatal("expected error")
+	}
+}
+
+func TestCheckOrder_PrepayOnlyLocked(t *testing.T) {
+	t.Setenv("UNLIMITED_PAYMENTS", "true")
+	repo := &testCreditRepo{
+		found: true,
+		profile: Profile{
+			RetailerID:       "ret-1",
+			SupplierID:       "sup-1",
+			CreditLimitMinor: 1_000_000,
+			Status:           StatusActive,
+			PrepayOnlyLocked: true,
+		},
+	}
+	svc := newTestService(repo)
+
+	res, err := svc.CheckOrder(context.Background(), "ret-1", "sup-1", 50000)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if res.Allowed || res.Reason != "prepay_only_locked" || !res.PrepayOnlyLocked || res.Shortfall != 50000 {
+		t.Fatalf("expected prepay_only_locked rejection even under UNLIMITED_PAYMENTS, got %+v", res)
+	}
+
+	unlocked, err := svc.SetPrepayOnlyLocked(context.Background(), "sup-1", "ret-1", false, "admin-1", "")
+	if err != nil {
+		t.Fatalf("SetPrepayOnlyLocked(false) failed: %v", err)
+	}
+	if unlocked.PrepayOnlyLocked || unlocked.Status != StatusActive || unlocked.CreditLimitMinor != 1_000_000 {
+		t.Fatalf("unexpected profile after unlock: %+v", unlocked)
+	}
+	repo.profile = unlocked
+
+	resAfter, err := svc.CheckOrder(context.Background(), "ret-1", "sup-1", 50000)
+	if err != nil {
+		t.Fatalf("unexpected error after unlock: %v", err)
+	}
+	if !resAfter.Allowed || resAfter.PrepayOnlyLocked {
+		t.Fatalf("expected credit order allowed after PrepayOnlyLocked=false, got %+v", resAfter)
 	}
 }

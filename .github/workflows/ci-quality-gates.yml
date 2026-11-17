@@ -1,0 +1,42 @@
+name: 01 - PR Quality Gates
+on:
+  pull_request:
+    branches: [ main, develop ]
+jobs:
+  frontend-ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+      - name: Install dependencies
+        run: pnpm install
+      - name: Lint (Affected)
+        run: pnpm turbo run lint --filter=...[origin/main]
+      - name: Typecheck (Affected)
+        run: pnpm turbo run typecheck --filter=...[origin/main]
+      - name: Unit Tests (Affected)
+        run: pnpm turbo run test --filter=...[origin/main]
+
+  backend-ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache: true
+      - name: Go Format & Vet
+        run: go fmt ./... && go vet ./...
+      - name: Go Test with Race Detector
+        run: go test -race -cover ./...

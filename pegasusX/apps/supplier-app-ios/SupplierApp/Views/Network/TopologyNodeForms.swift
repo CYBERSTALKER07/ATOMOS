@@ -1,8 +1,85 @@
+import Observation
 import SwiftUI
 
 enum TopologyMutation {
-  static let defaultLat = 41.2995
-  static let defaultLng = 69.2401
+  static var defaultLat: Double { packMapCoordinate().lat }
+  static var defaultLng: Double { packMapCoordinate().lng }
+
+  static func warehouseInput(
+    from node: SupplierTopologyWarehouse? = nil,
+    warehouseId: String?,
+    name: String,
+    location: AddressLocationValue,
+    coverageRadiusKm: Double,
+    isActive: Bool,
+    isOnShift: Bool,
+    transferMode: String
+  ) -> SupplierTopologyWarehouseInput {
+    var input = SupplierTopologyWarehouseInput(
+      warehouseId: warehouseId?.isEmpty == true ? nil : warehouseId,
+      name: name,
+      address: location.address.isEmpty ? nil : location.address,
+      placeId: location.placeId,
+      lat: location.lat,
+      lng: location.lng,
+      coverageRadiusKm: coverageRadiusKm,
+      isActive: isActive,
+      isOnShift: isOnShift,
+      transferMode: transferMode
+    )
+    if let node {
+      input.primaryFactoryId = node.primaryFactoryId.flatMap { $0.isEmpty ? nil : $0 }
+      input.countryCode = node.countryCode.isEmpty ? nil : node.countryCode
+      input.coverageCities = node.coverageCities.isEmpty ? nil : node.coverageCities
+      input.assignedFactoryIds = node.assignedFactoryIds.isEmpty ? nil : node.assignedFactoryIds
+    }
+    return input
+  }
+
+  static func warehouseInput(from node: SupplierTopologyWarehouse) -> SupplierTopologyWarehouseInput {
+    warehouseInput(
+      from: node,
+      warehouseId: node.warehouseId.isEmpty ? nil : node.warehouseId,
+      name: node.name,
+      location: AddressLocationValue(address: node.address, lat: node.lat, lng: node.lng, placeId: node.placeId),
+      coverageRadiusKm: node.coverageRadiusKm,
+      isActive: node.isActive,
+      isOnShift: node.isOnShift,
+      transferMode: (node.transferMode ?? "").isEmpty ? "TRUCK" : (node.transferMode ?? "TRUCK")
+    )
+  }
+
+  static func factoryInput(
+    from node: SupplierTopologyFactory? = nil,
+    factoryId: String?,
+    name: String,
+    location: AddressLocationValue,
+    isActive: Bool
+  ) -> SupplierTopologyFactoryInput {
+    var input = SupplierTopologyFactoryInput(
+      factoryId: factoryId?.isEmpty == true ? nil : factoryId,
+      name: name,
+      address: location.address.isEmpty ? nil : location.address,
+      placeId: location.placeId,
+      lat: location.lat,
+      lng: location.lng,
+      isActive: isActive
+    )
+    if let node, !node.countryCode.isEmpty {
+      input.countryCode = node.countryCode
+    }
+    return input
+  }
+
+  static func factoryInput(from node: SupplierTopologyFactory) -> SupplierTopologyFactoryInput {
+    factoryInput(
+      from: node,
+      factoryId: node.factoryId.isEmpty ? nil : node.factoryId,
+      name: node.name,
+      location: AddressLocationValue(address: node.address, lat: node.lat, lng: node.lng, placeId: node.placeId),
+      isActive: node.isActive
+    )
+  }
 
   @MainActor
   static func appendWarehouse(
@@ -11,45 +88,19 @@ enum TopologyMutation {
     coverageRadiusKm: Double = 50
   ) async throws -> SupplierTopologyResponse {
     let topology = try await SupplierOperationsService.topology()
-    var warehouses = topology.warehouses.map { node in
-      SupplierTopologyWarehouseInput(
-        warehouseId: node.warehouseId.isEmpty ? nil : node.warehouseId,
-        name: node.name,
-        address: node.address.isEmpty ? nil : node.address,
-        placeId: node.placeId,
-        lat: node.lat,
-        lng: node.lng,
-        coverageRadiusKm: node.coverageRadiusKm,
-        isActive: node.isActive,
-        isOnShift: node.isOnShift,
-        transferMode: (node.transferMode ?? "").isEmpty ? "TRUCK" : (node.transferMode ?? "TRUCK")
-      )
-    }
+    var warehouses = topology.warehouses.map { warehouseInput(from: $0) }
     warehouses.append(
-      SupplierTopologyWarehouseInput(
+      warehouseInput(
         warehouseId: nil,
         name: name.trimmingCharacters(in: .whitespacesAndNewlines),
-        address: location.address.isEmpty ? nil : location.address,
-        placeId: location.placeId,
-        lat: location.lat,
-        lng: location.lng,
+        location: location,
         coverageRadiusKm: coverageRadiusKm,
         isActive: true,
         isOnShift: true,
         transferMode: "TRUCK"
       )
     )
-    let factories = topology.factories.map { node in
-      SupplierTopologyFactoryInput(
-        factoryId: node.factoryId.isEmpty ? nil : node.factoryId,
-        name: node.name,
-        address: node.address.isEmpty ? nil : node.address,
-        placeId: node.placeId,
-        lat: node.lat,
-        lng: node.lng,
-        isActive: node.isActive
-      )
-    }
+    let factories = topology.factories.map { factoryInput(from: $0) }
     return try await SupplierOperationsService.updateTopology(
       SupplierTopologyUpdateRequest(warehouses: warehouses, factories: factories)
     )
@@ -58,39 +109,13 @@ enum TopologyMutation {
   @MainActor
   static func appendFactory(name: String, location: AddressLocationValue) async throws -> SupplierTopologyResponse {
     let topology = try await SupplierOperationsService.topology()
-    let warehouses = topology.warehouses.map { node in
-      SupplierTopologyWarehouseInput(
-        warehouseId: node.warehouseId.isEmpty ? nil : node.warehouseId,
-        name: node.name,
-        address: node.address.isEmpty ? nil : node.address,
-        placeId: node.placeId,
-        lat: node.lat,
-        lng: node.lng,
-        coverageRadiusKm: node.coverageRadiusKm,
-        isActive: node.isActive,
-        isOnShift: node.isOnShift,
-        transferMode: (node.transferMode ?? "").isEmpty ? "TRUCK" : (node.transferMode ?? "TRUCK")
-      )
-    }
-    var factories = topology.factories.map { node in
-      SupplierTopologyFactoryInput(
-        factoryId: node.factoryId.isEmpty ? nil : node.factoryId,
-        name: node.name,
-        address: node.address.isEmpty ? nil : node.address,
-        placeId: node.placeId,
-        lat: node.lat,
-        lng: node.lng,
-        isActive: node.isActive
-      )
-    }
+    let warehouses = topology.warehouses.map { warehouseInput(from: $0) }
+    var factories = topology.factories.map { factoryInput(from: $0) }
     factories.append(
-      SupplierTopologyFactoryInput(
+      factoryInput(
         factoryId: nil,
         name: name.trimmingCharacters(in: .whitespacesAndNewlines),
-        address: location.address.isEmpty ? nil : location.address,
-        placeId: location.placeId,
-        lat: location.lat,
-        lng: location.lng,
+        location: location,
         isActive: true
       )
     )
@@ -98,7 +123,7 @@ enum TopologyMutation {
       throw NSError(
         domain: "TopologyMutation",
         code: 1,
-        userInfo: [NSLocalizedDescriptionKey: "Add at least one warehouse before creating factories."]
+        userInfo: [NSLocalizedDescriptionKey: "mobile_supplier.chrome.add_warehouse_before_factories"]
       )
     }
     return try await SupplierOperationsService.updateTopology(
@@ -107,63 +132,20 @@ enum TopologyMutation {
   }
 }
 
-struct TopologyCenteredEmptyState: View {
-  let title: String
-  let message: String
-  let actionLabel: String
-  let action: () -> Void
+@Observable
+@MainActor
+final class TopologyNodeFormViewModel {
+  var name = ""
+  var location = AddressLocationValue(lat: TopologyMutation.defaultLat, lng: TopologyMutation.defaultLng)
+  var coverageKm = "50"
+  var saving = false
+  var error: String?
 
-  var body: some View {
-    VStack(spacing: SupplierTheme.spacingLG) {
-      Spacer()
-      SupplierEmptyView(title: title, message: message)
-      Button(actionLabel, action: action)
-        .buttonStyle(.borderedProminent)
-        .tint(.primary)
-      Spacer()
-    }
-    .frame(maxWidth: .infinity, maxHeight: .infinity)
-    .padding()
-  }
-}
-
-struct AddWarehouseSheet: View {
-  @Environment(\.dismiss) private var dismiss
-  var onSaved: () -> Void
-
-  @State private var name = ""
-  @State private var location = AddressLocationValue(lat: TopologyMutation.defaultLat, lng: TopologyMutation.defaultLng)
-  @State private var coverageKm = "50"
-  @State private var saving = false
-  @State private var error: String?
-
-  var body: some View {
-    NavigationStack {
-      Form {
-        if let error {
-          Section { Text(error).foregroundStyle(.red) }
-        }
-        Section("Warehouse") {
-          TextField("Name", text: $name)
-          AddressLocationField(value: $location, label: "Warehouse address")
-          TextField("Coverage radius (km)", text: $coverageKm).keyboardType(.decimalPad)
-        }
-      }
-      .navigationTitle("Add warehouse")
-      .toolbar {
-        ToolbarItem(placement: .cancellationAction) {
-          Button("Cancel") { dismiss() }
-        }
-        ToolbarItem(placement: .confirmationAction) {
-          Button(saving ? "Saving…" : "Save") { Task { await save() } }
-            .disabled(saving || name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || location.address.isEmpty)
-        }
-      }
-    }
+  var canSave: Bool {
+    !saving && !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !location.address.isEmpty
   }
 
-  @MainActor
-  private func save() async {
+  func saveWarehouse() async -> Bool {
     saving = true
     error = nil
     defer { saving = false }
@@ -173,10 +155,67 @@ struct AddWarehouseSheet: View {
         location: location,
         coverageRadiusKm: Double(coverageKm) ?? 50
       )
-      onSaved()
-      dismiss()
+      PegasusHaptics.success()
+      return true
     } catch {
-      self.error = error.localizedDescription
+      PegasusHaptics.error()
+      SupplierActionFailure.record(underlying: error, hasContent: false, error: &self.error)
+      return false
+    }
+  }
+
+  func saveFactory() async -> Bool {
+    saving = true
+    error = nil
+    defer { saving = false }
+    do {
+      _ = try await TopologyMutation.appendFactory(name: name, location: location)
+      PegasusHaptics.success()
+      return true
+    } catch {
+      PegasusHaptics.error()
+      SupplierActionFailure.record(underlying: error, hasContent: false, error: &self.error)
+      return false
+    }
+  }
+}
+
+struct AddWarehouseSheet: View {
+  @Environment(\.dismiss) private var dismiss
+  var onSaved: () -> Void
+  @State private var vm = TopologyNodeFormViewModel()
+
+  var body: some View {
+    @Bindable var vm = vm
+    NavigationStack {
+      Form {
+        if let error = vm.error {
+          Section { Text(error).foregroundStyle(SupplierTheme.destructive) }
+        }
+        Section("mobile_supplier.chrome.warehouse") {
+          TextField("retailer_desktop.pos.text.name", text: $vm.name)
+          AddressLocationField(value: $vm.location, label: "mobile_supplier.chrome.warehouse_address")
+          TextField("supplier_portal.residual.text.coverage_radius_km", text: $vm.coverageKm).keyboardType(.decimalPad)
+        }
+      }
+      .scrollDismissesKeyboard(.interactively)
+      .navigationTitle("supplier_portal.warehouses.components.warehouse_form.text.add_warehouse")
+      .toolbar {
+        ToolbarItem(placement: .cancellationAction) {
+          Button("common.action.cancel") { dismiss() }
+        }
+        ToolbarItem(placement: .confirmationAction) {
+          Button(LocalizedStringKey(vm.saving ? "mobile_supplier.chrome.saving" : "mobile_supplier.chrome.save")) {
+            Task {
+              if await vm.saveWarehouse() {
+                onSaved()
+                dismiss()
+              }
+            }
+          }
+          .disabled(!vm.canSave)
+        }
+      }
     }
   }
 }
@@ -184,47 +223,38 @@ struct AddWarehouseSheet: View {
 struct AddFactorySheet: View {
   @Environment(\.dismiss) private var dismiss
   var onSaved: () -> Void
-
-  @State private var name = ""
-  @State private var location = AddressLocationValue(lat: 41.3111, lng: 69.2797)
-  @State private var saving = false
-  @State private var error: String?
+  @State private var vm = TopologyNodeFormViewModel()
 
   var body: some View {
+    @Bindable var vm = vm
     NavigationStack {
       Form {
-        if let error {
-          Section { Text(error).foregroundStyle(.red) }
+        if let error = vm.error {
+          Section { Text(error).foregroundStyle(SupplierTheme.destructive) }
         }
-        Section("Factory") {
-          TextField("Name", text: $name)
-          AddressLocationField(value: $location, label: "Factory address")
+        Section("mobile_supplier.chrome.factory") {
+          TextField("retailer_desktop.pos.text.name", text: $vm.name)
+          AddressLocationField(value: $vm.location, label: "mobile_supplier.chrome.factory_address")
         }
       }
-      .navigationTitle("Add factory")
+      .scrollDismissesKeyboard(.interactively)
+      .navigationTitle("supplier_portal.factories.components.factory_form.text.add_factory")
       .toolbar {
         ToolbarItem(placement: .cancellationAction) {
-          Button("Cancel") { dismiss() }
+          Button("common.action.cancel") { dismiss() }
         }
         ToolbarItem(placement: .confirmationAction) {
-          Button(saving ? "Saving…" : "Save") { Task { await save() } }
-            .disabled(saving || name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || location.address.isEmpty)
+          Button(LocalizedStringKey(vm.saving ? "mobile_supplier.chrome.saving" : "mobile_supplier.chrome.save")) {
+            Task {
+              if await vm.saveFactory() {
+                onSaved()
+                dismiss()
+              }
+            }
+          }
+          .disabled(!vm.canSave)
         }
       }
-    }
-  }
-
-  @MainActor
-  private func save() async {
-    saving = true
-    error = nil
-    defer { saving = false }
-    do {
-      _ = try await TopologyMutation.appendFactory(name: name, location: location)
-      onSaved()
-      dismiss()
-    } catch {
-      self.error = error.localizedDescription
     }
   }
 }

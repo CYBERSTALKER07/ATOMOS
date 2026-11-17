@@ -2,6 +2,8 @@ package fiscal
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"testing"
 )
 
@@ -37,24 +39,26 @@ func TestRegistry(t *testing.T) {
 		t.Fatalf("expected ErrStrategyNotFound, got %v", err)
 	}
 
-	// Test strategy methods
+	// Test strategy methods (unconfigured strategy must fail closed, never return nil success)
 	ctx := context.Background()
 	doc, err := s.FormatDocument(ctx, "doc123")
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
-	if string(doc) != "UZ_FORMATTED_doc123" {
-		t.Fatalf("unexpected doc format: %s", string(doc))
+	var parsed map[string]any
+	if uErr := json.Unmarshal(doc, &parsed); uErr != nil {
+		t.Fatalf("expected canonical JSON from FormatDocument, got %q (%v)", string(doc), uErr)
+	}
+	if parsed["doc_id"] != "doc123" || parsed["country"] != "UZ" {
+		t.Fatalf("unexpected formatted doc payload: %+v", parsed)
 	}
 
-	err = s.SubmitDocument(ctx, "doc123", doc)
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
+	if err = s.SubmitDocument(ctx, "doc123", doc); !errors.Is(err, ErrSoliqGatewayNotConfigured) {
+		t.Fatalf("expected ErrSoliqGatewayNotConfigured on unconfigured strategy, got %v", err)
 	}
 
-	err = s.CancelDocument(ctx, "doc123")
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
+	if err = s.CancelDocument(ctx, "doc123"); !errors.Is(err, ErrSoliqGatewayNotConfigured) {
+		t.Fatalf("expected ErrSoliqGatewayNotConfigured on unconfigured strategy, got %v", err)
 	}
 }
 

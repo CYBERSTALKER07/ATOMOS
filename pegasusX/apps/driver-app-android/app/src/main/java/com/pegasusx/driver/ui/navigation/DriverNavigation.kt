@@ -1,5 +1,7 @@
 package com.pegasusx.driver.ui.navigation
 
+import androidx.compose.ui.res.stringResource
+
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
@@ -22,7 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -53,10 +55,13 @@ import com.pegasusx.driver.BuildConfig
 import com.pegasusx.driver.data.remote.DriverApi
 import com.pegasusx.driver.data.remote.DriverOutdatedState
 import com.pegasusx.driver.data.remote.DriverWebSocket
+import com.pegasusx.driver.data.remote.TelemetrySocket
 import com.pegasusx.driver.services.OfflineSyncScheduler
+import com.pegasusx.driver.services.TelemetrySyncScheduler
 import com.pegasusx.driver.service.AutoUpdater
 import com.pegasusx.driver.service.EnterpriseUpdateConfig
 import com.pegasusx.driver.data.remote.TokenHolder
+import com.pegasusx.driver.network.NetworkLifecycleEngine
 import com.pegasusx.driver.ui.components.ClientPolicyBanner
 import com.pegasusx.driver.ui.screens.auth.LoginScreen
 import com.pegasusx.driver.ui.screens.home.HomeScreen
@@ -74,11 +79,16 @@ import com.pegasusx.driver.ui.screens.profile.ProfileScreen
 import com.pegasusx.driver.ui.screens.scanner.ScannerScreen
 import com.pegasusx.driver.ui.screens.notifications.DriverNotificationInboxScreen
 import com.pegasusx.driver.ui.screens.offline.OfflineVerifierScreen
+import com.pegasusx.driver.ui.screens.fleet.DVIRViewModel
+import com.pegasusx.driver.ui.screens.fleet.FleetDVIRScreen
+import com.pegasusx.driver.ui.screens.fleet.MidRouteRescueScreen
+import com.pegasusx.driver.ui.screens.fleet.YardGateScreen
 import com.pegasusx.driver.ui.screens.supply.SupplyTransfersScreen
 import com.pegasusx.driver.ui.screens.sync.PendingSyncCountViewModel
 import com.pegasusx.driver.ui.screens.sync.SyncQueueScreen
 import com.pegasusx.driver.ui.theme.MotionTokens
 import kotlinx.coroutines.launch
+import com.pegasusx.driver.R
 
 object DriverRoutes {
     const val LOGIN = "login"
@@ -93,6 +103,9 @@ object DriverRoutes {
     const val OFFLINE_VERIFIER = "offline_verifier"
     const val SYNC_QUEUE = "sync_queue"
     const val SUPPLY_TRANSFERS = "supply_transfers"
+    const val FLEET_DVIR = "fleet_dvir"
+    const val MID_ROUTE_RESCUE = "mid_route_rescue"
+    const val YARD_GATE = "yard_gate"
 
     fun correctionRoute(orderId: String, retailerName: String): String {
         val encodedName = URLEncoder.encode(retailerName.ifBlank { "_" }, "UTF-8")
@@ -119,6 +132,7 @@ object DriverRoutes {
 fun DriverNavigation(
     api: DriverApi,
     driverWebSocket: DriverWebSocket,
+    telemetrySocket: TelemetrySocket,
     windowSizeClass: WindowSizeClass? = null,
 ) {
     val navController = rememberNavController()
@@ -127,8 +141,10 @@ fun DriverNavigation(
     val startDest = if (TokenHolder.token != null) DriverRoutes.MAIN else DriverRoutes.LOGIN
     val lifecycleOwner = LocalLifecycleOwner.current
     val context = LocalContext.current
-    val outdatedState by driverWebSocket.outdatedState.collectAsState()
-    var networkAvailable by remember { mutableStateOf(true) }
+    val outdatedState by driverWebSocket.outdatedState.collectAsStateWithLifecycle()
+    val isOnline by NetworkLifecycleEngine.shared.isOnline.collectAsStateWithLifecycle()
+    val syncEpoch by NetworkLifecycleEngine.shared.syncEpoch.collectAsStateWithLifecycle()
+    val networkAvailable = isOnline
     var clientPolicyMessage by remember { mutableStateOf<String?>(null) }
     var clientPolicyForce by remember { mutableStateOf(false) }
     var pendingManifest by remember { mutableStateOf<AutoUpdater.Manifest?>(null) }
@@ -153,8 +169,9 @@ fun DriverNavigation(
                 clientPolicyMessage = state.message
                 clientPolicyForce = state.force
                 pendingManifest = state.manifest
-            } catch (_: Exception) {
+            } catch (e: Exception) {
                 // Policy fetch is optional on local/dev stacks.
+            if (e is kotlinx.coroutines.CancellationException) throw e
             }
         }
     }
@@ -189,30 +206,12 @@ fun DriverNavigation(
         }
     }
 
-    DisposableEffect(context) {
-        val mainHandler = Handler(Looper.getMainLooper())
-        val connectivityManager = context.getSystemService(ConnectivityManager::class.java)
-        val request = NetworkRequest.Builder()
-            .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-            .build()
-        val callback = object : ConnectivityManager.NetworkCallback() {
-            override fun onAvailable(network: Network) {
-                mainHandler.post {
-                    if (!networkAvailable) {
-                        OfflineSyncScheduler.enqueue(context)
-                    }
-                    networkAvailable = true
-                }
-            }
-
-            override fun onLost(network: Network) {
-                mainHandler.post { networkAvailable = false }
-            }
-        }
-
-        runCatching { connectivityManager?.registerNetworkCallback(request, callback) }
-        onDispose {
-            runCatching { connectivityManager?.unregisterNetworkCallback(callback) }
+    LaunchedEffect(syncEpoch) {
+        if (syncEpoch > 0 && isOnline) {
+            OfflineSyncScheduler.enqueue(context)
+            driverWebSocket.resetAndReconnect()
+            telemetrySocket.resetAndReconnect()
+            TelemetrySyncScheduler.enqueue(context)
         }
     }
 
@@ -270,13 +269,15 @@ fun DriverNavigation(
 
         composable(DriverRoutes.MAIN) {
             val manifestViewModel: ManifestViewModel = hiltViewModel()
-            val manifestState by manifestViewModel.state.collectAsState()
+            val manifestState by manifestViewModel.state.collectAsStateWithLifecycle()
             val activeRideOrder = manifestState.orders.firstOrNull { order ->
                 order.state != OrderState.COMPLETED &&
                     order.state != OrderState.CANCELLED &&
                     order.latitude != null &&
                     order.longitude != null
             }
+            val pendingVm: PendingSyncCountViewModel = hiltViewModel()
+            val pendingCount by pendingVm.pendingCount.collectAsStateWithLifecycle()
             MainTabView(
                 requestedTab = handoffTabRequest,
                 onRequestedTabConsumed = { handoffTabRequest = null },
@@ -292,6 +293,13 @@ fun DriverNavigation(
                         },
                         onNotificationsClick = { navController.navigate(DriverRoutes.NOTIFICATIONS) { launchSingleTop = true } },
                         onOpenSupplyTransfers = { navController.navigate(DriverRoutes.SUPPLY_TRANSFERS) },
+                        onSyncQueue = { navController.navigate(DriverRoutes.SYNC_QUEUE) },
+                        onStopClick = { order ->
+                            navController.navigate(
+                                DriverRoutes.correctionRoute(order.id, order.retailerName)
+                            )
+                        },
+                        pendingCount = pendingCount,
                     )
                 },
                 mapContent = {
@@ -318,12 +326,13 @@ fun DriverNavigation(
                     )
                 },
                 profileContent = {
-                    val pendingVm: PendingSyncCountViewModel = hiltViewModel()
-                    val pendingCount by pendingVm.pendingCount.collectAsState()
                     ProfileScreen(
                         viewModel = manifestViewModel,
                         onOfflineVerifier = { navController.navigate(DriverRoutes.OFFLINE_VERIFIER) },
                         onSyncQueue = { navController.navigate(DriverRoutes.SYNC_QUEUE) },
+                        onFleetDvir = { navController.navigate(DriverRoutes.FLEET_DVIR) },
+                        onMidRouteRescue = { navController.navigate(DriverRoutes.MID_ROUTE_RESCUE) },
+                        onYardGate = { navController.navigate(DriverRoutes.YARD_GATE) },
                         pendingCount = pendingCount,
                     )
                 },
@@ -348,6 +357,29 @@ fun DriverNavigation(
 
         composable(DriverRoutes.SUPPLY_TRANSFERS) {
             SupplyTransfersScreen(onBack = { navController.popBackStack() })
+        }
+
+        composable(DriverRoutes.FLEET_DVIR) {
+            val dvirViewModel: DVIRViewModel = hiltViewModel()
+            FleetDVIRScreen(
+                viewModel = dvirViewModel,
+                onNavigateToRescue = { navController.navigate(DriverRoutes.MID_ROUTE_RESCUE) },
+                onNavigateToGate = { navController.navigate(DriverRoutes.YARD_GATE) },
+            )
+        }
+
+        composable(DriverRoutes.MID_ROUTE_RESCUE) {
+            MidRouteRescueScreen(
+                driverApi = api,
+                onBack = { navController.popBackStack() },
+            )
+        }
+
+        composable(DriverRoutes.YARD_GATE) {
+            YardGateScreen(
+                driverApi = api,
+                onBack = { navController.popBackStack() },
+            )
         }
 
         composable(DriverRoutes.SCANNER) {
@@ -501,7 +533,7 @@ fun DriverNavigation(
 
         if (TokenHolder.token != null && outdatedState != null) {
             DriverOutdatedOverlay(
-                outdatedState = outdatedState!!,
+                outdatedState = outdatedState ?: return@Column,
                 onSignOut = {
                     TokenHolder.clear()
                     driverWebSocket.disconnect()
@@ -547,7 +579,7 @@ private fun DriverOutdatedOverlay(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
-                text = "App Update Required",
+                text = stringResource(R.string.mobile_driver_ui_app_update_required),
                 style = MaterialTheme.typography.headlineSmall,
                 color = MaterialTheme.colorScheme.onSurface,
             )
@@ -557,12 +589,12 @@ private fun DriverOutdatedOverlay(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
-                text = "Blocked event: $blocked | Required schema: $required",
+                text = stringResource(R.string.mobile_driver_ui_blocked_event_blocked_required_schema_required),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Button(onClick = onSignOut) {
-                Text(text = "Sign Out")
+                Text(text = stringResource(R.string.common_action_sign_out))
             }
         }
     }

@@ -23,7 +23,7 @@ import { useLiveData } from "../../../lib/hooks";
 import { useWsEvent, useOptionalWebSocket, type WsMessage } from "../../../lib/ws";
 import type { TrackingResponse, TrackingOrder } from "../../../lib/types";
 
-/* ── Config ── */
+/* -- Config -- */
 
 const chipCfg: Record<
   string,
@@ -68,7 +68,7 @@ function formatAmount(amount: number): string {
   return amount.toLocaleString("en-US").replace(/,/g, " ");
 }
 
-/* ── Types ── */
+/* -- Types -- */
 
 interface SupplierGroup {
   supplierId: string;
@@ -79,7 +79,7 @@ interface SupplierGroup {
   hasArrived: boolean;
 }
 
-/* ── Page ── */
+/* -- Page -- */
 
 export default function DockPage() {
   const { data, loading, error, isRefreshing, mutate } = useLiveData<TrackingResponse>(

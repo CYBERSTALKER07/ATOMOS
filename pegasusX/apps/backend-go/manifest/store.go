@@ -9,6 +9,7 @@ import (
 
 	"cloud.google.com/go/spanner"
 	"google.golang.org/api/iterator"
+	"google.golang.org/grpc/codes"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/routing"
@@ -71,6 +72,7 @@ type OrderPatch struct {
 	DriverID        string
 	VehicleID       string
 	RouteID         string
+	DeliveryToken   string
 	UpdatedAt       time.Time
 	ExpectedVersion int64 // optional optimistic gate; 0 skips check
 	Version         int64 // populated by resolveOrderPatchVersions before write
@@ -239,7 +241,7 @@ func (s *Store) ListSupplierManifests(ctx context.Context, supplierID string) ([
 			FROM SupplierTruckManifests WHERE SupplierId = @supplierId ORDER BY CreatedAt DESC`,
 		Params: map[string]any{"supplierId": supplierID},
 	}
-	iter := s.client.Single().Query(ctx, stmt)
+	iter := s.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 
 	var rows []SupplierTruckRow
@@ -284,7 +286,7 @@ func (s *Store) ListSupplierManifestExceptions(ctx context.Context, supplierID s
 			"limit":      int64(limit),
 		},
 	}
-	iter := s.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
+	iter := s.client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 
 	rows := make([]SupplierExceptionRow, 0)
@@ -363,7 +365,7 @@ func (s *Store) DriversOnActiveManifests(ctx context.Context, supplierID, wareho
 		}
 	}
 
-	iter := s.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
+	iter := s.client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	for {
 		row, err := iter.Next()
@@ -433,7 +435,7 @@ func (s *Store) ActiveManifestCapacityByDrivers(ctx context.Context, supplierID,
 		}
 	}
 
-	iter := s.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
+	iter := s.client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	for {
 		row, err := iter.Next()
@@ -500,7 +502,7 @@ func (s *Store) DriversOnInTransitManifests(ctx context.Context, supplierID, war
 		}
 	}
 
-	iter := s.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
+	iter := s.client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	for {
 		row, err := iter.Next()
@@ -531,7 +533,7 @@ func (s *Store) ListSupplierManifestOrders(ctx context.Context, manifestID strin
 			FROM ManifestOrders WHERE ManifestId = @manifestId ORDER BY SequenceIndex ASC`,
 		Params: map[string]any{"manifestId": manifestID},
 	}
-	iter := s.client.Single().Query(ctx, stmt)
+	iter := s.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 
 	var rows []SupplierManifestOrderRow
@@ -564,7 +566,7 @@ func (s *Store) ListFactoryTransfers(ctx context.Context, factoryID string) ([]F
 			FROM FactoryInternalTransfers WHERE FactoryId = @factoryId ORDER BY UpdatedAt DESC`,
 		Params: map[string]any{"factoryId": factoryID},
 	}
-	iter := s.client.Single().Query(ctx, stmt)
+	iter := s.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 
 	var rows []FactoryTransferRow
@@ -598,7 +600,7 @@ func (s *Store) ListFactoryManifests(ctx context.Context, factoryID string) ([]F
 			FROM FactoryTruckManifests WHERE FactoryId = @factoryId ORDER BY CreatedAt DESC`,
 		Params: map[string]any{"factoryId": factoryID},
 	}
-	iter := s.client.Single().Query(ctx, stmt)
+	iter := s.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 
 	var rows []FactoryTruckRow
@@ -630,7 +632,7 @@ func (s *Store) EnsureFactoryDemoTransfers(ctx context.Context, rows []FactoryTr
 			if err == nil {
 				return nil
 			}
-			if err != spanner.ErrRowNotFound {
+			if !errors.Is(err, spanner.ErrRowNotFound) && spanner.ErrCode(err) != codes.NotFound {
 				return err
 			}
 			batch := &FactoryWriteBatch{Transfers: []FactoryTransferRow{transfer}}
@@ -654,7 +656,7 @@ func (s *Store) EnsureFactoryDemoManifests(ctx context.Context, rows []FactoryTr
 			if err == nil {
 				return nil
 			}
-			if err != spanner.ErrRowNotFound {
+			if !errors.Is(err, spanner.ErrRowNotFound) && spanner.ErrCode(err) != codes.NotFound {
 				return err
 			}
 			batch := &FactoryWriteBatch{Manifests: []FactoryTruckRow{m}}
@@ -678,7 +680,7 @@ func (s *Store) EnsureSupplierDemoManifests(ctx context.Context, supplierID stri
 			if err == nil {
 				return nil
 			}
-			if err != spanner.ErrRowNotFound {
+			if !errors.Is(err, spanner.ErrRowNotFound) && spanner.ErrCode(err) != codes.NotFound {
 				return err
 			}
 
@@ -805,6 +807,9 @@ func supplierMutations(batch *SupplierWriteBatch) ([]*spanner.Mutation, error) {
 		if p.RouteID != "" {
 			row["RouteId"] = p.RouteID
 		}
+		if p.DeliveryToken != "" {
+			row["DeliveryToken"] = p.DeliveryToken
+		}
 		if p.Version > 0 {
 			row["Version"] = p.Version
 		}
@@ -829,29 +834,64 @@ func resolveOrderPatchVersions(ctx context.Context, txn *spanner.ReadWriteTransa
 	if txn == nil || len(patches) == 0 {
 		return nil
 	}
-	seen := make(map[string]int64, len(patches))
+	uniqueIDs := make([]string, 0, len(patches))
+	idSeen := make(map[string]struct{}, len(patches))
 	for i := range patches {
 		orderID := strings.TrimSpace(patches[i].OrderID)
 		if orderID == "" {
 			continue
 		}
-		if version, ok := seen[orderID]; ok {
+		if _, ok := idSeen[orderID]; !ok {
+			idSeen[orderID] = struct{}{}
+			uniqueIDs = append(uniqueIDs, orderID)
+		}
+	}
+	if len(uniqueIDs) == 0 {
+		return nil
+	}
+	keys := make([]spanner.Key, 0, len(uniqueIDs))
+	for _, oid := range uniqueIDs {
+		keys = append(keys, spanner.Key{oid})
+	}
+	storedByID := make(map[string]int64, len(uniqueIDs))
+	iter := txn.Read(ctx, "Orders", spanner.KeySetFromKeys(keys...), []string{"OrderId", "Version"})
+	defer iter.Stop()
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("batch read order versions: %w", err)
+		}
+		var oid string
+		var stored int64
+		if err := row.Columns(&oid, &stored); err != nil {
+			return fmt.Errorf("scan order %s version: %w", oid, err)
+		}
+		storedByID[oid] = stored
+	}
+
+	nextByID := make(map[string]int64, len(storedByID))
+	for i := range patches {
+		orderID := strings.TrimSpace(patches[i].OrderID)
+		if orderID == "" {
+			continue
+		}
+		if version, ok := nextByID[orderID]; ok {
 			patches[i].Version = version
 			continue
 		}
-		row, err := txn.ReadRow(ctx, "Orders", spanner.Key{orderID}, []string{"Version"})
-		if err != nil {
-			return fmt.Errorf("read order %s version: %w", orderID, err)
-		}
-		var stored int64
-		if err := row.Columns(&stored); err != nil {
-			return fmt.Errorf("scan order %s version: %w", orderID, err)
+		stored, found := storedByID[orderID]
+		if !found {
+			patches[i].Version = -1
+			continue
 		}
 		if expected := patches[i].ExpectedVersion; expected > 0 && stored != expected {
 			return fmt.Errorf("%w: order %s expected %d got %d", ErrOrderVersionConflict, orderID, expected, stored)
 		}
 		next := stored + 1
-		seen[orderID] = next
+		nextByID[orderID] = next
 		patches[i].Version = next
 	}
 	return nil
@@ -927,23 +967,7 @@ func factoryMutations(batch *FactoryWriteBatch) []*spanner.Mutation {
 func outboxMutations(buf *txnBuffer) []*spanner.Mutation {
 	var mutations []*spanner.Mutation
 	for _, e := range buf.events {
-		createdAt := e.CreatedAt.UTC()
-		if createdAt.IsZero() {
-			createdAt = time.Now().UTC()
-		}
-		row := map[string]any{
-			"EventId":       e.EventID,
-			"AggregateType": e.AggregateType,
-			"AggregateId":   e.AggregateID,
-			"TopicName":     e.TopicName,
-			"Payload":       e.Payload,
-			"CreatedAt":     createdAt,
-			"PublishedAt":   nil,
-		}
-		if e.PublishedAt != nil {
-			row["PublishedAt"] = e.PublishedAt.UTC()
-		}
-		mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", row))
+		mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", outbox.EventRowMap(e)))
 	}
 	for _, a := range buf.audits {
 		mutations = append(mutations, spanner.InsertMap("AuditLog", a.AuditRowMap()))

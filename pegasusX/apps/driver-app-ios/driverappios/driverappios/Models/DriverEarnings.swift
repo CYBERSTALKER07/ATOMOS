@@ -88,6 +88,14 @@ struct DriverHistoryRow: Codable, Hashable, Identifiable {
         case completedAt = "completed_at"
     }
 
+    init(orderId: String, status: String, totalMinor: Int64, currency: String, completedAt: String) {
+        self.orderId = orderId
+        self.status = status
+        self.totalMinor = totalMinor
+        self.currency = currency
+        self.completedAt = completedAt
+    }
+
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         orderId = (try? c.decode(String.self, forKey: .orderId)) ?? ""
@@ -100,6 +108,10 @@ struct DriverHistoryRow: Codable, Hashable, Identifiable {
 
 struct DriverHistoryResponse: Codable {
     let rows: [DriverHistoryRow]
+
+    init(rows: [DriverHistoryRow] = []) {
+        self.rows = rows
+    }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)

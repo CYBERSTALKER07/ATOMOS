@@ -1,8 +1,10 @@
 "use client";
 
+import { usePortalLocale, usePortalT } from "@/lib/i18n";
+import { formatWholeSom, parseClaimErrorMessage } from "@/lib/retailer-w2";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Camera, Loader2 } from "lucide-react";
-import { claimFileKey } from "@pegasusx/api-client";
+import { claimFileKey } from "@pegasusx/api-core";
 import {
   claimTypeNeedsPhoto,
   fileOrderClaim,
@@ -38,6 +40,8 @@ type Props = {
 };
 
 export function FileClaimPanel({ order, onFiled, initialSku }: Props) {
+  const t = usePortalT();
+  const locale = usePortalLocale();
   const [claimType, setClaimType] = useState<string>("CONCEALED_DAMAGE");
   const [description, setDescription] = useState("");
   const [qtyBySku, setQtyBySku] = useState<Record<string, number>>({});
@@ -130,7 +134,7 @@ export function FileClaimPanel({ order, onFiled, initialSku }: Props) {
       setPhotoUrl(url);
     } catch (e) {
       setPhotoUrl("");
-      setError(e instanceof Error ? e.message : "Photo upload failed");
+      setError(e instanceof Error ? e.message : t("retailer_desktop.residual.text.photo_upload_failed"));
     } finally {
       setUploading(false);
     }
@@ -140,15 +144,15 @@ export function FileClaimPanel({ order, onFiled, initialSku }: Props) {
     setError(null);
     setSuccessId(null);
     if (eligibility && !eligibility.eligible) {
-      setError("Window closed — claim window has expired.");
+      setError(t("retailer_desktop.residual.text.window_closed_claim_window_has_expired"));
       return;
     }
     if (selectedTotal <= 0) {
-      setError("Select at least one item quantity.");
+      setError(t("retailer_desktop.residual.text.select_at_least_one_item_quantity"));
       return;
     }
     if (needsPhoto && !photoUrl.trim()) {
-      setError("Photo required for this claim type.");
+      setError(t("retailer_desktop.residual.text.photo_required_for_this_claim_type"));
       return;
     }
     setSubmitting(true);
@@ -182,16 +186,14 @@ export function FileClaimPanel({ order, onFiled, initialSku }: Props) {
       );
       if (!res.ok) {
         const err = await res.json().catch(() => null);
-        throw new Error(
-          err?.error || err?.message || `Claim failed (${res.status})`,
-        );
+        throw new Error(parseClaimErrorMessage(err, res.status, locale));
       }
       const claim = (await res.json()) as RetailerClaim;
       setSuccessId(claim.claim_id);
       onFiled?.(claim);
       await refreshExisting();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Claim failed");
+      setError(e instanceof Error ? e.message : t("retailer_desktop.residual.text.claim_failed"));
     } finally {
       setSubmitting(false);
     }
@@ -319,7 +321,7 @@ export function FileClaimPanel({ order, onFiled, initialSku }: Props) {
         <span className="md-typescale-label-small text-[var(--desk-text-tertiary)]">
           Photo proof
         </span>
-        <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--desk-border-strong)] bg-[var(--desk-surface)] px-4 py-3 text-sm">
+        <label htmlFor="file-claim-photo-proof" className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--desk-border-strong)] bg-[var(--desk-surface)] px-4 py-3 text-sm">
           {uploading ? (
             <>
               <Loader2 size={16} className="animate-spin" />
@@ -332,6 +334,8 @@ export function FileClaimPanel({ order, onFiled, initialSku }: Props) {
             </>
           )}
           <input
+            id="file-claim-photo-proof"
+            aria-label="Upload photo proof"
             type="file"
             accept="image/*"
             className="hidden"
@@ -343,7 +347,7 @@ export function FileClaimPanel({ order, onFiled, initialSku }: Props) {
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={preview}
-            alt="Claim proof"
+            alt={t("retailer_desktop.residual.text.claim_proof")}
             className="max-h-40 w-full rounded-xl object-cover"
           />
         )}
@@ -385,7 +389,7 @@ export function FileClaimPanel({ order, onFiled, initialSku }: Props) {
             <p key={c.claim_id} className="text-xs text-[var(--desk-text-secondary)]">
               {c.claim_type} · {c.status}
               {c.amount_minor != null
-                ? ` · ${c.amount_minor} ${c.currency ?? "UZS"}`
+                ? ` · ${formatWholeSom(c.amount_minor, c.currency)}`
                 : ""}
             </p>
           ))}

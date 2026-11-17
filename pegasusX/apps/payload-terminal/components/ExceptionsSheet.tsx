@@ -1,9 +1,13 @@
-import { Modal, View, Text, Pressable, FlatList } from 'react-native';
+import { Modal, View, Text, Pressable, FlatList, TextInput, Alert } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { isIOS } from '../theme';
+import { isIOS, type AppTheme } from '../theme';
 import PayloadStatePanel from './PayloadStatePanel';
 import StatusBadge, { exceptionReasonTone } from './StatusBadge';
 import { SkeletonList } from './SkeletonPulse';
+import { useState } from 'react';
+import { authFetch } from '../authSession';
+import { API_BASE } from '../api';
+import { formatMinorUnits, minorToWholeTrunc, parseMajorToMinor } from '../utils/money';
 
 export type ManifestExceptionItem = {
   exception_id: string;
@@ -21,10 +25,47 @@ type ExceptionsSheetProps = {
   onRefresh: () => void;
   loading: boolean;
   exceptions: ManifestExceptionItem[];
-  theme: any; // Using any or importing Theme type if available. For now using any to match App.tsx structure where it passes T
+  theme: AppTheme; 
+  activeManifestId?: string;
 };
 
-export default function ExceptionsSheet({ visible, onClose, onRefresh, loading, exceptions, theme: T }: ExceptionsSheetProps) {
+export default function ExceptionsSheet({ visible, onClose, onRefresh, loading, exceptions, theme: T, activeManifestId }: ExceptionsSheetProps) {
+  const [damagedItemId, setDamagedItemId] = useState('');
+  const [damagedOrderId, setDamagedOrderId] = useState('');
+  const [damagedDeductionMajor, setDamagedDeductionMajor] = useState('50.00');
+
+  const parsedDeductionMinor = parseMajorToMinor(damagedDeductionMajor) ?? 5000;
+
+  const reportDamage = async () => {
+    if (!activeManifestId || !damagedItemId || !damagedOrderId) {
+      Alert.alert('Error', 'Missing required fields.');
+      return;
+    }
+    try {
+      const res = await authFetch(`${API_BASE}/v1/payload/exceptions/damaged`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          manifest_id: activeManifestId,
+          order_id: damagedOrderId,
+          item_id: damagedItemId,
+          price_deduction_minor: parsedDeductionMinor,
+          price_deduction: minorToWholeTrunc(parsedDeductionMinor),
+        })
+      });
+      if (res.ok) {
+        Alert.alert('Success', 'Item marked as damaged. Ledger and order updated globally.');
+        setDamagedItemId('');
+        setDamagedOrderId('');
+        onRefresh();
+      } else {
+        Alert.alert('Error', 'Failed to report damage.');
+      }
+    } catch {
+      Alert.alert('Error', 'Network error.');
+    }
+  };
+
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' }}>
@@ -33,13 +74,46 @@ export default function ExceptionsSheet({ visible, onClose, onRefresh, loading, 
             <Text style={{ flex: 1, fontWeight: '700', fontSize: 15, color: T.colors.sidebarLabel, letterSpacing: 0.3 }}>
               {isIOS ? 'Manifest exceptions' : 'MANIFEST EXCEPTIONS'}
             </Text>
-            <Pressable onPress={onRefresh} style={{ marginRight: 12 }}>
+            <Pressable onPress={onRefresh} style={{ marginRight: 12 }} accessibilityRole="button" accessibilityLabel="Refresh manifest exceptions">
               <MaterialIcons name="refresh" size={20} color={T.colors.accent} />
             </Pressable>
-            <Pressable onPress={onClose}>
+            <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="Close manifest exceptions">
               <MaterialIcons name="close" size={20} color={T.colors.sidebarSecondary} />
             </Pressable>
           </View>
+          
+          {/* Report Damage Section */}
+          <View style={{ padding: 16, backgroundColor: '#FEE2E2', borderBottomWidth: 1, borderBottomColor: '#FCA5A5' }}>
+            <Text style={{ color: '#991B1B', fontWeight: 'bold', marginBottom: 8 }}>
+              Report Dock Damage ({formatMinorUnits(parsedDeductionMinor)} UZS)
+            </Text>
+            <TextInput
+              placeholder="Order ID"
+              value={damagedOrderId}
+              onChangeText={setDamagedOrderId}
+              style={{ backgroundColor: 'white', padding: 8, borderRadius: 4, marginBottom: 8 }}
+            />
+            <TextInput
+              placeholder="Item ID"
+              value={damagedItemId}
+              onChangeText={setDamagedItemId}
+              style={{ backgroundColor: 'white', padding: 8, borderRadius: 4, marginBottom: 8 }}
+            />
+            <TextInput
+              placeholder="Price Deduction (UZS)"
+              value={damagedDeductionMajor}
+              onChangeText={setDamagedDeductionMajor}
+              keyboardType="decimal-pad"
+              style={{ backgroundColor: 'white', padding: 8, borderRadius: 4, marginBottom: 8 }}
+            />
+            <Pressable 
+              onPress={reportDamage}
+              style={{ backgroundColor: '#DC2626', padding: 10, borderRadius: 6, alignItems: 'center' }}
+            >
+              <Text style={{ color: 'white', fontWeight: 'bold' }}>MARK DAMAGED</Text>
+            </Pressable>
+          </View>
+
           {loading && exceptions.length === 0 ? (
             <SkeletonList count={4} theme={T} />
           ) : (

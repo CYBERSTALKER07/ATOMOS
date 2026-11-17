@@ -103,7 +103,7 @@ enum FactoryService {
     static func dispatch(transferIds: [String]) async throws -> DispatchResponse {
         try await api.post(
             "v1/factory/dispatch",
-            body: DispatchRequest(transferIds: transferIds),
+            body: DispatchRequest(mode: "AUTO", transferIds: transferIds, reason: "factory-loading-bay"),
             idempotencyKey: FactoryIdempotency.batchDispatch(transferIds: transferIds)
         )
     }
@@ -132,6 +132,18 @@ enum FactoryService {
 
     static func supplyFulfillOptions(id: String) async throws -> SupplyFulfillOptions {
         try await api.get("v1/factory/supply-requests/\(id)/fulfill-options")
+    }
+
+    static func supplyRequestQC(id: String) async throws -> SupplyRequestQCResponse {
+        try await api.get("v1/factory/supply-requests/\(id)/qc")
+    }
+
+    static func postSupplyRequestQC(id: String, result: String) async throws -> SupplyRequestQCResponse {
+        try await api.post(
+            "v1/factory/supply-requests/\(id)/qc",
+            body: SupplyRequestQCRequest(result: result),
+            idempotencyKey: FactoryIdempotency.supplyRequestQC(requestId: id, result: result)
+        )
     }
 
     // MARK: - Payload Override / Manifests
@@ -194,6 +206,10 @@ enum FactoryService {
         try await api.get("v1/factory/fleet")
     }
 
+    static func fleetLiveMap() async throws -> FactoryFleetLiveMapResponse {
+        try await api.get("v1/factory/fleet/live-map")
+    }
+
     static func fleetDrivers() async throws -> [FactoryFleetDriverRow] {
         let response: FactoryFleetDriversEnvelope = try await api.get("v1/factory/fleet/drivers")
         return response.drivers
@@ -218,6 +234,16 @@ enum FactoryService {
 
     static func staffDetail(id: String) async throws -> StaffMember {
         try await api.get("v1/factory/staff/\(id)")
+    }
+
+    static func setStaffPassword(id: String, pin: String) async throws {
+        struct Body: Encodable { let pin: String }
+        struct Resp: Decodable { let password_set: Bool? }
+        let _: Resp = try await api.post(
+            "v1/factory/staff/\(id)/set-password",
+            body: Body(pin: pin),
+            idempotencyKey: "factory-staff-set-password:\(id)"
+        )
     }
 
     // MARK: - Insights

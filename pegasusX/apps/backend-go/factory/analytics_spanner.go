@@ -24,7 +24,7 @@ func (s *Service) loadAnalyticsOverview(ctx context.Context) (analyticsOverview,
 		return analyticsOverview{}, fmt.Errorf("spanner unavailable")
 	}
 	factoryID := s.factoryNodeID
-	supplierID := s.supplierID
+	supplierID := s.resolveSupplierScope(ctx)
 	readCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
@@ -37,7 +37,7 @@ func (s *Service) loadAnalyticsOverview(ctx context.Context) (analyticsOverview,
 	}
 
 	if err := txn.Query(readCtx, spanner.Statement{
-		SQL: `SELECT COUNT(*) FROM FactoryInternalTransfers WHERE FactoryId = @fid`,
+		SQL:    `SELECT COUNT(*) FROM FactoryInternalTransfers WHERE FactoryId = @fid`,
 		Params: map[string]any{"fid": factoryID},
 	}).Do(func(row *spanner.Row) error {
 		return row.Columns(&overview.TransfersTotal)

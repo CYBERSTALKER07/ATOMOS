@@ -2,6 +2,8 @@ package payment
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
@@ -54,19 +56,29 @@ func (r *WebhookReconciler) ReconcileStuckSessions(ctx context.Context) error {
 		}
 
 		status := "AWAITING_PAYMENT"
-		if result.ProviderRef == "PAID" || result.ProviderRef == "gp_status_stub_paid" || result.ProviderRef == "AUTHORIZED" || result.ProviderRef == "CAPTURED" || result.ProviderRef == "SUCCESS" {
+		// Fabricated stub refs are never authoritative: only real provider
+		// statuses may advance a session. Stub mode is for load testing and
+		// must not mark sessions PAID.
+		if result.PolicySource == "GLOBAL_PAY_STUB" || strings.HasPrefix(result.ProviderRef, "gp_status_stub") {
+			continue
+		}
+		ref := strings.ToUpper(strings.TrimSpace(result.ProviderRef))
+		switch {
+		case ref == "PAID" || ref == "AUTHORIZED" || ref == "AUTHORISED" || ref == "CAPTURED" || ref == "SUCCESS" || ref == "SETTLED" || ref == "SUCCEEDED" || ref == "STATUS:2" || ref == "STATE:2":
 			status = "PAID"
-		} else if result.ProviderRef == "FAILED" || result.ProviderRef == "DECLINED" || result.ProviderRef == "CANCELLED" {
+		case ref == "FAILED" || ref == "DECLINED" || ref == "REFUSED" || ref == "CANCELLED" || ref == "CANCELED" || ref == "STATUS:-1" || ref == "STATUS:-2" || ref == "STATE:-1" || ref == "STATE:-2":
 			status = "FAILED"
 		}
 
 		if status != "AWAITING_PAYMENT" && status != s.Status {
 			// Simulate a webhook received to advance the state securely through
 			// the outbox and ledger.
+			safeRef := strings.ReplaceAll(strings.ReplaceAll(result.ProviderRef, ":", "_"), "-", "_")
+			txnID := fmt.Sprintf("rec_%s_%s", s.SessionID, safeRef)
 			w := WebhookRecord{
-				WebhookID:      "rec_" + s.SessionID + "_" + now.Format("20060102150405"),
+				WebhookID:      fmt.Sprintf("rec_%s_%s", s.SessionID, now.Format("20060102150405")),
 				Gateway:        s.Gateway,
-				TransactionID:  "rec_" + result.ProviderRef,
+				TransactionID:  txnID,
 				SessionID:      s.SessionID,
 				OrderID:        s.OrderID,
 				SupplierID:     s.SupplierID,

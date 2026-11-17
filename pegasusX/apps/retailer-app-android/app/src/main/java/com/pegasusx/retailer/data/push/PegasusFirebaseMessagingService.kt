@@ -7,8 +7,10 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
+import com.pegasusx.retailer.BuildConfig
 import com.pegasusx.retailer.R
 import com.pegasusx.retailer.data.api.PegasusApi
+import com.pegasusx.retailer.data.model.moneyCurrency
 import com.pegasusx.retailer.data.local.TokenManager
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -27,7 +29,9 @@ class PegasusFirebaseMessagingService : FirebaseMessagingService() {
 
     override fun onNewToken(token: String) {
         super.onNewToken(token)
-        Log.d("FCM", "New token: $token")
+        if (BuildConfig.DEBUG) {
+            Log.d("FCM", "Refreshed device push token (length=${token.length})")
+        }
         scope.launch {
             try {
                 api.registerDeviceToken(mapOf("token" to token, "platform" to "android"))
@@ -40,7 +44,9 @@ class PegasusFirebaseMessagingService : FirebaseMessagingService() {
     override fun onMessageReceived(message: RemoteMessage) {
         super.onMessageReceived(message)
         val data = message.data
-        Log.d("FCM", "Data message: $data")
+        if (BuildConfig.DEBUG) {
+            Log.d("FCM", "Data message keys=${data.keys}")
+        }
 
         val type = data["type"] ?: return
         val title = data["title"] ?: typeTitle(type)
@@ -56,6 +62,7 @@ class PegasusFirebaseMessagingService : FirebaseMessagingService() {
         "ORDER_STATUS_CHANGED" -> "Order Status Updated"
         "ORDER_REASSIGNED" -> "Order Reassigned"
         "SETTLEMENT_REQUIRED" -> "Settlement Required"
+        "SPLIT_PAYMENT_CREATED" -> "Split Payment Processed"
         "DELIVERY_SESSION_UPDATED" -> "Delivery Session Updated"
         "PAYMENT_SETTLED", "GLOBAL_PAYNT_SETTLED" -> "Payment Received"
         "FISCAL_RECEIPT_REQUESTED", "PAYMENT_CLEARED" -> "Pending Fiscal Receipt"
@@ -76,7 +83,7 @@ class PegasusFirebaseMessagingService : FirebaseMessagingService() {
             "ORDER_REASSIGNED" -> "Order #$orderId has been reassigned. ETA may shift"
             "SETTLEMENT_REQUIRED" -> {
                 val amount = data["amount"]
-                val currency = data["currency"] ?: "UZS"
+                val currency = moneyCurrency(data["currency"])
                 if (!amount.isNullOrBlank()) {
                     "Settlement of $amount $currency is required for order #$orderId"
                 } else {

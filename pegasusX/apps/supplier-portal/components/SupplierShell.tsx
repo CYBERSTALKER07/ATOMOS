@@ -2,6 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
+import type { Route } from 'next';
 import { useEffect, useState, useRef, useMemo, useCallback, memo } from 'react';
 import { Button } from '@heroui/react';
 import Icon from './Icon';
@@ -9,101 +10,22 @@ import { useTheme, type ThemeMode } from './ThemeProvider';
 import { PanelLeftClose, PanelLeft } from 'lucide-react';
 import NotificationPanel from './NotificationPanel';
 import ClientPolicyBanner from './ClientPolicyBanner';
+import LanguageSwitcher from './LanguageSwitcher';
 import { useNotifications } from '@/lib/useNotifications';
-import { clearSession, readTokenFromCookie } from '@/lib/auth';
+import { clearSession, decodeJwtPayload, getSupplierToken, readTokenFromCookie } from '@/lib/auth';
+import { SessionPackChip } from './SessionPackChip';
+import { usePortalT } from '@/lib/i18n';
+import { ALL_NAV_ITEMS, NAV, navSectionIsActive } from '@/lib/nav';
+import {
+  buildNavForWorkspaceMode,
+  resolveDefaultWorkspaceMode,
+  WORKSPACE_MODE_STORAGE_KEY,
+  type SupplierWorkspaceMode,
+} from '@/lib/workspace-mode';
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import { DesktopKeyboardCheatsheet } from './ui/DesktopKeyboardCheatsheet';
 
-type NavEntry = { href: string; icon: string; label: string; globalOnly?: boolean; factoryHidden?: boolean };
-type NavSection = { label?: string; items: NavEntry[] };
-
-const NAV: NavSection[] = [
-  {
-    items: [{ href: "/dashboard", icon: "overview", label: "Overview" }],
-  },
-  {
-    label: "Operations",
-    items: [
-      { href: "/orders", icon: "orders", label: "Orders" },
-      { href: "/dispatch", icon: "dispatch", label: "Dispatch" },
-      { href: "/ops/map", icon: "dispatch", label: "Live ops map" },
-      { href: "/manifests", icon: "manifests", label: "Manifests" },
-      { href: "/fleet", icon: "fleet", label: "Fleet" },
-      { href: "/fleet/orders", icon: "orders", label: "Fleet Orders" },
-      { href: "/operations", icon: "dispatch", label: "Operations" },
-      { href: "/operations/replenishment-policies", icon: "inventory", label: "Replenishment Policies" },
-      { href: "/replenishment/suggestions", icon: "inventory", label: "Reorder Suggestions" },
-      { href: "/exceptions", icon: "warning", label: "Exceptions" },
-      { href: "/activity", icon: "overview", label: "Activity" },
-    ],
-  },
-  {
-    label: "Catalog",
-    items: [
-      { href: "/inventory", icon: "inventory", label: "Inventory" },
-      { href: "/inventory/import", icon: "inventory", label: "Import CSV" },
-      { href: "/catalog", icon: "catalog", label: "Catalog" },
-      { href: "/pricing", icon: "pricing", label: "Pricing" },
-      { href: "/pricing/retailer-overrides", icon: "pricing", label: "Retailer Overrides" },
-      { href: "/promotions", icon: "pricing", label: "Promotions" },
-    ],
-  },
-  {
-    label: "Network",
-    items: [
-      { href: "/topology", icon: "topology", label: "Topology" },
-      { href: "/factories", icon: "factory", label: "Factories" },
-      { href: "/warehouses", icon: "warehouse", label: "Warehouses" },
-      { href: "/delivery-zones", icon: "global", label: "Delivery Zones" },
-      { href: "/supply-lanes", icon: "fleet", label: "Supply Lanes" },
-      { href: "/geo-report", icon: "global", label: "Geo Report" },
-    ],
-  },
-  {
-    label: "Analytics & Intelligence",
-    items: [
-      { href: "/analytics", icon: "overview", label: "Analytics" },
-      { href: "/control-tower", icon: "global", label: "Control Tower" },
-      { href: "/analytics/demand", icon: "overview", label: "Demand Forecast" },
-      { href: "/analytics/demand/flywheel", icon: "campaign", label: "POS flywheel" },
-      { href: "/analytics/route-performance", icon: "overview", label: "Route performance" },
-      { href: "/analytics/demand/signals", icon: "campaign", label: "Demand Signals" },
-      { href: "/demand/payday-calendar", icon: "campaign", label: "Payday Calendar" },
-      { href: "/analytics/knowledge-graph", icon: "topology", label: "Knowledge Graph" },
-      { href: "/ai/recommendations", icon: "overview", label: "AI Recommendations" },
-    ],
-  },
-  {
-    label: "Finance",
-    items: [
-      { href: "/treasury", icon: "treasury", label: "Treasury" },
-      { href: "/treasury/cash-reconciliations", icon: "reconcile", label: "Cash reconciliations" },
-      { href: "/finance/credit-notes", icon: "returns", label: "Credit notes" },
-      { href: "/reconciliation", icon: "reconcile", label: "Reconciliation" },
-      { href: "/compliance", icon: "warning", label: "Compliance audit" },
-      { href: "/payments", icon: "payment", label: "Payments" },
-      { href: "/earnings", icon: "pricing", label: "Earnings" },
-      { href: "/credit/policy", icon: "treasury", label: "Credit policy" },
-      { href: "/credit/collections", icon: "treasury", label: "Credit collections" },
-      { href: "/credit/admin-disable", icon: "warning", label: "Credit admin disable" },
-      { href: "/chargebacks", icon: "warning", label: "Chargebacks" },
-      { href: "/chargebacks/claims", icon: "warning", label: "Claim chargebacks" },
-      { href: "/ledger", icon: "orders", label: "Ledger" },
-    ],
-  },
-  {
-    label: "Settings",
-    items: [
-      { href: "/profile", icon: "supplier", label: "Profile" },
-      { href: "/settings/tax-regimes", icon: "overview", label: "Tax Regimes" },
-      { href: "/settings/planning", icon: "overview", label: "Planning" },
-      { href: "/settings/notification-preferences", icon: "overview", label: "Notifications" },
-      { href: "/settings/segmentation", icon: "overview", label: "Segmentation" },
-      { href: "/settings/playbooks", icon: "overview", label: "Playbooks" },
-      { href: "/org-fleet", icon: "person-add", label: "Org & Fleet" },
-      { href: "/returns", icon: "returns", label: "Returns" },
-    ],
-  },
-];
+const BARE_ROUTES = ["/auth/", "/setup/"];
 
 function isActiveRoute(pathname: string, href: string): boolean {
   if (href === "/dashboard") {
@@ -112,43 +34,44 @@ function isActiveRoute(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-function buildBreadcrumbs(pathname: string): { label: string; href: string }[] {
+function buildBreadcrumbs(
+  pathname: string,
+  t: (key: string) => string,
+): { label: string; href: string }[] {
   if (pathname === "/dashboard" || pathname === "/") {
-    return [{ label: "Overview", href: "/dashboard" }];
+    return [{ label: t("portal.nav.overview"), href: "/dashboard" }];
   }
   const crumbs: { label: string; href: string }[] = [
-    { label: "Home", href: "/dashboard" },
+    { label: t("portal.chrome.home"), href: "/dashboard" },
   ];
   let path = "";
   for (const seg of pathname.split("/").filter(Boolean)) {
     path += `/${seg}`;
+    const match = ALL_NAV_ITEMS.find((item) => item.href === path);
     crumbs.push({
-      label: seg.charAt(0).toUpperCase() + seg.slice(1).replace(/-/g, " "),
+      label: match ? t(match.labelKey) : seg.charAt(0).toUpperCase() + seg.slice(1).replace(/-/g, " "),
       href: path,
     });
   }
   return crumbs;
 }
 
-const BARE_ROUTES = ["/auth/", "/setup/"];
-
-const ALL_NAV_ITEMS = NAV.flatMap(s => s.items);
-
-const THEME_META: Record<ThemeMode, { icon: string; label: string; next: ThemeMode }> = {
-  system: { icon: 'autoMode', label: 'System theme', next: 'light' },
-  light: { icon: 'lightMode', label: 'Light theme', next: 'dark' },
-  dark: { icon: 'darkMode', label: 'Dark theme', next: 'system' },
+const THEME_META: Record<ThemeMode, { icon: string; labelKey: string; next: ThemeMode }> = {
+  system: { icon: 'autoMode', labelKey: 'portal.chrome.theme_system', next: 'light' },
+  light: { icon: 'lightMode', labelKey: 'portal.chrome.theme_light', next: 'dark' },
+  dark: { icon: 'darkMode', labelKey: 'portal.chrome.theme_dark', next: 'system' },
 };
 
 function ThemeToggle() {
   const { mode, cycle } = useTheme();
+  const t = usePortalT();
   const meta = THEME_META[mode];
   return (
     <Button
       variant="ghost"
       isIconOnly
       onPress={cycle}
-      aria-label={`${meta.label} — switch to ${meta.next}`}
+      aria-label={t(meta.labelKey)}
       className="desk-btn-ghost w-10 h-10 min-w-0 p-0"
     >
       <Icon name={meta.icon} />
@@ -160,17 +83,25 @@ const DrawerContent = memo(function DrawerContent({
   isMobile,
   collapsed,
   pathname,
+  workspaceMode,
+  onWorkspaceModeChange,
   onToggle,
   onLogout,
 }: {
   isMobile: boolean;
   collapsed: boolean;
   pathname: string;
+  workspaceMode: SupplierWorkspaceMode;
+  onWorkspaceModeChange: (mode: SupplierWorkspaceMode) => void;
   onToggle: () => void;
   onLogout: () => void;
 }) {
   const isRail = collapsed && !isMobile;
-  const filteredNav = NAV;
+  const filteredNav = useMemo(
+    () => buildNavForWorkspaceMode(NAV, workspaceMode),
+    [workspaceMode],
+  );
+  const t = usePortalT();
   return (
     <div className="flex flex-col h-full">
       <div className="flex-1 overflow-y-auto overflow-x-hidden">
@@ -178,7 +109,7 @@ const DrawerContent = memo(function DrawerContent({
           {isRail ? (
             <button
               onClick={onToggle}
-              aria-label="Open sidebar"
+              aria-label={t("portal.chrome.open_sidebar")}
               className="desk-icon-btn"
             >
               <PanelLeft size={20} strokeWidth={1.75} />
@@ -193,9 +124,9 @@ const DrawerContent = memo(function DrawerContent({
                 P
               </div>
               <div className="min-w-0 flex-1">
-                <p className="desk-sidebar-section-label" style={{ padding: 0, margin: 0 }}>pegasusX</p>
+                <p className="desk-sidebar-section-label" style={{ padding: 0, margin: 0 }}>{t("supplier_portal.residual.text.pegasusx")}</p>
                 <h1 style={{ font: 'var(--type-title)', color: 'var(--desk-text-primary)', margin: 0, letterSpacing: '-0.02em' }}>
-                  Supplier Hub
+                  {t("portal.chrome.supplier_hub")}
                 </h1>
               </div>
               {!isMobile && (
@@ -203,7 +134,7 @@ const DrawerContent = memo(function DrawerContent({
                   onClick={onToggle}
                   className="desk-icon-btn"
                   style={{ width: 28, height: 28 }}
-                  aria-label="Collapse sidebar"
+                  aria-label={t("portal.chrome.collapse_sidebar")}
                 >
                   <PanelLeftClose size={16} strokeWidth={1.75} />
                 </button>
@@ -213,55 +144,108 @@ const DrawerContent = memo(function DrawerContent({
         </div>
 
         {!isRail && (
+          <div className="px-3 pb-2">
+            <div
+              role="group"
+              aria-label="Workspace mode"
+              data-testid="sidebar-workspace-mode"
+              className="grid grid-cols-2 gap-1 rounded-lg border border-[var(--desk-border)] bg-[var(--desk-surface-subtle)] p-1 text-xs"
+            >
+              <button
+                type="button"
+                aria-pressed={workspaceMode === 'fast_desk'}
+                onClick={() => onWorkspaceModeChange('fast_desk')}
+                className={`rounded-md px-2 py-1 font-medium transition ${
+                  workspaceMode === 'fast_desk'
+                    ? 'bg-[var(--desk-surface)] text-[var(--desk-text-primary)] shadow-sm'
+                    : 'text-[var(--desk-text-secondary)]'
+                }`}
+              >
+                Fast Desk
+              </button>
+              <button
+                type="button"
+                aria-pressed={workspaceMode === 'full_erp'}
+                onClick={() => onWorkspaceModeChange('full_erp')}
+                className={`rounded-md px-2 py-1 font-medium transition ${
+                  workspaceMode === 'full_erp'
+                    ? 'bg-[var(--desk-surface)] text-[var(--desk-text-primary)] shadow-sm'
+                    : 'text-[var(--desk-text-secondary)]'
+                }`}
+              >
+                Full ERP
+              </button>
+            </div>
+          </div>
+        )}
+
+        {!isRail && (
           <button
             className="desk-sidebar-search"
             onClick={() => {
               document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }));
             }}
-            aria-label="Search pages (⌘K)"
+            aria-label={t("portal.chrome.search")}
           >
             <Icon name="search" size={16} className="desk-sidebar-search-icon" />
-            <span className="desk-sidebar-search-text">Search…</span>
+            <span className="desk-sidebar-search-text">{t("portal.chrome.search")}</span>
             <kbd className="desk-sidebar-search-kbd">⌘K</kbd>
           </button>
         )}
 
-        <nav className={`flex flex-col gap-0.5 mt-1 transition-all duration-200 ${isRail ? 'px-1.5' : 'px-2.5'}`}>
-          {filteredNav.map((section, si) => (
-            <div key={si}>
-              {si > 0 && <div style={{ height: 1, background: 'var(--desk-border)', margin: isRail ? '8px 4px' : '8px 12px' }} />}
-              {section.label && !isRail && (
-                <div className="desk-sidebar-section-label">{section.label}</div>
-              )}
-              {section.items.map((item, ii) => {
-                const active = isActiveRoute(pathname, item.href);
-                return (
-                  <motion.div
-                    key={item.href}
-                    initial={{ opacity: 0, x: -8 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{
-                      delay: (si * 0.08) + (ii * 0.02),
-                      type: 'spring',
-                      stiffness: 320,
-                      damping: 28
-                    }}
+        <nav className={`flex flex-col gap-0.5 mt-1 transition-all duration-200 ${isRail ? 'px-1.5' : 'px-2.5'}`} data-testid="gs-un-nav">
+          {filteredNav.map((section, si) => {
+            const isPrimary = si === 0;
+            const sectionActive = navSectionIsActive(section, pathname, isActiveRoute);
+            const links = section.items.map((item, ii) => {
+              const active = isActiveRoute(pathname, item.href);
+              const label = t(item.labelKey);
+              return (
+                <motion.div
+                  key={item.href}
+                  initial={{ opacity: 0, x: -8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{
+                    delay: (si * 0.08) + (ii * 0.02),
+                    type: 'spring',
+                    stiffness: 320,
+                    damping: 28
+                  }}
+                >
+                  <Link
+                    href={item.href as Route}
+                    className={`desk-sidebar-item ${active ? 'desk-sidebar-item--accent' : ''}`}
+                    title={isRail ? label : undefined}
+                    aria-label={label}
+                    style={isRail ? { justifyContent: 'center', padding: '0', height: 44 } : undefined}
                   >
-                    <Link
-                      href={item.href as any}
-                      className={`desk-sidebar-item ${active ? 'desk-sidebar-item--accent' : ''}`}
-                      title={isRail ? item.label : undefined}
-                      aria-label={item.label}
-                      style={isRail ? { justifyContent: 'center', padding: '0', height: 44 } : undefined}
-                    >
-                      <Icon name={item.icon} size={18} className="desk-sidebar-item-icon" />
-                      {!isRail && <span className="truncate">{item.label}</span>}
-                    </Link>
-                  </motion.div>
-                );
-              })}
-            </div>
-          ))}
+                    <Icon name={item.icon} size={18} className="desk-sidebar-item-icon" />
+                    {!isRail && <span className="truncate">{label}</span>}
+                  </Link>
+                </motion.div>
+              );
+            });
+            return (
+              <div key={si} data-nav-primary={isPrimary ? "true" : undefined}>
+                {si > 0 && <div style={{ height: 1, background: 'var(--desk-border)', margin: isRail ? '8px 4px' : '8px 12px' }} />}
+                {isPrimary || isRail ? (
+                  <>
+                    {section.labelKey && !isRail && (
+                      <div className="desk-sidebar-section-label">{t(section.labelKey)}</div>
+                    )}
+                    {links}
+                  </>
+                ) : (
+                  <details open={sectionActive}>
+                    <summary className="desk-sidebar-section-label" style={{ cursor: "pointer", listStyle: "none" }}>
+                      {t(section.labelKey ?? "portal.nav.more")}
+                    </summary>
+                    {links}
+                  </details>
+                )}
+              </div>
+            );
+          })}
         </nav>
       </div>
 
@@ -272,14 +256,15 @@ const DrawerContent = memo(function DrawerContent({
             <button
               onClick={onLogout}
               className="desk-sidebar-item flex-1"
-              title="Sign Out"
-              aria-label="Sign Out"
+              title={t("common.action.sign_out")}
+              aria-label={t("common.action.sign_out")}
             >
               <Icon name="logout" size={18} />
-              <span>Sign Out</span>
+              <span>{t("common.action.sign_out")}</span>
             </button>
           )}
         </div>
+        {!isRail && <div className="mt-2"><LanguageSwitcher /></div>}
         {!isRail && (
           <motion.div
             initial={{ opacity: 0, y: 8 }}
@@ -288,7 +273,7 @@ const DrawerContent = memo(function DrawerContent({
           >
             <div className="flex items-center gap-2">
               <span className="desk-live-dot" />
-              <span style={{ font: 'var(--type-caption-sm)', color: 'var(--desk-text-secondary)' }}>Single-tenant · System ready</span>
+              <span style={{ font: 'var(--type-caption-sm)', color: 'var(--desk-text-secondary)' }}>{t("supplier_portal.supplier_shell.text.single_tenant_system_ready")}</span>
             </div>
           </motion.div>
         )}
@@ -315,6 +300,7 @@ function SupplierAppChrome({ children }: { children: React.ReactNode }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const searchRef = useRef<HTMLInputElement>(null);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
 
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -323,11 +309,34 @@ function SupplierAppChrome({ children }: { children: React.ReactNode }) {
   const [notifOpen, setNotifOpen] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
   const { items: notifItems, unreadCount, markRead, markAllRead } = useNotifications();
+  const [workspaceMode, setWorkspaceMode] = useState<SupplierWorkspaceMode>('full_erp');
+  const t = usePortalT();
 
   useEffect(() => { setMobileOpen(false); }, [pathname]);
 
   useEffect(() => {
     setHasSession(Boolean(readTokenFromCookie()));
+    try {
+      const saved = window.localStorage.getItem(WORKSPACE_MODE_STORAGE_KEY);
+      if (saved === 'fast_desk' || saved === 'full_erp') {
+        setWorkspaceMode(saved);
+        return;
+      }
+    } catch {
+      // ignore storage errors
+    }
+    const token = getSupplierToken();
+    const claims = token ? decodeJwtPayload(token) : null;
+    setWorkspaceMode(resolveDefaultWorkspaceMode(claims));
+  }, []);
+
+  const handleWorkspaceModeChange = useCallback((mode: SupplierWorkspaceMode) => {
+    setWorkspaceMode(mode);
+    try {
+      window.localStorage.setItem(WORKSPACE_MODE_STORAGE_KEY, mode);
+    } catch {
+      // ignore storage errors
+    }
   }, []);
 
   useEffect(() => {
@@ -365,14 +374,26 @@ function SupplierAppChrome({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      const activeTag = (e.target as HTMLElement)?.tagName;
+      const isInput = activeTag === 'INPUT' || activeTag === 'TEXTAREA' || (e.target as HTMLElement)?.isContentEditable;
+
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
         setSearchOpen(s => !s);
         setTimeout(() => searchRef.current?.focus(), 100);
       }
+      if (!isInput && e.key === '?') {
+        e.preventDefault();
+        setShortcutsOpen(s => !s);
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === '/') {
+        e.preventDefault();
+        setShortcutsOpen(s => !s);
+      }
       if (e.key === 'Escape') {
         setSearchOpen(false);
         setSearchQuery('');
+        setShortcutsOpen(false);
       }
     };
     document.addEventListener('keydown', handler);
@@ -384,15 +405,15 @@ function SupplierAppChrome({ children }: { children: React.ReactNode }) {
     window.location.href = '/auth/login';
   }, []);
 
-  const breadcrumbs = useMemo(() => buildBreadcrumbs(pathname), [pathname]);
+  const breadcrumbs = useMemo(() => buildBreadcrumbs(pathname, t), [pathname, t]);
 
   const searchResults = useMemo(() =>
     searchQuery.trim()
       ? ALL_NAV_ITEMS.filter(item =>
-          item.label.toLowerCase().includes(searchQuery.toLowerCase())
+          t(item.labelKey).toLowerCase().includes(searchQuery.toLowerCase())
         )
     : []
-  , [searchQuery]);
+  , [searchQuery, t]);
 
   return (
     <>
@@ -406,7 +427,15 @@ function SupplierAppChrome({ children }: { children: React.ReactNode }) {
           background: 'var(--desk-surface)',
         }}
       >
-        <DrawerContent isMobile={false} collapsed={collapsed} pathname={pathname} onToggle={toggleSidebar} onLogout={handleLogout} />
+        <DrawerContent
+          isMobile={false}
+          collapsed={collapsed}
+          pathname={pathname}
+          workspaceMode={workspaceMode}
+          onWorkspaceModeChange={handleWorkspaceModeChange}
+          onToggle={toggleSidebar}
+          onLogout={handleLogout}
+        />
       </motion.aside>
 
       <AnimatePresence>
@@ -433,31 +462,39 @@ function SupplierAppChrome({ children }: { children: React.ReactNode }) {
                 background: 'var(--desk-surface)',
               }}
             >
-              <DrawerContent isMobile={true} collapsed={collapsed} pathname={pathname} onToggle={toggleSidebar} onLogout={handleLogout} />
+              <DrawerContent
+                isMobile={true}
+                collapsed={collapsed}
+                pathname={pathname}
+                workspaceMode={workspaceMode}
+                onWorkspaceModeChange={handleWorkspaceModeChange}
+                onToggle={toggleSidebar}
+                onLogout={handleLogout}
+              />
             </motion.aside>
           </>
         )}
       </AnimatePresence>
 
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
-        <header className="desk-topbar shrink-0">
-          <div className="desk-topbar-left">
+        <header className="desk-topbar shrink-0 select-none" data-tauri-drag-region>
+          <div className="desk-topbar-left" data-tauri-drag-region>
             <button
               className="desk-icon-btn md:hidden"
               onClick={() => setMobileOpen(true)}
-              aria-label="Open navigation"
+              aria-label={t("supplier_portal.supplier_shell.text.open_navigation")}
             >
               <Icon name="menu" />
             </button>
 
-            <nav className="desk-breadcrumb hidden md:flex" aria-label="Breadcrumb">
+            <nav className="desk-breadcrumb hidden md:flex" aria-label={t("supplier_portal.supplier_shell.text.breadcrumb")} data-tauri-drag-region>
               {breadcrumbs.map((crumb, i) => (
                 <span key={crumb.href} className="flex items-center gap-2 min-w-0">
                   {i > 0 && <span className="desk-breadcrumb-sep">/</span>}
                   {i === breadcrumbs.length - 1 ? (
                     <span className="desk-breadcrumb-current truncate">{crumb.label}</span>
                   ) : (
-                    <Link href={crumb.href as any} className="truncate">{crumb.label}</Link>
+                    <Link href={crumb.href as Route} className="truncate">{crumb.label}</Link>
                   )}
                 </span>
               ))}
@@ -468,34 +505,80 @@ function SupplierAppChrome({ children }: { children: React.ReactNode }) {
             </span>
           </div>
 
-          <div className="desk-topbar-right">
+          <div className="desk-topbar-right" data-tauri-no-drag>
+            <div
+              role="group"
+              aria-label="Workspace mode"
+              data-testid="workspace-mode-switcher"
+              className="hidden sm:inline-flex items-center rounded-lg border border-[var(--desk-border)] bg-[var(--desk-surface-subtle)] p-0.5 text-xs"
+            >
+              <button
+                type="button"
+                aria-pressed={workspaceMode === 'fast_desk'}
+                onClick={() => handleWorkspaceModeChange('fast_desk')}
+                className={`rounded-md px-2 py-1 font-medium transition ${
+                  workspaceMode === 'fast_desk'
+                    ? 'bg-[var(--desk-surface)] text-[var(--desk-text-primary)] shadow-sm'
+                    : 'text-[var(--desk-text-secondary)]'
+                }`}
+              >
+                Fast Desk
+              </button>
+              <button
+                type="button"
+                aria-pressed={workspaceMode === 'full_erp'}
+                onClick={() => handleWorkspaceModeChange('full_erp')}
+                className={`rounded-md px-2 py-1 font-medium transition ${
+                  workspaceMode === 'full_erp'
+                    ? 'bg-[var(--desk-surface)] text-[var(--desk-text-primary)] shadow-sm'
+                    : 'text-[var(--desk-text-secondary)]'
+                }`}
+              >
+                Full ERP
+              </button>
+            </div>
+            <SessionPackChip />
             <button
               className="desk-topbar-search hidden md:flex"
               onClick={() => { setSearchOpen(true); setTimeout(() => searchRef.current?.focus(), 100); }}
-              aria-label="Search (Ctrl+K)"
+              aria-label={t("supplier_portal.supplier_shell.text.search_ctrl_k")}
             >
               <Icon name="search" size={16} />
-              <span style={{ flex: 1, textAlign: 'left' }}>Search…</span>
+              <span style={{ flex: 1, textAlign: 'left' }}>{t("portal.chrome.search")}</span>
               <kbd className="desk-sidebar-search-kbd">⌘K</kbd>
+            </button>
+
+            <button
+              className="desk-icon-btn hidden md:flex"
+              onClick={() => setShortcutsOpen(true)}
+              title="Keyboard Shortcuts (?)"
+              aria-label="Keyboard Shortcuts"
+            >
+              <Icon name="keyboard" size={18} />
             </button>
 
             <button
               className="desk-icon-btn md:hidden"
               onClick={() => { setSearchOpen(true); setTimeout(() => searchRef.current?.focus(), 100); }}
-              aria-label="Search"
+              aria-label={t("supplier_portal.supplier_shell.text.search")}
             >
               <Icon name="search" />
             </button>
 
-            <div className="desk-live-indicator hidden lg:inline-flex">
-              <span className="desk-live-dot" />
-              Live
+            {/* Desktop Health & Telemetry Strip */}
+            <div className="hidden xl:inline-flex items-center gap-2 rounded-full border border-neutral-800 bg-neutral-950/80 px-2.5 py-1 font-mono text-[11px] text-neutral-300">
+              <span className="flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span>SPK-UZ: 16ms</span>
+              </span>
+              <span className="text-neutral-700">|</span>
+              <span className="text-neutral-400">WS OK</span>
             </div>
 
             <div className="relative" ref={notifRef}>
               <button
                 className="desk-icon-btn"
-                aria-label="Notifications"
+                aria-label={t("portal.nav.notifications")}
                 onClick={() => setNotifOpen(p => !p)}
               >
                 <Icon name="notifications" />
@@ -519,11 +602,11 @@ function SupplierAppChrome({ children }: { children: React.ReactNode }) {
               <button
                 onClick={() => setProfileOpen(p => !p)}
                 className="desk-profile-pill"
-                aria-label="Profile menu"
+                aria-label={t("supplier_portal.supplier_shell.text.profile_menu")}
               >
                 <div className="desk-profile-avatar">SP</div>
                 <div className="desk-profile-info hidden lg:flex">
-                  <span className="desk-profile-name">Supplier</span>
+                  <span className="desk-profile-name">{t("supplier_portal.admin.empathy.hierarchy.supplier.level")}</span>
                   <span className="desk-profile-role">
                     {hasSession ? "Administrator" : "Guest"}
                   </span>
@@ -532,17 +615,17 @@ function SupplierAppChrome({ children }: { children: React.ReactNode }) {
               {profileOpen && (
                 <div className="md-menu" style={{ right: 0, top: 48, minWidth: 220 }}>
                   <div className="px-4 py-3" style={{ borderBottom: '1px solid var(--desk-border)' }}>
-                    <p style={{ font: 'var(--type-title)', color: 'var(--desk-text-primary)', margin: 0 }}>Supplier Admin</p>
-                    <p style={{ font: 'var(--type-caption-sm)', color: 'var(--desk-text-tertiary)', margin: '4px 0 0' }}>Single-tenant control plane</p>
+                    <p style={{ font: 'var(--type-title)', color: 'var(--desk-text-primary)', margin: 0 }}>{t("supplier_portal.supplier_shell.text.supplier_admin")}</p>
+                    <p style={{ font: 'var(--type-caption-sm)', color: 'var(--desk-text-tertiary)', margin: '4px 0 0' }}>{t("supplier_portal.supplier_shell.text.single_tenant_control_plane")}</p>
                   </div>
-                  <Link href={"/profile" as any} className="md-menu-item" onClick={() => setProfileOpen(false)}>
+                  <Link href={"/profile" as Route} className="md-menu-item" onClick={() => setProfileOpen(false)}>
                     <Icon name="supplier" />
-                    <span>Profile</span>
+                    <span>{t("portal.nav.profile")}</span>
                   </Link>
                   <div style={{ height: 1, background: 'var(--desk-border)', margin: '4px 12px' }} />
                   <button className="md-menu-item" style={{ color: 'var(--desk-danger)' }} onClick={() => { setProfileOpen(false); handleLogout(); }}>
                     <Icon name="logout" />
-                    <span>Sign Out</span>
+                    <span>{t("common.action.sign_out")}</span>
                   </button>
                 </div>
               )}
@@ -569,9 +652,11 @@ function SupplierAppChrome({ children }: { children: React.ReactNode }) {
                 <div className="md-search-bar" style={{ borderRadius: '16px 16px 0 0', height: 56, borderBottom: '1px solid var(--desk-border)' }}>
                   <Icon name="search" />
                   <input
+                    id="searchquery-input-1"
+                    aria-label="Search query"
                     ref={searchRef}
                     type="text"
-                    placeholder="Search pages..."
+                    placeholder={t("supplier_portal.supplier_shell.text.search_pages")}
                     value={searchQuery}
                     onChange={e => setSearchQuery(e.target.value)}
                     autoFocus
@@ -591,12 +676,12 @@ function SupplierAppChrome({ children }: { children: React.ReactNode }) {
                     {searchResults.slice(0, 8).map(item => (
                       <Link
                         key={item.href}
-                        href={item.href as any}
+                        href={item.href as Route}
                         className="md-menu-item active-press"
                         onClick={() => { setSearchOpen(false); setSearchQuery(''); }}
                       >
                         <Icon name={item.icon} />
-                        <span>{item.label}</span>
+                        <span>{t(item.labelKey)}</span>
                         <span className="ml-auto md-typescale-label-small text-muted">
                           {item.href}
                         </span>
@@ -630,6 +715,7 @@ function SupplierAppChrome({ children }: { children: React.ReactNode }) {
           </AnimatePresence>
         </main>
       </div>
+      <DesktopKeyboardCheatsheet open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
     </>
   );
 }

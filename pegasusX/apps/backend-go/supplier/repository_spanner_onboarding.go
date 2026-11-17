@@ -10,7 +10,9 @@ import (
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
 	"google.golang.org/api/iterator"
+	"google.golang.org/grpc/codes"
 )
 
 func (r *SpannerRepository) ListOrgMembers(ctx context.Context, supplierID string) ([]SupplierOrgMember, error) {
@@ -24,7 +26,12 @@ func (r *SpannerRepository) ListOrgMembers(ctx context.Context, supplierID strin
               ORDER BY UpdatedAt DESC`,
 		Params: map[string]any{"supplier_id": supplierID},
 	}
-	iter := r.client.Single().Query(ctx, stmt)
+	var iter *spanner.RowIterator
+	if txn := spannerutils.ReadOnlyTxnFromContext(ctx); txn != nil {
+		iter = txn.Query(ctx, stmt)
+	} else {
+		iter = r.client.Single().Query(ctx, stmt)
+	}
 	defer iter.Stop()
 
 	items := make([]SupplierOrgMember, 0)
@@ -91,15 +98,7 @@ func (r *SpannerRepository) CreateOrgMember(ctx context.Context, member CreateOr
 			"UpdatedAt":           member.UpdatedAt.UTC(),
 		})}
 		for _, event := range buf.events {
-			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", map[string]any{
-				"EventId":       event.EventID,
-				"AggregateType": event.AggregateType,
-				"AggregateId":   event.AggregateID,
-				"TopicName":     event.TopicName,
-				"Payload":       event.Payload,
-				"CreatedAt":     event.CreatedAt.UTC(),
-				"PublishedAt":   nil,
-			}))
+			mutations = append(mutations, portalOutboxMutation(event))
 		}
 		return txn.BufferWrite(mutations)
 	})
@@ -173,15 +172,7 @@ func (r *SpannerRepository) UpdateOrgMember(ctx context.Context, supplierID, use
 		}
 		mutations := []*spanner.Mutation{spanner.Update("SupplierUsers", cols, vals)}
 		for _, event := range buf.events {
-			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", map[string]any{
-				"EventId":       event.EventID,
-				"AggregateType": event.AggregateType,
-				"AggregateId":   event.AggregateID,
-				"TopicName":     event.TopicName,
-				"Payload":       event.Payload,
-				"CreatedAt":     event.CreatedAt.UTC(),
-				"PublishedAt":   nil,
-			}))
+			mutations = append(mutations, portalOutboxMutation(event))
 		}
 		return txn.BufferWrite(mutations)
 	})
@@ -205,7 +196,12 @@ func (r *SpannerRepository) ListFleetDrivers(ctx context.Context, supplierID str
               ORDER BY Phone`,
 		Params: map[string]any{"supplier_id": supplierID},
 	}
-	iter := r.client.Single().Query(ctx, stmt)
+	var iter *spanner.RowIterator
+	if txn := spannerutils.ReadOnlyTxnFromContext(ctx); txn != nil {
+		iter = txn.Query(ctx, stmt)
+	} else {
+		iter = r.client.Single().Query(ctx, stmt)
+	}
 	defer iter.Stop()
 
 	items := make([]SupplierFleetDriver, 0)
@@ -271,15 +267,7 @@ func (r *SpannerRepository) CreateFleetDriver(ctx context.Context, driver Create
 			"UpdatedAt":    driver.UpdatedAt.UTC(),
 		})}
 		for _, event := range buf.events {
-			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", map[string]any{
-				"EventId":       event.EventID,
-				"AggregateType": event.AggregateType,
-				"AggregateId":   event.AggregateID,
-				"TopicName":     event.TopicName,
-				"Payload":       event.Payload,
-				"CreatedAt":     event.CreatedAt.UTC(),
-				"PublishedAt":   nil,
-			}))
+			mutations = append(mutations, portalOutboxMutation(event))
 		}
 		return txn.BufferWrite(mutations)
 	})
@@ -301,7 +289,12 @@ func (r *SpannerRepository) ListFleetVehicles(ctx context.Context, supplierID st
               ORDER BY LicensePlate`,
 		Params: map[string]any{"supplier_id": supplierID},
 	}
-	iter := r.client.Single().Query(ctx, stmt)
+	var iter *spanner.RowIterator
+	if txn := spannerutils.ReadOnlyTxnFromContext(ctx); txn != nil {
+		iter = txn.Query(ctx, stmt)
+	} else {
+		iter = r.client.Single().Query(ctx, stmt)
+	}
 	defer iter.Stop()
 
 	items := make([]SupplierFleetVehicle, 0)
@@ -363,15 +356,7 @@ func (r *SpannerRepository) CreateFleetVehicle(ctx context.Context, vehicle Crea
 			"UpdatedAt":    vehicle.UpdatedAt.UTC(),
 		})}
 		for _, event := range buf.events {
-			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", map[string]any{
-				"EventId":       event.EventID,
-				"AggregateType": event.AggregateType,
-				"AggregateId":   event.AggregateID,
-				"TopicName":     event.TopicName,
-				"Payload":       event.Payload,
-				"CreatedAt":     event.CreatedAt.UTC(),
-				"PublishedAt":   nil,
-			}))
+			mutations = append(mutations, portalOutboxMutation(event))
 		}
 		return txn.BufferWrite(mutations)
 	})
@@ -403,7 +388,7 @@ func ensureSupplierUserPhoneAvailable(ctx context.Context, txn *spanner.ReadWrit
 	if err := row.Columns(&userID, &existingSupplierID, &isActive); err != nil {
 		return fmt.Errorf("scan existing supplier user by phone: %w", err)
 	}
-	if existingSupplierID == supplierID && isActive && userID != "" {
+	if isActive && userID != "" {
 		return errOrgMemberPhoneExists
 	}
 	return nil
@@ -466,7 +451,7 @@ func ensureVehiclePlateAvailable(ctx context.Context, txn *spanner.ReadWriteTran
 func ensureFleetVehicleAssignment(ctx context.Context, txn *spanner.ReadWriteTransaction, supplierID string, vehicleID string, homeNodeType auth.HomeNodeType, homeNodeID string) error {
 	row, err := txn.ReadRow(ctx, "Vehicles", spanner.Key{vehicleID}, []string{"SupplierId", "HomeNodeType", "HomeNodeId"})
 	if err != nil {
-		if err == spanner.ErrRowNotFound {
+		if errors.Is(err, spanner.ErrRowNotFound) || spanner.ErrCode(err) == codes.NotFound {
 			return errFleetVehicleMismatch
 		}
 		return fmt.Errorf("read supplier fleet vehicle assignment: %w", err)

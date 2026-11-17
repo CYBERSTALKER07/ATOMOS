@@ -1,7 +1,6 @@
-import { useState, useEffect, useCallback, useRef } from "react";
-import { cacheGet, cacheSet } from "@pegasusx/desktop-cache";
-import { isTauri } from "@pegasusx/desktop-bridge";
+import { useCallback } from "react";
 import { apiFetch } from "./auth";
+import { useEnterpriseSWR } from "./enterprise-swr";
 
 type LiveDataError = Error & { status?: number };
 
@@ -19,118 +18,34 @@ export function useLiveData<T>(
   interval = 0,
   options: UseLiveDataOptions = {},
 ) {
-  const useCache = options.cache !== false && isTauri() && url.length > 0;
-  const [data, setData] = useState<T | null>(null);
-  const [error, setError] = useState<Error | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const mountedRef = useRef(true);
-  const abortRef = useRef<AbortController | null>(null);
+  const fetcher = useCallback(async (path: string, signal?: AbortSignal) => {
+    const res = await apiFetch(path, { signal });
+    if (!res.ok) {
+      const requestError = new Error(`API fetch failed (${res.status})`) as LiveDataError;
+      requestError.status = res.status;
+      throw requestError;
+    }
+    return (await res.json()) as T;
+  }, []);
+
+  const swr = useEnterpriseSWR<T>(url, fetcher, {
+    interval,
+    cache: options.cache,
+  });
 
   const mutate = useCallback(
-    async ({ silent = true }: MutateOptions = {}) => {
-      if (!url) {
-        abortRef.current?.abort();
-        setData(null);
-        setError(null);
-        setLoading(false);
-        setIsRefreshing(false);
-        return;
-      }
-
-      abortRef.current?.abort();
-      const controller = new AbortController();
-      abortRef.current = controller;
-
-      if (silent) {
-        setIsRefreshing(true);
-      } else {
-        setLoading(true);
-      }
-
-      try {
-        const res = await apiFetch(url, { signal: controller.signal });
-        if (!res.ok) {
-          const requestError = new Error(`API fetch failed (${res.status})`) as LiveDataError;
-          requestError.status = res.status;
-          throw requestError;
-        }
-        const json = (await res.json()) as T;
-        if (!mountedRef.current || controller.signal.aborted) return;
-        setData(json);
-        setError(null);
-        if (useCache) {
-          void cacheSet(url, json);
-        }
-      } catch (err: unknown) {
-        if (!mountedRef.current || controller.signal.aborted) return;
-        setError(err instanceof Error ? err : new Error(String(err)));
-      } finally {
-        if (!mountedRef.current || controller.signal.aborted) return;
-        setLoading(false);
-        setIsRefreshing(false);
-      }
+    async (_opts?: MutateOptions) => {
+      await swr.revalidate();
     },
-    [url, useCache],
+    [swr.revalidate],
   );
 
-  useEffect(() => {
-    mountedRef.current = true;
-
-    const bootstrap = async () => {
-      if (useCache) {
-        const cached = await cacheGet<T>(url);
-        if (!mountedRef.current) return;
-        if (cached !== null) {
-          setData(cached);
-          setLoading(false);
-          void mutate({ silent: true });
-          return;
-        }
-      }
-      void mutate({ silent: false });
-    };
-
-    void bootstrap();
-
-    return () => {
-      mountedRef.current = false;
-      abortRef.current?.abort();
-      abortRef.current = null;
-    };
-  }, [mutate, url, useCache]);
-
-  useEffect(() => {
-    if (interval <= 0 || !url) return;
-
-    const pid = setInterval(() => {
-      if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
-      void mutate();
-    }, interval);
-
-    return () => clearInterval(pid);
-  }, [interval, mutate, url]);
-
-  useEffect(() => {
-    if (!url) return;
-
-    const refresh = () => {
-      void mutate();
-    };
-    const onVisible = () => {
-      if (document.visibilityState === "visible") refresh();
-    };
-
-    window.addEventListener("focus", refresh);
-    window.addEventListener("online", refresh);
-    document.addEventListener("visibilitychange", onVisible);
-
-    return () => {
-      window.removeEventListener("focus", refresh);
-      window.removeEventListener("online", refresh);
-      document.removeEventListener("visibilitychange", onVisible);
-    };
-  }, [mutate, url]);
-
-  return { data, mutate, error, loading, isRefreshing };
+  return {
+    data: swr.data,
+    mutate,
+    error: swr.error,
+    loading: swr.isLoading,
+    isRefreshing: swr.isRevalidating,
+  };
 }
+

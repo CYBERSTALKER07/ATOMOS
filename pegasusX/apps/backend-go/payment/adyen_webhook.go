@@ -1,7 +1,6 @@
 package payment
 
 import (
-	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -85,12 +84,21 @@ func (s *Service) HandleAdyenWebhook(w http.ResponseWriter, r *http.Request) {
 			} else {
 				status = "FAILED"
 			}
-		default:
+		case "CHARGEBACK", "NOTIFICATION_OF_CHARGEBACK", "SECOND_CHARGEBACK":
 			if success {
-				status = "PAID"
+				status = "CHARGEBACK"
 			} else {
 				status = "FAILED"
 			}
+		case "CHARGEBACK_REVERSED":
+			if success {
+				status = "CHARGEBACK_REVERSED"
+			} else {
+				status = "FAILED"
+			}
+		default:
+			s.log.Warn("unhandled adyen webhook event code", "event", eventCode, "success", success)
+			status = "UNHANDLED"
 		}
 
 		transactionID := strings.TrimSpace(item.PspReference)
@@ -104,6 +112,8 @@ func (s *Service) HandleAdyenWebhook(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			s.log.Warn("webhook idempotency guard failed", "key", webhookKey, "err", err)
+			writeJSONError(w, http.StatusServiceUnavailable, "idempotency_unavailable", "idempotency verification unavailable", endpoint, true, "")
+			return
 		}
 		if replayed {
 			continue
@@ -120,16 +130,24 @@ func (s *Service) HandleAdyenWebhook(w http.ResponseWriter, r *http.Request) {
 				sessionID = strings.TrimSpace(val)
 			}
 		}
+		if err := s.assertSessionCurrency(r.Context(), sessionID, strings.TrimSpace(item.MerchantReference), currency); err != nil {
+			writeJSONError(w, http.StatusUnprocessableEntity, "currency_mismatch", "webhook currency must match payment session currency", endpoint, false, "")
+			return
+		}
 
 		// Map specific Adyen events to PaymentAttempt metadata transitions
 		var executionAction string
 		switch eventCode {
 		case "CAPTURE", "CAPTURE_FAILED":
 			executionAction = string(ExecutionActionCheckoutCapture)
-		case "CANCELLATION":
+		case "CANCELLATION", "CANCEL_OR_REFUND", "VOID_PENDING_REFUND", "CANCELLED":
 			executionAction = "CANCELLATION"
-		case "REFUND", "REFUND_FAILED":
-			executionAction = "REFUND"
+		case "REFUND", "REFUND_FAILED", "REFUNDED_REVERSED":
+			executionAction = string(ExecutionActionRefund)
+		case "CHARGEBACK", "NOTIFICATION_OF_CHARGEBACK", "SECOND_CHARGEBACK":
+			executionAction = string(ExecutionActionChargebackRecord)
+		case "CHARGEBACK_REVERSED":
+			executionAction = string(ExecutionActionChargebackReversal)
 		}
 
 		if executionAction != "" {
@@ -156,7 +174,7 @@ func (s *Service) HandleAdyenWebhook(w http.ResponseWriter, r *http.Request) {
 			TransactionID:  transactionID,
 			SessionID:      sessionID,
 			OrderID:        strings.TrimSpace(item.MerchantReference),
-			SupplierID:     s.supplierID,
+			SupplierID:     s.resolveWebhookSupplierID(r.Context(), strings.TrimSpace(item.MerchantReference)),
 			Status:         status,
 			AmountMinor:    item.Amount.Value,
 			Currency:       currency,
@@ -168,22 +186,11 @@ func (s *Service) HandleAdyenWebhook(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		resp := map[string]string{
-			"status":         "accepted",
-			"gateway":        "adyen",
-			"transaction_id": row.TransactionID,
-		}
-		respBytes, _ := json.Marshal(resp)
-		s.persistIdempotencyRecord(r.Context(), webhookKey, bodyHash, http.StatusOK, respBytes, 7*24*time.Hour)
+		s.persistIdempotencyRecord(r.Context(), webhookKey, bodyHash, http.StatusOK, []byte("[accepted]"), 7*24*time.Hour)
 		processed++
 	}
 
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(map[string]any{
-		"status":          "accepted",
-		"gateway":         "adyen",
-		"processed_items": processed,
-	})
+	_, _ = w.Write([]byte("[accepted]"))
 }
-
