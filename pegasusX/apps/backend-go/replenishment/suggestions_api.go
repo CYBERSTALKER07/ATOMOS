@@ -26,28 +26,30 @@ const (
 
 // SuggestionRow is the wire shape for reorder suggestions.
 type SuggestionRow struct {
-	RetailerID       string   `json:"retailer_id"`
-	RetailerName     string   `json:"retailer_name,omitempty"`
-	Sku              string   `json:"sku"`
-	SkuName          string   `json:"sku_name,omitempty"`
-	SuggestedQty     int64    `json:"suggested_qty"`
-	AdjustedDemand   float64  `json:"adjusted_demand_per_day"`
-	CurrentStock     int64    `json:"current_stock"`
-	InFlightQty      int64    `json:"in_flight_qty"`
-	SafetyStock      float64  `json:"safety_stock"`
-	SuggestedByDate  string   `json:"suggested_by_date"`
-	Status           string   `json:"status"`
-	ComputedAt       string   `json:"computed_at"`
-	Sources          []string `json:"sources,omitempty"`
-	SellThroughVel   float64  `json:"sell_through_velocity,omitempty"`
-	BaseDemand       float64  `json:"base_demand_per_day,omitempty"`
+	SuggestionID    string   `json:"suggestion_id"`
+	RetailerID      string   `json:"retailer_id"`
+	RetailerName    string   `json:"retailer_name,omitempty"`
+	Sku             string   `json:"sku"`
+	SkuName         string   `json:"sku_name,omitempty"`
+	SuggestedQty    int64    `json:"suggested_qty"`
+	AdjustedDemand  float64  `json:"adjusted_demand_per_day"`
+	CurrentStock    int64    `json:"current_stock"`
+	InFlightQty     int64    `json:"in_flight_qty"`
+	SafetyStock     float64  `json:"safety_stock"`
+	SuggestedByDate string   `json:"suggested_by_date"`
+	Status          string   `json:"status"`
+	ComputedAt      string   `json:"computed_at"`
+	Sources         []string `json:"sources,omitempty"`
+	SellThroughVel  float64  `json:"sell_through_velocity,omitempty"`
+	BaseDemand      float64  `json:"base_demand_per_day,omitempty"`
 }
 
 // SuggestionsAPI serves supplier-portal reorder suggestion endpoints.
 type SuggestionsAPI struct {
-	Spanner     *spanner.Client
-	Orders      *order.Service
-	SupplierID  func(r *http.Request) string
+	Spanner    *spanner.Client
+	Orders     *order.Service
+	SupplierID func(r *http.Request) string
+	memStore   *MemorySuggestionStore
 }
 
 func NewSuggestionsAPI(client *spanner.Client, orders *order.Service, supplierID func(r *http.Request) string) *SuggestionsAPI {
@@ -268,9 +270,9 @@ func (a *SuggestionsAPI) HandleBulkCreateDrafts(w http.ResponseWriter, r *http.R
 }
 
 var (
-	errSuggestionNotFound       = errors.New("suggestion_not_found")
-	errRetailerNotLinked        = errors.New("retailer_not_linked")
-	errRetailerLocationMissing  = errors.New("retailer_location_missing")
+	errSuggestionNotFound      = errors.New("suggestion_not_found")
+	errRetailerNotLinked       = errors.New("retailer_not_linked")
+	errRetailerLocationMissing = errors.New("retailer_location_missing")
 )
 
 func (a *SuggestionsAPI) listSuggestions(ctx context.Context, supplierID, retailerID, status, skuSearch string, sourceFilter []string) ([]SuggestionRow, error) {
@@ -309,7 +311,7 @@ func (a *SuggestionsAPI) listSuggestions(ctx context.Context, supplierID, retail
 	}
 	sql += " ORDER BY rs.ComputedAt DESC LIMIT 500"
 
-	iter := a.Spanner.Single().Query(ctx, spanner.Statement{SQL: sql, Params: params})
+	iter := a.Spanner.Single().WithTimestampBound(spanner.StrongRead()).Query(ctx, spanner.Statement{SQL: sql, Params: params})
 	defer iter.Stop()
 
 	var rows []SuggestionRow
@@ -339,6 +341,7 @@ func (a *SuggestionsAPI) listSuggestions(ctx context.Context, supplierID, retail
 				return nil, err
 			}
 		}
+		sr.SuggestionID = sr.RetailerID + ":" + sr.Sku
 		if safetyStock.Valid {
 			sr.SafetyStock = safetyStock.Float64
 		}
@@ -369,7 +372,7 @@ func (a *SuggestionsAPI) retailerLinkedToSupplier(ctx context.Context, supplierI
 	if retailerID == "" {
 		return false
 	}
-	iter := a.Spanner.Single().Query(ctx, spanner.Statement{
+	iter := a.Spanner.Single().WithTimestampBound(spanner.StrongRead()).Query(ctx, spanner.Statement{
 		SQL: `SELECT 1 FROM Orders WHERE SupplierId = @supplierId AND RetailerId = @retailerId LIMIT 1`,
 		Params: map[string]interface{}{
 			"supplierId": supplierID,

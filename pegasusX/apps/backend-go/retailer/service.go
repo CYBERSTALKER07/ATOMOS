@@ -18,15 +18,19 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
+	"google.golang.org/api/iterator"
+	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
+	"github.com/pegasusx/pegasusx/apps/backend-go/innlookup"
 	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/proximity"
 	"github.com/pegasusx/pegasusx/apps/backend-go/routing"
 	"github.com/pegasusx/pegasusx/apps/backend-go/telemetry"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // Repository is the storage seam. Production binds this to a Spanner-backed
@@ -55,6 +59,43 @@ type Repository interface {
 	ListRecentReceipts(ctx context.Context, retailerID string, limit int) ([]TrackingOrder, error)
 }
 
+// Legal entity onboarding classification persisted on Retailers.LegalEntityStatus.
+const (
+	LegalEntityVerified      = "LEGAL_VERIFIED"
+	LegalEntityInformalPhone = "INFORMAL_PHONE"
+)
+
+// MigrationOpeningInvoice is the retailer-facing view of a migrated Nasiya opening balance.
+type MigrationOpeningInvoice struct {
+	InvoiceID       string `json:"invoice_id"`
+	SupplierID      string `json:"supplier_id"`
+	SupplierName    string `json:"supplier_name,omitempty"`
+	RetailerID      string `json:"retailer_id"`
+	OrderID         string `json:"order_id,omitempty"`
+	ExternalID      string `json:"external_id,omitempty"`
+	PrincipalMinor  int64  `json:"principal_minor"`
+	BalanceMinor    int64  `json:"balance_minor"`
+	Currency        string `json:"currency"`
+	Status          string `json:"status"`
+	Source          string `json:"source"`
+	DunningFrozen   bool   `json:"dunning_frozen"`
+	DueAt           string `json:"due_at,omitempty"`
+	AcknowledgedAt  string `json:"acknowledged_at,omitempty"`
+	DisputedAt      string `json:"disputed_at,omitempty"`
+	DisputeReason   string `json:"dispute_reason,omitempty"`
+	UpdatedAt       string `json:"updated_at,omitempty"`
+}
+
+// MigrationARManager decouples retailer nasiya handlers from ar package imports.
+type MigrationARManager interface {
+	ListOpeningBalances(ctx context.Context, retailerID string) ([]MigrationOpeningInvoice, error)
+	AcknowledgeOpeningInvoice(ctx context.Context, retailerID, invoiceID string) (MigrationOpeningInvoice, error)
+	DisputeOpeningInvoice(ctx context.Context, retailerID, invoiceID, reason string) (MigrationOpeningInvoice, error)
+}
+
+// MigrationNotifier sends notifications on AR dispute / join requests.
+type MigrationNotifier func(ctx context.Context, recipientID, recipientRole, eventType, title, body, deepLink string) error
+
 // Retailer is the persisted aggregate.
 type Retailer struct {
 	RetailerID           string
@@ -62,6 +103,11 @@ type Retailer struct {
 	Phone                string
 	Name                 string
 	CountryCode          string
+	TaxID                string
+	NormalizedTaxID      string
+	HomeCell             string
+	LegalEntityStatus    string
+	InnVerifiedAt        *time.Time
 	Lat                  float64
 	Lng                  float64
 	H3Cell               string
@@ -337,10 +383,12 @@ type Service struct {
 	receiveSessions map[string]ReceiveSessionDTO
 	receiveByOrder  map[string]string
 	// Phase 4 POS memory
-	posRegisters     map[string]RegisterDTO
-	posSessions      map[string]PosSessionDTO
-	posSales         map[string]PosSaleDTO
-	posSalesByClient map[string]string // retailerID|clientSaleID -> saleID
+	posRegisters       map[string]RegisterDTO
+	posSessions        map[string]PosSessionDTO
+	posSales           map[string]PosSaleDTO
+	posSalesByClient   map[string]string // retailerID|clientSaleID -> saleID
+	posAnomaliesByOrg  map[string]map[string]PosAnomalyReview
+	mandatesByRetailer map[string]map[string]SellerMandate
 	// Phase 5 shifts memory
 	timeEntries map[string]TimeEntryDTO // entryID -> entry
 	shifts      map[string]ShiftDTO
@@ -410,6 +458,16 @@ type Service struct {
 	addSectionSkusFn      func(context.Context, SectionDTO, []string) error
 	removeSectionSkusFn   func(context.Context, string, []string) error
 	replaceSectionStaffFn func(context.Context, SectionDTO, []string) error
+	// W5: de-stubbed AI auto-order, fast-home BFF, and Telegram OTP binding
+	predictDemandFn      func(context.Context, DemandPredictionRequest) (*DemandPredictionResponse, error)
+	historicalSalesQuery func(context.Context, string, string, int) ([]int, error)
+	fastHomeQuery        func(context.Context, string, string) (*FastHomeResponse, error)
+	telegramLinksMem     map[string]TelegramLinkRecord // key: retailerID|userID
+	botWebhookSecret     string
+	innLookup            *innlookup.Service
+	migrationAR          MigrationARManager
+	migrationNotifier    MigrationNotifier
+	OnRegistered         func(ctx context.Context, retailerID, name string) error
 }
 
 // ServiceConfig is the constructor input.
@@ -417,6 +475,10 @@ type ServiceConfig struct {
 	Repo                  Repository
 	CartRepo              CartRepository
 	NotifSvc              NotificationReader
+	INNLookup             *innlookup.Service
+	MigrationAR           MigrationARManager
+	MigrationNotifier     MigrationNotifier
+	OnRegistered          func(ctx context.Context, retailerID, name string) error
 	Orders                OrderLifecycle
 	OrderCreator          OrderCreator // optional; required for mode=place
 	AutoOrderPlaceEnabled bool
@@ -450,6 +512,8 @@ type ServiceConfig struct {
 	PaymentSessionByOrder PaymentSessionByOrder
 	// DashboardOrders injects child-order status counts for tests (Spanner-shaped).
 	DashboardOrders RetailerDashboardOrdersQuery
+	// BotWebhookSecret configures X-Bot-Webhook-Secret validation when set (defaults to env).
+	BotWebhookSecret string
 }
 
 // NewService constructs a Service with sensible defaults for Now/NewID.
@@ -512,6 +576,8 @@ func NewService(c ServiceConfig) *Service {
 		posSessions:           make(map[string]PosSessionDTO),
 		posSales:              make(map[string]PosSaleDTO),
 		posSalesByClient:      make(map[string]string),
+		posAnomaliesByOrg:     make(map[string]map[string]PosAnomalyReview),
+		mandatesByRetailer:    make(map[string]map[string]SellerMandate),
 		timeEntries:           make(map[string]TimeEntryDTO),
 		shifts:                make(map[string]ShiftDTO),
 		sections:              make(map[string]SectionDTO),
@@ -525,7 +591,56 @@ func NewService(c ServiceConfig) *Service {
 		spannerClient:         c.Spanner,
 		paymentSessionByOrder: c.PaymentSessionByOrder,
 		dashboardOrders:       c.DashboardOrders,
+		telegramLinksMem:      make(map[string]TelegramLinkRecord),
+		botWebhookSecret:      strings.TrimSpace(c.BotWebhookSecret),
+		innLookup:             c.INNLookup,
+		migrationAR:           c.MigrationAR,
+		migrationNotifier:     c.MigrationNotifier,
+		OnRegistered:          c.OnRegistered,
 	}
+}
+
+// SetINNLookup sets the INN lookup & JoinRequests service.
+func (s *Service) SetINNLookup(svc *innlookup.Service) {
+	if s == nil {
+		return
+	}
+	s.innLookup = svc
+}
+
+// INNLookup returns the configured INN lookup service, lazily wrapping Spanner when set.
+func (s *Service) INNLookup() *innlookup.Service {
+	if s == nil {
+		return nil
+	}
+	if s.innLookup != nil {
+		return s.innLookup
+	}
+	if s.spannerClient != nil {
+		store := innlookup.NewSpannerStore(s.spannerClient)
+		return innlookup.NewService(innlookup.Config{
+			Cache:        store,
+			Tenants:      store,
+			JoinRequests: store,
+		})
+	}
+	return nil
+}
+
+// SetMigrationAR wires migrated opening-balance inspection/acknowledge/dispute backing.
+func (s *Service) SetMigrationAR(m MigrationARManager) {
+	if s == nil {
+		return
+	}
+	s.migrationAR = m
+}
+
+// SetMigrationNotifier wires optional supplier/retailer notification delivery on disputes.
+func (s *Service) SetMigrationNotifier(fn MigrationNotifier) {
+	if s == nil {
+		return
+	}
+	s.migrationNotifier = fn
 }
 
 // HasFirebaseVerifier reports whether OTP id_token login can verify tokens.
@@ -609,6 +724,7 @@ type RegisterRequest struct {
 	SupplierID           string  `json:"supplier_id,omitempty"`
 	InviteToken          string  `json:"invite_token,omitempty"`
 	CountryCode          string  `json:"country_code,omitempty"`
+	TaxIDTIN             string  `json:"tax_id_tin,omitempty"`
 	Lat                  float64 `json:"lat"`
 	Lng                  float64 `json:"lng"`
 	DeliveryAddress      string  `json:"delivery_address,omitempty"`
@@ -642,37 +758,23 @@ func (r RegisterRequest) Validate() error {
 	return nil
 }
 
-// Register performs the registration mutation: dedupe by phone, write retailer
+// RegisterWithCreated performs the registration mutation: dedupe by phone, write retailer
 // row + RETAILER_REGISTERED outbox event in the same RW transaction, then
-// invalidate any cached retailer-by-phone entry.
-func (s *Service) Register(ctx context.Context, req RegisterRequest) (RegisterResponse, error) {
+// invalidate any cached retailer-by-phone entry. It returns createdNew=false if the phone already exists.
+func (s *Service) RegisterWithCreated(ctx context.Context, req RegisterRequest) (RegisterResponse, bool, error) {
 	if err := req.Validate(); err != nil {
-		return RegisterResponse{}, err
+		return RegisterResponse{}, false, err
 	}
 	partnerID, inviteMarket, err := s.resolveTradingPartnerPack(ctx, req.SupplierID, req.InviteToken)
 	if err != nil {
-		return RegisterResponse{}, err
+		return RegisterResponse{}, false, err
 	}
 	pack, err := auth.FiscalPackForSupplier(partnerID)
 	if err != nil {
-		return RegisterResponse{}, err
+		return RegisterResponse{}, false, err
 	}
 	if err := assertAttachMarket(pack, req.CountryCode, inviteMarket); err != nil {
-		return RegisterResponse{}, err
-	}
-
-	// Dedupe: phone is uniquely indexed. A retry MAY hit a row that already
-	// exists; treat that as idempotent success.
-	if existing, found, err := s.repo.FindByPhone(ctx, req.Phone); err != nil {
-		return RegisterResponse{}, fmt.Errorf("lookup retailer: %w", err)
-	} else if found {
-		return RegisterResponse{
-			RetailerID: existing.RetailerID,
-			SupplierID: existing.SupplierID,
-			Phone:      existing.Phone,
-			H3Cell:     existing.H3Cell,
-			CreatedAt:  existing.CreatedAt.Format(time.RFC3339Nano),
-		}, nil
+		return RegisterResponse{}, false, err
 	}
 
 	requestedCountry := strings.TrimSpace(req.CountryCode)
@@ -681,20 +783,71 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (RegisterRe
 	}
 	geo, err := proximity.StampNodeGeography(pack, req.Lat, req.Lng, requestedCountry)
 	if err != nil {
-		return RegisterResponse{}, err
+		return RegisterResponse{}, false, err
 	}
-	h3Cell := geo.H3Cell
-	if h3Cell == "" {
-		return RegisterResponse{}, auth.ErrGeographyIncomplete
+	if geo.H3Cell == "" {
+		return RegisterResponse{}, false, auth.ErrGeographyIncomplete
+	}
+
+	return s.persistRetailerRegistration(ctx, req, partnerID, geo.CountryCode, geo.H3Cell, "")
+}
+
+// Register performs the registration mutation for callers that do not require createdNew.
+func (s *Service) Register(ctx context.Context, req RegisterRequest) (RegisterResponse, error) {
+	resp, _, err := s.RegisterWithCreated(ctx, req)
+	return resp, err
+}
+
+// registerSelfOnboard handles standalone desktop/mobile retailer registration without a pre-bound
+// trading partner or map pin, while preserving market-law checks and never attaching to seedSupplierID.
+func (s *Service) registerSelfOnboard(ctx context.Context, req RegisterRequest, rawPassword string) (RegisterResponse, bool, error) {
+	if strings.TrimSpace(req.Phone) == "" {
+		return RegisterResponse{}, false, errors.New("phone required")
+	}
+	if strings.TrimSpace(req.H3Cell) != "" && len(req.H3Cell) != 15 {
+		return RegisterResponse{}, false, fmt.Errorf("h3_cell must be 15-char hex, got %d", len(req.H3Cell))
+	}
+	requestedCountry := strings.TrimSpace(req.CountryCode)
+	if requestedCountry == "" {
+		requestedCountry = s.countryCode
+	}
+	country, h3Cell, err := stampRetailerOptionalCoords(ctx, req.Lat, req.Lng, requestedCountry)
+	if err != nil {
+		return RegisterResponse{}, false, err
+	}
+	var passwordHash string
+	if pwd := strings.TrimSpace(rawPassword); pwd != "" {
+		hashed, herr := bcrypt.GenerateFromPassword([]byte(pwd), bcrypt.DefaultCost)
+		if herr != nil {
+			return RegisterResponse{}, false, fmt.Errorf("hash password: %w", herr)
+		}
+		passwordHash = string(hashed)
+	}
+	return s.persistRetailerRegistration(ctx, req, "", country, h3Cell, passwordHash)
+}
+
+func (s *Service) persistRetailerRegistration(ctx context.Context, req RegisterRequest, partnerID, countryCode, h3Cell, passwordHash string) (RegisterResponse, bool, error) {
+	// Dedupe: phone is uniquely indexed. A retry MAY hit a row that already
+	// exists; treat that as idempotent success.
+	if existing, found, err := s.repo.FindByPhone(ctx, req.Phone); err != nil {
+		return RegisterResponse{}, false, fmt.Errorf("lookup retailer: %w", err)
+	} else if found {
+		return RegisterResponse{
+			RetailerID: existing.RetailerID,
+			SupplierID: existing.SupplierID,
+			Phone:      existing.Phone,
+			H3Cell:     existing.H3Cell,
+			CreatedAt:  existing.CreatedAt.Format(time.RFC3339Nano),
+		}, false, nil
 	}
 
 	windowOpen, err := validateReceivingWindowField(req.ReceivingWindowOpen)
 	if err != nil {
-		return RegisterResponse{}, err
+		return RegisterResponse{}, false, err
 	}
 	windowClose, err := validateReceivingWindowField(req.ReceivingWindowClose)
 	if err != nil {
-		return RegisterResponse{}, err
+		return RegisterResponse{}, false, err
 	}
 
 	r := Retailer{
@@ -702,7 +855,7 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (RegisterRe
 		SupplierID:           partnerID,
 		Phone:                req.Phone,
 		Name:                 req.Name,
-		CountryCode:          geo.CountryCode,
+		CountryCode:          countryCode,
 		Lat:                  req.Lat,
 		Lng:                  req.Lng,
 		DeliveryAddress:      strings.TrimSpace(req.DeliveryAddress),
@@ -728,7 +881,7 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (RegisterRe
 		})
 	})
 	if err != nil {
-		return RegisterResponse{}, fmt.Errorf("persist retailer: %w", err)
+		return RegisterResponse{}, false, fmt.Errorf("persist retailer: %w", err)
 	}
 
 	// Post-commit cache invalidation. Pre-commit invalidation races with
@@ -736,8 +889,25 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (RegisterRe
 	s.cache.Invalidate(ctx, retailerByPhoneKey(r.Phone))
 
 	// Phase 0: bootstrap OWNER user for multi-user identity spine.
-	if _, err := s.EnsureOwnerUser(ctx, r); err != nil {
+	if _, err := s.ensureOwnerUserWithPassword(ctx, r, passwordHash); err != nil {
 		s.log.Warn("owner bootstrap after register failed", "retailer_id", r.RetailerID, "err", err)
+	}
+	if strings.TrimSpace(r.SupplierID) != "" {
+		if _, _, lerr := s.SyncSupplierRetailerLink(ctx, RetailerLinkInput{
+			SupplierID: r.SupplierID,
+			RetailerID: r.RetailerID,
+			TaxIDTIN:   strings.TrimSpace(req.TaxIDTIN),
+			Phone:      r.Phone,
+			LegalName:  r.Name,
+		}); lerr != nil {
+			s.log.Warn("sync supplier retailer link failed", "retailer_id", r.RetailerID, "supplier_id", r.SupplierID, "err", lerr)
+		}
+	}
+
+	if s.OnRegistered != nil {
+		if err := s.OnRegistered(ctx, r.RetailerID, r.Name); err != nil {
+			s.log.Warn("on registered callback failed", "retailer_id", r.RetailerID, "err", err)
+		}
 	}
 
 	s.log.Info("retailer registered",
@@ -751,11 +921,64 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (RegisterRe
 		Phone:      r.Phone,
 		H3Cell:     r.H3Cell,
 		CreatedAt:  r.CreatedAt.Format(time.RFC3339Nano),
-	}, nil
+	}, true, nil
 }
 
 func retailerByPhoneKey(phone string) string {
 	return "retailer:phone:" + phone
+}
+
+type supplierRetailerLinkChecker interface {
+	HasSupplierRetailerLink(ctx context.Context, supplierID, retailerID string) (bool, error)
+}
+
+// HasSupplierRetailerLink checks if supplierID is authorized for retailerID
+// (via retailer.SupplierID, active link in SupplierRetailerLinks, or checker interface).
+func (s *Service) HasSupplierRetailerLink(ctx context.Context, supplierID, retailerID string) (bool, error) {
+	supplierID = strings.TrimSpace(supplierID)
+	retailerID = strings.TrimSpace(retailerID)
+	if supplierID == "" || retailerID == "" {
+		return false, nil
+	}
+
+	if checker, ok := s.repo.(supplierRetailerLinkChecker); ok {
+		return checker.HasSupplierRetailerLink(ctx, supplierID, retailerID)
+	}
+
+	// 1. Direct retailer ownership check
+	if s.repo != nil {
+		ret, found, err := s.repo.GetRetailer(ctx, retailerID)
+		if err == nil && found {
+			if strings.TrimSpace(ret.SupplierID) == supplierID {
+				return true, nil
+			}
+		}
+	}
+
+	// 2. Spanner check in SupplierRetailerLinks
+	if s.spannerClient != nil {
+		stmt := spanner.Statement{
+			SQL: `SELECT RetailerId FROM SupplierRetailerLinks 
+			      WHERE SupplierId = @sid AND RetailerId = @rid 
+			      AND (DedupStatus IS NULL OR DedupStatus != 'MERGED') 
+			      LIMIT 1`,
+			Params: map[string]interface{}{
+				"sid": supplierID,
+				"rid": retailerID,
+			},
+		}
+		iter := s.spannerClient.Single().Query(ctx, stmt)
+		defer iter.Stop()
+		_, err := iter.Next()
+		if err == nil {
+			return true, nil
+		}
+		if err != iterator.Done {
+			return false, err
+		}
+	}
+
+	return false, nil
 }
 
 // HandleRegister is the HTTP entry-point for POST /v1/auth/retailer/register.
@@ -787,7 +1010,9 @@ func (s *Service) HandleRegister(w http.ResponseWriter, r *http.Request) {
 		case hit:
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(rec.StatusCode)
-			_, _ = w.Write(rec.Response)
+			if _, err := w.Write(rec.Response); err != nil && s.log != nil {
+				s.log.Warn("idempotent response write failed", "err", err)
+			}
 			return
 		}
 	}
@@ -798,31 +1023,45 @@ func (s *Service) HandleRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := s.Register(r.Context(), req)
+	resp, createdNew, err := s.RegisterWithCreated(r.Context(), req)
 	if err != nil {
 		s.log.Warn("retailer registration failed", "err", err)
 		writeAttachError(w, err)
 		return
 	}
+	if !createdNew {
+		writeJSON(w, http.StatusConflict, map[string]string{"error": "phone_already_registered"})
+		return
+	}
 
-	respBytes, _ := json.Marshal(resp)
+	respBytes, err := json.Marshal(resp)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "marshal_failed"})
+		return
+	}
 	if key := r.Header.Get("Idempotency-Key"); key != "" && s.idem != nil {
-		_ = s.idem.Save(r.Context(), key, idempotency.Record{
+		if err := s.idem.Save(r.Context(), key, idempotency.Record{
 			BodyHash:   sha256Hex(body),
 			StatusCode: http.StatusCreated,
 			Response:   respBytes,
 			StoredAt:   s.now(),
-		}, 24*time.Hour)
+		}, 24*time.Hour); err != nil && s.log != nil {
+			s.log.Warn("idempotency save failed", "err", err)
+		}
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	_, _ = w.Write(respBytes)
+	if _, err := w.Write(respBytes); err != nil && s.log != nil {
+		s.log.Warn("register response write failed", "err", err)
+	}
 }
 
 func writeJSON(w http.ResponseWriter, code int, body any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
-	_ = json.NewEncoder(w).Encode(body)
+	if err := json.NewEncoder(w).Encode(body); err != nil {
+		slog.Warn("json response encode failed", "err", err)
+	}
 }
 
 func sha256Hex(b []byte) string {
@@ -831,6 +1070,5 @@ func sha256Hex(b []byte) string {
 }
 
 func defaultRetailerID() string {
-	// Scaffold: timestamp-based id. Production swaps for uuid.NewV7.
-	return fmt.Sprintf("ret_%d", time.Now().UnixNano())
+	return "ret_" + strings.ReplaceAll(uuid.NewString(), "-", "")
 }

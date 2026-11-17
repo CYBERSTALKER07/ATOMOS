@@ -17,3 +17,8 @@ export * from "./src/admin";
 export * from "./src/order-lifecycle-graph";
 export * from "./src/order-lifecycle-facade";
 export * from "./src/foundry";
+export * from "./src/ontology";
+export * from "./src/migration";
+export * from "./src/connectors";
+export * from "./src/p2a";
+export * from "./src/p2b";

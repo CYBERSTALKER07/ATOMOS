@@ -27,6 +27,7 @@ func (s *Service) PartnerCancelOrder(ctx context.Context, orderID string, reason
 		return UpdateStatusResponse{}, ErrOrderNotFound
 	}
 
+	prevStatus := current.Status
 	resp, err := s.cancelOrderWithReason(ctx, &current, "partner_api", "PARTNER", reason, events.EventOrderStatusChanged)
 	if err != nil {
 		return UpdateStatusResponse{}, err
@@ -34,7 +35,7 @@ func (s *Service) PartnerCancelOrder(ctx context.Context, orderID string, reason
 
 	return UpdateStatusResponse{
 		OrderID:        resp.OrderID,
-		PreviousStatus: current.Status,
+		PreviousStatus: prevStatus,
 		Status:         resp.Status,
 		Version:        resp.Version,
 		UpdatedAt:      resp.UpdatedAt,

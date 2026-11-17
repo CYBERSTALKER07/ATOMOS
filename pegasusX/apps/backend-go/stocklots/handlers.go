@@ -3,6 +3,8 @@ package stocklots
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -15,10 +17,125 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
 )
 
+// SoDCheckInput carries maker-checker metadata from WMS adjustment handlers to iam.Service.CheckFourEyes.
+type SoDCheckInput struct {
+	TenantID    string
+	ActorID     string
+	ActorType   string
+	Role        string
+	Claims      *auth.Claims
+	Action      string
+	MakerAction string
+	ObjectType  string
+	ObjectID    string
+	MakerID     string
+	RoutePath   string
+	TraceID     string
+	IP          string
+	DeviceID    string
+	IsApproval  bool
+}
+
 // Handler serves bin/lot HTTP endpoints using a Spanner client + supplier seed.
 type Handler struct {
-	Spanner    *spanner.Client
-	SupplierID string
+	Spanner     *spanner.Client
+	SupplierID  string
+	SoDCheck    func(ctx context.Context, in SoDCheckInput) error
+	AuditRecord func(ctx context.Context, in HACCPAuditInput) error
+}
+
+func rejectIfReadOnlyAuditor(w http.ResponseWriter, r *http.Request) bool {
+	if r.Method == http.MethodGet || r.Method == http.MethodHead || r.Method == http.MethodOptions {
+		return false
+	}
+	claims, ok := auth.FromContext(r.Context())
+	if !ok {
+		return false
+	}
+	if auth.IsReadOnlyAuditor(claims) {
+		writeJSON(w, http.StatusForbidden, map[string]string{
+			"error":   "auditor_read_only",
+			"code":    "auditor_read_only",
+			"message": "AUDITOR role is strictly read-only",
+		})
+		return true
+	}
+	return false
+}
+
+func (h *Handler) requireAdjustmentApprovalAccess(w http.ResponseWriter, r *http.Request, sid, adjID, makerID, routePath string) bool {
+	claims, hasClaims := auth.FromContext(r.Context())
+	actor := actorSubject(r)
+	if h != nil && h.SoDCheck != nil {
+		var claimsCopy *auth.Claims
+		var actorType, role, traceID string
+		if hasClaims {
+			cp := claims
+			claimsCopy = &cp
+			actorType = auth.EffectiveActorType(claims)
+			role = auth.EffectiveSupplierRole(claims)
+			traceID = claims.TraceID
+		}
+		if err := h.SoDCheck(r.Context(), SoDCheckInput{
+			TenantID:    sid,
+			ActorID:     actor,
+			ActorType:   actorType,
+			Role:        role,
+			Claims:      claimsCopy,
+			Action:      auth.PermStockAdjustApprove,
+			MakerAction: auth.PermSupplierStockCount,
+			ObjectType:  "InventoryAdjustment",
+			ObjectID:    adjID,
+			MakerID:     strings.TrimSpace(makerID),
+			RoutePath:   routePath,
+			TraceID:     traceID,
+			IP:          r.RemoteAddr,
+			DeviceID:    strings.TrimSpace(r.Header.Get("X-Device-Id")),
+			IsApproval:  true,
+		}); err != nil {
+			writeJSON(w, http.StatusForbidden, map[string]string{
+				"error":   "sod_violation",
+				"code":    "sod_violation",
+				"message": err.Error(),
+			})
+			return false
+		}
+	}
+	if hasClaims {
+		if auth.IsReadOnlyAuditor(claims) {
+			writeJSON(w, http.StatusForbidden, map[string]string{
+				"error":   "auditor_read_only",
+				"code":    "auditor_read_only",
+				"message": "AUDITOR role is strictly read-only",
+			})
+			return false
+		}
+		if auth.IsAgentActor(claims) {
+			writeJSON(w, http.StatusForbidden, map[string]string{
+				"error":   "sod_violation",
+				"code":    "agent_approval_forbidden",
+				"message": "AGENT actor cannot approve or reject inventory adjustments",
+			})
+			return false
+		}
+		if !auth.HasSupplierPerm(claims, auth.PermStockAdjustApprove) {
+			writeJSON(w, http.StatusForbidden, map[string]string{
+				"error":      "missing_permission",
+				"code":       "missing_permission",
+				"permission": auth.PermStockAdjustApprove,
+			})
+			return false
+		}
+	}
+	if mk := strings.TrimSpace(makerID); mk != "" && strings.TrimSpace(actor) != "" && strings.TrimSpace(actor) == mk {
+		writeJSON(w, http.StatusForbidden, map[string]string{
+			"error":   "sod_violation",
+			"code":    "sod_violation",
+			"message": "maker cannot self-approve or self-reject inventory adjustment",
+		})
+		return false
+	}
+	return true
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
@@ -78,6 +195,9 @@ func assertResourceWarehouse(w http.ResponseWriter, r *http.Request, resourceWar
 
 // HandleBins GET/POST /v1/warehouse/ops/bins
 func (h *Handler) HandleBins(w http.ResponseWriter, r *http.Request) {
+	if rejectIfReadOnlyAuditor(w, r) {
+		return
+	}
 	if h == nil || h.Spanner == nil {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "unavailable"})
 		return
@@ -133,6 +253,9 @@ func (h *Handler) HandleBins(w http.ResponseWriter, r *http.Request) {
 
 // HandleBinByID GET/PATCH /v1/warehouse/ops/bins/{locationID}
 func (h *Handler) HandleBinByID(w http.ResponseWriter, r *http.Request) {
+	if rejectIfReadOnlyAuditor(w, r) {
+		return
+	}
 	if h == nil || h.Spanner == nil {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "unavailable"})
 		return
@@ -202,7 +325,13 @@ func (h *Handler) HandleLots(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "list_lots_failed"})
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"lots": lots, "lots_enabled": LotsEnabled()})
+	enrichedLots, coldWarnCount, stagingCount := EnrichLotsWithColdMeta(r.Context(), h.Spanner, whID, lots)
+	writeJSON(w, http.StatusOK, map[string]any{
+		"lots":                    enrichedLots,
+		"lots_enabled":            LotsEnabled(),
+		"cold_lot_warning_count":  coldWarnCount,
+		"migration_staging_count": stagingCount,
+	})
 }
 
 // HandleLotByID GET /v1/warehouse/ops/lots/{lotID}
@@ -230,6 +359,9 @@ func (h *Handler) HandleLotByID(w http.ResponseWriter, r *http.Request) {
 
 // HandlePutaway POST /v1/warehouse/ops/lots/putaway
 func (h *Handler) HandlePutaway(w http.ResponseWriter, r *http.Request) {
+	if rejectIfReadOnlyAuditor(w, r) {
+		return
+	}
 	if h == nil || h.Spanner == nil {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "unavailable"})
 		return
@@ -307,6 +439,9 @@ func (h *Handler) HandlePutaway(w http.ResponseWriter, r *http.Request) {
 
 // HandlePickWaves GET/POST /v1/warehouse/ops/pick-waves
 func (h *Handler) HandlePickWaves(w http.ResponseWriter, r *http.Request) {
+	if rejectIfReadOnlyAuditor(w, r) {
+		return
+	}
 	if h == nil || h.Spanner == nil {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "unavailable"})
 		return
@@ -328,7 +463,8 @@ func (h *Handler) HandlePickWaves(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "list_pick_waves_failed"})
 			return
 		}
-		writeJSON(w, http.StatusOK, map[string]any{"waves": waves, "pick_waves_enabled": true})
+		enriched := EnrichPickWavesWithColdMeta(r.Context(), h.Spanner, waves)
+		writeJSON(w, http.StatusOK, map[string]any{"waves": enriched, "pick_waves_enabled": true})
 	case http.MethodPost:
 		var body struct {
 			ManifestID string `json:"manifest_id"`
@@ -377,28 +513,40 @@ func (h *Handler) HandlePickWaveByID(w http.ResponseWriter, r *http.Request) {
 	if !assertResourceWarehouse(w, r, wave.WarehouseID) {
 		return
 	}
-	writeJSON(w, http.StatusOK, wave)
+	writeJSON(w, http.StatusOK, EnrichPickWaveWithColdMeta(r.Context(), h.Spanner, *wave))
 }
 
 // HandleConfirmPickTask POST /v1/warehouse/ops/pick-waves/{waveID}/tasks/{taskID}/confirm
 func (h *Handler) HandleConfirmPickTask(w http.ResponseWriter, r *http.Request) {
+	if rejectIfReadOnlyAuditor(w, r) {
+		return
+	}
 	if h == nil || h.Spanner == nil {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "unavailable"})
 		return
 	}
-	if !PickWavesEnabled() {
+	whID := warehouseID(r)
+	sid := supplierID(r, h.SupplierID)
+	if (whID != "" || sid != "") && !EffectivePickWaves(r.Context(), whID, sid) {
 		writeJSON(w, http.StatusConflict, map[string]string{"error": "wms_pick_waves_disabled"})
 		return
 	}
 	waveID := chi.URLParam(r, "waveID")
 	taskID := chi.URLParam(r, "taskID")
 	var body struct {
-		QuantityPicked int64  `json:"quantity_picked"`
+		QuantityPicked *int64 `json:"quantity_picked"`
 		PickerID       string `json:"picker_id"`
 	}
-	_ = json.NewDecoder(r.Body).Decode(&body)
-	whID := warehouseID(r)
-	sid := supplierID(r, h.SupplierID)
+	if r.Body != nil {
+		if decErr := json.NewDecoder(r.Body).Decode(&body); decErr != nil && !errors.Is(decErr, io.EOF) {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+			return
+		}
+	}
+	if body.QuantityPicked != nil && *body.QuantityPicked < 0 {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "quantity_picked_negative"})
+		return
+	}
 	// B7 WH-P0-4: pre-load wave membership before mutation.
 	pre, err := GetPickWave(r.Context(), h.Spanner, waveID, false)
 	if err != nil {
@@ -412,17 +560,22 @@ func (h *Handler) HandleConfirmPickTask(w http.ResponseWriter, r *http.Request) 
 	if !assertResourceWarehouse(w, r, pre.WarehouseID) {
 		return
 	}
+	if !EffectivePickWaves(r.Context(), pre.WarehouseID, pre.SupplierID) {
+		writeJSON(w, http.StatusConflict, map[string]string{"error": "wms_pick_waves_disabled"})
+		return
+	}
 	var wave *PickWaveView
 	err = spannerutils.RunReadWriteTransaction(r.Context(), h.Spanner, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		var resolvedQty int64
 		var err error
-		wave, err = ConfirmPickTaskInTxn(ctx, txn, waveID, taskID, body.PickerID, body.QuantityPicked)
+		wave, resolvedQty, err = ConfirmPickTaskOptionalInTxn(ctx, txn, waveID, taskID, body.PickerID, body.QuantityPicked)
 		if err != nil {
 			return err
 		}
 		return emitWMSEvent(ctx, txn, events.EventWMSPickConfirmed, whID, sid, taskID, map[string]any{
 			"wave_id":         waveID,
 			"task_id":         taskID,
-			"quantity_picked": body.QuantityPicked,
+			"quantity_picked": resolvedQty,
 			"picker_id":       body.PickerID,
 		})
 	})
@@ -434,25 +587,19 @@ func (h *Handler) HandleConfirmPickTask(w http.ResponseWriter, r *http.Request) 
 		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": err.Error()})
 		return
 	}
-	// Re-read after commit: same-txn Query/ReadRow can miss BufferWrite on the emulator.
-	if wave == nil || !strings.EqualFold(wave.Status, "READY_TO_SEAL") {
-		_ = spannerutils.RunReadWriteTransaction(r.Context(), h.Spanner, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-			return maybeMarkWaveReadyInTxn(ctx, txn, waveID, "", "")
-		})
-		if latest, gerr := GetPickWave(r.Context(), h.Spanner, waveID, true); gerr == nil {
-			wave = latest
-		}
-	}
 	writeJSON(w, http.StatusOK, wave)
 }
 
 // HandleWaivePickShorts POST /v1/warehouse/ops/pick-waves/{waveID}/waive-shorts
 func (h *Handler) HandleWaivePickShorts(w http.ResponseWriter, r *http.Request) {
+	if rejectIfReadOnlyAuditor(w, r) {
+		return
+	}
 	if h == nil || h.Spanner == nil {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "unavailable"})
 		return
 	}
-	if !PickWavesEnabled() {
+	if !EffectivePickWaves(r.Context(), warehouseID(r), supplierID(r, h.SupplierID)) {
 		writeJSON(w, http.StatusConflict, map[string]string{"error": "wms_pick_waves_disabled"})
 		return
 	}
@@ -467,6 +614,10 @@ func (h *Handler) HandleWaivePickShorts(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	if !assertResourceWarehouse(w, r, pre.WarehouseID) {
+		return
+	}
+	if !EffectivePickWaves(r.Context(), pre.WarehouseID, pre.SupplierID) {
+		writeJSON(w, http.StatusConflict, map[string]string{"error": "wms_pick_waves_disabled"})
 		return
 	}
 	var wave *PickWaveView
@@ -491,6 +642,9 @@ func actorSubject(r *http.Request) string {
 
 // HandleCycleCounts GET/POST /v1/warehouse/ops/cycle-counts
 func (h *Handler) HandleCycleCounts(w http.ResponseWriter, r *http.Request) {
+	if rejectIfReadOnlyAuditor(w, r) {
+		return
+	}
 	if h == nil || h.Spanner == nil {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "unavailable"})
 		return
@@ -570,6 +724,9 @@ func (h *Handler) HandleCycleCountByID(w http.ResponseWriter, r *http.Request) {
 
 // HandleSubmitCycleCount POST /v1/warehouse/ops/cycle-counts/{countID}/submit
 func (h *Handler) HandleSubmitCycleCount(w http.ResponseWriter, r *http.Request) {
+	if rejectIfReadOnlyAuditor(w, r) {
+		return
+	}
 	if h == nil || h.Spanner == nil {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "unavailable"})
 		return
@@ -646,6 +803,9 @@ func (h *Handler) HandleInventoryAdjustments(w http.ResponseWriter, r *http.Requ
 // HandleApproveInventoryAdjustment POST /v1/warehouse/ops/inventory-adjustments/{adjustmentID}/approve
 func (h *Handler) HandleApproveInventoryAdjustment(w http.ResponseWriter, r *http.Request) {
 	if h == nil || h.Spanner == nil {
+		if rejectIfReadOnlyAuditor(w, r) {
+			return
+		}
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "unavailable"})
 		return
 	}
@@ -669,6 +829,9 @@ func (h *Handler) HandleApproveInventoryAdjustment(w http.ResponseWriter, r *htt
 	if !assertResourceWarehouse(w, r, pre.WarehouseID) {
 		return
 	}
+	if !h.requireAdjustmentApprovalAccess(w, r, sid, adjID, pre.ActorID, r.URL.Path) {
+		return
+	}
 	var view *InventoryAdjustmentView
 	err = spannerutils.RunReadWriteTransaction(r.Context(), h.Spanner, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		var err error
@@ -682,6 +845,10 @@ func (h *Handler) HandleApproveInventoryAdjustment(w http.ResponseWriter, r *htt
 		})
 	})
 	if err != nil {
+		if errors.Is(err, ErrSodViolation) {
+			writeJSON(w, http.StatusForbidden, map[string]string{"error": "sod_violation", "code": "sod_violation", "message": err.Error()})
+			return
+		}
 		if spanner.ErrCode(err) == 5 {
 			writeJSON(w, http.StatusNotFound, map[string]string{"error": "not_found"})
 			return
@@ -695,6 +862,9 @@ func (h *Handler) HandleApproveInventoryAdjustment(w http.ResponseWriter, r *htt
 // HandleRejectInventoryAdjustment POST /v1/warehouse/ops/inventory-adjustments/{adjustmentID}/reject
 func (h *Handler) HandleRejectInventoryAdjustment(w http.ResponseWriter, r *http.Request) {
 	if h == nil || h.Spanner == nil {
+		if rejectIfReadOnlyAuditor(w, r) {
+			return
+		}
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "unavailable"})
 		return
 	}
@@ -703,6 +873,7 @@ func (h *Handler) HandleRejectInventoryAdjustment(w http.ResponseWriter, r *http
 		return
 	}
 	adjID := chi.URLParam(r, "adjustmentID")
+	sid := supplierID(r, h.SupplierID)
 	pre, err := GetInventoryAdjustment(r.Context(), h.Spanner, adjID)
 	if err != nil {
 		if spanner.ErrCode(err) == 5 {
@@ -715,6 +886,9 @@ func (h *Handler) HandleRejectInventoryAdjustment(w http.ResponseWriter, r *http
 	if !assertResourceWarehouse(w, r, pre.WarehouseID) {
 		return
 	}
+	if !h.requireAdjustmentApprovalAccess(w, r, sid, adjID, pre.ActorID, r.URL.Path) {
+		return
+	}
 	var view *InventoryAdjustmentView
 	err = spannerutils.RunReadWriteTransaction(r.Context(), h.Spanner, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		var err error
@@ -722,6 +896,10 @@ func (h *Handler) HandleRejectInventoryAdjustment(w http.ResponseWriter, r *http
 		return err
 	})
 	if err != nil {
+		if errors.Is(err, ErrSodViolation) {
+			writeJSON(w, http.StatusForbidden, map[string]string{"error": "sod_violation", "code": "sod_violation", "message": err.Error()})
+			return
+		}
 		if spanner.ErrCode(err) == 5 {
 			writeJSON(w, http.StatusNotFound, map[string]string{"error": "not_found"})
 			return
@@ -734,6 +912,9 @@ func (h *Handler) HandleRejectInventoryAdjustment(w http.ResponseWriter, r *http
 
 // HandleEnqueueABCCounts POST /v1/warehouse/ops/cycle-counts/enqueue-abc
 func (h *Handler) HandleEnqueueABCCounts(w http.ResponseWriter, r *http.Request) {
+	if rejectIfReadOnlyAuditor(w, r) {
+		return
+	}
 	if h == nil || h.Spanner == nil {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "unavailable"})
 		return
@@ -808,8 +989,143 @@ func (h *Handler) HandleReconcileInventoryV2(w http.ResponseWriter, r *http.Requ
 	writeJSON(w, http.StatusOK, rep)
 }
 
+// HandleRepairInventoryV2 POST /v1/warehouse/ops/inventory-reconcile/repair
+func (h *Handler) HandleRepairInventoryV2(w http.ResponseWriter, r *http.Request) {
+	if rejectIfReadOnlyAuditor(w, r) {
+		return
+	}
+	if h == nil || h.Spanner == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "unavailable"})
+		return
+	}
+	whID := warehouseID(r)
+	if whID == "" {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "warehouse_scope_required"})
+		return
+	}
+	sid, code := bindCallerSupplier(r, h.SupplierID, r.URL.Query().Get("supplier_id"))
+	if code != "" {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": code})
+		return
+	}
+	if !EffectiveLots(r.Context(), whID, sid) {
+		writeJSON(w, http.StatusConflict, map[string]string{"error": "wms_lots_disabled"})
+		return
+	}
+	res, err := RepairInventoryV2(r.Context(), h.Spanner, sid, whID)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "reconcile_repair_failed"})
+		return
+	}
+	writeJSON(w, http.StatusOK, res)
+}
+
+var (
+	errColdChainScopeForbidden = errors.New("cold_chain_scope_forbidden")
+	errColdChainNotFound       = errors.New("manifest_not_found")
+)
+
+// HandleManifestTemperature GET/POST /v1/warehouse/ops/manifests/{manifestID}/temperature
+func (h *Handler) HandleManifestTemperature(w http.ResponseWriter, r *http.Request) {
+	if rejectIfReadOnlyAuditor(w, r) {
+		return
+	}
+	if h == nil || h.Spanner == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "unavailable"})
+		return
+	}
+	manifestID := strings.TrimSpace(chi.URLParam(r, "manifestID"))
+	if manifestID == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "manifest_id_required"})
+		return
+	}
+	sup, wh, err := manifestScope(r.Context(), h.Spanner, manifestID)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "manifest_lookup_failed"})
+		return
+	}
+	if sup == "" && wh == "" {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "manifest_not_found"})
+		return
+	}
+	if !assertResourceWarehouse(w, r, wh) {
+		return
+	}
+	if _, code := bindCallerSupplier(r, h.SupplierID, sup); code != "" {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": code})
+		return
+	}
+	switch r.Method {
+	case http.MethodGet:
+		readings, err := ListTemperatureReadings(r.Context(), h.Spanner, manifestID)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "list_temperature_failed"})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"manifest_id": manifestID, "readings": readings})
+	case http.MethodPost:
+		var body struct {
+			SensorID string   `json:"sensor_id"`
+			TempC    *float64 `json:"temp_c"`
+			Lat      float64  `json:"lat"`
+			Lng      float64  `json:"lng"`
+			MinC     *float64 `json:"min_c"`
+			MaxC     *float64 `json:"max_c"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+			return
+		}
+		if body.TempC == nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "temp_c_required"})
+			return
+		}
+		var band *TempBand
+		if body.MinC != nil && body.MaxC != nil {
+			if *body.MinC > *body.MaxC {
+				writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_temp_band"})
+				return
+			}
+			band = &TempBand{MinC: *body.MinC, MaxC: *body.MaxC}
+		}
+		var reading *TemperatureReadingView
+		err := spannerutils.RunReadWriteTransaction(r.Context(), h.Spanner, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+			mSup, mWh, _, _, err := LoadManifestDetails(ctx, txn, manifestID)
+			if err != nil {
+				if spanner.ErrCode(err) == 5 {
+					return errColdChainNotFound
+				}
+				return err
+			}
+			if mWh == "" || mWh != warehouseID(r) || (sup != "" && mSup != sup) {
+				return errColdChainScopeForbidden
+			}
+			reading, err = IngestTemperatureInTxn(ctx, txn, manifestID, body.SensorID, *body.TempC, body.Lat, body.Lng, band)
+			return err
+		})
+		if errors.Is(err, errColdChainNotFound) {
+			writeJSON(w, http.StatusNotFound, map[string]string{"error": "manifest_not_found"})
+			return
+		}
+		if errors.Is(err, errColdChainScopeForbidden) {
+			writeJSON(w, http.StatusForbidden, map[string]string{"error": "warehouse_scope_forbidden"})
+			return
+		}
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "ingest_temperature_failed"})
+			return
+		}
+		writeJSON(w, http.StatusCreated, reading)
+	default:
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+	}
+}
+
 // HandleQuarantineLot POST /v1/warehouse/ops/lots/{lotID}/quarantine
 func (h *Handler) HandleQuarantineLot(w http.ResponseWriter, r *http.Request) {
+	if rejectIfReadOnlyAuditor(w, r) {
+		return
+	}
 	if h == nil || h.Spanner == nil {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "unavailable"})
 		return
@@ -852,6 +1168,9 @@ func (h *Handler) HandleQuarantineLot(w http.ResponseWriter, r *http.Request) {
 
 // HandleReleaseLot POST /v1/warehouse/ops/lots/{lotID}/release
 func (h *Handler) HandleReleaseLot(w http.ResponseWriter, r *http.Request) {
+	if rejectIfReadOnlyAuditor(w, r) {
+		return
+	}
 	if h == nil || h.Spanner == nil {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "unavailable"})
 		return
@@ -912,6 +1231,13 @@ func (h *Handler) HandleTraceLot(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": "lot_not_found"})
 		return
 	}
+	if !assertResourceWarehouse(w, r, genealogy.Lot.WarehouseID) {
+		return
+	}
+	if _, code := bindCallerSupplier(r, h.SupplierID, genealogy.Lot.SupplierID); code != "" {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": code})
+		return
+	}
 	writeJSON(w, http.StatusOK, genealogy)
 }
 
@@ -919,6 +1245,9 @@ func (h *Handler) HandleTraceLot(w http.ResponseWriter, r *http.Request) {
 // SupplierId is taken from the token (or warehouse-ops scope). A body or query
 // supplier_id that names a different tenant is rejected before any write.
 func (h *Handler) HandleRecalls(w http.ResponseWriter, r *http.Request) {
+	if rejectIfReadOnlyAuditor(w, r) {
+		return
+	}
 	if h == nil {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "unavailable"})
 		return
@@ -1000,6 +1329,10 @@ func (h *Handler) HandleRecallByID(w http.ResponseWriter, r *http.Request) {
 	campaign, err := GetRecallCampaign(r.Context(), h.Spanner, campaignID)
 	if err != nil {
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": "campaign_not_found"})
+		return
+	}
+	if _, code := bindCallerSupplier(r, h.SupplierID, campaign.SupplierID); code != "" {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": code})
 		return
 	}
 	writeJSON(w, http.StatusOK, campaign)

@@ -308,11 +308,17 @@ import type { SupplierSettingsResponse, RecommendReassignRequest, RecommendReass
   WarehouseDispatchRun,
   WarehouseOpsBoardResponse,
   WarehouseOpsExceptionsResponse,
+  JoinRequestDecisionResponse,
+  JoinRequestsListResponse,
+  MigrationInvoiceActionResponse,
+  MigrationOpeningBalancesResponse,
+  RetailerTaxIdentityRequest,
 } from "@pegasusx/types";
 import { claimFileKey, claimApproveKey, claimRejectKey } from "../idempotency";
 import { type ConditionalGet } from "../conditional-get";
 import { appendQuery } from "./client-base";
 import { SupplierApiClient } from "./client-supplier";
+import * as mig from "./client-migration";
 
 export class PlanningAndRetailerApiClient extends SupplierApiClient {
   async listControlTowerZoneOverrides(): Promise<ControlTowerZoneOverridesResponse> {
@@ -1198,6 +1204,75 @@ export class PlanningAndRetailerApiClient extends SupplierApiClient {
       ),
       "POST",
       { body: request, idempotencyKey },
+    );
+  }
+
+  async updateRetailerTaxIdentity(
+    body: RetailerTaxIdentityRequest,
+    idempotencyKey: string,
+  ): Promise<RetailerProfileResponse> {
+    return mig.patchRetailerTaxIdentity(this, body, idempotencyKey);
+  }
+
+  async listRetailerJoinRequests(
+    status?: string,
+  ): Promise<JoinRequestsListResponse> {
+    return mig.fetchRetailerJoinRequests(this, status);
+  }
+
+  async approveRetailerJoinRequest(
+    requestId: string,
+    reason?: string,
+    idempotencyKey?: string,
+  ): Promise<JoinRequestDecisionResponse> {
+    return mig.decideRetailerJoinRequest(
+      this,
+      requestId,
+      "approve",
+      reason,
+      idempotencyKey,
+    );
+  }
+
+  async rejectRetailerJoinRequest(
+    requestId: string,
+    reason?: string,
+    idempotencyKey?: string,
+  ): Promise<JoinRequestDecisionResponse> {
+    return mig.decideRetailerJoinRequest(
+      this,
+      requestId,
+      "reject",
+      reason,
+      idempotencyKey,
+    );
+  }
+
+  async listRetailerNasiyaOpeningBalances(): Promise<MigrationOpeningBalancesResponse> {
+    return mig.fetchRetailerNasiyaOpeningBalances(this);
+  }
+
+  async acknowledgeRetailerNasiyaOpeningBalance(
+    invoiceId: string,
+    idempotencyKey: string,
+  ): Promise<MigrationInvoiceActionResponse> {
+    return mig.acknowledgeRetailerNasiyaOpeningBalance(
+      this,
+      invoiceId,
+      idempotencyKey,
+    );
+  }
+
+  async disputeRetailerNasiyaOpeningBalance(
+    invoiceId: string,
+    reason: string,
+    idempotencyKey: string,
+  ): Promise<MigrationInvoiceActionResponse> {
+    return mig.disputeRetailerNasiyaOpeningBalance(
+      this,
+      invoiceId,
+      reason,
+      idempotencyKey,
     );
   }
 }

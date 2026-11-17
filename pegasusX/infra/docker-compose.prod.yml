@@ -96,7 +96,7 @@ services:
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_INTERNAL://0.0.0.0:29092
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://127.0.0.1:9092,PLAINTEXT_INTERNAL://kafka:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_INTERNAL://kafka:29092
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
@@ -176,6 +176,8 @@ services:
         condition: service_healthy
       optimizer-core:
         condition: service_healthy
+      dispatch-optimizer-py:
+        condition: service_healthy
     environment:
       HTTP_PORT: "8080"
       SPANNER_PROJECT: ${SPANNER_PROJECT:-pegasusx-prod}
@@ -186,6 +188,7 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD must be set in production}
       KAFKA_BROKERS: kafka:29092
       OPTIMIZER_BASE_URL: http://optimizer-core:8082
+      AI_DEMAND_SOLVER_URL: http://dispatch-optimizer-py:8000
       INTERNAL_API_KEY: ${INTERNAL_API_KEY:?INTERNAL_API_KEY must be set in production}
       PEGASUSX_ENV: production
       HANDOFF_LEGACY_ORDER_ID_FALLBACK: "false"
@@ -267,6 +270,42 @@ services:
           cpus: "0.2"
           memory: 256M
 
+  dispatch-optimizer-py:
+    build:
+      context: ..
+      dockerfile: apps/dispatch-optimizer-py/Dockerfile
+    container_name: pegasusx-prod-dispatch-optimizer
+    restart: always
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      PORT: "8000"
+      PEGASUSX_ENV: production
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:?INTERNAL_API_KEY must be set in production}
+    expose:
+      - "8000"
+    networks:
+      - internal-services
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/healthz"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    deploy:
+      resources:
+        limits:
+          cpus: "1.5"
+          memory: 1024M
+        reservations:
+          cpus: "0.2"
+          memory: 256M
+
   handoff-service:
     build:
       context: ..
@@ -283,10 +322,9 @@ services:
       PEGASUSX_ENV: production
       HANDOFF_LEGACY_ORDER_ID_FALLBACK: "false"
       INTERNAL_API_KEY: ${INTERNAL_API_KEY:?INTERNAL_API_KEY must be set in production}
-    ports:
-      - "8082:8082"
+    expose:
+      - "8082"
     networks:
-      - public-ingress
       - internal-services
     logging:
       driver: json-file

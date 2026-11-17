@@ -83,9 +83,11 @@ async function tryRefreshToken(): Promise<string | null> {
     if (!res.ok) return null;
     const data = (await res.json()) as { token?: string; refresh_token?: string };
     if (!data.token) return null;
-    document.cookie = `pegasus_retailer_jwt=${encodeURIComponent(data.token)}; path=/; max-age=86400; SameSite=Lax`;
+    const secureFlag =
+      typeof window !== 'undefined' && window.location.protocol === 'https:' ? '; Secure' : '';
+    document.cookie = `pegasus_retailer_jwt=${encodeURIComponent(data.token)}; path=/; max-age=86400; SameSite=Strict${secureFlag}`;
     if (data.refresh_token) {
-      document.cookie = `pegasus_retailer_refresh=${encodeURIComponent(data.refresh_token)}; path=/; max-age=604800; SameSite=Lax`;
+      document.cookie = `pegasus_retailer_refresh=${encodeURIComponent(data.refresh_token)}; path=/; max-age=604800; SameSite=Strict${secureFlag}`;
     }
     if (isTauri()) {
       storeToken(data.token, data.refresh_token || refresh).catch(() => {});
@@ -98,12 +100,16 @@ async function tryRefreshToken(): Promise<string | null> {
 
 export async function apiFetch(path: string, init?: RequestInit): Promise<Response> {
   const token = await getRetailerToken();
-  const headers: Record<string, string> = {
-    Authorization: `Bearer ${token}`,
-    'Content-Type': 'application/json',
-    'X-Trace-Id': crypto.randomUUID(),
-    ...(init?.headers as Record<string, string>),
-  };
+  const mergedHeaders = new Headers(init?.headers);
+  // Deduplicate case-insensitive header keys (e.g., lowercase `authorization` from ApiClient).
+  mergedHeaders.set('Authorization', `Bearer ${token}`);
+  if (!mergedHeaders.has('Content-Type') && !(init?.body instanceof FormData)) {
+    mergedHeaders.set('Content-Type', 'application/json');
+  }
+  if (!mergedHeaders.has('X-Trace-Id')) {
+    mergedHeaders.set('X-Trace-Id', crypto.randomUUID());
+  }
+  const headers = Object.fromEntries(mergedHeaders.entries());
 
   const res = await fetch(`${retailerApiBaseUrl()}${path}`, { ...init, headers });
 
@@ -129,12 +135,13 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
     }
     const newToken = await refreshInFlight;
     if (newToken) {
-      // Retry with fresh token
-      const retryHeaders: Record<string, string> = {
-        ...headers,
-        Authorization: `Bearer ${newToken}`,
-      };
-      return fetch(`${retailerApiBaseUrl()}${path}`, { ...init, headers: retryHeaders });
+      // Retry with fresh token without preserving stale lowercase `authorization` keys.
+      const retryMerged = new Headers(mergedHeaders);
+      retryMerged.set('Authorization', `Bearer ${newToken}`);
+      return fetch(`${retailerApiBaseUrl()}${path}`, {
+        ...init,
+        headers: Object.fromEntries(retryMerged.entries()),
+      });
     }
     // Refresh failed
     document.cookie = 'pegasus_retailer_jwt=; Max-Age=0; path=/';

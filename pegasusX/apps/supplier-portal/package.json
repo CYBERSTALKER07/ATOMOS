@@ -46,7 +46,6 @@
     "@deck.gl/layers": "^9.3.5",
     "@deck.gl/react": "^9.3.5",
     "d3": "^7.9.0",
-    "deck.gl": "^9.3.5",
     "firebase": "^12.12.0",
     "framer-motion": "^12.42.2",
     "h3-js": "^4.5.0",

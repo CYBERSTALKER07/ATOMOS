@@ -194,8 +194,13 @@ export class ApiClientBase {
     if (/^https?:\/\//i.test(path)) {
       return path;
     }
-    const base = this.config.baseUrl.endsWith("/") ? this.config.baseUrl : `${this.config.baseUrl}/`;
     const normalizedPath = path.startsWith("/") ? path.slice(1) : path;
+    // Relative BFF proxy bases such as "/api" cannot be passed to `new URL(_, base)`.
+    if (!/^[a-zA-Z][a-zA-Z\d+\-.]*:\/\//.test(this.config.baseUrl)) {
+      const cleanBase = this.config.baseUrl.replace(/\/+$/, "");
+      return cleanBase ? `${cleanBase}/${normalizedPath}` : `/${normalizedPath}`;
+    }
+    const base = this.config.baseUrl.endsWith("/") ? this.config.baseUrl : `${this.config.baseUrl}/`;
     return new URL(normalizedPath, base).toString();
   }
 }

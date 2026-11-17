@@ -24,6 +24,7 @@ final class CashCollectionViewModel {
 
     var isCompleting = false
     var errorMessage: String?
+    var statusNotice: String?
     var phase: CashFiscalPhase = .collect
     var amountReceivedText: String = ""
     var shortfallNote: String?
@@ -63,16 +64,20 @@ final class CashCollectionViewModel {
             Haptics.success()
         case "FISCAL_RECEIPT_FAILED":
             phase = .fiscalFailed
-            errorMessage = "Fiscal receipt failed. Retry or call supervisor."
+            errorMessage = nil
+            statusNotice = L10n.string("mobile_driver.ui.fiscal_retry_queued_body")
             Haptics.warning()
         case "ORDER_STATUS_CHANGED":
             if status == "COMPLETED" {
                 phase = .done
-            } else if status == "FISCAL_FAILED" {
+                statusNotice = nil
+            } else if status == "FISCAL_FAILED" || status == "FISCAL_RETRY_QUEUED" || status == "PENDING_FISCAL_ISSUE" {
                 phase = .fiscalFailed
-                errorMessage = "Fiscal receipt failed. Retry or call supervisor."
+                errorMessage = nil
+                statusNotice = L10n.string("mobile_driver.ui.fiscal_retry_queued_body")
             } else if status == "FISCALIZING" {
                 phase = .fiscalizing
+                statusNotice = nil
             }
         default:
             break
@@ -90,18 +95,31 @@ final class CashCollectionViewModel {
             )
             Haptics.success()
             let st = resp.state.uppercased()
+            let fst = (resp.fiscalStatus ?? "").uppercased()
             if st == "COMPLETED" {
                 phase = .done
-            } else if st == "FISCAL_FAILED" {
+                statusNotice = nil
+            } else if st == "FISCAL_FAILED" || fst == "FISCAL_FAILED" || fst == "FISCAL_RETRY_QUEUED" || fst == "PENDING_FISCAL_ISSUE" {
                 phase = .fiscalFailed
-                errorMessage = "Fiscal receipt failed. Retry or call supervisor."
+                errorMessage = nil
+                statusNotice = L10n.string("mobile_driver.ui.fiscal_retry_queued_body")
             } else {
                 phase = .fiscalizing
+                statusNotice = nil
             }
             isCompleting = false
         } catch {
             isCompleting = false
             errorMessage = error.localizedDescription
+        }
+    }
+
+    /// Non-blocking fiscal: cash and PoD are captured, so the driver can continue immediately.
+    func continueNextStop() {
+        if phase == .fiscalFailed || phase == .fiscalizing {
+            phase = .done
+            errorMessage = nil
+            Haptics.success()
         }
     }
 

@@ -15,11 +15,12 @@ import (
 const importWorkerConsumerName = "pegasusx-ai-worker-import"
 
 type inventoryImportRuntime struct {
-	reader      *kafka.Reader
-	dlqWriter   *kafka.Writer
-	repo        *supplier.ImportRepository
-	opener      *supplier.ImportObjectOpener
-	logger      *slog.Logger
+	reader           *kafka.Reader
+	dlqWriter        *kafka.Writer
+	repo             *supplier.ImportRepository
+	opener           *supplier.ImportObjectOpener
+	migrationHandler *migrationBundleProcessor
+	logger           *slog.Logger
 }
 
 func newInventoryImportRuntime(
@@ -28,6 +29,7 @@ func newInventoryImportRuntime(
 	dlqWriter *kafka.Writer,
 	repo *supplier.ImportRepository,
 	opener *supplier.ImportObjectOpener,
+	migrationHandler *migrationBundleProcessor,
 	logger *slog.Logger,
 ) *inventoryImportRuntime {
 	if repo == nil || opener == nil {
@@ -52,10 +54,11 @@ func newInventoryImportRuntime(
 			// is idempotent via the MarkSessionDiscovering acquire gate.
 			StartOffset: kafka.FirstOffset,
 		}),
-		dlqWriter:   dlqWriter,
-		repo:        repo,
-		opener:      opener,
-		logger:      logger,
+		dlqWriter:        dlqWriter,
+		repo:             repo,
+		opener:           opener,
+		migrationHandler: migrationHandler,
+		logger:           logger,
 	}
 }
 
@@ -84,14 +87,62 @@ func (r *inventoryImportRuntime) Run(ctx context.Context, metrics *consumerLagMe
 
 		metrics.observe(importWorkerConsumerName, msg)
 
+		if detectEnvelopeType(msg.Value) == "MIGRATION_BUNDLE_UPLOADED" {
+			if r.migrationHandler != nil {
+				migCtx, cancelMig := detachedDrainContext(ctx, 30*time.Second)
+				termErr, transErr := r.migrationHandler.ProcessEvent(migCtx, msg.Value)
+				cancelMig()
+				if termErr != nil {
+					r.logger.Warn("migration bundle terminal error; routing to DLQ", "err", termErr)
+					if r.dlqWriter != nil {
+						dlqCtx, cancelDLQ := detachedDrainContext(ctx, 4*time.Second)
+						dlqErr := routeToDLQ(dlqCtx, r.dlqWriter, msg, "migration_bundle_terminal: "+termErr.Error())
+						cancelDLQ()
+						if dlqErr != nil {
+							r.logger.Error("failed to route migration poison pill to DLQ; leaving offset uncommitted", "err", dlqErr)
+							if ctx.Err() != nil {
+								return
+							}
+							time.Sleep(2 * time.Second)
+							continue
+						}
+					}
+					commitCtx, cancelCommit := context.WithTimeout(context.WithoutCancel(ctx), 2*time.Second)
+					_ = r.reader.CommitMessages(commitCtx, msg)
+					cancelCommit()
+					continue
+				}
+				if transErr != nil {
+					r.logger.Error("migration bundle transient error; leaving uncommitted", "err", transErr)
+					if ctx.Err() != nil {
+						return
+					}
+					time.Sleep(2 * time.Second)
+					continue
+				}
+			}
+			commitCtx, cancelCommit := context.WithTimeout(context.WithoutCancel(ctx), 2*time.Second)
+			_ = r.reader.CommitMessages(commitCtx, msg)
+			cancelCommit()
+			continue
+		}
+
 		// Detached context with 4s deadline on SIGTERM so in-flight work completes before shutdown
 		procCtx, cancelProc := detachedDrainContext(ctx, 4*time.Second)
 
 		evt, parseErr := supplier.ParseInventoryImportUploadedEvent(msg.Value)
 		if parseErr != nil {
 			r.logger.Warn("inventory import event parse failed; routing poison pill to DLQ", "err", parseErr)
-			if dlqErr := routeToDLQ(procCtx, r.dlqWriter, msg, "inventory_import_parse_error: "+parseErr.Error()); dlqErr != nil {
-				r.logger.Error("failed to route import poison pill to DLQ", "err", dlqErr)
+			if r.dlqWriter != nil {
+				if dlqErr := routeToDLQ(procCtx, r.dlqWriter, msg, "inventory_import_parse_error: "+parseErr.Error()); dlqErr != nil {
+					cancelProc()
+					r.logger.Error("failed to route import poison pill to DLQ; leaving offset uncommitted", "err", dlqErr)
+					if ctx.Err() != nil {
+						return
+					}
+					time.Sleep(2 * time.Second)
+					continue
+				}
 			}
 			commitCtx, cancelCommit := context.WithTimeout(context.WithoutCancel(ctx), 2*time.Second)
 			_ = r.reader.CommitMessages(commitCtx, msg)

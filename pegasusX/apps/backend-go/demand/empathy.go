@@ -3,6 +3,7 @@ package demand
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"time"
 
 	"cloud.google.com/go/civil"
@@ -89,38 +90,79 @@ func (r *velocityRepo) Get(ctx context.Context, retailerID, sku string) (*Veloci
 
 	stmt := spanner.Statement{
 		SQL: `
-			SELECT SUM(l.DeliveredQty) / 28.0 as UnitsPerDay
-			FROM Orders o
-			JOIN OrderLines l ON o.OrderId = l.OrderId
-			WHERE o.Status = 'DELIVERED' 
-			  AND o.CreatedAt >= @Start 
-			  AND o.RetailerId = @RetailerId
-			  AND l.Sku = @Sku
-			HAVING SUM(l.DeliveredQty) > 0
+			SELECT LineItemsJson
+			FROM Orders
+			WHERE Status = 'DELIVERED' 
+			  AND CreatedAt >= @Start 
+			  AND RetailerId = @RetailerId
 		`,
 		Params: map[string]interface{}{
 			"Start":      twentyEightDaysAgo,
 			"RetailerId": retailerID,
-			"Sku":        sku,
 		},
 	}
 	iter := r.spanner.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 
-	row, err := iter.Next()
-	if err == iterator.Done {
+	targetSKU := strings.TrimSpace(sku)
+	var sumDelivered float64
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		var raw []byte
+		if err := row.ColumnByName("LineItemsJson", &raw); err != nil {
+			var rawStr string
+			if errStr := row.ColumnByName("LineItemsJson", &rawStr); errStr == nil {
+				raw = []byte(rawStr)
+			} else {
+				return nil, err
+			}
+		}
+		if len(raw) == 0 {
+			continue
+		}
+		var lines []struct {
+			SKU          string  `json:"sku"`
+			ProductID    string  `json:"product_id"`
+			DeliveredQty float64 `json:"delivered_qty"`
+			Quantity     float64 `json:"quantity"`
+			Qty          float64 `json:"qty"`
+		}
+		if err := json.Unmarshal(raw, &lines); err != nil {
+			continue
+		}
+		for _, l := range lines {
+			lineSKU := strings.TrimSpace(l.SKU)
+			if lineSKU == "" {
+				lineSKU = strings.TrimSpace(l.ProductID)
+			}
+			if lineSKU != targetSKU {
+				continue
+			}
+			qty := l.DeliveredQty
+			if qty == 0 {
+				qty = l.Quantity
+			}
+			if qty == 0 {
+				qty = l.Qty
+			}
+			if qty > 0 {
+				sumDelivered += qty
+			}
+		}
+	}
+
+	if sumDelivered <= 0 {
 		return nil, nil
 	}
-	if err != nil {
-		return nil, err
-	}
 
-	var vel float64
-	if err := row.Columns(&vel); err != nil {
-		return nil, err
-	}
-
-	return &VelocityRecord{UnitsPerDay: vel}, nil
+	return &VelocityRecord{UnitsPerDay: sumDelivered / 28.0}, nil
 }
 
 func (r *velocityRepo) GetCategoryAverage(ctx context.Context, sku string) (float64, error) {
@@ -130,35 +172,83 @@ func (r *velocityRepo) GetCategoryAverage(ctx context.Context, sku string) (floa
 	// Since we don't have category info easily joined here, we average across all retailers for this SKU.
 	stmt := spanner.Statement{
 		SQL: `
-			SELECT SUM(l.DeliveredQty) / (28.0 * COUNT(DISTINCT o.RetailerId)) as AvgVelocity
-			FROM Orders o
-			JOIN OrderLines l ON o.OrderId = l.OrderId
-			WHERE o.Status = 'DELIVERED'
-			  AND o.CreatedAt >= @Start
-			  AND l.Sku = @Sku
-			HAVING SUM(l.DeliveredQty) > 0
+			SELECT RetailerId, LineItemsJson
+			FROM Orders
+			WHERE Status = 'DELIVERED'
+			  AND CreatedAt >= @Start
 		`,
 		Params: map[string]interface{}{
 			"Start": twentyEightDaysAgo,
-			"Sku":   sku,
 		},
 	}
 	iter := r.spanner.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 
-	row, err := iter.Next()
-	if err == iterator.Done {
-		return 1.0, nil // absolute fallback
-	}
-	if err != nil {
-		return 0, err
+	targetSKU := strings.TrimSpace(sku)
+	var sumDelivered float64
+	distinctRetailers := map[string]struct{}{}
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return 0, err
+		}
+
+		var retailerID string
+		if err := row.ColumnByName("RetailerId", &retailerID); err != nil {
+			return 0, err
+		}
+		var raw []byte
+		if err := row.ColumnByName("LineItemsJson", &raw); err != nil {
+			var rawStr string
+			if errStr := row.ColumnByName("LineItemsJson", &rawStr); errStr == nil {
+				raw = []byte(rawStr)
+			} else {
+				return 0, err
+			}
+		}
+		if len(raw) == 0 {
+			continue
+		}
+		var lines []struct {
+			SKU          string  `json:"sku"`
+			ProductID    string  `json:"product_id"`
+			DeliveredQty float64 `json:"delivered_qty"`
+			Quantity     float64 `json:"quantity"`
+			Qty          float64 `json:"qty"`
+		}
+		if err := json.Unmarshal(raw, &lines); err != nil {
+			continue
+		}
+		for _, l := range lines {
+			lineSKU := strings.TrimSpace(l.SKU)
+			if lineSKU == "" {
+				lineSKU = strings.TrimSpace(l.ProductID)
+			}
+			if lineSKU != targetSKU {
+				continue
+			}
+			qty := l.DeliveredQty
+			if qty == 0 {
+				qty = l.Quantity
+			}
+			if qty == 0 {
+				qty = l.Qty
+			}
+			if qty > 0 {
+				sumDelivered += qty
+				distinctRetailers[retailerID] = struct{}{}
+			}
+		}
 	}
 
-	var cat float64
-	if err := row.Columns(&cat); err != nil {
-		return 0, err
+	if sumDelivered <= 0 || len(distinctRetailers) == 0 {
+		return 1.0, nil // absolute fallback
 	}
-	return cat, nil
+
+	return sumDelivered / (28.0 * float64(len(distinctRetailers))), nil
 }
 
 // EmpathyEngine computes final expected demand for inventory logic.

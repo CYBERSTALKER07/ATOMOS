@@ -32,6 +32,7 @@ export const NAV: NavSection[] = [
       { href: "/pick-waves", icon: "inventory", labelKey: "portal.nav.pick_waves" },
       { href: "/cycle-counts", icon: "inventory", labelKey: "portal.nav.cycle_counts" },
       { href: "/stock-commitments", icon: "inventory", labelKey: "portal.nav.stock_commitments" },
+      { href: "/inventory/valuation", icon: "treasury", labelKey: "portal.nav.inventory_valuation" },
       { href: "/products", icon: "catalog", labelKey: "portal.nav.products" },
       { href: "/replenishment", icon: "forecast", labelKey: "portal.nav.replenishment" },
     ],

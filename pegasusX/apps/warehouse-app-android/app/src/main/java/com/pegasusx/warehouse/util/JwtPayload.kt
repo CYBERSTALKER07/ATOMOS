@@ -1,26 +1,36 @@
 package com.pegasusx.warehouse.util
 
-import android.util.Base64
 import org.json.JSONObject
+import java.util.Base64
 
 object JwtPayload {
     fun isConfigured(token: String?): Boolean {
-        if (token.isNullOrBlank()) return false
-        val parts = token.split('.')
-        if (parts.size < 2) return false
-        return runCatching {
-            val decoded = Base64.decode(parts[1], Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING)
-            JSONObject(String(decoded)).optBoolean("is_configured", false)
-        }.getOrDefault(false)
+        return decode(token)?.optBoolean("is_configured", false) ?: false
     }
 
-    fun homeNodeId(token: String?): String? {
+    fun homeNodeId(token: String?): String? = stringClaim(token, "home_node_id")
+
+    fun homeCell(token: String?): String? = stringClaim(token, "home_cell")
+
+    fun supplierId(token: String?): String? =
+        stringClaim(token, "supplier_id") ?: stringClaim(token, "org_id")
+
+    fun subject(token: String?): String? =
+        stringClaim(token, "sub") ?: stringClaim(token, "email")
+
+    private fun stringClaim(token: String?, key: String): String? {
+        return runCatching {
+            decode(token)?.optString(key)?.takeIf { it.isNotBlank() }
+        }.getOrNull()
+    }
+
+    private fun decode(token: String?): JSONObject? {
         if (token.isNullOrBlank()) return null
         val parts = token.split('.')
         if (parts.size < 2) return null
         return runCatching {
-            val decoded = Base64.decode(parts[1], Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING)
-            JSONObject(String(decoded)).optString("home_node_id").takeIf { it.isNotBlank() }
+            val decoded = Base64.getUrlDecoder().decode(parts[1])
+            JSONObject(String(decoded, Charsets.UTF_8))
         }.getOrNull()
     }
 }

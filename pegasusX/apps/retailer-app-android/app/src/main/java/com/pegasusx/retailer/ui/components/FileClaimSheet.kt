@@ -55,6 +55,8 @@ import com.pegasusx.retailer.data.model.FileClaimRequestBody
 import com.pegasusx.retailer.data.model.Order
 import com.pegasusx.retailer.data.model.RetailerClaim
 import com.pegasusx.retailer.data.model.moneyCurrency
+import com.pegasusx.retailer.util.OrderLineContractHelper
+import com.pegasusx.retailer.util.RetailerW2ContractHelper
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -108,7 +110,7 @@ fun FileClaimSheet(
                 )
             } catch (e: Exception) {
                 photoUrl = ""
-                error = e.message ?: "Photo upload failed"
+                error = RetailerW2ContractHelper.formatClaimErrorMessage(e, "Photo upload failed")
             } finally {
                 isUploading = false
             }
@@ -315,7 +317,7 @@ fun FileClaimSheet(
                 }
                 items(existing, key = { it.claimId }) { c ->
                     Text(
-                        "${c.claimType} · ${c.status} · ${c.amountMinor ?: 0} ${moneyCurrency(c.currency)}",
+                        "${c.claimType} · ${c.status} · ${OrderLineContractHelper.formatWholeSom(c.amountMinor ?: 0L, moneyCurrency(c.currency))}",
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }
@@ -385,7 +387,7 @@ fun FileClaimSheet(
                                     .getOrDefault(existing)
                                 onFiled(claim)
                             } catch (e: Exception) {
-                                error = e.message ?: "Claim failed"
+                                error = RetailerW2ContractHelper.formatClaimErrorMessage(e, "Claim failed")
                             } finally {
                                 isSubmitting = false
                             }

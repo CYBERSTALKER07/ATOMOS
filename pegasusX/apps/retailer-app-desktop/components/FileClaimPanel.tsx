@@ -1,6 +1,7 @@
 "use client";
 
-import { usePortalT } from "@/lib/i18n";
+import { usePortalLocale, usePortalT } from "@/lib/i18n";
+import { formatWholeSom, parseClaimErrorMessage } from "@/lib/retailer-w2";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Camera, Loader2 } from "lucide-react";
 import { claimFileKey } from "@pegasusx/api-core";
@@ -13,7 +14,6 @@ import {
   type ClaimEligibility,
   type RetailerClaim,
 } from "../lib/api";
-import { moneyCurrency } from "../lib/payment-catalog";
 import type { Order } from "../lib/types";
 
 function formatEligibleUntil(endsAt: string | null | undefined): string | null {
@@ -41,6 +41,7 @@ type Props = {
 
 export function FileClaimPanel({ order, onFiled, initialSku }: Props) {
   const t = usePortalT();
+  const locale = usePortalLocale();
   const [claimType, setClaimType] = useState<string>("CONCEALED_DAMAGE");
   const [description, setDescription] = useState("");
   const [qtyBySku, setQtyBySku] = useState<Record<string, number>>({});
@@ -185,9 +186,7 @@ export function FileClaimPanel({ order, onFiled, initialSku }: Props) {
       );
       if (!res.ok) {
         const err = await res.json().catch(() => null);
-        throw new Error(
-          err?.error || err?.message || `Claim failed (${res.status})`,
-        );
+        throw new Error(parseClaimErrorMessage(err, res.status, locale));
       }
       const claim = (await res.json()) as RetailerClaim;
       setSuccessId(claim.claim_id);
@@ -390,7 +389,7 @@ export function FileClaimPanel({ order, onFiled, initialSku }: Props) {
             <p key={c.claim_id} className="text-xs text-[var(--desk-text-secondary)]">
               {c.claim_type} · {c.status}
               {c.amount_minor != null
-                ? ` · ${c.amount_minor} ${moneyCurrency(c.currency)}`
+                ? ` · ${formatWholeSom(c.amount_minor, c.currency)}`
                 : ""}
             </p>
           ))}

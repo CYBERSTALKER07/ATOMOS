@@ -55,7 +55,8 @@ func NormalizeRole(role string) string {
 	switch strings.ToLower(strings.TrimSpace(role)) {
 	case RoleFactory, "factory_admin", "factory_staff", string(auth.RoleFactory), string(auth.RoleFactoryAdmin):
 		return RoleFactory
-	case RoleWarehouse, "warehouse_admin", "warehouse_staff", "payloader", string(auth.RoleWarehouse), string(auth.RoleWarehouseAdmin), string(auth.RolePayload):
+	case RoleWarehouse, "warehouse_admin", "warehouse_staff", "payloader", string(auth.RoleWarehouse), string(auth.RoleWarehouseAdmin), string(auth.RolePayload),
+		"role_depot_cashier", "depot_cashier", "cashier", "role_fleet_yard", "fleet_yard", "yard_marshal":
 		return RoleWarehouse
 	default:
 		return strings.ToLower(strings.TrimSpace(role))

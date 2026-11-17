@@ -80,16 +80,19 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.pegasusx.retailer.data.local.RetailerWorkspaceMode
 import com.pegasusx.retailer.data.model.Product
 import com.pegasusx.retailer.ui.components.RetailerMetricTile
 import com.pegasusx.retailer.ui.design.PegasusRuntimeBanner
 import com.pegasusx.retailer.ui.design.PegasusRuntimeTone
 import com.pegasusx.retailer.ui.components.RetailerSectionHeader
 import com.pegasusx.retailer.ui.screens.dashboard.components.DashboardOverviewCard
+import com.pegasusx.retailer.ui.screens.dashboard.components.FastHomeCardsSection
 import com.pegasusx.retailer.ui.components.PulseStrip
 import com.pegasusx.retailer.ui.screens.dashboard.components.PredictionCard
 import com.pegasusx.retailer.ui.screens.dashboard.components.QuickReorderRow
 import com.pegasusx.retailer.ui.screens.dashboard.components.ServiceGrid
+import com.pegasusx.retailer.ui.screens.dashboard.components.WorkspaceModeToggleStrip
 import com.pegasusx.retailer.ui.components.modifiers.bounceCash
 import com.pegasusx.retailer.ui.theme.PegasusSpacing
 import com.pegasusx.retailer.ui.theme.HexagonShape
@@ -116,9 +119,20 @@ fun DashboardScreen(
     onOpenProfile: () -> Unit = {},
     onOpenControlTower: () -> Unit = {},
     onQuickReorder: (Product) -> Unit = {},
+    onOpenCredit: () -> Unit = {},
+    onOpenOwnerApprovals: () -> Unit = {},
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var selectedRange by rememberSaveable { mutableIntStateOf(0) }
+
+    androidx.compose.runtime.LaunchedEffect(uiState.fastHome?.cutoffAt, uiState.serverClockOffsetMs) {
+        if (!uiState.fastHome?.cutoffAt.isNullOrBlank()) {
+            while (true) {
+                kotlinx.coroutines.delay(1_000L)
+                viewModel.tickCountdown()
+            }
+        }
+    }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -138,6 +152,14 @@ fun DashboardScreen(
                 modifier = Modifier.fillMaxSize(),
         horizontalArrangement = Arrangement.spacedBy(24.dp)
     ) {
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    WorkspaceModeToggleStrip(
+                        mode = uiState.workspaceMode,
+                        pendingApprovalsCount = uiState.fastHome?.pendingApprovalsCount ?: 0,
+                        onSelectMode = viewModel::switchWorkspaceMode,
+                        onOpenApprovals = onOpenOwnerApprovals,
+                    )
+                }
                 item {
                     PackBanner(uiState.pack)
                 }
@@ -161,6 +183,21 @@ fun DashboardScreen(
                     }
                 }
 
+                if (uiState.workspaceMode == RetailerWorkspaceMode.FAST) {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        FastHomeCardsSection(
+                            fastHome = uiState.fastHome,
+                            countdown = uiState.countdown,
+                            actionPending = uiState.orderActionPending,
+                            actionFeedback = uiState.actionFeedback,
+                            onOpenDeliveries = onOpenDeliveries,
+                            onOpenCredit = onOpenCredit,
+                            onConfirmProposal = viewModel::confirmFastProposal,
+                            onHoldProposal = viewModel::holdFastProposal,
+                            onEditProposal = viewModel::editFastProposal,
+                        )
+                    }
+                } else {
                 item(span = { GridItemSpan(maxLineSpan) }) {
                     val pulse = uiState.commandPulse
                     val commandError = uiState.commandPulseError
@@ -313,6 +350,7 @@ fun DashboardScreen(
                             onReject = { viewModel.rejectAiOrder(item.orderId) },
                         )
                     }
+                }
                 }
 
                 item(span = { GridItemSpan(maxLineSpan) }) { Spacer(modifier = Modifier.height(32.dp)) }

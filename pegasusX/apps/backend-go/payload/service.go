@@ -16,6 +16,7 @@ import (
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
+	"github.com/pegasusx/pegasusx/apps/backend-go/drivercmd"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/manifest"
@@ -504,13 +505,16 @@ func (s *Service) assertPickWaveReadyForSealResult(ctx context.Context, manifest
 	return stocklots.AssertManifestPickReady(ctx, s.spannerClient(), manifestID)
 }
 
-// assertPhysicalSealGates runs G2 pick + load ledger before seal.
+// assertPhysicalSealGates runs G2 pick + load ledger + cold baseline before seal.
 func (s *Service) assertPhysicalSealGates(ctx context.Context, manifestID string) (warn string, err error) {
 	warn, err = s.assertPickWaveReadyForSealResult(ctx, manifestID)
 	if err != nil {
 		return warn, err
 	}
 	if err := stocklots.AssertLoadLedgerReady(ctx, s.spannerClient(), manifestID); err != nil {
+		return warn, err
+	}
+	if err := stocklots.AssertColdChainBaselineReady(ctx, s.spannerClient(), manifestID); err != nil {
 		return warn, err
 	}
 	return warn, nil
@@ -616,6 +620,7 @@ func (s *Service) broadcastDriverEvent(ctx context.Context, driverID string, dat
 		s.log.Warn("driver ws marshal failed", "err", err)
 		return
 	}
+	payload = drivercmd.PrepareAndRecordJSON(ctx, s.spannerClient(), driverID, payload)
 	s.driverHub.Broadcast(ctx, "driver:"+driverID, payload)
 }
 

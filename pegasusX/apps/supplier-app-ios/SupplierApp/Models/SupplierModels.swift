@@ -203,6 +203,8 @@ struct SupplierOrder: Decodable, Identifiable, Hashable {
     let totalMinor: Int64
     let currency: String
     let updatedAt: String
+    let source: String?
+    let externalOrderId: String?
 
     init(
         orderId: String,
@@ -213,7 +215,9 @@ struct SupplierOrder: Decodable, Identifiable, Hashable {
         note: String? = nil,
         totalMinor: Int64,
         currency: String = "UZS",
-        updatedAt: String
+        updatedAt: String,
+        source: String? = nil,
+        externalOrderId: String? = nil
     ) {
         self.orderId = orderId
         self.retailerId = retailerId
@@ -224,6 +228,8 @@ struct SupplierOrder: Decodable, Identifiable, Hashable {
         self.totalMinor = totalMinor
         self.currency = currency
         self.updatedAt = updatedAt
+        self.source = source
+        self.externalOrderId = externalOrderId
     }
 
     enum CodingKeys: String, CodingKey {
@@ -234,6 +240,8 @@ struct SupplierOrder: Decodable, Identifiable, Hashable {
         case totalMinor = "total_minor"
         case currency
         case updatedAt = "updated_at"
+        case source
+        case externalOrderId = "external_order_id"
     }
 }
 

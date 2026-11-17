@@ -108,11 +108,38 @@ func TestHandleManifest_IOSRouteManifest(t *testing.T) {
 	t.Setenv("ALLOW_DRIVER_DEMO_FALLBACK", "true")
 	repo := &driverRepoSpy{}
 	cacheBackend := &driverCacheBackendSpy{}
+
+	var lookupDriverID, lookupManifestID, lookupDate string
+	lookupFound := true
 	svc := newDriverTestServiceWithManifest(repo, cacheBackend, func(driverID, manifestID, date string) (factory.ManifestDetailSnapshot, bool) {
-		t.Fatalf("iOS manifest path must not call detail lookup, got driver=%q manifest=%q date=%q", driverID, manifestID, date)
-		return factory.ManifestDetailSnapshot{}, false
+		lookupDriverID = driverID
+		lookupManifestID = manifestID
+		lookupDate = date
+		if !lookupFound {
+			return factory.ManifestDetailSnapshot{}, false
+		}
+		return factory.ManifestDetailSnapshot{
+			Manifest: factory.ManifestRow{
+				ManifestID:    "mf_active_1",
+				State:         "DISPATCHED",
+				TransferCnt:   2,
+				TotalVolumeVU: 50,
+				DriverID:      driverID,
+				VehicleID:     "veh_active_1",
+				CreatedAt:     "2026-05-22T08:00:00Z",
+				UpdatedAt:     "2026-05-22T09:00:00Z",
+			},
+			Transfers: []factory.TransferRow{
+				{TransferID: "tr_1", OrderID: "ord_1", ManifestID: "mf_active_1", State: "ASSIGNED", TotalVU: 25},
+				{TransferID: "tr_2", OrderID: "ord_2", ManifestID: "mf_active_1", State: "ASSIGNED", TotalVU: 25},
+			},
+			RouteID:    "route_1",
+			StopCount:  2,
+			OrderCount: 2,
+		}, true
 	})
 
+	// 1. Success when active manifest found
 	req := httptest.NewRequest(http.MethodGet, "/v1/driver/manifest?date=2026-05-22", nil)
 	req = withDriverClaims(req, auth.Claims{Subject: "drv-1"})
 	rr := httptest.NewRecorder()
@@ -122,6 +149,9 @@ func TestHandleManifest_IOSRouteManifest(t *testing.T) {
 	if rr.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d body=%s", rr.Code, rr.Body.String())
 	}
+	if lookupDriverID != "drv-1" || lookupManifestID != "" || lookupDate != "2026-05-22" {
+		t.Fatalf("unexpected lookup args driver=%q manifest=%q date=%q", lookupDriverID, lookupManifestID, lookupDate)
+	}
 	var body map[string]any
 	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil {
 		t.Fatalf("decode response: %v", err)
@@ -129,12 +159,33 @@ func TestHandleManifest_IOSRouteManifest(t *testing.T) {
 	if got, _ := body["driver_id"].(string); got != "drv-1" {
 		t.Fatalf("expected driver_id drv-1, got %#v", body)
 	}
+	if got, _ := body["manifest_id"].(string); got != "mf_active_1" {
+		t.Fatalf("expected manifest_id mf_active_1, got %#v", body)
+	}
 	if got, _ := body["date"].(string); got != "2026-05-22" {
 		t.Fatalf("expected date 2026-05-22, got %#v", body)
 	}
-	hashes, ok := body["hashes"].(map[string]any)
-	if !ok || len(hashes) == 0 {
-		t.Fatalf("expected non-empty hashes map, got %#v", body["hashes"])
+	if expiresAt, ok := body["expires_at"].(float64); !ok || expiresAt <= 0 {
+		t.Fatalf("expected positive expires_at, got %#v", body["expires_at"])
+	}
+
+	// 2. 404 when absent
+	lookupFound = false
+	req404 := httptest.NewRequest(http.MethodGet, "/v1/driver/manifest?date=2026-05-22", nil)
+	req404 = withDriverClaims(req404, auth.Claims{Subject: "drv-1"})
+	rr404 := httptest.NewRecorder()
+
+	svc.HandleManifest(rr404, req404)
+
+	if rr404.Code != http.StatusNotFound {
+		t.Fatalf("expected 404, got %d body=%s", rr404.Code, rr404.Body.String())
+	}
+	var body404 map[string]any
+	if err := json.Unmarshal(rr404.Body.Bytes(), &body404); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if got, _ := body404["error"].(string); got != "manifest_not_found" {
+		t.Fatalf("expected manifest_not_found, got %#v", body404)
 	}
 }
 

@@ -130,7 +130,7 @@ func (e *Engine) RunMEIONetwork(ctx context.Context, supplierID string) (MEIONet
 			if burn <= 0 {
 				continue
 			}
-			effective := float64(qty) + float64(unfulfilled[skuID])
+			effective := math.Max(0, float64(qty)-float64(unfulfilled[skuID]))
 			days := effective / burn
 			urgency := classifyUrgency(days, float64(defaultLeadTimeDays))
 			sku := meiSkuBalance{

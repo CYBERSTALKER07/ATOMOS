@@ -1,7 +1,8 @@
 "use client";
 
 import type { Dispatch, SetStateAction } from "react";
-import { PortalField } from "./PortalPrimitives";
+import type { INNLookupResponse } from "@pegasusx/types";
+import { FormAlert, PortalField } from "./PortalPrimitives";
 import { AUTH_COUNTRIES, dialCodeForCountry } from "./countries";
 
 export { dialCodeForCountry };
@@ -17,9 +18,11 @@ export type AuthVerificationStep = {
 };
 
 export type AuthProfileStep = {
+  taxId: string;
   legalName: string;
   contactName: string;
   email: string;
+  password: string;
 };
 
 type Errors = Record<string, string>;
@@ -124,13 +127,69 @@ export function AuthRegisterProfileStep({
   profile,
   setProfile,
   errors,
+  onVerifyInn,
+  verifyingInn,
+  innLookup,
+  innError,
+  taxIdLabel = "Company INN / STIR (9 digits)",
+  taxIdPlaceholder = "Enter 9-digit INN",
+  verifyButtonLabel = "Verify INN",
+  verifyingLabel = "Verifying…",
+  verifiedBadgeLabel = "Verified entity",
+  existingCompanyHint,
 }: {
   profile: AuthProfileStep;
   setProfile: Dispatch<SetStateAction<AuthProfileStep>>;
   errors: Errors;
+  onVerifyInn?: () => void;
+  verifyingInn?: boolean;
+  innLookup?: INNLookupResponse | null;
+  innError?: string | null;
+  taxIdLabel?: string;
+  taxIdPlaceholder?: string;
+  verifyButtonLabel?: string;
+  verifyingLabel?: string;
+  verifiedBadgeLabel?: string;
+  existingCompanyHint?: string | null;
 }) {
   return (
     <div className="grid gap-4">
+      <AuthField id="taxId" label={taxIdLabel} error={errors.taxId || innError || undefined}>
+        <div className="flex gap-2 items-center">
+          <input
+            id="taxId"
+            inputMode="numeric"
+            autoComplete="off"
+            placeholder={taxIdPlaceholder}
+            className="md-input-outlined flex-1"
+            value={profile.taxId}
+            aria-invalid={!!(errors.taxId || innError)}
+            onChange={(e) => setProfile((s) => ({ ...s, taxId: e.target.value }))}
+          />
+          {onVerifyInn ? (
+            <button
+              type="button"
+              disabled={verifyingInn}
+              onClick={onVerifyInn}
+              className="portal-btn portal-btn--outline shrink-0"
+            >
+              {verifyingInn ? verifyingLabel : verifyButtonLabel}
+            </button>
+          ) : null}
+        </div>
+      </AuthField>
+      {innLookup?.status === "FOUND" ? (
+        <FormAlert variant="info">
+          <span className="flex flex-col gap-1 text-xs">
+            <span className="font-semibold">
+              {verifiedBadgeLabel}: {innLookup.legal_name} ({innLookup.normalized_inn})
+            </span>
+            {innLookup.existing_join_eligible && existingCompanyHint ? (
+              <span>{existingCompanyHint}</span>
+            ) : null}
+          </span>
+        </FormAlert>
+      ) : null}
       <AuthField id="legalName" label="Legal company name" error={errors.legalName}>
         <input
           id="legalName"
@@ -158,6 +217,22 @@ export function AuthRegisterProfileStep({
           value={profile.email}
           aria-invalid={!!errors.email}
           onChange={(e) => setProfile((s) => ({ ...s, email: e.target.value }))}
+        />
+      </AuthField>
+      <AuthField
+        id="password"
+        label="Password / Access PIN"
+        error={errors.password}
+        hint="Minimum 6 characters (6-digit PIN or password for sign-in)."
+      >
+        <input
+          id="password"
+          type="password"
+          autoComplete="new-password"
+          className="md-input-outlined"
+          value={profile.password}
+          aria-invalid={!!errors.password}
+          onChange={(e) => setProfile((s) => ({ ...s, password: e.target.value }))}
         />
       </AuthField>
     </div>

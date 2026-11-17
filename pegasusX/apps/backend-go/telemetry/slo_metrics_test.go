@@ -71,9 +71,12 @@ func TestSLOCollector_RatioNoTraffic(t *testing.T) {
 	defer client.Close()
 	reg := prometheus.NewRegistry()
 	c := NewSLOCollector(client, reg, nil)
-	// Empty tables → no traffic → ratio must be 1.0 (not a breach).
+	// Zero matching traffic in window → ratio must be 1.0 (not a breach).
+	// Scope to an unused sentinel supplier so shared emulator state from other
+	// suites does not pollute the empty-denominator case.
 	r, err := c.ratio(ctx, `SELECT COUNTIF(Status='SUCCESS'), COUNT(*) FROM OrderFiscalReceipts
-		WHERE CreatedAt >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 1 HOUR)`)
+		WHERE SupplierId = '__slo_no_traffic_sentinel__'
+		AND CreatedAt >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 1 HOUR)`)
 	if err != nil {
 		t.Fatalf("ratio: %v", err)
 	}

@@ -3,7 +3,13 @@
 import { usePortalT } from "@/lib/i18n";
 import { useState } from "react";
 import { AUTH_COUNTRIES } from "@/components/ui";
-import { LocationPicker, type LocationValue } from "@/components/LocationPicker";
+import dynamic from "next/dynamic";
+import { type LocationValue } from "@/components/LocationPicker";
+
+const LocationPicker = dynamic(
+  () => import("@/components/LocationPicker").then((m) => m.LocationPicker),
+  { ssr: false },
+);
 import { sessionMapCenter } from "@pegasusx/api-core";
 
 interface FactoryFormProps {

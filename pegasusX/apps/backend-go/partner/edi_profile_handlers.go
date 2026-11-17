@@ -10,6 +10,9 @@ import (
 
 // HandleGetEdiProfile GET /partner/v1/edi/profile and JWT supplier alias.
 func (h *Handlers) HandleGetEdiProfile(w http.ResponseWriter, r *http.Request) {
+	if rejectPartnerAuditorOrAgent(w, r) {
+		return
+	}
 	tt, tid, ok := h.resolvePartnerTenant(r)
 	if !ok {
 		writePartnerError(w, http.StatusUnauthorized, "unauthorized")
@@ -36,6 +39,9 @@ type ediProfileResponse struct {
 
 // HandlePutEdiProfile PUT /partner/v1/edi/profile
 func (h *Handlers) HandlePutEdiProfile(w http.ResponseWriter, r *http.Request) {
+	if rejectPartnerAuditorOrAgent(w, r) {
+		return
+	}
 	tt, tid, ok := h.resolvePartnerTenant(r)
 	if !ok {
 		writePartnerError(w, http.StatusUnauthorized, "unauthorized")

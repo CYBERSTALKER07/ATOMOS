@@ -13,6 +13,7 @@ struct retailerappApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var cartManager = CartManager()
     @State private var authManager = AuthManager.shared
+    @State private var preferencesStore = RetailerPreferencesStore.shared
 
     var body: some Scene {
         WindowGroup {
@@ -31,6 +32,8 @@ struct retailerappApp: App {
             }
             .environment(cartManager)
             .environment(authManager)
+            .environment(preferencesStore)
+            .environment(\.locale, preferencesStore.currentLanguage.locale)
         }
         .modelContainer(for: PendingOrder.self)
     }

@@ -46,7 +46,7 @@ func websocketOriginAllowed(r *http.Request) bool {
 	if origin == "" {
 		return true
 	}
-	if isLocalDevelopmentOrigin(origin) {
+	if !auth.IsProduction() && isLocalDevelopmentOrigin(origin) {
 		return true
 	}
 	allowedOriginMu.RLock()

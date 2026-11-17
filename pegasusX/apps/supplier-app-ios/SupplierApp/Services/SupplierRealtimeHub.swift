@@ -9,10 +9,18 @@ import Observation
 final class SupplierRealtimeHub {
     var refreshEpoch: Int = 0
     var reconnectEpoch: Int = 0
+    var migrationProgressBySession: [String: MigrationApplyProgressEvent] = [:]
 
     @ObservationIgnored private var lastBumpAt: Date = .distantPast
     @ObservationIgnored private var trailingTask: Task<Void, Never>?
     @ObservationIgnored private let coalesceWindow: TimeInterval = 0.20
+
+    func bump(event: SupplierLiveEvent) {
+        if let progress = event.effectiveMigrationProgress {
+            migrationProgressBySession[progress.sessionId] = progress
+        }
+        bump()
+    }
 
     func bump() {
         let now = Date()

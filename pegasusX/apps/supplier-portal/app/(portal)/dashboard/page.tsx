@@ -1,14 +1,25 @@
 "use client";
 
 import Link from "next/link";
+import type { Route } from "next";
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { BentoCard, BentoGrid } from "@/components/BentoGrid";
-import FleetLiveMapPanel from "@/components/FleetLiveMapPanel";
+import dynamic from "next/dynamic";
+
+const FleetLiveMapPanel = dynamic(() => import("@/components/FleetLiveMapPanel"), { ssr: false });
 import PlanningOutcomesPanel from "@/components/PlanningOutcomesPanel";
 import NetworkPulsePanel from "@/components/NetworkPulsePanel";
 import { PageChrome } from "@/components/PageChrome";
 import StatusBadge from "@/components/StatusBadge";
 import { FormAlert } from "@/components/portal";
+import { createSupplierApi } from "@/lib/api";
+import {
+  createIntelRoiApi,
+  formatFinanceMinor,
+  formatRoiMultipleBps,
+  type RoiSummaryResponse,
+} from "@/lib/intel-roi-api";
 import { usePortalT } from "@/lib/i18n";
 import { useDashboardData } from "./use-dashboard-data";
 import { useDashboardHistory } from "./use-dashboard-history";
@@ -21,6 +32,23 @@ export default function DashboardPage() {
   const router = useRouter();
   const { metrics, recentManifests, recentEvents, isPaymentConfigured, loading, error } = useDashboardData();
   const history = useDashboardHistory();
+  const [roiSummary, setRoiSummary] = useState<RoiSummaryResponse | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const intelApi = createIntelRoiApi(createSupplierApi());
+    intelApi
+      .getRoiSummary({ days: 90 })
+      .then((res) => {
+        if (!cancelled) setRoiSummary(res);
+      })
+      .catch(() => {
+        // Fail-soft: dashboard remains operational if ROI telemetry is unavailable.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const formatCurrency = (minor: number) =>
     formatPackMoney(minor, readCachedAuthSession()?.pack);
@@ -70,6 +98,46 @@ export default function DashboardPage() {
           </p>
           <RangeToggle value={history.range} onChange={history.setRange} />
         </div>
+
+        <section
+          data-testid="owner-roi-banner"
+          className="desk-card p-4 border flex flex-wrap items-center justify-between gap-4"
+          style={{
+            background: "color-mix(in srgb, var(--desk-accent) 8%, var(--desk-surface))",
+            borderColor: "color-mix(in srgb, var(--desk-accent) 26%, var(--desk-border))",
+          }}
+        >
+          <div className="min-w-0">
+            <p className="md-typescale-label-medium" style={{ color: "var(--desk-accent-strong)" }}>
+              {t("supplier_portal.roi.banner_title", { days: roiSummary?.window_days ?? 90 })}
+            </p>
+            <div className="mt-1 flex flex-wrap items-baseline gap-4">
+              <span className="md-typescale-title-large font-light tabular-nums">
+                {roiSummary
+                  ? formatFinanceMinor(roiSummary.total_savings_minor, roiSummary.currency || "UZS")
+                  : "—"}
+              </span>
+              <span className="md-typescale-body-small font-mono" style={{ color: "var(--desk-text-secondary)" }}>
+                {t("supplier_portal.roi.roi_multiple")}:{" "}
+                {roiSummary ? formatRoiMultipleBps(roiSummary.roi_multiple_bps) : "—"}
+              </span>
+              {roiSummary ? (
+                <span className="md-typescale-body-small font-mono" style={{ color: "var(--desk-text-secondary)" }}>
+                  {t("supplier_portal.roi.net_savings")}:{" "}
+                  {formatFinanceMinor(roiSummary.net_savings_minor, roiSummary.currency || "UZS")}
+                </span>
+              ) : null}
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <Link href={"/proposals" as Route} className="portal-btn portal-btn--outline text-xs">
+              {t("supplier_portal.roi.open_proposals")}
+            </Link>
+            <Link href={"/roi" as Route} className="portal-btn portal-btn--primary text-xs">
+              {t("supplier_portal.roi.open_roi")}
+            </Link>
+          </div>
+        </section>
 
         <BentoGrid theme="apple">
           <BentoCard size="stat" className="p-5 flex flex-col justify-between">

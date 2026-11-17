@@ -14,6 +14,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // Off-app dunning transports: SMS + email + WhatsApp behind a per-channel
@@ -33,9 +35,10 @@ import (
 
 // Contact is the resolved off-app address set for one actor.
 type Contact struct {
-	Phone string
-	Email string
-	Name  string
+	Phone  string
+	Email  string
+	Name   string
+	Locale string
 }
 
 // ChannelTransport sends one dunning notice over one channel.
@@ -133,10 +136,9 @@ func MultiChannelNotify(log *slog.Logger, resolver ContactResolver, transports [
 		if len(transports) == 0 || resolver == nil {
 			return nil
 		}
-		_, title, body := NotifyMessage(inv, nextStep)
-		text := strings.TrimSpace(title + "\n" + body)
 
 		var targets []Contact
+		retailerLocale := "uz"
 		if c, err := resolver.ResolveRetailer(ctx, inv.RetailerID); err != nil {
 			// Platform-billing invoices (SupplierId=PLATFORM) dun the billed
 			// supplier: fall back to that supplier's staff contacts.
@@ -146,6 +148,9 @@ func MultiChannelNotify(log *slog.Logger, resolver ContactResolver, transports [
 				log.WarnContext(ctx, "dunning contact resolve failed", "retailer_id", inv.RetailerID, "err", err)
 			}
 		} else {
+			if loc, ok := NormalizeLocale(c.Locale); ok {
+				retailerLocale = loc
+			}
 			targets = append(targets, c)
 		}
 		if staff, err := resolver.ResolveSupplierStaff(ctx, inv.SupplierID); err != nil {
@@ -166,6 +171,12 @@ func MultiChannelNotify(log *slog.Logger, resolver ContactResolver, transports [
 				if tr.Channel() == "email" && to.Email == "" {
 					continue
 				}
+				targetLoc := to.Locale
+				if _, ok := NormalizeLocale(targetLoc); !ok {
+					targetLoc = retailerLocale
+				}
+				_, title, body := LocalizedNotifyMessage(inv, nextStep, targetLoc)
+				text := strings.TrimSpace(title + "\n" + body)
 				if err := tr.Send(ctx, to, text); err != nil {
 					errs = append(errs, fmt.Errorf("%s -> %s: %w", tr.Channel(), maskContact(to, tr.Channel()), err))
 					log.WarnContext(ctx, "dunning off-app send failed",
@@ -261,7 +272,7 @@ func (p *playMobileSMS) Send(ctx context.Context, to Contact, body string) error
 	payload := map[string]any{
 		"messages": []map[string]any{{
 			"recipient":  strings.TrimPrefix(to.Phone, "+"),
-			"message-id": fmt.Sprintf("dun-%d", time.Now().UnixNano()),
+			"message-id": "dun-" + uuid.NewString(),
 			"sms":        map[string]string{"originator": "3700", "content": body},
 		}},
 	}
@@ -281,7 +292,10 @@ func (p *playMobileSMS) Send(ctx context.Context, to Contact, body string) error
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode/100 != 2 {
-		b, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+		b, readErr := io.ReadAll(io.LimitReader(resp.Body, 512))
+		if readErr != nil {
+			return fmt.Errorf("playmobile status %d (read body: %v)", resp.StatusCode, readErr)
+		}
 		return fmt.Errorf("playmobile status %d: %s", resp.StatusCode, strings.TrimSpace(string(b)))
 	}
 	return nil

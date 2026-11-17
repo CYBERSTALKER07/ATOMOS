@@ -50,6 +50,51 @@ final class OnboardingViewModel {
 
     var loading = false
     var error: String?
+    var innChecking = false
+    var innLookup: INNLookupResponse?
+    var innError: String?
+    var joinRequestConflict: JoinRequestConflictPayload?
+    var joinRequestSent = false
+
+    var normalizedINN: String {
+        String(taxId.filter(\.isNumber))
+    }
+
+    func verifyINN() async {
+        let inn = normalizedINN
+        guard inn.count == 9 else {
+            innError = L10n.format("supplier_portal.onboarding_inn.invalid_inn")
+            innLookup = nil
+            return
+        }
+        innChecking = true
+        innError = nil
+        joinRequestConflict = nil
+        joinRequestSent = false
+        defer { innChecking = false }
+        do {
+            let result = try await MigrationService.lookupINN(inn: inn, tenantType: "SUPPLIER")
+            innLookup = result
+            if result.status.uppercased() == "UNAVAILABLE" {
+                innError = L10n.format("supplier_portal.onboarding_inn.registry_unavailable")
+                PegasusHaptics.error()
+                return
+            }
+            if result.status.uppercased() == "INVALID" || result.status.uppercased() == "NOT_FOUND" {
+                innError = L10n.format("supplier_portal.onboarding_inn.invalid_inn")
+                PegasusHaptics.warning()
+                return
+            }
+            if headquartersAddress.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+               let addr = result.address, !addr.isEmpty {
+                headquartersAddress = addr
+            }
+            PegasusHaptics.confirm()
+        } catch {
+            innError = L10n.format("supplier_portal.onboarding_inn.registry_unavailable")
+            PegasusHaptics.error()
+        }
+    }
 
     var dialCode: String {
         Self.countries.first { $0.id == countryCode }?.dialCode ?? "+998"
@@ -121,6 +166,28 @@ final class OnboardingViewModel {
         loading = true
         error = nil
         defer { loading = false }
+
+        let digits = normalizedINN
+        if digits.count == 9 {
+            if innLookup == nil || innLookup?.normalizedInn != digits {
+                await verifyINN()
+            }
+            if let lookup = innLookup {
+                let st = lookup.status.uppercased()
+                if st == "UNAVAILABLE" {
+                    error = L10n.format("supplier_portal.onboarding_inn.registry_unavailable")
+                    return false
+                }
+                if st == "INVALID" || st == "NOT_FOUND" {
+                    error = L10n.format("supplier_portal.onboarding_inn.invalid_inn")
+                    return false
+                }
+            } else if innError != nil {
+                error = innError
+                return false
+            }
+        }
+
         do {
             let response = try await SupplierService.setupBusiness(
                 BusinessSetupRequest(
@@ -133,6 +200,12 @@ final class OnboardingViewModel {
             )
             tokenStore.markRegistered(response.isRegistered)
             return true
+        } catch APIError.conflictPayload(let conflict) {
+            joinRequestConflict = conflict
+            joinRequestSent = true
+            error = nil
+            PegasusHaptics.warning()
+            return false
         } catch {
             SupplierActionFailure.record(underlying: error, hasContent: false, error: &self.error)
             return false

@@ -345,3 +345,21 @@ func containsString(items []string, want string) bool {
 	}
 	return false
 }
+
+func TestIssue_SecondaryCellDeployment_PrefersHomeCellEnv(t *testing.T) {
+	t.Setenv("DEFAULT_MARKET_CODE", "")
+	t.Setenv("HOME_CELL", "cell-eu")
+	tok, err := Issue(Claims{
+		Subject: "u-eu-1", Role: RoleAdmin, SupplierID: "s1",
+	}, IssueOptions{Secret: "test-secret", Issuer: "t", TTL: time.Hour})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := Parse(tok, "test-secret")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.HomeCell != "cell-eu" {
+		t.Fatalf("expected HomeCell cell-eu from env, got %q", got.HomeCell)
+	}
+}

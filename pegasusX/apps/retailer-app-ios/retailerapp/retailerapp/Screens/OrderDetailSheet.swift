@@ -26,6 +26,20 @@ struct OrderDetailSheet: View {
                             Text(order.status.displayName)
                                 .font(.system(.subheadline, design: .rounded, weight: .medium))
                                 .foregroundStyle(AppTheme.textSecondary)
+                            if order.isMigrationOrigin {
+                                Text("mobile_retailer.nasiya_opening.migration_badge")
+                                    .font(.system(.caption2, design: .rounded, weight: .bold))
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 3)
+                                    .background(AppTheme.warning.opacity(0.15))
+                                    .foregroundStyle(AppTheme.warning)
+                                    .clipShape(Capsule())
+                            }
+                            if order.autoConfirmOptIn {
+                                Text("Auto-confirm opt-in enabled")
+                                    .font(.system(.caption2, design: .rounded, weight: .semibold))
+                                    .foregroundStyle(AppTheme.accent)
+                            }
                         }
                         Spacer()
                         Text(order.displayTotal)
@@ -59,17 +73,68 @@ struct OrderDetailSheet: View {
                                 if index > 0 {
                                     Rectangle().fill(AppTheme.separator.opacity(0.3)).frame(height: AppTheme.separatorHeight)
                                 }
-                                HStack {
-                                    Text(item.productName)
-                                        .font(.system(.subheadline, design: .rounded))
-                                        .foregroundStyle(AppTheme.textPrimary)
-                                    Spacer()
-                                    Text(L10n.format("mobile_retailer.ui.quantity", "\(item.quantity)"))
-                                        .font(.system(.caption, design: .rounded, weight: .bold))
-                                        .foregroundStyle(AppTheme.textTertiary)
-                                        .padding(.horizontal, 8).padding(.vertical, 3)
-                                        .background(AppTheme.surfaceElevated)
-                                        .clipShape(.capsule)
+                                VStack(alignment: .leading, spacing: 6) {
+                                    HStack {
+                                        Text(item.productName)
+                                            .font(.system(.subheadline, design: .rounded))
+                                            .foregroundStyle(AppTheme.textPrimary)
+                                        Spacer()
+                                        Text(L10n.format("mobile_retailer.ui.quantity", "\(item.quantity)"))
+                                            .font(.system(.caption, design: .rounded, weight: .bold))
+                                            .foregroundStyle(AppTheme.textTertiary)
+                                            .padding(.horizontal, 8).padding(.vertical, 3)
+                                            .background(AppTheme.surfaceElevated)
+                                            .clipShape(.capsule)
+                                    }
+
+                                    if item.mustHave || item.allowSubstitutes {
+                                        HStack(spacing: 6) {
+                                            if item.mustHave {
+                                                Text("Must-have")
+                                                    .font(.system(.caption2, design: .rounded, weight: .semibold))
+                                                    .foregroundStyle(AppTheme.warning)
+                                                    .padding(.horizontal, 6).padding(.vertical, 2)
+                                                    .background(AppTheme.warning.opacity(0.14))
+                                                    .clipShape(.capsule)
+                                            }
+                                            if item.allowSubstitutes {
+                                                Text("Subs allowed")
+                                                    .font(.system(.caption2, design: .rounded, weight: .semibold))
+                                                    .foregroundStyle(AppTheme.accent)
+                                                    .padding(.horizontal, 6).padding(.vertical, 2)
+                                                    .background(AppTheme.accentSoft.opacity(0.35))
+                                                    .clipShape(.capsule)
+                                            }
+                                        }
+                                    }
+
+                                    if item.substituteSku != nil || item.substituteName != nil || item.priceGapMinor != nil {
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text("Substituted with \(item.substituteName ?? item.substituteSku ?? "alternative SKU")")
+                                                .font(.system(.caption, design: .rounded, weight: .semibold))
+                                                .foregroundStyle(AppTheme.info)
+                                            if let orig = item.originalSku, !orig.isEmpty {
+                                                Text("Original SKU: \(orig)")
+                                                    .font(.system(.caption2, design: .rounded))
+                                                    .foregroundStyle(AppTheme.textTertiary)
+                                            }
+                                            if let gapMinor = item.priceGapMinor {
+                                                Text("Price gap: \(RetailerMoney.formatPriceGapSom(gapMinor))")
+                                                    .font(.system(.caption, design: .rounded, weight: .bold))
+                                                    .foregroundStyle(gapMinor > 0 ? AppTheme.warning : AppTheme.success)
+                                            }
+                                        }
+                                        .padding(8)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                        .background(AppTheme.infoSoft.opacity(0.25))
+                                        .clipShape(.rect(cornerRadius: AppTheme.radiusSM, style: .continuous))
+                                    }
+
+                                    if let shortageReason = item.shortageReason, !shortageReason.isEmpty {
+                                        Text(shortageReason)
+                                            .font(.system(.caption2, design: .rounded))
+                                            .foregroundStyle(AppTheme.warning)
+                                    }
                                 }
                                 .padding(.vertical, AppTheme.spacingSM)
                                 .accessibilityElement(children: .combine)

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRetailerSessionReconcile } from "../../../lib/use-retailer-session-reconcile";
 import Link from "next/link";
 import {
@@ -15,12 +15,35 @@ import { CommandBoard } from "../../../components/dashboard/CommandBoard";
 import { KpiGrid } from "../../../components/dashboard/KpiGrid";
 import { QuickReorderSection } from "../../../components/dashboard/QuickReorderSection";
 import { AiPredictionSection } from "../../../components/dashboard/AiPredictionSection";
+import { SuggestedOrdersApprovePanel } from "../../../components/dashboard/SuggestedOrdersApprovePanel";
+import { FastHomeView } from "../../../components/dashboard/FastHomeView";
 import { useLiveData } from "../../../lib/hooks";
 import { useCart } from "../../../lib/cart";
 import { useOptionalWebSocket } from "../../../lib/ws";
-import type { Product, RetailerAIPredictionsResponse } from "../../../lib/types";
+import { apiFetch } from "../../../lib/auth";
+import {
+  getCreditRelationships,
+  getRetailerFastHome,
+  getRetailerMe,
+} from "../../../lib/api";
+import {
+  FAST_HOME_COPY,
+  WORKSPACE_MODE_CHANGE_EVENT,
+  buildFastHomeFallback,
+  readStoredWorkspaceMode,
+  resolveEffectiveWorkspaceMode,
+  writeStoredWorkspaceMode,
+  type FastHomeCreditProfile,
+  type RetailerFastHomePayload,
+  type WorkspaceMode,
+} from "../../../lib/fast-home";
+import type {
+  Order,
+  Product,
+  RetailerAIPredictionsResponse,
+} from "../../../lib/types";
 import type { RetailerControlTowerPulse } from "@pegasusx/types";
-import { usePortalT } from "@/lib/i18n";
+import { usePortalLocale, usePortalT } from "@/lib/i18n";
 
 const EMPTY_PRODUCTS: Product[] = [];
 
@@ -28,6 +51,15 @@ type LoadIssue = "restricted" | "offline" | "error";
 
 export default function DashboardPage() {
   const t = usePortalT();
+  const locale = usePortalLocale();
+  const fastCopy = FAST_HOME_COPY[locale] ?? FAST_HOME_COPY.uz;
+  const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>(() => {
+    return readStoredWorkspaceMode() ?? "fast";
+  });
+  const [fastHomeData, setFastHomeData] = useState<RetailerFastHomePayload | null>(null);
+  const [fastHomeLoading, setFastHomeLoading] = useState(false);
+  const [fastHomeError, setFastHomeError] = useState<string | null>(null);
+
   const {
     data: pulse,
     loading: loadingPulse,
@@ -51,6 +83,84 @@ export default function DashboardPage() {
   } = useLiveData<Product[]>("/v1/catalog/products");
   const ws = useOptionalWebSocket();
   const { addToCart, items } = useCart();
+
+  const loadFastHome = useCallback(async () => {
+    setFastHomeLoading(true);
+    setFastHomeError(null);
+    try {
+      const payload = await getRetailerFastHome();
+      setFastHomeData(payload);
+    } catch {
+      try {
+        const [ordersRes, creditRes, rels] = await Promise.all([
+          apiFetch("/v1/orders").catch(() => null),
+          apiFetch("/v1/retailer/credit-profile").catch(() => null),
+          getCreditRelationships().catch(() => []),
+        ]);
+        const orders: Order[] =
+          ordersRes && ordersRes.ok ? ((await ordersRes.json()) as Order[]) : [];
+        const creditProfile: FastHomeCreditProfile | null =
+          creditRes && creditRes.ok ? ((await creditRes.json()) as FastHomeCreditProfile) : null;
+        setFastHomeData(
+          buildFastHomeFallback({
+            orders,
+            predictions: predictions?.items ?? [],
+            creditProfile,
+            relationships: rels,
+          }),
+        );
+      } catch (fallbackErr) {
+        setFastHomeError(
+          fallbackErr instanceof Error ? fallbackErr.message : "Failed to load fast home",
+        );
+      }
+    } finally {
+      setFastHomeLoading(false);
+    }
+  }, [predictions?.items]);
+
+  useEffect(() => {
+    const syncStored = () => {
+      setWorkspaceMode(readStoredWorkspaceMode() ?? "fast");
+    };
+    const onWorkspaceChange = (evt: Event) => {
+      const detail = (evt as CustomEvent<WorkspaceMode>).detail;
+      if (detail === "fast" || detail === "full") {
+        setWorkspaceMode(detail);
+      } else {
+        syncStored();
+      }
+    };
+    window.addEventListener(WORKSPACE_MODE_CHANGE_EVENT, onWorkspaceChange);
+
+    let cancelled = false;
+    void (async () => {
+      try {
+        const me = await getRetailerMe();
+        if (cancelled) return;
+        setWorkspaceMode(
+          resolveEffectiveWorkspaceMode(
+            readStoredWorkspaceMode(),
+            me.retailer_role,
+            me.is_owner,
+          ),
+        );
+      } catch {
+        // ignore if /me not available in test context
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener(WORKSPACE_MODE_CHANGE_EVENT, onWorkspaceChange);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (workspaceMode === "fast") {
+      void loadFastHome();
+    }
+  }, [workspaceMode, loadFastHome]);
 
   const predictionList = predictions?.items ?? [];
   const productList = products ?? EMPTY_PRODUCTS;
@@ -129,7 +239,30 @@ export default function DashboardPage() {
     void refreshPulse();
     void refreshPredictions();
     void refreshProducts();
+    if (workspaceMode === "fast") {
+      void loadFastHome();
+    }
   });
+
+  if (workspaceMode === "fast") {
+    return (
+      <div
+        className="min-h-full p-6 md:p-8"
+        style={{ background: "var(--desk-canvas)" }}
+      >
+        <FastHomeView
+          data={fastHomeData}
+          loading={fastHomeLoading && !fastHomeData}
+          error={fastHomeError}
+          onRefresh={loadFastHome}
+          onSwitchToFullErp={() => {
+            setWorkspaceMode("full");
+            writeStoredWorkspaceMode("full");
+          }}
+        />
+      </div>
+    );
+  }
 
   return (
     <div
@@ -144,6 +277,17 @@ export default function DashboardPage() {
         skeletonVariant="dashboard"
         actions={
           <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                setWorkspaceMode("fast");
+                writeStoredWorkspaceMode("fast");
+              }}
+              className="portal-btn portal-btn--ghost h-10 px-4 rounded-xl font-light"
+              data-testid="full-erp-switch-fast"
+            >
+              {fastCopy.switchToFast}
+            </button>
             <button
               type="button"
               disabled={isRefreshing}
@@ -236,6 +380,10 @@ export default function DashboardPage() {
                 predictionList={predictionList}
                 onRefresh={refreshPredictions}
               />
+            </div>
+
+            <div className="mt-8">
+              <SuggestedOrdersApprovePanel onApproved={() => void refreshAll()} />
             </div>
           </motion.div>
       </PageChrome>

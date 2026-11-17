@@ -2,10 +2,7 @@ package fiscal
 
 import (
 	"context"
-	"crypto"
-	"crypto/rand"
 	"crypto/rsa"
-	"crypto/sha256"
 	"crypto/x509"
 	"encoding/base64"
 	"fmt"
@@ -13,13 +10,14 @@ import (
 	"strings"
 	"time"
 
+	"go.mozilla.org/pkcs7"
 	pkcs12 "software.sslmate.com/src/go-pkcs12"
 )
 
 // PKCS12Signer is the real E-IMZO EDS signer. It loads an RSA private key and
 // certificate chain from a PKCS#12 (.pfx/.p12) container — the format Soliq /
-// E-IMZO issue — and produces a detached CMS-style signature over the canonical
-// EHF payload.
+// E-IMZO issue — and produces a Base64-encoded DER CMS/PKCS#7 SignedData payload
+// over the canonical EHF bytes.
 //
 // Construction is fail-closed: a missing file, wrong password, non-RSA key, or
 // empty chain is a construction error, never a silent unsigned receipt.
@@ -32,8 +30,9 @@ import (
 // signer_env.go); it remains blocked in the field until the EDS key is
 // procured, but the code path is real and exercisable with any test container.
 type PKCS12Signer struct {
-	key  *rsa.PrivateKey
-	cert *x509.Certificate
+	key     *rsa.PrivateKey
+	cert    *x509.Certificate
+	caCerts []*x509.Certificate
 }
 
 // NewPKCS12Signer parses the container and validates the key material.
@@ -41,7 +40,7 @@ func NewPKCS12Signer(p12Data []byte, password string) (*PKCS12Signer, error) {
 	if len(p12Data) == 0 {
 		return nil, fmt.Errorf("pkcs12: empty container")
 	}
-	key, cert, err := pkcs12.Decode(p12Data, password)
+	key, cert, caCerts, err := pkcs12.DecodeChain(p12Data, password)
 	if err != nil {
 		return nil, fmt.Errorf("pkcs12: decode: %w", err)
 	}
@@ -62,7 +61,7 @@ func NewPKCS12Signer(p12Data []byte, password string) (*PKCS12Signer, error) {
 	if err := rsaKey.Validate(); err != nil {
 		return nil, fmt.Errorf("pkcs12: invalid RSA key: %w", err)
 	}
-	return &PKCS12Signer{key: rsaKey, cert: cert}, nil
+	return &PKCS12Signer{key: rsaKey, cert: cert, caCerts: caCerts}, nil
 }
 
 // NewPKCS12SignerFromFile loads the container from disk.
@@ -78,22 +77,32 @@ func NewPKCS12SignerFromFile(path, password string) (*PKCS12Signer, error) {
 	return NewPKCS12Signer(data, password)
 }
 
-// Sign returns "EIMZO.<base64 rsa-pss signature>" over SHA-256(payload).
+// Sign builds a Base64-encoded DER CMS/PKCS#7 SignedData envelope over payload
+// using SHA-256 and the loaded E-IMZO leaf certificate and chain.
 // The certificate Subject serial number is available via CertSubject for EHF
 // signer identification.
 func (s *PKCS12Signer) Sign(_ context.Context, payload []byte) ([]byte, error) {
-	if s == nil || s.key == nil {
+	if s == nil || s.key == nil || s.cert == nil {
 		return nil, fmt.Errorf("pkcs12: signer not initialized")
 	}
-	digest := sha256.Sum256(payload)
-	sig, err := rsa.SignPSS(rand.Reader, s.key, crypto.SHA256, digest[:], &rsa.PSSOptions{
-		SaltLength: rsa.PSSSaltLengthAuto,
-		Hash:       crypto.SHA256,
-	})
+	sd, err := pkcs7.NewSignedData(payload)
 	if err != nil {
-		return nil, fmt.Errorf("pkcs12: sign: %w", err)
+		return nil, fmt.Errorf("pkcs12: init signed data: %w", err)
 	}
-	return []byte("EIMZO." + base64.StdEncoding.EncodeToString(sig)), nil
+	sd.SetDigestAlgorithm(pkcs7.OIDDigestAlgorithmSHA256)
+	if len(s.caCerts) > 0 {
+		err = sd.AddSignerChain(s.cert, s.key, s.caCerts, pkcs7.SignerInfoConfig{})
+	} else {
+		err = sd.AddSigner(s.cert, s.key, pkcs7.SignerInfoConfig{})
+	}
+	if err != nil {
+		return nil, fmt.Errorf("pkcs12: add signer: %w", err)
+	}
+	der, err := sd.Finish()
+	if err != nil {
+		return nil, fmt.Errorf("pkcs12: finish signed data: %w", err)
+	}
+	return []byte(base64.StdEncoding.EncodeToString(der)), nil
 }
 
 // CertSubject returns the certificate subject (serial number) for EHF signer

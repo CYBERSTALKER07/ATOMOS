@@ -17,6 +17,7 @@ final class ProfileViewModel {
     var showFleetDVIR = false
     var showMidRouteRescue = false
     var showYardGate = false
+    var showSettings = false
     var pendingCount = 0
 
     private let queue: DriverOfflineQueue

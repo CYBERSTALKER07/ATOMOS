@@ -39,10 +39,12 @@ object FirebaseAuthHelper {
                 FirebaseAuth.getInstance().useEmulator(BuildConfig.FIREBASE_AUTH_EMULATOR_HOST, 9099)
             }
             initialized = true
-            Log.d(
-                TAG,
-                "Firebase Auth initialized (emulator=${BuildConfig.FIREBASE_AUTH_EMULATOR})",
-            )
+            if (BuildConfig.DEBUG) {
+                Log.d(
+                    TAG,
+                    "Firebase Auth initialized (emulator=${BuildConfig.FIREBASE_AUTH_EMULATOR})",
+                )
+            }
         } catch (e: Exception) {
             if (!BuildConfig.DEBUG) {
                 throw IllegalStateException("Firebase configuration is missing in release build", e)

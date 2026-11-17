@@ -246,11 +246,19 @@ private fun OrdersQueueContent(
                         modifier = Modifier
                             .weight(1f)
                             .clickable { onOrderClick(order) },
-                        headline = order.retailerId.ifBlank { order.orderId.take(12) },
+                        headline = buildString {
+                            if (order.status == "MIGRATION_OPEN") {
+                                append("[HELD · MIGRATION] ")
+                            } else if (order.source.equals("MIGRATION", ignoreCase = true)) {
+                                append("[MIGRATION] ")
+                            }
+                            append(order.retailerId.ifBlank { order.orderId.take(12) })
+                        },
                         supporting = buildString {
                             append(amount)
                             append(" · ")
                             append(order.orderId.take(12))
+                            order.externalOrderId?.takeIf { it.isNotBlank() }?.let { append(" · Ext $it") }
                             order.updatedAt.takeIf { it.isNotBlank() }?.let { append(" · $it") }
                         },
                         status = order.status.ifBlank { order.decision },

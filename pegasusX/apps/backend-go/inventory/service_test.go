@@ -264,7 +264,6 @@ func (r *inMemoryInventoryRepo) ReleaseReservation(ctx context.Context, inventor
 	if releaseQty > l.QuantityReserved {
 		releaseQty = l.QuantityReserved
 	}
-	l.QuantityOnHand += releaseQty
 	l.QuantityReserved -= releaseQty
 	l.Version++
 	l.UpdatedAt = time.Now().UTC()
@@ -396,8 +395,14 @@ func TestService_TwoPhaseReservationAndRelease_Lifecycle(t *testing.T) {
 		t.Fatalf("release failed: %v", err)
 	}
 	cur, _ = repo.Get(ctx, "inv-sku-001")
+	if cur.QuantityOnHand != 100 {
+		t.Fatalf("unexpected on-hand after release: onHand=%d, expected=100", cur.QuantityOnHand)
+	}
 	if cur.QuantityReserved != 40 || cur.Version != 4 {
 		t.Fatalf("unexpected state after release: reserved=%d, ver=%d", cur.QuantityReserved, cur.Version)
+	}
+	if cur.Available() != 60 {
+		t.Fatalf("unexpected available after release: avail=%d, expected=60", cur.Available())
 	}
 
 	// 6. Phase 2 - Stock Outflow / Adjustment: ship 40 units
@@ -405,7 +410,7 @@ func TestService_TwoPhaseReservationAndRelease_Lifecycle(t *testing.T) {
 		t.Fatalf("adjust stock failed: %v", err)
 	}
 	cur, _ = repo.Get(ctx, "inv-sku-001")
-	if cur.QuantityOnHand != 90 || cur.Version != 5 {
+	if cur.QuantityOnHand != 60 || cur.Version != 5 {
 		t.Fatalf("unexpected state after adjust: onHand=%d, ver=%d", cur.QuantityOnHand, cur.Version)
 	}
 }
@@ -559,7 +564,81 @@ func TestService_FlashSaleConcurrentReservationCollisions(t *testing.T) {
 	if afterCancel.QuantityReserved != expectedReserved {
 		t.Fatalf("expected %d reserved after cancellations, got %d", expectedReserved, afterCancel.QuantityReserved)
 	}
-	t.Logf("After concurrent cancellation: reserved=%d, available=%d", afterCancel.QuantityReserved, afterCancel.Available())
+	if afterCancel.QuantityOnHand != 100 {
+		t.Fatalf("expected 100 on-hand after cancellations, got %d", afterCancel.QuantityOnHand)
+	}
+	if afterCancel.Available() != 25 {
+		t.Fatalf("expected 25 available after cancellations, got %d", afterCancel.Available())
+	}
+	t.Logf("After concurrent cancellation: onHand=%d, reserved=%d, available=%d", afterCancel.QuantityOnHand, afterCancel.QuantityReserved, afterCancel.Available())
+}
+
+func TestReleaseReservation_DoesNotInflateOnHand(t *testing.T) {
+	ctx := context.Background()
+	repo := newInMemoryInventoryRepo()
+	svc := NewService(repo, nil, nil)
+
+	const initialOnHand = int64(100)
+	inv := Level{
+		InventoryID:      "inv-release-conserve",
+		ProductID:        "prod-conserve",
+		WarehouseID:      "wh-tashkent",
+		SupplierID:       "sup-food",
+		QuantityOnHand:   initialOnHand,
+		QuantityReserved: 0,
+		ReorderThreshold: 10,
+		Version:          1,
+	}
+	if err := svc.Upsert(ctx, inv); err != nil {
+		t.Fatalf("upsert failed: %v", err)
+	}
+
+	// Execute at least 5 reserve & release cycles to ensure QuantityOnHand is invariant.
+	for i := 0; i < 5; i++ {
+		cur, err := repo.Get(ctx, "inv-release-conserve")
+		if err != nil {
+			t.Fatalf("cycle %d get failed: %v", i, err)
+		}
+		if cur.QuantityOnHand != initialOnHand {
+			t.Fatalf("cycle %d: on-hand inflated before reserve: got %d, expected %d", i, cur.QuantityOnHand, initialOnHand)
+		}
+
+		// Reserve 20 units
+		if err := svc.ReserveForOrder(ctx, "inv-release-conserve", 20, cur.Version); err != nil {
+			t.Fatalf("cycle %d reserve failed: %v", i, err)
+		}
+		cur, err = repo.Get(ctx, "inv-release-conserve")
+		if err != nil {
+			t.Fatalf("cycle %d get after reserve failed: %v", i, err)
+		}
+		if cur.QuantityOnHand != initialOnHand {
+			t.Fatalf("cycle %d: on-hand changed on reserve: got %d, expected %d", i, cur.QuantityOnHand, initialOnHand)
+		}
+		if cur.QuantityReserved != 20 {
+			t.Fatalf("cycle %d: reserved mismatch: got %d, expected 20", i, cur.QuantityReserved)
+		}
+		if cur.Available() != 80 {
+			t.Fatalf("cycle %d: available mismatch: got %d, expected 80", i, cur.Available())
+		}
+
+		// Release 20 units
+		if err := svc.ReleaseReservation(ctx, "inv-release-conserve", 20, cur.Version); err != nil {
+			t.Fatalf("cycle %d release failed: %v", i, err)
+		}
+		cur, err = repo.Get(ctx, "inv-release-conserve")
+		if err != nil {
+			t.Fatalf("cycle %d get after release failed: %v", i, err)
+		}
+		if cur.QuantityOnHand != initialOnHand {
+			t.Fatalf("cycle %d: on-hand inflated on release: got %d, expected %d", i, cur.QuantityOnHand, initialOnHand)
+		}
+		if cur.QuantityReserved != 0 {
+			t.Fatalf("cycle %d: reserved not cleared: got %d, expected 0", i, cur.QuantityReserved)
+		}
+		if cur.Available() != initialOnHand {
+			t.Fatalf("cycle %d: available mismatch: got %d, expected %d", i, cur.Available(), initialOnHand)
+		}
+	}
 }
 
 func TestService_CASVersionConflict_MultipleCollisions(t *testing.T) {

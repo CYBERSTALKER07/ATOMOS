@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"cloud.google.com/go/civil"
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
@@ -27,7 +28,7 @@ func (s *Service) demandBaselineByProduct(ctx context.Context, supplierID, wareh
 		      WHERE SupplierId = @sid AND WarehouseId = @wh
 		        AND ForecastDate BETWEEN @start AND @end
 		      GROUP BY ProductId`,
-		Params: map[string]any{"sid": supplierID, "wh": warehouseID, "start": start, "end": end},
+		Params: map[string]any{"sid": supplierID, "wh": warehouseID, "start": civil.DateOf(start), "end": civil.DateOf(end)},
 	})
 	defer iter.Stop()
 	for {
@@ -94,7 +95,7 @@ func (s *Service) seedDemandBaselineFromInsights(ctx context.Context, supplierID
 	if len(insights) == 0 && len(adjustments) == 0 {
 		return
 	}
-	today := time.Now().UTC().Truncate(24 * time.Hour)
+	today := civil.DateOf(time.Now().UTC())
 	for productID, insight := range insights {
 		qty := insight.ReorderQuantity
 		burn := insight.AvgDailyVelocity

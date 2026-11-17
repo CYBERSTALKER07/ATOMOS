@@ -127,7 +127,7 @@ final class FileClaimViewModel {
             Haptics.success()
         } catch {
             Haptics.error()
-            errorMessage = (error as? LocalizedError)?.errorDescription ?? "Photo upload failed: \(error)"
+            errorMessage = RetailerW2ErrorParser.userFriendlyClaimError(for: error)
             photoURL = ""
         }
     }
@@ -137,7 +137,7 @@ final class FileClaimViewModel {
         successClaimId = nil
         if let eligibility, !eligibility.eligible {
             Haptics.error()
-            errorMessage = "Window closed — claim window has expired."
+            errorMessage = String(localized: "mobile_retailer.claims.error.window_expired")
             return
         }
         isSubmitting = true
@@ -146,7 +146,7 @@ final class FileClaimViewModel {
         let needsPhoto = ["DAMAGED", "CONCEALED_DAMAGE", "TAMPER", "TEMPERATURE"].contains(claimType)
         if needsPhoto && photoURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             Haptics.warning()
-            errorMessage = "Photo required for this claim type."
+            errorMessage = String(localized: "mobile_retailer.claims.error.photo_required")
             return
         }
 
@@ -190,7 +190,7 @@ final class FileClaimViewModel {
             await loadExisting()
         } catch {
             Haptics.error()
-            errorMessage = (error as? LocalizedError)?.errorDescription ?? "\(error)"
+            errorMessage = RetailerW2ErrorParser.userFriendlyClaimError(for: error)
         }
     }
 

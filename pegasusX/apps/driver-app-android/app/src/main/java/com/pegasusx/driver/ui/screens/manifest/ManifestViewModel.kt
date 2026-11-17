@@ -75,8 +75,10 @@ data class ManifestUiState(
     val wsConnectionState: ConnectionState = ConnectionState.DISCONNECTED,
     val lastWsRefreshAt: Long? = null,
     val pendingCollections: List<PendingCollection> = emptyList(),
-    /** Phase 6: open fiscal soft-freezes cash bag / return-complete. */
+    /** Non-blocking fiscal queue counts & cash bag return-complete lock (server-authoritative). */
     val openFiscalCount: Long = 0,
+    val retryQueuedCount: Long = 0,
+    val fiscalIssueCount: Long = 0,
     val cashBagFrozen: Boolean = false,
     val showCashRecon: Boolean = false,
     val declaredCashMinor: String = "",
@@ -415,12 +417,7 @@ class ManifestViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val snap = api.getOpenFiscal()
-                _state.update {
-                    it.copy(
-                        openFiscalCount = snap.openFiscalCount,
-                        cashBagFrozen = snap.cashBagFrozen || snap.openFiscalCount > 0,
-                    )
-                }
+                _state.update { applyOpenFiscalSnapshot(it, snap) }
             } catch (e: Exception) {
                 // non-fatal — return-complete still enforces server-side
             if (e is kotlinx.coroutines.CancellationException) throw e
@@ -435,12 +432,14 @@ class ManifestViewModel @Inject constructor(
                 // Soft-freeze: surface open fiscal before hitting the server.
                 try {
                     val snap = api.getOpenFiscal()
-                    if (snap.cashBagFrozen || snap.openFiscalCount > 0) {
+                    if (snap.cashBagFrozen) {
                         _state.update {
                             it.copy(
                                 openFiscalCount = snap.openFiscalCount,
+                                retryQueuedCount = snap.retryQueuedCount,
+                                fiscalIssueCount = snap.fiscalIssueCount,
                                 cashBagFrozen = true,
-                                error = "Cash bag frozen: ${snap.openFiscalCount} order(s) still fiscalizing. Retry fiscal or call supervisor.",
+                                error = "Cash bag frozen: ${snap.openFiscalCount} order(s) have uncollected cash or missing PoD before closing shift.",
                             )
                         }
                         return@launch
@@ -645,3 +644,13 @@ class ManifestViewModel @Inject constructor(
         items = try { json.decodeFromString(itemsJson) } catch (_: Exception) { emptyList() },
     )
 }
+
+internal fun applyOpenFiscalSnapshot(
+    current: ManifestUiState,
+    snap: com.pegasusx.driver.data.model.OpenFiscalResponse,
+): ManifestUiState = current.copy(
+    openFiscalCount = snap.openFiscalCount,
+    retryQueuedCount = snap.retryQueuedCount,
+    fiscalIssueCount = snap.fiscalIssueCount,
+    cashBagFrozen = snap.cashBagFrozen,
+)

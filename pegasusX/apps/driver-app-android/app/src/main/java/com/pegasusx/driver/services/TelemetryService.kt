@@ -156,7 +156,7 @@ class TelemetryService : Service() {
 
         // Adaptive GPS: use balanced accuracy when battery is low
         val priority = if (getBatteryPercent() < 20) {
-            Log.d(TAG, "Battery low — using BALANCED_POWER_ACCURACY")
+            if (BuildConfig.DEBUG) Log.d(TAG, "Battery low — using BALANCED_POWER_ACCURACY")
             Priority.PRIORITY_BALANCED_POWER_ACCURACY
         } else {
             Priority.PRIORITY_HIGH_ACCURACY
@@ -237,7 +237,7 @@ class TelemetryService : Service() {
 
         val callback = locationCallback ?: return
         fusedClient.requestLocationUpdates(locationRequest, callback, mainLooper)
-        Log.d(TAG, "Telemetry tracking started")
+        if (BuildConfig.DEBUG) Log.d(TAG, "Telemetry tracking started")
     }
 
     private fun checkAutoArrive(lat: Double, lng: Double) {
@@ -257,7 +257,7 @@ class TelemetryService : Service() {
                                 idempotencyKey = DriverIdempotencyKeys.markArrived(order.id),
                             )
                             orderDao.updateState(order.id, OrderState.ARRIVED.name, System.currentTimeMillis().toString())
-                            Log.d(TAG, "Auto-ARRIVED: ${order.id} (${dist.toInt()}m)")
+                            if (BuildConfig.DEBUG) Log.d(TAG, "Auto-ARRIVED: ${order.id} (${dist.toInt()}m)")
                         } catch (e: Exception) {
                             Log.w(TAG, "Auto-ARRIVED failed for ${order.id}", e)
                             arrivedIds.remove(order.id)
@@ -283,7 +283,7 @@ class TelemetryService : Service() {
             if (it.isHeld) it.release()
         }
         wakeLock = null
-        Log.d(TAG, "Telemetry tracking stopped")
+        if (BuildConfig.DEBUG) Log.d(TAG, "Telemetry tracking stopped")
     }
 
     private fun getBatteryPercent(): Int {

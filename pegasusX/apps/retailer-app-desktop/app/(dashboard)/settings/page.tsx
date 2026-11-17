@@ -1,6 +1,7 @@
 "use client";
 
-import { usePortalT } from "@/lib/i18n";
+import { usePortalLocale, usePortalT } from "@/lib/i18n";
+import { W2_COPY } from "@/lib/retailer-w2";
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { useRetailerSessionReconcile } from "../../../lib/use-retailer-session-reconcile";
 import { useRouter } from "next/navigation";
@@ -27,14 +28,16 @@ import {
   WifiOff,
   Clock,
   Users,
+  ShieldAlert,
 } from "lucide-react";
 import { PageChrome } from "@/components/PageChrome";
 import { CreditProfileCard } from "@/components/CreditProfileCard";
 import { LoyaltyCard } from "@/components/LoyaltyCard";
+import { TelegramLinkCard } from "@/components/settings/TelegramLinkCard";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLiveData } from "../../../lib/hooks";
 import { apiFetch } from "../../../lib/auth";
-import { getPricingRules } from "../../../lib/api";
+import { getPricingRules, getRetailerMe } from "../../../lib/api";
 import { retailerProfileUpdateKey } from "@pegasusx/api-core";
 import { useOptionalWebSocket } from "../../../lib/ws";
 import { BentoGrid, BentoCard } from "../../../components/BentoGrid";
@@ -111,6 +114,9 @@ function validateProfileFields(
 
 export default function SettingsPage() {
   const t = usePortalT();
+  const locale = usePortalLocale();
+  const w2 = W2_COPY[locale] ?? W2_COPY.en;
+  const [isOwner, setIsOwner] = useState(false);
   const {
     data: autoOrder,
     loading,
@@ -145,6 +151,21 @@ export default function SettingsPage() {
   const [profileError, setProfileError] = useState<string | null>(null);
   const [pricingRulesSummary, setPricingRulesSummary] = useState<string | null>(null);
   const [pricingRulesError, setPricingRulesError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    void getRetailerMe()
+      .then((me) => {
+        if (!active) return;
+        setIsOwner(Boolean(me.is_owner || me.retailer_role?.toUpperCase() === "OWNER"));
+      })
+      .catch(() => {
+        if (active) setIsOwner(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     void getPricingRules()
@@ -628,6 +649,7 @@ export default function SettingsPage() {
                 </h2>
                 <CreditProfileCard className="mb-1" />
                 <LoyaltyCard />
+                <TelegramLinkCard />
                 <div className="bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-2xl p-4 shadow-[var(--shadow-sm)] mb-3">
                   <p className="text-[10px] font-black uppercase tracking-widest text-[var(--desk-text-tertiary)] mb-2">
                     Pricing rules (read-only)
@@ -701,6 +723,28 @@ export default function SettingsPage() {
                     </div>
                     <ChevronRight size={18} className="text-[var(--desk-text-tertiary)]" />
                   </button>
+                  {isOwner && (
+                    <button
+                      type="button"
+                      onClick={() => router.push("/settings/team#approvals")}
+                      className="w-full flex items-center justify-between px-4 py-4 rounded-xl hover:bg-[var(--desk-surface-subtle)] transition-colors"
+                    >
+                      <div className="flex items-center gap-3 text-left">
+                        <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-amber-700">
+                          <ShieldAlert size={18} />
+                        </div>
+                        <div>
+                          <span className="md-typescale-body-medium font-light text-[var(--desk-text-primary)] block">
+                            {w2.inboxTitle}
+                          </span>
+                          <span className="text-[10px] font-light text-[var(--desk-text-tertiary)] uppercase tracking-widest">
+                            {w2.inboxSubtitle}
+                          </span>
+                        </div>
+                      </div>
+                      <ChevronRight size={18} className="text-[var(--desk-text-tertiary)]" />
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => router.push("/settings/family")}

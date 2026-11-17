@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState, useRef, useCallback } from 'react';
 import type { WsEvent } from '@pegasusx/types';
-import { readToken } from './auth';
+import { apiFetch, readToken } from './auth';
 
 function reconnectDelayMs(attempt: number, baseMs = 3_000, maxMs = 60_000): number {
   const capped = Math.min(Math.max(attempt, 0), 10);
@@ -77,15 +77,41 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
       }
     };
     
-    function connect() {
+    async function connect() {
       if (disposed) return;
       const token = readToken();
       if (!token) return;
 
       if (wsRef.current && (wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING)) return;
 
+      let wsTicket = '';
+      try {
+        const sessionRes = await apiFetch('/v1/retailer/ws-session');
+        const sessionBody = (await sessionRes.json().catch(() => null)) as { token?: string } | null;
+        if (!sessionRes.ok || typeof sessionBody?.token !== 'string' || !sessionBody.token) {
+          throw new Error('ws-session failed');
+        }
+        wsTicket = sessionBody.token;
+      } catch (err) {
+        if (disposed) return;
+        console.error('Failed to obtain ws-session ticket', err);
+        const delay = reconnectDelayMs(reconnectAttempt);
+        reconnectAttempt += 1;
+        reconnectTimer = setTimeout(() => {
+          void connect();
+        }, delay);
+        return;
+      }
+
+      if (disposed) return;
+      if (wsRef.current && (wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING)) return;
+
       const lastIdParam = lastEventIdRef.current ? `&last_event_id=${encodeURIComponent(lastEventIdRef.current)}` : '';
-      const ws = new WebSocket(`${WS_URL}?token=${encodeURIComponent(token)}${lastIdParam}`);
+      const ws = new WebSocket(`${WS_URL}?token=${encodeURIComponent(wsTicket)}${lastIdParam}`);
+      if (disposed) {
+        ws.close();
+        return;
+      }
       
       ws.onopen = () => {
         reconnectAttempt = 0;
@@ -141,7 +167,9 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
         if (!disposed) {
           const delay = reconnectDelayMs(reconnectAttempt);
           reconnectAttempt += 1;
-          reconnectTimer = setTimeout(connect, delay);
+          reconnectTimer = setTimeout(() => {
+            void connect();
+          }, delay);
         }
       };
 
@@ -153,7 +181,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
       wsRef.current = ws;
     }
 
-    connect();
+    void connect();
 
     const onOnline = () => {
       reconnectAttempt = 0;
@@ -161,7 +189,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
         clearTimeout(reconnectTimer);
         reconnectTimer = null;
       }
-      connect();
+      void connect();
     };
 
     const onOffline = () => {

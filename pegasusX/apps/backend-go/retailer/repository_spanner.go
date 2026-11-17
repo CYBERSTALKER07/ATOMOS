@@ -25,14 +25,43 @@ type SpannerRepository struct {
 }
 
 func retailerPersistenceMap(ret Retailer) map[string]any {
+	legalStatus := strings.TrimSpace(ret.LegalEntityStatus)
+	if legalStatus == "" {
+		if strings.TrimSpace(ret.NormalizedTaxID) != "" {
+			legalStatus = LegalEntityVerified
+		} else {
+			legalStatus = LegalEntityInformalPhone
+		}
+	}
 	row := map[string]any{
-		"RetailerId":  ret.RetailerID,
-		"Phone":       ret.Phone,
-		"Name":        ret.Name,
-		"CountryCode": ret.CountryCode,
-		"Lat":         ret.Lat,
-		"Lng":         ret.Lng,
-		"H3Cell":      ret.H3Cell,
+		"RetailerId":        ret.RetailerID,
+		"Phone":             ret.Phone,
+		"Name":              ret.Name,
+		"CountryCode":       ret.CountryCode,
+		"Lat":               ret.Lat,
+		"Lng":               ret.Lng,
+		"H3Cell":            ret.H3Cell,
+		"LegalEntityStatus": legalStatus,
+	}
+	if taxID := strings.TrimSpace(ret.TaxID); taxID != "" {
+		row["TaxId"] = taxID
+	} else {
+		row["TaxId"] = nil
+	}
+	if normTaxID := strings.TrimSpace(ret.NormalizedTaxID); normTaxID != "" {
+		row["NormalizedTaxId"] = normTaxID
+	} else {
+		row["NormalizedTaxId"] = nil
+	}
+	if homeCell := strings.TrimSpace(ret.HomeCell); homeCell != "" {
+		row["HomeCell"] = homeCell
+	} else {
+		row["HomeCell"] = nil
+	}
+	if ret.InnVerifiedAt != nil && !ret.InnVerifiedAt.IsZero() {
+		row["InnVerifiedAt"] = ret.InnVerifiedAt.UTC()
+	} else {
+		row["InnVerifiedAt"] = nil
 	}
 	if addr := strings.TrimSpace(ret.DeliveryAddress); addr != "" {
 		row["DeliveryAddress"] = addr
@@ -51,6 +80,28 @@ func retailerPersistenceMap(ret Retailer) map[string]any {
 		row["ReceivingWindowClose"] = nil
 	}
 	return row
+}
+
+func applyRetailerIdentityColumns(ret *Retailer, rwOpen, rwClose, taxID, normTaxID, homeCell, legalStatus spanner.NullString, innVerifiedAt spanner.NullTime) {
+	applyRetailerWindowColumns(ret, rwOpen, rwClose)
+	if taxID.Valid {
+		ret.TaxID = taxID.StringVal
+	}
+	if normTaxID.Valid {
+		ret.NormalizedTaxID = normTaxID.StringVal
+	}
+	if homeCell.Valid {
+		ret.HomeCell = homeCell.StringVal
+	}
+	if legalStatus.Valid && strings.TrimSpace(legalStatus.StringVal) != "" {
+		ret.LegalEntityStatus = legalStatus.StringVal
+	} else {
+		ret.LegalEntityStatus = LegalEntityInformalPhone
+	}
+	if innVerifiedAt.Valid {
+		ts := innVerifiedAt.Time
+		ret.InnVerifiedAt = &ts
+	}
 }
 
 func applyRetailerWindowColumns(ret *Retailer, rwOpen, rwClose spanner.NullString) {
@@ -140,7 +191,7 @@ func (r *SpannerRepository) CreateRetailer(ctx context.Context, ret Retailer, em
 		}
 
 		insertMap := retailerPersistenceMap(ret)
-		insertMap["CreatedAt"] = ret.CreatedAt.UTC()
+		insertMap["CreatedAt"] = spanner.CommitTimestamp
 		mutations := []*spanner.Mutation{
 			spanner.InsertMap("Retailers", insertMap),
 		}
@@ -169,7 +220,9 @@ func (r *SpannerRepository) FindByPhone(ctx context.Context, phone string) (Reta
 
 	stmt := spanner.Statement{
 		SQL: `SELECT RetailerId, Phone, Name, CountryCode, Lat, Lng, H3Cell,
-			         ReceivingWindowOpen, ReceivingWindowClose, CreatedAt
+			         ReceivingWindowOpen, ReceivingWindowClose,
+			         TaxId, NormalizedTaxId, HomeCell, LegalEntityStatus, InnVerifiedAt,
+			         CreatedAt
 			  FROM Retailers
 			  WHERE Phone = @Phone
 			  LIMIT 1`,
@@ -190,7 +243,8 @@ func (r *SpannerRepository) FindByPhone(ctx context.Context, phone string) (Reta
 	}
 
 	var ret Retailer
-	var rwOpen, rwClose spanner.NullString
+	var rwOpen, rwClose, taxID, normTaxID, homeCell, legalStatus spanner.NullString
+	var innVerifiedAt spanner.NullTime
 	if err := row.Columns(
 		&ret.RetailerID,
 		&ret.Phone,
@@ -201,11 +255,16 @@ func (r *SpannerRepository) FindByPhone(ctx context.Context, phone string) (Reta
 		&ret.H3Cell,
 		&rwOpen,
 		&rwClose,
+		&taxID,
+		&normTaxID,
+		&homeCell,
+		&legalStatus,
+		&innVerifiedAt,
 		&ret.CreatedAt,
 	); err != nil {
 		return Retailer{}, false, fmt.Errorf("scan retailer by phone: %w", err)
 	}
-	applyRetailerWindowColumns(&ret, rwOpen, rwClose)
+	applyRetailerIdentityColumns(&ret, rwOpen, rwClose, taxID, normTaxID, homeCell, legalStatus, innVerifiedAt)
 	ret.SupplierID = r.supplierID
 
 	return ret, true, nil
@@ -229,6 +288,11 @@ func (r *SpannerRepository) GetRetailer(ctx context.Context, retailerID string) 
 		"PlaceId",
 		"ReceivingWindowOpen",
 		"ReceivingWindowClose",
+		"TaxId",
+		"NormalizedTaxId",
+		"HomeCell",
+		"LegalEntityStatus",
+		"InnVerifiedAt",
 		"CreatedAt",
 	})
 	if err != nil {
@@ -241,6 +305,8 @@ func (r *SpannerRepository) GetRetailer(ctx context.Context, retailerID string) 
 	var ret Retailer
 	var rwOpen, rwClose spanner.NullString
 	var deliveryAddress, placeID spanner.NullString
+	var taxID, normTaxID, homeCell, legalStatus spanner.NullString
+	var innVerifiedAt spanner.NullTime
 	if err := row.Columns(
 		&ret.RetailerID,
 		&ret.Phone,
@@ -253,6 +319,11 @@ func (r *SpannerRepository) GetRetailer(ctx context.Context, retailerID string) 
 		&placeID,
 		&rwOpen,
 		&rwClose,
+		&taxID,
+		&normTaxID,
+		&homeCell,
+		&legalStatus,
+		&innVerifiedAt,
 		&ret.CreatedAt,
 	); err != nil {
 		return Retailer{}, false, fmt.Errorf("scan retailer %s: %w", retailerID, err)
@@ -263,7 +334,7 @@ func (r *SpannerRepository) GetRetailer(ctx context.Context, retailerID string) 
 	if placeID.Valid {
 		ret.PlaceID = placeID.StringVal
 	}
-	applyRetailerWindowColumns(&ret, rwOpen, rwClose)
+	applyRetailerIdentityColumns(&ret, rwOpen, rwClose, taxID, normTaxID, homeCell, legalStatus, innVerifiedAt)
 	ret.SupplierID = r.supplierID
 
 	return ret, true, nil

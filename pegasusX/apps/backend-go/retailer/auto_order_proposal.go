@@ -2,7 +2,9 @@ package retailer
 
 import (
 	"context"
+	"encoding/json"
 	"math"
+	"sort"
 	"strings"
 	"time"
 
@@ -12,7 +14,39 @@ import (
 	"google.golang.org/api/iterator"
 )
 
-const defaultReviewIntervalDays = 1.0
+const (
+	defaultReviewIntervalDays = 1.0
+	stockBalancePageSize      = 500
+)
+
+type stockBalanceRow struct {
+	sku       string
+	onHand    int64
+	reserved  int64
+	updatedAt time.Time
+}
+
+var inFlightOrderStatuses = []string{
+	"PENDING",
+	"SCHEDULED",
+	"AUTO_ACCEPTED",
+	"BACKORDERED",
+	"DELAYED",
+	"LOADED",
+	"IN_TRANSIT",
+	"ARRIVED",
+	"AWAITING_PAYMENT",
+	"PENDING_CASH_COLLECTION",
+	"SHOP_CLOSED_PENDING",
+	// Legacy aliases retained for older persisted rows
+	"CONFIRMED",
+	"PICKING",
+	"PACKED",
+	"DISPATCHED",
+	"EN_ROUTE",
+	"ARRIVING",
+	"ARRIVED_SHOP_CLOSED",
+}
 
 // InventoryProposal is one inventory-grounded (R,s,S) candidate.
 type InventoryProposal struct {
@@ -82,6 +116,32 @@ func ConfidenceFromStockAge(updatedAt time.Time, now time.Time) float64 {
 	return c
 }
 
+// iterateKeysetCursor walks keyset-paginated pages until a short page, empty/stalled cursor, or error.
+func iterateKeysetCursor[T any](
+	pageSize int,
+	fetch func(after string, limit int) (items []T, rawCount int, nextCursor string, err error),
+	visit func(T),
+	onErr func(after string, err error),
+) {
+	after := ""
+	for {
+		items, rawCount, nextCursor, err := fetch(after, pageSize)
+		if err != nil {
+			if onErr != nil {
+				onErr(after, err)
+			}
+			break
+		}
+		for _, item := range items {
+			visit(item)
+		}
+		if rawCount < pageSize || nextCursor == "" || nextCursor == after {
+			break
+		}
+		after = nextCursor
+	}
+}
+
 // loadInventoryProposals builds (R,s,S) candidates from stock + OPEN suggestions / sell-through.
 func (s *Service) loadInventoryProposals(ctx context.Context, orgID string) []InventoryProposal {
 	if s == nil || s.spannerClient == nil || strings.TrimSpace(orgID) == "" {
@@ -90,46 +150,22 @@ func (s *Service) loadInventoryProposals(ctx context.Context, orgID string) []In
 	now := s.now().UTC()
 	today := civil.DateOf(now)
 
-	type stockRow struct {
-		sku       string
-		onHand    int64
-		reserved  int64
-		updatedAt time.Time
-	}
-	stockBySKU := map[string]*stockRow{}
-	iter := s.spannerClient.Single().Query(ctx, spanner.Statement{
-		SQL: `SELECT Sku, COALESCE(SUM(OnHand), 0), COALESCE(SUM(Reserved), 0), MAX(UpdatedAt)
-			FROM RetailerStockBalances
-			WHERE RetailerId = @rid
-			GROUP BY Sku
-			LIMIT 500`,
-		Params: map[string]any{"rid": orgID},
-	})
-	defer iter.Stop()
-	for {
-		row, err := iter.Next()
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			break
-		}
-		var sku string
-		var onHand, reserved int64
-		var updated spanner.NullTime
-		if err := row.Columns(&sku, &onHand, &reserved, &updated); err != nil {
-			continue
-		}
-		sku = strings.TrimSpace(sku)
-		if sku == "" || strings.HasPrefix(strings.ToLower(sku), "local:") {
-			continue
-		}
-		sr := &stockRow{sku: sku, onHand: onHand, reserved: reserved}
-		if updated.Valid {
-			sr.updatedAt = updated.Time.UTC()
-		}
-		stockBySKU[sku] = sr
-	}
+	stockBySKU := map[string]*stockBalanceRow{}
+	iterateKeysetCursor(
+		stockBalancePageSize,
+		func(after string, limit int) ([]stockBalanceRow, int, string, error) {
+			return s.fetchStockBalancePage(ctx, orgID, after, limit)
+		},
+		func(sr stockBalanceRow) {
+			rowCopy := sr
+			stockBySKU[rowCopy.sku] = &rowCopy
+		},
+		func(after string, err error) {
+			if s.log != nil {
+				s.log.Warn("auto-order stock balance scan failed", "retailer_id", orgID, "after_sku", after, "err", err)
+			}
+		},
+	)
 
 	// Merge OPEN reorder suggestions (demand + safety → ROP).
 	sugBySKU := map[string]RetailerReorderSuggestion{}
@@ -141,13 +177,20 @@ func (s *Service) loadInventoryProposals(ctx context.Context, orgID string) []In
 			}
 			sugBySKU[sku] = it
 			if _, ok := stockBySKU[sku]; !ok {
-				stockBySKU[sku] = &stockRow{sku: sku, onHand: it.CurrentStock}
+				stockBySKU[sku] = &stockBalanceRow{sku: sku, onHand: it.CurrentStock}
 			}
 		}
 	}
 
-	out := make([]InventoryProposal, 0)
-	for sku, sr := range stockBySKU {
+	skus := make([]string, 0, len(stockBySKU))
+	for sku := range stockBySKU {
+		skus = append(skus, sku)
+	}
+	sort.Strings(skus)
+
+	out := make([]InventoryProposal, 0, len(skus))
+	for _, sku := range skus {
+		sr := stockBySKU[sku]
 		sug, hasSug := sugBySKU[sku]
 		inFlight := int64(0)
 		if hasSug {
@@ -230,26 +273,143 @@ func (s *Service) loadInventoryProposals(ctx context.Context, orgID string) []In
 	return out
 }
 
+func buildStockBalancePageStmt(retailerID, afterSKU string, limit int) spanner.Statement {
+	if limit <= 0 {
+		limit = stockBalancePageSize
+	}
+	if afterSKU == "" {
+		return spanner.Statement{
+			SQL: `SELECT Sku, COALESCE(SUM(OnHand), 0), COALESCE(SUM(Reserved), 0), MAX(UpdatedAt)
+				FROM RetailerStockBalances
+				WHERE RetailerId = @rid
+				GROUP BY Sku
+				ORDER BY Sku ASC
+				LIMIT @lim`,
+			Params: map[string]any{"rid": retailerID, "lim": int64(limit)},
+		}
+	}
+	return spanner.Statement{
+		SQL: `SELECT Sku, COALESCE(SUM(OnHand), 0), COALESCE(SUM(Reserved), 0), MAX(UpdatedAt)
+			FROM RetailerStockBalances
+			WHERE RetailerId = @rid AND Sku > @afterSku
+			GROUP BY Sku
+			ORDER BY Sku ASC
+			LIMIT @lim`,
+		Params: map[string]any{"rid": retailerID, "afterSku": afterSKU, "lim": int64(limit)},
+	}
+}
+
+func (s *Service) fetchStockBalancePage(ctx context.Context, retailerID, afterSKU string, limit int) ([]stockBalanceRow, int, string, error) {
+	stmt := buildStockBalancePageStmt(retailerID, afterSKU, limit)
+	iter := s.spannerClient.Single().Query(ctx, stmt)
+	defer iter.Stop()
+
+	var rows []stockBalanceRow
+	var rawCount int
+	var lastRawSKU string
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return rows, rawCount, lastRawSKU, err
+		}
+		var rawSKU string
+		var onHand, reserved int64
+		var updated spanner.NullTime
+		if err := row.Columns(&rawSKU, &onHand, &reserved, &updated); err != nil {
+			return rows, rawCount, lastRawSKU, err
+		}
+		rawCount++
+		lastRawSKU = rawSKU
+
+		sku := strings.TrimSpace(rawSKU)
+		if sku == "" || strings.HasPrefix(strings.ToLower(sku), "local:") {
+			continue
+		}
+		sr := stockBalanceRow{sku: sku, onHand: onHand, reserved: reserved}
+		if updated.Valid {
+			sr.updatedAt = updated.Time.UTC()
+		}
+		rows = append(rows, sr)
+	}
+	return rows, rawCount, lastRawSKU, nil
+}
+
+func buildInFlightQtyStmt(retailerID, sku string) spanner.Statement {
+	statuses := append([]string(nil), inFlightOrderStatuses...)
+	return spanner.Statement{
+		SQL: `SELECT o.LineItemsJson
+			FROM Orders o
+			WHERE o.RetailerId = @rid
+			  AND UPPER(o.Status) IN UNNEST(@statuses)`,
+		Params: map[string]any{
+			"rid":      retailerID,
+			"sku":      sku,
+			"statuses": statuses,
+		},
+	}
+}
+
 func (s *Service) inFlightQtyForSKU(ctx context.Context, retailerID, sku string) int64 {
 	if s.spannerClient == nil {
 		return 0
 	}
-	iter := s.spannerClient.Single().Query(ctx, spanner.Statement{
-		SQL: `SELECT COALESCE(SUM(l.Quantity), 0)
-			FROM Orders o
-			JOIN OrderLines l ON l.OrderId = o.OrderId
-			WHERE o.RetailerId = @rid AND l.Sku = @sku
-			  AND UPPER(o.Status) IN ('PENDING', 'CONFIRMED', 'PICKING', 'PACKED', 'IN_TRANSIT', 'DISPATCHED')`,
-		Params: map[string]any{"rid": retailerID, "sku": sku},
-	})
+	iter := s.spannerClient.Single().Query(ctx, buildInFlightQtyStmt(retailerID, sku))
 	defer iter.Stop()
-	row, err := iter.Next()
-	if err != nil {
-		return 0
+
+	targetSKU := strings.TrimSpace(sku)
+	var total int64
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			if s.log != nil {
+				s.log.Warn("auto-order in-flight qty query failed", "retailer_id", retailerID, "sku", sku, "err", err)
+			}
+			break
+		}
+		var raw []byte
+		if err := row.ColumnByName("LineItemsJson", &raw); err != nil {
+			var rawStr string
+			if errStr := row.ColumnByName("LineItemsJson", &rawStr); errStr == nil {
+				raw = []byte(rawStr)
+			} else {
+				continue
+			}
+		}
+		if len(raw) == 0 {
+			continue
+		}
+		var lines []struct {
+			SKU       string `json:"sku"`
+			ProductID string `json:"product_id"`
+			Quantity  int64  `json:"quantity"`
+			Qty       int64  `json:"qty"`
+		}
+		if err := json.Unmarshal(raw, &lines); err != nil {
+			continue
+		}
+		for _, l := range lines {
+			lineSKU := strings.TrimSpace(l.SKU)
+			if lineSKU == "" {
+				lineSKU = strings.TrimSpace(l.ProductID)
+			}
+			if lineSKU == targetSKU {
+				q := l.Quantity
+				if q == 0 {
+					q = l.Qty
+				}
+				if q > 0 {
+					total += q
+				}
+			}
+		}
 	}
-	var n int64
-	_ = row.Column(0, &n)
-	return n
+	return total
 }
 
 func (s *Service) sellThroughDemandPerDay(ctx context.Context, retailerID, sku string, today civil.Date, windowDays int) float64 {

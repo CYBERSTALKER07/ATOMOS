@@ -93,9 +93,17 @@ func setupPartnerSubsystems(
 	}
 	partnerSvc.SetAs2Repository(partnerAs2)
 	partnerSvc.SetCoaRepository(partnerCoa)
+	var partnerOnec partner.OnecPostingRepository
+	if spannerClient != nil {
+		partnerOnec = partner.NewSpannerOnecPostingRepository(spannerClient)
+	} else {
+		partnerOnec = partner.NewMemoryOnecPostingRepository()
+	}
+	partnerSvc.SetOnecPostings(partnerOnec)
 	partnerDelivery := partner.NewDeliveryWorker(partnerWebhooks, log)
 	partnerExportWorker := partner.NewExportWorker(partnerExports, partnerSftp, spannerClient, log)
 	partnerExportWorker.SetCoaRepository(partnerCoa)
+	partnerExportWorker.SetOnecPostings(partnerOnec)
 	partnerEdiOut := partner.NewEdiOutboundWorker(partnerEdiDocs, partnerSftp, orderSvc, spannerClient, log)
 	partnerEdiOut.SetAs2Repository(partnerAs2)
 	partnerSvc.SetEdiRepos(partnerEdiDocs, partnerEdiOut)

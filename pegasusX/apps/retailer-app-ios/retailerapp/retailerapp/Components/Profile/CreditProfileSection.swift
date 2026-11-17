@@ -6,18 +6,6 @@ struct CreditProfileSection: View {
     let missing: Bool
     let error: String?
 
-    private static let minorFormatter: NumberFormatter = {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .decimal
-        formatter.groupingSeparator = " "
-        formatter.maximumFractionDigits = 0
-        return formatter
-    }()
-
-    private func formatMinor(_ value: Int64) -> String {
-        Self.minorFormatter.string(from: NSNumber(value: value)) ?? "\(value)"
-    }
-
     var body: some View {
         VStack(alignment: .leading, spacing: AppTheme.spacingMD) {
             HStack(spacing: 8) {
@@ -58,17 +46,17 @@ struct CreditProfileSection: View {
                 HStack(spacing: 12) {
                     KPICard(
                         title: "Limit",
-                        value: formatMinor(profile.creditLimitMinor),
+                        value: RetailerMoney.formatWholeCurrency(profile.creditLimitMinor),
                         subtitle: "Credit limit"
                     )
                     KPICard(
                         title: "Balance due",
-                        value: formatMinor(profile.currentBalanceMinor),
+                        value: RetailerMoney.formatWholeCurrency(profile.currentBalanceMinor),
                         subtitle: "Outstanding"
                     )
                     KPICard(
                         title: "Available",
-                        value: formatMinor(profile.availableCreditMinor),
+                        value: RetailerMoney.formatWholeCurrency(profile.availableCreditMinor),
                         subtitle: "Remaining"
                     )
                 }

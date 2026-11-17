@@ -150,7 +150,7 @@ func (r *SpannerRepository) VetOrder(ctx context.Context, supplierID string, par
 					return fmt.Errorf("parse line items %s: %w", orderID, err)
 				}
 			}
-			if err := order.ReleaseReservationsInTxn(ctx, txn, supplierID, current.WarehouseID, order.OrderSource(orderSource), lineItems); err != nil {
+			if err := order.ReleaseReservationsForOrderInTxn(ctx, txn, supplierID, current.WarehouseID, orderID, order.OrderSource(orderSource), lineItems); err != nil {
 				return fmt.Errorf("release reservations %s: %w", orderID, err)
 			}
 		}

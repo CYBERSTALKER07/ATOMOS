@@ -8,6 +8,7 @@ import (
 
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
 	"google.golang.org/api/iterator"
 )
 
@@ -395,4 +396,169 @@ func (tx *spannerPayloadTx) SaveShipUnits(ctx context.Context, units []ShipUnit)
 		return tx.txn.BufferWrite(muts)
 	}
 	return nil
+}
+
+// LookupVehicleRoute queries Spanner SupplierTruckManifests/ManifestOrders (with RouteTwins/StopTwins fallback)
+// using an explicit ReadOnlyTransaction so stop sequences reflect live committed dispatch state.
+func (r *SpannerRepository) LookupVehicleRoute(ctx context.Context, supplierID, truckOrRouteID string) (LIFORouteLookup, error) {
+	if r == nil || r.client == nil {
+		return LIFORouteLookup{}, ErrLIFORepoUnavailable
+	}
+	target := strings.TrimSpace(truckOrRouteID)
+	if target == "" {
+		return LIFORouteLookup{}, ErrRouteNotFound
+	}
+	sid := strings.TrimSpace(supplierID)
+	if sid == "" {
+		sid = strings.TrimSpace(r.supplierID)
+	}
+
+	var out LIFORouteLookup
+	err := spannerutils.RunReadOnlyTransaction(ctx, r.client, func(ctx context.Context, txn *spanner.ReadOnlyTransaction) error {
+		manifestSQL := `SELECT ManifestId, COALESCE(TruckId, ''), COALESCE(RouteId, '')
+			FROM SupplierTruckManifests
+			WHERE (TruckId = @id OR RouteId = @id OR ManifestId = @id)
+			  AND State != 'CANCELLED'`
+		params := map[string]any{"id": target}
+		if sid != "" {
+			manifestSQL += ` AND SupplierId = @sid`
+			params["sid"] = sid
+		}
+		manifestSQL += ` ORDER BY UpdatedAt DESC LIMIT 1`
+
+		mIter := txn.Query(ctx, spanner.Statement{SQL: manifestSQL, Params: params})
+		var manifestID, truckID, routeID string
+		var foundManifest bool
+		func() {
+			defer mIter.Stop()
+			row, err := mIter.Next()
+			if err == nil {
+				if scanErr := row.Columns(&manifestID, &truckID, &routeID); scanErr == nil {
+					foundManifest = true
+				}
+			}
+		}()
+
+		if foundManifest && manifestID != "" {
+			orderIter := txn.Query(ctx, spanner.Statement{
+				SQL: `SELECT OrderId
+					FROM ManifestOrders
+					WHERE ManifestId = @mid
+					  AND State NOT IN ('CANCELLED', 'REMOVED', 'REMOVED_REASSIGNED')
+					ORDER BY SequenceIndex ASC, LoadingOrder ASC, OrderId ASC`,
+				Params: map[string]any{"mid": manifestID},
+			})
+			var stops []string
+			err := func() error {
+				defer orderIter.Stop()
+				for {
+					row, nextErr := orderIter.Next()
+					if nextErr == iterator.Done {
+						return nil
+					}
+					if nextErr != nil {
+						return nextErr
+					}
+					var orderID string
+					if colErr := row.Columns(&orderID); colErr != nil {
+						return colErr
+					}
+					if strings.TrimSpace(orderID) != "" {
+						stops = append(stops, orderID)
+					}
+				}
+			}()
+			if err != nil {
+				return fmt.Errorf("lookup manifest orders: %w", err)
+			}
+			if len(stops) > 0 {
+				vid := strings.TrimSpace(truckID)
+				if vid == "" {
+					vid = target
+				}
+				rid := strings.TrimSpace(routeID)
+				if rid == "" {
+					rid = "route_" + vid
+				}
+				out = LIFORouteLookup{
+					VehicleID:  vid,
+					RouteID:    rid,
+					ManifestID: manifestID,
+					StopIDs:    stops,
+				}
+				return nil
+			}
+		}
+
+		// Fallback to RouteTwins + StopTwins when stops are tracked on the route twin.
+		rtLookupID := target
+		if strings.TrimSpace(routeID) != "" {
+			rtLookupID = strings.TrimSpace(routeID)
+		}
+		rtSQL := `SELECT RouteId
+			FROM RouteTwins
+			WHERE (RouteId = @id OR RouteId = @rtid OR DriverId = @id)`
+		rtParams := map[string]any{"id": target, "rtid": rtLookupID}
+		if sid != "" {
+			rtSQL += ` AND SupplierId = @sid`
+			rtParams["sid"] = sid
+		}
+		rtSQL += ` ORDER BY UpdatedAt DESC LIMIT 1`
+
+		rtIter := txn.Query(ctx, spanner.Statement{SQL: rtSQL, Params: rtParams})
+		var resolvedRouteID string
+		var foundRoute bool
+		func() {
+			defer rtIter.Stop()
+			row, err := rtIter.Next()
+			if err == nil {
+				if scanErr := row.Columns(&resolvedRouteID); scanErr == nil {
+					foundRoute = true
+				}
+			}
+		}()
+		if !foundRoute || strings.TrimSpace(resolvedRouteID) == "" {
+			return ErrRouteNotFound
+		}
+
+		stIter := txn.Query(ctx, spanner.Statement{
+			SQL: `SELECT StopId
+				FROM StopTwins
+				WHERE RouteId = @rid
+				ORDER BY Sequence ASC, StopId ASC`,
+			Params: map[string]any{"rid": resolvedRouteID},
+		})
+		defer stIter.Stop()
+		var stops []string
+		for {
+			row, nextErr := stIter.Next()
+			if nextErr == iterator.Done {
+				break
+			}
+			if nextErr != nil {
+				return fmt.Errorf("lookup stop twins: %w", nextErr)
+			}
+			var stopID string
+			if colErr := row.Columns(&stopID); colErr != nil {
+				return colErr
+			}
+			if strings.TrimSpace(stopID) != "" {
+				stops = append(stops, stopID)
+			}
+		}
+		if len(stops) == 0 {
+			return ErrRouteNotFound
+		}
+		out = LIFORouteLookup{
+			VehicleID:  target,
+			RouteID:    resolvedRouteID,
+			ManifestID: manifestID,
+			StopIDs:    stops,
+		}
+		return nil
+	})
+	if err != nil {
+		return LIFORouteLookup{}, err
+	}
+	return out, nil
 }

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
+	"github.com/google/uuid"
 	"google.golang.org/api/iterator"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/ar"
@@ -80,11 +81,11 @@ func (w *InvoiceWorker) GenerateMonthlyInvoice(ctx context.Context, supplierID s
 	if err != nil {
 		return "", err
 	}
-	orderCount, gmvMinor, err := w.monthTotals(ctx, supplierID, first, next)
+	orderCount, gmvMinor, settledCommission, err := w.monthTotals(ctx, supplierID, first, next)
 	if err != nil {
 		return "", err
 	}
-	fee := sched.MonthlyFee(orderCount, gmvMinor)
+	fee := computeMonthlyBillingFee(sched, orderCount, gmvMinor, settledCommission)
 	if fee <= 0 {
 		return "", nil
 	}
@@ -111,8 +112,102 @@ func (w *InvoiceWorker) GenerateMonthlyInvoice(ctx context.Context, supplierID s
 		"supplier_id", supplierID, "month", first.Format("2006-01"),
 		"invoice_id", inv.InvoiceID, "fee_minor", fee,
 		"orders", orderCount, "gmv_minor", gmvMinor,
+		"settled_commission_minor", settledCommission,
 		"tier", sched.Tier, "schedule_id", sched.FeeScheduleID)
 	return inv.InvoiceID, nil
+}
+
+// RecordOrderCompleted records an ORDER_COMPLETED event into BillingMeterEvents.
+func (w *InvoiceWorker) RecordOrderCompleted(ctx context.Context, supplierID, orderID string, gmvMinor int64, occurredAt time.Time) error {
+	return w.RecordOrderCompletedWithCommission(ctx, supplierID, orderID, gmvMinor, 0, occurredAt)
+}
+
+// computeMonthlyBillingFee computes the total billing fee due for the period,
+// correctly crediting excess settled commission against the platform fee when settledCommission > totalGmvFee.
+func computeMonthlyBillingFee(sched FeeSchedule, orderCount int64, gmvMinor int64, settledCommission int64) int64 {
+	if settledCommission > 0 {
+		totalGmvFee := gmvMinor * sched.GmvBps / 10000
+		platformFee := sched.MonthlyPlatformFee(orderCount)
+		if settledCommission > totalGmvFee {
+			excess := settledCommission - totalGmvFee
+			fee := platformFee - excess
+			if fee < 0 {
+				return 0
+			}
+			return fee
+		}
+		uncollected := totalGmvFee - settledCommission
+		return platformFee + uncollected
+	}
+	return sched.MonthlyFee(orderCount, gmvMinor)
+}
+
+// RecordOrderCompletedWithCommission records an ORDER_COMPLETED event and settled payout commission into BillingMeterEvents.
+func (w *InvoiceWorker) RecordOrderCompletedWithCommission(ctx context.Context, supplierID, orderID string, gmvMinor, settledCommissionMinor int64, occurredAt time.Time) error {
+	supplierID = strings.TrimSpace(supplierID)
+	orderID = strings.TrimSpace(orderID)
+	if supplierID == "" || orderID == "" {
+		return nil
+	}
+	if w == nil || w.client == nil {
+		return fmt.Errorf("billing invoice worker unavailable")
+	}
+	var ts any = occurredAt.UTC()
+	if occurredAt.IsZero() {
+		ts = spanner.CommitTimestamp
+	}
+	muts := make([]*spanner.Mutation, 0, 2)
+	if gmvMinor >= 0 {
+		muts = append(muts, spanner.InsertMap("BillingMeterEvents", map[string]any{
+			"EventId":     uuid.NewString(),
+			"SupplierId":  supplierID,
+			"OrderId":     orderID,
+			"MeterType":   "ORDER_COMPLETED",
+			"Amount":      gmvMinor,
+			"ProcessedAt": ts,
+		}))
+	}
+	if settledCommissionMinor > 0 {
+		muts = append(muts, spanner.InsertMap("BillingMeterEvents", map[string]any{
+			"EventId":     uuid.NewString(),
+			"SupplierId":  supplierID,
+			"OrderId":     orderID,
+			"MeterType":   "COMMISSION_SETTLED",
+			"Amount":      settledCommissionMinor,
+			"ProcessedAt": ts,
+		}))
+	}
+	if len(muts) == 0 {
+		return nil
+	}
+	_, err := w.client.Apply(ctx, muts)
+	return err
+}
+
+// RecordOrderRefunded records an ORDER_REFUNDED event into BillingMeterEvents to net against monthly GMV.
+func (w *InvoiceWorker) RecordOrderRefunded(ctx context.Context, supplierID, orderID string, refundMinor int64, occurredAt time.Time) error {
+	supplierID = strings.TrimSpace(supplierID)
+	orderID = strings.TrimSpace(orderID)
+	if supplierID == "" || orderID == "" || refundMinor <= 0 {
+		return nil
+	}
+	if w == nil || w.client == nil {
+		return fmt.Errorf("billing invoice worker unavailable")
+	}
+	var ts any = occurredAt.UTC()
+	if occurredAt.IsZero() {
+		ts = spanner.CommitTimestamp
+	}
+	mut := spanner.InsertMap("BillingMeterEvents", map[string]any{
+		"EventId":     uuid.NewString(),
+		"SupplierId":  supplierID,
+		"OrderId":     orderID,
+		"MeterType":   "ORDER_REFUNDED",
+		"Amount":      refundMinor,
+		"ProcessedAt": ts,
+	})
+	_, err := w.client.Apply(ctx, []*spanner.Mutation{mut})
+	return err
 }
 
 func (w *InvoiceWorker) activeSuppliers(ctx context.Context, start, end time.Time) ([]string, error) {
@@ -139,22 +234,97 @@ func (w *InvoiceWorker) activeSuppliers(ctx context.Context, start, end time.Tim
 	}
 }
 
-// monthTotals aggregates metered order count and GMV in minor units (INT64).
-func (w *InvoiceWorker) monthTotals(ctx context.Context, supplierID string, start, end time.Time) (orderCount, gmvMinor int64, err error) {
+// monthTotals aggregates metered order count, net GMV, and settled commission in minor units (INT64).
+func (w *InvoiceWorker) monthTotals(ctx context.Context, supplierID string, start, end time.Time) (orderCount, netGmvMinor, settledCommissionMinor int64, err error) {
 	iter := w.client.Single().Query(ctx, spanner.Statement{
-		SQL: `SELECT COUNT(*), COALESCE(SUM(Amount), 0) FROM BillingMeterEvents
+		SQL: `SELECT MeterType, Amount, OrderId FROM BillingMeterEvents
 		      WHERE SupplierId = @sid AND ProcessedAt >= @s AND ProcessedAt < @e`,
 		Params: map[string]any{"sid": supplierID, "s": start, "e": end},
 	})
 	defer iter.Stop()
-	row, err := iter.Next()
-	if err != nil {
-		return 0, 0, err
+	var completedGmv int64
+	var refundedGmv int64
+	var settledCommission int64
+	orders := make(map[string]struct{})
+	var unkeyedOrderCount int64
+
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return 0, 0, 0, err
+		}
+		var meterType string
+		var amount int64
+		var orderID string
+		if err := row.Columns(&meterType, &amount, &orderID); err != nil {
+			return 0, 0, 0, err
+		}
+		switch meterType {
+		case "ORDER_REFUNDED":
+			if amount < 0 {
+				refundedGmv += -amount
+			} else {
+				refundedGmv += amount
+			}
+		case "COMMISSION_SETTLED":
+			settledCommission += amount
+		default: // ORDER_GMV, ORDER_COMPLETED
+			if amount < 0 {
+				refundedGmv += -amount
+			} else {
+				completedGmv += amount
+				if strings.TrimSpace(orderID) != "" {
+					orders[orderID] = struct{}{}
+				} else {
+					unkeyedOrderCount++
+				}
+			}
+		}
 	}
-	if err := row.Columns(&orderCount, &gmvMinor); err != nil {
-		return 0, 0, err
+	orderCount = int64(len(orders)) + unkeyedOrderCount
+
+	if settledCommission == 0 {
+		commIter := w.client.Single().Query(ctx, spanner.Statement{
+			SQL: `SELECT COALESCE(SUM(CommissionMinor), 0)
+			      FROM InvoiceSettlementSlices
+			      WHERE SupplierId = @sid AND CreatedAt >= @s AND CreatedAt < @e`,
+			Params: map[string]any{"sid": supplierID, "s": start, "e": end},
+		})
+		if row, err := commIter.Next(); err == nil {
+			var sliceCommission int64
+			if row.Column(0, &sliceCommission) == nil && sliceCommission > 0 {
+				settledCommission = sliceCommission
+			}
+		}
+		commIter.Stop()
 	}
-	return orderCount, gmvMinor, nil
+
+	var legRefund int64
+	refIter := w.client.Single().Query(ctx, spanner.Statement{
+		SQL: `SELECT COALESCE(SUM(l.AmountMinor), 0)
+		      FROM OrderPaymentLegs l
+		      JOIN Orders o ON o.OrderId = l.OrderId
+		      WHERE o.SupplierId = @sid AND l.Status = 'CAPTURED' AND l.Method = 'REFUND'
+		        AND l.CapturedAt >= @s AND l.CapturedAt < @e`,
+		Params: map[string]any{"sid": supplierID, "s": start, "e": end},
+	})
+	if row, err := refIter.Next(); err == nil {
+		_ = row.Column(0, &legRefund)
+	}
+	refIter.Stop()
+
+	if legRefund > refundedGmv {
+		refundedGmv = legRefund
+	}
+
+	netGmv := completedGmv - refundedGmv
+	if netGmv < 0 {
+		netGmv = 0
+	}
+	return orderCount, netGmv, settledCommission, nil
 }
 
 type PlatformInvoice struct {

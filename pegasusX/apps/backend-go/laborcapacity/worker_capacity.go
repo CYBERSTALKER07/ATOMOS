@@ -146,28 +146,7 @@ func (s *Service) doRecompute(ctx context.Context, from, to civil.Date, filterZo
 	}
 
 	// 2. Compute UsedCapacity from assigned orders
-	usedStmt := spanner.Statement{
-		SQL: `
-			SELECT 
-				ZoneH3, 
-				DATE(PromisedBy, @Tz) as AssignedDate,
-				COUNT(*) as AssignedStops
-			FROM Orders
-			WHERE Status IN ('ASSIGNED', 'IN_TRANSIT')
-			  AND DATE(PromisedBy, @Tz) >= CAST(@From AS STRING)
-			  AND DATE(PromisedBy, @Tz) <= CAST(@To AS STRING)
-			GROUP BY ZoneH3, AssignedDate
-		`,
-		Params: map[string]interface{}{
-			"From": from.String(),
-			"To":   to.String(),
-			"Tz":   tz,
-		},
-	}
-	if filterZone != "" {
-		usedStmt.SQL += " AND ZoneH3 = @Zone"
-		usedStmt.Params["Zone"] = filterZone
-	}
+	usedStmt := buildUsedCapacityStatement(from, to, filterZone, tz)
 
 	uIter := s.spanner.Single().Query(ctx, usedStmt)
 	defer uIter.Stop()
@@ -250,4 +229,30 @@ func (s *Service) flushCapacityMutations(ctx context.Context, mutations []*spann
 		return txn.BufferWrite(mutations)
 	})
 	return err
+}
+
+func buildUsedCapacityStatement(from, to civil.Date, filterZone, tz string) spanner.Statement {
+	stmt := spanner.Statement{
+		SQL: `
+			SELECT 
+				ZoneH3, 
+				DATE(PromisedBy, @Tz) as AssignedDate,
+				COUNT(*) as AssignedStops
+			FROM Orders
+			WHERE Status IN ('ASSIGNED', 'IN_TRANSIT')
+			  AND DATE(PromisedBy, @Tz) >= @From
+			  AND DATE(PromisedBy, @Tz) <= @To
+			GROUP BY ZoneH3, AssignedDate
+		`,
+		Params: map[string]interface{}{
+			"From": from,
+			"To":   to,
+			"Tz":   tz,
+		},
+	}
+	if filterZone != "" {
+		stmt.SQL += " AND ZoneH3 = @Zone"
+		stmt.Params["Zone"] = filterZone
+	}
+	return stmt
 }

@@ -51,7 +51,7 @@ export function usePolling(
   }, [hiddenIntervalMs, intervalMs]);
 
   const doFetch = useCallback(async () => {
-    if (isFetchingRef.current) return;
+    if (isFetchingRef.current && !controllerRef.current?.signal.aborted) return;
     if (typeof navigator !== "undefined" && !navigator.onLine) {
       if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = setTimeout(doFetch, effectiveInterval());
@@ -74,7 +74,9 @@ export function usePolling(
         // Keep polling alive on transient errors.
       }
     } finally {
-      isFetchingRef.current = false;
+      if (controllerRef.current === controller) {
+        isFetchingRef.current = false;
+      }
       const visible = typeof document === "undefined" || document.visibilityState === "visible";
       if ((visible || hiddenIntervalMs) && !controller.signal.aborted) {
         currentIntervalRef.current = effectiveInterval();
@@ -139,6 +141,7 @@ export function usePolling(
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
       controllerRef.current?.abort();
+      isFetchingRef.current = false;
       if (typeof document !== "undefined") {
         document.removeEventListener("visibilitychange", onVisibilityChange);
       }

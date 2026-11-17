@@ -2,22 +2,49 @@
 //  CashierViewModel.swift
 //  WarehouseAppIOS
 //
+//
 
 import Foundation
 import SwiftUI
 import Observation
 
 struct DenominationRowItem: Identifiable, Sendable {
-    var id: Int64 { noteUzs }
-    let noteUzs: Int64
+    var id: Int64 { noteSom }
+    let noteSom: Int64
     var count: Int64
 
-    var totalUzs: Int64 {
-        noteUzs * count
+    var totalSom: Int64 {
+        noteSom * count
     }
 
-    var totalTiyin: Int64 {
-        noteUzs * count * 100
+    var totalMinor: Int64 {
+        noteSom * count * 100
+    }
+}
+
+struct CashierDriverOption: Identifiable, Hashable, Sendable {
+    var id: String { driverId }
+    let driverId: String
+    let label: String
+}
+
+struct CashierRouteOption: Identifiable, Hashable, Sendable {
+    var id: String { routeId }
+    let routeId: String
+    let label: String
+    let linkedDriverId: String?
+    let driverNameHint: String?
+
+    init(
+        routeId: String,
+        label: String,
+        linkedDriverId: String? = nil,
+        driverNameHint: String? = nil
+    ) {
+        self.routeId = routeId
+        self.label = label
+        self.linkedDriverId = linkedDriverId
+        self.driverNameHint = driverNameHint
     }
 }
 
@@ -26,11 +53,29 @@ struct DenominationRowItem: Identifiable, Sendable {
 final class CashierViewModel {
     private static let isoFormatter = ISO8601DateFormatter()
 
-    var depotId: String = "depot-tashkent-south"
-    var supplierId: String = "supplier-tashkent-1"
-    var driverId: String = "driver-uz-09"
-    var routeId: String = "route-tashkent-042"
-    var bagSealBarcode: String = "BAG-UZ-99120"
+    static let supportedDenominations: [Int64] = [
+        200000,
+        100000,
+        50000,
+        20000,
+        10000,
+        5000,
+        2000,
+        1000,
+    ]
+
+    var cellId: String
+    var depotId: String
+    var supplierId: String
+    var driverId: String = ""
+    var routeId: String = ""
+    var bagSealBarcode: String = ""
+
+    var driverOptions: [CashierDriverOption] = []
+    var routeOptions: [CashierRouteOption] = []
+    var isLoadingSelectors: Bool = false
+    var selectorsLoaded: Bool = false
+    var manualEntryMode: Bool = false
 
     var session: CashierSessionView? = nil
     var attemptNumber: Int64 = 1
@@ -49,6 +94,16 @@ final class CashierViewModel {
     var countedCashMinor: Int64 {
         denominations.reduce(0) { total, pair in
             total + (pair.key * pair.value * 100)
+        }
+    }
+
+    var countedCashSom: Int64 {
+        countedCashMinor / 100
+    }
+
+    var denominationRows: [DenominationRowItem] {
+        Self.supportedDenominations.map { note in
+            DenominationRowItem(noteSom: note, count: denominations[note] ?? 0)
         }
     }
 
@@ -73,16 +128,19 @@ final class CashierViewModel {
     var showCITSheet: Bool = false
     var showAMLSheet: Bool = false
 
-    var rrnOrderId: String = "order-uz-8812"
-    var rrnGateway: String = "123456789012"
-    var rrnDisputedText: String = "500000"
+    var rrnOrderId: String = ""
+    var rrnGateway: String = ""
+    var rrnDisputedText: String = ""
+    var rrnTerminalId: String = ""
+    var rrnCardLastFour: String = ""
+    var rrnAuthCode: String = ""
 
-    var citBadgeId: String = "INKAS-9921"
-    var citSealBarcode: String = "CIT-SEAL-7712"
-    var citHandoverText: String = "1425000"
+    var citBadgeId: String = ""
+    var citSealBarcode: String = ""
+    var citHandoverText: String = ""
 
-    var amlTin: String = "123456789"
-    var amlExposureText: String = "15000000"
+    var amlTin: String = ""
+    var amlExposureText: String = ""
 
     var totalBanknotesCount: Int64 {
         denominations.values.reduce(0, +)
@@ -93,8 +151,14 @@ final class CashierViewModel {
     private let reclassifyTenderHandler: @Sendable (RRNTenderReclassificationRequest) async throws -> CashierSessionView
     private let executeCITHandoverHandler: @Sendable (CITHandoverRequest) async throws -> DepotVaultLedgerEntry
     private let checkAMLHandler: @Sendable (AMLCheckRequest) async throws -> AMLCheckResponse
+    private let loadDriversHandler: @Sendable () async throws -> [CashierDriverOption]
+    private let loadManifestsHandler: @Sendable () async throws -> [CashierRouteOption]
+    private let loadFleetLiveMapHandler: @Sendable (String?) async throws -> ([CashierDriverOption], [CashierRouteOption])
 
     init(
+        initialCellId: String? = nil,
+        initialDepotId: String? = nil,
+        initialSupplierId: String? = nil,
         startSessionHandler: @escaping @Sendable (StartCashierSessionRequest) async throws -> CashierSessionView = { req in
             try await WarehouseService.startCashierSession(req: req)
         },
@@ -109,27 +173,93 @@ final class CashierViewModel {
         },
         checkAMLHandler: @escaping @Sendable (AMLCheckRequest) async throws -> AMLCheckResponse = { req in
             try await WarehouseService.checkAML(req: req)
+        },
+        loadDriversHandler: @escaping @Sendable () async throws -> [CashierDriverOption] = {
+            let response = try await WarehouseService.drivers()
+            return response.drivers.map { driver in
+                let baseLabel = driver.name.isEmpty ? driver.driverId : "\(driver.name) (\(driver.driverId))"
+                let label = driver.isActive ? baseLabel : "\(baseLabel) · Inactive"
+                return CashierDriverOption(driverId: driver.driverId, label: label)
+            }
+        },
+        loadManifestsHandler: @escaping @Sendable () async throws -> [CashierRouteOption] = {
+            let response = try await WarehouseService.manifests()
+            return response.manifests.map { manifest in
+                let detail = [manifest.driverName, manifest.vehicleLabel]
+                    .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+                    .joined(separator: " · ")
+                let label = detail.isEmpty ? manifest.manifestId : "\(manifest.manifestId) · \(detail)"
+                return CashierRouteOption(
+                    routeId: manifest.manifestId,
+                    label: label,
+                    linkedDriverId: nil,
+                    driverNameHint: manifest.driverName
+                )
+            }
+        },
+        loadFleetLiveMapHandler: @escaping @Sendable (String?) async throws -> ([CashierDriverOption], [CashierRouteOption]) = { warehouseId in
+            let response = try await WarehouseService.fleetLiveMap(warehouseId: warehouseId)
+            var drivers: [CashierDriverOption] = []
+            var routes: [CashierRouteOption] = []
+            for route in response.routes {
+                let effectiveRouteId = route.routeId.isEmpty ? route.manifestId : route.routeId
+                let driverDisplay = (route.driverName?.isEmpty == false ? route.driverName : nil) ?? route.driverId
+                if !route.driverId.isEmpty {
+                    drivers.append(CashierDriverOption(
+                        driverId: route.driverId,
+                        label: route.driverId == driverDisplay ? route.driverId : "\(driverDisplay) (\(route.driverId))"
+                    ))
+                }
+                if !effectiveRouteId.isEmpty {
+                    routes.append(CashierRouteOption(
+                        routeId: effectiveRouteId,
+                        label: "\(effectiveRouteId) · \(driverDisplay) [\(route.manifestState)]",
+                        linkedDriverId: route.driverId.isEmpty ? nil : route.driverId,
+                        driverNameHint: route.driverName
+                    ))
+                }
+            }
+            return (drivers, routes)
         }
     ) {
+        let token = TokenStore.shared.token
+        let resolvedDepot = initialDepotId
+            ?? TokenStore.shared.warehouseId
+            ?? JwtPayload.homeNodeId(token: token)
+            ?? ""
+        let resolvedCell = initialCellId
+            ?? MarketPackStore.current?.homeCell
+            ?? JwtPayload.homeCell(token: token)
+            ?? ""
+        let resolvedSupplier = initialSupplierId
+            ?? JwtPayload.supplierId(token: token)
+            ?? ""
+
+        self.cellId = resolvedCell
+        self.depotId = resolvedDepot
+        self.supplierId = resolvedSupplier
         self.startSessionHandler = startSessionHandler
         self.submitBlindCountHandler = submitBlindCountHandler
         self.reclassifyTenderHandler = reclassifyTenderHandler
         self.executeCITHandoverHandler = executeCITHandoverHandler
         self.checkAMLHandler = checkAMLHandler
+        self.loadDriversHandler = loadDriversHandler
+        self.loadManifestsHandler = loadManifestsHandler
+        self.loadFleetLiveMapHandler = loadFleetLiveMapHandler
     }
 
-    func setDenominationCount(noteUzs: Int64, count: Int64) {
+    func setDenominationCount(noteSom: Int64, count: Int64) {
         let safe = max(0, count)
-        denominations[noteUzs] = safe
+        denominations[noteSom] = safe
     }
 
-    func adjustCount(noteUzs: Int64, delta: Int64) {
-        let current = denominations[noteUzs] ?? 0
-        setDenominationCount(noteUzs: noteUzs, count: current + delta)
+    func adjustCount(noteSom: Int64, delta: Int64) {
+        let current = denominations[noteSom] ?? 0
+        setDenominationCount(noteSom: noteSom, count: current + delta)
     }
 
-    func addStrap(noteUzs: Int64, strapCount: Int64) {
-        adjustCount(noteUzs: noteUzs, delta: strapCount)
+    func addStrap(noteSom: Int64, strapCount: Int64) {
+        adjustCount(noteSom: noteSom, delta: strapCount)
     }
 
     func clearCounts() {
@@ -138,39 +268,131 @@ final class CashierViewModel {
         }
     }
 
-    func quickFillSampleBalanced() {
-        clearCounts()
-        setDenominationCount(noteUzs: 200000, count: 7)
-        setDenominationCount(noteUzs: 20000, count: 1)
-        setDenominationCount(noteUzs: 5000, count: 1)
-    }
-
-    func quickFillSampleDiscrepant() {
-        clearCounts()
-        setDenominationCount(noteUzs: 200000, count: 6)
-    }
-
-    static func formatUzs(amount: Int64) -> String {
+    static func formatSom(amount: Int64) -> String {
+        let safe = amount == 0 ? 0 : amount
         let formatter = NumberFormatter()
         formatter.numberStyle = .decimal
         formatter.groupingSeparator = " "
-        let formatted = formatter.string(from: NSNumber(value: amount)) ?? "\(amount)"
-        return "\(formatted) UZS"
+        formatter.usesGroupingSeparator = true
+        formatter.maximumFractionDigits = 0
+        let formatted = formatter.string(from: NSNumber(value: safe)) ?? "\(safe)"
+        return "\(formatted) so'm"
     }
 
-    func startSession(expectedCashMinor: Int64 = 1425000000) async {
+    static func formatWholeSom(minor: Int64) -> String {
+        formatSom(amount: minor / 100)
+    }
+
+    func loadSelectors() async {
+        isLoadingSelectors = true
+        let warehouseScope = depotId.trimmingCharacters(in: .whitespacesAndNewlines)
+        let scopedWarehouse: String? = warehouseScope.isEmpty ? nil : warehouseScope
+
+        async let fetchedDrivers = try? loadDriversHandler()
+        async let fetchedManifests = try? loadManifestsHandler()
+        async let fetchedFleet = try? loadFleetLiveMapHandler(scopedWarehouse)
+
+        let driversList = await fetchedDrivers ?? []
+        let manifestsList = await fetchedManifests ?? []
+        let (fleetDrivers, fleetRoutes) = await fetchedFleet ?? ([], [])
+
+        var driversById: [String: CashierDriverOption] = [:]
+        var orderedDrivers: [CashierDriverOption] = []
+        for option in driversList + fleetDrivers where !option.driverId.isEmpty {
+            if driversById[option.driverId] == nil {
+                driversById[option.driverId] = option
+                orderedDrivers.append(option)
+            }
+        }
+
+        var routesById: [String: CashierRouteOption] = [:]
+        var orderedRoutes: [CashierRouteOption] = []
+        for route in fleetRoutes where !route.routeId.isEmpty {
+            if routesById[route.routeId] == nil {
+                routesById[route.routeId] = route
+                orderedRoutes.append(route)
+            }
+        }
+        for manifest in manifestsList where !manifest.routeId.isEmpty {
+            if routesById[manifest.routeId] == nil {
+                var matchedDriverId: String? = nil
+                if let hint = manifest.driverNameHint?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(),
+                   !hint.isEmpty {
+                    let matches = orderedDrivers.filter { $0.label.lowercased().hasPrefix(hint + " (") || $0.label.lowercased() == hint }
+                    if matches.count == 1 {
+                        matchedDriverId = matches[0].driverId
+                    }
+                }
+                let option = CashierRouteOption(
+                    routeId: manifest.routeId,
+                    label: manifest.label,
+                    linkedDriverId: matchedDriverId,
+                    driverNameHint: manifest.driverNameHint
+                )
+                routesById[option.routeId] = option
+                orderedRoutes.append(option)
+            }
+        }
+
+        driverOptions = orderedDrivers
+        routeOptions = orderedRoutes
+        selectorsLoaded = true
+        isLoadingSelectors = false
+
+        if orderedDrivers.isEmpty && orderedRoutes.isEmpty {
+            manualEntryMode = true
+        }
+    }
+
+    func selectDriver(_ id: String) {
+        driverId = id
+        let trimmed = id.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        if routeId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+           let matchedRoute = routeOptions.first(where: { $0.linkedDriverId == trimmed }) {
+            routeId = matchedRoute.routeId
+        }
+    }
+
+    func selectRoute(_ id: String) {
+        routeId = id
+        let trimmed = id.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        if driverId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+           let matchedDriverId = routeOptions.first(where: { $0.routeId == trimmed })?.linkedDriverId {
+            driverId = matchedDriverId
+        }
+    }
+
+    func startSession(expectedCashMinor: Int64 = 0) async {
+        let trimmedDepot = depotId.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedSupplier = supplierId.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedDriver = driverId.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedRoute = routeId.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedSeal = bagSealBarcode.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedCell = cellId.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !trimmedDepot.isEmpty, !trimmedSupplier.isEmpty else {
+            errorMessage = "Depot ID and Supplier ID are required before starting a cashier session."
+            return
+        }
+        guard !trimmedDriver.isEmpty, !trimmedRoute.isEmpty, !trimmedSeal.isEmpty else {
+            errorMessage = "Driver, Route, and Deposit Bag Seal Barcode are required."
+            return
+        }
+
         isLoading = true
         errorMessage = nil
         statusMessage = nil
 
         let req = StartCashierSessionRequest(
-            cellId: "cell-uz",
-            supplierId: supplierId,
-            depotId: depotId,
-            driverId: driverId,
-            routeId: routeId,
-            bagSealBarcode: bagSealBarcode,
-            expectedCashMinor: expectedCashMinor
+            cellId: trimmedCell,
+            supplierId: trimmedSupplier,
+            depotId: trimmedDepot,
+            driverId: trimmedDriver,
+            routeId: trimmedRoute,
+            bagSealBarcode: trimmedSeal,
+            expectedCashMinor: max(0, expectedCashMinor)
         )
 
         do {
@@ -246,27 +468,43 @@ final class CashierViewModel {
         }
     }
 
+    @discardableResult
     func reclassifyTender(
         orderId: String,
         gatewayRrn: String,
         disputedCashMinor: Int64,
-        paymentNetwork: String = "HUMO"
-    ) async {
+        paymentNetwork: String = "HUMO",
+        terminalId: String = "",
+        cardLastFour: String = "",
+        authCode: String = ""
+    ) async -> Bool {
         guard let sessionId = session?.sessionId, !sessionId.isEmpty else {
             errorMessage = "Active session required for tender reclassification"
-            return
+            return false
+        }
+
+        let trimmedOrderId = orderId.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedRrn = gatewayRrn.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedOrderId.isEmpty, !trimmedRrn.isEmpty, disputedCashMinor > 0 else {
+            errorMessage = "Order ID, Gateway RRN, and disputed amount (so'm) > 0 are required."
+            return false
         }
 
         isLoading = true
         errorMessage = nil
 
+        let effectiveTerminal = terminalId.isEmpty ? rrnTerminalId : terminalId
+        let effectiveLastFour = cardLastFour.isEmpty ? rrnCardLastFour : cardLastFour
+        let effectiveAuthCode = authCode.isEmpty ? rrnAuthCode : authCode
         let nowIso = Self.isoFormatter.string(from: Date())
         let req = RRNTenderReclassificationRequest(
             sessionId: sessionId,
-            orderId: orderId,
+            orderId: trimmedOrderId,
             disputedCashMinor: disputedCashMinor,
-            gatewayRrn: gatewayRrn,
-            authCode: "AUTH-\(Int.random(in: 100000...999999))",
+            gatewayRrn: trimmedRrn,
+            terminalId: effectiveTerminal.trimmingCharacters(in: .whitespacesAndNewlines),
+            cardLastFour: effectiveLastFour.trimmingCharacters(in: .whitespacesAndNewlines),
+            authCode: effectiveAuthCode.trimmingCharacters(in: .whitespacesAndNewlines),
             paymentNetwork: paymentNetwork,
             rrnCapturedAt: nowIso,
             podGeofenceTimestamp: nowIso
@@ -279,27 +517,44 @@ final class CashierViewModel {
             isBalanced = updated.status == "BALANCED"
             clearanceTokenHash = updated.clearanceTokenHash
             statusMessage = "RRN Payment Reclassified! Compensating ledger applied."
+            return true
         } catch {
             isLoading = false
             errorMessage = error.localizedDescription
+            return false
         }
     }
 
+    @discardableResult
     func executeCITHandover(
         courierBadgeId: String,
         citSealBarcode: String,
         amountMinor: Int64
-    ) async {
-        let sessId = session?.sessionId ?? "sess-batch-01"
+    ) async -> Bool {
+        let trimmedDepot = depotId.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedSupplier = supplierId.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedBadge = courierBadgeId.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedSeal = citSealBarcode.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !trimmedDepot.isEmpty, !trimmedSupplier.isEmpty else {
+            errorMessage = "Depot ID and Supplier ID are required for CIT handover."
+            return false
+        }
+        guard !trimmedBadge.isEmpty, !trimmedSeal.isEmpty, amountMinor > 0 else {
+            errorMessage = "Courier Badge ID, CIT Security Seal, and handover amount (so'm) > 0 are required."
+            return false
+        }
+
         isLoading = true
         errorMessage = nil
 
+        let sessionIds = session.map { [$0.sessionId] } ?? []
         let req = CITHandoverRequest(
-            depotId: depotId,
-            supplierId: supplierId,
-            sessionIds: [sessId],
-            courierBadgeId: courierBadgeId,
-            citSealBarcode: citSealBarcode,
+            depotId: trimmedDepot,
+            supplierId: trimmedSupplier,
+            sessionIds: sessionIds,
+            courierBadgeId: trimmedBadge,
+            citSealBarcode: trimmedSeal,
             cashMinor: amountMinor
         )
 
@@ -307,21 +562,36 @@ final class CashierViewModel {
             let entry = try await executeCITHandoverHandler(req)
             isLoading = false
             lastVaultEntry = entry
-            statusMessage = "CIT Armored Handover Complete: Manifest \(entry.citManifestId ?? entry.vaultEntryId)"
+            statusMessage = "CIT Armored Handover Complete: Manifest \(entry.citManifestId ?? entry.vaultEntryId) (\(Self.formatWholeSom(minor: entry.amountMinor)))"
+            return true
         } catch {
             isLoading = false
             errorMessage = error.localizedDescription
+            return false
         }
     }
 
-    func checkAMLExposure(tin: String, cashMinor: Int64) async {
+    @discardableResult
+    func checkAMLExposure(tin: String, cashMinor: Int64) async -> Bool {
+        let trimmedTin = tin.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedSupplier = supplierId.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !trimmedSupplier.isEmpty else {
+            errorMessage = "Supplier ID is required for AML exposure check."
+            return false
+        }
+        guard !trimmedTin.isEmpty, cashMinor > 0 else {
+            errorMessage = "Legal Entity TIN and cash exposure amount (so'm) > 0 are required."
+            return false
+        }
+
         isLoading = true
         errorMessage = nil
 
         let today = Self.isoFormatter.string(from: Date())
         let req = AMLCheckRequest(
-            legalEntityTin: tin,
-            supplierId: supplierId,
+            legalEntityTin: trimmedTin,
+            supplierId: trimmedSupplier,
             calendarDate: today,
             cashMinor: cashMinor
         )
@@ -333,20 +603,23 @@ final class CashierViewModel {
             amlCeilingMinor = resp.ceilingMinor
             amlExceeded = resp.ceilingMinor > 0 && resp.accumulatedCashMinor > resp.ceilingMinor
             statusMessage = resp.ceilingMinor > 0
-                ? "AML Exposure OK: \(resp.accumulatedCashMinor / 100) / \(resp.ceilingMinor / 100) UZS"
-                : "AML Exposure OK: \(resp.accumulatedCashMinor / 100) UZS (Uncapped)"
+                ? "AML Exposure OK: \(Self.formatWholeSom(minor: resp.accumulatedCashMinor)) / \(Self.formatWholeSom(minor: resp.ceilingMinor))"
+                : "AML Exposure OK: \(Self.formatWholeSom(minor: resp.accumulatedCashMinor)) (Uncapped)"
+            return true
         } catch let apiError as APIError {
             isLoading = false
             switch apiError {
             case .httpError(let code) where code == 409:
                 amlExceeded = true
-                errorMessage = "AML Ceiling Exceeded (409): Daily settlement exposure limit reached for TIN \(tin)."
+                errorMessage = "AML Ceiling Exceeded (409): Daily settlement exposure limit reached for TIN \(trimmedTin)."
             default:
                 errorMessage = "AML check failed: \(apiError)"
             }
+            return false
         } catch {
             isLoading = false
             errorMessage = error.localizedDescription
+            return false
         }
     }
 }

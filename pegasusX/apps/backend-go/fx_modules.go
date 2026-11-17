@@ -131,13 +131,6 @@ func registerWorkerHooks(p WorkerLifecycleParams) {
 					hubs = hubList(p.App)
 				}
 				startHubRelaySubscribers(workerCtx, hubs)
-				startNotificationConsumerIfNoWorker(workerCtx, p.App)
-				if p.App.OrderService != nil {
-					go p.App.OrderService.RunShopClosedWorker(workerCtx, 30*time.Second)
-				}
-				if p.App.DemandService != nil {
-					go p.App.DemandService.RunDemandSensingWorker(workerCtx, 12*time.Hour)
-				}
 			} else {
 				_ = startWorkerHealthServer(workerCtx, p.Config, p.App)
 			}

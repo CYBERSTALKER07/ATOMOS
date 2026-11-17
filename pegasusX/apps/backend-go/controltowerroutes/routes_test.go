@@ -82,3 +82,58 @@ func TestControlTowerRoutes_RoleGuard(t *testing.T) {
 		t.Fatalf("driver accessing control tower returned %d, want 403 Forbidden", rr.Code)
 	}
 }
+
+func TestControlTowerRoutes_ObservabilityEndpoints(t *testing.T) {
+	r := controlTowerRouter(&controltower.Handlers{})
+
+	endpoints := []string{
+		"/v1/control-tower/cells",
+		"/v1/control-tower/metrics/spanner",
+		"/v1/control-tower/metrics/kafka",
+		"/v1/control-tower/metrics/redis",
+		"/v1/control-tower/waterfall",
+		"/v1/control-tower/costs/attributed",
+		"/v1/control-tower/scorecards",
+	}
+
+	adminToken := issueControlTowerToken(t, auth.RoleAdmin)
+	platformAdminToken := issueControlTowerToken(t, auth.RolePlatformAdmin)
+	driverToken := issueControlTowerToken(t, auth.RoleDriver)
+
+	for _, ep := range endpoints {
+		// 1. RoleAdmin should succeed (200 OK)
+		reqAdmin := httptest.NewRequest(http.MethodGet, ep, nil)
+		reqAdmin.Header.Set("Authorization", "Bearer "+adminToken)
+		recAdmin := httptest.NewRecorder()
+		r.ServeHTTP(recAdmin, reqAdmin)
+		if recAdmin.Code != http.StatusOK {
+			t.Fatalf("endpoint %s with RoleAdmin: expected 200, got %d (body: %s)", ep, recAdmin.Code, recAdmin.Body.String())
+		}
+
+		// 2. RolePlatformAdmin should also succeed (200 OK)
+		reqPlat := httptest.NewRequest(http.MethodGet, ep, nil)
+		reqPlat.Header.Set("Authorization", "Bearer "+platformAdminToken)
+		recPlat := httptest.NewRecorder()
+		r.ServeHTTP(recPlat, reqPlat)
+		if recPlat.Code != http.StatusOK {
+			t.Fatalf("endpoint %s with RolePlatformAdmin: expected 200, got %d (body: %s)", ep, recPlat.Code, recPlat.Body.String())
+		}
+
+		// 3. RoleDriver should be forbidden (403 Forbidden)
+		reqDriver := httptest.NewRequest(http.MethodGet, ep, nil)
+		reqDriver.Header.Set("Authorization", "Bearer "+driverToken)
+		recDriver := httptest.NewRecorder()
+		r.ServeHTTP(recDriver, reqDriver)
+		if recDriver.Code != http.StatusForbidden {
+			t.Fatalf("endpoint %s with RoleDriver: expected 403, got %d", ep, recDriver.Code)
+		}
+
+		// 4. Unauthenticated should return 401 Unauthorized
+		reqNoAuth := httptest.NewRequest(http.MethodGet, ep, nil)
+		recNoAuth := httptest.NewRecorder()
+		r.ServeHTTP(recNoAuth, reqNoAuth)
+		if recNoAuth.Code != http.StatusUnauthorized {
+			t.Fatalf("endpoint %s without auth: expected 401, got %d", ep, recNoAuth.Code)
+		}
+	}
+}

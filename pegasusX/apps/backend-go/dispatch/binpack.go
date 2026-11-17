@@ -59,6 +59,8 @@ type BinPackOptions struct {
 	Score ScoreContext
 	// SkipLocalSearch disables D4 2-opt post-pass (tests).
 	SkipLocalSearch bool
+	// MaxStopsPerRoute enforces an explicit per-route order cap when > 0.
+	MaxStopsPerRoute int
 }
 
 // BinPack runs the Smart Fit protocol over a pre-fetched set of orders and fleet.
@@ -304,6 +306,9 @@ func BinPack(orders []DispatchableOrder, fleet []AvailableDriver, cellLookup fun
 				bestRoute := -1
 				bestRemaining := -1.0
 				for ri := range result.Routes {
+					if opt.MaxStopsPerRoute > 0 && len(result.Routes[ri].Orders)+len(so.Orders) > opt.MaxStopsPerRoute {
+						continue
+					}
 					rem := result.Routes[ri].MaxVolume - result.Routes[ri].LoadedVolume
 					if rem > bestRemaining {
 						bestRoute = ri
@@ -318,7 +323,7 @@ func BinPack(orders []DispatchableOrder, fleet []AvailableDriver, cellLookup fun
 					}
 					result.Routes[bestRoute].LoadedVolume += so.VolumeVU
 					placed = true
-				} else {
+				} else if opt.MaxStopsPerRoute <= 0 || len(so.Orders) <= opt.MaxStopsPerRoute {
 					match, ok := SelectBestVehicle(0, availableFleet)
 					if ok {
 						driverRouteMap[match.Driver.DriverID] = len(result.Routes)
@@ -358,6 +363,9 @@ func BinPack(orders []DispatchableOrder, fleet []AvailableDriver, cellLookup fun
 			repr.VolumeVU = so.VolumeVU
 
 			for ri := range result.Routes {
+				if opt.MaxStopsPerRoute > 0 && len(result.Routes[ri].Orders)+len(so.Orders) > opt.MaxStopsPerRoute {
+					continue
+				}
 				remaining := result.Routes[ri].MaxVolume - result.Routes[ri].LoadedVolume
 				if remaining < so.VolumeVU {
 					continue
@@ -372,7 +380,7 @@ func BinPack(orders []DispatchableOrder, fleet []AvailableDriver, cellLookup fun
 			}
 
 			bestNewTruckIdx := -1
-			if len(availableFleet) > 0 {
+			if len(availableFleet) > 0 && (opt.MaxStopsPerRoute <= 0 || len(so.Orders) <= opt.MaxStopsPerRoute) {
 				match, ok := SelectBestScoredVehicle(repr, availableFleet, scoreCtx)
 				if ok && !match.Overflow {
 					sc := ScoreCandidate(nil, repr, match.Driver, scoreCtx)

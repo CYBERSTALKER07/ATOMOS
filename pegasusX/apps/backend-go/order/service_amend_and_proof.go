@@ -25,6 +25,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/packages/handoff"
 )
 
 func (s *Service) validateOfflineQR(manifestID, driverID, orderID, token string) error {
@@ -39,7 +40,9 @@ func (s *Service) validateOfflineQR(manifestID, driverID, orderID, token string)
 	expected.Write([]byte(orderID))
 	expectedHash := hex.EncodeToString(expected.Sum(nil))
 
-	if token != expectedHash && token != offlineNonce {
+	hashMatch := handoff.ConstantTimeEqual(token, expectedHash)
+	nonceMatch := handoff.ConstantTimeEqual(token, offlineNonce)
+	if !hashMatch && !nonceMatch {
 		return errors.New("invalid offline qr token")
 	}
 	return nil
@@ -226,40 +229,59 @@ func (s *Service) applyOrderAmendments(ctx context.Context, current Order, req A
 
 	origQtyBySKU := make(map[string]int64, len(current.LineItems))
 	for _, line := range current.LineItems {
-		origQtyBySKU[strings.TrimSpace(line.SKU)] = line.Quantity
+		origQtyBySKU[strings.TrimSpace(line.SKU)] += line.Quantity
+	}
+
+	remainingAccepted := make(map[string]int64, len(amendByProduct))
+	pendingReturns := make([]SupplierReturn, 0, len(req.Items))
+	for sku, amend := range amendByProduct {
+		origQty, exists := origQtyBySKU[sku]
+		if !exists {
+			return AmendOrderResponse{}, fmt.Errorf("sku %s not found in order line items", sku)
+		}
+		acceptedQty, rejectedQty, err := resolveAmendQuantities(origQty, amend.AcceptedQty, amend.RejectedQty)
+		if err != nil {
+			return AmendOrderResponse{}, fmt.Errorf("%s for sku %s", err.Error(), sku)
+		}
+		remainingAccepted[sku] = acceptedQty
+		if rejectedQty > 0 {
+			reason := normalizeAmendReason(amend.Reason)
+			if reason == "" {
+				return AmendOrderResponse{}, fmt.Errorf("reason required for rejected quantity on sku %s", sku)
+			}
+			if err := validateAmendReason(reason, amend.CustomReason); err != nil {
+				return AmendOrderResponse{}, fmt.Errorf("sku %s: %w", sku, err)
+			}
+			pendingReturns = append(pendingReturns, SupplierReturn{
+				ReturnID:    s.newID(),
+				SKU:         sku,
+				RejectedQty: rejectedQty,
+				Reason:      reason,
+				DriverNotes: supplierReturnNotes(reason, amend.CustomReason, req.DriverNotes),
+				ManifestID:  strings.TrimSpace(current.ManifestID),
+				DriverID:    strings.TrimSpace(current.DriverID),
+				WarehouseID: strings.TrimSpace(current.WarehouseID),
+			})
+		}
 	}
 
 	updatedItems := make([]LineItem, 0, len(current.LineItems))
-	pendingReturns := make([]SupplierReturn, 0, len(req.Items))
 	var adjustedTotal int64
 	for _, line := range current.LineItems {
 		key := strings.TrimSpace(line.SKU)
-		origQty := origQtyBySKU[key]
-		if amend, ok := amendByProduct[key]; ok {
-			acceptedQty, rejectedQty, err := resolveAmendQuantities(origQty, amend.AcceptedQty, amend.RejectedQty)
-			if err != nil {
-				return AmendOrderResponse{}, fmt.Errorf("%s for sku %s", err.Error(), key)
+		if _, ok := amendByProduct[key]; ok {
+			rem := remainingAccepted[key]
+			var lineAlloc int64
+			if rem >= line.Quantity {
+				lineAlloc = line.Quantity
+				remainingAccepted[key] -= line.Quantity
+			} else if rem > 0 {
+				lineAlloc = rem
+				remainingAccepted[key] = 0
+			} else {
+				lineAlloc = 0
 			}
-			if rejectedQty > 0 {
-				reason := normalizeAmendReason(amend.Reason)
-				if reason == "" {
-					return AmendOrderResponse{}, fmt.Errorf("reason required for rejected quantity on sku %s", key)
-				}
-				if err := validateAmendReason(reason, amend.CustomReason); err != nil {
-					return AmendOrderResponse{}, fmt.Errorf("sku %s: %w", key, err)
-				}
-				pendingReturns = append(pendingReturns, SupplierReturn{
-					ReturnID:    s.newID(),
-					SKU:         key,
-					RejectedQty: rejectedQty,
-					Reason:      reason,
-					DriverNotes: supplierReturnNotes(reason, amend.CustomReason, req.DriverNotes),
-					ManifestID:  strings.TrimSpace(current.ManifestID),
-					DriverID:    strings.TrimSpace(current.DriverID),
-					WarehouseID: strings.TrimSpace(current.WarehouseID),
-				})
-			}
-			line.Quantity = acceptedQty
+			line.Quantity = lineAlloc
 		}
 		adjustedTotal += line.UnitPrice * line.Quantity
 		updatedItems = append(updatedItems, line)
@@ -428,27 +450,41 @@ func (s *Service) HandleReportDamage(w http.ResponseWriter, r *http.Request) {
 
 	origQtyBySKU := make(map[string]int64, len(current.LineItems))
 	for _, line := range current.LineItems {
-		origQtyBySKU[strings.TrimSpace(line.SKU)] = line.Quantity
+		origQtyBySKU[strings.TrimSpace(line.SKU)] += line.Quantity
 	}
-	amendItems := make([]AmendItemRequest, 0, len(req.DamagedItems))
-	conditionReports := make([]ConditionReport, 0, len(req.DamagedItems))
+
+	damagedBySKU := make(map[string]int64, len(req.DamagedItems))
 	for _, item := range req.DamagedItems {
 		sku := strings.TrimSpace(item.SKU)
 		if sku == "" || item.Quantity <= 0 {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_damaged_item"})
 			return
 		}
+		damagedBySKU[sku] += item.Quantity
+	}
+
+	for sku, dmgQty := range damagedBySKU {
 		origQty, ok := origQtyBySKU[sku]
-		if !ok || item.Quantity > origQty {
+		if !ok || dmgQty > origQty {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("damage quantity exceeds item quantity for sku %s", sku)})
 			return
 		}
+	}
+
+	amendItems := make([]AmendItemRequest, 0, len(damagedBySKU))
+	for sku, dmgQty := range damagedBySKU {
+		origQty := origQtyBySKU[sku]
 		amendItems = append(amendItems, AmendItemRequest{
 			ProductID:   sku,
-			AcceptedQty: origQty - item.Quantity,
-			RejectedQty: item.Quantity,
+			AcceptedQty: origQty - dmgQty,
+			RejectedQty: dmgQty,
 			Reason:      "DAMAGED",
 		})
+	}
+
+	conditionReports := make([]ConditionReport, 0, len(req.DamagedItems))
+	for _, item := range req.DamagedItems {
+		sku := strings.TrimSpace(item.SKU)
 		conditionReports = append(conditionReports, ConditionReport{
 			ReportID:         s.newID(),
 			OrderID:          current.OrderID,

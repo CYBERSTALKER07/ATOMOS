@@ -8,8 +8,12 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
+fun interface RetailerUserIdProvider {
+    fun getUserId(): String?
+}
+
 @Singleton
-class TokenManager @Inject constructor(@ApplicationContext context: Context) {
+class TokenManager @Inject constructor(@ApplicationContext context: Context) : RetailerUserIdProvider {
 
     private val prefs: SharedPreferences by lazy {
         val masterKey = MasterKey.Builder(context)
@@ -51,7 +55,7 @@ class TokenManager @Inject constructor(@ApplicationContext context: Context) {
         prefs.edit().putString(KEY_USER_ID, userId).apply()
     }
 
-    fun getUserId(): String? = prefs.getString(KEY_USER_ID, null)
+    override fun getUserId(): String? = prefs.getString(KEY_USER_ID, null)
 
     fun saveUserName(name: String) {
         prefs.edit().putString(KEY_USER_NAME, name).apply()

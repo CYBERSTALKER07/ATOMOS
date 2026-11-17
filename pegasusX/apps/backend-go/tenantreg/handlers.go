@@ -12,6 +12,7 @@ import (
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
+	"github.com/pegasusx/pegasusx/apps/backend-go/innlookup"
 	"github.com/pegasusx/pegasusx/apps/backend-go/internal/web"
 )
 
@@ -82,12 +83,32 @@ func (s *Service) HandleRegister(w http.ResponseWriter, r *http.Request) {
 }
 
 func writeRegisterError(w http.ResponseWriter, err error) {
+	var joinErr *JoinRequestPendingError
 	switch {
-	case errors.Is(err, ErrRepoUnavailable):
+	case errors.As(err, &joinErr):
+		web.JSONResponse(w, http.StatusConflict, map[string]string{
+			"error":            joinErr.Error(),
+			"request_id":       joinErr.RequestID,
+			"target_tenant_id": joinErr.TargetTenantID,
+			"legal_name":       joinErr.LegalName,
+			"normalized_inn":   joinErr.NormalizedINN,
+		})
+	case errors.Is(err, ErrRepoUnavailable), errors.Is(err, innlookup.ErrRegistryUnavailable):
+		if errors.Is(err, innlookup.ErrRegistryUnavailable) {
+			web.JSONError(w, innlookup.ErrRegistryUnavailable.Error(), http.StatusServiceUnavailable)
+			return
+		}
 		web.JSONError(w, err.Error(), http.StatusServiceUnavailable)
 	case errors.Is(err, ErrLegalNameRequired), errors.Is(err, ErrPhoneRequired),
-		errors.Is(err, ErrPasswordRequired), errors.Is(err, ErrMarketCodeRequired):
+		errors.Is(err, ErrPasswordRequired), errors.Is(err, ErrMarketCodeRequired),
+		errors.Is(err, innlookup.ErrInvalidTaxID), errors.Is(err, innlookup.ErrInvalidRoleSought):
 		web.JSONError(w, err.Error(), http.StatusBadRequest)
+	case errors.Is(err, innlookup.ErrCrossCellDenied):
+		web.JSONError(w, innlookup.ErrCrossCellDenied.Error(), http.StatusForbidden)
+	case errors.Is(err, innlookup.ErrRateLimited):
+		web.JSONError(w, innlookup.ErrRateLimited.Error(), http.StatusTooManyRequests)
+	case errors.Is(err, innlookup.ErrTaxIDNotFound):
+		web.JSONError(w, innlookup.ErrTaxIDNotFound.Error(), http.StatusUnprocessableEntity)
 	case errors.Is(err, ErrUnknownMarket), errors.Is(err, ErrMarketNotShipped):
 		code := ""
 		if parts := strings.Split(err.Error(), ": "); len(parts) == 2 {

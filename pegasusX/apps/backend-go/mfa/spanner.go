@@ -2,10 +2,12 @@ package mfa
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"cloud.google.com/go/spanner"
 	"google.golang.org/api/iterator"
+	"google.golang.org/grpc/codes"
 )
 
 // SpannerRepository persists PlatformAdminMFA.
@@ -21,7 +23,7 @@ func (r *SpannerRepository) Get(ctx context.Context, subject string) (Record, bo
 	row, err := r.client.Single().ReadRow(ctx, "PlatformAdminMFA", spanner.Key{subject},
 		[]string{"Subject", "Secret", "Enabled", "CreatedAt", "EnabledAt"})
 	if err != nil {
-		if err == spanner.ErrRowNotFound {
+		if errors.Is(err, spanner.ErrRowNotFound) || spanner.ErrCode(err) == codes.NotFound {
 			return Record{}, false, nil
 		}
 		return Record{}, false, err

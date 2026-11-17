@@ -2,9 +2,13 @@ package com.pegasusx.supplier.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.pegasusx.supplier.data.model.INNLookupRequest
+import com.pegasusx.supplier.data.model.INNLookupResponse
+import com.pegasusx.supplier.data.model.JoinRequestConflictPayload
 import com.pegasusx.supplier.data.push.DeviceTokenRegistrar
 import com.pegasusx.supplier.data.remote.SupplierApi
 import com.pegasusx.supplier.data.remote.TokenHolder
+import com.pegasusx.supplier.util.SupplierIdempotencyKeys
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -12,6 +16,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
@@ -39,11 +44,19 @@ data class BusinessSetupUiState(
     val postalCode: String = "",
     val loading: Boolean = false,
     val error: String? = null,
-)
+    val innChecking: Boolean = false,
+    val innLookup: INNLookupResponse? = null,
+    val innError: String? = null,
+    val joinRequestConflict: JoinRequestConflictPayload? = null,
+    val joinRequestSent: Boolean = false,
+) {
+    val normalizedInn: String get() = taxId.filter { it.isDigit() }
+}
 
 @HiltViewModel
 class OnboardingViewModel @Inject constructor(
     private val api: SupplierApi,
+    private val json: Json = Json { ignoreUnknownKeys = true },
 ) : ViewModel() {
     private val _registerState = MutableStateFlow(RegisterUiState())
     val registerState: StateFlow<RegisterUiState> = _registerState.asStateFlow()
@@ -111,28 +124,124 @@ class OnboardingViewModel @Inject constructor(
         }
     }
 
+    fun verifyINN() {
+        val digits = _businessState.value.normalizedInn
+        if (digits.length != 9) {
+            _businessState.update {
+                it.copy(
+                    innLookup = null,
+                    innError = "INN must be 9 digits",
+                )
+            }
+            return
+        }
+        viewModelScope.launch {
+            performVerifyINN(digits)
+        }
+    }
+
+    private suspend fun performVerifyINN(digits: String): INNLookupResponse? {
+        _businessState.update {
+            it.copy(innChecking = true, innError = null, joinRequestConflict = null, joinRequestSent = false)
+        }
+        return try {
+            val resp = api.lookupINN(INNLookupRequest(inn = digits, tenantType = "SUPPLIER"))
+            val body = resp.body()
+            if (!resp.isSuccessful || body == null) {
+                _businessState.update {
+                    it.copy(innChecking = false, innError = "Tax registry verification unavailable (${resp.code()})")
+                }
+                return null
+            }
+            val status = body.status.uppercase()
+            val errMsg = when (status) {
+                "UNAVAILABLE" -> "Tax registry verification is temporarily unavailable. Registration cannot proceed."
+                "INVALID", "NOT_FOUND" -> "INN is invalid or not found in official tax registry."
+                else -> null
+            }
+            _businessState.update { cur ->
+                val filledAddr = if (cur.headquartersAddress.isBlank() && !body.address.isNullOrBlank()) {
+                    body.address
+                } else {
+                    cur.headquartersAddress
+                }
+                cur.copy(
+                    innChecking = false,
+                    innLookup = body,
+                    innError = errMsg,
+                    headquartersAddress = filledAddr,
+                )
+            }
+            body
+        } catch (e: Exception) {
+            _businessState.update {
+                it.copy(innChecking = false, innError = e.message ?: "Tax registry verification unavailable")
+            }
+            null
+        }
+    }
+
     fun submitBusinessSetup(onSuccess: () -> Unit) {
-        val state = _businessState.value
+        val initial = _businessState.value
         viewModelScope.launch {
             _businessState.update { it.copy(loading = true, error = null) }
             try {
-                val payload = buildJsonObject {
-                    put("taxId", JsonPrimitive(state.taxId.trim()))
-                    put("registrationNumber", JsonPrimitive(state.registrationNumber.trim()))
-                    put("headquartersAddress", JsonPrimitive(state.headquartersAddress.trim()))
-                    put("city", JsonPrimitive(state.city.trim()))
-                    put("postalCode", JsonPrimitive(state.postalCode.trim()))
+                val digits = initial.normalizedInn
+                if (digits.length == 9) {
+                    val existing = _businessState.value.innLookup
+                    val verified = if (existing == null || existing.normalizedInn != digits) {
+                        performVerifyINN(digits)
+                    } else {
+                        existing
+                    }
+                    if (verified == null) {
+                        _businessState.update {
+                            it.copy(loading = false, error = it.innError ?: "INN verification unavailable")
+                        }
+                        return@launch
+                    }
+                    when (verified.status.uppercase()) {
+                        "UNAVAILABLE", "INVALID", "NOT_FOUND" -> {
+                            _businessState.update {
+                                it.copy(loading = false, error = it.innError ?: "INN verification failed")
+                            }
+                            return@launch
+                        }
+                    }
                 }
-                val resp = api.setupBusiness(payload)
+
+                val current = _businessState.value
+                val payload = buildJsonObject {
+                    put("taxId", JsonPrimitive(current.taxId.trim()))
+                    put("registrationNumber", JsonPrimitive(current.registrationNumber.trim()))
+                    put("headquartersAddress", JsonPrimitive(current.headquartersAddress.trim()))
+                    put("city", JsonPrimitive(current.city.trim()))
+                    put("postalCode", JsonPrimitive(current.postalCode.trim()))
+                }
+                val scopeId = SupplierIdempotencyKeys.supplierScopeId()
+                val key = SupplierIdempotencyKeys.businessSetup(scopeId, payload.toString())
+                val resp = api.setupBusiness(payload, key)
                 if (resp.isSuccessful) {
+                    _businessState.update { it.copy(loading = false) }
                     onSuccess()
+                } else if (resp.code() == 409) {
+                    val errText = resp.errorBody()?.string()
+                    val conflict = errText?.let { raw ->
+                        runCatching { json.decodeFromString<JoinRequestConflictPayload>(raw) }.getOrNull()
+                    }
+                    _businessState.update {
+                        it.copy(
+                            loading = false,
+                            joinRequestConflict = conflict,
+                            joinRequestSent = true,
+                            error = null,
+                        )
+                    }
                 } else {
-                    _businessState.update { it.copy(error = "Setup failed (${resp.code()})") }
+                    _businessState.update { it.copy(loading = false, error = "Setup failed (${resp.code()})") }
                 }
             } catch (e: Exception) {
-                _businessState.update { it.copy(error = e.message ?: "Network error") }
-            } finally {
-                _businessState.update { it.copy(loading = false) }
+                _businessState.update { it.copy(loading = false, error = e.message ?: "Network error") }
             }
         }
     }

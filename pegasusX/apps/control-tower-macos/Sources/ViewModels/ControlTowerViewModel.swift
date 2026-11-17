@@ -71,6 +71,7 @@ public final class ControlTowerViewModel {
     public private(set) var scorecards: [RolePerformanceScorecard] = []
     public private(set) var isLoading: Bool = false
     public private(set) var lastRefreshed: Date = Date()
+    public private(set) var lastErrorMessage: String?
     public var copiedToastMessage: String?
 
     public let streamClient: WebSocketStreamClient
@@ -114,16 +115,18 @@ public final class ControlTowerViewModel {
             self.costs = try await fetchedCosts
             self.scorecards = try await fetchedScorecards
             self.lastRefreshed = Date()
+            self.lastErrorMessage = nil
         } catch {
-            print("ControlTowerViewModel initial load error: \(error)")
+            self.lastErrorMessage = error.localizedDescription
         }
     }
 
     public func loadRoleSpecificData() async {
         do {
             self.waterfallSlices = try await apiClient.fetchWaterfall(for: selectedRole)
+            self.lastErrorMessage = nil
         } catch {
-            print("Failed to load role waterfall: \(error)")
+            self.lastErrorMessage = error.localizedDescription
         }
     }
 
@@ -181,7 +184,7 @@ public final class ControlTowerViewModel {
             bundleId: UUID().uuidString.prefix(8).uppercased(),
             generatedAt: ISO8601DateFormatter().string(from: Date()),
             appVersion: "1.0.0 (macOS Native)",
-            activeCell: "cell-uz-tashkent",
+            activeCell: cells.first?.cellId ?? "unknown",
             logs: streamClient.events,
             spannerStatus: spanner,
             kafkaPartitions: kafkaPartitions
@@ -192,5 +195,18 @@ public final class ControlTowerViewModel {
     public func exportWaterfallCSV() {
         ControlTowerHaptics.alignment()
         ExportService.exportWaterfallCSV(slices: waterfallSlices, role: selectedRole)
+    }
+
+    public func signOut() async {
+        await apiClient.clearSession()
+        streamClient.clearSession()
+        cells = []
+        spanner = nil
+        kafkaPartitions = []
+        redisPools = []
+        waterfallSlices = []
+        costs = []
+        scorecards = []
+        lastErrorMessage = nil
     }
 }

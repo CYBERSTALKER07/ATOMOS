@@ -16,9 +16,9 @@ from contract_solver import CONTRACT_V, SolverError, solve_contract
 
 AUTH_HEADER = "X-Internal-Api-Key"
 SOLVE_PATH = "/v1/optimizer/solve"
-DEFAULT_TIMEOUT_SEC = 8.0
-DEFAULT_SOCKET_TIMEOUT_SEC = 10.0
-DEFAULT_MAX_CONCURRENCY = 4
+DEFAULT_TIMEOUT_SEC = 55.0
+DEFAULT_SOCKET_TIMEOUT_SEC = 60.0
+DEFAULT_MAX_CONCURRENCY = 8
 MAX_BODY_BYTES = 4 * 1024 * 1024  # 4 MiB
 
 
@@ -345,8 +345,8 @@ class OptimizerHandler(BaseHTTPRequestHandler):
                 except ValueError:
                     pass
 
-        # Give solver up to soft_timeout_sec plus 0.5s serialization buffer before declaring 504
-        if not done.wait(timeout=self.soft_timeout_sec + 0.5):
+        # Give solver up to soft_timeout_sec plus 1.0s serialization buffer before declaring 504
+        if not done.wait(timeout=self.soft_timeout_sec + 1.0):
             METRICS.record_timeout()
             _write_json(
                 self,
@@ -411,17 +411,18 @@ def serve() -> None:
     api_key = os.getenv("INTERNAL_API_KEY", "")
     port = _env_int("OPTIMIZER_HTTP_PORT", 8082)
     timeout_sec = _env_float("OPTIMIZER_SOFT_TIMEOUT_SEC", DEFAULT_TIMEOUT_SEC)
+    socket_timeout_sec = max(DEFAULT_SOCKET_TIMEOUT_SEC, timeout_sec + 5.0)
     max_concurrency = max(1, _env_int("OPTIMIZER_MAX_CONCURRENCY", DEFAULT_MAX_CONCURRENCY))
     drain_timeout = _env_float("OPTIMIZER_DRAIN_TIMEOUT_SEC", 20.0)
 
     OptimizerHandler.api_key = api_key
     OptimizerHandler.soft_timeout_sec = timeout_sec
-    OptimizerHandler.timeout = DEFAULT_SOCKET_TIMEOUT_SEC
+    OptimizerHandler.timeout = socket_timeout_sec
     OptimizerHandler.solver_semaphore = threading.BoundedSemaphore(max_concurrency)
     OptimizerHandler.is_shutting_down = False
 
     server = ThreadingHTTPServer(("0.0.0.0", port), OptimizerHandler)
-    server.timeout = DEFAULT_SOCKET_TIMEOUT_SEC
+    server.timeout = socket_timeout_sec
     print(f"optimizer-core http listening on :{port}", flush=True)
 
     shutdown_event = threading.Event()

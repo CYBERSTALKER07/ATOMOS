@@ -307,65 +307,14 @@ func (s *Service) fulfillSupplyRequestSpanner(ctx context.Context, requestID str
 
 	var linkedTransferID string
 	_, err = s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-		muts := []*spanner.Mutation{
-			spanner.UpdateMap("WarehouseSupplyRequests", map[string]any{
-				"RequestId":        requestID,
-				"State":            "FULFILLED",
-				"LinkedTransferId": transferID,
-				"TotalVolumeVU":    totalVU,
-				"UpdatedAt":        spanner.CommitTimestamp,
-			}),
-		}
-		for _, line := range lines {
-			muts = append(muts, spanner.UpdateMap("WarehouseSupplyRequestItems", map[string]any{
-				"RequestId":       requestID,
-				"ItemId":          line.ItemID,
-				"ShippedQuantity": line.ShippedQuantity,
-			}))
-		}
-		transferRow := map[string]any{
-			"TransferId":      transferID,
-			"FactoryId":       factoryID,
-			"SupplierId":      rec.SupplierID,
-			"WarehouseId":     rec.WarehouseID,
-			"SupplyRequestId": requestID,
-			"TransferMode":    transferMode,
-			"State":           initialTransferState,
-			"TotalVolumeVU":   totalVU,
-			"CreatedAt":       spanner.CommitTimestamp,
-			"UpdatedAt":       spanner.CommitTimestamp,
-		}
-		if initialTransferState == "RECEIVED" {
-			transferRow["ReceivedAt"] = spanner.CommitTimestamp
-		}
-		if driverID := strings.TrimSpace(driverID); driverID != "" && transferMode != supplier.TransferModeInternal {
-			transferRow["DriverId"] = driverID
-		}
-		muts = append(muts, spanner.InsertOrUpdateMap("FactoryInternalTransfers", transferRow))
-		evt := events.WarehouseEvent{
-			BaseEvent:        events.BaseEvent{Type: events.EventWarehouseTransferCreated, Timestamp: s.now().Format(time.RFC3339Nano)},
-			TransferID:       transferID,
-			WarehouseID:      rec.WarehouseID,
-			SupplierID:       rec.SupplierID,
-			FactoryID:        factoryID,
-			RequestID:        requestID,
-			TransferMode:     transferMode,
-			LinkedTransferID: transferID,
-			Status:           initialTransferState,
-			Units:            rec.ProjectedVU,
-		}
-		payload, err := json.Marshal(evt)
+		muts, err := buildFulfillSupplyRequestMutations(
+			requestID, transferID, factoryID, transferMode, initialTransferState, driverID,
+			totalVU, rec, lines, s.now(),
+		)
 		if err != nil {
 			return err
 		}
-		muts = append(muts, spanner.InsertOrUpdateMap("OutboxEvents", outbox.EventRowMap(outbox.Event{
-			EventID:       uuid.NewString(),
-			AggregateType: events.AggregateWarehouse,
-			AggregateID:   transferID,
-			TopicName:     events.TopicMain,
-			Payload:       payload,
-			SupplierID:    rec.SupplierID,
-		})))
+
 		if initialTransferState == "RECEIVED" {
 			for _, line := range lines {
 				if stocklots.LotsEnabled() {
@@ -378,40 +327,114 @@ func (s *Service) fulfillSupplyRequestSpanner(ctx context.Context, requestID str
 				} else if err := inventory.CreditSupplierInventoryV2InTxn(ctx, txn, rec.SupplierID, rec.WarehouseID, line.ProductID, line.ShippedQuantity); err != nil {
 					return err
 				}
-				muts = append(muts, spanner.UpdateMap("WarehouseSupplyRequestItems", map[string]any{
-					"RequestId":        requestID,
-					"ItemId":           line.ItemID,
-					"ReceivedQuantity": line.ShippedQuantity,
-				}))
 			}
-			muts = append(muts, spanner.UpdateMap("WarehouseSupplyRequests", map[string]any{
-				"RequestId": requestID,
-				"State":     "RECEIVED",
-				"UpdatedAt": spanner.CommitTimestamp,
-			}))
-			recv := events.WarehouseEvent{
-				BaseEvent:   events.BaseEvent{Type: events.EventWarehouseTransferReceived, Timestamp: s.now().Format(time.RFC3339Nano)},
-				TransferID:  transferID,
-				WarehouseID: rec.WarehouseID,
-				SupplierID:  rec.SupplierID,
-				RequestID:   requestID,
-				Units:       rec.ProjectedVU,
-			}
-			recvPayload, err := json.Marshal(recv)
-			if err != nil {
-				return err
-			}
-			muts = append(muts, spanner.InsertOrUpdateMap("OutboxEvents", outbox.EventRowMap(outbox.Event{
-				EventID:       uuid.NewString(),
-				AggregateType: events.AggregateWarehouse,
-				AggregateID:   transferID,
-				TopicName:     events.TopicMain,
-				Payload:       recvPayload,
-				SupplierID:    rec.SupplierID,
-			})))
 		}
 		linkedTransferID = transferID
 		return txn.BufferWrite(muts)
 	})
 	return linkedTransferID, err
+}
+
+func buildFulfillSupplyRequestMutations(
+	requestID string,
+	transferID string,
+	factoryID string,
+	transferMode string,
+	initialTransferState string,
+	driverID string,
+	totalVU float64,
+	rec spannerSupplyRow,
+	lines []factorySupplyItem,
+	now time.Time,
+) ([]*spanner.Mutation, error) {
+	reqState := "FULFILLED"
+	if initialTransferState == "RECEIVED" {
+		reqState = "RECEIVED"
+	}
+	muts := []*spanner.Mutation{
+		spanner.UpdateMap("WarehouseSupplyRequests", map[string]any{
+			"RequestId":        requestID,
+			"State":            reqState,
+			"LinkedTransferId": transferID,
+			"TotalVolumeVU":    totalVU,
+			"UpdatedAt":        spanner.CommitTimestamp,
+		}),
+	}
+	for _, line := range lines {
+		itemMap := map[string]any{
+			"RequestId":       requestID,
+			"ItemId":          line.ItemID,
+			"ShippedQuantity": line.ShippedQuantity,
+		}
+		if initialTransferState == "RECEIVED" {
+			itemMap["ReceivedQuantity"] = line.ShippedQuantity
+		}
+		muts = append(muts, spanner.UpdateMap("WarehouseSupplyRequestItems", itemMap))
+	}
+	transferRow := map[string]any{
+		"TransferId":      transferID,
+		"FactoryId":       factoryID,
+		"SupplierId":      rec.SupplierID,
+		"WarehouseId":     rec.WarehouseID,
+		"SupplyRequestId": requestID,
+		"TransferMode":    transferMode,
+		"State":           initialTransferState,
+		"TotalVolumeVU":   totalVU,
+		"CreatedAt":       spanner.CommitTimestamp,
+		"UpdatedAt":       spanner.CommitTimestamp,
+	}
+	if initialTransferState == "RECEIVED" {
+		transferRow["ReceivedAt"] = spanner.CommitTimestamp
+	}
+	if driverID := strings.TrimSpace(driverID); driverID != "" && transferMode != supplier.TransferModeInternal {
+		transferRow["DriverId"] = driverID
+	}
+	muts = append(muts, spanner.InsertOrUpdateMap("FactoryInternalTransfers", transferRow))
+	evt := events.WarehouseEvent{
+		BaseEvent:        events.BaseEvent{Type: events.EventWarehouseTransferCreated, Timestamp: now.Format(time.RFC3339Nano)},
+		TransferID:       transferID,
+		WarehouseID:      rec.WarehouseID,
+		SupplierID:       rec.SupplierID,
+		FactoryID:        factoryID,
+		RequestID:        requestID,
+		TransferMode:     transferMode,
+		LinkedTransferID: transferID,
+		Status:           initialTransferState,
+		Units:            rec.ProjectedVU,
+	}
+	payload, err := json.Marshal(evt)
+	if err != nil {
+		return nil, err
+	}
+	muts = append(muts, spanner.InsertOrUpdateMap("OutboxEvents", outbox.EventRowMap(outbox.Event{
+		EventID:       uuid.NewString(),
+		AggregateType: events.AggregateWarehouse,
+		AggregateID:   transferID,
+		TopicName:     events.TopicMain,
+		Payload:       payload,
+		SupplierID:    rec.SupplierID,
+	})))
+	if initialTransferState == "RECEIVED" {
+		recv := events.WarehouseEvent{
+			BaseEvent:   events.BaseEvent{Type: events.EventWarehouseTransferReceived, Timestamp: now.Format(time.RFC3339Nano)},
+			TransferID:  transferID,
+			WarehouseID: rec.WarehouseID,
+			SupplierID:  rec.SupplierID,
+			RequestID:   requestID,
+			Units:       rec.ProjectedVU,
+		}
+		recvPayload, err := json.Marshal(recv)
+		if err != nil {
+			return nil, err
+		}
+		muts = append(muts, spanner.InsertOrUpdateMap("OutboxEvents", outbox.EventRowMap(outbox.Event{
+			EventID:       uuid.NewString(),
+			AggregateType: events.AggregateWarehouse,
+			AggregateID:   transferID,
+			TopicName:     events.TopicMain,
+			Payload:       recvPayload,
+			SupplierID:    rec.SupplierID,
+		})))
+	}
+	return muts, nil
 }

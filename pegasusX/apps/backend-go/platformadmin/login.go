@@ -3,6 +3,7 @@ package platformadmin
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"os"
 	"strings"
@@ -39,7 +40,7 @@ func (d *LoginDeps) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		Email    string `json:"email"`
 		Password string `json:"password"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.NewDecoder(io.LimitReader(r.Body, 16*1024)).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
@@ -48,19 +49,25 @@ func (d *LoginDeps) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "password_required"})
 		return
 	}
-	subject, hash, ok, err := d.lookupAdmin(r.Context(), strings.TrimSpace(req.Subject), strings.TrimSpace(req.Email))
+	subject, hash, found, enabled, err := d.lookupAdmin(r.Context(), strings.TrimSpace(req.Subject), strings.TrimSpace(req.Email))
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "lookup_failed"})
 		return
 	}
-	if !ok {
-		// Env bootstrap admin (SSMR / first boot) when table empty or no row.
+	if found && !enabled {
+		// Disabled DB admins must never fall back to env bootstrap credentials.
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid_credentials"})
+		return
+	}
+	if !found {
+		// Env bootstrap admin (SSMR / first boot) only when no matching row exists in Spanner.
 		if sub, h, envOK := envBootstrapAdmin(req.Subject, req.Email); envOK {
 			subject, hash = sub, h
-			ok = true
+			found = true
+			enabled = true
 		}
 	}
-	if !ok || bcrypt.CompareHashAndPassword([]byte(hash), []byte(password)) != nil {
+	if !found || !enabled || bcrypt.CompareHashAndPassword([]byte(hash), []byte(password)) != nil {
 		// Constant-time-ish failure message.
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid_credentials"})
 		return
@@ -89,30 +96,26 @@ func (d *LoginDeps) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (d *LoginDeps) lookupAdmin(ctx context.Context, subject, email string) (sub, hash string, ok bool, err error) {
+func (d *LoginDeps) lookupAdmin(ctx context.Context, subject, email string) (sub, hash string, found, enabled bool, err error) {
 	if d == nil || d.Spanner == nil {
-		return "", "", false, nil
+		return "", "", false, false, nil
 	}
 	if subject != "" {
 		row, err := d.Spanner.Single().ReadRow(ctx, "PlatformAdminUsers", spanner.Key{subject},
 			[]string{"Subject", "PasswordHash", "Enabled"})
 		if err != nil {
 			if spanner.ErrCode(err) == 5 {
-				return "", "", false, nil
+				return "", "", false, false, nil
 			}
-			return "", "", false, err
+			return "", "", false, false, err
 		}
-		var enabled bool
 		if err := row.Columns(&sub, &hash, &enabled); err != nil {
-			return "", "", false, err
+			return "", "", false, false, err
 		}
-		if !enabled {
-			return "", "", false, nil
-		}
-		return sub, hash, true, nil
+		return sub, hash, true, enabled, nil
 	}
 	if email == "" {
-		return "", "", false, nil
+		return "", "", false, false, nil
 	}
 	stmt := spanner.Statement{
 		SQL:    `SELECT Subject, PasswordHash, Enabled FROM PlatformAdminUsers WHERE Email = @email LIMIT 1`,
@@ -122,23 +125,19 @@ func (d *LoginDeps) lookupAdmin(ctx context.Context, subject, email string) (sub
 	defer iter.Stop()
 	row, err := iter.Next()
 	if err == iterator.Done {
-		return "", "", false, nil
+		return "", "", false, false, nil
 	}
 	if err != nil {
 		// Table missing.
 		if strings.Contains(err.Error(), "PlatformAdminUsers") {
-			return "", "", false, nil
+			return "", "", false, false, nil
 		}
-		return "", "", false, err
+		return "", "", false, false, err
 	}
-	var enabled bool
 	if err := row.Columns(&sub, &hash, &enabled); err != nil {
-		return "", "", false, err
+		return "", "", false, false, err
 	}
-	if !enabled {
-		return "", "", false, nil
-	}
-	return sub, hash, true, nil
+	return sub, hash, true, enabled, nil
 }
 
 // envBootstrapAdmin allows PLATFORM_ADMIN_SUBJECT + PLATFORM_ADMIN_PASSWORD (plaintext)

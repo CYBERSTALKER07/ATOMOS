@@ -2,6 +2,7 @@ package foundryroutes_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -22,6 +23,7 @@ func newTestServer() *httptest.Server {
 				Subject:    "foundry-test",
 				Role:       auth.RoleAdmin,
 				SupplierID: "sup_1",
+				ActorType:  auth.ActorTypeConnector,
 			})
 			next.ServeHTTP(w, req.WithContext(ctx))
 		})
@@ -329,5 +331,266 @@ func TestFoundryTenantIsolationRejectsForeignSupplierID(t *testing.T) {
 
 	if res.StatusCode != http.StatusForbidden {
 		t.Fatalf("expected 403 Forbidden for mismatched tenant ID, got %d", res.StatusCode)
+	}
+}
+
+func newRoleServer(role auth.Role) *httptest.Server {
+	r := chi.NewRouter()
+	r.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			ctx := auth.WithClaims(req.Context(), auth.Claims{
+				Subject:    "role-tester",
+				Role:       role,
+				SupplierID: "sup_1",
+			})
+			next.ServeHTTP(w, req.WithContext(ctx))
+		})
+	})
+	foundryroutes.RegisterRoutes(r, foundryroutes.Deps{
+		Engine: foundry.NewEngine(),
+	})
+	return httptest.NewServer(r)
+}
+
+func TestCashierVaultRoleEnforcement(t *testing.T) {
+
+	sessionPayload := map[string]any{
+		"cell_id":             "cell-uz",
+		"supplier_id":         "sup_1",
+		"depot_id":            "dep_1",
+		"driver_id":           "drv_1",
+		"bag_seal_barcode":    "SEAL-ROLE-CHECK",
+		"expected_cash_minor": int64(10_000_000),
+	}
+
+	// 1. Disallowed roles must receive 403 Forbidden on cashier vault endpoints
+	for _, disallowedRole := range []auth.Role{auth.RoleRetailer, auth.RoleDriver, auth.Role("FACTORY_DRIVER")} {
+		srv := newRoleServer(disallowedRole)
+		defer srv.Close()
+
+		endpoints := []string{
+			srv.URL + "/v1/foundry/cashier/sessions",
+			srv.URL + "/v1/foundry/cashier/sessions/dummy/blind-count",
+			srv.URL + "/v1/foundry/cashier/reclassify-tender",
+			srv.URL + "/v1/foundry/cashier/vault/cit-handover",
+			srv.URL + "/v1/foundry/guards/split-tender-reconcile",
+			srv.URL + "/v1/foundry/guards/aml-check",
+		}
+		for _, ep := range endpoints {
+			resp := postJSON(t, ep, sessionPayload)
+			if resp.StatusCode != http.StatusForbidden {
+				t.Fatalf("role %s on %s: expected 403 Forbidden, got %d", disallowedRole, ep, resp.StatusCode)
+			}
+			resp.Body.Close()
+		}
+	}
+
+	// 2. Allowed roles must be permitted (201 Created on session start)
+	allowedRoles := []auth.Role{
+		auth.RoleWarehouse,
+		auth.RoleWarehouseAdmin,
+		auth.RoleAdmin,
+		auth.RolePlatformAdmin,
+		auth.Role("FINANCE"),
+	}
+	for i, allowedRole := range allowedRoles {
+		srv := newRoleServer(allowedRole)
+		defer srv.Close()
+
+		payload := map[string]any{
+			"cell_id":             "cell-uz",
+			"supplier_id":         "sup_1",
+			"depot_id":            "dep_1",
+			"driver_id":           "drv_1",
+			"bag_seal_barcode":    "SEAL-ROLE-OK-" + string(allowedRole) + string(rune('0'+i)),
+			"expected_cash_minor": int64(10_000_000),
+		}
+		resp := postJSON(t, srv.URL+"/v1/foundry/cashier/sessions", payload)
+		if resp.StatusCode != http.StatusCreated {
+			t.Fatalf("allowed role %s: expected 201 Created, got %d", allowedRole, resp.StatusCode)
+		}
+		resp.Body.Close()
+	}
+}
+
+func TestFleetRoleGatingAndToleranceClamping(t *testing.T) {
+	// 1. Disallowed roles on fleet endpoints (e.g. RoleRetailer) must receive 403 Forbidden
+	retailerSrv := newRoleServer(auth.RoleRetailer)
+	defer retailerSrv.Close()
+
+	fleetEndpoints := []string{
+		retailerSrv.URL + "/v1/foundry/fleet/dvir",
+		retailerSrv.URL + "/v1/foundry/fleet/gate-events",
+		retailerSrv.URL + "/v1/foundry/fleet/mid-route-rescue",
+	}
+	for _, ep := range fleetEndpoints {
+		resp := postJSON(t, ep, map[string]any{"vehicle_id": "veh-1"})
+		if resp.StatusCode != http.StatusForbidden {
+			t.Fatalf("expected 403 Forbidden on %s for Retailer, got %d", ep, resp.StatusCode)
+		}
+		resp.Body.Close()
+	}
+
+	getResp, err := http.Get(retailerSrv.URL + "/v1/foundry/fleet/vehicles/veh-1/dispatch-check")
+	if err != nil {
+		t.Fatalf("GET dispatch-check: %v", err)
+	}
+	if getResp.StatusCode != http.StatusForbidden {
+		t.Fatalf("expected 403 Forbidden on GET dispatch-check for Retailer, got %d", getResp.StatusCode)
+	}
+	getResp.Body.Close()
+
+	// 2. Allowed fleet roles (auth.RoleDriver, auth.RoleWarehouse, auth.RoleWarehouseAdmin, auth.RolePayload, auth.RoleAdmin)
+	for _, role := range []auth.Role{auth.RoleDriver, auth.RoleWarehouse, auth.RolePayload} {
+		srv := newRoleServer(role)
+		defer srv.Close()
+		getResp, err := http.Get(srv.URL + "/v1/foundry/fleet/vehicles/veh-allowed/dispatch-check")
+		if err != nil {
+			t.Fatalf("GET dispatch-check for %s: %v", role, err)
+		}
+		// Expect 200 OK (or non-403)
+		if getResp.StatusCode == http.StatusForbidden {
+			t.Fatalf("expected non-403 for allowed role %s, got 403", role)
+		}
+		getResp.Body.Close()
+	}
+
+	// 3. Tolerance threshold clamping in handleSubmitBlindCount
+	adminSrv := newRoleServer(auth.RoleAdmin)
+	defer adminSrv.Close()
+
+	// Start cashier session
+	createResp := postJSON(t, adminSrv.URL+"/v1/foundry/cashier/sessions", map[string]any{
+		"cell_id":             "cell-uz",
+		"supplier_id":         "sup_1",
+		"depot_id":            "dep_1",
+		"driver_id":           "drv_tolerance",
+		"bag_seal_barcode":    "SEAL-TOLERANCE-CLAMP",
+		"expected_cash_minor": int64(10_000_000), // 100,000 UZS
+	})
+	if createResp.StatusCode != http.StatusCreated {
+		t.Fatalf("create session: %d", createResp.StatusCode)
+	}
+	var sessView foundry.CashierSessionView
+	json.NewDecoder(createResp.Body).Decode(&sessView)
+	createResp.Body.Close()
+
+	// Submit blind count with huge tolerance 1_000_000_00 (100,000 UZS) to try masking a 50,000 UZS shortage
+	// But count is 5,000,000 (50,000 UZS) -> variance is -50,000 UZS (-5,000,000 tiyin)
+	// Server cap is 500,000 tiyin (5,000 UZS).
+	// Because -5M > 500k, it must trigger RECOUNT_REQUIRED (409 Conflict), NOT TOLERANCE_VARIANCE (200 OK)!
+	countResp := postJSON(t, adminSrv.URL+"/v1/foundry/cashier/sessions/"+sessView.SessionID+"/blind-count", map[string]any{
+		"denominations_uzs": map[string]int{
+			"50000": 1, // 50,000 UZS = 5,000,000 tiyin
+		},
+		"tolerance_threshold_minor": 100_000_000, // Client tries passing 1M UZS tolerance
+	})
+	if countResp.StatusCode != http.StatusConflict {
+		t.Fatalf("expected 409 Conflict (RECOUNT_REQUIRED) because tolerance should be clamped to 500k tiyin, got status %d", countResp.StatusCode)
+	}
+	countResp.Body.Close()
+}
+
+func newRoleActorServer(role auth.Role, actorType string, allowBypass bool) *httptest.Server {
+	eng := foundry.NewEngine()
+	_, _ = eng.UpsertObject(context.Background(), foundry.OntologyObject{
+		CellID:     "cell-uz",
+		SupplierID: "sup_1",
+		ObjectType: "Supplier",
+		ObjectID:   "sup_1",
+		Properties: map[string]any{"name": "Sup One"},
+	})
+	r := chi.NewRouter()
+	r.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			ctx := auth.WithClaims(req.Context(), auth.Claims{
+				Subject:    "role-actor-tester",
+				Role:       role,
+				SupplierID: "sup_1",
+				ActorType:  actorType,
+			})
+			next.ServeHTTP(w, req.WithContext(ctx))
+		})
+	})
+	foundryroutes.RegisterRoutes(r, foundryroutes.Deps{
+		Engine:                   eng,
+		AllowOntologyWriteBypass: allowBypass,
+	})
+	return httptest.NewServer(r)
+}
+
+func TestFoundryOntologyWriteRestriction(t *testing.T) {
+	objPayload := map[string]any{
+		"cell_id":     "cell-uz",
+		"supplier_id": "sup_1",
+		"object_type": "Warehouse",
+		"object_id":   "wh_guard_1",
+		"properties":  map[string]any{"name": "Hub"},
+	}
+	linkPayload := map[string]any{
+		"cell_id":            "cell-uz",
+		"supplier_id":        "sup_1",
+		"source_object_type": "Supplier",
+		"source_object_id":   "sup_1",
+		"link_type":          "supplies",
+		"target_object_type": "Warehouse",
+		"target_object_id":   "wh_guard_1",
+	}
+
+	// Non-platform-admin human / agent roles must be rejected with 403 Forbidden
+	unauthorized := []struct {
+		role      auth.Role
+		actorType string
+	}{
+		{auth.RoleAdmin, ""},
+		{auth.RoleAdmin, auth.ActorTypeHuman},
+		{auth.RoleAdmin, auth.ActorTypeAgent},
+		{auth.RoleWarehouseAdmin, auth.ActorTypeHuman},
+		{auth.RoleWarehouse, auth.ActorTypeHuman},
+		{auth.RoleRetailer, auth.ActorTypeHuman},
+		{auth.RoleDriver, auth.ActorTypeHuman},
+	}
+	for _, tc := range unauthorized {
+		srv := newRoleActorServer(tc.role, tc.actorType, false)
+		rObj := postJSON(t, srv.URL+"/v1/foundry/ontology/objects", objPayload)
+		rObj.Body.Close()
+		if rObj.StatusCode != http.StatusForbidden {
+			srv.Close()
+			t.Fatalf("role=%s actor=%q POST /v1/foundry/ontology/objects: expected 403, got %d", tc.role, tc.actorType, rObj.StatusCode)
+		}
+		rLink := postJSON(t, srv.URL+"/v1/foundry/ontology/links", linkPayload)
+		rLink.Body.Close()
+		if rLink.StatusCode != http.StatusForbidden {
+			srv.Close()
+			t.Fatalf("role=%s actor=%q POST /v1/foundry/ontology/links: expected 403, got %d", tc.role, tc.actorType, rLink.StatusCode)
+		}
+		srv.Close()
+	}
+
+	// PLATFORM_ADMIN and explicit connector actors (plus test bypass) are permitted
+	authorized := []struct {
+		role      auth.Role
+		actorType string
+		bypass    bool
+	}{
+		{auth.RolePlatformAdmin, auth.ActorTypeHuman, false},
+		{auth.RoleAdmin, auth.ActorTypeConnector, false},
+		{auth.RoleAdmin, auth.ActorTypeHuman, true},
+	}
+	for _, tc := range authorized {
+		srv := newRoleActorServer(tc.role, tc.actorType, tc.bypass)
+		rObj := postJSON(t, srv.URL+"/v1/foundry/ontology/objects", objPayload)
+		rObj.Body.Close()
+		if rObj.StatusCode != http.StatusCreated {
+			srv.Close()
+			t.Fatalf("role=%s actor=%q bypass=%v POST /v1/foundry/ontology/objects: expected 201, got %d", tc.role, tc.actorType, tc.bypass, rObj.StatusCode)
+		}
+		rLink := postJSON(t, srv.URL+"/v1/foundry/ontology/links", linkPayload)
+		rLink.Body.Close()
+		if rLink.StatusCode != http.StatusCreated {
+			srv.Close()
+			t.Fatalf("role=%s actor=%q bypass=%v POST /v1/foundry/ontology/links: expected 201, got %d", tc.role, tc.actorType, tc.bypass, rLink.StatusCode)
+		}
+		srv.Close()
 	}
 }

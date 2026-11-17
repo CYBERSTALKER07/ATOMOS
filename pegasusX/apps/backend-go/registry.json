@@ -1,6 +1,6 @@
 {
   "source": "events",
-  "generated_at": "2026-07-18T14:56:25.04058Z",
+  "generated_at": "2026-11-13T21:25:28.191945Z",
   "events": [
     {
       "name": "EventAIRecommendationCreated",
@@ -13,9 +13,124 @@
       "payload": "AIRecommendationEvent"
     },
     {
+      "name": "EventAllocationFairShareApplied",
+      "value": "ALLOCATION_FAIR_SHARE_APPLIED",
+      "payload": "OrderEvent"
+    },
+    {
+      "name": "EventAllocationPolicyApplied",
+      "value": "ALLOCATION_POLICY_APPLIED",
+      "payload": "OrderEvent"
+    },
+    {
+      "name": "EventAMLExposureUpdated",
+      "value": "AML_EXPOSURE_UPDATED",
+      "payload": "PlanningEvent"
+    },
+    {
+      "name": "EventARInvoiceAgingUpdated",
+      "value": "AR_INVOICE_AGING_UPDATED",
+      "payload": "ARInvoiceEvent"
+    },
+    {
+      "name": "EventARInvoiceDunned",
+      "value": "AR_INVOICE_DUNNED",
+      "payload": "ARInvoiceEvent"
+    },
+    {
+      "name": "EventARInvoiceOpened",
+      "value": "AR_INVOICE_OPENED",
+      "payload": "ARInvoiceEvent"
+    },
+    {
+      "name": "EventARInvoicePayment",
+      "value": "AR_INVOICE_PAYMENT",
+      "payload": "ARInvoiceEvent"
+    },
+    {
+      "name": "EventARInvoiceSettled",
+      "value": "AR_INVOICE_SETTLED",
+      "payload": "ARInvoiceEvent"
+    },
+    {
+      "name": "EventARMigrationAcknowledged",
+      "value": "AR_MIGRATION_ACKNOWLEDGED",
+      "payload": "ARInvoiceEvent"
+    },
+    {
+      "name": "EventARMigrationDisputed",
+      "value": "AR_MIGRATION_DISPUTED",
+      "payload": "ARInvoiceEvent"
+    },
+    {
+      "name": "EventBuyerAcceptanceAccepted",
+      "value": "BUYER_ACCEPTANCE_ACCEPTED",
+      "payload": "BuyerAcceptanceEvent"
+    },
+    {
+      "name": "EventBuyerAcceptanceExpired",
+      "value": "BUYER_ACCEPTANCE_EXPIRED",
+      "payload": "BuyerAcceptanceEvent"
+    },
+    {
+      "name": "EventBuyerAcceptancePending",
+      "value": "BUYER_ACCEPTANCE_PENDING",
+      "payload": "BuyerAcceptanceEvent"
+    },
+    {
+      "name": "EventBuyerAcceptanceRejected",
+      "value": "BUYER_ACCEPTANCE_REJECTED",
+      "payload": "BuyerAcceptanceEvent"
+    },
+    {
       "name": "EventCartSyncUpdated",
       "value": "CART_SYNC_UPDATED",
       "payload": "SyncEvent"
+    },
+    {
+      "name": "EventCashierSessionStarted",
+      "value": "CASHIER_SESSION_STARTED",
+      "payload": "PlanningEvent"
+    },
+    {
+      "name": "EventCashierSessionTransition",
+      "value": "CASHIER_SESSION_TRANSITION",
+      "payload": "PlanningEvent"
+    },
+    {
+      "name": "EventCashOverage",
+      "value": "CASH_OVERAGE",
+      "payload": "CashVarianceEvent"
+    },
+    {
+      "name": "EventCashShortfall",
+      "value": "CASH_SHORTFALL",
+      "payload": "CashVarianceEvent"
+    },
+    {
+      "name": "EventCategoryCreated",
+      "value": "CATEGORY_CREATED",
+      "payload": "CategoryEvent"
+    },
+    {
+      "name": "EventCategoryUpdated",
+      "value": "CATEGORY_UPDATED",
+      "payload": "CategoryEvent"
+    },
+    {
+      "name": "EventClaimFiled",
+      "value": "CLAIM_FILED",
+      "payload": "LogisticsException"
+    },
+    {
+      "name": "EventClaimResolved",
+      "value": "CLAIM_RESOLVED",
+      "payload": "LogisticsException"
+    },
+    {
+      "name": "EventClaimUnderReview",
+      "value": "CLAIM_UNDER_REVIEW",
+      "payload": "LogisticsException"
     },
     {
       "name": "EventCommandDispatched",
@@ -33,6 +148,26 @@
       "payload": "CommandEvent"
     },
     {
+      "name": "EventContainerLedgerUpdated",
+      "value": "CONTAINER_LEDGER_UPDATED",
+      "payload": "PlanningEvent"
+    },
+    {
+      "name": "EventControlTowerPlaybookChanged",
+      "value": "CONTROL_TOWER_PLAYBOOK_CHANGED",
+      "payload": "LotRecallEvent"
+    },
+    {
+      "name": "EventControlTowerRunCreated",
+      "value": "CONTROL_TOWER_RUN_CREATED",
+      "payload": "LotRecallEvent"
+    },
+    {
+      "name": "EventControlTowerRunUpdated",
+      "value": "CONTROL_TOWER_RUN_UPDATED",
+      "payload": "LotRecallEvent"
+    },
+    {
       "name": "EventCreditDeliveryMarked",
       "value": "CREDIT_DELIVERY_MARKED",
       "payload": "CreditDeliveryEvent"
@@ -41,6 +176,11 @@
       "name": "EventCreditDeliveryResolved",
       "value": "CREDIT_DELIVERY_RESOLVED",
       "payload": "CreditDeliveryEvent"
+    },
+    {
+      "name": "EventCreditLeave",
+      "value": "CREDIT_LEAVE",
+      "payload": "ShopClosedBypassOffloadEvent"
     },
     {
       "name": "EventDeliveryDisputed",
@@ -56,6 +196,21 @@
       "name": "EventDemandBaselineUpdated",
       "value": "DEMAND_BASELINE_UPDATED",
       "payload": "PlanningEvent"
+    },
+    {
+      "name": "EventDemandSignal",
+      "value": "DEMAND_SIGNAL",
+      "payload": "RetailerEvent"
+    },
+    {
+      "name": "EventDispatchPlanned",
+      "value": "DISPATCH_PLANNED",
+      "payload": "RouteEvent"
+    },
+    {
+      "name": "EventDispatchRequested",
+      "value": "DISPATCH_REQUESTED",
+      "payload": "RouteEvent"
     },
     {
       "name": "EventDispatchZoneOverride",
@@ -93,9 +248,54 @@
       "payload": "FactoryEvent"
     },
     {
+      "name": "EventFactorySLABreach",
+      "value": "FACTORY_SLA_BREACH",
+      "payload": "SupplyRequestEvent"
+    },
+    {
+      "name": "EventFactoryStaffCreated",
+      "value": "FACTORY_STAFF_CREATED",
+      "payload": "FactoryEvent"
+    },
+    {
+      "name": "EventFactoryStaffPasswordSet",
+      "value": "FACTORY_STAFF_PASSWORD_SET",
+      "payload": "FactoryEvent"
+    },
+    {
       "name": "EventFactorySupplyRequestUpdate",
       "value": "FACTORY_SUPPLY_REQUEST_UPDATE",
       "payload": "SupplyRequestEvent"
+    },
+    {
+      "name": "EventFiscalCorrectiveRequested",
+      "value": "FISCAL_CORRECTIVE_REQUESTED",
+      "payload": "FiscalReceiptEvent"
+    },
+    {
+      "name": "EventFiscalReceiptFailed",
+      "value": "FISCAL_RECEIPT_FAILED",
+      "payload": "FiscalReceiptEvent"
+    },
+    {
+      "name": "EventFiscalReceiptRequested",
+      "value": "FISCAL_RECEIPT_REQUESTED",
+      "payload": "FiscalReceiptEvent"
+    },
+    {
+      "name": "EventFiscalReceiptSucceeded",
+      "value": "FISCAL_RECEIPT_SUCCEEDED",
+      "payload": "FiscalReceiptEvent"
+    },
+    {
+      "name": "EventFleetDVIRInspected",
+      "value": "FLEET_DVIR_INSPECTED",
+      "payload": "PlanningEvent"
+    },
+    {
+      "name": "EventFleetDVIRRedTag",
+      "value": "FLEET_DVIR_RED_TAG",
+      "payload": "PlanningEvent"
     },
     {
       "name": "EventFreezeLockAcquired",
@@ -118,9 +318,64 @@
       "payload": "InventoryImportEvent"
     },
     {
+      "name": "EventInventoryPolicyUpdated",
+      "value": "INVENTORY_POLICY_UPDATED",
+      "payload": "WarehouseEvent"
+    },
+    {
+      "name": "EventInventoryQuantityUpdated",
+      "value": "INVENTORY_QUANTITY_UPDATED",
+      "payload": "WarehouseEvent"
+    },
+    {
       "name": "EventInventorySyncComplete",
       "value": "INVENTORY_SYNC_COMPLETE",
       "payload": "SyncEvent"
+    },
+    {
+      "name": "EventJoinRequestCreated",
+      "value": "JOIN_REQUEST_CREATED",
+      "payload": "JoinRequestEvent"
+    },
+    {
+      "name": "EventJoinRequestResolved",
+      "value": "JOIN_REQUEST_RESOLVED",
+      "payload": "JoinRequestEvent"
+    },
+    {
+      "name": "EventLogisticsExceptionReported",
+      "value": "LOGISTICS_EXCEPTION_REPORTED",
+      "payload": "LogisticsException"
+    },
+    {
+      "name": "EventLogisticsTelemetry",
+      "value": "LOGISTICS_TELEMETRY",
+      "payload": "LogisticsException"
+    },
+    {
+      "name": "EventLookAheadCompleted",
+      "value": "LOOK_AHEAD_COMPLETED",
+      "payload": "SupplyRequestEvent"
+    },
+    {
+      "name": "EventLotQuarantined",
+      "value": "LOT_QUARANTINED",
+      "payload": "LotRecallEvent"
+    },
+    {
+      "name": "EventLotRecallInitiated",
+      "value": "LOT_RECALL_INITIATED",
+      "payload": "LotRecallEvent"
+    },
+    {
+      "name": "EventLotReleased",
+      "value": "LOT_RELEASED",
+      "payload": "LotRecallEvent"
+    },
+    {
+      "name": "EventLoyaltyPointsEarned",
+      "value": "LOYALTY_POINTS_EARNED",
+      "payload": "SupplyRequestEvent"
     },
     {
       "name": "EventManifestCancelled",
@@ -145,6 +400,11 @@
     {
       "name": "EventManifestDraftCreated",
       "value": "MANIFEST_DRAFT_CREATED",
+      "payload": "ManifestEvent"
+    },
+    {
+      "name": "EventManifestExceptionResolved",
+      "value": "MANIFEST_EXCEPTION_RESOLVED",
       "payload": "ManifestEvent"
     },
     {
@@ -173,6 +433,51 @@
       "payload": "ManifestEvent"
     },
     {
+      "name": "EventMigrationApplied",
+      "value": "MIGRATION_APPLIED",
+      "payload": "MigrationEvent"
+    },
+    {
+      "name": "EventMigrationApplyProgress",
+      "value": "MIGRATION_APPLY_PROGRESS",
+      "payload": "MigrationEvent"
+    },
+    {
+      "name": "EventMigrationBundleUploaded",
+      "value": "MIGRATION_BUNDLE_UPLOADED",
+      "payload": "MigrationEvent"
+    },
+    {
+      "name": "EventMigrationDryRunReady",
+      "value": "MIGRATION_DRY_RUN_READY",
+      "payload": "MigrationEvent"
+    },
+    {
+      "name": "EventMigrationFailed",
+      "value": "MIGRATION_FAILED",
+      "payload": "MigrationEvent"
+    },
+    {
+      "name": "EventMigrationMappingProposed",
+      "value": "MIGRATION_MAPPING_PROPOSED",
+      "payload": "MigrationEvent"
+    },
+    {
+      "name": "EventMigrationRolledBack",
+      "value": "MIGRATION_ROLLED_BACK",
+      "payload": "MigrationEvent"
+    },
+    {
+      "name": "EventMigrationSessionStatusUpdate",
+      "value": "MIGRATION_SESSION_STATUS_UPDATE",
+      "payload": "MigrationEvent"
+    },
+    {
+      "name": "EventMigrationSorted",
+      "value": "MIGRATION_SORTED",
+      "payload": "MigrationEvent"
+    },
+    {
       "name": "EventMissingItemsReported",
       "value": "MISSING_ITEMS_REPORTED",
       "payload": "OrderEvent"
@@ -186,6 +491,26 @@
       "name": "EventNegotiationResolved",
       "value": "NEGOTIATION_RESOLVED",
       "payload": "NegotiationEvent"
+    },
+    {
+      "name": "EventNetworkModeChanged",
+      "value": "NETWORK_MODE_CHANGED",
+      "payload": "SupplyRequestEvent"
+    },
+    {
+      "name": "EventOfflineQuotaLeaseUpdated",
+      "value": "OFFLINE_QUOTA_LEASE_UPDATED",
+      "payload": "PlanningEvent"
+    },
+    {
+      "name": "EventOntologyObjectUpdated",
+      "value": "ONTOLOGY_OBJECT_UPDATED",
+      "payload": "PlanningEvent"
+    },
+    {
+      "name": "EventOrderAllocated",
+      "value": "ORDER_ALLOCATED",
+      "payload": "OrderEvent"
     },
     {
       "name": "EventOrderAmended",
@@ -208,6 +533,11 @@
       "payload": "ConditionEvent"
     },
     {
+      "name": "EventOrderConflictReconciled",
+      "value": "ORDER_CONFLICT_RECONCILED",
+      "payload": "OrderConflictReconciledEvent"
+    },
+    {
       "name": "EventOrderCreated",
       "value": "ORDER_CREATED",
       "payload": "OrderEvent"
@@ -216,6 +546,11 @@
       "name": "EventOrderFinalized",
       "value": "ORDER_FINALIZED",
       "payload": "OrderEvent"
+    },
+    {
+      "name": "EventOrderForceCompleted",
+      "value": "ORDER_FORCE_COMPLETED",
+      "payload": "OrderForceCompletedEvent"
     },
     {
       "name": "EventOrderReassigned",
@@ -233,6 +568,21 @@
       "payload": "OrderEvent"
     },
     {
+      "name": "EventParentOrderCreated",
+      "value": "PARENT_ORDER_CREATED",
+      "payload": "LotRecallEvent"
+    },
+    {
+      "name": "EventParentOrderUpdated",
+      "value": "PARENT_ORDER_UPDATED",
+      "payload": "LotRecallEvent"
+    },
+    {
+      "name": "EventPartialOffload",
+      "value": "PARTIAL_OFFLOAD",
+      "payload": "ShopClosedBypassOffloadEvent"
+    },
+    {
       "name": "EventPaymentCleared",
       "value": "PAYMENT_CLEARED",
       "payload": "FinanceEvent"
@@ -246,6 +596,31 @@
       "name": "EventPaymentRequired",
       "value": "PAYMENT_REQUIRED",
       "payload": "FinanceEvent"
+    },
+    {
+      "name": "EventPayoutBatchDispatched",
+      "value": "PAYOUT_BATCH_DISPATCHED",
+      "payload": "PayoutBatchEvent"
+    },
+    {
+      "name": "EventPayoutBatchExported",
+      "value": "PAYOUT_BATCH_EXPORTED",
+      "payload": "PayoutBatchEvent"
+    },
+    {
+      "name": "EventPayoutBatchGenerated",
+      "value": "PAYOUT_BATCH_GENERATED",
+      "payload": "PayoutBatchEvent"
+    },
+    {
+      "name": "EventPayoutBatchPaid",
+      "value": "PAYOUT_BATCH_PAID",
+      "payload": "PayoutBatchEvent"
+    },
+    {
+      "name": "EventPayoutPolicyUpdated",
+      "value": "PAYOUT_POLICY_UPDATED",
+      "payload": "PayoutBatchEvent"
     },
     {
       "name": "EventPlanningAgentBroadcast",
@@ -266,6 +641,26 @@
       "name": "EventPlanningPromoSimulationReady",
       "value": "PLANNING_PROMO_SIMULATION_READY",
       "payload": "PlanningEvent"
+    },
+    {
+      "name": "EventPosSaleCompleted",
+      "value": "POS_SALE_COMPLETED",
+      "payload": "RetailerEvent"
+    },
+    {
+      "name": "EventPosSaleVoided",
+      "value": "POS_SALE_VOIDED",
+      "payload": "RetailerEvent"
+    },
+    {
+      "name": "EventPosSessionClosed",
+      "value": "POS_SESSION_CLOSED",
+      "payload": "RetailerEvent"
+    },
+    {
+      "name": "EventPosSessionOpened",
+      "value": "POS_SESSION_OPENED",
+      "payload": "RetailerEvent"
     },
     {
       "name": "EventPreOrderAutoAccepted",
@@ -318,14 +713,69 @@
       "payload": "PreOrderEvent"
     },
     {
+      "name": "EventProductCreated",
+      "value": "PRODUCT_CREATED",
+      "payload": "ProductEvent"
+    },
+    {
+      "name": "EventProductDeactivated",
+      "value": "PRODUCT_DEACTIVATED",
+      "payload": "ProductEvent"
+    },
+    {
       "name": "EventProductHandlingUpdated",
       "value": "PRODUCT_HANDLING_UPDATED",
+      "payload": "ProductEvent"
+    },
+    {
+      "name": "EventProductPriceChanged",
+      "value": "PRODUCT_PRICE_CHANGED",
+      "payload": "ProductEvent"
+    },
+    {
+      "name": "EventProductUpdated",
+      "value": "PRODUCT_UPDATED",
       "payload": "ProductEvent"
     },
     {
       "name": "EventPromotionChanged",
       "value": "PROMOTION_CHANGED",
       "payload": "PromotionEvent"
+    },
+    {
+      "name": "EventProximityUnlocked",
+      "value": "PROXIMITY_UNLOCKED",
+      "payload": "ShopClosedBypassOffloadEvent"
+    },
+    {
+      "name": "EventPullMatrixCompleted",
+      "value": "PULL_MATRIX_COMPLETED",
+      "payload": "SupplyRequestEvent"
+    },
+    {
+      "name": "EventReassignHandshakeCompleted",
+      "value": "REASSIGN_HANDSHAKE_COMPLETED",
+      "payload": "OrderEvent"
+    },
+    {
+      "name": "EventReceivingVarianceReported",
+      "value": "RECEIVING_VARIANCE_REPORTED",
+      "payload": "RetailerEvent"
+    },
+    {
+      "name": "EventRefundFailed",
+      "value": "REFUND_FAILED",
+      "payload": "FinanceEvent"
+    },
+    {
+      "name": "EventRefundRequested",
+      "value": "REFUND_REQUESTED",
+      "payload": "FinanceEvent"
+    },
+    {
+      "name": "EventRefundSucceeded",
+      "value": "REFUND_SUCCEEDED",
+      "payload": "FinanceEvent"
     },
     {
       "name": "EventReplenishmentAutoApproved",
@@ -338,6 +788,56 @@
       "payload": "PlanningEvent"
     },
     {
+      "name": "EventReplenishmentPolicyUpdated",
+      "value": "REPLENISHMENT_POLICY_UPDATED",
+      "payload": "PlanningEvent"
+    },
+    {
+      "name": "EventRetailerAssistSLABreached",
+      "value": "RETAILER_ASSIST_SLA_BREACHED",
+      "payload": "RetailerEvent"
+    },
+    {
+      "name": "EventRetailerAssistTicketCancelled",
+      "value": "RETAILER_ASSIST_TICKET_CANCELLED",
+      "payload": "RetailerEvent"
+    },
+    {
+      "name": "EventRetailerAssistTicketClaimed",
+      "value": "RETAILER_ASSIST_TICKET_CLAIMED",
+      "payload": "RetailerEvent"
+    },
+    {
+      "name": "EventRetailerAssistTicketCompleted",
+      "value": "RETAILER_ASSIST_TICKET_COMPLETED",
+      "payload": "RetailerEvent"
+    },
+    {
+      "name": "EventRetailerAssistTicketOpened",
+      "value": "RETAILER_ASSIST_TICKET_OPENED",
+      "payload": "RetailerEvent"
+    },
+    {
+      "name": "EventRetailerAutoOrderUpdated",
+      "value": "RETAILER_AUTO_ORDER_UPDATED",
+      "payload": "RetailerEvent"
+    },
+    {
+      "name": "EventRetailerCapabilityChanged",
+      "value": "RETAILER_CAPABILITY_PACK_CHANGED",
+      "payload": "RetailerEvent"
+    },
+    {
+      "name": "EventRetailerClockIn",
+      "value": "RETAILER_CLOCK_IN",
+      "payload": "RetailerEvent"
+    },
+    {
+      "name": "EventRetailerClockOut",
+      "value": "RETAILER_CLOCK_OUT",
+      "payload": "RetailerEvent"
+    },
+    {
       "name": "EventRetailerCreditLimitBreached",
       "value": "RETAILER_CREDIT_LIMIT_BREACHED",
       "payload": "CreditLimitEvent"
@@ -346,6 +846,16 @@
       "name": "EventRetailerCreditProfileChanged",
       "value": "RETAILER_CREDIT_PROFILE_CHANGED",
       "payload": "CreditProfileEvent"
+    },
+    {
+      "name": "EventRetailerLocationCreated",
+      "value": "RETAILER_LOCATION_CREATED",
+      "payload": "RetailerEvent"
+    },
+    {
+      "name": "EventRetailerLocationUpdated",
+      "value": "RETAILER_LOCATION_UPDATED",
+      "payload": "RetailerEvent"
     },
     {
       "name": "EventRetailerPriceOverride",
@@ -358,9 +868,69 @@
       "payload": "RetailerEvent"
     },
     {
+      "name": "EventRetailerSectionCreated",
+      "value": "RETAILER_SECTION_CREATED",
+      "payload": "RetailerEvent"
+    },
+    {
+      "name": "EventRetailerSectionSkuMapped",
+      "value": "RETAILER_SECTION_SKU_MAPPED",
+      "payload": "RetailerEvent"
+    },
+    {
+      "name": "EventRetailerSectionUpdated",
+      "value": "RETAILER_SECTION_UPDATED",
+      "payload": "RetailerEvent"
+    },
+    {
+      "name": "EventRetailerSegmentUpdated",
+      "value": "RETAILER_SEGMENT_UPDATED",
+      "payload": "OrderEvent"
+    },
+    {
+      "name": "EventRetailerSellThroughUpdated",
+      "value": "RETAILER_SELL_THROUGH_UPDATED",
+      "payload": "RetailerEvent"
+    },
+    {
+      "name": "EventRetailerShiftVariance",
+      "value": "RETAILER_SHIFT_CASH_VARIANCE",
+      "payload": "RetailerEvent"
+    },
+    {
+      "name": "EventRetailerShiftClosed",
+      "value": "RETAILER_SHIFT_CLOSED",
+      "payload": "RetailerEvent"
+    },
+    {
+      "name": "EventRetailerShiftOpened",
+      "value": "RETAILER_SHIFT_OPENED",
+      "payload": "RetailerEvent"
+    },
+    {
+      "name": "EventRetailerStaffCreated",
+      "value": "RETAILER_STAFF_CREATED",
+      "payload": "RetailerEvent"
+    },
+    {
+      "name": "EventRetailerStaffSectionAssigned",
+      "value": "RETAILER_STAFF_SECTION_ASSIGNED",
+      "payload": "RetailerEvent"
+    },
+    {
       "name": "EventReturnReceivedAtWarehouse",
       "value": "RETURN_RECEIVED_AT_WAREHOUSE",
       "payload": "ReturnEvent"
+    },
+    {
+      "name": "EventReturnScanReceived",
+      "value": "RETURN_SCAN_RECEIVED",
+      "payload": "ReturnEvent"
+    },
+    {
+      "name": "EventReverseLogisticsRequired",
+      "value": "REVERSE_LOGISTICS_REQUIRED",
+      "payload": "LogisticsException"
     },
     {
       "name": "EventRouteCreated",
@@ -371,6 +941,16 @@
       "name": "EventRouteReordered",
       "value": "ROUTE_REORDERED",
       "payload": "RouteEvent"
+    },
+    {
+      "name": "EventRouteReplanned",
+      "value": "ROUTE_REPLANNED",
+      "payload": "RouteEvent"
+    },
+    {
+      "name": "EventServicePolicyUpdated",
+      "value": "SERVICE_POLICY_UPDATED",
+      "payload": "OrderEvent"
     },
     {
       "name": "EventSettlementRequired",
@@ -403,6 +983,16 @@
       "payload": "ShopClosedEvent"
     },
     {
+      "name": "EventShopClosedTimeout",
+      "value": "SHOP_CLOSED_TIMEOUT",
+      "payload": "ShopClosedBypassOffloadEvent"
+    },
+    {
+      "name": "EventSkuClassUpdated",
+      "value": "SKU_CLASS_UPDATED",
+      "payload": "OrderEvent"
+    },
+    {
       "name": "EventSplitPaymentCreated",
       "value": "SPLIT_PAYMENT_CREATED",
       "payload": "FinanceEvent"
@@ -411,6 +1001,31 @@
       "name": "EventSplitShipmentCreated",
       "value": "SPLIT_SHIPMENT_CREATED",
       "payload": "SplitShipmentEvent"
+    },
+    {
+      "name": "EventStoreStockAdjusted",
+      "value": "STORE_STOCK_ADJUSTED",
+      "payload": "RetailerEvent"
+    },
+    {
+      "name": "EventStoreStockClaimHold",
+      "value": "STORE_STOCK_CLAIM_HOLD",
+      "payload": "RetailerEvent"
+    },
+    {
+      "name": "EventStoreStockCounted",
+      "value": "STORE_STOCK_COUNTED",
+      "payload": "RetailerEvent"
+    },
+    {
+      "name": "EventStoreStockReceived",
+      "value": "STORE_STOCK_RECEIVED",
+      "payload": "RetailerEvent"
+    },
+    {
+      "name": "EventStoreStockTransferred",
+      "value": "STORE_STOCK_TRANSFERRED",
+      "payload": "RetailerEvent"
     },
     {
       "name": "EventSupplierBillingConfigured",
@@ -423,9 +1038,24 @@
       "payload": "SupplierEvent"
     },
     {
+      "name": "EventSupplierBroadcast",
+      "value": "SUPPLIER_BROADCAST",
+      "payload": "WarehouseEvent"
+    },
+    {
       "name": "EventSupplierCreated",
       "value": "SUPPLIER_CREATED",
       "payload": "SupplierEvent"
+    },
+    {
+      "name": "EventSupplierCreditProgramChanged",
+      "value": "SUPPLIER_CREDIT_PROGRAM_CHANGED",
+      "payload": "LotRecallEvent"
+    },
+    {
+      "name": "EventSupplierCreditTermsChanged",
+      "value": "SUPPLIER_CREDIT_TERMS_CHANGED",
+      "payload": "LotRecallEvent"
     },
     {
       "name": "EventSupplierMemberAdded",
@@ -448,6 +1078,16 @@
       "payload": "ReturnEvent"
     },
     {
+      "name": "EventSupplierServicePromiseBreached",
+      "value": "SUPPLIER_SERVICE_PROMISE_BREACHED",
+      "payload": "SupplierServicePromiseEvent"
+    },
+    {
+      "name": "EventSupplierServicePromiseCreated",
+      "value": "SUPPLIER_SERVICE_PROMISE_CREATED",
+      "payload": "SupplierServicePromiseEvent"
+    },
+    {
       "name": "EventSupplierUpdated",
       "value": "SUPPLIER_UPDATED",
       "payload": "SupplierEvent"
@@ -468,9 +1108,19 @@
       "payload": "WarehouseTransferEvent"
     },
     {
+      "name": "EventSupplyTransferArrived",
+      "value": "SUPPLY_TRANSFER_ARRIVED",
+      "payload": "WarehouseTransferEvent"
+    },
+    {
       "name": "EventSystemAppOutdated",
       "value": "SYSTEM_APP_OUTDATED",
       "payload": "SystemEvent"
+    },
+    {
+      "name": "EventFactoryTransferCreated",
+      "value": "TRANSFER_CREATED",
+      "payload": "WarehouseTransferEvent"
     },
     {
       "name": "EventVehicleAvailabilityChanged",
@@ -481,6 +1131,11 @@
       "name": "EventVehicleCreated",
       "value": "VEHICLE_CREATED",
       "payload": "VehicleEvent"
+    },
+    {
+      "name": "EventWarehouseBroadcast",
+      "value": "WAREHOUSE_BROADCAST",
+      "payload": "WarehouseEvent"
     },
     {
       "name": "EventWarehouseCreated",
@@ -513,8 +1168,38 @@
       "payload": "WarehouseTransferEvent"
     },
     {
+      "name": "EventWMSCycleApproved",
+      "value": "WMS_CYCLE_APPROVED",
+      "payload": "WarehouseEvent"
+    },
+    {
+      "name": "EventWMSPickConfirmed",
+      "value": "WMS_PICK_CONFIRMED",
+      "payload": "WarehouseEvent"
+    },
+    {
+      "name": "EventWMSPutaway",
+      "value": "WMS_PUTAWAY",
+      "payload": "WarehouseEvent"
+    },
+    {
+      "name": "EventWMSTemperatureBreach",
+      "value": "WMS_TEMPERATURE_BREACH",
+      "payload": "WarehouseEvent"
+    },
+    {
+      "name": "EventYardGateCheckRecorded",
+      "value": "YARD_GATE_CHECK_RECORDED",
+      "payload": "PlanningEvent"
+    },
+    {
       "name": "EventPlanningMEIORecommendation",
       "value": "planning.meio.recommendation.v1",
+      "payload": "PlanningEvent"
+    },
+    {
+      "name": "EventPlanningScenarioPublished",
+      "value": "planning.scenario.published.v1",
       "payload": "PlanningEvent"
     },
     {
@@ -606,6 +1291,122 @@
       ]
     },
     {
+      "name": "ARInvoiceEvent",
+      "fields": [
+        {
+          "name": "BaseEvent",
+          "go_type": "BaseEvent",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "InvoiceID",
+          "json_name": "invoice_id",
+          "json_tag": "invoice_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "SupplierID",
+          "json_name": "supplier_id",
+          "json_tag": "supplier_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "RetailerID",
+          "json_name": "retailer_id",
+          "json_tag": "retailer_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "OrderID",
+          "json_name": "order_id",
+          "json_tag": "order_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "PrincipalMinor",
+          "json_name": "principal_minor",
+          "json_tag": "principal_minor,omitempty",
+          "json_omitempty": true,
+          "go_type": "int64",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "AmountMinor",
+          "json_name": "amount_minor",
+          "json_tag": "amount_minor,omitempty",
+          "json_omitempty": true,
+          "go_type": "int64",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "BalanceMinor",
+          "json_name": "balance_minor",
+          "json_tag": "balance_minor,omitempty",
+          "json_omitempty": true,
+          "go_type": "int64",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Status",
+          "json_name": "status",
+          "json_tag": "status,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "DunningStep",
+          "json_name": "dunning_step",
+          "json_tag": "dunning_step,omitempty",
+          "json_omitempty": true,
+          "go_type": "int64",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "AgingBucket",
+          "json_name": "aging_bucket",
+          "json_tag": "aging_bucket,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "DueAt",
+          "json_name": "due_at",
+          "json_tag": "due_at,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "LastDunnedAt",
+          "json_name": "last_dunned_at",
+          "json_tag": "last_dunned_at,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        }
+      ]
+    },
+    {
       "name": "BaseEvent",
       "fields": [
         {
@@ -631,6 +1432,235 @@
           "json_tag": "timestamp,omitempty",
           "json_omitempty": true,
           "go_type": "string",
+          "optional": true,
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "name": "BuyerAcceptanceEvent",
+      "fields": [
+        {
+          "name": "BaseEvent",
+          "go_type": "BaseEvent",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "OrderID",
+          "json_name": "order_id",
+          "json_tag": "order_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "SupplierID",
+          "json_name": "supplier_id",
+          "json_tag": "supplier_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "RetailerID",
+          "json_name": "retailer_id",
+          "json_tag": "retailer_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "EhfID",
+          "json_name": "ehf_id",
+          "json_tag": "ehf_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Status",
+          "json_name": "status",
+          "json_tag": "status",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "Deadline",
+          "json_name": "deadline",
+          "json_tag": "deadline,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "name": "CashVarianceEvent",
+      "fields": [
+        {
+          "name": "BaseEvent",
+          "go_type": "BaseEvent",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "OrderID",
+          "json_name": "order_id",
+          "json_tag": "order_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "SupplierID",
+          "json_name": "supplier_id",
+          "json_tag": "supplier_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "RetailerID",
+          "json_name": "retailer_id",
+          "json_tag": "retailer_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "DriverID",
+          "json_name": "driver_id",
+          "json_tag": "driver_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "ExpectedMinor",
+          "json_name": "expected_minor",
+          "json_tag": "expected_minor",
+          "go_type": "int64",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "ReceivedMinor",
+          "json_name": "received_minor",
+          "json_tag": "received_minor",
+          "go_type": "int64",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "ShortfallMinor",
+          "json_name": "shortfall_minor",
+          "json_tag": "shortfall_minor,omitempty",
+          "json_omitempty": true,
+          "go_type": "int64",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "OverageMinor",
+          "json_name": "overage_minor",
+          "json_tag": "overage_minor,omitempty",
+          "json_omitempty": true,
+          "go_type": "int64",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Currency",
+          "json_name": "currency",
+          "json_tag": "currency",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "Note",
+          "json_name": "note",
+          "json_tag": "note,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "TraceID",
+          "json_name": "trace_id",
+          "json_tag": "trace_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "name": "CategoryEvent",
+      "fields": [
+        {
+          "name": "BaseEvent",
+          "go_type": "BaseEvent",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "CategoryID",
+          "json_name": "category_id",
+          "json_tag": "category_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "SupplierID",
+          "json_name": "supplier_id",
+          "json_tag": "supplier_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "Name",
+          "json_name": "name",
+          "json_tag": "name",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "ParentCategoryID",
+          "json_name": "parent_category_id",
+          "json_tag": "parent_category_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "IconKey",
+          "json_name": "icon_key",
+          "json_tag": "icon_key,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "SortOrder",
+          "json_name": "sort_order",
+          "json_tag": "sort_order,omitempty",
+          "json_omitempty": true,
+          "go_type": "int64",
           "optional": true,
           "nullable": false
         }
@@ -770,6 +1800,24 @@
           "nullable": false
         },
         {
+          "name": "SupplierID",
+          "json_name": "supplier_id",
+          "json_tag": "supplier_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "RetailerID",
+          "json_name": "retailer_id",
+          "json_tag": "retailer_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
           "name": "ReporterID",
           "json_name": "reporter_id",
           "json_tag": "reporter_id",
@@ -832,6 +1880,88 @@
       ]
     },
     {
+      "name": "ControlTowerEvent",
+      "fields": [
+        {
+          "name": "BaseEvent",
+          "go_type": "BaseEvent",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "SupplierID",
+          "json_name": "supplier_id",
+          "json_tag": "supplier_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "PlaybookID",
+          "json_name": "playbook_id",
+          "json_tag": "playbook_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "RunID",
+          "json_name": "run_id",
+          "json_tag": "run_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "ExceptionID",
+          "json_name": "exception_id",
+          "json_tag": "exception_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Status",
+          "json_name": "status",
+          "json_tag": "status,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Mode",
+          "json_name": "mode",
+          "json_tag": "mode,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Action",
+          "json_name": "action",
+          "json_tag": "action,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "ActorID",
+          "json_name": "actor_id",
+          "json_tag": "actor_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        }
+      ]
+    },
+    {
       "name": "CreditDeliveryEvent",
       "fields": [
         {
@@ -876,6 +2006,24 @@
           "name": "Status",
           "json_name": "status",
           "json_tag": "status,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "PhotoProofURL",
+          "json_name": "photo_proof_url",
+          "json_tag": "photo_proof_url,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "SignatureURL",
+          "json_name": "signature_url",
+          "json_tag": "signature_url,omitempty",
           "json_omitempty": true,
           "go_type": "string",
           "optional": true,
@@ -1047,6 +2195,91 @@
           "name": "Status",
           "json_name": "status",
           "json_tag": "status,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "name": "DemandSignalEvent",
+      "fields": [
+        {
+          "name": "BaseEvent",
+          "go_type": "BaseEvent",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "RetailerID",
+          "json_name": "retailer_id",
+          "json_tag": "retailer_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "LocationID",
+          "json_name": "location_id",
+          "json_tag": "location_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "SKU",
+          "json_name": "sku",
+          "json_tag": "sku",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "Day",
+          "json_name": "day",
+          "json_tag": "day",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "QtyDelta",
+          "json_name": "qty_delta",
+          "json_tag": "qty_delta",
+          "go_type": "int64",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "NetSold",
+          "json_name": "net_sold",
+          "json_tag": "net_sold",
+          "go_type": "int64",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "Source",
+          "json_name": "source",
+          "json_tag": "source",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "Kind",
+          "json_name": "kind",
+          "json_tag": "kind",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "SupplierID",
+          "json_name": "supplier_id",
+          "json_tag": "supplier_id,omitempty",
           "json_omitempty": true,
           "go_type": "string",
           "optional": true,
@@ -1555,6 +2788,24 @@
           "nullable": false
         },
         {
+          "name": "CashMinor",
+          "json_name": "cash_minor",
+          "json_tag": "cash_minor,omitempty",
+          "json_omitempty": true,
+          "go_type": "int64",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "CardMinor",
+          "json_name": "card_minor",
+          "json_tag": "card_minor,omitempty",
+          "json_omitempty": true,
+          "go_type": "int64",
+          "optional": true,
+          "nullable": false
+        },
+        {
           "name": "Currency",
           "json_name": "currency",
           "json_tag": "currency,omitempty",
@@ -1576,6 +2827,147 @@
           "name": "Source",
           "json_name": "source",
           "json_tag": "source,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "DriverID",
+          "json_name": "driver_id",
+          "json_tag": "driver_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "name": "FiscalReceiptEvent",
+      "fields": [
+        {
+          "name": "BaseEvent",
+          "go_type": "BaseEvent",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "OrderID",
+          "json_name": "order_id",
+          "json_tag": "order_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "AttemptID",
+          "json_name": "attempt_id",
+          "json_tag": "attempt_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "SupplierID",
+          "json_name": "supplier_id",
+          "json_tag": "supplier_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "RetailerID",
+          "json_name": "retailer_id",
+          "json_tag": "retailer_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "AmountMinor",
+          "json_name": "amount_minor",
+          "json_tag": "amount_minor",
+          "go_type": "int64",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "Currency",
+          "json_name": "currency",
+          "json_tag": "currency",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "PaymentMethod",
+          "json_name": "payment_method",
+          "json_tag": "payment_method,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Provider",
+          "json_name": "provider",
+          "json_tag": "provider,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Status",
+          "json_name": "status",
+          "json_tag": "status,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "FiscalReceiptID",
+          "json_name": "fiscal_receipt_id",
+          "json_tag": "fiscal_receipt_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "FiscalQR",
+          "json_name": "fiscal_qr",
+          "json_tag": "fiscal_qr,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "ErrorCode",
+          "json_name": "error_code",
+          "json_tag": "error_code,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "ErrorMessage",
+          "json_name": "error_message",
+          "json_tag": "error_message,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "TraceID",
+          "json_name": "trace_id",
+          "json_tag": "trace_id,omitempty",
           "json_omitempty": true,
           "go_type": "string",
           "optional": true,
@@ -1638,6 +3030,412 @@
       ]
     },
     {
+      "name": "JoinRequestEvent",
+      "fields": [
+        {
+          "name": "BaseEvent",
+          "go_type": "BaseEvent",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "RequestID",
+          "json_name": "request_id",
+          "json_tag": "request_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "TargetTenantType",
+          "json_name": "target_tenant_type",
+          "json_tag": "target_tenant_type",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "TargetTenantID",
+          "json_name": "target_tenant_id",
+          "json_tag": "target_tenant_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "SupplierID",
+          "json_name": "supplier_id",
+          "json_tag": "supplier_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "RetailerID",
+          "json_name": "retailer_id",
+          "json_tag": "retailer_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "NormalizedINN",
+          "json_name": "normalized_inn",
+          "json_tag": "normalized_inn,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "RequesterPhone",
+          "json_name": "requester_phone",
+          "json_tag": "requester_phone,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "RequesterName",
+          "json_name": "requester_name",
+          "json_tag": "requester_name,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "RoleSought",
+          "json_name": "role_sought",
+          "json_tag": "role_sought,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Status",
+          "json_name": "status",
+          "json_tag": "status,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "DecidedBy",
+          "json_name": "decided_by",
+          "json_tag": "decided_by,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "DecisionReason",
+          "json_name": "decision_reason",
+          "json_tag": "decision_reason,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "name": "LogisticsException",
+      "fields": [
+        {
+          "name": "BaseEvent",
+          "go_type": "BaseEvent",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "ClaimID",
+          "json_name": "claim_id",
+          "json_tag": "claim_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "OrderID",
+          "json_name": "order_id",
+          "json_tag": "order_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "SupplierID",
+          "json_name": "supplier_id",
+          "json_tag": "supplier_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "RetailerID",
+          "json_name": "retailer_id",
+          "json_tag": "retailer_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "DriverID",
+          "json_name": "driver_id",
+          "json_tag": "driver_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "WarehouseID",
+          "json_name": "warehouse_id",
+          "json_tag": "warehouse_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "ClaimType",
+          "json_name": "claim_type",
+          "json_tag": "claim_type,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Status",
+          "json_name": "status",
+          "json_tag": "status,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Source",
+          "json_name": "source",
+          "json_tag": "source,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "AmountMinor",
+          "json_name": "amount_minor",
+          "json_tag": "amount_minor,omitempty",
+          "json_omitempty": true,
+          "go_type": "int64",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Currency",
+          "json_name": "currency",
+          "json_tag": "currency,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Note",
+          "json_name": "note",
+          "json_tag": "note,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "ResolutionNote",
+          "json_name": "resolution_note",
+          "json_tag": "resolution_note,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "SettlementMode",
+          "json_name": "settlement_mode",
+          "json_tag": "settlement_mode,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "ChargebackID",
+          "json_name": "chargeback_id",
+          "json_tag": "chargeback_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "PhotoURLs",
+          "json_name": "photo_urls",
+          "json_tag": "photo_urls,omitempty",
+          "json_omitempty": true,
+          "go_type": "[]string",
+          "optional": true,
+          "nullable": true
+        }
+      ]
+    },
+    {
+      "name": "LotRecallEvent",
+      "fields": [
+        {
+          "name": "BaseEvent",
+          "go_type": "BaseEvent",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "CampaignID",
+          "json_name": "campaign_id",
+          "json_tag": "campaign_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "SupplierID",
+          "json_name": "supplier_id",
+          "json_tag": "supplier_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "ProductID",
+          "json_name": "product_id",
+          "json_tag": "product_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "LotCode",
+          "json_name": "lot_code",
+          "json_tag": "lot_code,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "LotID",
+          "json_name": "lot_id",
+          "json_tag": "lot_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "WarehouseID",
+          "json_name": "warehouse_id",
+          "json_tag": "warehouse_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "RecallReason",
+          "json_name": "recall_reason",
+          "json_tag": "recall_reason,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Severity",
+          "json_name": "severity",
+          "json_tag": "severity,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Status",
+          "json_name": "status",
+          "json_tag": "status,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "ImpactedLotCount",
+          "json_name": "impacted_lot_count",
+          "json_tag": "impacted_lot_count,omitempty",
+          "json_omitempty": true,
+          "go_type": "int64",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "ImpactedUnitsCount",
+          "json_name": "impacted_units_count",
+          "json_tag": "impacted_units_count,omitempty",
+          "json_omitempty": true,
+          "go_type": "int64",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "ImpactedOrderCount",
+          "json_name": "impacted_order_count",
+          "json_tag": "impacted_order_count,omitempty",
+          "json_omitempty": true,
+          "go_type": "int64",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Action",
+          "json_name": "action",
+          "json_tag": "action,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Actor",
+          "json_name": "actor",
+          "json_tag": "actor,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        }
+      ]
+    },
+    {
       "name": "ManifestEvent",
       "fields": [
         {
@@ -1652,6 +3450,15 @@
           "json_tag": "manifest_id",
           "go_type": "string",
           "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "ManifestDomain",
+          "json_name": "manifest_domain",
+          "json_tag": "manifest_domain,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
           "nullable": false
         },
         {
@@ -1890,6 +3697,133 @@
       ]
     },
     {
+      "name": "MigrationEvent",
+      "fields": [
+        {
+          "name": "BaseEvent",
+          "go_type": "BaseEvent",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "ProjectID",
+          "json_name": "project_id",
+          "json_tag": "project_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "BundleID",
+          "json_name": "bundle_id",
+          "json_tag": "bundle_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "SessionID",
+          "json_name": "session_id",
+          "json_tag": "session_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "SupplierID",
+          "json_name": "supplier_id",
+          "json_tag": "supplier_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "Domain",
+          "json_name": "domain",
+          "json_tag": "domain,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Status",
+          "json_name": "status",
+          "json_tag": "status,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "ReportID",
+          "json_name": "report_id",
+          "json_tag": "report_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "ProcessedRows",
+          "json_name": "processed_rows",
+          "json_tag": "processed_rows,omitempty",
+          "json_omitempty": true,
+          "go_type": "int64",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "TotalRows",
+          "json_name": "total_rows",
+          "json_tag": "total_rows,omitempty",
+          "json_omitempty": true,
+          "go_type": "int64",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "ImportedCount",
+          "json_name": "imported_count",
+          "json_tag": "imported_count,omitempty",
+          "json_omitempty": true,
+          "go_type": "int64",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "QuarantineCount",
+          "json_name": "quarantine_count",
+          "json_tag": "quarantine_count,omitempty",
+          "json_omitempty": true,
+          "go_type": "int64",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "ErrorCode",
+          "json_name": "error_code",
+          "json_tag": "error_code,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "ErrorMessage",
+          "json_name": "error_message",
+          "json_tag": "error_message,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        }
+      ]
+    },
+    {
       "name": "NegotiationEvent",
       "fields": [
         {
@@ -1926,6 +3860,114 @@
           "name": "Status",
           "json_name": "status",
           "json_tag": "status,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "name": "OrderConflictReconciledEvent",
+      "fields": [
+        {
+          "name": "BaseEvent",
+          "go_type": "BaseEvent",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "OrderID",
+          "json_name": "order_id",
+          "json_tag": "order_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "SupplierID",
+          "json_name": "supplier_id",
+          "json_tag": "supplier_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "RetailerID",
+          "json_name": "retailer_id",
+          "json_tag": "retailer_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "DriverID",
+          "json_name": "driver_id",
+          "json_tag": "driver_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Resolution",
+          "json_name": "resolution",
+          "json_tag": "resolution,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "PreviousStatus",
+          "json_name": "previous_status",
+          "json_tag": "previous_status,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Status",
+          "json_name": "status",
+          "json_tag": "status,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "DeliveredAt",
+          "json_name": "delivered_at",
+          "json_tag": "delivered_at,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "ProofSignature",
+          "json_name": "proof_signature",
+          "json_tag": "proof_signature,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "ProofPhotoURL",
+          "json_name": "proof_photo_url",
+          "json_tag": "proof_photo_url,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "DisputeNote",
+          "json_name": "dispute_note",
+          "json_tag": "dispute_note,omitempty",
           "json_omitempty": true,
           "go_type": "string",
           "optional": true,
@@ -2308,6 +4350,235 @@
           "go_type": "float64",
           "optional": true,
           "nullable": false
+        },
+        {
+          "name": "Message",
+          "json_name": "message",
+          "json_tag": "message,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "CustomerStage",
+          "json_name": "customer_stage",
+          "json_tag": "customer_stage,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "CustomerProgressPercent",
+          "json_name": "customer_progress_percent",
+          "json_tag": "customer_progress_percent,omitempty",
+          "json_omitempty": true,
+          "go_type": "int",
+          "optional": true,
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "name": "OrderForceCompletedEvent",
+      "fields": [
+        {
+          "name": "BaseEvent",
+          "go_type": "BaseEvent",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "OrderID",
+          "json_name": "order_id",
+          "json_tag": "order_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "SupplierID",
+          "json_name": "supplier_id",
+          "json_tag": "supplier_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "RetailerID",
+          "json_name": "retailer_id",
+          "json_tag": "retailer_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "ReasonCode",
+          "json_name": "reason_code",
+          "json_tag": "reason_code",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "ActorID",
+          "json_name": "actor_id",
+          "json_tag": "actor_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "TraceID",
+          "json_name": "trace_id",
+          "json_tag": "trace_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "name": "ParentOrderEvent",
+      "fields": [
+        {
+          "name": "BaseEvent",
+          "go_type": "BaseEvent",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "ParentOrderID",
+          "json_name": "parent_order_id",
+          "json_tag": "parent_order_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "RetailerID",
+          "json_name": "retailer_id",
+          "json_tag": "retailer_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "Status",
+          "json_name": "status",
+          "json_tag": "status,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Currency",
+          "json_name": "currency",
+          "json_tag": "currency,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "TotalMinor",
+          "json_name": "total_minor",
+          "json_tag": "total_minor,omitempty",
+          "json_omitempty": true,
+          "go_type": "int64",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "ChildCount",
+          "json_name": "child_count",
+          "json_tag": "child_count,omitempty",
+          "json_omitempty": true,
+          "go_type": "int",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "SagaState",
+          "json_name": "saga_state",
+          "json_tag": "saga_state,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "ChildOrderIDs",
+          "json_name": "child_order_ids",
+          "json_tag": "child_order_ids,omitempty",
+          "json_omitempty": true,
+          "go_type": "[]string",
+          "optional": true,
+          "nullable": true
+        }
+      ]
+    },
+    {
+      "name": "PayoutBatchEvent",
+      "fields": [
+        {
+          "name": "BaseEvent",
+          "go_type": "BaseEvent",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "BatchID",
+          "json_name": "batch_id",
+          "json_tag": "batch_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "SupplierID",
+          "json_name": "supplier_id",
+          "json_tag": "supplier_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "Status",
+          "json_name": "status",
+          "json_tag": "status",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "NetPayoutMinor",
+          "json_name": "net_payout_minor",
+          "json_tag": "net_payout_minor",
+          "go_type": "int64",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "Currency",
+          "json_name": "currency",
+          "json_tag": "currency",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "RailReference",
+          "json_name": "rail_reference",
+          "json_tag": "rail_reference,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
         }
       ]
     },
@@ -2498,6 +4769,33 @@
           "go_type": "string",
           "optional": true,
           "nullable": false
+        },
+        {
+          "name": "ScenarioID",
+          "json_name": "scenario_id",
+          "json_tag": "scenario_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Version",
+          "json_name": "version",
+          "json_tag": "version,omitempty",
+          "json_omitempty": true,
+          "go_type": "int64",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "PublishedBy",
+          "json_name": "published_by",
+          "json_tag": "published_by,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
         }
       ]
     },
@@ -2593,25 +4891,118 @@
         {
           "name": "HandlingClass",
           "json_name": "handling_class",
-          "json_tag": "handling_class",
+          "json_tag": "handling_class,omitempty",
+          "json_omitempty": true,
           "go_type": "string",
-          "optional": false,
+          "optional": true,
           "nullable": false
         },
         {
           "name": "IsHazardous",
           "json_name": "is_hazardous",
-          "json_tag": "is_hazardous",
+          "json_tag": "is_hazardous,omitempty",
+          "json_omitempty": true,
           "go_type": "bool",
-          "optional": false,
+          "optional": true,
           "nullable": false
         },
         {
           "name": "IsPerishable",
           "json_name": "is_perishable",
-          "json_tag": "is_perishable",
+          "json_tag": "is_perishable,omitempty",
+          "json_omitempty": true,
           "go_type": "bool",
-          "optional": false,
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Name",
+          "json_name": "name",
+          "json_tag": "name,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "CategoryID",
+          "json_name": "category_id",
+          "json_tag": "category_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "PriceMinor",
+          "json_name": "price_minor",
+          "json_tag": "price_minor,omitempty",
+          "json_omitempty": true,
+          "go_type": "int64",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "PreviousPriceMinor",
+          "json_name": "previous_price_minor",
+          "json_tag": "previous_price_minor,omitempty",
+          "json_omitempty": true,
+          "go_type": "int64",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Currency",
+          "json_name": "currency",
+          "json_tag": "currency,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "StockQuantity",
+          "json_name": "stock_quantity",
+          "json_tag": "stock_quantity,omitempty",
+          "json_omitempty": true,
+          "go_type": "int64",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Unit",
+          "json_name": "unit",
+          "json_tag": "unit,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Barcode",
+          "json_name": "barcode",
+          "json_tag": "barcode,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "IsActive",
+          "json_name": "is_active",
+          "json_tag": "is_active,omitempty",
+          "json_omitempty": true,
+          "go_type": "bool",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Version",
+          "json_name": "version",
+          "json_tag": "version,omitempty",
+          "json_omitempty": true,
+          "go_type": "int64",
+          "optional": true,
           "nullable": false
         }
       ]
@@ -3283,6 +5674,122 @@
       ]
     },
     {
+      "name": "SupplierCreditProgramEvent",
+      "fields": [
+        {
+          "name": "BaseEvent",
+          "go_type": "BaseEvent",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "SupplierID",
+          "json_name": "supplier_id",
+          "json_tag": "supplier_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "ProgramEnabled",
+          "json_name": "program_enabled",
+          "json_tag": "program_enabled",
+          "go_type": "bool",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "Version",
+          "json_name": "version",
+          "json_tag": "version,omitempty",
+          "json_omitempty": true,
+          "go_type": "int64",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Action",
+          "json_name": "action",
+          "json_tag": "action,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "ActorID",
+          "json_name": "actor_id",
+          "json_tag": "actor_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "name": "SupplierCreditTermsEvent",
+      "fields": [
+        {
+          "name": "BaseEvent",
+          "go_type": "BaseEvent",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "SupplierID",
+          "json_name": "supplier_id",
+          "json_tag": "supplier_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "RetailerID",
+          "json_name": "retailer_id",
+          "json_tag": "retailer_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "CreditEnabled",
+          "json_name": "credit_enabled",
+          "json_tag": "credit_enabled",
+          "go_type": "bool",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "Version",
+          "json_name": "version",
+          "json_tag": "version,omitempty",
+          "json_omitempty": true,
+          "go_type": "int64",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Action",
+          "json_name": "action",
+          "json_tag": "action,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "ActorID",
+          "json_name": "actor_id",
+          "json_tag": "actor_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        }
+      ]
+    },
+    {
       "name": "SupplierEvent",
       "fields": [
         {
@@ -3438,6 +5945,133 @@
           "name": "Action",
           "json_name": "action",
           "json_tag": "action,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "name": "SupplierServicePromiseEvent",
+      "fields": [
+        {
+          "name": "BaseEvent",
+          "go_type": "BaseEvent",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "OrderID",
+          "json_name": "order_id",
+          "json_tag": "order_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "SupplierID",
+          "json_name": "supplier_id",
+          "json_tag": "supplier_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "RetailerID",
+          "json_name": "retailer_id",
+          "json_tag": "retailer_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "WarehouseID",
+          "json_name": "warehouse_id",
+          "json_tag": "warehouse_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "PromiseType",
+          "json_name": "promise_type",
+          "json_tag": "promise_type",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "GuaranteedDeliveryDate",
+          "json_name": "guaranteed_delivery_date",
+          "json_tag": "guaranteed_delivery_date",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "CutoffAppliedAt",
+          "json_name": "cutoff_applied_at",
+          "json_tag": "cutoff_applied_at,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "FillRateTargetBps",
+          "json_name": "fill_rate_target_bps",
+          "json_tag": "fill_rate_target_bps",
+          "go_type": "int64",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "MinOrderMinor",
+          "json_name": "min_order_minor",
+          "json_tag": "min_order_minor",
+          "go_type": "int64",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "Currency",
+          "json_name": "currency",
+          "json_tag": "currency",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "SLAHours",
+          "json_name": "sla_hours",
+          "json_tag": "sla_hours",
+          "go_type": "int64",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "Status",
+          "json_name": "status",
+          "json_tag": "status",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "BreachedAt",
+          "json_name": "breached_at",
+          "json_tag": "breached_at,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "BreachReason",
+          "json_name": "breach_reason",
+          "json_tag": "breach_reason,omitempty",
           "json_omitempty": true,
           "go_type": "string",
           "optional": true,
@@ -3929,6 +6563,33 @@
           "name": "Status",
           "json_name": "status",
           "json_tag": "status,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "FactoryID",
+          "json_name": "factory_id",
+          "json_tag": "factory_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "SupplierID",
+          "json_name": "supplier_id",
+          "json_tag": "supplier_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "State",
+          "json_name": "state",
+          "json_tag": "state,omitempty",
           "json_omitempty": true,
           "go_type": "string",
           "optional": true,

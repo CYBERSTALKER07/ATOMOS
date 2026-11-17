@@ -294,4 +294,139 @@ def test_vehicle_count_minimization_with_time_window_adherence():
     assert [s["order_id"] for s in resp["routes"][0]["stops"]] == ["o1", "o2"]
 
 
+def test_subproblem_250_stops_five_vans_respects_max_stops_and_budget():
+    stops = [
+        {
+            "order_id": f"sub-o-{i}",
+            "retailer_id": f"ret-{i}",
+            "lat": 41.24 + (i % 25) * 0.004,
+            "lng": 69.18 + (i // 25) * 0.005,
+            "volume_vu": 2.0,
+            "service_minutes": 5,
+        }
+        for i in range(250)
+    ]
+    vehicles = [
+        {
+            "vehicle_id": f"v-{k}",
+            "driver_id": f"d-{k}",
+            "max_volume_vu": 150.0,
+            "start_lat": 41.30,
+            "start_lng": 69.24,
+            "avg_speed_kmph": 30.0,
+        }
+        for k in range(5)
+    ]
+    req = {
+        "v": "v1",
+        "trace_id": "t-250-subproblem",
+        "stops": stops,
+        "vehicles": vehicles,
+        "tunables": {
+            "max_stops_per_route": 60,
+            "time_limit_ms": 2000,
+            "tetris_buffer": 0.95,
+        },
+    }
+    resp = solve_contract(req)
+    assert resp["stats"]["stops_placed"] == 250
+    assert resp["stats"]["stops_orphaned"] == 0
+    assert resp["stats"]["vehicles_used"] <= 5
+    assert all(len(r["stops"]) <= 60 for r in resp["routes"])
+    assert resp["stats"]["elapsed_ms"] < 5000
+    assert resp["solver_metadata"]["solver_status"] == "HEURISTIC"
+
+
+def test_distant_stop_not_falsely_dropped_by_fixed_cost():
+    # Stop ~60 km away (120 km round-trip > old 100_000m drop_penalty) must still be served.
+    req = {
+        "v": "v1",
+        "trace_id": "t-distant-stop",
+        "stops": [
+            {"order_id": "far-1", "lat": 41.84, "lng": 69.24, "volume_vu": 5.0},
+        ],
+        "vehicles": [
+            {"vehicle_id": "v1", "max_volume_vu": 100.0, "start_lat": 41.30, "start_lng": 69.24},
+        ],
+        "tunables": {"time_limit_ms": 1500, "max_stops_per_route": 25},
+    }
+    resp = solve_contract(req)
+    assert resp["stats"]["stops_placed"] == 1
+    assert resp["stats"]["stops_orphaned"] == 0
+    assert [s["order_id"] for s in resp["routes"][0]["stops"]] == ["far-1"]
+
+
+def test_vehicle_max_route_minutes_enforced():
+    # Stop ~30 km away requires ~60 min travel each way (120 min total at 30 km/h) plus 5 min service = 125 min.
+    # If vehicle has max_route_minutes = 60, the stop cannot be served and must become an orphan.
+    req = {
+        "v": "v1",
+        "trace_id": "t-max-route-min",
+        "stops": [
+            {"order_id": "s-far", "lat": 41.57, "lng": 69.24, "volume_vu": 5.0, "service_minutes": 5},
+        ],
+        "vehicles": [
+            {
+                "vehicle_id": "v-limited",
+                "max_volume_vu": 100.0,
+                "start_lat": 41.30,
+                "start_lng": 69.24,
+                "avg_speed_kmph": 30.0,
+                "max_route_minutes": 60,
+            }
+        ],
+        "tunables": {"time_limit_ms": 1500},
+    }
+    resp = solve_contract(req)
+    assert resp["stats"]["stops_placed"] == 0
+    assert resp["stats"]["stops_orphaned"] == 1
+    assert resp["orphans"][0]["order_id"] == "s-far"
+
+    # With max_route_minutes = 180, the stop fits easily.
+    req["vehicles"][0]["max_route_minutes"] = 180
+    resp_ok = solve_contract(req)
+    assert resp_ok["stats"]["stops_placed"] == 1
+    assert resp_ok["stats"]["stops_orphaned"] == 0
+
+
+def test_cold_chain_compatibility_enforced():
+    # Stop requiring cold chain must be placed only on cold_chain_capable vehicle
+    req = {
+        "v": "v1",
+        "trace_id": "t-cold-chain",
+        "stops": [
+            {"order_id": "s-ambient", "lat": 41.31, "lng": 69.24, "volume_vu": 5.0},
+            {"order_id": "s-chilled", "lat": 41.32, "lng": 69.24, "volume_vu": 5.0, "requires_cold_chain": True},
+        ],
+        "vehicles": [
+            {"vehicle_id": "v-ambient", "max_volume_vu": 100.0, "start_lat": 41.30, "start_lng": 69.24, "cold_chain_capable": False},
+            {"vehicle_id": "v-reefer", "max_volume_vu": 100.0, "start_lat": 41.30, "start_lng": 69.24, "cold_chain_capable": True},
+        ],
+        "tunables": {"time_limit_ms": 1500},
+    }
+    resp = solve_contract(req)
+    assert resp["stats"]["stops_placed"] == 2
+    assert resp["stats"]["stops_orphaned"] == 0
+    # Find which vehicle got the chilled stop
+    for r in resp["routes"]:
+        order_ids = [s["order_id"] for s in r["stops"]]
+        if "s-chilled" in order_ids:
+            assert r["vehicle_id"] == "v-reefer"
+
+    # When only ambient vehicle is available, chilled stop must orphan via disjunction
+    req_no_reefer = {
+        "v": "v1",
+        "trace_id": "t-cold-orphan",
+        "stops": [
+            {"order_id": "s-frozen", "lat": 41.32, "lng": 69.24, "volume_vu": 5.0, "temp_zone": "FROZEN"},
+        ],
+        "vehicles": [
+            {"vehicle_id": "v-ambient", "max_volume_vu": 100.0, "start_lat": 41.30, "start_lng": 69.24, "temp_zones": ["AMBIENT"]},
+        ],
+        "tunables": {"time_limit_ms": 1500},
+    }
+    resp_no_reefer = solve_contract(req_no_reefer)
+    assert resp_no_reefer["stats"]["stops_placed"] == 0
+    assert resp_no_reefer["stats"]["stops_orphaned"] == 1
+    assert resp_no_reefer["orphans"][0]["order_id"] == "s-frozen"
 

@@ -2,6 +2,7 @@ package laborcapacity
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"math"
@@ -55,6 +56,113 @@ func (s *Service) RunDriverScoreComputation(ctx context.Context) error {
 	windowEnd := now.Truncate(24 * time.Hour)
 	windowStart := windowEnd.Add(-28 * 24 * time.Hour)
 
+	// 1. TotalDelivered from Orders.LineItemsJson
+	deliveredByDriver := map[string]int64{}
+	deliveredIter := s.spanner.Single().Query(ctx, spanner.Statement{
+		SQL: `SELECT DriverId, LineItemsJson
+		      FROM Orders
+		      WHERE Status = 'DELIVERED' AND CreatedAt >= @Start AND CreatedAt < @End AND DriverId IS NOT NULL`,
+		Params: map[string]interface{}{
+			"Start": windowStart,
+			"End":   windowEnd,
+		},
+	})
+	defer deliveredIter.Stop()
+	for {
+		row, err := deliveredIter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("query delivered orders: %w", err)
+		}
+		var driverID string
+		var raw []byte
+		if err := row.ColumnByName("DriverId", &driverID); err != nil {
+			continue
+		}
+		if err := row.ColumnByName("LineItemsJson", &raw); err != nil {
+			var rawStr string
+			if errStr := row.ColumnByName("LineItemsJson", &rawStr); errStr == nil {
+				raw = []byte(rawStr)
+			} else {
+				continue
+			}
+		}
+		if len(raw) == 0 {
+			continue
+		}
+		var lines []struct {
+			DeliveredQty int64 `json:"delivered_qty"`
+			Quantity     int64 `json:"quantity"`
+			Qty          int64 `json:"qty"`
+		}
+		if err := json.Unmarshal(raw, &lines); err != nil {
+			continue
+		}
+		for _, l := range lines {
+			q := l.DeliveredQty
+			if q == 0 {
+				q = l.Quantity
+			}
+			if q == 0 {
+				q = l.Qty
+			}
+			if q > 0 {
+				deliveredByDriver[driverID] += q
+			}
+		}
+	}
+
+	// 2. Damaged from Claims JOIN Orders ON Claims.OrderId = Orders.OrderId
+	damagedByDriver := map[string]int64{}
+	claimsIter := s.spanner.Single().Query(ctx, spanner.Statement{
+		SQL: `SELECT o.DriverId, c.LineItemsJSON
+		      FROM Claims c
+		      JOIN Orders o ON c.OrderId = o.OrderId
+		      WHERE UPPER(c.ClaimType) IN ('DAMAGE', 'DAMAGED')
+		        AND o.CreatedAt >= @Start AND o.CreatedAt < @End
+		        AND o.DriverId IS NOT NULL`,
+		Params: map[string]interface{}{
+			"Start": windowStart,
+			"End":   windowEnd,
+		},
+	})
+	defer claimsIter.Stop()
+	for {
+		row, err := claimsIter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			// Non-fatal if Claims table is empty or inaccessible
+			break
+		}
+		var driverID string
+		var raw []byte
+		if err := row.ColumnByName("DriverId", &driverID); err != nil {
+			continue
+		}
+		_ = row.ColumnByName("LineItemsJSON", &raw)
+		var lines []struct {
+			Quantity int64 `json:"quantity"`
+			Qty      int64 `json:"qty"`
+		}
+		if len(raw) > 0 && json.Unmarshal(raw, &lines) == nil && len(lines) > 0 {
+			for _, l := range lines {
+				q := l.Quantity
+				if q == 0 {
+					q = l.Qty
+				}
+				if q > 0 {
+					damagedByDriver[driverID] += q
+				}
+			}
+		} else {
+			damagedByDriver[driverID]++
+		}
+	}
+
 	// Analytical query across operational tables using exact metric definitions
 	stmt := spanner.Statement{
 		SQL: `
@@ -65,14 +173,6 @@ func (s *Service) RunDriverScoreComputation(ctx context.Context) error {
 				FROM Orders
 				WHERE CreatedAt >= @Start AND CreatedAt < @End AND DriverId IS NOT NULL
 				GROUP BY DriverId
-			),
-			DamageLines AS (
-				SELECT o.DriverId, COALESCE(SUM(l.DeliveredQty), 0) as TotalDelivered, COALESCE(SUM(c.Quantity), 0) as Damaged
-				FROM Orders o
-				JOIN OrderLines l ON o.OrderId = l.OrderId
-				LEFT JOIN Claims c ON c.OrderLineId = l.Id AND c.Type = 'DAMAGE'
-				WHERE o.Status = 'DELIVERED' AND o.CreatedAt >= @Start AND o.CreatedAt < @End
-				GROUP BY o.DriverId
 			),
 			ShopClosed AS (
 				SELECT o.DriverId, COUNT(e.Id) as ShopClosedTotal,
@@ -99,22 +199,19 @@ func (s *Service) RunDriverScoreComputation(ctx context.Context) error {
 				a.TotalAssigned,
 				a.TotalCompleted,
 				a.OnTimeCompleted,
-				COALESCE(d.TotalDelivered, 0) as TotalDelivered,
-				COALESCE(d.Damaged, 0) as Damaged,
 				COALESCE(s.ShopClosedTotal, 0) as ShopClosedTotal,
 				COALESCE(s.ShopClosedBad, 0) as ShopClosedBad,
 				COALESCE(f.AvgRating, 0.0) as AvgRating,
 				COALESCE(h.TotalHours, 0.0) as TotalHours
 			FROM AssignedOrders a
-			LEFT JOIN DamageLines d ON a.DriverId = d.DriverId
 			LEFT JOIN ShopClosed s ON a.DriverId = s.DriverId
 			LEFT JOIN Feedback f ON a.DriverId = f.DriverId
 			LEFT JOIN HoursLogged h ON a.DriverId = h.DriverId
 			WHERE a.TotalCompleted > 0
 		`,
 		Params: map[string]interface{}{
-			"Start": civil.DateOf(windowStart),
-			"End":   civil.DateOf(windowEnd),
+			"Start": windowStart,
+			"End":   windowEnd,
 		},
 	}
 
@@ -138,8 +235,6 @@ func (s *Service) RunDriverScoreComputation(ctx context.Context) error {
 			totalAssigned   int64
 			totalCompleted  int64
 			onTimeCompleted int64
-			totalDelivered  int64
-			damaged         int64
 			shopClosedTotal int64
 			shopClosedBad   int64
 			avgRating       float64
@@ -147,11 +242,14 @@ func (s *Service) RunDriverScoreComputation(ctx context.Context) error {
 		)
 		if err := row.Columns(
 			&driverId, &totalAssigned, &totalCompleted, &onTimeCompleted,
-			&totalDelivered, &damaged, &shopClosedTotal, &shopClosedBad,
+			&shopClosedTotal, &shopClosedBad,
 			&avgRating, &totalHours,
 		); err != nil {
 			return fmt.Errorf("scan columns: %w", err)
 		}
+
+		totalDelivered := deliveredByDriver[driverId]
+		damaged := damagedByDriver[driverId]
 
 		onTimeRate := 0.0
 		completionRate := 0.0

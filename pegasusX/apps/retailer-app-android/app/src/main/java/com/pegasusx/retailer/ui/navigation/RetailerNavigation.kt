@@ -64,6 +64,7 @@ import com.pegasusx.retailer.ui.screens.profile.ProfileScreen
 import com.pegasusx.retailer.ui.screens.profile.FamilyMembersScreen
 import com.pegasusx.retailer.ui.screens.profile.SavedCardsScreen
 import com.pegasusx.retailer.ui.screens.settings.CapabilitiesScreen
+import com.pegasusx.retailer.ui.screens.settings.OwnerApprovalsScreen
 import com.pegasusx.retailer.ui.screens.settings.TeamScreen
 import com.pegasusx.retailer.ui.screens.settings.LocationsScreen
 import com.pegasusx.retailer.ui.screens.settings.StoreStockScreen
@@ -395,6 +396,15 @@ fun RetailerNavigation(
                             onQuickReorder = { product ->
                                 navController.navigate("PRODUCT_DETAIL/${Uri.encode(product.id)}")
                             },
+                            onOpenCredit = { navController.navigate("CREDIT") },
+                            onOpenOwnerApprovals = { navController.navigate("OWNER_APPROVALS") },
+                        )
+                    }
+                }
+                composable("CREDIT") {
+                    Box(Modifier.fillMaxSize()) {
+                        com.pegasusx.retailer.ui.screens.credit.CreditScreen(
+                            onNavigateBack = { navController.popBackStack() },
                         )
                     }
                 }
@@ -435,6 +445,7 @@ fun RetailerNavigation(
                             onFamilyMembersClick = { navController.navigate("FAMILY_MEMBERS") },
                             onCapabilitiesClick = { navController.navigate("CAPABILITIES") },
                             onTeamClick = { navController.navigate("TEAM") },
+                            onOwnerApprovalsClick = { navController.navigate("OWNER_APPROVALS") },
                             onLocationsClick = { navController.navigate("LOCATIONS") },
                             onStoreStockClick = { navController.navigate("STORE_STOCK") },
                             onLocalSkusClick = { navController.navigate("LOCAL_SKUS") },
@@ -507,7 +518,15 @@ fun RetailerNavigation(
                 }
                 composable("TEAM") {
                     Box(Modifier.fillMaxSize()) {
-                        TeamScreen(onNavigateBack = { navController.popBackStack() })
+                        TeamScreen(
+                            onNavigateBack = { navController.popBackStack() },
+                            onNavigateToApprovals = { navController.navigate("OWNER_APPROVALS") },
+                        )
+                    }
+                }
+                composable("OWNER_APPROVALS") {
+                    Box(Modifier.fillMaxSize()) {
+                        OwnerApprovalsScreen(onNavigateBack = { navController.popBackStack() })
                     }
                 }
                 composable("FAMILY_MEMBERS") {

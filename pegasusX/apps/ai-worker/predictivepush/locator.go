@@ -25,6 +25,127 @@ func NewLocator(client *spanner.Client) *Locator {
 	}
 }
 
+// FindNearestWarehousesBatch resolves nearest warehouses for multiple (retailerID, supplierID) pairs in 2 batched queries.
+func (l *Locator) FindNearestWarehousesBatch(ctx context.Context, events []*DemandEvent) (map[string]*Warehouse, error) {
+	out := make(map[string]*Warehouse, len(events))
+	if l == nil || l.spannerClient == nil || len(events) == 0 {
+		return out, nil
+	}
+	ridSet := make(map[string]struct{}, len(events))
+	sidSet := make(map[string]struct{}, len(events))
+	rids := make([]string, 0, len(events))
+	sids := make([]string, 0, len(events))
+	for _, ev := range events {
+		if ev == nil {
+			continue
+		}
+		if ev.RetailerId != "" {
+			if _, ok := ridSet[ev.RetailerId]; !ok {
+				ridSet[ev.RetailerId] = struct{}{}
+				rids = append(rids, ev.RetailerId)
+			}
+		}
+		if ev.SupplierId != "" {
+			if _, ok := sidSet[ev.SupplierId]; !ok {
+				sidSet[ev.SupplierId] = struct{}{}
+				sids = append(sids, ev.SupplierId)
+			}
+		}
+	}
+	if len(rids) == 0 || len(sids) == 0 {
+		return out, nil
+	}
+
+	ro := l.spannerClient.ReadOnlyTransaction()
+	defer ro.Close()
+
+	type point struct{ lat, lng float64 }
+	retCoords := make(map[string]point, len(rids))
+	rIter := ro.Query(ctx, spanner.Statement{
+		SQL:    `SELECT RetailerId, Lat, Lng FROM Retailers WHERE RetailerId IN UNNEST(@rids)`,
+		Params: map[string]any{"rids": rids},
+	})
+	for {
+		row, err := rIter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			rIter.Stop()
+			return nil, err
+		}
+		var rid string
+		var lat, lng spanner.NullFloat64
+		if err := row.Columns(&rid, &lat, &lng); err != nil {
+			rIter.Stop()
+			return nil, err
+		}
+		if lat.Valid && lng.Valid {
+			retCoords[rid] = point{lat: lat.Float64, lng: lng.Float64}
+		}
+	}
+	rIter.Stop()
+
+	whBySupplier := make(map[string][]Warehouse, len(sids))
+	wIter := ro.Query(ctx, spanner.Statement{
+		SQL:    `SELECT SupplierId, WarehouseId, PrimaryFactoryId, Lat, Lng FROM Warehouses WHERE SupplierId IN UNNEST(@sids)`,
+		Params: map[string]any{"sids": sids},
+	})
+	for {
+		row, err := wIter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			wIter.Stop()
+			return nil, err
+		}
+		var sid, wid string
+		var pf spanner.NullString
+		var wLat, wLng spanner.NullFloat64
+		if err := row.Columns(&sid, &wid, &pf, &wLat, &wLng); err != nil {
+			wIter.Stop()
+			return nil, err
+		}
+		if wLat.Valid && wLng.Valid {
+			whBySupplier[sid] = append(whBySupplier[sid], Warehouse{
+				WarehouseId:      wid,
+				PrimaryFactoryId: pf.StringVal,
+				Lat:              wLat.Float64,
+				Lng:              wLng.Float64,
+			})
+		}
+	}
+	wIter.Stop()
+
+	for _, ev := range events {
+		if ev == nil || ev.RetailerId == "" || ev.SupplierId == "" {
+			continue
+		}
+		key := ev.RetailerId + "|" + ev.SupplierId
+		if _, done := out[key]; done {
+			continue
+		}
+		rc, hasR := retCoords[ev.RetailerId]
+		if !hasR {
+			out[key] = nil
+			continue
+		}
+		var nearest *Warehouse
+		minDist := math.MaxFloat64
+		for _, w := range whBySupplier[ev.SupplierId] {
+			d := haversineDistance(rc.lat, rc.lng, w.Lat, w.Lng)
+			if d < minDist {
+				minDist = d
+				wCopy := w
+				nearest = &wCopy
+			}
+		}
+		out[key] = nearest
+	}
+	return out, nil
+}
+
 // FindNearestWarehouse finds the closest warehouse to a given retailer that belongs to the same supplier.
 func (l *Locator) FindNearestWarehouse(ctx context.Context, retailerId string, supplierId string) (*Warehouse, error) {
 	// First get the retailer's location

@@ -5,6 +5,9 @@ import { useCallback, useEffect, useState } from "react";
 import { supplierFetch } from "@/lib/auth";
 import { PageChrome } from "@/components/PageChrome";
 import { CreditEnableModal } from "@/components/CreditEnableModal";
+import { ObjectHistoryPanel } from "@/components/audit/ObjectHistoryPanel";
+import { minorToWholeTrunc } from "@/lib/money";
+import { formatWholeSom, wholeSomToMinor } from "@/lib/exception-desk";
 
 type Program = {
   supplier_id: string;
@@ -17,6 +20,10 @@ type Program = {
 
 type Relationship = {
   retailer_id: string;
+  retailer_name?: string;
+  display_name?: string;
+  tin?: string;
+  phone?: string;
   credit_enabled: boolean;
   terms_days: number;
   grace_period_days: number;
@@ -36,9 +43,14 @@ export default function CreditPolicyPage() {
   const [error, setError] = useState<string | null>(null);
   const [modal, setModal] = useState<"program" | "retailer" | null>(null);
   const [retailerId, setRetailerId] = useState("");
-  const [limitMinor, setLimitMinor] = useState("1000000");
+  const [limitSom, setLimitSom] = useState("1000000");
   const [termsDays, setTermsDays] = useState("30");
   const [busy, setBusy] = useState(false);
+  const [historyTarget, setHistoryTarget] = useState<{
+    objectType: string;
+    fallbackObjectTypes?: string[];
+    objectId: string;
+  } | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -50,7 +62,14 @@ export default function CreditPolicyPage() {
       ]);
       if (!pRes.ok) throw new Error(`program_${pRes.status}`);
       if (!rRes.ok) throw new Error(`rels_${rRes.status}`);
-      setProgram((await pRes.json()) as Program);
+      const loadedProgram = (await pRes.json()) as Program;
+      setProgram(loadedProgram);
+      if (loadedProgram.global_default_limit_minor > 0) {
+        setLimitSom(String(minorToWholeTrunc(loadedProgram.global_default_limit_minor)));
+      }
+      if (loadedProgram.global_terms_days > 0) {
+        setTermsDays(String(loadedProgram.global_terms_days));
+      }
       const body = (await rRes.json()) as { relationships?: Relationship[] };
       setRels(body.relationships ?? []);
     } catch (e) {
@@ -58,13 +77,18 @@ export default function CreditPolicyPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
   async function enableProgram(ackAt: string) {
+    const defaultLimitMinor = wholeSomToMinor(limitSom);
+    if (defaultLimitMinor === null) {
+      setError(t("supplier_portal.residual.text.invalid_limit"));
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -75,7 +99,7 @@ export default function CreditPolicyPage() {
           warning_ack: true,
           warning_ack_at: ackAt,
           global_terms_days: Number(termsDays) || 30,
-          global_default_limit_minor: Number(limitMinor) || 0,
+          global_default_limit_minor: defaultLimitMinor,
         }),
       });
       if (!res.ok) throw new Error(`enable_program_${res.status}`);
@@ -94,6 +118,11 @@ export default function CreditPolicyPage() {
       setError(t("supplier_portal.residual.text.retailer_id_required"));
       return;
     }
+    const creditLimitMinor = wholeSomToMinor(limitSom);
+    if (creditLimitMinor === null) {
+      setError(t("supplier_portal.residual.text.invalid_limit"));
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -104,7 +133,7 @@ export default function CreditPolicyPage() {
           warning_ack: true,
           warning_ack_at: ackAt,
           terms_days: Number(termsDays) || 30,
-          credit_limit_minor: Number(limitMinor) || 0,
+          credit_limit_minor: creditLimitMinor,
           use_global_defaults: false,
         }),
       });
@@ -123,14 +152,20 @@ export default function CreditPolicyPage() {
   }
 
   async function patchDefaults() {
+    const defaultLimitMinor = wholeSomToMinor(limitSom);
+    if (defaultLimitMinor === null) {
+      setError(t("supplier_portal.residual.text.invalid_limit"));
+      return;
+    }
     setBusy(true);
+    setError(null);
     try {
       const res = await supplierFetch("/v1/supplier/credit-program/defaults", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           global_terms_days: Number(termsDays) || 30,
-          global_default_limit_minor: Number(limitMinor) || 0,
+          global_default_limit_minor: defaultLimitMinor,
         }),
       });
       if (!res.ok) throw new Error(`defaults_${res.status}`);
@@ -168,12 +203,33 @@ export default function CreditPolicyPage() {
       {error ? <p className="mb-3 text-sm text-red-600">{error}</p> : null}
 
       <section className="mb-8">
-        <h2 className="text-base font-semibold mb-2">{t("supplier_portal.credit.admin_disable.text.program")}</h2>
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+          <h2 className="text-base font-semibold">{t("supplier_portal.credit.admin_disable.text.program")}</h2>
+          {program?.supplier_id ? (
+            <button
+              type="button"
+              className="text-xs underline text-[var(--muted)]"
+              onClick={() =>
+                setHistoryTarget((curr) =>
+                  curr?.objectId === program.supplier_id && curr.objectType === "credit_program"
+                    ? null
+                    : {
+                        objectType: "credit_program",
+                        fallbackObjectTypes: ["credit_policy"],
+                        objectId: program.supplier_id,
+                      },
+                )
+              }
+            >
+              {t("supplier_portal.audit.open_history")}
+            </button>
+          ) : null}
+        </div>
         <p className="text-sm text-[var(--muted)] mb-3">
           Status:{" "}
           <strong>{program?.program_enabled ? "ON" : "OFF"}</strong>
           {program?.program_enabled
-            ? ` · Net ${program.global_terms_days} · default limit ${program.global_default_limit_minor}`
+            ? ` · Net ${program.global_terms_days} · default limit ${formatWholeSom(program.global_default_limit_minor)}`
             : ""}
         </p>
         {!program?.program_enabled ? (
@@ -197,13 +253,13 @@ export default function CreditPolicyPage() {
               />
             </label>
             <label className="text-sm">
-              Default limit (minor)
+              Default limit (so&apos;m)
               <input
-                id="default-limit-minor-input-2"
-                aria-label="Default limit (minor)"
-                className="ml-2 border rounded px-2 py-1 w-32"
-                value={limitMinor}
-                onChange={(e) => setLimitMinor(e.target.value)}
+                id="default-limit-som-input"
+                aria-label="Default limit (so'm)"
+                className="ml-2 border rounded px-2 py-1 w-36 font-mono"
+                value={limitSom}
+                onChange={(e) => setLimitSom(e.target.value)}
               />
             </label>
             <button
@@ -247,36 +303,65 @@ export default function CreditPolicyPage() {
               <tr className="text-left border-b border-[var(--border)]">
                 <th className="py-2 pr-3">{t("supplier_portal.analytics.demand.flywheel.text.retailer")}</th>
                 <th className="py-2 pr-3">{t("supplier_portal.credit.policy.text.terms")}</th>
-                <th className="py-2 pr-3">{t("supplier_portal.credit.collections.text.limit")}</th>
-                <th className="py-2 pr-3">{t("supplier_portal.credit.collections.text.balance")}</th>
+                <th className="py-2 pr-3">Limit (so&apos;m)</th>
+                <th className="py-2 pr-3">Balance (so&apos;m)</th>
                 <th className="py-2 pr-3">{t("supplier_portal.compliance.text.status")}</th>
                 <th className="py-2">{t("supplier_portal.catalog.components.catalog_table.text.actions")}</th>
               </tr>
             </thead>
             <tbody>
-              {rels.map((r) => (
-                <tr key={r.retailer_id} className="border-b border-[var(--border)]/60">
-                  <td className="py-2 pr-3 font-mono text-xs">{r.retailer_id}</td>
-                  <td className="py-2 pr-3">Net {r.terms_days}</td>
-                  <td className="py-2 pr-3">{r.credit_limit_minor}</td>
-                  <td className="py-2 pr-3">{r.current_balance_minor ?? 0}</td>
-                  <td className="py-2 pr-3">{r.profile_status ?? (r.credit_enabled ? "ON" : "OFF")}</td>
-                  <td className="py-2 flex gap-2">
-                    {r.profile_status === "FROZEN" ? (
-                      <button type="button" className="underline text-xs" onClick={() => void hold(r.retailer_id, true)}>
-                        Unhold
+              {rels.map((r) => {
+                const shopName = (r.display_name || r.retailer_name || "").trim();
+                return (
+                  <tr key={r.retailer_id} className="border-b border-[var(--border)]/60">
+                    <td className="py-2 pr-3">
+                      <div className="font-medium">{shopName || r.retailer_id}</div>
+                      {shopName || r.tin || r.phone ? (
+                        <div className="text-xs text-[var(--muted)] font-mono flex flex-wrap gap-x-2">
+                          {r.tin ? <span>TIN {r.tin}</span> : null}
+                          {r.phone ? <span>{r.phone}</span> : null}
+                          {shopName ? <span>{r.retailer_id}</span> : null}
+                        </div>
+                      ) : null}
+                    </td>
+                    <td className="py-2 pr-3">Net {r.terms_days}</td>
+                    <td className="py-2 pr-3 font-mono">{formatWholeSom(r.credit_limit_minor)}</td>
+                    <td className="py-2 pr-3 font-mono">{formatWholeSom(r.current_balance_minor ?? 0)}</td>
+                    <td className="py-2 pr-3">{r.profile_status ?? (r.credit_enabled ? "ON" : "OFF")}</td>
+                    <td className="py-2 flex gap-2">
+                      {r.profile_status === "FROZEN" ? (
+                        <button type="button" className="underline text-xs" onClick={() => void hold(r.retailer_id, true)}>
+                          Unhold
+                        </button>
+                      ) : (
+                        <button type="button" className="underline text-xs" onClick={() => void hold(r.retailer_id, false)}>
+                          Hold
+                        </button>
+                      )}
+                      <span className="text-xs text-[var(--muted)]" title={t("supplier_portal.credit.policy.text.self_serve_disable_blocked")}>
+                        Disable → support
+                      </span>
+                      <button
+                        type="button"
+                        className="underline text-xs text-[var(--muted)]"
+                        onClick={() =>
+                          setHistoryTarget((curr) =>
+                            curr?.objectId === r.retailer_id && curr.objectType === "credit_relationship"
+                              ? null
+                              : {
+                                  objectType: "credit_relationship",
+                                  fallbackObjectTypes: ["credit_relationships", "retailer_credit_profile"],
+                                  objectId: r.retailer_id,
+                                },
+                          )
+                        }
+                      >
+                        {t("supplier_portal.audit.open_history")}
                       </button>
-                    ) : (
-                      <button type="button" className="underline text-xs" onClick={() => void hold(r.retailer_id, false)}>
-                        Hold
-                      </button>
-                    )}
-                    <span className="text-xs text-[var(--muted)]" title={t("supplier_portal.credit.policy.text.self_serve_disable_blocked")}>
-                      Disable → support
-                    </span>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                  </tr>
+                );
+              })}
               {rels.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="py-4 text-[var(--muted)]">
@@ -288,6 +373,18 @@ export default function CreditPolicyPage() {
           </table>
         </div>
       </section>
+
+      {historyTarget ? (
+        <div className="mt-6">
+          <ObjectHistoryPanel
+            objectType={historyTarget.objectType}
+            fallbackObjectTypes={historyTarget.fallbackObjectTypes}
+            objectId={historyTarget.objectId}
+            compact
+            onClose={() => setHistoryTarget(null)}
+          />
+        </div>
+      ) : null}
 
       <CreditEnableModal
         open={modal === "program"}

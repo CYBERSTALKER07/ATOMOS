@@ -69,6 +69,7 @@ export function AdminSidebar({
     {
       title: "Platform Governance",
       items: [
+        { href: "/governance", label: "Chain & SoD Governance" },
         {
           href: "/governance/flags",
           label: "Dual-Control Flags",

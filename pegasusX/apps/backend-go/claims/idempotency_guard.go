@@ -27,6 +27,19 @@ func idempotencyKeyFromRequest(r *http.Request) string {
 	return strings.TrimSpace(r.Header.Get("X-Idempotency-Key"))
 }
 
+func scopedIdempotencyKey(ctx context.Context, r *http.Request) string {
+	rawKey := idempotencyKeyFromRequest(r)
+	if rawKey == "" {
+		return ""
+	}
+	if ctx != nil {
+		if principal := idempotency.ScopePrincipal(ctx); principal != "" {
+			return idempotency.ScopeKey(principal, idempotency.CleanRoutePattern(r), rawKey)
+		}
+	}
+	return idempotency.ScopeRequest(r, rawKey)
+}
+
 func sha256HexBytes(body []byte) string {
 	sum := sha256.Sum256(body)
 	return hex.EncodeToString(sum[:])
@@ -34,8 +47,11 @@ func sha256HexBytes(body []byte) string {
 
 // guardIdempotency returns true when the handler should stop (replay or conflict written).
 func (s *Service) guardIdempotency(w http.ResponseWriter, r *http.Request, body []byte) bool {
-	key := idempotencyKeyFromRequest(r)
-	if key == "" || s == nil || s.idem == nil {
+	if s == nil || s.idem == nil {
+		return false
+	}
+	key := scopedIdempotencyKey(r.Context(), r)
+	if key == "" {
 		return false
 	}
 	hash := sha256HexBytes(body)
@@ -54,7 +70,9 @@ func (s *Service) guardIdempotency(w http.ResponseWriter, r *http.Request, body 
 	case hit:
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(rec.StatusCode)
-		_, _ = w.Write(rec.Response)
+		if _, err := w.Write(rec.Response); err != nil && s.log != nil {
+			s.log.Warn("claims idempotency replay write failed", "err", err)
+		}
 		return true
 	}
 	return false
@@ -69,28 +87,38 @@ func (s *Service) guardIdempotencyStrict(w http.ResponseWriter, r *http.Request,
 }
 
 func (s *Service) saveIdempotency(ctx context.Context, r *http.Request, body []byte, status int, resp []byte) {
-	key := idempotencyKeyFromRequest(r)
-	if key == "" || s == nil || s.idem == nil {
+	if s == nil || s.idem == nil {
+		return
+	}
+	key := scopedIdempotencyKey(ctx, r)
+	if key == "" {
 		return
 	}
 	storedAt := time.Now().UTC()
 	if s.now != nil {
 		storedAt = s.now().UTC()
 	}
-	_ = s.idem.Save(ctx, key, idempotency.Record{
+	if err := s.idem.Save(ctx, key, idempotency.Record{
 		BodyHash:   sha256HexBytes(body),
 		StatusCode: status,
 		Response:   resp,
 		StoredAt:   storedAt,
-	}, 24*time.Hour)
+	}, 24*time.Hour); err != nil && s.log != nil {
+		s.log.Warn("claims idempotency save failed", "err", err)
+	}
 }
 
 func (s *Service) releaseIdempotency(ctx context.Context, r *http.Request) {
-	key := idempotencyKeyFromRequest(r)
-	if key == "" || s == nil || s.idem == nil {
+	if s == nil || s.idem == nil {
 		return
 	}
-	_ = s.idem.Release(ctx, key)
+	key := scopedIdempotencyKey(ctx, r)
+	if key == "" {
+		return
+	}
+	if err := s.idem.Release(ctx, key); err != nil && s.log != nil {
+		s.log.Warn("claims idempotency release failed", "err", err)
+	}
 }
 
 func writeJSONBytes(w http.ResponseWriter, code int, body []byte) {

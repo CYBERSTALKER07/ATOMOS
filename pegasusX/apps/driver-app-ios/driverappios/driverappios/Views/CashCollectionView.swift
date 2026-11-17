@@ -56,7 +56,7 @@ struct CashCollectionView: View {
             case .fiscalizing:
                 FiscalizingView(amount: amount)
             case .fiscalFailed:
-                FiscalFailedView()
+                FiscalFailedView(subtitle: vm.statusNotice)
             default:
                 CollectCashView(
                     orderId: orderId,
@@ -121,20 +121,38 @@ struct CashCollectionView: View {
                 .padding(.horizontal, LabTheme.s24)
                 .padding(.bottom, LabTheme.s24)
             } else if vm.phase == .fiscalFailed {
-                Button {
-                    Task { await vm.retryFiscal() }
-                } label: {
-                    HStack(spacing: 8) {
-                        if vm.isCompleting { ProgressView().tint(LabTheme.buttonFg) }
-                        Text("mobile_driver.ui.retry_fiscal")
+                VStack(spacing: 10) {
+                    Button {
+                        Haptics.success()
+                        vm.continueNextStop()
+                    } label: {
+                        Text(L10n.string("mobile_driver.ui.continue_next_stop"))
                             .font(.system(.subheadline, weight: .bold))
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                            .padding(.vertical, 14)
+                            .background(LabTheme.success, in: .rect(cornerRadius: LabTheme.buttonRadius))
                     }
-                    .foregroundStyle(LabTheme.buttonFg)
-                    .frame(maxWidth: .infinity, minHeight: 44)
-                    .padding(.vertical, 16)
-                    .background(LabTheme.fg, in: .rect(cornerRadius: LabTheme.buttonRadius))
+                    .disabled(vm.isCompleting)
+
+                    Button {
+                        Task { await vm.retryFiscal() }
+                    } label: {
+                        HStack(spacing: 8) {
+                            if vm.isCompleting { ProgressView().tint(LabTheme.fg) }
+                            Text(L10n.string("mobile_driver.ui.retry_soliq_now"))
+                                .font(.system(.subheadline, weight: .semibold))
+                        }
+                        .foregroundStyle(LabTheme.fg)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .padding(.vertical, 12)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: LabTheme.buttonRadius)
+                                .stroke(LabTheme.fgTertiary.opacity(0.4), lineWidth: 1)
+                        )
+                    }
+                    .disabled(vm.isCompleting)
                 }
-                .disabled(vm.isCompleting)
                 .padding(.horizontal, LabTheme.s24)
                 .padding(.bottom, LabTheme.s24)
             }

@@ -1,0 +1,539 @@
+{
+  "version": "1.0.0",
+  "schema_version": "v1",
+  "primary_key": [
+    "cell_id",
+    "object_type",
+    "object_id"
+  ],
+  "monetary_unit": "minor_unit_int64",
+  "allowed_link_types": [
+    "supplies",
+    "stocks",
+    "ordered",
+    "shipped_on",
+    "owes",
+    "substitutes",
+    "recalled_with"
+  ],
+  "link_descriptors": [
+    {
+      "link_type": "supplies",
+      "description": "Supplier or Factory supplies a Warehouse, SKU, or Shop.",
+      "source_types": [
+        "Supplier",
+        "Factory",
+        "LegalEntity"
+      ],
+      "target_types": [
+        "Warehouse",
+        "SKU",
+        "Shop"
+      ],
+      "propagates_markings": false
+    },
+    {
+      "link_type": "stocks",
+      "description": "Warehouse stocks a SKU or Lot, or SKU is stocked in Lot.",
+      "source_types": [
+        "Warehouse",
+        "SKU"
+      ],
+      "target_types": [
+        "SKU",
+        "Lot"
+      ],
+      "propagates_markings": true
+    },
+    {
+      "link_type": "ordered",
+      "description": "Shop placed an Order or Order contains OrderLine / references SKU / Proposal.",
+      "source_types": [
+        "Shop",
+        "Order",
+        "Proposal"
+      ],
+      "target_types": [
+        "Order",
+        "OrderLine",
+        "SKU",
+        "Lot"
+      ],
+      "propagates_markings": true
+    },
+    {
+      "link_type": "shipped_on",
+      "description": "Order or OrderLine is shipped on a Manifest operated by Vehicle and Driver.",
+      "source_types": [
+        "Order",
+        "OrderLine",
+        "Manifest",
+        "Driver"
+      ],
+      "target_types": [
+        "Manifest",
+        "Vehicle",
+        "Driver",
+        "Warehouse"
+      ],
+      "propagates_markings": true
+    },
+    {
+      "link_type": "owes",
+      "description": "Shop or LegalEntity owes on a NasiyaInvoice, CreditLine, Payment, or FiscalDoc.",
+      "source_types": [
+        "Shop",
+        "LegalEntity",
+        "Order",
+        "NasiyaInvoice"
+      ],
+      "target_types": [
+        "NasiyaInvoice",
+        "CreditLine",
+        "Payment",
+        "FiscalDoc",
+        "Supplier"
+      ],
+      "propagates_markings": false
+    },
+    {
+      "link_type": "substitutes",
+      "description": "SKU or Proposal substitutes an out-of-stock or constrained SKU.",
+      "source_types": [
+        "SKU",
+        "Proposal"
+      ],
+      "target_types": [
+        "SKU"
+      ],
+      "propagates_markings": false
+    },
+    {
+      "link_type": "recalled_with",
+      "description": "Lot recall lineage linking contaminated Lot to affected Lots, Orders, Manifests, or FiscalDocs.",
+      "source_types": [
+        "Lot"
+      ],
+      "target_types": [
+        "Lot",
+        "Order",
+        "OrderLine",
+        "Manifest",
+        "FiscalDoc"
+      ],
+      "propagates_markings": true
+    }
+  ],
+  "security_markings": [
+    {
+      "marking": "MARKING:FINANCE_ONLY",
+      "category": "access_control",
+      "requires_finance_or_admin": true,
+      "propagates": false,
+      "description": "Financial figures, credit exposure, balances, and payment settlements restricted to finance/admin roles."
+    },
+    {
+      "marking": "MARKING:PII",
+      "category": "privacy",
+      "requires_finance_or_admin": true,
+      "propagates": false,
+      "description": "Personally identifiable information (phone, email, address, tax TIN) masked for non-finance/non-admin viewers."
+    },
+    {
+      "marking": "MARKING:AML_INVESTIGATION",
+      "category": "quarantine",
+      "requires_finance_or_admin": true,
+      "propagates": true,
+      "description": "Daily cash AML ceiling investigation quarantine propagated across linked settlement entities."
+    },
+    {
+      "marking": "MARKING:DISCREPANT_QUARANTINE",
+      "category": "quarantine",
+      "requires_finance_or_admin": false,
+      "propagates": true,
+      "description": "Blind-count cash or stock variance quarantine propagated downstream."
+    },
+    {
+      "marking": "MARKING:THERMAL_QUARANTINE_SPOILED",
+      "category": "quarantine",
+      "requires_finance_or_admin": false,
+      "propagates": true,
+      "description": "Cold-chain thermal excursion spoilage quarantine propagated along lot/manifest lineage."
+    },
+    {
+      "marking": "MARKING:MICRO_SKIMMING_SUSPECT",
+      "category": "quarantine",
+      "requires_finance_or_admin": true,
+      "propagates": true,
+      "description": "Repeated driver variance anomaly marking propagated to linked audit/cashier objects."
+    },
+    {
+      "marking": "MARKING:LOT_RECALL_QUARANTINE",
+      "category": "quarantine",
+      "requires_finance_or_admin": false,
+      "propagates": true,
+      "description": "Contaminated lot recall quarantine propagated forward through orders and fiscal documents."
+    }
+  ],
+  "object_types": [
+    {
+      "object_type": "Supplier",
+      "schema_version": "v1",
+      "schema_file": "supplier.v1.schema.json",
+      "description": "Wholesale supplier tenant root node.",
+      "source_tables": [
+        "Suppliers",
+        "SupplierProfiles"
+      ],
+      "default_security_markings": [],
+      "pii_fields": [
+        "phone",
+        "email",
+        "tax_id",
+        "normalized_tax_id",
+        "contact_name"
+      ],
+      "finance_fields": [],
+      "minor_unit_fields": []
+    },
+    {
+      "object_type": "LegalEntity",
+      "schema_version": "v1",
+      "schema_file": "legal_entity.v1.schema.json",
+      "description": "Legal/tax counterparty entity anchored by TIN/INN for KYB, AML cash ceilings, and settlements.",
+      "source_tables": [
+        "SupplierProfiles",
+        "SupplierRetailerLinks",
+        "Payers",
+        "MerchantDailyCashExposure"
+      ],
+      "default_security_markings": [
+        "MARKING:FINANCE_ONLY",
+        "MARKING:PII"
+      ],
+      "pii_fields": [
+        "tin",
+        "tax_id",
+        "normalized_tax_id",
+        "contact_name",
+        "email",
+        "phone",
+        "account_holder",
+        "account_number",
+        "iban"
+      ],
+      "finance_fields": [
+        "bank_name",
+        "iban",
+        "swift_bic",
+        "daily_cash_accumulated_minor",
+        "daily_cash_ceiling_minor"
+      ],
+      "minor_unit_fields": [
+        "daily_cash_accumulated_minor",
+        "daily_cash_ceiling_minor"
+      ]
+    },
+    {
+      "object_type": "Warehouse",
+      "schema_version": "v1",
+      "schema_file": "warehouse.v1.schema.json",
+      "description": "Fulfillment depot / distribution warehouse.",
+      "source_tables": [
+        "Warehouses"
+      ],
+      "default_security_markings": [],
+      "pii_fields": [],
+      "finance_fields": [],
+      "minor_unit_fields": []
+    },
+    {
+      "object_type": "Factory",
+      "schema_version": "v1",
+      "schema_file": "factory.v1.schema.json",
+      "description": "Manufacturing plant supplying finished goods to warehouses.",
+      "source_tables": [
+        "Factories"
+      ],
+      "default_security_markings": [],
+      "pii_fields": [],
+      "finance_fields": [],
+      "minor_unit_fields": []
+    },
+    {
+      "object_type": "SKU",
+      "schema_version": "v1",
+      "schema_file": "sku.v1.schema.json",
+      "description": "Catalog product / SKU with handling, cold-chain, and integer minor-unit list pricing.",
+      "source_tables": [
+        "Products"
+      ],
+      "default_security_markings": [
+        "MARKING:FINANCE_ONLY"
+      ],
+      "pii_fields": [],
+      "finance_fields": [
+        "price_minor"
+      ],
+      "minor_unit_fields": [
+        "price_minor"
+      ]
+    },
+    {
+      "object_type": "Lot",
+      "schema_version": "v1",
+      "schema_file": "lot.v1.schema.json",
+      "description": "Trackable warehouse inventory batch/lot with FEFO expiry and recall quarantine state.",
+      "source_tables": [
+        "StockLots"
+      ],
+      "default_security_markings": [],
+      "pii_fields": [],
+      "finance_fields": [],
+      "minor_unit_fields": []
+    },
+    {
+      "object_type": "Shop",
+      "schema_version": "v1",
+      "schema_file": "shop.v1.schema.json",
+      "description": "Retailer / store outlet ordering from suppliers.",
+      "source_tables": [
+        "Retailers",
+        "SupplierRetailerLinks"
+      ],
+      "default_security_markings": [
+        "MARKING:PII"
+      ],
+      "pii_fields": [
+        "phone",
+        "email",
+        "tax_id",
+        "normalized_tax_id",
+        "delivery_address"
+      ],
+      "finance_fields": [],
+      "minor_unit_fields": []
+    },
+    {
+      "object_type": "Order",
+      "schema_version": "v1",
+      "schema_file": "order.v1.schema.json",
+      "description": "B2B fulfillment order across lifecycle, dispatch, and fiscalization.",
+      "source_tables": [
+        "Orders"
+      ],
+      "default_security_markings": [
+        "MARKING:FINANCE_ONLY"
+      ],
+      "pii_fields": [],
+      "finance_fields": [
+        "total_minor",
+        "original_total_minor",
+        "delivery_fee_minor"
+      ],
+      "minor_unit_fields": [
+        "total_minor",
+        "original_total_minor",
+        "delivery_fee_minor"
+      ]
+    },
+    {
+      "object_type": "OrderLine",
+      "schema_version": "v1",
+      "schema_file": "order_line.v1.schema.json",
+      "description": "Individual line item within an Order including allocation and partial-offload metrics.",
+      "source_tables": [
+        "Orders",
+        "OrderLineAllocations",
+        "OrderLineFiscalSnapshots"
+      ],
+      "default_security_markings": [
+        "MARKING:FINANCE_ONLY"
+      ],
+      "pii_fields": [],
+      "finance_fields": [
+        "unit_price_minor",
+        "line_total_minor",
+        "vat_minor",
+        "price_gap_minor"
+      ],
+      "minor_unit_fields": [
+        "unit_price_minor",
+        "line_total_minor",
+        "vat_minor",
+        "price_gap_minor"
+      ]
+    },
+    {
+      "object_type": "Manifest",
+      "schema_version": "v1",
+      "schema_file": "manifest.v1.schema.json",
+      "description": "Outbound truck loading and delivery manifest.",
+      "source_tables": [
+        "SupplierTruckManifests"
+      ],
+      "default_security_markings": [],
+      "pii_fields": [],
+      "finance_fields": [],
+      "minor_unit_fields": []
+    },
+    {
+      "object_type": "Vehicle",
+      "schema_version": "v1",
+      "schema_file": "vehicle.v1.schema.json",
+      "description": "Delivery fleet vehicle with capacity class and DVIR dispatch clearance.",
+      "source_tables": [
+        "Vehicles",
+        "FleetDVIRInspections"
+      ],
+      "default_security_markings": [],
+      "pii_fields": [],
+      "finance_fields": [],
+      "minor_unit_fields": []
+    },
+    {
+      "object_type": "Driver",
+      "schema_version": "v1",
+      "schema_file": "driver.v1.schema.json",
+      "description": "Delivery courier/driver with shift and vehicle assignment.",
+      "source_tables": [
+        "Drivers"
+      ],
+      "default_security_markings": [
+        "MARKING:PII"
+      ],
+      "pii_fields": [
+        "phone",
+        "name"
+      ],
+      "finance_fields": [],
+      "minor_unit_fields": []
+    },
+    {
+      "object_type": "NasiyaInvoice",
+      "schema_version": "v1",
+      "schema_file": "nasiya_invoice.v1.schema.json",
+      "description": "Open accounts-receivable Nasiya credit invoice with aging and dunning state.",
+      "source_tables": [
+        "ArInvoices"
+      ],
+      "default_security_markings": [
+        "MARKING:FINANCE_ONLY"
+      ],
+      "pii_fields": [],
+      "finance_fields": [
+        "principal_minor",
+        "balance_minor",
+        "paid_minor",
+        "amount_minor"
+      ],
+      "minor_unit_fields": [
+        "principal_minor",
+        "balance_minor",
+        "paid_minor",
+        "amount_minor"
+      ]
+    },
+    {
+      "object_type": "CreditLine",
+      "schema_version": "v1",
+      "schema_file": "credit_line.v1.schema.json",
+      "description": "B2B retailer credit limit, utilization, and payment terms relationship.",
+      "source_tables": [
+        "RetailerCreditProfiles",
+        "RetailerPaymentTerms"
+      ],
+      "default_security_markings": [
+        "MARKING:FINANCE_ONLY"
+      ],
+      "pii_fields": [],
+      "finance_fields": [
+        "credit_limit_minor",
+        "current_balance_minor",
+        "reserved_minor",
+        "available_credit_minor"
+      ],
+      "minor_unit_fields": [
+        "credit_limit_minor",
+        "current_balance_minor",
+        "reserved_minor",
+        "available_credit_minor"
+      ]
+    },
+    {
+      "object_type": "Payment",
+      "schema_version": "v1",
+      "schema_file": "payment.v1.schema.json",
+      "description": "Order or invoice payment settlement record (Payme, Click, Cash, Bank).",
+      "source_tables": [
+        "PaymentSessions",
+        "OrderPaymentLegs",
+        "PaymeMerchantTransactions"
+      ],
+      "default_security_markings": [
+        "MARKING:FINANCE_ONLY"
+      ],
+      "pii_fields": [],
+      "finance_fields": [
+        "amount_minor",
+        "cash_minor",
+        "card_minor",
+        "refunded_minor"
+      ],
+      "minor_unit_fields": [
+        "amount_minor",
+        "cash_minor",
+        "card_minor",
+        "refunded_minor"
+      ]
+    },
+    {
+      "object_type": "FiscalDoc",
+      "schema_version": "v1",
+      "schema_file": "fiscal_doc.v1.schema.json",
+      "description": "Soliq fiscal receipt, EHF invoice, or corrective fiscal credit note.",
+      "source_tables": [
+        "OrderFiscalReceipts",
+        "CreditNotes"
+      ],
+      "default_security_markings": [
+        "MARKING:FINANCE_ONLY"
+      ],
+      "pii_fields": [],
+      "finance_fields": [
+        "amount_minor",
+        "net_minor",
+        "vat_minor",
+        "gross_minor"
+      ],
+      "minor_unit_fields": [
+        "amount_minor",
+        "net_minor",
+        "vat_minor",
+        "gross_minor"
+      ]
+    },
+    {
+      "object_type": "Proposal",
+      "schema_version": "v1",
+      "schema_file": "proposal.v1.schema.json",
+      "description": "AI/driver/financial proposal awaiting review or execution.",
+      "source_tables": [
+        "NegotiationProposals",
+        "RetailerAutoOrderShadowProposals",
+        "ReplenishmentInsights",
+        "DraftCreditNotes"
+      ],
+      "default_security_markings": [],
+      "pii_fields": [],
+      "finance_fields": [
+        "proposed_amount_minor",
+        "proposed_price_minor"
+      ],
+      "minor_unit_fields": [
+        "proposed_amount_minor",
+        "proposed_price_minor"
+      ]
+    }
+  ]
+}

@@ -130,6 +130,104 @@ class TestDispatchOptimizerSidecar(unittest.TestCase):
             )
         self.assertEqual(ctx.exception.status_code, 400)
 
+    def test_predict_demand_fractional_burn_ceil(self):
+        # historical_daily_sales=[1, 2] -> avg 1.5, lead_time=2 -> expected 3.0, safety=4.5 -> target 7.5.
+        # current_stock=3 -> target - stock = 4.5.
+        # ceil(4.5) == 5, whereas int(4.5) == 4.
+        res = predict_demand(
+            DemandPredictionRequest(
+                sku="SKU-FRAC",
+                historical_daily_sales=[1, 2],
+                current_stock=3,
+                lead_time_days=2,
+            )
+        )
+        self.assertEqual(res.sku, "SKU-FRAC")
+        self.assertEqual(res.predicted_daily_burn, 1.5)
+        self.assertEqual(res.optimal_reorder_qty, 5)
+
+    def test_get_fleet_route_multi_wave_capacity_and_ffd(self):
+        depot = FleetLocation(id="depot", x=41.2995, y=69.2401, demand_vu=0)
+        # 1 vehicle with capacity 100 serving 3 stops of 60 VU each.
+        # Total demand is 180 > 100. Discrete packing requires 3 waves (60 cannot share with 60).
+        stops = [
+            FleetLocation(id="s1", x=41.3111, y=69.2797, demand_vu=60),
+            FleetLocation(id="s2", x=41.3250, y=69.2900, demand_vu=60),
+            FleetLocation(id="s3", x=41.3300, y=69.2600, demand_vu=60),
+        ]
+        vehicles = [FleetVehicle(id="v1", capacity_vu=100)]
+        res = get_fleet_route(FleetRouteRequest(depot=depot, locations=stops, vehicles=vehicles))
+        self.assertEqual(res.solver_status, "HEURISTIC")
+        # Must return 3 waves since no two 60-VU stops fit in a single 100-VU capacity vehicle
+        self.assertEqual(len(res.routes), 3)
+
+        seen_stops = []
+        wave_indices = []
+        stop_demand_map = {s.id: s.demand_vu for s in stops}
+        for route in res.routes:
+            self.assertEqual(route.vehicle_id, "v1")
+            wave_demand = sum(stop_demand_map[lid] for lid in route.location_ids)
+            self.assertLessEqual(wave_demand, 100)
+            seen_stops.extend(route.location_ids)
+            wave_indices.append(route.wave_index)
+
+        self.assertEqual(set(seen_stops), {"s1", "s2", "s3"})
+        self.assertEqual(sorted(wave_indices), [1, 2, 3])
+
+    def test_predict_demand_with_pipeline_stock_and_variance(self):
+        # Without pipeline stock: burn=10.0, lead=4 -> expected=40, safety=30 -> target=70, stock=15 -> reorder=55
+        # With pipeline_stock=20: effective_stock=35 -> reorder=70-35 = 35
+        res_pipeline = predict_demand(
+            DemandPredictionRequest(
+                sku="SKU-PIPE",
+                historical_daily_sales=[10, 10, 10, 10],
+                current_stock=15,
+                lead_time_days=4,
+                pipeline_stock=20,
+            )
+        )
+        self.assertEqual(res_pipeline.optimal_reorder_qty, 35)
+
+        # With demand_variance=4.0 and service_level=0.95:
+        # burn=10.0, expected=40, z=1.645, variance=4.0, lead=4
+        # safety_stock = 1.645 * sqrt(4 * 4) = 6.58 -> target = 46.58
+        # stock=15 -> reorder = ceil(46.58 - 15) = 32
+        res_variance = predict_demand(
+            DemandPredictionRequest(
+                sku="SKU-VAR",
+                historical_daily_sales=[10, 10, 10, 10],
+                current_stock=15,
+                lead_time_days=4,
+                demand_variance=4.0,
+                service_level=0.95,
+            )
+        )
+        self.assertEqual(res_variance.optimal_reorder_qty, 32)
+
+    def test_verify_internal_api_key_fail_closed_in_prod(self):
+        import os
+        from main import compute_ffd_waves, verify_internal_api_key
+
+        old_env = {k: os.environ.get(k) for k in ("PEGASUSX_ENV", "INTERNAL_API_KEY", "OPTIMIZER_INTERNAL_API_KEY")}
+        try:
+            os.environ["PEGASUSX_ENV"] = "production"
+            os.environ["INTERNAL_API_KEY"] = "dev-internal-key"
+            os.environ.pop("OPTIMIZER_INTERNAL_API_KEY", None)
+            self.assertEqual(verify_internal_api_key("dev-internal-key"), (503, "internal_api_key_unconfigured"))
+
+            os.environ["INTERNAL_API_KEY"] = "prod-secret-token-xyz"
+            self.assertEqual(verify_internal_api_key("wrong"), (401, "invalid_internal_api_key"))
+            self.assertIsNone(verify_internal_api_key("prod-secret-token-xyz"))
+        finally:
+            for k, v in old_env.items():
+                if v is None:
+                    os.environ.pop(k, None)
+                else:
+                    os.environ[k] = v
+
+        # Oversized infeasible stop should not append phantom wave.
+        self.assertEqual(compute_ffd_waves([500], [100]), 1)
+
 
 if __name__ == "__main__":
     unittest.main()

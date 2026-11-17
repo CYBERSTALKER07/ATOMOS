@@ -59,6 +59,8 @@ enum class SupplierSection(
     EARNINGS(SupplierRoutes.EARNINGS, "Earnings", Icons.AutoMirrored.Filled.ShowChart),
     PROFILE(SupplierRoutes.PROFILE, "Profile", Icons.Default.Person),
     BUSINESS_SETUP(SupplierRoutes.BUSINESS_SETUP, "Business setup", Icons.Default.Business),
+    MIGRATION_CENTER(SupplierRoutes.MIGRATION_CENTER, "Migration center", Icons.Default.CloudUpload),
+    JOIN_REQUESTS(SupplierRoutes.JOIN_REQUESTS, "Join requests", Icons.Default.PersonAdd),
     MORE(SupplierRoutes.MORE, "More", Icons.Default.MoreHoriz),
     ;
 
@@ -111,6 +113,8 @@ enum class SupplierSection(
             CATALOG,
             INVENTORY,
             INVENTORY_IMPORT,
+            MIGRATION_CENTER,
+            JOIN_REQUESTS,
             PROMOTIONS,
             PRICING,
             RETAILER_OVERRIDES,

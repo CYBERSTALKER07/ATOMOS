@@ -82,6 +82,7 @@ type Repository interface {
 	ListTenants(ctx context.Context, status string, limit int) ([]Tenant, error)
 	InsertAudit(ctx context.Context, row AuditRow) error
 	ListAudit(ctx context.Context, limit int) ([]AuditRow, error)
+	GetFeatureFlag(ctx context.Context, tenantType, tenantID, flagKey string) (FeatureFlag, bool, error)
 	ListFeatureFlags(ctx context.Context, tenantType, tenantID string) ([]FeatureFlag, error)
 	SetFeatureFlag(ctx context.Context, flag FeatureFlag) error
 }

@@ -25,6 +25,10 @@ struct SettingsRow: View {
                 NavigationLink(destination: TeamView()) {
                     SettingsRowContent(item: item)
                 }
+            } else if item.view == "OwnerApprovals" {
+                NavigationLink(destination: OwnerApprovalsView()) {
+                    SettingsRowContent(item: item)
+                }
             } else if item.view == "Locations" {
                 NavigationLink(destination: LocationsView()) {
                     SettingsRowContent(item: item)

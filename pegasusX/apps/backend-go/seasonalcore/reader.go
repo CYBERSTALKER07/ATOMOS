@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"cloud.google.com/go/civil"
 	"cloud.google.com/go/spanner"
 	"google.golang.org/api/iterator"
 )
@@ -21,8 +22,8 @@ type SpannerOverrideReader struct {
 	Client *spanner.Client
 }
 
-// Multiplier returns the override multiplier if an active window covers on,
-// otherwise the matching builtin, otherwise 1.0.
+// Multiplier composes all active override windows covering on deterministically
+// and clamps to [MinMultiplier, MaxMultiplier], otherwise falls back to builtins.
 func (r *SpannerOverrideReader) Multiplier(ctx context.Context, supplierID string, on time.Time) (float64, error) {
 	if r == nil || r.Client == nil {
 		return BuiltinMultiplierFor(on), nil
@@ -31,32 +32,40 @@ func (r *SpannerOverrideReader) Multiplier(ctx context.Context, supplierID strin
 	if sid == "" {
 		return BuiltinMultiplierFor(on), nil
 	}
-	on = on.UTC()
+	day := civil.DateOf(on.UTC())
 	iter := r.Client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL: `SELECT COALESCE(Multiplier, 0), TemplateId
 		      FROM SeasonalTemplateOverrides
 		      WHERE SupplierId = @sid AND IsActive = true
 		        AND StartDate <= @on AND EndDate >= @on
-		      ORDER BY StartDate DESC LIMIT 1`,
-		Params: map[string]any{"sid": sid, "on": on},
+		      ORDER BY StartDate ASC, OverrideId ASC`,
+		Params: map[string]any{"sid": sid, "on": day},
 	})
 	defer iter.Stop()
-	row, err := iter.Next()
-	if errors.Is(err, iterator.Done) {
+	var activeMults []float64
+	for {
+		row, err := iter.Next()
+		if errors.Is(err, iterator.Done) {
+			break
+		}
+		if err != nil {
+			return 0, err
+		}
+		var mult float64
+		var templateID string
+		if err := row.Columns(&mult, &templateID); err != nil {
+			return 0, err
+		}
+		if mult > 0 {
+			activeMults = append(activeMults, ClampMultiplier(mult))
+		} else {
+			activeMults = append(activeMults, ResolveOverrideMultiplier(nil, templateID))
+		}
+	}
+	if len(activeMults) == 0 {
 		return BuiltinMultiplierFor(on), nil
 	}
-	if err != nil {
-		return 0, err
-	}
-	var mult float64
-	var templateID string
-	if err := row.Columns(&mult, &templateID); err != nil {
-		return 0, err
-	}
-	if mult > 0 {
-		return ClampMultiplier(mult), nil
-	}
-	return ResolveOverrideMultiplier(nil, templateID), nil
+	return ComposeMultipliers(activeMults), nil
 }
 
 // BuiltinOnlyReader never hits Spanner (tests / fallback).

@@ -22,15 +22,18 @@ func RegisterRoutes(r chi.Router, h *Handlers) {
 	if h == nil || h.Svc == nil {
 		return
 	}
-	r.With(auth.RequireRole(auth.RoleAdmin)).Get("/v1/supplier/payouts/rail", h.HandleRailInfo)
-	r.With(auth.RequireRole(auth.RoleAdmin)).Get("/v1/supplier/payout-policy", h.HandlePayoutPolicy)
-	r.With(auth.RequireRole(auth.RoleAdmin)).Patch("/v1/supplier/payout-policy", h.HandlePayoutPolicy)
-	r.With(auth.RequireRole(auth.RoleAdmin)).Get("/v1/supplier/payouts/batches", h.HandleListBatches)
-	r.With(auth.RequireRole(auth.RoleAdmin)).Get("/v1/supplier/payouts/batches/{batchID}", h.HandleGetBatch)
-	r.With(auth.RequireRole(auth.RoleAdmin)).Post("/v1/supplier/payouts/batches", h.HandleGenerate)
-	r.With(auth.RequireRole(auth.RoleAdmin)).Post("/v1/supplier/payouts/batches/{batchID}/export", h.HandleExport)
-	r.With(auth.RequireRole(auth.RoleAdmin)).Post("/v1/supplier/payouts/batches/{batchID}/dispatch", h.HandleDispatch)
-	r.With(auth.RequireRole(auth.RoleAdmin)).Post("/v1/supplier/payouts/batches/{batchID}/mark-paid", h.HandleMarkPaid)
+	readPerm := auth.RequireAnySupplierPerm(auth.PermPayoutRelease, auth.PermAuditRead, auth.PermConfigManage)
+	releasePerm := auth.RequireSupplierPerm(auth.PermPayoutRelease)
+	configPerm := auth.RequireSupplierPerm(auth.PermConfigManage)
+	r.With(auth.RequireRole(auth.RoleAdmin), readPerm).Get("/v1/supplier/payouts/rail", h.HandleRailInfo)
+	r.With(auth.RequireRole(auth.RoleAdmin), readPerm).Get("/v1/supplier/payout-policy", h.HandlePayoutPolicy)
+	r.With(auth.RequireRole(auth.RoleAdmin), configPerm).Patch("/v1/supplier/payout-policy", h.HandlePayoutPolicy)
+	r.With(auth.RequireRole(auth.RoleAdmin), readPerm).Get("/v1/supplier/payouts/batches", h.HandleListBatches)
+	r.With(auth.RequireRole(auth.RoleAdmin), readPerm).Get("/v1/supplier/payouts/batches/{batchID}", h.HandleGetBatch)
+	r.With(auth.RequireRole(auth.RoleAdmin), releasePerm).Post("/v1/supplier/payouts/batches", h.HandleGenerate)
+	r.With(auth.RequireRole(auth.RoleAdmin), releasePerm).Post("/v1/supplier/payouts/batches/{batchID}/export", h.HandleExport)
+	r.With(auth.RequireRole(auth.RoleAdmin), releasePerm).Post("/v1/supplier/payouts/batches/{batchID}/dispatch", h.HandleDispatch)
+	r.With(auth.RequireRole(auth.RoleAdmin), releasePerm).Post("/v1/supplier/payouts/batches/{batchID}/mark-paid", h.HandleMarkPaid)
 	// Settlement webhook from a live rail. Authenticated by the rail's shared
 	// secret header, not a user role (machine-to-machine).
 	r.Post("/v1/webhooks/payouts/settlement", h.HandleSettlementWebhook)
@@ -51,6 +54,27 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(v)
+}
+
+func requirePayoutPermIfClaimsPresent(w http.ResponseWriter, r *http.Request, perm string) bool {
+	claims, ok := auth.FromContext(r.Context())
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized", "code": "unauthorized"})
+		return false
+	}
+	if auth.IsReadOnlyAuditor(claims) {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "auditor_read_only", "code": "auditor_read_only"})
+		return false
+	}
+	if auth.IsAgentActor(claims) && auth.IsAgentForbiddenPerm(perm) {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "agent_approval_forbidden", "code": "agent_approval_forbidden"})
+		return false
+	}
+	if !auth.HasSupplierPerm(claims, perm) {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "missing_permission", "code": "missing_permission", "permission": perm})
+		return false
+	}
+	return true
 }
 
 func requirePayoutBatchScope(w http.ResponseWriter, r *http.Request) (supplierID, batchID string, ok bool) {
@@ -148,6 +172,9 @@ func (h *Handlers) HandleGenerate(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 		return
 	}
+	if !requirePayoutPermIfClaimsPresent(w, r, auth.PermPayoutRelease) {
+		return
+	}
 	var body struct {
 		// SupplierID in body is ignored for authorization (B1 M-P0-14).
 		// Kept for backward-compatible clients; tenant comes from JWT/context.
@@ -156,6 +183,7 @@ func (h *Handlers) HandleGenerate(w http.ResponseWriter, r *http.Request) {
 		PeriodEnd      string `json:"period_end"`
 		IdempotencyKey string `json:"idempotency_key"`
 	}
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid json"})
 		return
@@ -200,6 +228,13 @@ func (h *Handlers) HandleGenerate(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handlers) HandleExport(w http.ResponseWriter, r *http.Request) {
+	if payoutSupplierID(r) == "" {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "supplier_scope_required"})
+		return
+	}
+	if !requirePayoutPermIfClaimsPresent(w, r, auth.PermPayoutRelease) {
+		return
+	}
 	supplierID, batchID, ok := requirePayoutBatchScope(w, r)
 	if !ok {
 		return
@@ -223,6 +258,13 @@ func (h *Handlers) HandleExport(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handlers) HandleMarkPaid(w http.ResponseWriter, r *http.Request) {
+	if payoutSupplierID(r) == "" {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "supplier_scope_required"})
+		return
+	}
+	if !requirePayoutPermIfClaimsPresent(w, r, auth.PermPayoutRelease) {
+		return
+	}
 	supplierID, batchID, ok := requirePayoutBatchScope(w, r)
 	if !ok {
 		return
@@ -231,7 +273,7 @@ func (h *Handlers) HandleMarkPaid(w http.ResponseWriter, r *http.Request) {
 		status := http.StatusInternalServerError
 		if errors.Is(err, ErrBatchNotFound) {
 			status = http.StatusNotFound
-		} else if strings.Contains(err.Error(), "must be EXPORTED") {
+		} else if errors.Is(err, ErrBatchConflict) || strings.Contains(err.Error(), "must be EXPORTED") {
 			status = http.StatusConflict
 		}
 		writeJSON(w, status, map[string]string{"error": err.Error()})
@@ -252,6 +294,13 @@ func (h *Handlers) HandleMarkPaid(w http.ResponseWriter, r *http.Request) {
 // HandleDispatch submits a batch to the configured rail. Default is the
 // bank-file dry-run; a live rail requires live=true and dispatches funds.
 func (h *Handlers) HandleDispatch(w http.ResponseWriter, r *http.Request) {
+	if payoutSupplierID(r) == "" {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "supplier_scope_required"})
+		return
+	}
+	if !requirePayoutPermIfClaimsPresent(w, r, auth.PermPayoutRelease) {
+		return
+	}
 	supplierID, batchID, ok := requirePayoutBatchScope(w, r)
 	if !ok {
 		return
@@ -259,6 +308,7 @@ func (h *Handlers) HandleDispatch(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Live bool `json:"live"`
 	}
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	_ = json.NewDecoder(r.Body).Decode(&body) // empty body => dry-run
 	b, err := h.Svc.SubmitForDispatch(r.Context(), supplierID, batchID, body.Live)
 	if err != nil {
@@ -266,7 +316,7 @@ func (h *Handlers) HandleDispatch(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case errors.Is(err, ErrBatchNotFound):
 			status = http.StatusNotFound
-		case errors.Is(err, ErrBankDetailsMissing):
+		case errors.Is(err, ErrBankDetailsMissing), errors.Is(err, ErrBatchConflict):
 			status = http.StatusConflict
 		case errors.Is(err, auth.ErrMarketPackUnknown), errors.Is(err, auth.ErrMarketPackNotShipped),
 			errors.Is(err, auth.ErrPayoutRailUnknown):
@@ -318,6 +368,7 @@ func (h *Handlers) HandleSettlementWebhook(w http.ResponseWriter, r *http.Reques
 		BatchID string `json:"batch_id"`
 		RailRef string `json:"rail_reference"`
 	}
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid json"})
 		return

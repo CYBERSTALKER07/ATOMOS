@@ -1,6 +1,6 @@
 "use client";
 
-import { usePortalT } from "@/lib/i18n";
+import { usePortalLocale, usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -12,7 +12,16 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { PageChrome } from "@/components/PageChrome";
+import { OwnerApprovalsInbox } from "@/components/OwnerApprovalsInbox";
+import { SellerMandateModal } from "@/components/SellerMandateModal";
 import { apiFetch } from "@/lib/auth";
+import {
+  approveRetailerRequest,
+  getRetailerApprovals,
+  getRetailerMe,
+  rejectRetailerRequest,
+} from "@/lib/api";
+import { W2_COPY, type RetailerApprovalItem } from "@/lib/retailer-w2";
 
 type Member = {
   user_id: string;
@@ -36,12 +45,22 @@ const ROLES = [
 
 export default function TeamPage() {
   const t = usePortalT();
+  const locale = usePortalLocale();
+  const w2 = W2_COPY[locale] ?? W2_COPY.en;
   const router = useRouter();
   const [items, setItems] = useState<Member[]>([]);
+  const [isOwner, setIsOwner] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [banner, setBanner] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [approvals, setApprovals] = useState<RetailerApprovalItem[]>([]);
+  const [approvalStatus, setApprovalStatus] = useState("PENDING_OWNER");
+  const [approvalsLoading, setApprovalsLoading] = useState(false);
+  const [approvalsError, setApprovalsError] = useState<string | null>(null);
+  const [approvalBanner, setApprovalBanner] = useState<string | null>(null);
+  const [decidingId, setDecidingId] = useState<string | null>(null);
+  const [mandateTarget, setMandateTarget] = useState<Member | null>(null);
   const [form, setForm] = useState({
     name: "",
     phone: "",
@@ -49,24 +68,75 @@ export default function TeamPage() {
     retailer_role: "CASHIER",
   });
 
+  const loadApprovals = useCallback(async (status: string) => {
+    setApprovalsLoading(true);
+    setApprovalsError(null);
+    try {
+      const res = await getRetailerApprovals(status, 20);
+      setApprovals(res.items ?? []);
+    } catch (e) {
+      setApprovalsError(
+        e instanceof Error ? e.message : "Failed to load approval inbox",
+      );
+    } finally {
+      setApprovalsLoading(false);
+    }
+  }, []);
+
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await apiFetch("/v1/retailer/org/members");
+      const [res, me] = await Promise.all([
+        apiFetch("/v1/retailer/org/members"),
+        getRetailerMe().catch(() => null),
+      ]);
       if (!res.ok) throw new Error(`load_failed_${res.status}`);
       const json = (await res.json()) as { items?: Member[] };
       setItems(json.items ?? []);
+      const owner = Boolean(
+        me?.is_owner || me?.retailer_role?.toUpperCase() === "OWNER",
+      );
+      setIsOwner(owner);
+      if (owner) {
+        await loadApprovals(approvalStatus);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : t("retailer_desktop.residual.text.failed_to_load_team"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [approvalStatus, loadApprovals, t]);
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  const handleDecision = async (
+    requestId: string,
+    approve: boolean,
+    reason?: string,
+  ) => {
+    setDecidingId(requestId);
+    setApprovalsError(null);
+    setApprovalBanner(null);
+    try {
+      if (approve) {
+        await approveRetailerRequest(requestId, reason);
+        setApprovalBanner("Order approved and dispatched.");
+      } else {
+        await rejectRetailerRequest(requestId, reason);
+        setApprovalBanner("Approval request rejected.");
+      }
+      await loadApprovals(approvalStatus);
+    } catch (e) {
+      setApprovalsError(
+        e instanceof Error ? e.message : "Failed to submit approval decision",
+      );
+    } finally {
+      setDecidingId(null);
+    }
+  };
 
   const invite = async () => {
     setBusy(true);
@@ -253,20 +323,56 @@ export default function TeamPage() {
                   </div>
                 </div>
                 {!m.is_owner && m.is_active && (
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() => void deactivate(m.user_id)}
-                    className="rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-muted"
-                  >
-                    Deactivate
-                  </button>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {isOwner && (
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => setMandateTarget(m)}
+                        className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-800 hover:bg-amber-100"
+                      >
+                        {w2.mandateButton}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => void deactivate(m.user_id)}
+                      className="rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-muted"
+                    >
+                      Deactivate
+                    </button>
+                  </div>
                 )}
               </li>
             ))}
           </ul>
         </section>
+
+        {isOwner && (
+          <OwnerApprovalsInbox
+            items={approvals}
+            statusFilter={approvalStatus}
+            loading={approvalsLoading}
+            error={approvalsError}
+            banner={approvalBanner}
+            decidingId={decidingId}
+            onStatusFilterChange={(next) => {
+              setApprovalStatus(next);
+              void loadApprovals(next);
+            }}
+            onRefresh={() => void loadApprovals(approvalStatus)}
+            onApprove={(id, reason) => void handleDecision(id, true, reason)}
+            onReject={(id, reason) => void handleDecision(id, false, reason)}
+          />
+        )}
       </div>
+
+      <SellerMandateModal
+        member={mandateTarget}
+        onClose={() => setMandateTarget(null)}
+        onSaved={(msg) => setBanner(msg)}
+      />
     </PageChrome>
   );
 }

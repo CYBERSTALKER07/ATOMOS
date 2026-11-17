@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { verifyAdminJwt } from "@/lib/jwt-verify";
 
 export async function GET() {
   const cookieStore = await cookies();
@@ -9,8 +10,14 @@ export async function GET() {
     return NextResponse.json({ authenticated: false });
   }
 
+  const verified = await verifyAdminJwt(tokenCookie.value);
+  if (!verified) {
+    return NextResponse.json({ authenticated: false });
+  }
+
   return NextResponse.json({
     authenticated: true,
-    token: tokenCookie.value,
+    subject: verified.subject,
+    role: verified.role,
   });
 }

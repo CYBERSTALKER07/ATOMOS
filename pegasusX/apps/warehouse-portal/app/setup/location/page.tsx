@@ -4,7 +4,13 @@ import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Icon from "@/components/Icon";
 import { FormAlert, PortalField, PortalInput } from "@/components/portal";
-import { LocationPicker, resolveLocationValue, type LocationValue } from "@/components/LocationPicker";
+import dynamic from "next/dynamic";
+import { resolveLocationValue, type LocationValue } from "@/components/LocationPicker";
+
+const LocationPicker = dynamic(
+  () => import("@/components/LocationPicker").then((m) => m.LocationPicker),
+  { ssr: false },
+);
 import { hasValidCoordinates } from "@/lib/geocode";
 import {
   apiFetch,

@@ -115,6 +115,9 @@ type supplierProfileResponse struct {
 	IsConfigured     bool     `json:"is_configured"`
 	SelectedGateways []string `json:"selected_gateways"`
 	PaymentAcceptor  string   `json:"payment_acceptor"`
+	TaxID            string   `json:"tax_id,omitempty"`
+	NormalizedTaxID  string   `json:"normalized_tax_id,omitempty"`
+	InnVerifiedAt    string   `json:"inn_verified_at,omitempty"`
 	Gln              string   `json:"gln,omitempty"`
 	Gs1CompanyPrefix string   `json:"gs1_company_prefix,omitempty"`
 	MarketCode       string   `json:"market_code"`
@@ -349,6 +352,10 @@ func (s *Service) buildSupplierProfileResponse(current Profile) supplierProfileR
 	if !current.UpdatedAt.IsZero() {
 		updated = current.UpdatedAt.Format(time.RFC3339Nano)
 	}
+	innVerifiedAt := ""
+	if !current.InnVerifiedAt.IsZero() {
+		innVerifiedAt = current.InnVerifiedAt.Format(time.RFC3339Nano)
+	}
 	return supplierProfileResponse{
 		SupplierID:       current.SupplierID,
 		LegalName:        current.LegalName,
@@ -362,6 +369,9 @@ func (s *Service) buildSupplierProfileResponse(current Profile) supplierProfileR
 		IsConfigured:     current.IsConfigured,
 		SelectedGateways: append([]string(nil), current.SelectedGateways...),
 		PaymentAcceptor:  normalizePaymentAcceptor(current.PaymentAcceptor),
+		TaxID:            current.TaxID,
+		NormalizedTaxID:  current.NormalizedTaxID,
+		InnVerifiedAt:    innVerifiedAt,
 		Gln:              current.Gln,
 		Gs1CompanyPrefix: current.Gs1CompanyPrefix,
 		MarketCode:       current.MarketCode,

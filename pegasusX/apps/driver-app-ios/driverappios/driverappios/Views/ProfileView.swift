@@ -29,6 +29,7 @@ struct ProfileView: View {
                     onFleetDVIR: { profileVM.showFleetDVIR = true },
                     onMidRouteRescue: { profileVM.showMidRouteRescue = true },
                     onYardGate: { profileVM.showYardGate = true },
+                    onSettings: { profileVM.showSettings = true },
                     pendingCount: profileVM.pendingCount
                 )
 
@@ -69,6 +70,11 @@ struct ProfileView: View {
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
         }
+        .sheet(isPresented: $profileVM.showSettings) {
+            DriverLanguageSettingsSheet(onDone: { profileVM.showSettings = false })
+                .presentationDetents([.medium])
+                .presentationDragIndicator(.visible)
+        }
         .sheet(isPresented: $profileVM.showEndSession) {
             EndSessionView(vm: vm)
                 .presentationDetents([.medium, .large])
@@ -80,6 +86,54 @@ struct ProfileView: View {
         }
         .onChange(of: profileVM.showSyncQueue) { _, open in
             if !open { profileVM.refreshPendingCount() }
+        }
+    }
+}
+
+private struct DriverLanguageSettingsSheet: View {
+    let onDone: () -> Void
+    @State private var localeManager = DriverLocaleManager.shared
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    ForEach(DriverLocaleManager.supportedLanguages) { option in
+                        Button {
+                            Haptics.light()
+                            localeManager.setLanguage(option.code)
+                        } label: {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(option.displayName)
+                                        .font(.headline)
+                                        .foregroundStyle(LabTheme.fg)
+                                    Text(option.code.uppercased())
+                                        .font(.caption.monospaced())
+                                        .foregroundStyle(LabTheme.fgTertiary)
+                                }
+                                Spacer()
+                                if localeManager.currentCode == option.code {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundStyle(LabTheme.success)
+                                }
+                            }
+                            .frame(minHeight: 44)
+                        }
+                    }
+                } header: {
+                    Text(L10n.string("mobile_driver.ui.language"))
+                }
+            }
+            .navigationTitle(L10n.string("mobile_driver.ui.settings"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(L10n.string("common.done")) {
+                        onDone()
+                    }
+                }
+            }
         }
     }
 }

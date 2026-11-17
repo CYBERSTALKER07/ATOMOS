@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
+
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 )
 
 // HandleRetailerSetup completes retailer onboarding for authenticated clients.
@@ -68,6 +70,39 @@ func (s *Service) HandleRetailerSetup(w http.ResponseWriter, r *http.Request) {
 	if country := rawString(req, "country_code"); country != "" {
 		ret.CountryCode = country
 	}
+	deliveryAddr := firstNonEmpty(rawString(req, "delivery_address"), rawString(req, "shippingAddress"), rawString(req, "billingAddress"))
+	if deliveryAddr != "" {
+		formattedAddr := deliveryAddr
+		if city := rawString(req, "city"); city != "" {
+			formattedAddr += ", " + city
+		}
+		if postal := rawString(req, "postalCode"); postal != "" {
+			formattedAddr += ", " + postal
+		}
+		if strings.TrimSpace(ret.DeliveryAddress) == "" || rawString(req, "delivery_address") != "" || rawString(req, "shippingAddress") != "" {
+			ret.DeliveryAddress = formattedAddr
+		}
+	}
+	if placeID := rawString(req, "place_id"); placeID != "" {
+		ret.PlaceID = placeID
+	}
+	if ret.Lat == 0 && ret.Lng == 0 && deliveryAddr != "" {
+		resolvedCountry, countryErr := resolveRetailerCountry(r.Context(), ret.CountryCode)
+		if countryErr != nil {
+			if writeMarketLaw(w, countryErr) {
+				return
+			}
+			writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": countryErr.Error()})
+			return
+		}
+		ret.CountryCode = resolvedCountry
+		if pack, ok := auth.ResolveShippedMarketPack(resolvedCountry); ok {
+			if centerLat, centerLng, ok := auth.PackMapCenter(pack); ok {
+				ret.Lat = centerLat
+				ret.Lng = centerLng
+			}
+		}
+	}
 	country, cell, stampErr := stampRetailerOptionalCoords(r.Context(), ret.Lat, ret.Lng, ret.CountryCode)
 	if stampErr != nil {
 		if writeMarketLaw(w, stampErr) {
@@ -79,6 +114,17 @@ func (s *Service) HandleRetailerSetup(w http.ResponseWriter, r *http.Request) {
 	ret.CountryCode = country
 	if cell != "" {
 		ret.H3Cell = cell
+	}
+
+	var taxReq taxIdentityRequest
+	_ = json.Unmarshal(body, &taxReq)
+	if taxStatus, conflict, taxErrCode := s.resolveAndApplyTaxIdentity(r.Context(), &ret, taxReq, rawString(req, "name")); taxStatus != 0 {
+		if conflict != nil {
+			writeJSON(w, taxStatus, conflict)
+		} else {
+			writeJSON(w, taxStatus, map[string]string{"error": taxErrCode, "code": taxErrCode})
+		}
+		return
 	}
 
 	// Desktop setup wizard fields — best-effort label when name is still empty.

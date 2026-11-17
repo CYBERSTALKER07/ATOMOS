@@ -3,14 +3,19 @@ package orgoidc
 import (
 	"context"
 	"crypto/rsa"
+	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"math/big"
+	"net"
 	"net/http"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 )
 
 type jwksDoc struct {
@@ -61,12 +66,45 @@ func FetchJWKS(ctx context.Context, issuer, kid string) (*rsa.PublicKey, error) 
 		}
 	}
 
+	if err := validateIssuer(issuer); err != nil {
+		return nil, err
+	}
 	u := strings.TrimRight(strings.TrimSpace(issuer), "/") + "/.well-known/jwks.json"
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
 	if err != nil {
 		return nil, err
 	}
-	client := &http.Client{Timeout: 8 * time.Second}
+	dialer := &net.Dialer{Timeout: 5 * time.Second}
+	client := &http.Client{
+		Timeout: 8 * time.Second,
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{MinVersion: tls.VersionTLS12},
+			DialContext: func(dctx context.Context, network, addr string) (net.Conn, error) {
+				host, port, err := net.SplitHostPort(addr)
+				if err != nil {
+					return nil, err
+				}
+				addrs, err := net.DefaultResolver.LookupIPAddr(dctx, host)
+				if err != nil || len(addrs) == 0 {
+					return nil, fmt.Errorf("oidc jwks: dns failed")
+				}
+				for _, a := range addrs {
+					if a.IP == nil || a.IP.IsPrivate() || a.IP.IsLinkLocalUnicast() || a.IP.IsUnspecified() || a.IP.IsMulticast() {
+						if !(!auth.IsProduction() && a.IP != nil && a.IP.IsLoopback()) {
+							return nil, fmt.Errorf("oidc jwks: private ip forbidden")
+						}
+					}
+					if a.IP.IsLoopback() && auth.IsProduction() {
+						return nil, fmt.Errorf("oidc jwks: loopback forbidden in production")
+					}
+				}
+				return dialer.DialContext(dctx, network, net.JoinHostPort(addrs[0].IP.String(), port))
+			},
+		},
+		CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
@@ -76,7 +114,7 @@ func FetchJWKS(ctx context.Context, issuer, kid string) (*rsa.PublicKey, error) 
 		return nil, fmt.Errorf("oidc jwks: status %d", resp.StatusCode)
 	}
 	var doc jwksDoc
-	if err := json.NewDecoder(resp.Body).Decode(&doc); err != nil {
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 1<<20)).Decode(&doc); err != nil {
 		return nil, err
 	}
 

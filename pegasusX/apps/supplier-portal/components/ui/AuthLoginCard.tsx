@@ -115,16 +115,15 @@ export function AuthLoginCard({
         </form>
       ) : (
         <form onSubmit={onVerifyOtp} className="space-y-4">
-          <PortalField id="otpCode" label="Verification code">
+          <PortalField id="otpCode" label="Password / Access PIN">
             <PortalInput
               id="otpCode"
-              type="text"
-              inputMode="numeric"
-              className="tracking-widest text-lg font-mono text-center"
-              maxLength={6}
+              type="password"
+              autoComplete="current-password"
+              className="tracking-wide text-base font-mono"
               value={otpCode}
               onChange={(e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
-                onOtpChange(e.target.value.replace(/\D/g, ""))
+                onOtpChange(e.target.value)
               }
               required
             />

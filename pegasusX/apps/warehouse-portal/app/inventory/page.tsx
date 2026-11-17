@@ -1,6 +1,7 @@
 'use client';
 
 import { usePortalT } from "@/lib/i18n";
+import Link from 'next/link';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useStableCallback } from '@/lib/useStableCallback';
 import { apiFetch, subscribeWarehouseWS, type WarehouseSocketStatus } from '@/lib/auth';
@@ -248,6 +249,13 @@ export default function InventoryPage() {
               />
               Low stock only
             </label>
+            <Link
+              href="/inventory/valuation"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm button--secondary active-press"
+            >
+              <Icon name="treasury" size={16} />
+              <span>{t("portal.nav.inventory_valuation")}</span>
+            </Link>
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}

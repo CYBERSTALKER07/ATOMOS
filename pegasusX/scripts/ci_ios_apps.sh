@@ -42,8 +42,7 @@ build_one() {
   echo "OK: $name"
 }
 
-# unit_test is the XCTest bundle. Empty skips (payload has no test target).
-# UI test bundles are not included.
+# unit_test is the XCTest bundle for the scheme. UI test bundles are not included.
 test_one() {
   local name="$1"
   local project="$2"
@@ -113,7 +112,7 @@ run_one payload \
   "$ROOT/apps/payload-app-ios/payload-app-ios.xcodeproj" \
   payload-app-ios \
   "$ROOT/apps/payload-app-ios" \
-  ""
+  payload-app-iosTests
 
 # Nested Xcode projects (no root project.yml)
 run_one driver \

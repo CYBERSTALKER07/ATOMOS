@@ -38,3 +38,10 @@ func TestComputeRiskScore_highUtilDelinq(t *testing.T) {
 		t.Fatalf("expected stressed score, got %d", sc.Score)
 	}
 }
+
+func TestScoreAutoHoldDisabled_InformationalOnly(t *testing.T) {
+	t.Setenv("CREDIT_SCORE_AUTO_HOLD_ENABLED", "true")
+	if ScoreAutoHoldEnabled() {
+		t.Fatal("ScoreAutoHoldEnabled must remain false; scoring is telemetry only")
+	}
+}

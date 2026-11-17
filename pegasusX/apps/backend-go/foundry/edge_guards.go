@@ -2,7 +2,9 @@ package foundry
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"math/big"
 	"os"
 	"strconv"
 	"strings"
@@ -66,7 +68,35 @@ func (e *Engine) ReconcileSplitTenderPartialRejection(
 	}
 
 	reason := strings.ToUpper(strings.TrimSpace(in.RejectionReason))
+	switch reason {
+	case "DAMAGED_IN_TRANSIT", "SHORT_SHIPPED", "BUYER_REMORSE_REFUSAL":
+	default:
+		return nil, fmt.Errorf("%w: invalid rejection reason %q", ErrPreconditionFailed, in.RejectionReason)
+	}
+
 	tierProtected := reason == "DAMAGED_IN_TRANSIT" || reason == "SHORT_SHIPPED"
+
+	if reason == "BUYER_REMORSE_REFUSAL" && in.AcceptedCases == 0 {
+		return &SplitTenderReconciliationResult{
+			OrderID:                in.OrderID,
+			QualificationCases:     0,
+			BillableCases:          0,
+			AppliedDiscountBps:     0,
+			EffectiveCaseMinor:     in.BaseCasePriceMinor,
+			FinalTotalMinor:        0,
+			FinalCreditBookedMinor: 0,
+			FinalCashDueMinor:      0,
+			CreditReleasedMinor:    in.OriginalCreditReservedMinor,
+			TierProtected:          false,
+		}, nil
+	}
+
+	var originalDiscountBps int64
+	for _, t := range in.Tiers {
+		if in.OrderedCases >= t.MinCases && t.DiscountBps > originalDiscountBps {
+			originalDiscountBps = t.DiscountBps
+		}
+	}
 
 	qualCases := in.AcceptedCases
 	if tierProtected {
@@ -84,6 +114,11 @@ func (e *Engine) ReconcileSplitTenderPartialRejection(
 	finalTotalMinor := effectiveCaseMinor * in.AcceptedCases
 
 	originalPlannedTotal := in.OriginalCreditReservedMinor + in.OriginalCashPlannedMinor
+	if reason == "BUYER_REMORSE_REFUSAL" && in.AcceptedCases > 0 && bestDiscountBps < originalDiscountBps {
+		if originalPlannedTotal > 0 && finalTotalMinor > originalPlannedTotal {
+			finalTotalMinor = originalPlannedTotal
+		}
+	}
 	reductionMinor := originalPlannedTotal - finalTotalMinor
 	if reductionMinor < 0 {
 		reductionMinor = 0
@@ -151,7 +186,7 @@ type OfflineQuotaLease struct {
 	DriverID              string    `spanner:"DriverId" json:"driver_id"`
 	SupplierID            string    `spanner:"SupplierId" json:"supplier_id"`
 	LegalEntityTIN        string    `spanner:"LegalEntityTIN" json:"legal_entity_tin"`
-	CalendarDate          string    `spanner:"CalendarDate" json:"calendar_date"`
+	CalendarDate          string    `spanner:"-" json:"calendar_date"`
 	MaxCashAllowedMinor   int64     `spanner:"MaxCashAllowedMinor" json:"max_cash_allowed_minor"`
 	MaxCreditAllowedMinor int64     `spanner:"MaxCreditAllowedMinor" json:"max_credit_allowed_minor"`
 	ExpiresAt             time.Time `spanner:"ExpiresAt" json:"expires_at"`
@@ -209,13 +244,20 @@ func (e *Engine) CheckAndRecordAMLCashExposure(
 		return 0, fmt.Errorf("%w: legal_entity_tin, supplier_id, calendar_date, and non-negative cash_minor required", ErrPreconditionFailed)
 	}
 
+	ceiling := e.AMLCashCeilingMinor()
+	enforced := e.IsAMLCeilingEnforced()
+
+	if repo := e.currentEdgeGuardRepo(); repo != nil {
+		return repo.CheckAndIncrementAMLExposure(ctx, tin, sup, date, cashMinor, ceiling, enforced)
+	}
+
+	// Nil-repository fallback strictly for offline single-process unit tests.
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
 	key := amlExposureKey(tin, sup, date)
 	current := e.amlDailyExposure[key]
-	ceiling := e.AMLCashCeilingMinor()
-	if e.IsAMLCeilingEnforced() && ceiling > 0 && current+cashMinor > ceiling {
+	if enforced && ceiling > 0 && current+cashMinor > ceiling {
 		return current, &AMLDailyCashLimitExceededError{
 			LegalEntityTIN:       tin,
 			CurrentExposureMinor: current,
@@ -227,11 +269,7 @@ func (e *Engine) CheckAndRecordAMLCashExposure(
 	}
 
 	e.amlDailyExposure[key] = current + cashMinor
-	newTotal := e.amlDailyExposure[key]
-	if e.spannerRepo != nil {
-		_ = e.spannerRepo.PersistAMLExposure(ctx, tin, sup, date, newTotal)
-	}
-	return newTotal, nil
+	return e.amlDailyExposure[key], nil
 }
 
 // IssueOfflineQuotaLease reserves AML cash headroom and credit capacity at manifest sealing (Step 6)
@@ -247,8 +285,14 @@ func (e *Engine) IssueOfflineQuotaLease(
 	requestedCreditMinor int64,
 	ttl time.Duration,
 ) (*OfflineQuotaLease, error) {
-	if _, err := e.CheckAndRecordAMLCashExposure(ctx, legalEntityTIN, supplierID, calendarDate, requestedCashMinor); err != nil {
+	if err := ctx.Err(); err != nil {
 		return nil, err
+	}
+	tin := strings.TrimSpace(legalEntityTIN)
+	sup := strings.TrimSpace(supplierID)
+	date := strings.TrimSpace(calendarDate)
+	if tin == "" || sup == "" || date == "" || requestedCashMinor < 0 {
+		return nil, fmt.Errorf("%w: legal_entity_tin, supplier_id, calendar_date, and non-negative cash_minor required", ErrPreconditionFailed)
 	}
 	if ttl <= 0 {
 		ttl = 12 * time.Hour
@@ -259,9 +303,9 @@ func (e *Engine) IssueOfflineQuotaLease(
 		LeaseID:               uuid.NewString(),
 		OrderID:               strings.TrimSpace(orderID),
 		DriverID:              strings.TrimSpace(driverID),
-		SupplierID:            strings.TrimSpace(supplierID),
-		LegalEntityTIN:        strings.TrimSpace(legalEntityTIN),
-		CalendarDate:          strings.TrimSpace(calendarDate),
+		SupplierID:            sup,
+		LegalEntityTIN:        tin,
+		CalendarDate:          date,
 		MaxCashAllowedMinor:   requestedCashMinor,
 		MaxCreditAllowedMinor: requestedCreditMinor,
 		ExpiresAt:             now.Add(ttl),
@@ -269,6 +313,17 @@ func (e *Engine) IssueOfflineQuotaLease(
 		CreatedAt:             now,
 	}
 
+	if repo := e.currentEdgeGuardRepo(); repo != nil {
+		if err := repo.IssueOfflineQuotaLease(ctx, date, lease, e.AMLCashCeilingMinor(), e.IsAMLCeilingEnforced()); err != nil {
+			return nil, err
+		}
+		return lease, nil
+	}
+
+	// Nil-repository fallback strictly for offline single-process unit tests.
+	if _, err := e.CheckAndRecordAMLCashExposure(ctx, tin, sup, date, requestedCashMinor); err != nil {
+		return nil, err
+	}
 	e.mu.Lock()
 	e.offlineLeases[lease.LeaseID] = lease
 	e.mu.Unlock()
@@ -285,13 +340,42 @@ func (e *Engine) ValidateOfflineLeaseCollection(
 	if err := ctx.Err(); err != nil {
 		return err
 	}
+	id := strings.TrimSpace(leaseID)
+	if id == "" {
+		return fmt.Errorf("%w: lease_id is required", ErrOfflineLeaseExceeded)
+	}
+
+	if repo := e.currentEdgeGuardRepo(); repo != nil {
+		lease, err := repo.GetOfflineQuotaLease(ctx, id)
+		if err != nil {
+			if errors.Is(err, ErrObjectNotFound) {
+				return fmt.Errorf("%w: lease %s not found", ErrOfflineLeaseExceeded, id)
+			}
+			return fmt.Errorf("load offline lease %s: %w", id, err)
+		}
+		if lease == nil {
+			return fmt.Errorf("%w: lease %s not found", ErrOfflineLeaseExceeded, id)
+		}
+		return validateOfflineLeaseBounds(lease, id, collectedCashMinor, collectedCreditMinor, e.now())
+	}
+
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 
-	lease, ok := e.offlineLeases[strings.TrimSpace(leaseID)]
+	lease, ok := e.offlineLeases[id]
 	if !ok {
-		return fmt.Errorf("%w: lease %s not found", ErrOfflineLeaseExceeded, leaseID)
+		return fmt.Errorf("%w: lease %s not found", ErrOfflineLeaseExceeded, id)
 	}
+	return validateOfflineLeaseBounds(lease, id, collectedCashMinor, collectedCreditMinor, e.now())
+}
+
+func validateOfflineLeaseBounds(
+	lease *OfflineQuotaLease,
+	leaseID string,
+	collectedCashMinor int64,
+	collectedCreditMinor int64,
+	now time.Time,
+) error {
 	if lease.Status != "ACTIVE" {
 		return fmt.Errorf("%w: lease %s is not ACTIVE (status=%s)", ErrOfflineLeaseExceeded, leaseID, lease.Status)
 	}
@@ -300,7 +384,7 @@ func (e *Engine) ValidateOfflineLeaseCollection(
 	// the order (ePOD / offline collection). The lease remains valid until the order is completed (COMPLETED)
 	// or the device comes back online and reconciles/closes the lease (status COMPLETED / RECONCILED).
 	// Unbound leases (no in-flight order) still enforce wall-clock expiration.
-	if strings.TrimSpace(lease.OrderID) == "" && e.now().After(lease.ExpiresAt) {
+	if strings.TrimSpace(lease.OrderID) == "" && now.After(lease.ExpiresAt) {
 		return fmt.Errorf("%w: lease %s expired at %s", ErrOfflineLeaseExceeded, leaseID, lease.ExpiresAt.Format(time.RFC3339))
 	}
 	if collectedCashMinor > lease.MaxCashAllowedMinor {
@@ -429,6 +513,10 @@ func (e *Engine) ExecuteMidRouteBreakdownRescue(
 	for _, t := range req.Totes {
 		if t.StopSequence <= req.LastCompletedStopSeq {
 			res.OriginalDriverLiabilityMinor += t.ExpectedCashMinor
+			continue
+		}
+		if t.IsColdChain && t.MaxAllowedExcursionMins > 0 && t.ThermalExcursionMinutes > t.MaxAllowedExcursionMins {
+			res.QuarantinedSpoiledToteIDs = append(res.QuarantinedSpoiledToteIDs, t.ToteID)
 			continue
 		}
 		res.TransferredToteIDs = append(res.TransferredToteIDs, t.ToteID)
@@ -609,15 +697,26 @@ func (e *Engine) EvaluateFXCorridorBeforeWave(
 	if absDeltaBps < 0 {
 		absDeltaBps = -absDeltaBps
 	}
+
+	// Use big.Int for (checkoutPriceMinor * currentFXRateMicros) / checkoutFXRateMicros to prevent int64 multiplication overflow on large B2B orders
+	p := big.NewInt(checkoutPriceMinor)
+	c := big.NewInt(currentFXRateMicros)
+	ch := big.NewInt(checkoutFXRateMicros)
+	prod := new(big.Int).Mul(p, c)
+	adjBig := new(big.Int).Quo(prod, ch)
+	if !adjBig.IsInt64() {
+		return 0, fmt.Errorf("fx adjusted price overflows int64: %s", adjBig.String())
+	}
+	adjusted := adjBig.Int64()
+
 	if absDeltaBps > maxCorridorBps {
-		adjusted := (checkoutPriceMinor * currentFXRateMicros) / checkoutFXRateMicros
 		return adjusted, fmt.Errorf(
 			"%w: FX moved %d bps (corridor cap %d bps); new price %d Tiyin",
 			ErrFXReconfirmationRequired, deltaBps, maxCorridorBps, adjusted,
 		)
 	}
 
-	return (checkoutPriceMinor * currentFXRateMicros) / checkoutFXRateMicros, nil
+	return adjusted, nil
 }
 
 // PickToteState tracks active picker custody and scan heartbeats (Guard #10).

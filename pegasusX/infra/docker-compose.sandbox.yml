@@ -17,11 +17,11 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "1.5"
-          memory: 1024M
+          cpus: "2.0"
+          memory: 3072M
         reservations:
           cpus: "0.2"
-          memory: 256M
+          memory: 512M
     restart: unless-stopped
 
   redis:
@@ -279,6 +279,36 @@ services:
           memory: 128M
     restart: unless-stopped
 
+  dispatch-optimizer-py:
+    build:
+      context: ..
+      dockerfile: apps/dispatch-optimizer-py/Dockerfile
+    container_name: pegasusx-sandbox-dispatch-optimizer
+    ports:
+      - "8000:8000"
+    networks:
+      - pegasusx-sandbox-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          cpus: "0.1"
+          memory: 128M
+    restart: unless-stopped
+
   backend-go:
     image: golang:1.25-bookworm
     container_name: pegasusx-sandbox-backend-go
@@ -290,6 +320,8 @@ services:
       backend-setup:
         condition: service_completed_successfully
       optimizer-core:
+        condition: service_healthy
+      dispatch-optimizer-py:
         condition: service_healthy
     working_dir: /workspace/pegasusX
     volumes:
@@ -308,6 +340,7 @@ services:
       REDIS_ADDR: redis:6379
       KAFKA_BROKERS: kafka:29092
       OPTIMIZER_BASE_URL: http://optimizer-core:8082
+      AI_DEMAND_SOLVER_URL: http://dispatch-optimizer-py:8000
       DISPATCH_AI_MIN_STOPS: "1"
       GCS_BUCKET_NAME: pegasusx-prod-uz-ssmr-assets
       IMPORT_LOCAL_FILE_ROOT: /data/import-uploads

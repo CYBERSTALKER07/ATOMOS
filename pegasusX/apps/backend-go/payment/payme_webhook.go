@@ -10,9 +10,6 @@ import (
 
 // HandlePaymeWebhook is the Payme Merchant API JSON-RPC endpoint
 // (CheckPerform / Create / Perform / Cancel / Check / GetStatement / SetFiscalData).
-//
-// UNWIRED: webhookroutes does not mount POST /v1/webhooks/payme. Tests call
-// this handler directly. Live card checkout for PAYME stays catalog honesty 501.
 func (s *Service) HandlePaymeWebhook(w http.ResponseWriter, r *http.Request) {
 	const endpoint = "/v1/webhooks/payme"
 	if r.Method != http.MethodPost {
@@ -65,9 +62,9 @@ func (s *Service) HandlePaymeWebhook(w http.ResponseWriter, r *http.Request) {
 	case paymeMethodCancel:
 		s.paymeCancel(w, r, endpoint, body, req.ID, params)
 	case paymeMethodCheck:
-		s.paymeCheck(w, req.ID, params)
+		s.paymeCheck(w, r, req.ID, params)
 	case paymeMethodStatement:
-		s.paymeStatement(w, req.ID, params)
+		s.paymeStatement(w, r, req.ID, params)
 	case paymeMethodSetFiscal:
 		s.paymeSetFiscal(w, r, endpoint, body, req.ID, params)
 	default:
@@ -108,6 +105,8 @@ func (s *Service) paymeLookupOrder(r *http.Request, orderID string) (SessionReco
 	return session, nil
 }
 
+const paymeErrSystem = -32400
+
 func (s *Service) paymeCheckPerform(w http.ResponseWriter, r *http.Request, id any, params paymeMerchantParams) {
 	session, rpcErr := s.paymeLookupOrder(r, params.OrderID)
 	if rpcErr != nil {
@@ -118,7 +117,12 @@ func (s *Service) paymeCheckPerform(w http.ResponseWriter, r *http.Request, id a
 		s.writePaymeRPC(w, id, nil, paymeError(paymeErrInvalidAmount, "incorrect amount", "amount"))
 		return
 	}
-	if existing, ok := s.ensurePaymeTx().snapshotByOrder(params.OrderID); ok && existing.State == paymeStatePerformed {
+	existing, ok, err := s.ensurePaymeTx().snapshotByOrder(r.Context(), params.OrderID)
+	if err != nil {
+		s.writePaymeRPC(w, id, nil, paymeError(paymeErrSystem, "internal storage error", ""))
+		return
+	}
+	if ok && existing.State == paymeStatePerformed {
 		s.writePaymeRPC(w, id, nil, paymeError(paymeErrOrderState, "order already paid", "account"))
 		return
 	}
@@ -144,16 +148,26 @@ func (s *Service) paymeCreate(w http.ResponseWriter, r *http.Request, endpoint s
 		return
 	}
 	store := s.ensurePaymeTx()
-	if existing, ok := store.snapshot(params.PaymeID); ok {
+	existing, ok, err := store.snapshot(r.Context(), params.PaymeID)
+	if err != nil {
+		s.writePaymeRPC(w, id, nil, paymeError(paymeErrSystem, "internal storage error", ""))
+		return
+	}
+	if ok {
 		s.writePaymeRPC(w, id, paymeCreateResult(existing), nil)
 		return
 	}
-	if existing, ok := store.snapshotByOrder(params.OrderID); ok {
-		if existing.PaymeID != params.PaymeID && existing.State == paymeStateCreated {
+	existingByOrder, ok, err := store.snapshotByOrder(r.Context(), params.OrderID)
+	if err != nil {
+		s.writePaymeRPC(w, id, nil, paymeError(paymeErrSystem, "internal storage error", ""))
+		return
+	}
+	if ok {
+		if existingByOrder.PaymeID != params.PaymeID && existingByOrder.State == paymeStateCreated {
 			s.writePaymeRPC(w, id, nil, paymeError(paymeErrOrderState, "transaction already exists for order", "account"))
 			return
 		}
-		if existing.State == paymeStatePerformed {
+		if existingByOrder.State == paymeStatePerformed {
 			s.writePaymeRPC(w, id, nil, paymeError(paymeErrCannotPerform, "order already paid", "account"))
 			return
 		}
@@ -166,6 +180,7 @@ func (s *Service) paymeCreate(w http.ResponseWriter, r *http.Request, endpoint s
 	tx := paymeMerchantTx{
 		PaymeID:     params.PaymeID,
 		OrderID:     params.OrderID,
+		TargetType:  paymeTargetTypeOrder,
 		AmountMinor: params.Amount,
 		State:       paymeStateCreated,
 		CreateTime:  now,
@@ -178,7 +193,10 @@ func (s *Service) paymeCreate(w http.ResponseWriter, r *http.Request, endpoint s
 		writeJSONError(w, http.StatusInternalServerError, "webhook_process_failed", err.Error(), endpoint, false, "")
 		return
 	}
-	store.put(tx)
+	if err := store.put(r.Context(), tx); err != nil {
+		s.writePaymeRPC(w, id, nil, paymeError(paymeErrSystem, "internal storage error", ""))
+		return
+	}
 	s.writePaymeRPC(w, id, paymeCreateResult(tx), nil)
 }
 
@@ -188,7 +206,11 @@ func (s *Service) paymePerform(w http.ResponseWriter, r *http.Request, endpoint 
 		return
 	}
 	store := s.ensurePaymeTx()
-	tx, ok := store.snapshot(params.PaymeID)
+	tx, ok, err := store.snapshot(r.Context(), params.PaymeID)
+	if err != nil {
+		s.writePaymeRPC(w, id, nil, paymeError(paymeErrSystem, "internal storage error", ""))
+		return
+	}
 	if !ok {
 		s.writePaymeRPC(w, id, nil, paymeError(paymeErrNotFound, "transaction not found", "id"))
 		return
@@ -207,7 +229,10 @@ func (s *Service) paymePerform(w http.ResponseWriter, r *http.Request, endpoint 
 		writeJSONError(w, http.StatusInternalServerError, "webhook_process_failed", err.Error(), endpoint, false, "")
 		return
 	}
-	store.put(tx)
+	if err := store.put(r.Context(), tx); err != nil {
+		s.writePaymeRPC(w, id, nil, paymeError(paymeErrSystem, "internal storage error", ""))
+		return
+	}
 	s.writePaymeRPC(w, id, paymePerformResult(tx), nil)
 }
 
@@ -217,7 +242,11 @@ func (s *Service) paymeCancel(w http.ResponseWriter, r *http.Request, endpoint s
 		return
 	}
 	store := s.ensurePaymeTx()
-	tx, ok := store.snapshot(params.PaymeID)
+	tx, ok, err := store.snapshot(r.Context(), params.PaymeID)
+	if err != nil {
+		s.writePaymeRPC(w, id, nil, paymeError(paymeErrSystem, "internal storage error", ""))
+		return
+	}
 	if !ok {
 		s.writePaymeRPC(w, id, nil, paymeError(paymeErrNotFound, "transaction not found", "id"))
 		return
@@ -245,16 +274,23 @@ func (s *Service) paymeCancel(w http.ResponseWriter, r *http.Request, endpoint s
 		writeJSONError(w, http.StatusInternalServerError, "webhook_process_failed", err.Error(), endpoint, false, "")
 		return
 	}
-	store.put(tx)
+	if err := store.put(r.Context(), tx); err != nil {
+		s.writePaymeRPC(w, id, nil, paymeError(paymeErrSystem, "internal storage error", ""))
+		return
+	}
 	s.writePaymeRPC(w, id, paymeCancelResult(tx), nil)
 }
 
-func (s *Service) paymeCheck(w http.ResponseWriter, id any, params paymeMerchantParams) {
+func (s *Service) paymeCheck(w http.ResponseWriter, r *http.Request, id any, params paymeMerchantParams) {
 	if strings.TrimSpace(params.PaymeID) == "" {
 		s.writePaymeRPC(w, id, nil, paymeError(paymeErrInvalidParams, "params.id is required", "id"))
 		return
 	}
-	tx, ok := s.ensurePaymeTx().snapshot(params.PaymeID)
+	tx, ok, err := s.ensurePaymeTx().snapshot(r.Context(), params.PaymeID)
+	if err != nil {
+		s.writePaymeRPC(w, id, nil, paymeError(paymeErrSystem, "internal storage error", ""))
+		return
+	}
 	if !ok {
 		s.writePaymeRPC(w, id, nil, paymeError(paymeErrNotFound, "transaction not found", "id"))
 		return
@@ -262,8 +298,12 @@ func (s *Service) paymeCheck(w http.ResponseWriter, id any, params paymeMerchant
 	s.writePaymeRPC(w, id, paymeCheckResult(tx), nil)
 }
 
-func (s *Service) paymeStatement(w http.ResponseWriter, id any, params paymeMerchantParams) {
-	items := s.ensurePaymeTx().statement(params.From, params.To)
+func (s *Service) paymeStatement(w http.ResponseWriter, r *http.Request, id any, params paymeMerchantParams) {
+	items, err := s.ensurePaymeTx().statement(r.Context(), params.From, params.To)
+	if err != nil {
+		s.writePaymeRPC(w, id, nil, paymeError(paymeErrSystem, "internal storage error", ""))
+		return
+	}
 	rows := make([]map[string]any, 0, len(items))
 	for _, tx := range items {
 		rows = append(rows, paymeStatementItem(tx))
@@ -280,7 +320,11 @@ func (s *Service) paymeSetFiscal(w http.ResponseWriter, r *http.Request, endpoin
 		s.writePaymeRPC(w, id, nil, paymeError(paymeErrInvalidParams, "fiscal_data is required", "fiscal_data"))
 		return
 	}
-	tx, ok := s.ensurePaymeTx().snapshot(params.PaymeID)
+	tx, ok, err := s.ensurePaymeTx().snapshot(r.Context(), params.PaymeID)
+	if err != nil {
+		s.writePaymeRPC(w, id, nil, paymeError(paymeErrSystem, "internal storage error", ""))
+		return
+	}
 	if !ok {
 		s.writePaymeRPC(w, id, nil, paymeError(paymeErrFiscalNotFound, "receipt not found", "id"))
 		return

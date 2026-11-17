@@ -78,6 +78,8 @@ data class SupplierOrder(
     @SerialName("total_minor") val totalMinor: Long = 0,
     val currency: String = "",
     @SerialName("updated_at") val updatedAt: String = "",
+    val source: String? = null,
+    @SerialName("external_order_id") val externalOrderId: String? = null,
 )
 
 @Serializable

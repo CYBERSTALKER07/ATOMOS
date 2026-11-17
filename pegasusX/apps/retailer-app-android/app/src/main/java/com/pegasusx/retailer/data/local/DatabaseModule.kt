@@ -21,8 +21,20 @@ object DatabaseModule {
                 AppDatabase.MIGRATION_1_2,
                 AppDatabase.MIGRATION_2_3,
                 AppDatabase.MIGRATION_3_4,
+                AppDatabase.MIGRATION_4_5,
             )
             .build()
+
+    @Provides
+    @Singleton
+    fun providePendingOrderSyncEnqueuer(
+        @ApplicationContext context: Context,
+    ): com.pegasusx.retailer.services.PendingOrderSyncEnqueuer =
+        com.pegasusx.retailer.services.DefaultPendingOrderSyncEnqueuer(context)
+
+    @Provides
+    @Singleton
+    fun provideRetailerUserIdProvider(tokenManager: TokenManager): RetailerUserIdProvider = tokenManager
 
     @Provides
     fun providePendingOrderDao(db: AppDatabase): PendingOrderDao = db.pendingOrderDao()

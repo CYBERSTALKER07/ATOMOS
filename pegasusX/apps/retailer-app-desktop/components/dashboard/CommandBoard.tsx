@@ -6,6 +6,7 @@ import { ORDER_STATUS_FUNNEL, type RetailerControlTowerPulse } from "@pegasusx/t
 import { SourceChip, StatusStack } from "@/components/ui";
 import { LoyaltyCard } from "../LoyaltyCard";
 import { moneyCurrency } from "../../lib/payment-catalog";
+import { formatWholeSom } from "../../lib/retailer-w2";
 
 type CommandBoardProps = {
   pulse: RetailerControlTowerPulse | null;
@@ -14,11 +15,7 @@ type CommandBoardProps = {
 };
 
 function salesLabel(minor: number): string {
-  const currency = moneyCurrency();
-  if (currency) {
-    return `${minor} ${currency}`;
-  }
-  return `${minor} minor`;
+  return formatWholeSom(minor, moneyCurrency() || "UZS");
 }
 
 export function CommandBoard({ pulse, loading, error }: CommandBoardProps) {

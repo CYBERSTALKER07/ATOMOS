@@ -412,7 +412,7 @@ func TestHandleSSEEvents_AcceptsQueryToken(t *testing.T) {
 	defer server.Close()
 
 	// Mint a valid token
-	token, err := auth.Issue(auth.Claims{
+	sessionToken, err := auth.Issue(auth.Claims{
 		Role:       auth.RoleAdmin,
 		Subject:    "admin-query",
 		SupplierID: "sup-query-1",
@@ -427,7 +427,30 @@ func TestHandleSSEEvents_AcceptsQueryToken(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	url := fmt.Sprintf("%s/v1/events?token=%s", server.URL, token)
+	// Security check: long-lived session JWT in SSE ?token= query param must be rejected (401).
+	sessURL := fmt.Sprintf("%s/v1/events?token=%s", server.URL, sessionToken)
+	sessResp, err := http.Get(sessURL)
+	if err != nil {
+		t.Fatalf("GET /v1/events?token=<session>: %v", err)
+	}
+	sessResp.Body.Close()
+	if sessResp.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("expected 401 for session JWT in SSE query, got %d", sessResp.StatusCode)
+	}
+
+	ticket, _, err := auth.IssueWSTicket(auth.Claims{
+		Role:       auth.RoleAdmin,
+		Subject:    "admin-query",
+		SupplierID: "sup-query-1",
+	}, auth.IssueOptions{
+		Secret: testWSJWTSecret,
+		TTL:    5 * time.Minute,
+	})
+	if err != nil {
+		t.Fatalf("issue ticket: %v", err)
+	}
+
+	url := fmt.Sprintf("%s/v1/events?token=%s", server.URL, ticket)
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 
 	client := &http.Client{Timeout: 0}

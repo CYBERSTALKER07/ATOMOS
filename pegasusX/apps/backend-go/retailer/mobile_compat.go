@@ -259,7 +259,7 @@ func (s *Service) HandleMobileRegister(w http.ResponseWriter, r *http.Request) {
 	if deliveryAddr == "" {
 		deliveryAddr = strings.TrimSpace(req.AddressText)
 	}
-	reg, err := s.Register(r.Context(), RegisterRequest{
+	regReq := RegisterRequest{
 		Phone:                strings.TrimSpace(req.PhoneNumber),
 		Name:                 name,
 		SupplierID:           strings.TrimSpace(req.SupplierID),
@@ -270,10 +270,31 @@ func (s *Service) HandleMobileRegister(w http.ResponseWriter, r *http.Request) {
 		PlaceID:              strings.TrimSpace(req.PlaceID),
 		ReceivingWindowOpen:  req.ReceivingWindowOpen,
 		ReceivingWindowClose: req.ReceivingWindowClose,
-	})
-	if err != nil {
-		writeAttachError(w, err)
-		return
+	}
+	var (
+		reg        RegisterResponse
+		createdNew bool
+	)
+	if regReq.SupplierID != "" || regReq.InviteToken != "" {
+		reg, createdNew, err = s.RegisterWithCreated(r.Context(), regReq)
+		if err != nil {
+			writeAttachError(w, err)
+			return
+		}
+		if !createdNew {
+			writeJSON(w, http.StatusConflict, map[string]string{"error": "phone_already_registered"})
+			return
+		}
+	} else {
+		reg, createdNew, err = s.registerSelfOnboard(r.Context(), regReq, req.Password)
+		if err != nil {
+			writeAttachError(w, err)
+			return
+		}
+		if !createdNew {
+			writeJSON(w, http.StatusConflict, map[string]string{"error": "phone_already_registered"})
+			return
+		}
 	}
 	ret := Retailer{
 		RetailerID: reg.RetailerID,
@@ -287,8 +308,8 @@ func (s *Service) HandleMobileRegister(w http.ResponseWriter, r *http.Request) {
 }
 
 // writeCanonicalRegisterResponse handles POST bodies that include top-level "phone"
-// (SSMR smoke, API clients) and returns RegisterResponse. Mobile apps send
-// phone_number instead and continue through HandleMobileRegister.
+// (desktop onboarding, SSMR smoke, API clients) and returns RegisterResponse. Mobile
+// apps send phone_number instead and continue through HandleMobileRegister.
 func (s *Service) writeCanonicalRegisterResponse(w http.ResponseWriter, r *http.Request, body []byte) bool {
 	var probe map[string]json.RawMessage
 	if err := json.Unmarshal(body, &probe); err != nil {
@@ -302,9 +323,22 @@ func (s *Service) writeCanonicalRegisterResponse(w http.ResponseWriter, r *http.
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return true
 	}
-	resp, err := s.Register(r.Context(), req)
+	var (
+		resp       RegisterResponse
+		createdNew bool
+		err        error
+	)
+	if strings.TrimSpace(req.SupplierID) != "" || strings.TrimSpace(req.InviteToken) != "" {
+		resp, createdNew, err = s.RegisterWithCreated(r.Context(), req)
+	} else {
+		resp, createdNew, err = s.registerSelfOnboard(r.Context(), req, "")
+	}
 	if err != nil {
 		writeAttachError(w, err)
+		return true
+	}
+	if !createdNew {
+		writeJSON(w, http.StatusConflict, map[string]string{"error": "phone_already_registered"})
 		return true
 	}
 	writeJSON(w, http.StatusCreated, resp)

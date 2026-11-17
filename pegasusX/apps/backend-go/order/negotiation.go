@@ -11,6 +11,7 @@ import (
 
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"github.com/pegasusx/pegasusx/apps/backend-go/drivercmd"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 )
@@ -250,16 +251,22 @@ func (s *Service) HandleResolveNegotiation(w http.ResponseWriter, r *http.Reques
 		}
 
 		orderRow, err := txn.ReadRow(ctx, "Orders", spanner.Key{orderID},
-			[]string{"SupplierId", "RetailerId", "WarehouseId", "Source", "Version", "LineItemsJson", "Currency", "TotalMinor"})
+			[]string{"SupplierId", "RetailerId", "WarehouseId", "OrderSource", "Version", "LineItemsJson", "Currency", "TotalMinor", "DeliveryFeeMinor"})
 		if err != nil {
 			return err
 		}
 		var version, oldTotal int64
-		var currency, source, warehouseID string
+		var deliveryFeeCol spanner.NullInt64
+		var currency, source string
 		var lineItemsRaw []byte
-		var supplierCol, retailerCol spanner.NullString
-		if err := orderRow.Columns(&supplierCol, &retailerCol, &warehouseID, &source, &version, &lineItemsRaw, &currency, &oldTotal); err != nil {
+		var supplierCol, retailerCol, warehouseCol spanner.NullString
+		if err := orderRow.Columns(&supplierCol, &retailerCol, &warehouseCol, &source, &version, &lineItemsRaw, &currency, &oldTotal, &deliveryFeeCol); err != nil {
 			return err
+		}
+		warehouseID := warehouseCol.StringVal
+		deliveryFeeMinor := int64(0)
+		if deliveryFeeCol.Valid && deliveryFeeCol.Int64 > 0 {
+			deliveryFeeMinor = deliveryFeeCol.Int64
 		}
 		if supplierCol.Valid {
 			supplierID = supplierCol.StringVal
@@ -295,7 +302,7 @@ func (s *Service) HandleResolveNegotiation(w http.ResponseWriter, r *http.Reques
 			if err := json.Unmarshal(lineItemsRaw, &lineItems); err != nil {
 				return fmt.Errorf("parse order line items: %w", err)
 			}
-			updated, total, err := applyNegotiatedLineItems(lineItems, proposedItems)
+			updated, total, err := applyNegotiatedLineItems(lineItems, proposedItems, deliveryFeeMinor)
 			if err != nil {
 				return err
 			}
@@ -304,11 +311,8 @@ func (s *Service) HandleResolveNegotiation(w http.ResponseWriter, r *http.Reques
 				return err
 			}
 
-			if err := ReleaseReservationsForOrderInTxn(ctx, txn, supplierID, warehouseID, orderID, OrderSource(source), lineItems); err != nil {
-				return fmt.Errorf("release inventory for negotiation: %w", err)
-			}
-			if err := ReserveLineItemsForOrderInTxn(ctx, txn, supplierID, warehouseID, orderID, retailerID, time.Time{}, updated); err != nil {
-				return fmt.Errorf("re-reserve inventory for negotiation: %w", err)
+			if err := ReplaceOrderReservationsInTxn(ctx, txn, supplierID, warehouseID, orderID, retailerID, OrderSource(source), lineItems, updated); err != nil {
+				return fmt.Errorf("replace inventory reservations for negotiation: %w", err)
 			}
 			if s.credit != nil {
 				if err := s.credit.AdjustReserveInTxn(ctx, txn, orderID, total); err != nil {
@@ -375,7 +379,7 @@ func (s *Service) HandleResolveNegotiation(w http.ResponseWriter, r *http.Reques
 	writeJSONBytes(w, http.StatusOK, respBytes)
 }
 
-func applyNegotiatedLineItems(existing []LineItem, proposed []ProposedNegotiationItem) ([]LineItem, int64, error) {
+func applyNegotiatedLineItems(existing []LineItem, proposed []ProposedNegotiationItem, deliveryFeeMinor ...int64) ([]LineItem, int64, error) {
 	bySKU := make(map[string]int64, len(proposed))
 	for _, p := range proposed {
 		sku := strings.TrimSpace(p.SKUID)
@@ -408,6 +412,9 @@ func applyNegotiatedLineItems(existing []LineItem, proposed []ProposedNegotiatio
 	if matched == 0 {
 		return nil, 0, errors.New("proposed skus did not match order line items")
 	}
+	if total > 0 && len(deliveryFeeMinor) > 0 && deliveryFeeMinor[0] > 0 {
+		total += deliveryFeeMinor[0]
+	}
 	return updated, total, nil
 }
 
@@ -423,6 +430,7 @@ func (s *Service) broadcastNegotiation(ctx context.Context, supplierID, retailer
 		s.retailerHub.Broadcast(ctx, "retailer:"+retailerID, raw)
 	}
 	if s.driverHub != nil && driverID != "" {
-		s.driverHub.Broadcast(ctx, "driver:"+driverID, raw)
+		driverRaw := drivercmd.PrepareAndRecordJSON(ctx, s.spannerClient, driverID, raw)
+		s.driverHub.Broadcast(ctx, "driver:"+driverID, driverRaw)
 	}
 }

@@ -275,6 +275,16 @@ func (s *Service) HandleRetailerRefresh(w http.ResponseWriter, r *http.Request) 
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid_refresh_token", "code": "PENDING_ORG_EXPIRED"})
 		return
 	}
+	if rerr := auth.ValidateAndRotateRefreshClaims(r.Context(), claims, 0); rerr != nil {
+		code := http.StatusUnauthorized
+		if rerr.Error() == "revocation_store_unavailable" {
+			code = http.StatusServiceUnavailable
+		}
+		writeJSON(w, code, map[string]string{"error": rerr.Error()})
+		return
+	}
+	claims.JTI = ""
+	claims.TokenUse = auth.TokenUseFull
 	// Refresh capability snapshot when possible.
 	if org := auth.ResolveRetailerOrgID(claims); org != "" {
 		if packs, err := s.LoadEnabledPacks(r.Context(), org); err == nil {
@@ -296,9 +306,14 @@ func (s *Service) HandleRetailerRefresh(w http.ResponseWriter, r *http.Request) 
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "issue_token_failed"})
 		return
 	}
+	newRefresh, err := auth.Issue(claims, auth.IssueOptions{Secret: s.jwtSecret, Issuer: s.jwtIssuer, TTL: 7 * 24 * time.Hour})
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "issue_refresh_failed"})
+		return
+	}
 	writeJSON(w, http.StatusOK, map[string]string{
 		"token":         token,
-		"refresh_token": refresh,
+		"refresh_token": newRefresh,
 	})
 }
 
@@ -445,15 +460,17 @@ func (s *Service) marshalMobileAuthResponseForUser(ret Retailer, user RetailerUs
 	// Home surface hint for clients (role home).
 	home := roleHomeSurface(role)
 	respMap := map[string]any{
-		"token":              token,
-		"token_type":         "full",
-		"refresh_token":      refresh,
-		"is_configured":      isConfigured,
-		"retailer_id":        ret.RetailerID,
-		"retailer_org_id":    ret.RetailerID,
-		"user_id":            user.UserID,
-		"retailer_role":      role,
-		"capabilities":       packList,
+		"token":               token,
+		"token_type":          "full",
+		"refresh_token":       refresh,
+		"is_configured":       isConfigured,
+		"retailer_id":         ret.RetailerID,
+		"retailer_org_id":     ret.RetailerID,
+		"user_id":             user.UserID,
+		"retailer_role":       role,
+		"legal_entity_status": ret.LegalEntityStatus,
+		"normalized_tax_id":   ret.NormalizedTaxID,
+		"capabilities":        packList,
 		"home_surface":       home,
 		"permissions":        auth.ListRetailerPerms(claims),
 		"active_location_id": activeLoc,

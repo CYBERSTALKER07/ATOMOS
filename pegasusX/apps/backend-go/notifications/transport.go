@@ -10,9 +10,24 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"os"
+	"strconv"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
 )
+
+const (
+	defaultPlayMobileOriginator = "3700"
+	maxPlayMobileResponseBytes  = 4096
+)
+
+// CircuitBreaker guards outbound provider calls against cascading failures.
+// *circuit.Breaker satisfies this interface directly.
+type CircuitBreaker interface {
+	Do(ctx context.Context, fn func(ctx context.Context) error) error
+}
 
 // Transport defines a notification delivery channel.
 type Transport interface {
@@ -50,18 +65,36 @@ type SMSTransport struct {
 	BaseURL    string
 	Login      string
 	Password   string
+	Originator string // PlayMobile originator; falls back to PLAYMOBILE_ORIGINATOR env, then "3700"
 	AccountSID string
 	AuthToken  string
 	FromNumber string
 	Resolver   RecipientContactResolver
 	Client     *http.Client
+	Breaker    CircuitBreaker
 	Log        *slog.Logger
+}
+
+// SetCircuitBreaker configures the outbound circuit breaker for SMS delivery.
+func (t *SMSTransport) SetCircuitBreaker(b CircuitBreaker) {
+	if t == nil {
+		return
+	}
+	t.Breaker = b
+}
+
+func (t *SMSTransport) runWithBreaker(ctx context.Context, fn func(context.Context) error) error {
+	if t != nil && t.Breaker != nil {
+		return t.Breaker.Do(ctx, fn)
+	}
+	return fn(ctx)
 }
 
 // Deliver sends an SMS notification.
 func (t *SMSTransport) Deliver(ctx context.Context, recipientID, recipientRole string, notif FormattedNotification) error {
-	if t.Log == nil {
-		t.Log = slog.Default()
+	log := t.Log
+	if log == nil {
+		log = slog.Default()
 	}
 	phone := recipientID
 	if t.Resolver != nil {
@@ -72,7 +105,7 @@ func (t *SMSTransport) Deliver(ctx context.Context, recipientID, recipientRole s
 	}
 	phone = strings.TrimSpace(phone)
 	if phone == "" {
-		t.Log.WarnContext(ctx, "sms delivery skipped: missing phone number", "recipient_id", recipientID)
+		log.WarnContext(ctx, "sms delivery skipped: missing phone number", "recipient_id", recipientID)
 		return nil
 	}
 
@@ -88,13 +121,27 @@ func (t *SMSTransport) Deliver(ctx context.Context, recipientID, recipientRole s
 
 	switch strings.ToLower(t.Provider) {
 	case "playmobile":
-		return t.sendPlayMobile(ctx, hc, phone, body)
+		return t.runWithBreaker(ctx, func(callCtx context.Context) error {
+			return t.sendPlayMobile(callCtx, hc, phone, body)
+		})
 	case "twilio":
-		return t.sendTwilio(ctx, hc, phone, body)
+		return t.runWithBreaker(ctx, func(callCtx context.Context) error {
+			return t.sendTwilio(callCtx, hc, phone, body)
+		})
 	default:
-		t.Log.InfoContext(ctx, "sms mock delivery", "provider", t.Provider, "phone", phone, "body", body)
+		log.InfoContext(ctx, "sms mock delivery", "provider", t.Provider, "phone", phone, "body", body)
 		return nil
 	}
+}
+
+func (t *SMSTransport) resolvePlayMobileOriginator() string {
+	if v := strings.TrimSpace(t.Originator); v != "" {
+		return v
+	}
+	if v := strings.TrimSpace(os.Getenv("PLAYMOBILE_ORIGINATOR")); v != "" {
+		return v
+	}
+	return defaultPlayMobileOriginator
 }
 
 func (t *SMSTransport) sendPlayMobile(ctx context.Context, hc *http.Client, phone, body string) error {
@@ -105,8 +152,11 @@ func (t *SMSTransport) sendPlayMobile(ctx context.Context, hc *http.Client, phon
 	payload := map[string]any{
 		"messages": []map[string]any{{
 			"recipient":  strings.TrimPrefix(phone, "+"),
-			"message-id": fmt.Sprintf("notif-%d", time.Now().UnixNano()),
-			"sms":        map[string]string{"originator": "3700", "content": body},
+			"message-id": uuid.NewString(),
+			"sms": map[string]string{
+				"originator": t.resolvePlayMobileOriginator(),
+				"content":    body,
+			},
 		}},
 	}
 	raw, err := json.Marshal(payload)
@@ -126,11 +176,103 @@ func (t *SMSTransport) sendPlayMobile(ctx context.Context, hc *http.Client, phon
 		return err
 	}
 	defer resp.Body.Close()
+	respBody, readErr := io.ReadAll(io.LimitReader(resp.Body, maxPlayMobileResponseBytes))
+	if readErr != nil {
+		return fmt.Errorf("playmobile read response: %w", readErr)
+	}
 	if resp.StatusCode/100 != 2 {
-		b, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
-		return fmt.Errorf("playmobile status %d: %s", resp.StatusCode, strings.TrimSpace(string(b)))
+		if bodyErr := parsePlayMobileBodyError(respBody); bodyErr != nil {
+			return fmt.Errorf("playmobile status %d: %w", resp.StatusCode, bodyErr)
+		}
+		return fmt.Errorf("playmobile status %d: %s", resp.StatusCode, strings.TrimSpace(string(respBody)))
+	}
+	return parsePlayMobileBodyError(respBody)
+}
+
+func parsePlayMobileBodyError(raw []byte) error {
+	trimmed := bytes.TrimSpace(raw)
+	if len(trimmed) == 0 || (trimmed[0] != '{' && trimmed[0] != '[') {
+		return nil
+	}
+	var obj map[string]any
+	if err := json.Unmarshal(trimmed, &obj); err != nil || obj == nil {
+		return nil
+	}
+	if err := inspectPlayMobileErrorFields(obj); err != nil {
+		return err
+	}
+	if msgs, ok := obj["messages"].([]any); ok {
+		for _, item := range msgs {
+			if m, ok := item.(map[string]any); ok {
+				if err := inspectPlayMobileErrorFields(m); err != nil {
+					return err
+				}
+			}
+		}
 	}
 	return nil
+}
+
+func inspectPlayMobileErrorFields(m map[string]any) error {
+	code := playMobileValueString(m["error-code"])
+	if code == "" {
+		code = playMobileValueString(m["error_code"])
+	}
+	if code == "" {
+		code = playMobileValueString(m["code"])
+	}
+	desc := strings.TrimSpace(playMobileValueString(m["error-description"]))
+	if desc == "" {
+		desc = strings.TrimSpace(playMobileValueString(m["error_description"]))
+	}
+	if desc == "" {
+		desc = strings.TrimSpace(playMobileValueString(m["message"]))
+	}
+
+	if code != "" && code != "0" {
+		if desc != "" {
+			return fmt.Errorf("playmobile error %s: %s", code, desc)
+		}
+		return fmt.Errorf("playmobile error %s", code)
+	}
+	if errField, hasErr := m["error"]; hasErr && errField != nil {
+		errStr := strings.TrimSpace(playMobileValueString(errField))
+		if errStr != "" && errStr != "0" && errStr != "false" {
+			return fmt.Errorf("playmobile error: %s", errStr)
+		}
+	}
+	if status, ok := m["status"].(string); ok {
+		switch strings.ToUpper(strings.TrimSpace(status)) {
+		case "ERROR", "FAILED", "REJECTED":
+			if desc != "" {
+				return fmt.Errorf("playmobile status %s: %s", status, desc)
+			}
+			return fmt.Errorf("playmobile status %s", status)
+		}
+	}
+	return nil
+}
+
+func playMobileValueString(v any) string {
+	switch val := v.(type) {
+	case nil:
+		return ""
+	case string:
+		return strings.TrimSpace(val)
+	case float64:
+		if val == float64(int64(val)) {
+			return strconv.FormatInt(int64(val), 10)
+		}
+		return strconv.FormatFloat(val, 'f', -1, 64)
+	case bool:
+		return strconv.FormatBool(val)
+	default:
+		b, err := json.Marshal(val)
+		if err != nil {
+			return fmt.Sprint(val)
+		}
+		return string(b)
+	}
 }
 
 func (t *SMSTransport) sendTwilio(ctx context.Context, hc *http.Client, phone, body string) error {

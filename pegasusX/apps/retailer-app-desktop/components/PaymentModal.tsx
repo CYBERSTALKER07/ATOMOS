@@ -438,8 +438,18 @@ export default function PaymentModal() {
         }
         const data: CardCheckoutResponse = await res.json();
         if (data.payment_url) {
-          setCheckoutUrl(data.payment_url);
-          window.open(data.payment_url, "_blank", "noopener");
+          try {
+            const parsed = new URL(data.payment_url);
+            if (parsed.protocol === "https:" || parsed.protocol === "http:") {
+              const safeUrl = parsed.toString();
+              setCheckoutUrl(safeUrl);
+              window.open(safeUrl, "_blank", "noopener,noreferrer");
+            } else {
+              throw new Error("Unsupported payment checkout URL scheme");
+            }
+          } catch (urlErr) {
+            throw urlErr instanceof Error ? urlErr : new Error("Invalid payment checkout URL");
+          }
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : t("retailer_desktop.residual.text.card_checkout_failed"));

@@ -37,7 +37,7 @@ struct RootView: View {
                 onEvent: { event in
                     guard !event.type.hasPrefix("SYSTEM") else { return }
                     Task { @MainActor in
-                        realtimeHub.bump()
+                        realtimeHub.bump(event: event)
                     }
                 },
                 onReconnect: {

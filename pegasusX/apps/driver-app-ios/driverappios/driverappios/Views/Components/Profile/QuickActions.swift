@@ -7,7 +7,9 @@ struct QuickActions: View {
     var onFleetDVIR: () -> Void = {}
     var onMidRouteRescue: () -> Void = {}
     var onYardGate: () -> Void = {}
+    var onSettings: () -> Void = {}
     var pendingCount: Int = 0
+    @State private var localeManager = DriverLocaleManager.shared
     
     var body: some View {
         VStack(spacing: 10) {
@@ -34,8 +36,13 @@ struct QuickActions: View {
                 Haptics.light()
                 onSyncQueue()
             }
-            ActionRow(icon: "gearshape.fill", title: "Settings", subtitle: "App configuration") {
+            ActionRow(
+                icon: "gearshape.fill",
+                title: L10n.string("mobile_driver.ui.settings"),
+                subtitle: "\(L10n.string("mobile_driver.ui.language")): \(localeManager.currentDisplayName)"
+            ) {
                 Haptics.light()
+                onSettings()
             }
             ActionRow(icon: "rectangle.portrait.and.arrow.right", title: "End Session", subtitle: "Go offline and sign out", destructive: true) {
                 Haptics.medium()

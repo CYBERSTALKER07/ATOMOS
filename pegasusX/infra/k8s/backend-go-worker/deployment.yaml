@@ -11,6 +11,8 @@ metadata:
 spec:
   # Single replica until outbox relay has ClaimedBy/ClaimedUntil leases (audit P0-5).
   replicas: 1
+  revisionHistoryLimit: 5
+  minReadySeconds: 10
   selector:
     matchLabels:
       app: backend-go-worker
@@ -31,7 +33,7 @@ spec:
       serviceAccountName: backend-go
       automountServiceAccountToken: false
       priorityClassName: pegasusx-mission-worker
-      terminationGracePeriodSeconds: 45
+      terminationGracePeriodSeconds: 60
       securityContext:
         runAsNonRoot: true
         runAsUser: 10001
@@ -100,6 +102,12 @@ spec:
                 secretKeyRef:
                   name: backend-go-secrets
                   key: click-webhook-secret
+            - name: UZUM_WEBHOOK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: backend-go-secrets
+                  key: uzum-webhook-secret
+                  optional: true
             - name: GLOBAL_PAY_SERVICE_ID
               valueFrom:
                 secretKeyRef:
@@ -168,11 +176,26 @@ spec:
                   name: backend-go-secrets
                   key: playmobile-password
                   optional: true
+            - name: TELEGRAM_BOT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: backend-go-secrets
+                  key: telegram-bot-token
+                  optional: true
+            - name: TELEGRAM_BOT_WEBHOOK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: backend-go-secrets
+                  key: telegram-bot-webhook-secret
+                  optional: true
             - name: FIREBASE_CREDENTIALS_PATH
               value: /var/secrets/firebase/service-account.json
           volumeMounts:
             - name: firebase-credentials
               mountPath: /var/secrets/firebase
+              readOnly: true
+            - name: eimzo-pkcs12
+              mountPath: /var/secrets/eimzo
               readOnly: true
             - name: tmp
               mountPath: /tmp
@@ -208,6 +231,12 @@ spec:
         - name: firebase-credentials
           secret:
             secretName: backend-go-firebase
+            defaultMode: 0440
+            optional: true
+        - name: eimzo-pkcs12
+          secret:
+            secretName: backend-go-eimzo
+            defaultMode: 0440
             optional: true
         - name: tmp
           emptyDir: {}

@@ -37,8 +37,10 @@ import { useWarehouseSessionReconcile } from '@/lib/use-warehouse-session-reconc
 import { WAREHOUSE_DISPATCH_REFRESH_EVENTS, parseWarehouseWsEventType } from '@/lib/fleet-ws-events';
 import { subscribeWarehouseWS } from '@/lib/auth';
 import Icon from '@/components/Icon';
-import DispatchPreviewMap from '@/components/DispatchPreviewMap';
-import FleetLiveMapPanel from '@/components/FleetLiveMapPanel';
+import dynamic from 'next/dynamic';
+
+const DispatchPreviewMap = dynamic(() => import('@/components/DispatchPreviewMap'), { ssr: false });
+const FleetLiveMapPanel = dynamic(() => import('@/components/FleetLiveMapPanel'), { ssr: false });
 import PageTransition from '@/components/PageTransition';
 import { PageChrome } from '@/components/PageChrome';
 import { KpiStatCard, KpiStatGrid } from '@/components/KpiStatCard';

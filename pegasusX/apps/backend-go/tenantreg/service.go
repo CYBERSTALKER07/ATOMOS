@@ -15,6 +15,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
+	"github.com/pegasusx/pegasusx/apps/backend-go/innlookup"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/supplier"
 	"golang.org/x/crypto/bcrypt"
@@ -32,6 +33,18 @@ var (
 	ErrSeedCollision      = errors.New("seed_id_collision")
 )
 
+// JoinRequestPendingError indicates duplicate INN in the target HomeCell and
+// returns HTTP 409 join_request_pending instead of minting a duplicate tenant.
+type JoinRequestPendingError struct {
+	RequestID      string
+	TargetTenantID string
+	LegalName      string
+	NormalizedINN  string
+}
+
+func (e *JoinRequestPendingError) Error() string { return innlookup.ErrDuplicateTenant.Error() }
+func (e *JoinRequestPendingError) Unwrap() error { return innlookup.ErrDuplicateTenant }
+
 // Registry is the persist seam. Narrower than supplier.Repository.
 type Registry interface {
 	GetAuthByPhone(ctx context.Context, phone string) (supplier.SupplierAuthRecord, bool, error)
@@ -47,19 +60,23 @@ type Request struct {
 	Phone       string `json:"phone"`
 	Password    string `json:"password"`
 	MarketCode  string `json:"market_code"`
+	TaxID       string `json:"tax_id,omitempty"`
+	RoleSought  string `json:"role_sought,omitempty"`
 }
 
 // Response is the minted tenant + session token.
 type Response struct {
-	SupplierID   string `json:"supplier_id"`
-	LegalName    string `json:"legal_name"`
-	MarketCode   string `json:"market_code"`
-	HomeCell     string `json:"home_cell"`
-	Source       string `json:"source"`
-	IsRegistered bool   `json:"is_registered"`
-	IsConfigured bool   `json:"is_configured"`
-	NextStep     string `json:"next_step"`
-	Token        string `json:"token,omitempty"`
+	SupplierID      string `json:"supplier_id"`
+	LegalName       string `json:"legal_name"`
+	MarketCode      string `json:"market_code"`
+	HomeCell        string `json:"home_cell"`
+	Source          string `json:"source"`
+	NormalizedTaxID string `json:"normalized_tax_id,omitempty"`
+	InnVerifiedAt   string `json:"inn_verified_at,omitempty"`
+	IsRegistered    bool   `json:"is_registered"`
+	IsConfigured    bool   `json:"is_configured"`
+	NextStep        string `json:"next_step"`
+	Token           string `json:"token,omitempty"`
 }
 
 // Config wires GS-T1.
@@ -75,6 +92,9 @@ type Config struct {
 	Now            func() time.Time
 	OnRegistered   func(ctx context.Context, supplierID, legalName string) error
 	NewID          func() string
+	INNLookup      *innlookup.Service
+	INNRequired    bool
+	OnJoinRequest  func(ctx context.Context, supplierID string, jr innlookup.JoinRequest)
 }
 
 // Service mints non-seed suppliers.
@@ -90,6 +110,9 @@ type Service struct {
 	now            func() time.Time
 	OnRegistered   func(ctx context.Context, supplierID, legalName string) error
 	newID          func() string
+	innLookup      *innlookup.Service
+	innRequired    bool
+	onJoinRequest  func(ctx context.Context, supplierID string, jr innlookup.JoinRequest)
 }
 
 // NewService returns a configured mint service.
@@ -118,6 +141,9 @@ func NewService(c Config) *Service {
 		now:            c.Now,
 		OnRegistered:   c.OnRegistered,
 		newID:          c.NewID,
+		innLookup:      c.INNLookup,
+		innRequired:    c.INNRequired,
+		onJoinRequest:  c.OnJoinRequest,
 	}
 }
 
@@ -127,7 +153,8 @@ func (s *Service) Register(ctx context.Context, req Request) (Response, error) {
 		return Response{}, ErrRepoUnavailable
 	}
 	legal := strings.TrimSpace(req.LegalName)
-	if legal == "" {
+	rawTaxID := strings.TrimSpace(req.TaxID)
+	if legal == "" && rawTaxID == "" {
 		return Response{}, ErrLegalNameRequired
 	}
 	phone := strings.TrimSpace(req.Phone)
@@ -155,21 +182,106 @@ func (s *Service) Register(ctx context.Context, req Request) (Response, error) {
 		return Response{}, ErrPhoneTaken
 	}
 
-	supplierID, err := s.mintID(ctx)
-	if err != nil {
-		return Response{}, err
-	}
-
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return Response{}, fmt.Errorf("hash password: %w", err)
+	}
+
+	now := s.now()
+	var normalizedINN string
+	var innVerifiedAt time.Time
+	if s.innRequired || rawTaxID != "" {
+		norm, _, err := innlookup.NormalizeTaxID(rawTaxID)
+		if err != nil {
+			return Response{}, err
+		}
+		roleSought, rerr := innlookup.NormalizeRoleSought(req.RoleSought)
+		if rerr != nil {
+			return Response{}, rerr
+		}
+		if s.innLookup == nil {
+			return Response{}, innlookup.ErrRegistryUnavailable
+		}
+		res, lerr := s.innLookup.Lookup(ctx, innlookup.LookupOptions{
+			TaxID:      norm,
+			HomeCell:   pack.HomeCell,
+			MarketCode: pack.Code,
+			TenantType: innlookup.TenantTypeSupplier,
+		})
+		if lerr != nil || res.Status == innlookup.StatusUnavailable {
+			if lerr != nil && !errors.Is(lerr, innlookup.ErrRegistryUnavailable) {
+				return Response{}, lerr
+			}
+			return Response{}, innlookup.ErrRegistryUnavailable
+		}
+		if res.ExistingTenantID != "" {
+			reqName := strings.TrimSpace(req.ContactName)
+			if reqName == "" {
+				reqName = legal
+			}
+			jr, jerr := s.innLookup.CreateJoinRequest(ctx, innlookup.JoinRequest{
+				HomeCell:              pack.HomeCell,
+				TargetTenantType:      innlookup.TenantTypeSupplier,
+				TargetTenantID:        res.ExistingTenantID,
+				NormalizedINN:         res.NormalizedINN,
+				RequesterPhone:        phone,
+				RequesterName:         reqName,
+				RequesterEmail:        strings.TrimSpace(req.Email),
+				RoleSought:            roleSought,
+				RequesterPasswordHash: string(passwordHash),
+				CreatedAt:             now,
+			}, func(txn outbox.TxnBuffer) error {
+				return outbox.EmitJSON(ctx, txn, events.AggregateSupplier, res.ExistingTenantID, events.TopicMain, map[string]any{
+					"type":               "JOIN_REQUEST_CREATED",
+					"timestamp":          now.Format(time.RFC3339Nano),
+					"supplier_id":        res.ExistingTenantID,
+					"target_tenant_type": innlookup.TenantTypeSupplier,
+					"target_tenant_id":   res.ExistingTenantID,
+					"normalized_inn":     res.NormalizedINN,
+					"requester_phone":    phone,
+					"requester_name":     reqName,
+					"role_sought":        roleSought,
+				})
+			})
+			if jerr != nil {
+				return Response{}, fmt.Errorf("create join request: %w", jerr)
+			}
+			if s.onJoinRequest != nil {
+				s.onJoinRequest(ctx, res.ExistingTenantID, jr)
+			}
+			legalDisplay := strings.TrimSpace(res.ExistingLegalName)
+			if legalDisplay == "" {
+				legalDisplay = strings.TrimSpace(res.LegalName)
+			}
+			return Response{}, &JoinRequestPendingError{
+				RequestID:      jr.RequestID,
+				TargetTenantID: res.ExistingTenantID,
+				LegalName:      legalDisplay,
+				NormalizedINN:  res.NormalizedINN,
+			}
+		}
+		if res.Status == innlookup.StatusNotFound {
+			return Response{}, innlookup.ErrTaxIDNotFound
+		}
+		if legal == "" {
+			legal = strings.TrimSpace(res.LegalName)
+		}
+		if legal == "" {
+			return Response{}, ErrLegalNameRequired
+		}
+		normalizedINN = res.NormalizedINN
+		innVerifiedAt = now
+	}
+
+	supplierID, err := s.mintID(ctx)
+	if err != nil {
+		return Response{}, err
 	}
 
 	contact := strings.TrimSpace(req.ContactName)
 	if contact == "" {
 		contact = legal
 	}
-	now := s.now()
 	profile := supplier.Profile{
 		SupplierID:       supplierID,
 		LegalName:        legal,
@@ -181,6 +293,9 @@ func (s *Service) Register(ctx context.Context, req Request) (Response, error) {
 		Currency:         pack.CurrencyCode,
 		MarketCode:       pack.Code,
 		HomeCell:         pack.HomeCell,
+		TaxID:            rawTaxID,
+		NormalizedTaxID:  normalizedINN,
+		InnVerifiedAt:    innVerifiedAt,
 		IsRegistered:     false,
 		IsConfigured:     false,
 		RegisteredAt:     now,
@@ -205,20 +320,37 @@ func (s *Service) Register(ctx context.Context, req Request) (Response, error) {
 	}
 
 	if s.OnRegistered != nil {
-		if hookErr := s.OnRegistered(ctx, supplierID, legal); hookErr != nil {
+		var hookErr error
+		for attempt := 0; attempt < 3; attempt++ {
+			if ctx.Err() != nil {
+				break
+			}
+			hookErr = s.OnRegistered(ctx, supplierID, legal)
+			if hookErr == nil {
+				break
+			}
+			time.Sleep(time.Duration(attempt+1) * 20 * time.Millisecond)
+		}
+		if hookErr != nil {
 			s.log.Warn("platform tenant mint failed", "supplier_id", supplierID, "err", hookErr)
 		}
 	}
 
+	innVerifiedStr := ""
+	if !profile.InnVerifiedAt.IsZero() {
+		innVerifiedStr = profile.InnVerifiedAt.Format(time.RFC3339Nano)
+	}
 	return Response{
-		SupplierID:   supplierID,
-		LegalName:    legal,
-		MarketCode:   pack.Code,
-		HomeCell:     pack.HomeCell,
-		Source:       auth.MarketSourceProfile,
-		IsRegistered: profile.IsRegistered,
-		IsConfigured: profile.IsConfigured,
-		NextStep:     "/setup/business",
+		SupplierID:      supplierID,
+		LegalName:       legal,
+		MarketCode:      pack.Code,
+		HomeCell:        pack.HomeCell,
+		Source:          auth.MarketSourceProfile,
+		NormalizedTaxID: profile.NormalizedTaxID,
+		InnVerifiedAt:   innVerifiedStr,
+		IsRegistered:    profile.IsRegistered,
+		IsConfigured:    profile.IsConfigured,
+		NextStep:        "/setup/business",
 	}, nil
 }
 

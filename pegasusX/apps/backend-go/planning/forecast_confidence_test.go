@@ -1,6 +1,10 @@
 package planning
 
-import "testing"
+import (
+	"context"
+	"testing"
+	"time"
+)
 
 func TestFallbackDemandConfidenceBlockedWhenEmpty(t *testing.T) {
 	out := FallbackDemandConfidence(0, "ai_recommendations", 0)
@@ -25,5 +29,20 @@ func TestFallbackDemandConfidenceRange(t *testing.T) {
 func TestNormalizeBaselineSourceDemandBaseline(t *testing.T) {
 	if got := NormalizeBaselineSource("demand_forecast_baseline"); got != BaselineSourceMovingAverage {
 		t.Fatalf("got=%q", got)
+	}
+}
+
+func TestAggregateDemandConfidence_NilClient(t *testing.T) {
+	q := DemandConfidenceQuery{
+		ForecastDate: time.Now(),
+		FallbackQty:  50,
+		SourceHint:   "demand_forecast_baseline",
+	}
+	out, err := AggregateDemandConfidence(context.Background(), nil, "sup-1", q)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if out.LowUnits != 45 || out.HighUnits != 55 {
+		t.Fatalf("unexpected range: %d-%d", out.LowUnits, out.HighUnits)
 	}
 }

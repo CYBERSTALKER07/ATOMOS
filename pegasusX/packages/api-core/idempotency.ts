@@ -847,3 +847,63 @@ export function claimApproveKey(claimId: string, body?: unknown): string {
 export function claimRejectKey(claimId: string, reason?: string): string {
   return `claim-reject:${claimId}:${stableHash(reason ?? "")}`;
 }
+
+export function migrationProjectCreateKey(supplierId: string, name: string): string {
+  return `migration-project-create:${supplierId}:${stableHash(name.trim())}`;
+}
+
+export function migrationBundleCreateKey(projectId: string, fingerprint: string): string {
+  return `migration-bundle-create:${projectId}:${stableHash(fingerprint)}`;
+}
+
+export function migrationBundleUploadedKey(bundleId: string, fingerprint: string): string {
+  return `migration-bundle-uploaded:${bundleId}:${stableHash(fingerprint)}`;
+}
+
+export function migrationBundleSortKey(bundleId: string, fingerprint: string): string {
+  return `migration-bundle-sort:${bundleId}:${stableHash(fingerprint)}`;
+}
+
+export function migrationMappingConfirmKey(sessionId: string, mappingHash: string): string {
+  return `migration-mapping-confirm:${sessionId}:${stableHash(mappingHash)}`;
+}
+
+export function migrationDryRunKey(scopeId: string): string {
+  return `migration-dry-run:${scopeId}`;
+}
+
+export function migrationSessionApproveKey(sessionId: string, reportId?: string): string {
+  return `migration-session-approve:${sessionId}:${reportId ?? "latest"}`;
+}
+
+export function migrationSessionApplyKey(sessionId: string, fingerprint?: string): string {
+  return `migration-session-apply:${sessionId}:${fingerprint ?? "latest"}`;
+}
+
+export function migrationSessionRollbackKey(sessionId: string): string {
+  return `migration-session-rollback:${sessionId}`;
+}
+
+export function migrationOpenOrdersReleaseKey(scopeId: string, fingerprint: string): string {
+  return `migration-open-orders-release:${scopeId}:${stableHash(fingerprint)}`;
+}
+
+export function migrationCutoverKey(projectId: string): string {
+  return `migration-cutover:${projectId}`;
+}
+
+export function joinRequestDecideKey(requestId: string, decision: string): string {
+  return `join-request-decide:${requestId}:${decision.trim().toUpperCase()}`;
+}
+
+export function retailerTaxIdentityKey(retailerId: string, fingerprint: string): string {
+  return `retailer-tax-identity:${retailerId}:${stableHash(fingerprint)}`;
+}
+
+export function retailerArAcknowledgeKey(invoiceId: string): string {
+  return `retailer-ar-ack:${invoiceId}`;
+}
+
+export function retailerArDisputeKey(invoiceId: string, reason: string): string {
+  return `retailer-ar-dispute:${invoiceId}:${stableHash(reason.trim())}`;
+}

@@ -33,7 +33,6 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	r.Post("/v1/auth/warehouse/login", d.Service.HandleWarehouseLogin)
 	r.Post("/v1/auth/warehouse/register", d.Service.HandleWarehouseRegister)
 	r.Post("/v1/auth/warehouse/refresh", d.Service.HandleWarehouseRefresh)
-	r.Post("/v1/warehouse/setup", d.Service.HandleWarehouseSetup)
 
 	mountReplenishmentInsights := func(rr chi.Router) {
 		rr.Get("/v1/warehouse/replenishment/insights", d.Service.HandleReplenishmentInsights)
@@ -80,11 +79,15 @@ func RegisterRoutes(r chi.Router, d Deps) {
 			rr.Get("/v1/warehouse/ops/inventory-adjustments", d.WMSHandler.HandleInventoryAdjustments)
 			rr.Get("/v1/warehouse/ops/inventory-accuracy", d.WMSHandler.HandleInventoryAccuracy)
 			rr.Get("/v1/warehouse/ops/inventory-reconcile", d.WMSHandler.HandleReconcileInventoryV2)
+			rr.Get("/v1/warehouse/ops/manifests/{manifestID}/temperature", d.WMSHandler.HandleManifestTemperature)
+			rr.Post("/v1/warehouse/ops/manifests/{manifestID}/temperature", d.WMSHandler.HandleManifestTemperature)
 			rr.Post("/v1/warehouse/ops/cycle-counts/enqueue-abc", d.WMSHandler.HandleEnqueueABCCounts)
 			rr.Group(func(admin chi.Router) {
 				admin.Use(auth.RequireRole(auth.RoleWarehouseAdmin, auth.RoleAdmin))
-				admin.Post("/v1/warehouse/ops/pick-waves/{waveID}/waive-shorts", d.WMSHandler.HandleWaivePickShorts)
-				admin.Post("/v1/warehouse/ops/inventory-adjustments/{adjustmentID}/approve", d.WMSHandler.HandleApproveInventoryAdjustment)
+				admin.With(auth.RequireSupplierPerm(auth.PermStockAdjustApprove)).Post("/v1/warehouse/ops/inventory-reconcile/repair", d.WMSHandler.HandleRepairInventoryV2)
+				admin.With(auth.RequireSupplierPerm(auth.PermStockAdjustApprove)).Post("/v1/warehouse/ops/pick-waves/{waveID}/waive-shorts", d.WMSHandler.HandleWaivePickShorts)
+				admin.With(auth.RequireSupplierPerm(auth.PermStockAdjustApprove)).Post("/v1/warehouse/ops/inventory-adjustments/{adjustmentID}/approve", d.WMSHandler.HandleApproveInventoryAdjustment)
+				admin.With(auth.RequireSupplierPerm(auth.PermStockAdjustApprove)).Post("/v1/warehouse/ops/inventory-adjustments/{adjustmentID}/reject", d.WMSHandler.HandleRejectInventoryAdjustment)
 			})
 		}
 		if d.DriverService != nil {
@@ -153,6 +156,8 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		rr.Patch("/v1/warehouse/ops/vehicles/*", d.Service.HandleOpsVehicles)
 		rr.Get("/v1/warehouse/ops/staff", d.Service.HandleOpsStaff)
 		rr.Post("/v1/warehouse/ops/staff", d.Service.HandleOpsStaff)
+		rr.Delete("/v1/warehouse/ops/staff/{staffID}", d.Service.HandleDeleteOpsStaff)
+		rr.Patch("/v1/warehouse/ops/staff/{staffID}", d.Service.HandleUpdateOpsStaff)
 		rr.Get("/v1/warehouse/ops/products", d.Service.HandleOpsProducts)
 		rr.Get("/v1/warehouse/ops/manifests", d.Service.HandleOpsManifests)
 		if d.PayloadService != nil {
@@ -196,6 +201,10 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		gr.Group(func(ws chi.Router) {
 			ws.Use(auth.RequireRole(allowed...))
 			ws.Get("/v1/warehouse/ws-session", auth.WSSessionHandler(d.JWTSecret, d.JWTIssuer, 0))
+		})
+		gr.Group(func(setup chi.Router) {
+			setup.Use(auth.RequireRole(allowed...))
+			setup.Post("/v1/warehouse/setup", d.Service.HandleWarehouseSetup)
 		})
 		gr.Use(auth.RequireRole(allowed...))
 		gr.Use(auth.RequireWarehouseOpsScope)

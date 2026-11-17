@@ -107,24 +107,46 @@ func (e *Engine) HandleOrderEvent(ctx context.Context, eventType string, payload
 		return nil
 	}
 
-	mutations := make([]*spanner.Mutation, 0, 2)
+	if e.CreatePreorders && len(signal.LineItems) > 0 && rec.Action == "SUGGEST_REORDER" {
+		appliedPreorder := false
+		_, err := e.Client.ReadWriteTransaction(ctx, func(txCtx context.Context, txn *spanner.ReadWriteTransaction) error {
+			mutations := make([]*spanner.Mutation, 0, 2)
+			predMut, pErr := e.predictionMutation(rec)
+			if pErr != nil {
+				return pErr
+			}
+			mutations = append(mutations, predMut)
+
+			preMut, ok, mErr := e.maybePreorderMutationInTxn(txCtx, txn, signal, history, rec)
+			if mErr != nil {
+				return mErr
+			}
+			if ok {
+				mutations = append(mutations, preMut)
+				appliedPreorder = true
+			}
+			return txn.BufferWrite(mutations)
+		})
+		if err != nil {
+			return fmt.Errorf("apply synthesis transaction: %w", err)
+		}
+		e.Log.Info("ai synthesis applied",
+			"event_type", eventType,
+			"recommendation_id", rec.PredictionID,
+			"action", rec.Action,
+			"score", rec.Score,
+			"supplier_id", signal.SupplierID,
+			"retailer_id", signal.RetailerID,
+			"preorder", appliedPreorder,
+		)
+		return nil
+	}
+
 	predMut, err := e.predictionMutation(rec)
 	if err != nil {
 		return err
 	}
-	mutations = append(mutations, predMut)
-
-	if e.CreatePreorders && len(signal.LineItems) > 0 && rec.Action == "SUGGEST_REORDER" {
-		preMut, ok, err := e.maybePreorderMutation(ctx, signal, history, rec)
-		if err != nil {
-			return err
-		}
-		if ok {
-			mutations = append(mutations, preMut)
-		}
-	}
-
-	if _, err := e.Client.Apply(ctx, mutations); err != nil {
+	if _, err := e.Client.Apply(ctx, []*spanner.Mutation{predMut}); err != nil {
 		return fmt.Errorf("apply synthesis mutations: %w", err)
 	}
 	e.Log.Info("ai synthesis applied",
@@ -134,7 +156,7 @@ func (e *Engine) HandleOrderEvent(ctx context.Context, eventType string, payload
 		"score", rec.Score,
 		"supplier_id", signal.SupplierID,
 		"retailer_id", signal.RetailerID,
-		"preorder", len(mutations) > 1,
+		"preorder", false,
 	)
 	return nil
 }
@@ -310,13 +332,19 @@ func extractSKUDemandHistory(history []OrderSignal, productID string, fallbackBa
 	return points
 }
 
-func (e *Engine) maybePreorderMutation(ctx context.Context, signal OrderSignal, history []OrderSignal, rec Recommendation) (*spanner.Mutation, bool, error) {
-	// Skip if a pending AI preorder already exists for this retailer recently.
-	exists, err := e.hasOpenAIPreorder(ctx, signal.RetailerID, signal.SupplierID)
+func (e *Engine) maybePreorderMutationInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, signal OrderSignal, history []OrderSignal, rec Recommendation) (*spanner.Mutation, bool, error) {
+	// Skip if a pending AI preorder already exists for this retailer+supplier (checked atomically inside RW txn).
+	exists, err := hasOpenAIPreorderWithReader(ctx, txn, signal.RetailerID, signal.SupplierID)
 	if err != nil {
 		return nil, false, err
 	}
 	if exists {
+		return nil, false, nil
+	}
+
+	currency := preorderOperatingCurrency(ctx, signal.SupplierID, signal.Currency)
+	if currency == "" {
+		e.Log.Warn("skipping AI_PREORDER: unresolved currency for supplier pack", "supplier_id", signal.SupplierID, "retailer_id", signal.RetailerID)
 		return nil, false, nil
 	}
 
@@ -360,10 +388,6 @@ func (e *Engine) maybePreorderMutation(ctx context.Context, signal OrderSignal, 
 	if err != nil {
 		return nil, false, err
 	}
-	currency := strings.TrimSpace(signal.Currency)
-	if currency == "" {
-		currency = "UZS"
-	}
 
 	mut := spanner.InsertMap("Orders", map[string]any{
 		"OrderId":               orderID,
@@ -391,7 +415,13 @@ func (e *Engine) maybePreorderMutation(ctx context.Context, signal OrderSignal, 
 	return mut, true, nil
 }
 
-func (e *Engine) hasOpenAIPreorder(ctx context.Context, retailerID, supplierID string) (bool, error) {
+func hasOpenAIPreorderWithReader(
+	ctx context.Context,
+	rdr interface {
+		Query(context.Context, spanner.Statement) *spanner.RowIterator
+	},
+	retailerID, supplierID string,
+) (bool, error) {
 	stmt := spanner.Statement{
 		SQL: `SELECT OrderId FROM Orders
 		      WHERE RetailerId = @retailer_id AND SupplierId = @supplier_id
@@ -402,7 +432,7 @@ func (e *Engine) hasOpenAIPreorder(ctx context.Context, retailerID, supplierID s
 			"supplier_id": supplierID,
 		},
 	}
-	iter := e.Client.Single().Query(ctx, stmt)
+	iter := rdr.Query(ctx, stmt)
 	defer iter.Stop()
 	_, err := iter.Next()
 	if err == iterator.Done {
@@ -422,10 +452,12 @@ func (e *Engine) loadRecentRetailerOrders(ctx context.Context, supplierID, retai
 		SQL: `SELECT OrderId, SupplierId, RetailerId, WarehouseId, Status, TotalMinor, Currency, OrderSource, LineItemsJson, CreatedAt
 		      FROM Orders@{FORCE_INDEX=Idx_Orders_ByRetailerCreated}
 		      WHERE RetailerId = @retailer_id
+		        AND (@supplier_id = '' OR SupplierId = @supplier_id)
 		      ORDER BY CreatedAt DESC
 		      LIMIT @limit`,
 		Params: map[string]any{
 			"retailer_id": retailerID,
+			"supplier_id": strings.TrimSpace(supplierID),
 			"limit":       int64(limit),
 		},
 	}

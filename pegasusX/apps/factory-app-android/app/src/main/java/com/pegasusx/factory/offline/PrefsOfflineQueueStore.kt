@@ -1,21 +1,48 @@
 package com.pegasusx.factory.offline
 
 import android.content.Context
+import android.content.SharedPreferences
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import java.util.UUID
 
 /**
- * SharedPreferences-backed offline queue implementing the §8.8 mutation contract.
- * Suitable for warehouse/factory until they adopt Room; preserves lat/lng/attempts.
+ * EncryptedSharedPreferences-backed offline queue implementing the §8.8 mutation contract.
+ * Encrypts queued offline mutations at rest via Android Keystore AES256-GCM.
  */
 class PrefsOfflineQueueStore(
     context: Context,
     prefsName: String,
     private val catalog: OfflineEndpointCatalog? = null,
 ) {
-    private val prefs = context.applicationContext.getSharedPreferences(prefsName, Context.MODE_PRIVATE)
+    private val appContext = context.applicationContext
+    private val prefs: SharedPreferences = openEncryptedPrefs(appContext, prefsName)
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
+
+    private fun openEncryptedPrefs(ctx: Context, baseName: String): SharedPreferences {
+        val masterKey = MasterKey.Builder(ctx)
+            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+            .build()
+        val encrypted = EncryptedSharedPreferences.create(
+            ctx,
+            "${baseName}_encrypted",
+            masterKey,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
+        )
+        // Migrate and purge any pre-hardening plaintext queue entries once.
+        val legacy = ctx.getSharedPreferences(baseName, Context.MODE_PRIVATE)
+        val legacyRaw = legacy.getString(KEY, null)
+        if (!legacyRaw.isNullOrBlank()) {
+            if (!encrypted.contains(KEY)) {
+                encrypted.edit().putString(KEY, legacyRaw).apply()
+            }
+            legacy.edit().remove(KEY).apply()
+        }
+        return encrypted
+    }
 
     fun readPending(): List<QueuedMutation> =
         readAll().filter { it.status == OfflineHttpSemantics.STATUS_PENDING }

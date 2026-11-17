@@ -29,7 +29,7 @@ func DevCORSMiddleware() func(http.Handler) http.Handler {
 		return func(next http.Handler) http.Handler { return next }
 	}
 
-	allowHeaders := "Accept, Authorization, Content-Type, Idempotency-Key, X-Trace-Id, X-Idempotency-Key, X-Request-Id"
+	allowHeaders := "Accept, Authorization, Content-Type, Content-Range, Idempotency-Key, X-Trace-Id, X-Idempotency-Key, X-Request-Id, X-Goog-Content-Length-Range, X-Goog-Resumable, X-Goog-If-Generation-Match"
 	allowMethods := "GET, POST, PUT, PATCH, DELETE, OPTIONS"
 
 	return func(next http.Handler) http.Handler {
@@ -40,6 +40,7 @@ func DevCORSMiddleware() func(http.Handler) http.Handler {
 				w.Header().Set("Access-Control-Allow-Credentials", "true")
 				w.Header().Set("Access-Control-Allow-Headers", allowHeaders)
 				w.Header().Set("Access-Control-Allow-Methods", allowMethods)
+				w.Header().Set("Access-Control-Expose-Headers", "Location")
 				w.Header().Set("Vary", "Origin")
 			}
 			if r.Method == http.MethodOptions {

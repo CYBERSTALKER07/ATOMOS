@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/platform"
@@ -694,6 +695,175 @@ func factoryStaffRoleAllowed(role string) bool {
 	default:
 		return false
 	}
+}
+
+func (s *Service) checkStaffAdminRole(r *http.Request) bool {
+	claims, ok := auth.FromContext(r.Context())
+	if !ok || claims.Subject == "" {
+		return false
+	}
+	if claims.Role == auth.RoleAdmin || claims.Role == auth.RoleFactoryAdmin || claims.Role == auth.RolePlatformAdmin {
+		return true
+	}
+	if strings.EqualFold(string(claims.SupplierRole), string(auth.RoleAdmin)) ||
+		strings.EqualFold(string(claims.SupplierRole), string(auth.RoleFactoryAdmin)) {
+		return true
+	}
+	return false
+}
+
+// HandleDeleteStaff handles DELETE /v1/factory/staff/{staffID}
+func (s *Service) HandleDeleteStaff(w http.ResponseWriter, r *http.Request) {
+	if !s.checkStaffAdminRole(r) {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
+		return
+	}
+	staffID := strings.TrimSpace(chi.URLParam(r, "staffID"))
+	if staffID == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "staff_id_required"})
+		return
+	}
+
+	found := false
+	s.mu.Lock()
+	for i := range s.staff {
+		if s.staff[i].StaffID == staffID {
+			s.staff = append(s.staff[:i], s.staff[i+1:]...)
+			found = true
+			break
+		}
+	}
+	s.mu.Unlock()
+
+	if s.spannerClient != nil {
+		now := s.now().UTC()
+		m := spanner.Update("SupplierUsers",
+			[]string{"UserId", "IsActive", "UpdatedAt"},
+			[]any{staffID, false, now},
+		)
+		if _, err := s.spannerClient.Apply(r.Context(), []*spanner.Mutation{m}); err == nil {
+			found = true
+		} else {
+			s.log.ErrorContext(r.Context(), "failed to deactivate factory staff", "staff_id", staffID, "err", err)
+		}
+	}
+
+	// Revoke active user JWTs immediately
+	_ = auth.GetRevocationStore().RevokeUser(r.Context(), staffID, 24*time.Hour)
+
+	supplierID := s.resolveSupplierScope(r.Context())
+	s.invalidateFactoryKeys(r.Context(), factoryStaffListKey(supplierID))
+
+	if !found && s.spannerClient == nil {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "staff_not_found"})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"status": "deactivated", "staff_id": staffID})
+}
+
+// HandleUpdateStaff handles PATCH /v1/factory/staff/{staffID}
+func (s *Service) HandleUpdateStaff(w http.ResponseWriter, r *http.Request) {
+	if !s.checkStaffAdminRole(r) {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
+		return
+	}
+	staffID := strings.TrimSpace(chi.URLParam(r, "staffID"))
+	if staffID == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "staff_id_required"})
+		return
+	}
+
+	body, err := readLimitedBody(r, 64*1024)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
+		return
+	}
+
+	var req struct {
+		Name     *string `json:"name"`
+		Role     *string `json:"role"`
+		Phone    *string `json:"phone"`
+		IsActive *bool   `json:"is_active"`
+		Active   *bool   `json:"active"`
+	}
+	if len(body) > 0 {
+		if err := json.Unmarshal(body, &req); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+			return
+		}
+	}
+
+	activeVal := req.IsActive
+	if activeVal == nil {
+		activeVal = req.Active
+	}
+
+	found := false
+	var updatedRow StaffRow
+	s.mu.Lock()
+	for i := range s.staff {
+		if s.staff[i].StaffID == staffID {
+			if req.Name != nil {
+				s.staff[i].Name = strings.TrimSpace(*req.Name)
+			}
+			if req.Role != nil && factoryStaffRoleAllowed(strings.TrimSpace(*req.Role)) {
+				s.staff[i].Role = strings.TrimSpace(*req.Role)
+			}
+			if req.Phone != nil {
+				s.staff[i].Phone = strings.TrimSpace(*req.Phone)
+			}
+			updatedRow = s.staff[i]
+			if activeVal != nil && !*activeVal {
+				s.staff = append(s.staff[:i], s.staff[i+1:]...)
+			}
+			found = true
+			break
+		}
+	}
+	s.mu.Unlock()
+
+	if s.spannerClient != nil {
+		now := s.now().UTC()
+		cols := []string{"UserId", "UpdatedAt"}
+		vals := []any{staffID, now}
+		if req.Name != nil {
+			cols = append(cols, "Name")
+			vals = append(vals, strings.TrimSpace(*req.Name))
+		}
+		if req.Role != nil && factoryStaffRoleAllowed(strings.TrimSpace(*req.Role)) {
+			cols = append(cols, "SupplierRole")
+			vals = append(vals, strings.TrimSpace(*req.Role))
+		}
+		if req.Phone != nil {
+			cols = append(cols, "Phone")
+			vals = append(vals, strings.TrimSpace(*req.Phone))
+		}
+		if activeVal != nil {
+			cols = append(cols, "IsActive")
+			vals = append(vals, *activeVal)
+		}
+		m := spanner.Update("SupplierUsers", cols, vals)
+		if _, err := s.spannerClient.Apply(r.Context(), []*spanner.Mutation{m}); err == nil {
+			found = true
+		}
+	}
+
+	if activeVal != nil && !*activeVal {
+		_ = auth.GetRevocationStore().RevokeUser(r.Context(), staffID, 24*time.Hour)
+	}
+
+	supplierID := s.resolveSupplierScope(r.Context())
+	s.invalidateFactoryKeys(r.Context(), factoryStaffListKey(supplierID))
+
+	if !found && s.spannerClient == nil {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "staff_not_found"})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"status":   "updated",
+		"staff_id": staffID,
+		"staff":    updatedRow,
+	})
 }
 
 var errNoDispatchableTransfers = errors.New("no_dispatchable_transfers")

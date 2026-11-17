@@ -74,17 +74,18 @@ func WindowBounds(tpl Template, year int) (start, end time.Time) {
 	return start, end
 }
 
-// BuiltinMultiplierFor returns the first matching builtin multiplier, else 1.0.
+// BuiltinMultiplierFor composes all matching builtin multipliers for on, else 1.0.
 func BuiltinMultiplierFor(on time.Time) float64 {
+	var mults []float64
 	for _, tpl := range Builtins {
-		if ActiveOn(tpl, on) {
-			if tpl.Multiplier > 0 {
-				return tpl.Multiplier
-			}
-			return 1.0
+		if ActiveOn(tpl, on) && tpl.Multiplier > 0 {
+			mults = append(mults, tpl.Multiplier)
 		}
 	}
-	return 1.0
+	if len(mults) == 0 {
+		return 1.0
+	}
+	return ComposeMultipliers(mults)
 }
 
 // ClampMultiplier clamps m into [MinMultiplier, MaxMultiplier].

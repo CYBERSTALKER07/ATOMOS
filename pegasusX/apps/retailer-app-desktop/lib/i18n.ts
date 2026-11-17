@@ -21,7 +21,7 @@ function getSnapshot(): Locale {
 }
 
 function getServerSnapshot(): Locale {
-  return "en";
+  return "uz";
 }
 
 /** Portal chrome translator — reacts to LanguageSwitcher / LocaleBootstrap. */

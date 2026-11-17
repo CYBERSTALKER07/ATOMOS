@@ -43,6 +43,10 @@ class WarehouseRealtimeClient(
     private val client: OkHttpClient = OkHttpClient.Builder()
         .readTimeout(0, TimeUnit.MILLISECONDS)
         .pingInterval(25, TimeUnit.SECONDS)
+        .apply {
+            configuredCertificatePinner(BuildConfig.API_BASE_URL, BuildConfig.API_TLS_SPKI_PINS)
+                ?.let { certificatePinner(it) }
+        }
         .build(),
 ) {
     private val appContext = context.applicationContext

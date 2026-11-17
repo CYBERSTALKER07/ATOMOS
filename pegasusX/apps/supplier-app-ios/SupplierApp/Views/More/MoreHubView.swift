@@ -138,6 +138,12 @@ struct MoreHubView: View {
                 NavigationLink { InventoryImportView() } label: {
                     Label("mobile_supplier.ui.import_inventory", systemImage: "square.and.arrow.down")
                 }
+                NavigationLink { MigrationCenterView() } label: {
+                    Label("supplier_portal.migrations.title", systemImage: "arrow.triangle.2.circlepath.doc.on.clipboard")
+                }
+                NavigationLink { JoinRequestsView() } label: {
+                    Label("supplier_portal.join_requests.inbox_title", systemImage: "person.badge.plus")
+                }
                 NavigationLink { PricingView() } label: {
                     Label("portal.nav.pricing", systemImage: "dollarsign.circle")
                 }

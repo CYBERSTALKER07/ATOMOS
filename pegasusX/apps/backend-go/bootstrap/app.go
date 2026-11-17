@@ -8,6 +8,7 @@ package bootstrap
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -20,7 +21,10 @@ import (
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/allocation"
 	"github.com/pegasusx/pegasusx/apps/backend-go/analytics"
+	"github.com/pegasusx/pegasusx/apps/backend-go/anomalies"
+	"github.com/pegasusx/pegasusx/apps/backend-go/approvals"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ar"
+	"github.com/pegasusx/pegasusx/apps/backend-go/audit"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/bootstrap/memory"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
@@ -28,6 +32,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/catalog"
 	"github.com/pegasusx/pegasusx/apps/backend-go/claims"
 	"github.com/pegasusx/pegasusx/apps/backend-go/compliance"
+	"github.com/pegasusx/pegasusx/apps/backend-go/connectors"
 	"github.com/pegasusx/pegasusx/apps/backend-go/controltower"
 	"github.com/pegasusx/pegasusx/apps/backend-go/credit"
 	"github.com/pegasusx/pegasusx/apps/backend-go/creditnote"
@@ -35,14 +40,20 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch/optimizerclient"
 	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch/plan"
 	"github.com/pegasusx/pegasusx/apps/backend-go/driver"
+	"github.com/pegasusx/pegasusx/apps/backend-go/esf"
 	"github.com/pegasusx/pegasusx/apps/backend-go/eta"
+	"github.com/pegasusx/pegasusx/apps/backend-go/exportpacks"
 	"github.com/pegasusx/pegasusx/apps/backend-go/factory"
 	"github.com/pegasusx/pegasusx/apps/backend-go/featureflags"
+	"github.com/pegasusx/pegasusx/apps/backend-go/forecastv2"
 	"github.com/pegasusx/pegasusx/apps/backend-go/foundry"
 	"github.com/pegasusx/pegasusx/apps/backend-go/fxrates"
+	"github.com/pegasusx/pegasusx/apps/backend-go/gl"
 	"github.com/pegasusx/pegasusx/apps/backend-go/globalproducts"
+	"github.com/pegasusx/pegasusx/apps/backend-go/iam"
 	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/infraroutes"
+	"github.com/pegasusx/pegasusx/apps/backend-go/innlookup"
 	"github.com/pegasusx/pegasusx/apps/backend-go/internal/services/billing"
 	"github.com/pegasusx/pegasusx/apps/backend-go/inventory"
 	"github.com/pegasusx/pegasusx/apps/backend-go/kafka"
@@ -50,23 +61,30 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/laborcapacity"
 	"github.com/pegasusx/pegasusx/apps/backend-go/manifest"
 	"github.com/pegasusx/pegasusx/apps/backend-go/mfa"
+	"github.com/pegasusx/pegasusx/apps/backend-go/multientity"
 	"github.com/pegasusx/pegasusx/apps/backend-go/notifications"
+	"github.com/pegasusx/pegasusx/apps/backend-go/ontology"
 	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"github.com/pegasusx/pegasusx/apps/backend-go/orgoidc"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/p2p"
 	"github.com/pegasusx/pegasusx/apps/backend-go/partner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/payload"
 	"github.com/pegasusx/pegasusx/apps/backend-go/payment"
 	"github.com/pegasusx/pegasusx/apps/backend-go/payout"
+	"github.com/pegasusx/pegasusx/apps/backend-go/periods"
 	"github.com/pegasusx/pegasusx/apps/backend-go/planning"
 	"github.com/pegasusx/pegasusx/apps/backend-go/platform"
 	"github.com/pegasusx/pegasusx/apps/backend-go/platformadmin"
 	"github.com/pegasusx/pegasusx/apps/backend-go/pricing"
 	"github.com/pegasusx/pegasusx/apps/backend-go/promotion"
+	"github.com/pegasusx/pegasusx/apps/backend-go/proposals"
 	"github.com/pegasusx/pegasusx/apps/backend-go/pulse"
+	"github.com/pegasusx/pegasusx/apps/backend-go/recon"
 	"github.com/pegasusx/pegasusx/apps/backend-go/replenishment"
 	"github.com/pegasusx/pegasusx/apps/backend-go/retailer"
 	"github.com/pegasusx/pegasusx/apps/backend-go/returns"
+	"github.com/pegasusx/pegasusx/apps/backend-go/roi"
 	"github.com/pegasusx/pegasusx/apps/backend-go/routing"
 	"github.com/pegasusx/pegasusx/apps/backend-go/seed"
 	"github.com/pegasusx/pegasusx/apps/backend-go/segment"
@@ -77,7 +95,10 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/tax"
 	"github.com/pegasusx/pegasusx/apps/backend-go/telemetry"
 	"github.com/pegasusx/pegasusx/apps/backend-go/tenantreg"
+	"github.com/pegasusx/pegasusx/apps/backend-go/valuation"
 	"github.com/pegasusx/pegasusx/apps/backend-go/warehouse"
+	"github.com/pegasusx/pegasusx/apps/backend-go/whatif"
+	"github.com/pegasusx/pegasusx/apps/backend-go/workerlease"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
 	"github.com/pegasusx/pegasusx/packages/handoff"
 	"github.com/redis/go-redis/v9"
@@ -97,8 +118,10 @@ type App struct {
 	InventoryService      *inventory.Service
 	NotificationService   *notifications.Service
 	NotificationInbox     *notifications.InboxHandlers
+	SMSTransport          *notifications.SMSTransport
 	SupplierService       *supplier.Service
 	OrgOIDC               *orgoidc.Service
+	INNLookup             *innlookup.Service
 	TenantRegister        *tenantreg.Service
 	RetailerService       *retailer.Service
 	RetailerProximity     *retailer.RetailerProximityService
@@ -109,29 +132,45 @@ type App struct {
 	WebhookInbox          *payment.WebhookInboxStore
 	// WebhookReconciler polls stuck payment sessions against the gateway and
 	// advances them through the outbox (P1-8). Started as a background worker.
-	WebhookReconciler    *payment.WebhookReconciler
-	WarehouseService     *warehouse.Service
-	ReturnsService       *returns.Service
-	TaxService           *tax.Service
-	ComplianceService    *compliance.Service
-	EvidenceVault        *storage.Vault
-	ControlTowerService  *controltower.Service
-	ControlTowerHandlers *controltower.Handlers
-	ControlTowerWorker   *controltower.Worker
-	DemandService        *demand.Service
-	LaborCapacityService *laborcapacity.Service
-	ETAService           *eta.Service
-	FirebaseVerifier     auth.FirebaseVerifier
-	OrderService         *order.Service
-	ClaimsService        *claims.Service
-	CreditService        *credit.Service
-	CreditPolicyService  *credit.PolicyService
-	ARService            *ar.Service
-	CashReconHandlers    *cashrecon.Handlers
-	CashReconService     *cashrecon.Service
-	CashReconEscalation  *cashrecon.EscalationWorker
-	CreditNoteHandlers   *creditnote.Handlers
-	CreditNoteService    *creditnote.Service
+	WebhookReconciler        *payment.WebhookReconciler
+	WarehouseService         *warehouse.Service
+	ReturnsService           *returns.Service
+	TaxService               *tax.Service
+	ComplianceService        *compliance.Service
+	EvidenceVault            *storage.Vault
+	ControlTowerService      *controltower.Service
+	ControlTowerHandlers     *controltower.Handlers
+	ControlTowerWorker       *controltower.Worker
+	DemandService            *demand.Service
+	LaborCapacityService     *laborcapacity.Service
+	ETAService               *eta.Service
+	FirebaseVerifier         auth.FirebaseVerifier
+	OrderService             *order.Service
+	ClaimsService            *claims.Service
+	CreditService            *credit.Service
+	CreditPolicyService      *credit.PolicyService
+	ARService                *ar.Service
+	GL                       *gl.Service
+	Periods                  *periods.Service
+	Approvals                *approvals.Service
+	Valuation                *valuation.Service
+	ESF                      *esf.Service
+	Recon                    *recon.Service
+	ForecastV2               *forecastv2.Service
+	ReplenishmentSuggestions *replenishment.SuggestionsAPI
+	Proposals                *proposals.Service
+	ROI                      *roi.Service
+	CashReconHandlers        *cashrecon.Handlers
+	Connectors               *connectors.Service
+	ExportPacks              *exportpacks.Service
+	MultiEntity              *multientity.Service
+	P2P                      *p2p.Service
+	Anomalies                *anomalies.Service
+	WhatIf                   *whatif.Service
+	CashReconService         *cashrecon.Service
+	CashReconEscalation      *cashrecon.EscalationWorker
+	CreditNoteHandlers       *creditnote.Handlers
+	CreditNoteService        *creditnote.Service
 	// BuyerAcceptancePoller polls Soliq EHF buyer clearance for MySoliq-fiscalized
 	// orders (P1-6). Nil when Soliq client / credit-note service unavailable.
 	BuyerAcceptancePoller  *order.BuyerAcceptancePoller
@@ -191,12 +230,20 @@ type App struct {
 	PartnerEdiOutbound      *partner.EdiOutboundWorker
 	PartnerEventConsumer    *kafka.Consumer
 	TwinEventConsumer       *kafka.Consumer
+	OntologyEventConsumer   *kafka.Consumer
+	BQSinkConsumer          *kafka.Consumer
 	ARDunningWorker         *ar.DunningWorker
+	ARPromiseBreachWorker   *ar.PromiseBreachWorker
 	PayoutService           *payout.Service
 	BillingInvoiceWorker    *billing.InvoiceWorker
 	ForecastAccuracy        *planning.AccuracyService
 	ForecastRunner          *planning.ForecastRunner
 	FoundryEngine           *foundry.Engine
+	Audit                   *audit.Service
+	IAM                     *iam.Service
+	Ontology                *ontology.Service
+	LeaseManager            workerlease.Manager
+	WorkerHolderID          string
 	sweeperWg               *sync.WaitGroup
 	cancelSweepers          context.CancelFunc
 	cleanup                 []func()
@@ -261,6 +308,18 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		cancelSweepers()
 		return nil, fmt.Errorf("require infra adapters: spanner unavailable")
 	}
+
+	var leaseMgr workerlease.Manager
+	if spannerClient != nil {
+		leaseMgr = workerlease.NewSpannerManager(spannerClient)
+	} else if cfg.TestingMode || cfg.AllowMemoryFallback {
+		leaseMgr = workerlease.NewMemoryManager()
+	} else {
+		cancelSweepers()
+		return nil, fmt.Errorf("workerlease unavailable: spanner unavailable")
+	}
+	workerHolderID := workerlease.DefaultHolderID("pegasusx-backend")
+
 	outboxRelay := outbox.NewRelay(relayStore, outboxPublisher, outbox.RelayConfig{}, log)
 
 	var seedRepo seed.Repository
@@ -272,6 +331,11 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	if err != nil {
 		cancelSweepers()
 		return nil, fmt.Errorf("seed supplier: %w", err)
+	}
+	if spannerClient != nil {
+		if _, serr := seed.SeedUzbekistanHolidays(ctx, spannerClient, supplierSeed.SupplierID, log); serr != nil {
+			log.Warn("uzbekistan seasonal holidays seed skipped or failed", "err", serr)
+		}
 	}
 
 	var retailerRepo retailer.Repository
@@ -345,7 +409,16 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 				log.Warn("global products uom seed failed", "err", err)
 			}
 			catalogSvc.SetGlobalProductHook(globalproducts.CatalogHook{Svc: globalProductsSvc})
-			go globalProductsSvc.StartMatchWorker(appCtx, 2*time.Minute)
+			if cfg.RunsWorkers() {
+				workerlease.StartLeasedLoop(appCtx, sweeperWg, leaseMgr, workerlease.Config{
+					LeaseName: "sweeper:global_products_match",
+					HolderID:  workerHolderID,
+					TTL:       90 * time.Second,
+					Log:       log,
+				}, func(leaseCtx context.Context) {
+					globalProductsSvc.StartMatchWorker(leaseCtx, 2*time.Minute)
+				})
+			}
 			log.Info("global products service enabled")
 		}
 	}
@@ -354,7 +427,11 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	if spannerClient != nil {
 		inventoryRepo := inventory.NewSpannerRepository(spannerClient)
 		inventorySvc = inventory.NewService(inventoryRepo, cacheClient, log)
-		inventorySvc.StartHoldSweeper(appCtx, 1*time.Minute)
+		if cfg.RunsWorkers() {
+			startSpawningSweeper(appCtx, sweeperWg, leaseMgr, "sweeper:inventory_holds", workerHolderID, log, func(leaseCtx context.Context, _ *sync.WaitGroup) {
+				inventorySvc.StartHoldSweeper(leaseCtx, 1*time.Minute)
+			})
+		}
 		log.Info("inventory service enabled", "backend", "spanner")
 	}
 
@@ -375,6 +452,18 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		log.Info("notification service enabled", "backend", "spanner")
 	}
 	notifInbox = &notifications.InboxHandlers{Service: notifSvc, Log: log}
+	smsTransport := &notifications.SMSTransport{
+		Provider:   os.Getenv("SMS_PROVIDER"),
+		BaseURL:    os.Getenv("PLAYMOBILE_BASE_URL"),
+		Login:      os.Getenv("PLAYMOBILE_LOGIN"),
+		Password:   os.Getenv("PLAYMOBILE_PASSWORD"),
+		Originator: os.Getenv("PLAYMOBILE_ORIGINATOR"),
+		AccountSID: os.Getenv("TWILIO_ACCOUNT_SID"),
+		AuthToken:  os.Getenv("TWILIO_AUTH_TOKEN"),
+		FromNumber: os.Getenv("TWILIO_FROM"),
+		Log:        log,
+	}
+	smsTransport.SetCircuitBreaker(outboundCircuits.Notification)
 
 	firebaseVerifier := newLoginFirebaseVerifier(cfg, log)
 
@@ -412,6 +501,27 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	if spannerClient != nil {
 		dashboardQuery = supplierDashboardCountQuery(spannerClient)
 	}
+	var innCache innlookup.CacheStore
+	var innTenants innlookup.TenantDirectory
+	var innJoinStore innlookup.JoinRequestStore
+	if spannerClient != nil {
+		st := innlookup.NewSpannerStore(spannerClient)
+		innCache = st
+		innTenants = st
+		innJoinStore = st
+	} else {
+		memINN := innlookup.NewMemoryStore()
+		innCache = memINN
+		innTenants = memINN
+		innJoinStore = memINN
+	}
+	innLookupSvc := innlookup.NewService(innlookup.Config{
+		Adapter:      innlookup.SoliqAdapterFromEnv(),
+		Cache:        innCache,
+		Tenants:      innTenants,
+		JoinRequests: innJoinStore,
+	})
+
 	supplierSvc := supplier.NewService(supplier.ServiceConfig{
 		Repo:                       supplierRepo,
 		Cache:                      cacheClient,
@@ -419,6 +529,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		Locations:                  driverLocations,
 		InventoryService:           supplierInventory,
 		DashboardQuery:             dashboardQuery,
+		INNLookup:                  innLookupSvc,
 		SupplierID:                 supplierSeed.SupplierID,
 		SeedSupplierID:             supplierSeed.SupplierID,
 		MaxSuppliers:               cfg.MaxSuppliers,
@@ -432,6 +543,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		Log:                        log,
 	})
 	supplier.WireMarketProfileLookup(supplierRepo)
+	retailerSvc.SetINNLookup(innLookupSvc)
 	var oidcStore orgoidc.Store
 	if spannerClient != nil {
 		oidcStore = orgoidc.NewSpannerStore(spannerClient)
@@ -457,6 +569,22 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		CookieSecure:   false,
 		Idem:           idemStore,
 		Log:            log,
+		INNLookup:      innLookupSvc,
+		INNRequired:    cfg.INNVerificationRequired,
+		OnJoinRequest: func(ctx context.Context, supplierID string, jr innlookup.JoinRequest) {
+			if notifSvc == nil {
+				return
+			}
+			_ = notifSvc.CreateNotification(
+				ctx,
+				supplierID,
+				string(auth.RoleAdmin),
+				"JOIN_REQUEST_CREATED",
+				"Team access request for matching INN",
+				fmt.Sprintf("%s (%s) requested %s access for INN %s", jr.RequesterName, jr.RequesterPhone, jr.RoleSought, jr.NormalizedINN),
+				"/settings/team?tab=join-requests",
+			)
+		},
 	})
 
 	// Role hubs share the cache backend for Pub/Sub fan-out. Production swaps
@@ -541,7 +669,13 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	creditPolicySvc := credit.NewPolicyService(creditPolicyRepo, creditSvc)
 	creditSvc.SetPolicyGate(creditPolicySvc)
 	arSvc := ar.NewService(arRepo)
+	arSvc.SetCreditClearer(creditSvc.ClearBalanceInTxn)
+	retailerSvc.SetMigrationAR(&migrationARAdapter{arSvc: arSvc, spanner: spannerClient})
+	if notifSvc != nil {
+		retailerSvc.SetMigrationNotifier(notifSvc.CreateNotification)
+	}
 	arDunning := ar.NewDunningWorker(arSvc, log)
+	arPromiseBreach := ar.NewPromiseBreachWorker(arSvc, log)
 	arDunning.SetDelinquencyBump(func(ctx context.Context, supplierID, retailerID string) error {
 		return creditSvc.BumpDelinquency(ctx, retailerID, supplierID)
 	})
@@ -549,6 +683,9 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		return creditSvc.FreezeProfile(ctx, retailerID, supplierID, "dunning_credit_hold")
 	})
 	// Phase 1 money surfaces: payouts (bank-file) + billing fee schedule.
+	// Note: feeResolver is shared across payoutSvc, orderSvc, and billingInvoiceWorker;
+	// billingInvoiceWorker reconciles settled per-order commissions (COMMISSION_SETTLED / InvoiceSettlementSlices)
+	// and refunded GMV (ORDER_REFUNDED / OrderPaymentLegs) so GmvBps is never double-charged.
 	var payoutSvc *payout.Service
 	var billingInvoiceWorker *billing.InvoiceWorker
 	var feeResolver *billing.FeeScheduleResolver
@@ -576,6 +713,8 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	var cashReconHandlers *cashrecon.Handlers
 	var creditNoteSvc *creditnote.Service
 	var creditNoteHandlers *creditnote.Handlers
+	var glSvc *gl.Service
+	var reconSvc *recon.Service
 	cashReconRequired := strings.EqualFold(strings.TrimSpace(os.Getenv("CASH_RECONCILIATION_REQUIRED")), "true")
 	if spannerClient != nil {
 		complianceSvc = compliance.NewService(compliance.NewSpannerRepository(spannerClient), slog.Default())
@@ -592,7 +731,15 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 			// Last-resort seed only when PreferTenantSupplierID + claims are empty.
 			SupplierID: func() string { return supplierSeed.SupplierID },
 		}
+		glSvc = gl.NewService(spannerClient)
+		seedPack, _ := auth.CountryFromContext(ctx, supplierSeed.SupplierID)
+		if err := glSvc.SeedDefaults(ctx, supplierSeed.SupplierID, seedPack, cfg.SeedSupplierCurrency); err != nil {
+			log.Warn("gl defaults seed skipped or failed", "err", err)
+		}
+		reconSvc = recon.NewService(spannerClient)
 	}
+	auditSvc, iamSvc := setupAuditAndIAM(ctx, spannerClient, cfg, log)
+	ontSvc := setupOntologyService(spannerClient, cfg, log)
 
 	orderSvc := order.NewService(order.ServiceConfig{
 		Repo:                  orderRepo,
@@ -621,6 +768,15 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	})
 	orderSvc.SetManifestStore(manifestStore)
 	orderSvc.SetDoorstepShortfall(payment.WriteDoorstepShortfall)
+	if feeResolver != nil {
+		orderSvc.SetPerOrderFeeResolver(func(ctx context.Context, supplierID string) (int64, string, error) {
+			sched, err := feeResolver.Resolve(ctx, supplierID)
+			if err != nil {
+				return 0, "", err
+			}
+			return sched.PerOrderMinor, sched.Currency, nil
+		})
+	}
 	if spannerClient != nil {
 		segmentSvc := segment.NewService(segment.NewSpannerRepository(spannerClient))
 		allocSvc := allocation.NewAllocationService(spannerClient)
@@ -658,24 +814,78 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		claimsSvc.SetCreditNotes(creditnote.ClaimsBridge{Svc: creditNoteSvc})
 	}
 	orderSvc.SetClaimsBridge(&driverClaimsBridge{svc: claimsSvc})
-	order.StartPreorderSweeperContext(appCtx, orderSvc, sweeperWg)
-	order.StartFiscalSweeperContext(appCtx, orderSvc, sweeperWg)
-	order.StartStaleReservationSweeperContext(appCtx, orderSvc, sweeperWg)
-	credit.StartOverdueCreditSweeperContext(appCtx, creditSvc, 1*time.Minute, sweeperWg)
-	sweeperWg.Add(2)
-	go func() {
-		defer sweeperWg.Done()
-		orderSvc.StartNegotiationSweeper(appCtx)
-	}()
-	go func() {
-		defer sweeperWg.Done()
-		orderSvc.StartDeferredPaymentSweeper(appCtx, 5*time.Minute)
-	}()
-	if spannerClient != nil {
-		if n, err := orderSvc.BackfillScheduledReservations(ctx, 500); err != nil {
-			log.Warn("scheduled reservation backfill failed", "err", err)
-		} else if n > 0 {
-			log.Info("scheduled reservation backfill complete", "orders", n)
+	if fn := CheckOrderDraftSoD(iamSvc); fn != nil {
+		orderSvc.SetDraftSoDCheck(fn)
+	}
+	if cfg.RunsWorkers() {
+		startSpawningSweeper(appCtx, sweeperWg, leaseMgr, "sweeper:order_preorder", workerHolderID, log, func(leaseCtx context.Context, localWg *sync.WaitGroup) {
+			order.StartPreorderSweeperContext(leaseCtx, orderSvc, localWg)
+		})
+		startSpawningSweeper(appCtx, sweeperWg, leaseMgr, "sweeper:order_fiscal", workerHolderID, log, func(leaseCtx context.Context, localWg *sync.WaitGroup) {
+			order.StartFiscalSweeperContext(leaseCtx, orderSvc, localWg)
+		})
+		startSpawningSweeper(appCtx, sweeperWg, leaseMgr, "sweeper:order_stale_reservation", workerHolderID, log, func(leaseCtx context.Context, localWg *sync.WaitGroup) {
+			order.StartStaleReservationSweeperContext(leaseCtx, orderSvc, localWg)
+		})
+		startSpawningSweeper(appCtx, sweeperWg, leaseMgr, "sweeper:credit_overdue", workerHolderID, log, func(leaseCtx context.Context, localWg *sync.WaitGroup) {
+			credit.StartOverdueCreditSweeperContext(leaseCtx, creditSvc, 1*time.Minute, localWg)
+		})
+		startReconNightlyWorker(appCtx, sweeperWg, leaseMgr, workerHolderID, log, reconSvc)
+		startAuditAnchorDailyWorker(appCtx, sweeperWg, leaseMgr, workerHolderID, log, auditSvc)
+		startOntologyRebuildNightlyWorker(appCtx, sweeperWg, leaseMgr, workerHolderID, log, ontSvc)
+		workerlease.StartLeasedLoop(appCtx, sweeperWg, leaseMgr, workerlease.Config{
+			LeaseName: "sweeper:order_negotiation",
+			HolderID:  workerHolderID,
+			TTL:       60 * time.Second,
+			Log:       log,
+		}, func(leaseCtx context.Context) {
+			orderSvc.StartNegotiationSweeper(leaseCtx)
+		})
+		workerlease.StartLeasedLoop(appCtx, sweeperWg, leaseMgr, workerlease.Config{
+			LeaseName: "sweeper:order_deferred_payment",
+			HolderID:  workerHolderID,
+			TTL:       60 * time.Second,
+			Log:       log,
+		}, func(leaseCtx context.Context) {
+			orderSvc.StartDeferredPaymentSweeper(leaseCtx, 5*time.Minute)
+		})
+		workerlease.StartLeasedLoop(appCtx, sweeperWg, leaseMgr, workerlease.Config{
+			LeaseName: "sweeper:order_saga_recovery",
+			HolderID:  workerHolderID,
+			TTL:       60 * time.Second,
+			Log:       log,
+		}, func(leaseCtx context.Context) {
+			order.StartSagaRecoveryWorker(leaseCtx, orderSvc, 30*time.Second)
+		})
+		if spannerClient != nil {
+			workerlease.StartLeasedLoop(appCtx, sweeperWg, leaseMgr, workerlease.Config{
+				LeaseName: "sweeper:payment_ledger_reconciler",
+				HolderID:  workerHolderID,
+				TTL:       60 * time.Second,
+				Log:       log,
+			}, func(leaseCtx context.Context) {
+				payment.StartLedgerReconciler(leaseCtx, payment.NewSpannerLedgerReconciler(spannerClient, log), 5*time.Minute)
+			})
+			acquired, backfillErr := workerlease.WithLease(ctx, leaseMgr, workerlease.Config{
+				LeaseName: "backfill:scheduled_reservations",
+				HolderID:  workerHolderID,
+				TTL:       2 * time.Minute,
+				Log:       log,
+			}, func(leaseCtx context.Context) error {
+				n, err := orderSvc.BackfillScheduledReservations(leaseCtx, 500)
+				if err != nil {
+					return err
+				}
+				if n > 0 {
+					log.Info("scheduled reservation backfill complete", "orders", n)
+				}
+				return nil
+			})
+			if backfillErr != nil {
+				log.Warn("scheduled reservation backfill failed", "err", backfillErr)
+			} else if !acquired {
+				log.Info("scheduled reservation backfill skipped; lease held by another worker")
+			}
 		}
 	}
 	var optimizerCli *optimizerclient.Client
@@ -721,6 +931,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		FallbackDepotLng:     cfg.DeliveryZoneCenterLng,
 		ReplenishmentEngine:  replenishmentEngine,
 		FactoryPlanning:      factoryPlanning,
+		UnifiedGraph:         planning.AdaptOntologyService(ontSvc, strings.TrimSpace(os.Getenv("CELL_ID"))),
 	})
 	retailerSvc.SetOrderLifecycle(orderSvc)
 	// Auto-order place mode: real order.Create (never mobile_compat). Flag default off.
@@ -878,9 +1089,12 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 				return driver.OpenFiscalSnapshot{}, err
 			}
 			return driver.OpenFiscalSnapshot{
-				Count:    snap.Count,
-				OrderIDs: snap.OrderIDs,
-				Frozen:   snap.Frozen,
+				Count:            snap.Count,
+				OrderIDs:         snap.OrderIDs,
+				Frozen:           snap.Frozen,
+				RetryQueuedCount: snap.RetryQueuedCount,
+				FiscalIssueCount: snap.FiscalIssueCount,
+				RetryOrderIDs:    snap.RetryOrderIDs,
 			}, nil
 		}
 	}
@@ -890,6 +1104,20 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		msp.WithBreaker(outboundCircuits.Soliq)
 	}
 	orderSvc.SetFiscalProvider(fiscalProvider)
+	if spannerClient != nil {
+		var fiscalSMS *notifications.SMSTransport
+		if strings.TrimSpace(smsTransport.Provider) != "" {
+			fiscalSMS = smsTransport
+		}
+		tgFiscalSender := notifications.NewTelegramBotSenderFromEnv(log)
+		tgFiscalSender.Breaker = outboundCircuits.Notification
+		orderSvc.SetFiscalNotifier(&order.DefaultFiscalSuccessNotifier{
+			Spanner:  spannerClient,
+			SMS:      fiscalSMS,
+			Telegram: tgFiscalSender,
+			Log:      log,
+		})
+	}
 	var buyerAcceptancePoller *order.BuyerAcceptancePoller
 	if auth.BuyerAcceptancePollerAllowed() {
 		if soliqClient := fiscalProvider.GetSoliqClient(); soliqClient != nil && creditNoteSvc != nil {
@@ -986,6 +1214,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	}
 	paymentSvc := payment.NewService(payment.ServiceConfig{
 		Repo:                            paymentRepo,
+		SpannerClient:                   spannerClient,
 		Cache:                           cacheClient,
 		Idem:                            idemStore,
 		SeedSupplierID:                  supplierSeed.SupplierID,
@@ -1001,6 +1230,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		StripeWebhookSecret:             cfg.StripeWebhookSecret,
 		PaymeWebhookSecret:              cfg.PaymeWebhookSecret,
 		ClickWebhookSecret:              cfg.ClickWebhookSecret,
+		UzumWebhookSecret:               cfg.UzumWebhookSecret,
 		WebhookInbox:                    webhookInbox,
 		AirwallexDirectExecutionEnabled: cfg.AirwallexDirectExecutionEnabled,
 		Log:                             log,
@@ -1039,6 +1269,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	paymentSvc.SetFxRates(fxSvc)
 
 	orderSvc.SetARService(arSvc)
+	orderSvc.SetCreditTermsLookup(creditPolicySvc.ResolveTermsForOrder)
 	// Claims chargeback: supplier ledger debit + optional Global Pay partial refund.
 	claimsSvc.SetSettler(&claimPaymentSettler{pay: paymentSvc})
 	claimsSvc.SetStoreCredit(creditSvc)
@@ -1065,12 +1296,17 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		whOpsDrivers = warehouseOpsDriversQuery(spannerClient)
 		whOpsVehicles = warehouseOpsVehiclesQuery(spannerClient)
 	}
-	stocklots.SetPickWavesEnabled(strings.EqualFold(strings.TrimSpace(os.Getenv("WMS_PICK_WAVES_ENABLED")), "true"))
-	stocklots.SetCycleCountsEnabled(strings.EqualFold(strings.TrimSpace(os.Getenv("WMS_CYCLE_COUNTS_ENABLED")), "true"))
-	stocklots.SetPickSShapeEnabled(strings.EqualFold(strings.TrimSpace(os.Getenv("WMS_PICK_SSHAPE_ENABLED")), "true"))
-	stocklots.SetSealSoftWarnEnabled(strings.EqualFold(strings.TrimSpace(os.Getenv("WMS_SEAL_SOFT_WARN")), "true"))
-	stocklots.SetLoadLedgerEnabled(strings.EqualFold(strings.TrimSpace(os.Getenv("PAYLOAD_LOAD_LEDGER_ENABLED")), "true"))
-	stocklots.SetLaborCapacityEnforce(strings.EqualFold(strings.TrimSpace(os.Getenv("LABOR_CAPACITY_ENFORCE")), "true"))
+	configureWMSFlagsFromEnv()
+	stocklots.SetTemperatureBreachRaiser(func(ctx context.Context, txn *spanner.ReadWriteTransaction, args stocklots.TemperatureBreachArgs) error {
+		return orderSvc.RaiseSystemTemperatureBreachInTxn(ctx, txn, order.SystemTemperatureBreachArgs{
+			ManifestID: args.ManifestID,
+			ReadingID:  args.ReadingID,
+			TempC:      args.TempC,
+			MinC:       args.MinC,
+			MaxC:       args.MaxC,
+			OrderIDs:   args.OrderIDs,
+		})
+	})
 
 	warehouseSvc := warehouse.NewService(warehouse.ServiceConfig{
 		Repo:                 warehouseRepo,
@@ -1236,6 +1472,11 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	}
 	supplierSvc.OnRegistered = onRegistered
 	tenantRegSvc.OnRegistered = onRegistered
+	if retailerSvc != nil {
+		retailerSvc.OnRegistered = func(ctx context.Context, retailerID, name string) error {
+			return platformAdminSvc.EnsurePending(ctx, platformadmin.TenantRetailer, retailerID, name)
+		}
+	}
 
 	pushBridge, err := setupPushBridge(cfg, spannerClient, tokenRepo, log)
 	if err != nil {
@@ -1257,6 +1498,46 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		return nil, err
 	}
 	arDunning.SetNotify(dunningNotify)
+	arPromiseBreach.SetOnBreach(func(ctx context.Context, supplierID, retailerID, _ string) error {
+		if err := creditPolicySvc.HoldRelationship(ctx, supplierID, retailerID, "system:promise_breach", "SYSTEM"); err != nil && !errors.Is(err, credit.ErrProfileNotFound) {
+			return err
+		}
+		if err := creditSvc.FreezeProfile(ctx, retailerID, supplierID, "promise_breach"); err != nil && !errors.Is(err, credit.ErrProfileNotFound) {
+			return err
+		}
+		return nil
+	})
+	arPromiseBreach.SetNotify(func(ctx context.Context, promise ar.PaymentPromise, outcome string) error {
+		title := "Payment promise update"
+		body := fmt.Sprintf("Promise %s: %s", promise.PromiseID, outcome)
+		switch outcome {
+		case ar.PromiseStatusFulfilled:
+			title = "To'lov va'dasi bajarildi"
+		case ar.PromiseStatusBreached:
+			title = "To'lov va'dasi muddati o'tdi"
+		}
+		if notifSvc != nil {
+			if err := notifSvc.CreateNotification(ctx, promise.RetailerID, "RETAILER", "AR_PROMISE_"+outcome, title, body, "/credit"); err != nil {
+				log.WarnContext(ctx, "promise retailer notification failed", "promise_id", promise.PromiseID, "err", err)
+			}
+			if err := notifSvc.CreateNotification(ctx, promise.SupplierID, "ADMIN", "AR_PROMISE_"+outcome, title, body, "/credit/collections"); err != nil {
+				log.WarnContext(ctx, "promise supplier notification failed", "promise_id", promise.PromiseID, "err", err)
+			}
+		}
+		if pushBridge != nil {
+			pushData := map[string]string{
+				"type":        "AR_PROMISE_" + outcome,
+				"promise_id":  promise.PromiseID,
+				"invoice_id":  promise.InvoiceID,
+				"supplier_id": promise.SupplierID,
+				"retailer_id": promise.RetailerID,
+				"outcome":     outcome,
+			}
+			pushBridge.NotifyActor(ctx, promise.RetailerID, "RETAILER", pushData)
+			pushBridge.NotifyActor(ctx, promise.SupplierID, "ADMIN", pushData)
+		}
+		return nil
+	})
 
 	forecastAccuracy := &planning.AccuracyService{Client: spannerClient, Log: log}
 	forecastAccuracy.Notify = func(ctx context.Context, supplierID, warehouseID, productID string, ts float64, day civil.Date) error {
@@ -1278,6 +1559,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		return nil, err
 	}
 	partnerSvc := partnerSys.svc
+	supplierSvc.SetOnecPostings(partnerSvc.OnecPostings())
 	partnerHandlers := partnerSys.handlers
 	partnerKeys := partnerSys.keys
 	partnerJWTSecret := partnerSys.jwtSecret
@@ -1292,7 +1574,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 			cfg, kafkaAuth, redisAdapter, spannerClient, cacheClient, pushBridge,
 			notifSvc, retailerSvc, retailerHub, supplierHub, driverHub, warehouseHub,
 			factoryHub, payloadHub, orderSvc, warehouseSvc, returnsSvc, claimsSvc,
-			partnerSvc, fxSvc, telemetryHub, routingSvc, log,
+			partnerSvc, fxSvc, telemetryHub, routingSvc, ontSvc, log,
 		)
 		if err != nil {
 			cancelSweepers()
@@ -1301,6 +1583,19 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		consumers = c
 		if c.cleanup != nil {
 			cleanup = append(cleanup, c.cleanup)
+		}
+	}
+
+	var bqSinkConsumer *kafka.Consumer
+	if cfg.RunsWorkers() {
+		bqc, _, bqCleanup, bqErr := NewBQSinkConsumer(appCtx, cfg, spannerClient, log)
+		if bqErr != nil {
+			cancelSweepers()
+			return nil, bqErr
+		}
+		bqSinkConsumer = bqc
+		if bqCleanup != nil {
+			cleanup = append(cleanup, bqCleanup)
 		}
 	}
 
@@ -1374,6 +1669,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		NotificationInbox:       notifInbox,
 		SupplierService:         supplierSvc,
 		OrgOIDC:                 orgOIDC,
+		INNLookup:               innLookupSvc,
 		TenantRegister:          tenantRegSvc,
 		RetailerService:         retailerSvc,
 		DriverService:           driverSvc,
@@ -1399,6 +1695,8 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		CreditService:           creditSvc,
 		CreditPolicyService:     creditPolicySvc,
 		ARService:               arSvc,
+		GL:                      glSvc,
+		Recon:                   reconSvc,
 		CashReconHandlers:       cashReconHandlers,
 		CashReconService:        cashReconSvc,
 		CashReconEscalation:     cashReconEscalation,
@@ -1452,14 +1750,43 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		PartnerEdiInbound:       partnerEdiIn,
 		PartnerEdiOutbound:      partnerEdiOut,
 		ARDunningWorker:         arDunning,
+		ARPromiseBreachWorker:   arPromiseBreach,
 		PayoutService:           payoutSvc,
 		BillingInvoiceWorker:    billingInvoiceWorker,
 		ForecastAccuracy:        forecastAccuracy,
 		ForecastRunner:          forecastRunner,
-		FoundryEngine:           foundry.NewEngine().WithSpannerClient(spannerClient),
+		FoundryEngine:           foundry.NewEngine().WithSpannerClient(spannerClient).WithAuditHook(BuildFoundryAuditHook(auditSvc, log)),
+		Audit:                   auditSvc,
+		IAM:                     iamSvc,
+		Ontology:                ontSvc,
+		BQSinkConsumer:          bqSinkConsumer,
+		SMSTransport:            smsTransport,
+		LeaseManager:            leaseMgr,
+		WorkerHolderID:          workerHolderID,
 		sweeperWg:               sweeperWg,
 		cancelSweepers:          cancelSweepers,
 		cleanup:                 cleanup,
+	}
+
+	if err := SetupWave3A(ctx, cfg, spannerClient, fiscalProvider, app, log); err != nil {
+		app.Close()
+		return nil, err
+	}
+	if err := SetupWave3B(ctx, cfg, spannerClient, app, log); err != nil {
+		app.Close()
+		return nil, err
+	}
+	if err := SetupWave3C(ctx, cfg, spannerClient, app, log); err != nil {
+		app.Close()
+		return nil, err
+	}
+	if err := SetupWave4A(ctx, cfg, spannerClient, app, log); err != nil {
+		app.Close()
+		return nil, err
+	}
+	if err := SetupWave4B(ctx, cfg, spannerClient, app, log); err != nil {
+		app.Close()
+		return nil, err
 	}
 
 	if consumers != nil {
@@ -1471,6 +1798,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		app.BillingTierConsumer = consumers.billingTierConsumer
 		app.PartnerEventConsumer = consumers.partnerEventConsumer
 		app.TwinEventConsumer = consumers.twinEventConsumer
+		app.OntologyEventConsumer = consumers.ontologyEventConsumer
 	}
 
 	return app, nil
@@ -1529,4 +1857,40 @@ func (a *App) IdempotencyMiddleware() func(http.Handler) http.Handler {
 // IdempotencyMiddleware wraps idempotency.Middleware for bootstrap consumers.
 func IdempotencyMiddleware(store idempotency.Store) func(http.Handler) http.Handler {
 	return idempotency.Middleware(store)
+}
+
+func startSpawningSweeper(
+	ctx context.Context,
+	wg *sync.WaitGroup,
+	leaseMgr workerlease.Manager,
+	leaseName string,
+	holderID string,
+	log *slog.Logger,
+	startFn func(leaseCtx context.Context, localWg *sync.WaitGroup),
+) {
+	workerlease.StartLeasedLoop(ctx, wg, leaseMgr, workerlease.Config{
+		LeaseName: leaseName,
+		HolderID:  holderID,
+		TTL:       60 * time.Second,
+		Log:       log,
+	}, func(leaseCtx context.Context) {
+		var localWg sync.WaitGroup
+		startFn(leaseCtx, &localWg)
+		<-leaseCtx.Done()
+		localWg.Wait()
+	})
+}
+
+func configureWMSFlagsFromEnv() {
+	envTrue := func(key string) bool {
+		return strings.EqualFold(strings.TrimSpace(os.Getenv(key)), "true")
+	}
+	stocklots.SetLotsEnabled(envTrue("WMS_LOTS_ENABLED"))
+	stocklots.SetPickWavesEnabled(envTrue("WMS_PICK_WAVES_ENABLED"))
+	stocklots.SetCycleCountsEnabled(envTrue("WMS_CYCLE_COUNTS_ENABLED"))
+	stocklots.SetPickSShapeEnabled(envTrue("WMS_PICK_SSHAPE_ENABLED"))
+	stocklots.SetSealSoftWarnEnabled(envTrue("WMS_SEAL_SOFT_WARN"))
+	stocklots.SetColdChainEnabled(envTrue("WMS_COLD_CHAIN_ENABLED"))
+	stocklots.SetLoadLedgerEnabled(envTrue("PAYLOAD_LOAD_LEDGER_ENABLED"))
+	stocklots.SetLaborCapacityEnforce(envTrue("LABOR_CAPACITY_ENFORCE"))
 }

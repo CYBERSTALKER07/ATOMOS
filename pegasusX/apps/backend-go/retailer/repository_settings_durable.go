@@ -17,18 +17,31 @@ import (
 func (s *Service) loadAutoOrderDurable(ctx context.Context, retailerID string) AutoOrderSettings {
 	if s.spannerClient != nil {
 		row, err := s.spannerClient.Single().ReadRow(ctx, "RetailerAutoOrderSettings",
-			spanner.Key{retailerID}, []string{"SettingsJson"})
+			spanner.Key{retailerID}, []string{"SettingsJson", "GlobalEnabled"})
 		if err == nil {
 			var raw string
-			if err := row.Columns(&raw); err == nil && strings.TrimSpace(raw) != "" {
+			var globalEnabled spanner.NullBool
+			if err := row.Columns(&raw, &globalEnabled); err == nil {
 				var settings AutoOrderSettings
-				if json.Unmarshal([]byte(raw), &settings) == nil {
+				decoded := false
+				if strings.TrimSpace(raw) != "" {
+					if err := json.Unmarshal([]byte(raw), &settings); err == nil {
+						decoded = true
+					} else if s.log != nil {
+						s.log.Warn("auto-order settings json decode failed", "retailer_id", retailerID, "err", err)
+					}
+				}
+				if decoded || globalEnabled.Valid {
+					// Preserve true if either legacy SettingsJson or the indexed GlobalEnabled column enables it.
+					if globalEnabled.Valid && (globalEnabled.Bool || !decoded) {
+						settings.GlobalEnabled = globalEnabled.Bool
+					}
 					// keep memory warm
 					s.saveAutoOrderSettings(retailerID, settings)
 					return cloneAutoOrderSettings(settings)
 				}
 			}
-		} else if !isNotFound(err) {
+		} else if !isNotFound(err) && s.log != nil {
 			s.log.Warn("auto-order spanner read failed", "retailer_id", retailerID, "err", err)
 		}
 	}
@@ -49,6 +62,7 @@ func (s *Service) saveAutoOrderDurable(ctx context.Context, retailerID, actorUse
 	_, err = s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		m := spanner.InsertOrUpdateMap("RetailerAutoOrderSettings", map[string]any{
 			"RetailerId":      retailerID,
+			"GlobalEnabled":   settings.GlobalEnabled,
 			"SettingsJson":    string(raw),
 			"UpdatedByUserId": actorUserID,
 			"UpdatedAt":       spanner.CommitTimestamp,

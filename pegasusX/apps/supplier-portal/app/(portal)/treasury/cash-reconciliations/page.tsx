@@ -6,11 +6,12 @@ import { createSupplierApi } from "@/lib/api";
 import type { CashReconciliationRow } from "@pegasusx/types";
 import { PageChrome } from "@/components/PageChrome";
 import StatusBadge from "@/components/StatusBadge";
+import { formatGroupedInteger, minorToWholeTrunc } from "@/lib/money";
 
 const api = createSupplierApi();
 
-function formatMinor(n: number): string {
-  return (n ?? 0).toLocaleString();
+function formatWholeSom(minor: number | null | undefined): string {
+  return `${formatGroupedInteger(minorToWholeTrunc(minor ?? 0))} so'm`;
 }
 
 export default function CashReconciliationsPage() {
@@ -96,8 +97,8 @@ export default function CashReconciliationsPage() {
               {row.route_id ? <span className="text-[var(--color-md-outline)]">Route {row.route_id}</span> : null}
             </div>
             <p>
-              Expected {formatMinor(row.expected_cash_minor)} · Declared {formatMinor(row.declared_cash_minor)} · Diff{" "}
-              <strong>{formatMinor(row.difference_minor)}</strong>
+              Expected {formatWholeSom(row.expected_cash_minor)} · Declared {formatWholeSom(row.declared_cash_minor)} · Diff{" "}
+              <strong>{formatWholeSom(row.difference_minor)}</strong>
             </p>
             <p className="text-sm text-[var(--color-md-outline)] mt-1">
               Shift {row.shift_date} · {new Date(row.created_at).toLocaleString()}

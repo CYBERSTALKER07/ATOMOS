@@ -30,3 +30,10 @@ kafka_topic_inventory_import = "staging.events.inventory-import"
 firebase_auth_enabled          = true
 enable_observability_resources = false
 jwt_secret                     = ""
+
+# M0.5 Analytics, Vertex AI & WORM Audit Storage (cell-regional asia-south1)
+worm_audit_bucket_name        = "pegasusx-prod-uz-worm-audit"
+vertex_staging_bucket_name    = "pegasusx-prod-uz-vertex-staging"
+bigquery_dataset_prefix       = ""
+enable_analytics_cmek         = false
+enable_analytics_iam_bindings = true

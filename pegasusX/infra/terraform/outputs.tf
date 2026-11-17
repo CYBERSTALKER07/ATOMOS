@@ -185,3 +185,34 @@ output "terraform_state_prefix" {
   description = "Declared GCS remote state prefix for this cell."
   value       = var.terraform_state_prefix
 }
+
+# 8. Analytics, Vertex AI & WORM Audit Outputs
+output "worm_audit_bucket_name" {
+  description = "GCS bucket name for WORM audit hash-chain anchors and period-close snapshots."
+  value       = module.storage_security.worm_audit_bucket_name
+}
+
+output "worm_audit_bucket_url" {
+  description = "GCS URL for WORM audit hash-chain anchors and period-close snapshots."
+  value       = module.storage_security.worm_audit_bucket_url
+}
+
+output "analytics_dataset_ids" {
+  description = "Map of cell-regional BigQuery dataset IDs (raw, curated, features)."
+  value       = module.analytics.dataset_ids
+}
+
+output "analytics_table_ids" {
+  description = "Map of cell-regional BigQuery analytical tables and authorized tenant views."
+  value       = module.analytics.table_ids
+}
+
+output "vertex_staging_bucket_name" {
+  description = "GCS bucket name for Vertex AI pipeline staging."
+  value       = module.analytics.vertex_staging_bucket_name
+}
+
+output "vertex_staging_bucket_url" {
+  description = "GCS URL for Vertex AI pipeline staging."
+  value       = module.analytics.vertex_staging_bucket_url
+}

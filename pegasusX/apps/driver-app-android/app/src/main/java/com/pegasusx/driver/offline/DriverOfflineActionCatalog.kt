@@ -71,6 +71,11 @@ object DriverOfflineActionCatalog : OfflineEndpointCatalog {
 
     fun isSuccessHttp(code: Int): Boolean = OfflineHttpSemantics.isSuccessHttp(code)
 
+    fun isConflictHttp(code: Int): Boolean = OfflineHttpSemantics.isConflictHttp(code)
+
+    fun isIdempotentReplay409(statusCode: Int, responseBody: String?): Boolean =
+        OfflineHttpSemantics.isIdempotentReplay409(statusCode, responseBody)
+
     fun isNetworkEnqueueable(error: Throwable): Boolean {
         if (OfflineHttpSemantics.isNetworkEnqueueable(error)) return true
         return when (error) {

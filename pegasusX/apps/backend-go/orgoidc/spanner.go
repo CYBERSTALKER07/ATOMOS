@@ -2,9 +2,11 @@ package orgoidc
 
 import (
 	"context"
+	"errors"
 	"strings"
 
 	"cloud.google.com/go/spanner"
+	"google.golang.org/grpc/codes"
 )
 
 // SpannerStore persists SupplierOIDC. Nil client → treat as empty store.
@@ -23,7 +25,7 @@ func (s *SpannerStore) Get(ctx context.Context, supplierID string) (Config, bool
 	row, err := s.client.Single().ReadRow(ctx, "SupplierOIDC", spanner.Key{supplierID},
 		[]string{"SupplierId", "Issuer", "ClientId", "Audience", "AuthorizationEndpoint", "RedirectURI", "AdminEmails", "Enabled"})
 	if err != nil {
-		if err == spanner.ErrRowNotFound {
+		if errors.Is(err, spanner.ErrRowNotFound) || spanner.ErrCode(err) == codes.NotFound {
 			return Config{}, false, nil
 		}
 		return Config{}, false, err

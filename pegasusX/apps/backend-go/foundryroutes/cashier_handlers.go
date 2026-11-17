@@ -7,8 +7,20 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/foundry"
 )
+
+const RoleFinance auth.Role = "FINANCE"
+
+func isAllowedCashierRole(role auth.Role) bool {
+	switch role {
+	case auth.RoleWarehouse, auth.RoleWarehouseAdmin, auth.RoleAdmin, auth.RolePlatformAdmin, RoleFinance:
+		return true
+	default:
+		return false
+	}
+}
 
 type cashierHandler struct {
 	eng *foundry.Engine
@@ -18,13 +30,24 @@ func newCashierHandler(eng *foundry.Engine) *cashierHandler {
 	return &cashierHandler{eng: eng}
 }
 
+func (h *cashierHandler) requireCashierVaultRole(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		claims, ok := auth.FromContext(r.Context())
+		if !ok || !isAllowedCashierRole(claims.Role) {
+			writeJSON(w, http.StatusForbidden, map[string]any{"error": "forbidden: insufficient cashier vault role"})
+			return
+		}
+		next(w, r)
+	}
+}
+
 func (h *cashierHandler) mountRoutes(r chi.Router) {
-	r.Post("/v1/foundry/cashier/sessions", h.handleStartCashierSession)
-	r.Post("/v1/foundry/cashier/sessions/{sessionID}/blind-count", h.handleSubmitBlindCount)
-	r.Post("/v1/foundry/cashier/reclassify-tender", h.handleReclassifyTenderRRN)
-	r.Post("/v1/foundry/cashier/vault/cit-handover", h.handleCITHandover)
-	r.Post("/v1/foundry/guards/split-tender-reconcile", h.handleSplitTenderReconcile)
-	r.Post("/v1/foundry/guards/aml-check", h.handleAMLCheck)
+	r.Post("/v1/foundry/cashier/sessions", h.requireCashierVaultRole(h.handleStartCashierSession))
+	r.Post("/v1/foundry/cashier/sessions/{sessionID}/blind-count", h.requireCashierVaultRole(h.handleSubmitBlindCount))
+	r.Post("/v1/foundry/cashier/reclassify-tender", h.requireCashierVaultRole(h.handleReclassifyTenderRRN))
+	r.Post("/v1/foundry/cashier/vault/cit-handover", h.requireCashierVaultRole(h.handleCITHandover))
+	r.Post("/v1/foundry/guards/split-tender-reconcile", h.requireCashierVaultRole(h.handleSplitTenderReconcile))
+	r.Post("/v1/foundry/guards/aml-check", h.requireCashierVaultRole(h.handleAMLCheck))
 }
 
 func (h *cashierHandler) handleStartCashierSession(w http.ResponseWriter, r *http.Request) {
@@ -55,6 +78,11 @@ func (h *cashierHandler) handleSubmitBlindCount(w http.ResponseWriter, r *http.R
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "invalid JSON payload"})
 		return
+	}
+	if req.ToleranceThresholdMinor < 0 {
+		req.ToleranceThresholdMinor = 0
+	} else if req.ToleranceThresholdMinor > foundry.MaxAllowedToleranceMinor {
+		req.ToleranceThresholdMinor = foundry.MaxAllowedToleranceMinor
 	}
 	view, err := h.eng.SubmitBlindDenominationCount(r.Context(), sessionID, req.DenominationsUZS, req.ToleranceThresholdMinor)
 	if err != nil {

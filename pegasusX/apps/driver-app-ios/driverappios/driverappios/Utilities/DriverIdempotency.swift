@@ -73,6 +73,14 @@ enum DriverIdempotency {
         return "driver-sync-batch:\(driverId()):\(stableHash(sorted.joined(separator: ",")))"
     }
 
+    static func syncEscalation(itemIds: [String]) -> String {
+        let sorted = itemIds
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .sorted()
+        return "driver-sync-escalation:\(driverId()):\(stableHash(sorted.joined(separator: ",")))"
+    }
+
     static func markArrived(orderId: String) -> String {
         "driver-mark-arrived-\(orderId)"
     }

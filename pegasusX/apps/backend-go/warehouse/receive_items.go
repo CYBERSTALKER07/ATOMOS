@@ -23,6 +23,10 @@ type receiveLineInput struct {
 	LocationID       string
 	LotCode          string
 	ExpiryDate       string
+	UnitCostMinor    int64
+	VatMinor         int64
+	CreditAccount    string
+	VendorID         string
 }
 
 func (s *Service) receiveTransferWithItems(ctx context.Context, ops *auth.WarehouseOps, transferID string, lines []receiveLineInput) error {
@@ -51,9 +55,11 @@ func (s *Service) receiveTransferWithItems(ctx context.Context, ops *auth.Wareho
 		receivedByLocation := map[string]string{}
 		receivedByLotCode := map[string]string{}
 		receivedByExpiry := map[string]string{}
+		receivedLineByID := map[string]receiveLineInput{}
 		for _, line := range lines {
 			if id := strings.TrimSpace(line.ItemID); id != "" && line.ReceivedQuantity > 0 {
 				receivedByID[id] = line.ReceivedQuantity
+				receivedLineByID[id] = line
 				if loc := strings.TrimSpace(line.LocationID); loc != "" {
 					receivedByLocation[id] = loc
 				}
@@ -67,7 +73,8 @@ func (s *Service) receiveTransferWithItems(ctx context.Context, ops *auth.Wareho
 		}
 
 		var shortShippedItems []map[string]any
-		
+		var valuationItems []ReceiptValuationArgs
+
 		if supplyRequestID != "" {
 			itemStmt := spanner.Statement{
 				SQL: `SELECT ItemId, ProductId, COALESCE(ShippedQuantity, RequestedQuantity), COALESCE(ReceivedQuantity, 0)
@@ -93,7 +100,7 @@ func (s *Service) receiveTransferWithItems(ctx context.Context, ops *auth.Wareho
 				if v, ok := receivedByID[itemID]; ok && v > 0 {
 					received = v
 				}
-				
+
 				// Handle Short Shipments (Discrepancy) -> Auto-Backorder
 				if received < shipped {
 					shortShippedItems = append(shortShippedItems, map[string]any{
@@ -110,16 +117,17 @@ func (s *Service) receiveTransferWithItems(ctx context.Context, ops *auth.Wareho
 				if received <= 0 {
 					continue
 				}
+				var assignedLotID string
 				if stocklots.LotsEnabled() {
 					locID := strings.TrimSpace(receivedByLocation[itemID])
 					if locID == "" {
 						locID = "recv-default"
 					}
-					
+
 					// Edge Case: QA Quarantine handling
 					locationType := "STAGE"
 					if strings.ToUpper(locID) == "QA_HOLD" {
-					    locationType = "QUARANTINE"
+						locationType = "QUARANTINE"
 					}
 
 					if locID == "recv-default" || locationType == "QUARANTINE" {
@@ -143,11 +151,38 @@ func (s *Service) receiveTransferWithItems(ctx context.Context, ops *auth.Wareho
 							putReq.ExpiryDate = &t
 						}
 					}
-					if _, err := stocklots.PutawayInTxn(ctx, txn, putReq); err != nil {
+					putRes, err := stocklots.PutawayInTxn(ctx, txn, putReq)
+					if err != nil {
 						return err
+					}
+					if putRes != nil {
+						assignedLotID = putRes.LotID
 					}
 				} else if err := inventory.CreditSupplierInventoryV2InTxn(ctx, txn, supplierID, warehouseID, productID, received); err != nil {
 					return err
+				}
+				if lineMeta, ok := receivedLineByID[itemID]; ok && lineMeta.UnitCostMinor > 0 {
+					creditAcct := strings.ToUpper(strings.TrimSpace(lineMeta.CreditAccount))
+					if creditAcct == "" {
+						creditAcct = "GRNI"
+					}
+					valuationItems = append(valuationItems, ReceiptValuationArgs{
+						EntityID:       supplierID,
+						WarehouseID:    warehouseID,
+						ProductID:      productID,
+						LotID:          assignedLotID,
+						ReceiptRefType: "TRANSFER",
+						ReceiptRefID:   transferID,
+						Quantity:       received,
+						UnitCostMinor:  lineMeta.UnitCostMinor,
+						VatMinor:       lineMeta.VatMinor,
+						CreditAccount:  creditAcct,
+						VendorID:       lineMeta.VendorID,
+						Currency:       s.currency,
+						ExpiryDate:     receivedByExpiry[itemID],
+						IdempotencyKey: fmt.Sprintf("wh-recv:%s:%s", transferID, itemID),
+						ActorID:        auth.ActorFromContext(ctx),
+					})
 				}
 				if err := txn.BufferWrite([]*spanner.Mutation{spanner.UpdateMap("WarehouseSupplyRequestItems", map[string]any{
 					"RequestId":        supplyRequestID,
@@ -157,7 +192,7 @@ func (s *Service) receiveTransferWithItems(ctx context.Context, ops *auth.Wareho
 					return err
 				}
 			}
-			
+
 			// Auto-Backorder Creation
 			if len(shortShippedItems) > 0 {
 				newReqID := "REQ-BO-" + transferID
@@ -191,6 +226,15 @@ func (s *Service) receiveTransferWithItems(ctx context.Context, ops *auth.Wareho
 				"State":     "RECEIVED",
 				"UpdatedAt": spanner.CommitTimestamp,
 			})}); err != nil {
+				return err
+			}
+		}
+
+		s.mu.RLock()
+		valHook := s.valuationReceiptHook
+		s.mu.RUnlock()
+		if valHook != nil && len(valuationItems) > 0 {
+			if err := valHook(ctx, txn, valuationItems); err != nil {
 				return err
 			}
 		}
@@ -233,6 +277,10 @@ func parseReceiveItems(body []byte) []receiveLineInput {
 			LocationID       string `json:"location_id"`
 			LotCode          string `json:"lot_code"`
 			ExpiryDate       string `json:"expiry_date"`
+			UnitCostMinor    int64  `json:"unit_cost_minor"`
+			VatMinor         int64  `json:"vat_minor"`
+			CreditAccount    string `json:"credit_account"`
+			VendorID         string `json:"vendor_id"`
 		} `json:"items"`
 	}
 	if err := json.Unmarshal(body, &req); err != nil {
@@ -249,6 +297,10 @@ func parseReceiveItems(body []byte) []receiveLineInput {
 			LocationID:       strings.TrimSpace(row.LocationID),
 			LotCode:          strings.TrimSpace(row.LotCode),
 			ExpiryDate:       strings.TrimSpace(row.ExpiryDate),
+			UnitCostMinor:    row.UnitCostMinor,
+			VatMinor:         row.VatMinor,
+			CreditAccount:    strings.TrimSpace(row.CreditAccount),
+			VendorID:         strings.TrimSpace(row.VendorID),
 		})
 	}
 	return out

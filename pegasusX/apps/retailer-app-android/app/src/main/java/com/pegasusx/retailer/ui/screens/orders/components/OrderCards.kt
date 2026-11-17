@@ -103,6 +103,17 @@ fun ActiveOrderCard(
                                     .padding(horizontal = 5.dp, vertical = 1.dp),
                             )
                         }
+                        if (order.isMigrationOrigin) {
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                stringResource(R.string.mobile_retailer_nasiya_opening_migration_badge),
+                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp, fontWeight = FontWeight.ExtraBold),
+                                color = StatusOrange,
+                                modifier = Modifier
+                                    .background(StatusOrange.copy(alpha = 0.14f), RoundedCornerShape(4.dp))
+                                    .padding(horizontal = 5.dp, vertical = 1.dp),
+                            )
+                        }
                     }
                     Text(stringResource(R.string.mobile_retailer_ui_itemcount_items_displaytotal, order.itemCount, order.displayTotal), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
                 }
@@ -229,6 +240,17 @@ fun OrderedCard(
                                 color = Color.White,
                                 modifier = Modifier
                                     .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(4.dp))
+                                    .padding(horizontal = 5.dp, vertical = 1.dp),
+                            )
+                        }
+                        if (order.isMigrationOrigin) {
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                stringResource(R.string.mobile_retailer_nasiya_opening_migration_badge),
+                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp, fontWeight = FontWeight.ExtraBold),
+                                color = StatusOrange,
+                                modifier = Modifier
+                                    .background(StatusOrange.copy(alpha = 0.14f), RoundedCornerShape(4.dp))
                                     .padding(horizontal = 5.dp, vertical = 1.dp),
                             )
                         }

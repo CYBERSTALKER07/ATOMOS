@@ -170,6 +170,7 @@ func (s *Service) loadProductSupplierIDs(ctx context.Context, lines []LineItem) 
 
 // insertParentOrder writes ParentOrders + PARENT_ORDER_CREATED outbox in one RW txn (B3 M-P0-6).
 func (s *Service) insertParentOrder(ctx context.Context, parentID, retailerID, currency string, childCount int) error {
+	s.setParentSagaState(parentID, SagaStatePending)
 	if s.spannerClient == nil {
 		return nil
 	}
@@ -265,20 +266,6 @@ func (s *Service) updateParentOrderTotals(ctx context.Context, parentID, status,
 	return nil
 }
 
-func (s *Service) compensateParentCheckout(ctx context.Context, parentID string, created []Order) {
-	for i := range created {
-		o := created[i]
-		if s.repo != nil {
-			if full, ok, err := s.repo.GetOrder(ctx, o.OrderID); err == nil && ok {
-				o = full
-			}
-		}
-		if _, err := s.cancelOrderWithReason(ctx, &o, "system", "SYSTEM", "multi_supplier_checkout_abort", ""); err != nil {
-			s.log.Warn("compensate cancel failed", "order_id", o.OrderID, "parent_order_id", parentID, "err", err)
-		}
-	}
-	_ = s.updateParentOrderTotals(ctx, parentID, parentStatusCancelled, s.currency, 0, len(created))
-}
 
 func assertChildSuppliersSameMarket(_ context.Context, pack auth.MarketPack, groups []checkoutLineGroup) error {
 	packCountry, err := auth.PackCountryCode(pack)

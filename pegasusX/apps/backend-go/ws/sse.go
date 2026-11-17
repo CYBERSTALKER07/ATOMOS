@@ -177,16 +177,13 @@ func claimsFromSSERequest(req *http.Request, jwtSecret string) (auth.Claims, boo
 			return ident, true
 		}
 	}
+	// Browsers cannot attach Authorization on EventSource; accept short-lived WS/SSE tickets only (never session JWTs).
 	token := strings.TrimSpace(req.URL.Query().Get("token"))
 	if token != "" {
 		ident, err := auth.Parse(token, jwtSecret)
-		if err == nil && !auth.IsPendingOrgSelect(ident) {
-			jti := strings.TrimSpace(ident.JTI)
-			if jti != "" {
-				revoked, err := auth.GetRevocationStore().IsRevoked(req.Context(), jti)
-				if err != nil || revoked {
-					return auth.Claims{}, false
-				}
+		if err == nil && !auth.IsPendingOrgSelect(ident) && auth.IsWSTicket(ident) {
+			if auth.IsTokenRevoked(req.Context(), ident) {
+				return auth.Claims{}, false
 			}
 			return ident, true
 		}
@@ -295,14 +292,16 @@ func HandleSupplierEvents(log *slog.Logger, jwtSecret string, supplierHub *Hub, 
 			return
 		}
 
-		// Supplier events allow ADMIN, WAREHOUSE_ADMIN, FACTORY_ADMIN, PLATFORM_ADMIN, or any caller with SupplierID
-		isSupplierRole := ident.Role == auth.RoleAdmin ||
+		// Supplier events allow ADMIN, WAREHOUSE_ADMIN, FACTORY_ADMIN, PLATFORM_ADMIN, or supplier-scoped staff (never RETAILER/DRIVER)
+		isSupplierRole := (ident.Role == auth.RoleAdmin ||
 			ident.Role == auth.RoleWarehouseAdmin ||
 			ident.Role == auth.RoleWarehouse ||
 			ident.Role == auth.RoleFactoryAdmin ||
 			ident.Role == auth.RoleFactory ||
 			ident.Role == auth.RolePlatformAdmin ||
-			ident.SupplierID != ""
+			ident.SupplierID != "") &&
+			ident.Role != auth.RoleRetailer &&
+			ident.Role != auth.RoleDriver
 		if !isSupplierRole {
 			http.Error(w, `{"error":"forbidden"}`, http.StatusForbidden)
 			return

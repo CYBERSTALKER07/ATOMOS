@@ -9,12 +9,17 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/pegasusx/pegasusx/apps/backend-go/anomalyroutes"
+	"github.com/pegasusx/pegasusx/apps/backend-go/approvalroutes"
+	"github.com/pegasusx/pegasusx/apps/backend-go/audit"
+	"github.com/pegasusx/pegasusx/apps/backend-go/auditroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/bootstrap"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cashreconroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/catalogroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/compliance"
+	"github.com/pegasusx/pegasusx/apps/backend-go/connectorroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/controltowerroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/countrycfg"
 	"github.com/pegasusx/pegasusx/apps/backend-go/creditnoteroutes"
@@ -23,30 +28,44 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/demandroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/driverroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/entityresolutionroutes"
+	"github.com/pegasusx/pegasusx/apps/backend-go/esfroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/etaroutes"
+	"github.com/pegasusx/pegasusx/apps/backend-go/exportpackroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/factoryroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/featureflags"
+	"github.com/pegasusx/pegasusx/apps/backend-go/forecastroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/foundryroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/fxrates"
 	"github.com/pegasusx/pegasusx/apps/backend-go/geolocation"
 	"github.com/pegasusx/pegasusx/apps/backend-go/globalproductsroutes"
+	"github.com/pegasusx/pegasusx/apps/backend-go/glroutes"
+	"github.com/pegasusx/pegasusx/apps/backend-go/iamroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/infraroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/internal/services/billing"
 	"github.com/pegasusx/pegasusx/apps/backend-go/laborcapacityroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/mfa"
+	"github.com/pegasusx/pegasusx/apps/backend-go/migration"
+	"github.com/pegasusx/pegasusx/apps/backend-go/migrationroutes"
+	"github.com/pegasusx/pegasusx/apps/backend-go/multientityroutes"
+	"github.com/pegasusx/pegasusx/apps/backend-go/ontologyroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/orderroutes"
+	"github.com/pegasusx/pegasusx/apps/backend-go/p2proutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/partner"
 	payloadroutes "github.com/pegasusx/pegasusx/apps/backend-go/payloaderoutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/paymentroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/payout"
+	"github.com/pegasusx/pegasusx/apps/backend-go/periodroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/planning"
 	"github.com/pegasusx/pegasusx/apps/backend-go/platformadmin"
 	"github.com/pegasusx/pegasusx/apps/backend-go/platformroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/promotionroutes"
+	"github.com/pegasusx/pegasusx/apps/backend-go/proposalroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/pulseroutes"
+	"github.com/pegasusx/pegasusx/apps/backend-go/reconroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/replenishment"
 	"github.com/pegasusx/pegasusx/apps/backend-go/retailerroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/returnsroutes"
+	"github.com/pegasusx/pegasusx/apps/backend-go/roiroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/simulator"
 	"github.com/pegasusx/pegasusx/apps/backend-go/staffinvite"
 	"github.com/pegasusx/pegasusx/apps/backend-go/stocklots"
@@ -58,8 +77,10 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/telemetry"
 	"github.com/pegasusx/pegasusx/apps/backend-go/telemetryroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/updateroutes"
+	"github.com/pegasusx/pegasusx/apps/backend-go/valuationroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/warehouseroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/webhookroutes"
+	"github.com/pegasusx/pegasusx/apps/backend-go/whatifroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
 	"go.uber.org/fx"
 )
@@ -104,7 +125,7 @@ func NewHTTPRouter(p HTTPRouterParams) chi.Router {
 	r := chi.NewRouter()
 	r.Use(bootstrap.TraceMiddleware)
 	r.Use(telemetry.HTTPMetricsMiddleware)
-	r.Use(bootstrap.MaxBytesMiddleware(0))
+	r.Use(bootstrap.MaxBytesMiddlewareWithLocalUpload(0, !auth.IsEnforcedEnv() && strings.TrimSpace(os.Getenv("IMPORT_LOCAL_FILE_ROOT")) != ""))
 	r.Use(bootstrap.DevCORSMiddleware())
 	r.Use(auth.SessionAuth(cfg.JWTSecret))
 	// Partner API keys (pxk_*) and OAuth access tokens — attach principal before rate limiting.
@@ -125,6 +146,9 @@ func NewHTTPRouter(p HTTPRouterParams) chi.Router {
 	if app.Reliability != nil {
 		r.Use(app.Reliability.Middleware)
 	}
+	if app.Audit != nil {
+		r.Use(audit.AuditMiddleware(app.Audit))
+	}
 	if app.Idempotency != nil {
 		r.Use(app.IdempotencyMiddleware())
 	}
@@ -135,6 +159,7 @@ func NewHTTPRouter(p HTTPRouterParams) chi.Router {
 		Handler:        app.PlatformHandler,
 		GeocodeHandler: geolocation.NewHandler(geocodeSvc),
 		TenantRegister: app.TenantRegister,
+		INNLookup:      app.INNLookup,
 		JWTSecret:      cfg.JWTSecret,
 		JWTIssuer:      cfg.JWTIssuer,
 	})
@@ -198,17 +223,20 @@ func NewHTTPRouter(p HTTPRouterParams) chi.Router {
 		OrderService: app.OrderService,
 		JWTSecret:    cfg.JWTSecret,
 	})
+	wmsHandler := &stocklots.Handler{
+		Spanner:     app.Spanner,
+		SoDCheck:    bootstrap.CheckStockAdjustmentSoD(app.IAM),
+		AuditRecord: bootstrap.NewStocklotsAuditRecorder(app.Audit),
+	}
 	warehouseroutes.RegisterRoutes(r, warehouseroutes.Deps{
 		Service:        app.WarehouseService,
 		DriverService:  app.DriverService,
 		OrderService:   app.OrderService,
 		PayloadService: app.PayloadService,
-		WMSHandler: &stocklots.Handler{
-			Spanner: app.Spanner,
-		},
-		JWTSecret: cfg.JWTSecret,
-		JWTIssuer: cfg.JWTIssuer,
-		Spanner:   app.Spanner,
+		WMSHandler:     wmsHandler,
+		JWTSecret:      cfg.JWTSecret,
+		JWTIssuer:      cfg.JWTIssuer,
+		Spanner:        app.Spanner,
 	})
 	returnsDeps := returnsroutes.Deps{
 		Service: app.ReturnsService,
@@ -218,6 +246,10 @@ func NewHTTPRouter(p HTTPRouterParams) chi.Router {
 	returnsroutes.RegisterSupplierHistory(r, returnsDeps)
 	storageroutes.Mount(r, app.EvidenceVault)
 	taxroutes.Mount(r, app.TaxService)
+	var partnerOnecPostings partner.OnecPostingRepository
+	if app.PartnerService != nil {
+		partnerOnecPostings = app.PartnerService.OnecPostings()
+	}
 	supplierroutes.RegisterRoutes(r, supplierroutes.Deps{
 		Service:         app.SupplierService,
 		RetailerService: app.RetailerService,
@@ -230,9 +262,11 @@ func NewHTTPRouter(p HTTPRouterParams) chi.Router {
 		PayloadService:    app.PayloadService,
 		ComplianceHandler: compliance.NewHandler(app.ComplianceService),
 		ExceptionResolve: supplier.ExceptionResolveDeps{
-			CashRecon:  app.CashReconService,
-			CreditNote: app.CreditNoteService,
-			Credit:     app.CreditService,
+			CashRecon:    app.CashReconService,
+			CreditNote:   app.CreditNoteService,
+			Credit:       app.CreditService,
+			Spanner:      app.Spanner,
+			OnecPostings: partnerOnecPostings,
 		},
 		JWTSecret:    cfg.JWTSecret,
 		Spanner:      app.Spanner,
@@ -240,6 +274,31 @@ func NewHTTPRouter(p HTTPRouterParams) chi.Router {
 		WarehouseHub: warehouseHub,
 		TelemetryHub: telemetryHub,
 		OrgOIDC:      app.OrgOIDC,
+	})
+	var (
+		migrationRepo     migration.Repository
+		migrationLive     migration.DryRunLiveOverlayReader
+		migrationStore    migration.EntityApplyStore
+		migrationReleaser migration.OpenOrderReleaser
+	)
+	if app.Spanner != nil {
+		sr := migration.NewSpannerRepository(app.Spanner)
+		migrationRepo = sr
+		migrationLive = sr
+		migrationStore = migration.NewSpannerApplyStore(app.Spanner)
+		migrationReleaser = migration.SpannerOpenOrderReleaser{Client: app.Spanner}
+	}
+	migrationroutes.RegisterRoutes(r, migrationroutes.Deps{
+		Handlers: migration.NewHandlers(migration.HandlerDeps{
+			Repo:              migrationRepo,
+			AllowAuthBypass:   cfg.AllowAuthBypass,
+			JWTSecret:         cfg.JWTSecret,
+			LiveReader:        migrationLive,
+			ApplyStore:        migrationStore,
+			OpenOrderReleaser: migrationReleaser,
+		}),
+		JWTSecret:       cfg.JWTSecret,
+		AllowAuthBypass: cfg.AllowAuthBypass,
 	})
 	entityresolutionroutes.RegisterRoutes(r, entityresolutionroutes.Deps{
 		Spanner:         app.Spanner,
@@ -271,11 +330,12 @@ func NewHTTPRouter(p HTTPRouterParams) chi.Router {
 		AllowAuthBypass:   cfg.AllowAuthBypass,
 	})
 	creditroutes.RegisterRoutes(r, creditroutes.Deps{
-		Service:       app.CreditService,
-		PolicyService: app.CreditPolicyService,
-		ARService:     app.ARService,
-		DunningWorker: app.ARDunningWorker,
-		StepUp:        mfa.RequireStepUp(app.MFAService),
+		Service:             app.CreditService,
+		PolicyService:       app.CreditPolicyService,
+		ARService:           app.ARService,
+		DunningWorker:       app.ARDunningWorker,
+		PromiseBreachWorker: app.ARPromiseBreachWorker,
+		StepUp:              mfa.RequireStepUp(app.MFAService),
 	})
 	if app.ForecastAccuracy != nil || app.ForecastRunner != nil || app.Spanner != nil {
 		auth.ProtectMutations(r, auth.MutationGuardConfig{}, func(gr chi.Router) {
@@ -311,6 +371,102 @@ func NewHTTPRouter(p HTTPRouterParams) chi.Router {
 		Handlers:        app.CreditNoteHandlers,
 		AllowAuthBypass: cfg.AllowAuthBypass,
 	})
+	glroutes.RegisterRoutes(r, glroutes.Deps{
+		Service:         app.GL,
+		JWTSecret:       cfg.JWTSecret,
+		AllowAuthBypass: cfg.AllowAuthBypass,
+	})
+	periodroutes.RegisterRoutes(r, periodroutes.Deps{
+		Service:         app.Periods,
+		JWTSecret:       cfg.JWTSecret,
+		AllowAuthBypass: cfg.AllowAuthBypass,
+	})
+	approvalroutes.RegisterRoutes(r, approvalroutes.Deps{
+		Service:         app.Approvals,
+		JWTSecret:       cfg.JWTSecret,
+		AllowAuthBypass: cfg.AllowAuthBypass,
+	})
+	valuationroutes.RegisterRoutes(r, valuationroutes.Deps{
+		Service:         app.Valuation,
+		JWTSecret:       cfg.JWTSecret,
+		AllowAuthBypass: cfg.AllowAuthBypass,
+	})
+	esfroutes.RegisterRoutes(r, esfroutes.Deps{
+		Service:         app.ESF,
+		JWTSecret:       cfg.JWTSecret,
+		AllowAuthBypass: cfg.AllowAuthBypass,
+	})
+	reconroutes.RegisterRoutes(r, reconroutes.Deps{
+		Service:         app.Recon,
+		JWTSecret:       cfg.JWTSecret,
+		AllowAuthBypass: cfg.AllowAuthBypass,
+	})
+	auditroutes.RegisterRoutes(r, auditroutes.Deps{
+		Service:         app.Audit,
+		JWTSecret:       cfg.JWTSecret,
+		AllowAuthBypass: cfg.AllowAuthBypass,
+	})
+	iamroutes.RegisterRoutes(r, iamroutes.Deps{
+		Service:          app.IAM,
+		JWTSecret:        cfg.JWTSecret,
+		JWTIssuer:        cfg.JWTIssuer,
+		SCIMBearerToken:  os.Getenv("SCIM_BEARER_TOKEN"),
+		SCIMTenantID:     os.Getenv("SCIM_TENANT_ID"),
+		SCIMTenantTokens: iamroutes.ParseSCIMTenantTokens(os.Getenv("SCIM_TENANT_TOKENS")),
+		AllowAuthBypass:  cfg.AllowAuthBypass,
+	})
+	ontologyroutes.RegisterRoutes(r, ontologyroutes.Deps{
+		Service:         app.Ontology,
+		JWTSecret:       cfg.JWTSecret,
+		AllowAuthBypass: cfg.AllowAuthBypass,
+	})
+	forecastroutes.RegisterRoutes(r, forecastroutes.Deps{
+		Service:          app.ForecastV2,
+		ReplenishmentAPI: app.ReplenishmentSuggestions,
+		JWTSecret:        cfg.JWTSecret,
+		AllowAuthBypass:  cfg.AllowAuthBypass,
+	})
+	proposalroutes.RegisterRoutes(r, proposalroutes.Deps{
+		Service:         app.Proposals,
+		JWTSecret:       cfg.JWTSecret,
+		AllowAuthBypass: cfg.AllowAuthBypass,
+	})
+	roiroutes.RegisterRoutes(r, roiroutes.Deps{
+		Service:         app.ROI,
+		JWTSecret:       cfg.JWTSecret,
+		AllowAuthBypass: cfg.AllowAuthBypass,
+	})
+	connectorroutes.RegisterRoutes(r, connectorroutes.Deps{
+		Service:         app.Connectors,
+		JWTSecret:       cfg.JWTSecret,
+		AllowAuthBypass: cfg.AllowAuthBypass,
+	})
+	exportpackroutes.RegisterRoutes(r, exportpackroutes.Deps{
+		Service:         app.ExportPacks,
+		JWTSecret:       cfg.JWTSecret,
+		AllowAuthBypass: cfg.AllowAuthBypass,
+	})
+	multientityroutes.RegisterRoutes(r, multientityroutes.Deps{
+		Service:         app.MultiEntity,
+		JWTSecret:       cfg.JWTSecret,
+		AllowAuthBypass: cfg.AllowAuthBypass,
+	})
+	p2proutes.RegisterRoutes(r, p2proutes.Deps{
+		Service:         app.P2P,
+		JWTSecret:       cfg.JWTSecret,
+		AllowAuthBypass: cfg.AllowAuthBypass,
+	})
+	anomalyroutes.RegisterRoutes(r, anomalyroutes.Deps{
+		Service:         app.Anomalies,
+		JWTSecret:       cfg.JWTSecret,
+		AllowAuthBypass: cfg.AllowAuthBypass,
+	})
+	whatifroutes.RegisterRoutes(r, whatifroutes.Deps{
+		Service:         app.WhatIf,
+		JWTSecret:       cfg.JWTSecret,
+		AllowAuthBypass: cfg.AllowAuthBypass,
+	})
+	stocklots.RegisterHACCPComplianceRoute(r, wmsHandler, cfg.JWTSecret, cfg.AllowAuthBypass)
 	deliveryroutes.RegisterRoutes(r, deliveryroutes.Deps{
 		Service: app.OrderService,
 	})

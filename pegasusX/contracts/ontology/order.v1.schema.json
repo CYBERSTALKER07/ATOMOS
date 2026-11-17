@@ -1,0 +1,196 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pegasusx.dev/contracts/ontology/order.v1.schema.json",
+  "title": "OrderOntologyObjectV1",
+  "description": "B2B fulfillment order across lifecycle, dispatch, and fiscalization.",
+  "x-ontology-version": "1.0.0",
+  "x-schema-version": "v1",
+  "x-object-type": "Order",
+  "x-primary-key": [
+    "cell_id",
+    "object_type",
+    "object_id"
+  ],
+  "x-default-security-markings": [
+    "MARKING:FINANCE_ONLY"
+  ],
+  "x-allowed-link-types": [
+    "supplies",
+    "stocks",
+    "ordered",
+    "shipped_on",
+    "owes",
+    "substitutes",
+    "recalled_with"
+  ],
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "cell_id",
+    "object_type",
+    "object_id",
+    "supplier_id",
+    "version",
+    "properties",
+    "valid_from",
+    "updated_at"
+  ],
+  "properties": {
+    "cell_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Cell/region partition coordinate"
+    },
+    "object_type": {
+      "type": "string",
+      "const": "Order"
+    },
+    "object_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Unique entity identifier within cell+type"
+    },
+    "supplier_id": {
+      "type": "string",
+      "description": "Tenant supplier identifier"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Monotonic optimistic-concurrency version"
+    },
+    "security_markings": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "MARKING:FINANCE_ONLY",
+          "MARKING:PII",
+          "MARKING:AML_INVESTIGATION",
+          "MARKING:DISCREPANT_QUARANTINE",
+          "MARKING:THERMAL_QUARANTINE_SPOILED",
+          "MARKING:MICRO_SKIMMING_SUSPECT",
+          "MARKING:LOT_RECALL_QUARANTINE"
+        ]
+      },
+      "uniqueItems": true,
+      "description": "Data governance & quarantine markings"
+    },
+    "valid_from": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "properties": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "order_id": {
+          "type": "string",
+          "description": "Order UUID"
+        },
+        "parent_order_id": {
+          "type": "string",
+          "description": "Multi-supplier parent order UUID"
+        },
+        "supplier_id": {
+          "type": "string",
+          "description": "Supplier ID"
+        },
+        "retailer_id": {
+          "type": "string",
+          "description": "Retailer ID"
+        },
+        "warehouse_id": {
+          "type": "string",
+          "description": "Fulfilling warehouse ID"
+        },
+        "driver_id": {
+          "type": "string",
+          "description": "Assigned driver ID"
+        },
+        "vehicle_id": {
+          "type": "string",
+          "description": "Assigned vehicle ID"
+        },
+        "route_id": {
+          "type": "string",
+          "description": "Assigned route ID"
+        },
+        "manifest_id": {
+          "type": "string",
+          "description": "Assigned truck manifest ID"
+        },
+        "status": {
+          "type": "string",
+          "description": "Canonical order status"
+        },
+        "order_source": {
+          "type": "string",
+          "description": "CART | PREORDER | AUTO_ORDER | SHADOW"
+        },
+        "confirmation_status": {
+          "type": "string",
+          "description": "Confirmation workflow state"
+        },
+        "fiscal_status": {
+          "type": "string",
+          "description": "Fiscalization status"
+        },
+        "buyer_acceptance_status": {
+          "type": "string",
+          "description": "Soliq EHF buyer acceptance status"
+        },
+        "total_minor": {
+          "type": "integer",
+          "description": "Current order total (int64 minor units; zero floats)"
+        },
+        "original_total_minor": {
+          "type": "integer",
+          "description": "Initial order total prior to amendments (int64 minor units; zero floats)"
+        },
+        "delivery_fee_minor": {
+          "type": "integer",
+          "description": "Delivery fee (int64 minor units; zero floats)"
+        },
+        "currency": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 8,
+          "description": "ISO 4217 currency code"
+        },
+        "delivery_priority": {
+          "type": "string",
+          "description": "STANDARD | PRIORITY | EXPRESS"
+        },
+        "partial_delivery": {
+          "type": "boolean",
+          "description": "Partial delivery indicator"
+        },
+        "h3_cell": {
+          "type": "string",
+          "description": "Destination H3 cell"
+        },
+        "requested_delivery_date": {
+          "type": "string",
+          "description": "Requested delivery date/timestamp"
+        },
+        "latest_fiscal_receipt_id": {
+          "type": "string",
+          "description": "Latest fiscal receipt ID"
+        },
+        "line_count": {
+          "type": "integer",
+          "description": "Number of order lines"
+        },
+        "version": {
+          "type": "integer",
+          "description": "Order version"
+        }
+      }
+    }
+  }
+}

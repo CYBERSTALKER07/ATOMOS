@@ -10,6 +10,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/loyalty"
 	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"github.com/pegasusx/pegasusx/apps/backend-go/orgoidc"
+	"github.com/pegasusx/pegasusx/apps/backend-go/partner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/payload"
 	"github.com/pegasusx/pegasusx/apps/backend-go/replenishment"
 	"github.com/pegasusx/pegasusx/apps/backend-go/retailer"
@@ -118,6 +119,9 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		gr.Put("/v1/supplier/warehouses/{warehouseID}/coverage", d.Service.HandleWarehouseCoverage)
 		gr.Get("/v1/supplier/org/members", d.Service.HandleOrgMembers)
 		gr.Post("/v1/supplier/org/members", d.Service.HandleOrgMembers)
+		gr.Get("/v1/supplier/join-requests", d.Service.HandleListJoinRequests)
+		gr.Post("/v1/supplier/join-requests/{requestId}/approve", d.Service.HandleApproveJoinRequest)
+		gr.Post("/v1/supplier/join-requests/{requestId}/reject", d.Service.HandleRejectJoinRequest)
 		if d.RetailerService != nil {
 			gr.Post("/v1/supplier/retailer-invites", d.RetailerService.HandleCreateTradingPartnerInvite)
 		}
@@ -136,7 +140,6 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		gr.Post("/v1/supplier/fleet/drivers", d.Service.HandleFleetDrivers)
 		gr.Get("/v1/supplier/fleet/vehicles", d.Service.HandleFleetVehicles)
 		gr.Post("/v1/supplier/fleet/vehicles", d.Service.HandleFleetVehicles)
-		gr.Get("/v1/supplier/events", ws.HandleSupplierEvents(nil, d.JWTSecret, d.SupplierHub, d.WarehouseHub, d.TelemetryHub))
 		gr.Get("/v1/supplier/ws-session", d.Service.HandleWebSocketSession)
 		gr.Get("/v1/supplier/dashboard", d.Service.HandleDashboard)
 		gr.Get("/v1/supplier/manifests", d.Service.HandleManifests)
@@ -148,6 +151,10 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		gr.Get("/v1/supplier/supply-lanes", d.Service.HandleSupplyLanes)
 		gr.Get("/v1/supplier/crm/retailers", d.Service.HandleCRMRetailers)
 		gr.Get("/v1/supplier/crm/retailers/{retailerId}", d.Service.HandleCRMRetailerDetail)
+		gr.Get("/v1/supplier/retailer-links", d.Service.HandleRetailerLinks)
+		gr.Post("/v1/supplier/retailer-links", d.Service.HandleRetailerLinks)
+		gr.Get("/v1/supplier/retailer-links/dedup", d.Service.HandleRetailerLinksDedup)
+		gr.Post("/v1/supplier/retailer-links/{retailerID}/resolve", d.Service.HandleResolveRetailerLink)
 		gr.Get("/v1/supplier/loyalty/program", (&loyalty.Handlers{Spanner: d.Spanner}).HandleSupplierProgram)
 		gr.Patch("/v1/supplier/loyalty/program", (&loyalty.Handlers{Spanner: d.Spanner}).HandleSupplierProgram)
 		gr.Get("/v1/supplier/network-mode", d.Service.HandleNetworkMode)
@@ -155,8 +162,31 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		gr.Post("/v1/supplier/planning/pull-matrix", d.Service.HandlePlanningPullMatrix)
 		gr.Post("/v1/supplier/planning/predictive-push", d.Service.HandlePlanningPredictivePush)
 		gr.Post("/v1/supplier/planning/kill-switch", d.Service.HandlePlanningKillSwitch)
+		resolveDeps := d.ExceptionResolve
+		if resolveDeps.Spanner == nil {
+			resolveDeps.Spanner = d.Spanner
+		}
+		if resolveDeps.OnecPostings == nil {
+			if d.Service != nil {
+				resolveDeps.OnecPostings = d.Service.OnecPostings()
+			}
+			if resolveDeps.OnecPostings == nil && resolveDeps.Spanner != nil {
+				resolveDeps.OnecPostings = partner.NewSpannerOnecPostingRepository(resolveDeps.Spanner)
+			}
+		}
+		if resolveDeps.RetailerLinks == nil && d.Service != nil {
+			resolveDeps.RetailerLinks = d.Service.RetailerLinks()
+		}
+		if resolveDeps.Service == nil {
+			resolveDeps.Service = d.Service
+		}
+		if resolveDeps.FiscalOrders == nil && d.OrderService != nil {
+			resolveDeps.FiscalOrders = d.OrderService
+		}
 		gr.Get("/v1/supplier/exceptions", d.Service.HandleExceptions)
-		gr.Post("/v1/supplier/exceptions/{kind}/{id}/resolve", supplier.HandleResolveException(d.ExceptionResolve))
+		gr.Post("/v1/supplier/exceptions/batch-resolve", supplier.HandleBatchResolveExceptions(resolveDeps))
+		gr.Post("/v1/supplier/exceptions/{kind}/{id}/resolve", supplier.HandleResolveException(resolveDeps))
+		gr.Get("/v1/supplier/retailer-credit-profiles", d.Service.HandleRetailerCreditProfiles)
 		gr.Get("/v1/supplier/ops/exception-map", d.Service.HandleExceptionMap)
 		gr.Get("/v1/supplier/manifest-exceptions", d.Service.HandleManifestExceptions)
 		gr.Get("/v1/supplier/earnings", d.Service.HandleEarnings)
@@ -170,7 +200,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		gr.Get("/v1/supplier/recalls", (&stocklots.Handler{Spanner: d.Spanner}).HandleRecalls)
 		gr.Post("/v1/supplier/recalls", (&stocklots.Handler{Spanner: d.Spanner}).HandleRecalls)
 		gr.Get("/v1/supplier/recalls/{campaignID}", (&stocklots.Handler{Spanner: d.Spanner}).HandleRecallByID)
-		gr.Post("/v1/supplier/inventory/import", d.Service.HandleInventoryImport)
+		gr.With(auth.RequireAuditorActive, auth.RejectAuditorOrAgentMutation(true)).Post("/v1/supplier/inventory/import", d.Service.HandleInventoryImport)
 		supplier.RegisterImportRoutes(gr, supplier.ImportRoutesDeps{
 			Spanner:      d.Spanner,
 			Service:      d.Service,
@@ -259,6 +289,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		gr.Post("/v1/supplier/planning/agent/invoke", d.Service.HandleGovernedAgentHook)
 		gr.Get("/v1/supplier/planning/seasonal-overrides", d.Service.HandlePlanningSeasonalOverrides)
 		gr.Post("/v1/supplier/planning/seasonal-overrides", d.Service.HandlePlanningSeasonalOverrides)
+		gr.Post("/v1/supplier/planning/seasonal-holidays/seed", d.Service.HandlePlanningSeasonalHolidaysSeed)
 		gr.Post("/v1/supplier/planning/seasonal-estimate", d.Service.HandlePlanningSeasonalEstimate)
 		gr.Post("/v1/supplier/planning/signals/ingest", d.Service.HandlePlanningSignalIngest)
 		gr.Get("/v1/supplier/planning/signals/status", d.Service.HandlePlanningSignalStatus)
@@ -270,4 +301,9 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		gr.Get("/v1/supplier/returns", d.Service.HandleReturns)
 		gr.Post("/v1/supplier/returns/resolve", d.Service.HandleResolveReturn)
 	})
+
+	// EventSource in browsers/Tauri cannot set Authorization headers cross-origin,
+	// so HandleSupplierEvents authenticates via CookieAuth OR Bearer OR ?token= query param
+	// and enforces supplier-role membership before upgrading to SSE.
+	r.With(auth.CookieAuth(d.JWTSecret)).Get("/v1/supplier/events", ws.HandleSupplierEvents(nil, d.JWTSecret, d.SupplierHub, d.WarehouseHub, d.TelemetryHub))
 }

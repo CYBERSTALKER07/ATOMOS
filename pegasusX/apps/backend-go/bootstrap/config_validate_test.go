@@ -384,6 +384,20 @@ func TestValidateProductionProfile_RejectsHandoffFallbackInStaging(t *testing.T)
 	}
 }
 
+func TestValidateProductionProfile_RejectsAuthBypassInStaging(t *testing.T) {
+	t.Setenv("PEGASUSX_ENV", "staging")
+	cfg := testConfig()
+	cfg.AllowAuthBypass = true
+	err := cfg.ValidateProductionProfile()
+	if err == nil || !strings.Contains(err.Error(), "ALLOW_AUTH_BYPASS") {
+		t.Fatalf("staging auth bypass err=%v", err)
+	}
+	cfg.AllowAuthBypass = false
+	if err := cfg.ValidateProductionProfile(); err != nil {
+		t.Fatalf("staging with auth bypass off: %v", err)
+	}
+}
+
 func TestValidateProductionProfile_AllowsAuthBypassOutsideProduction(t *testing.T) {
 	t.Setenv("PEGASUSX_ENV", "sandbox")
 	cfg := testConfig()

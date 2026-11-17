@@ -711,7 +711,8 @@ struct WarehouseBinCreateRequest: Encodable {
     }
 }
 
-struct WarehouseBinLocation: Decodable {
+struct WarehouseBinLocation: Decodable, Identifiable, Hashable {
+    var id: String { locationId }
     let warehouseId: String?
     let locationId: String
     let zone: String?
@@ -722,6 +723,100 @@ struct WarehouseBinLocation: Decodable {
         case locationId = "location_id"
         case zone
         case locationType = "location_type"
+    }
+}
+
+struct WarehouseBinListResponse: Decodable {
+    let bins: [WarehouseBinLocation]
+    let lotsEnabled: Bool?
+
+    enum CodingKeys: String, CodingKey {
+        case bins
+        case lotsEnabled = "lots_enabled"
+    }
+}
+
+struct StockLotItem: Decodable, Identifiable, Hashable {
+    var id: String { lotId }
+    let lotId: String
+    let supplierId: String?
+    let warehouseId: String?
+    let productId: String
+    let locationId: String
+    let lotCode: String?
+    let expiryDate: String?
+    let quantityOnHand: Int
+    let quantityReserved: Int?
+    let status: String
+    let productName: String?
+    let handlingClass: String?
+    let requiresColdChain: Bool?
+    let isPerishable: Bool?
+    let requiredZone: String?
+    let locationZone: String?
+    let locationType: String?
+    let migratedStaging: Bool?
+    let coldLotWarning: String?
+
+    enum CodingKeys: String, CodingKey {
+        case lotId = "lot_id"
+        case supplierId = "supplier_id"
+        case warehouseId = "warehouse_id"
+        case productId = "product_id"
+        case locationId = "location_id"
+        case lotCode = "lot_code"
+        case expiryDate = "expiry_date"
+        case quantityOnHand = "quantity_on_hand"
+        case quantityReserved = "quantity_reserved"
+        case status
+        case productName = "product_name"
+        case handlingClass = "handling_class"
+        case requiresColdChain = "requires_cold_chain"
+        case isPerishable = "is_perishable"
+        case requiredZone = "required_zone"
+        case locationZone = "location_zone"
+        case locationType = "location_type"
+        case migratedStaging = "migrated_staging"
+        case coldLotWarning = "cold_lot_warning"
+    }
+}
+
+struct StockLotListResponse: Decodable {
+    let lots: [StockLotItem]
+    let lotsEnabled: Bool?
+    let coldLotWarningCount: Int?
+    let migrationStagingCount: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case lots
+        case lotsEnabled = "lots_enabled"
+        case coldLotWarningCount = "cold_lot_warning_count"
+        case migrationStagingCount = "migration_staging_count"
+    }
+}
+
+struct TemperatureReadingItem: Decodable, Identifiable {
+    var id: String { readingId }
+    let readingId: String
+    let manifestId: String
+    let sensorId: String?
+    let tempC: Double
+
+    enum CodingKeys: String, CodingKey {
+        case readingId = "reading_id"
+        case manifestId = "manifest_id"
+        case sensorId = "sensor_id"
+        case tempC = "temp_c"
+    }
+}
+
+struct ManifestTemperatureResponse: Decodable {
+    let manifestId: String
+    let readings: [TemperatureReadingItem]
+
+    enum CodingKeys: String, CodingKey {
+        case manifestId = "manifest_id"
+        case readings
     }
 }
 
@@ -790,6 +885,9 @@ struct PickWave: Decodable {
     let manifestId: String
     let status: String
     let tasks: [PickTask]?
+    let coldLotMigratedWithoutLiveBaseline: Bool?
+    let coldChainBaselineMissing: Bool?
+    let coldLotWarnings: [String]?
 
     enum CodingKeys: String, CodingKey {
         case waveId = "wave_id"
@@ -797,6 +895,9 @@ struct PickWave: Decodable {
         case manifestId = "manifest_id"
         case status
         case tasks
+        case coldLotMigratedWithoutLiveBaseline = "cold_lot_migrated_without_live_baseline"
+        case coldChainBaselineMissing = "cold_chain_baseline_missing"
+        case coldLotWarnings = "cold_lot_warnings"
     }
 }
 
@@ -833,6 +934,8 @@ struct CycleCount: Decodable, Identifiable {
     let productId: String
     let expectedQty: Int
     let countedQty: Int?
+    let varianceQty: Int?
+    let reasonCode: String?
     let status: String
 
     enum CodingKeys: String, CodingKey {
@@ -841,12 +944,20 @@ struct CycleCount: Decodable, Identifiable {
         case productId = "product_id"
         case expectedQty = "expected_qty"
         case countedQty = "counted_qty"
+        case varianceQty = "variance_qty"
+        case reasonCode = "reason_code"
         case status
     }
 }
 
 struct CycleCountListResponse: Decodable {
     let counts: [CycleCount]
+    let cycleCountsEnabled: Bool?
+
+    enum CodingKeys: String, CodingKey {
+        case counts
+        case cycleCountsEnabled = "cycle_counts_enabled"
+    }
 }
 
 struct CycleCountCreateRequest: Encodable {
@@ -863,9 +974,54 @@ struct CycleCountCreateRequest: Encodable {
 
 struct CycleCountSubmitRequest: Encodable {
     let countedQty: Int
+    var reasonCode: String?
 
     enum CodingKeys: String, CodingKey {
         case countedQty = "counted_qty"
+        case reasonCode = "reason_code"
+    }
+}
+
+struct InventoryAdjustment: Decodable, Identifiable {
+    var id: String { adjustmentId }
+    let adjustmentId: String
+    let warehouseId: String?
+    let productId: String
+    let lotId: String?
+    let countId: String?
+    let deltaQty: Int
+    let reasonCode: String?
+    let status: String
+
+    enum CodingKeys: String, CodingKey {
+        case adjustmentId = "adjustment_id"
+        case warehouseId = "warehouse_id"
+        case productId = "product_id"
+        case lotId = "lot_id"
+        case countId = "count_id"
+        case deltaQty = "delta_qty"
+        case reasonCode = "reason_code"
+        case status
+    }
+}
+
+struct InventoryAdjustmentListResponse: Decodable {
+    let adjustments: [InventoryAdjustment]
+    let cycleCountsEnabled: Bool?
+
+    enum CodingKeys: String, CodingKey {
+        case adjustments
+        case cycleCountsEnabled = "cycle_counts_enabled"
+    }
+}
+
+struct InventoryAdjustmentMutationResponse: Decodable {
+    let adjustmentId: String?
+    let status: String
+
+    enum CodingKeys: String, CodingKey {
+        case adjustmentId = "adjustment_id"
+        case status
     }
 }
 

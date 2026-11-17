@@ -354,18 +354,8 @@ func reliabilityActorKey(r *http.Request) string {
 			return "sub:" + subject
 		}
 	}
-	if xff := strings.TrimSpace(r.Header.Get("X-Forwarded-For")); xff != "" {
-		parts := strings.Split(xff, ",")
-		ip := strings.TrimSpace(parts[0])
-		if ip != "" {
-			return "ip:" + ip
-		}
-	}
-	if host, _, err := net.SplitHostPort(strings.TrimSpace(r.RemoteAddr)); err == nil && host != "" {
-		return "ip:" + host
-	}
-	if strings.TrimSpace(r.RemoteAddr) != "" {
-		return "ip:" + strings.TrimSpace(r.RemoteAddr)
+	if ip := auth.ResolveTrustedClientIP(r); ip != "" {
+		return "ip:" + ip
 	}
 	return "anonymous"
 }
@@ -387,18 +377,8 @@ func reliabilityClientIPKey(r *http.Request) string {
 	if r == nil {
 		return "anonymous"
 	}
-	if xff := strings.TrimSpace(r.Header.Get("X-Forwarded-For")); xff != "" {
-		parts := strings.Split(xff, ",")
-		ip := strings.TrimSpace(parts[0])
-		if ip != "" {
-			return ip
-		}
-	}
-	if host, _, err := net.SplitHostPort(strings.TrimSpace(r.RemoteAddr)); err == nil && host != "" {
-		return host
-	}
-	if strings.TrimSpace(r.RemoteAddr) != "" {
-		return strings.TrimSpace(r.RemoteAddr)
+	if ip := auth.ResolveTrustedClientIP(r); ip != "" {
+		return ip
 	}
 	return "anonymous"
 }

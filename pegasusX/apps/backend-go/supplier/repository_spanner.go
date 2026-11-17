@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/proximity"
@@ -58,6 +59,8 @@ func (r *SpannerRepository) GetProfile(ctx context.Context, supplierID string) (
 		"IsConfigured",
 		"MarketCode",
 		"HomeCell",
+		"NormalizedTaxId",
+		"InnVerifiedAt",
 		"CreatedAt",
 		"UpdatedAt",
 	})
@@ -69,7 +72,8 @@ func (r *SpannerRepository) GetProfile(ctx context.Context, supplierID string) (
 	}
 
 	var p Profile
-	var marketCode, homeCell spanner.NullString
+	var marketCode, homeCell, normalizedTaxID spanner.NullString
+	var innVerifiedAt spanner.NullTime
 	if err := row.Columns(
 		&p.SupplierID,
 		&p.LegalName,
@@ -78,10 +82,18 @@ func (r *SpannerRepository) GetProfile(ctx context.Context, supplierID string) (
 		&p.IsConfigured,
 		&marketCode,
 		&homeCell,
+		&normalizedTaxID,
+		&innVerifiedAt,
 		&p.RegisteredAt,
 		&p.UpdatedAt,
 	); err != nil {
 		return Profile{}, false, fmt.Errorf("scan supplier %s: %w", supplierID, err)
+	}
+	if normalizedTaxID.Valid {
+		p.NormalizedTaxID = normalizedTaxID.StringVal
+	}
+	if innVerifiedAt.Valid {
+		p.InnVerifiedAt = innVerifiedAt.Time
 	}
 	p.MarketCode = nullString(marketCode)
 	p.HomeCell = nullString(homeCell)
@@ -729,11 +741,16 @@ func (r *SpannerRepository) GetAuthByPhone(ctx context.Context, phone string) (S
 	}
 	stmt := spanner.Statement{
 		SQL: `SELECT su.UserId, su.SupplierId, su.Phone, su.PasswordHash,
+                     COALESCE(su.SupplierRole, 'ADMIN'),
+                     COALESCE(su.AssignedWarehouseId, ''),
+                     COALESCE(su.AssignedFactoryId, ''),
+                     COALESCE(s.MarketCode, ''),
+                     COALESCE(s.HomeCell, ''),
                      COALESCE(sp.IsRegistered, false), COALESCE(s.IsConfigured, false)
               FROM SupplierUsers@{FORCE_INDEX=Idx_SupplierUsers_ByPhone} su
               LEFT JOIN SupplierProfiles sp ON su.SupplierId = sp.SupplierId
               LEFT JOIN Suppliers s ON su.SupplierId = s.SupplierId
-              WHERE su.Phone = @phone AND su.IsActive = true AND su.SupplierRole = 'ADMIN'`,
+              WHERE su.Phone = @phone AND su.IsActive = true`,
 		Params: map[string]any{"phone": trimmedPhone},
 	}
 	iter := r.client.Single().Query(ctx, stmt)
@@ -748,9 +765,23 @@ func (r *SpannerRepository) GetAuthByPhone(ctx context.Context, phone string) (S
 	}
 
 	var rec SupplierAuthRecord
-	if err := row.Columns(&rec.UserID, &rec.SupplierID, &rec.Phone, &rec.PasswordHash, &rec.IsRegistered, &rec.IsConfigured); err != nil {
+	var supplierRole string
+	if err := row.Columns(
+		&rec.UserID,
+		&rec.SupplierID,
+		&rec.Phone,
+		&rec.PasswordHash,
+		&supplierRole,
+		&rec.AssignedWarehouseID,
+		&rec.AssignedFactoryID,
+		&rec.MarketCode,
+		&rec.HomeCell,
+		&rec.IsRegistered,
+		&rec.IsConfigured,
+	); err != nil {
 		return SupplierAuthRecord{}, false, fmt.Errorf("scan supplier auth by phone: %w", err)
 	}
+	rec.SupplierRole = auth.Role(strings.ToUpper(strings.TrimSpace(supplierRole)))
 	
 	// Check for ambiguous multi-tenant collision
 	_, nextErr := iter.Next()
@@ -830,15 +861,17 @@ func (r *SpannerRepository) UpdateProfile(ctx context.Context, p Profile, emit f
 
 		mutations := []*spanner.Mutation{
 			spanner.InsertOrUpdateMap("Suppliers", map[string]any{
-				"SupplierId":   p.SupplierID,
-				"Name":         p.LegalName,
-				"CountryCode":  p.Country,
-				"Currency":     p.Currency,
-				"IsConfigured": p.IsConfigured,
-				"MarketCode":   nullableString(strings.ToUpper(strings.TrimSpace(p.MarketCode))),
-				"HomeCell":     nullableString(strings.ToLower(strings.TrimSpace(p.HomeCell))),
-				"CreatedAt":    registeredAt,
-				"UpdatedAt":    updatedAt,
+				"SupplierId":      p.SupplierID,
+				"Name":            p.LegalName,
+				"CountryCode":     p.Country,
+				"Currency":        p.Currency,
+				"IsConfigured":    p.IsConfigured,
+				"MarketCode":      nullableString(strings.ToUpper(strings.TrimSpace(p.MarketCode))),
+				"HomeCell":        nullableString(strings.ToLower(strings.TrimSpace(p.HomeCell))),
+				"NormalizedTaxId": nullableString(strings.TrimSpace(p.NormalizedTaxID)),
+				"InnVerifiedAt":   nullableTime(p.InnVerifiedAt),
+				"CreatedAt":       registeredAt,
+				"UpdatedAt":       updatedAt,
 			}),
 			spanner.InsertOrUpdateMap("SupplierProfiles", profileRow),
 		}

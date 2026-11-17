@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -54,9 +55,11 @@ type PosSessionDTO struct {
 	ClosingCashMinor  *int64 `json:"closing_cash_minor,omitempty"`
 	ExpectedCashMinor *int64 `json:"expected_cash_minor,omitempty"`
 	VarianceMinor     *int64 `json:"variance_minor,omitempty"`
-	Currency          string `json:"currency"`
-	OpenedAt          string `json:"opened_at,omitempty"`
-	ClosedAt          string `json:"closed_at,omitempty"`
+	Currency          string            `json:"currency"`
+	OpenedAt          string            `json:"opened_at,omitempty"`
+	ClosedAt          string            `json:"closed_at,omitempty"`
+	AnomalyFlags      []string          `json:"anomaly_flags,omitempty"`
+	AnomalyReview     *PosAnomalyReview `json:"anomaly_review,omitempty"`
 }
 
 // PosSaleLine is one sold SKU line.
@@ -94,8 +97,10 @@ type PosSaleDTO struct {
 	VoidedByUserID  string        `json:"voided_by_user_id,omitempty"`
 	VoidReason      string        `json:"void_reason,omitempty"`
 	ClientSaleID    string        `json:"client_sale_id,omitempty"`
-	Origin          string        `json:"origin,omitempty"` // online | offline
-	ClientCreatedAt string        `json:"client_created_at,omitempty"`
+	Origin          string            `json:"origin,omitempty"` // online | offline
+	ClientCreatedAt string            `json:"client_created_at,omitempty"`
+	AnomalyFlags    []string          `json:"anomaly_flags,omitempty"`
+	AnomalyReview   *PosAnomalyReview `json:"anomaly_review,omitempty"`
 }
 
 // HandleRegisters serves GET/POST /v1/retailer/registers
@@ -181,12 +186,22 @@ func (s *Service) handleRegistersPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// POS hard-deps STORE_STOCK — auto-enable both packs for owner path.
-	enabled, _ := s.LoadEnabledPacks(r.Context(), orgID)
+	enabled, err := s.LoadEnabledPacks(r.Context(), orgID)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "load_packs_failed"})
+		return
+	}
 	if !enabled.Has(PackSTORESTOCK) {
-		_ = s.SetPackEnabled(r.Context(), orgID, PackSTORESTOCK, auth.ResolveRetailerUserID(claims), true, map[string]any{})
+		if err := s.SetPackEnabled(r.Context(), orgID, PackSTORESTOCK, auth.ResolveRetailerUserID(claims), true, map[string]any{}); err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "enable_store_stock_failed"})
+			return
+		}
 	}
 	if !enabled.Has(PackPOS) {
-		_ = s.SetPackEnabled(r.Context(), orgID, PackPOS, auth.ResolveRetailerUserID(claims), true, map[string]any{})
+		if err := s.SetPackEnabled(r.Context(), orgID, PackPOS, auth.ResolveRetailerUserID(claims), true, map[string]any{}); err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "enable_pos_failed"})
+			return
+		}
 	}
 
 	reg := RegisterDTO{
@@ -201,12 +216,18 @@ func (s *Service) handleRegistersPost(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "persist_register_failed"})
 		return
 	}
-	respBytes, _ := json.Marshal(reg)
+	respBytes, err := json.Marshal(reg)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "marshal_failed"})
+		return
+	}
 	idemCommitted = true
 	s.saveIdempotency(r.Context(), r, body, http.StatusCreated, respBytes)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	_, _ = w.Write(respBytes)
+	if _, err := w.Write(respBytes); err != nil && s.log != nil {
+		s.log.Warn("register response write failed", "err", err)
+	}
 }
 
 // HandlePosSessionOpen serves POST /v1/retailer/pos/sessions/open
@@ -299,17 +320,25 @@ func (s *Service) HandlePosSessionOpen(w http.ResponseWriter, r *http.Request) {
 	}
 	// Link open shift (if any) for cash recon on shift close.
 	s.linkShiftToPosSession(r.Context(), regID, sess.SessionID)
-	_ = s.emitPosEvent(r.Context(), orgID, events.EventPosSessionOpened, map[string]any{
+	if err := s.emitPosEvent(r.Context(), orgID, events.EventPosSessionOpened, map[string]any{
 		"session_id":  sess.SessionID,
 		"register_id": regID,
 		"location_id": reg.LocationID,
-	})
-	respBytes, _ := json.Marshal(sess)
+	}); err != nil && s.log != nil {
+		s.log.Warn("pos session open event emit failed", "session_id", sess.SessionID, "err", err)
+	}
+	respBytes, err := json.Marshal(sess)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "marshal_failed"})
+		return
+	}
 	idemCommitted = true
 	s.saveIdempotency(r.Context(), r, body, http.StatusCreated, respBytes)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	_, _ = w.Write(respBytes)
+	if _, err := w.Write(respBytes); err != nil && s.log != nil {
+		s.log.Warn("pos session open response write failed", "err", err)
+	}
 }
 
 // HandlePosSessionClose serves POST /v1/retailer/pos/sessions/{sessionID}/close
@@ -341,7 +370,10 @@ func (s *Service) HandlePosSessionClose(w http.ResponseWriter, r *http.Request) 
 	var req struct {
 		ClosingCashMinor int64 `json:"closing_cash_minor"`
 	}
-	_ = json.NewDecoder(r.Body).Decode(&req)
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil && !errors.Is(err, io.EOF) {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+		return
+	}
 
 	// expected = opening + cash sales - cash voids (simplified: sum CASH tenders on COMPLETED - VOIDED)
 	cashSales, err := s.sumSessionCashTenders(r.Context(), sessionID)
@@ -364,16 +396,29 @@ func (s *Service) HandlePosSessionClose(w http.ResponseWriter, r *http.Request) 
 	}
 	// Phase 5: variance alert when SHIFTS pack on and threshold breached.
 	cfg := s.shiftsConfig(r.Context(), orgID)
-	enabled, _ := s.LoadEnabledPacks(r.Context(), orgID)
-	if enabled.Has(PackSHIFTS) && abs64(variance) >= cfg.varianceAlertMinor {
+	enabled, err := s.LoadEnabledPacks(r.Context(), orgID)
+	if err != nil && s.log != nil {
+		s.log.Warn("load enabled packs failed on session close", "retailer_id", orgID, "err", err)
+	}
+	if err == nil && enabled.Has(PackSHIFTS) && abs64(variance) >= cfg.varianceAlertMinor {
 		s.alertOwnersPosVariance(r.Context(), orgID, sess, variance)
 	}
-	_ = s.emitPosEvent(r.Context(), orgID, events.EventPosSessionClosed, map[string]any{
+	if err := s.emitPosEvent(r.Context(), orgID, events.EventPosSessionClosed, map[string]any{
 		"session_id":     sessionID,
 		"variance_minor": variance,
 		"expected_minor": expected,
 		"closing_minor":  req.ClosingCashMinor,
-	})
+	}); err != nil && s.log != nil {
+		s.log.Warn("pos session close event emit failed", "session_id", sessionID, "err", err)
+	}
+	sessSales, salesErr := s.listSessionSales(r.Context(), sessionID, 500)
+	if salesErr != nil && s.log != nil {
+		s.log.Warn("list session sales for anomaly review failed", "session_id", sessionID, "err", salesErr)
+	}
+	if review, flagged := s.inspectSessionPosAnomaly(r.Context(), orgID, sess, sessSales); flagged {
+		sess.AnomalyFlags = []string{PosAnomalyReviewFlag}
+		sess.AnomalyReview = &review
+	}
 	writeJSON(w, http.StatusOK, sess)
 }
 
@@ -479,12 +524,18 @@ func (s *Service) HandlePosSale(w http.ResponseWriter, r *http.Request) {
 	// Idempotent return by client_sale_id (survives beyond HTTP idempotency TTL).
 	if clientSaleID != "" {
 		if existing, ok := s.getPosSaleByClientID(r.Context(), orgID, clientSaleID); ok {
-			respBytes, _ := json.Marshal(existing)
+			respBytes, err := json.Marshal(existing)
+			if err != nil {
+				writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "marshal_failed"})
+				return
+			}
 			idemCommitted = true
 			s.saveIdempotency(r.Context(), r, body, http.StatusCreated, respBytes)
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusCreated)
-			_, _ = w.Write(respBytes)
+			if _, err := w.Write(respBytes); err != nil && s.log != nil {
+				s.log.Warn("pos sale replay response write failed", "err", err)
+			}
 			return
 		}
 	}
@@ -498,14 +549,10 @@ func (s *Service) HandlePosSale(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusConflict, map[string]string{"error": "session_not_open"})
 		return
 	}
-	if sess.Status == PosSessionClosed {
-		writeJSON(w, http.StatusConflict, map[string]string{
-			"error":  "session_closed_for_offline_sync",
-			"detail": "re-open a session and re-queue failed offline sales under the new session",
-		})
-		return
-	}
-	if sess.Status != PosSessionOpen {
+	// Historical offline POS sync is allowed on a closed session owned by this tenant
+	// (CASH-only + client_sale_id idempotency still enforced); online sales require OPEN.
+	isClosedOfflineSync := origin == "offline" && sess.Status == PosSessionClosed
+	if sess.Status != PosSessionOpen && !isClosedOfflineSync {
 		writeJSON(w, http.StatusConflict, map[string]string{"error": "session_not_open"})
 		return
 	}
@@ -569,34 +616,20 @@ func (s *Service) HandlePosSale(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	bin := normalizeBin(req.StockBin)
-	if bin == "" {
-		bin = BinFloor
-	}
-	// Prefer FLOOR; if insufficient, try BACKROOM then fail.
-	actor := auth.ResolveRetailerUserID(claims)
-	saleID := s.newID()
-	receipt := s.nextReceiptNumber(orgID)
-
-	// Decrement stock for each line
-	for _, l := range lines {
-		if err := s.decrementForSale(r.Context(), orgID, sess.LocationID, bin, l.Sku, l.Qty, saleID, actor); err != nil {
-			writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error(), "sku": l.Sku})
-			return
-		}
-		_ = s.syncReorderCurrentStock(r.Context(), orgID, l.Sku)
-
-		// [Phase 2] Real-time Shelf Intelligence
-		onHand, _ := s.getOnHand(r.Context(), sess.LocationID, bin, l.Sku)
-		_ = s.CheckAndGenerateOOSAlerts(r.Context(), orgID, sess.LocationID, l.Sku, onHand, 10)
-	}
-
 	currency, err := stampPackCurrency(r.Context(), firstNonEmpty(req.Currency, sess.Currency))
 	if err != nil {
 		st, code := auth.CheckoutPackHTTPStatus(err)
 		writeJSON(w, st, map[string]string{"error": code})
 		return
 	}
+
+	bin := normalizeBin(req.StockBin)
+	if bin == "" {
+		bin = BinFloor
+	}
+	actor := auth.ResolveRetailerUserID(claims)
+	saleID := s.newID()
+	receipt := s.nextReceiptNumberWithSaleID(orgID, saleID)
 	sale := PosSaleDTO{
 		SaleID:          saleID,
 		SessionID:       sessionID,
@@ -616,30 +649,58 @@ func (s *Service) HandlePosSale(w http.ResponseWriter, r *http.Request) {
 		Origin:          origin,
 		ClientCreatedAt: strings.TrimSpace(req.ClientCreatedAt),
 	}
-	// C2.1: sale ledger + HQ sales daily in one Apply (savePosSaleWithHQ).
-	if err := s.savePosSaleWithHQ(r.Context(), sale, false); err != nil {
+
+	committedSale, chosenBins, replayed, err := s.commitPosSaleAtomic(r.Context(), sale, bin, actor, origin == "offline")
+	if err != nil {
+		var stockErr *posStockConflictError
+		if errors.As(err, &stockErr) {
+			writeJSON(w, http.StatusConflict, map[string]string{"error": stockErr.err.Error(), "sku": stockErr.sku})
+			return
+		}
+		if errors.Is(err, errPosSessionNotOpen) {
+			writeJSON(w, http.StatusConflict, map[string]string{"error": "session_not_open"})
+			return
+		}
+		if s.log != nil {
+			s.log.Warn("pos sale atomic commit failed", "retailer_id", orgID, "sale_id", saleID, "err", err)
+		}
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "persist_sale_failed"})
 		return
 	}
-	// HQ stock snapshot after stock move (projection; stock already applied above).
-	s.refreshHqStockSnapshotsForSale(r.Context(), orgID, sess.LocationID, bin, lines)
-	// L3 flywheel: sell-through rollup + DemandAdjustments SELL_THROUGH factor
-	s.recordSellThroughSale(r.Context(), orgID, sess.LocationID, lines)
-	_ = s.emitPosEvent(r.Context(), orgID, events.EventPosSaleCompleted, map[string]any{
-		"sale_id":        saleID,
-		"session_id":     sessionID,
-		"total_minor":    total,
-		"receipt":        receipt,
-		"location_id":    sess.LocationID,
-		"origin":         origin,
-		"client_sale_id": clientSaleID,
-	})
-	respBytes, _ := json.Marshal(sale)
+
+	if !replayed {
+		// Best-effort secondary projections after atomic sale+stock commit.
+		for i, l := range committedSale.Lines {
+			if err := s.syncReorderCurrentStock(r.Context(), orgID, l.Sku); err != nil && s.log != nil {
+				s.log.Warn("pos sale reorder stock sync failed", "retailer_id", orgID, "sku", l.Sku, "err", err)
+			}
+			checkBin := bin
+			if i < len(chosenBins) && chosenBins[i] != "" {
+				checkBin = chosenBins[i]
+			}
+			onHand, ohErr := s.getOnHand(r.Context(), sess.LocationID, checkBin, l.Sku)
+			if ohErr == nil {
+				if err := s.CheckAndGenerateOOSAlerts(r.Context(), orgID, sess.LocationID, l.Sku, onHand, 10); err != nil && s.log != nil {
+					s.log.Warn("pos sale OOS alert check failed", "retailer_id", orgID, "sku", l.Sku, "err", err)
+				}
+			}
+		}
+		s.refreshHqStockSnapshotsForSale(r.Context(), orgID, sess.LocationID, bin, committedSale.Lines)
+		s.recordSellThroughSale(r.Context(), orgID, sess.LocationID, committedSale.Lines)
+	}
+
+	respBytes, err := json.Marshal(committedSale)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "marshal_failed"})
+		return
+	}
 	idemCommitted = true
 	s.saveIdempotency(r.Context(), r, body, http.StatusCreated, respBytes)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	_, _ = w.Write(respBytes)
+	if _, err := w.Write(respBytes); err != nil && s.log != nil {
+		s.log.Warn("pos sale response write failed", "err", err)
+	}
 }
 
 // HandlePosSaleVoid serves POST /v1/retailer/pos/sales/{saleID}/void
@@ -675,7 +736,11 @@ func (s *Service) HandlePosSaleVoid(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Session must still be open for cashier self-void; managers can void closed session same day.
-	sess, sessOK, _ := s.getPosSession(r.Context(), sale.SessionID)
+	sess, sessOK, err := s.getPosSession(r.Context(), sale.SessionID)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "session_lookup_failed"})
+		return
+	}
 	actor := auth.ResolveRetailerUserID(claims)
 	const cashierVoidMaxMinor int64 = 500_000 // 5000.00 if 2-decimal
 	if !canVoid {
@@ -689,58 +754,559 @@ func (s *Service) HandlePosSaleVoid(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Reason string `json:"reason"`
 	}
-	_ = json.NewDecoder(r.Body).Decode(&req)
-
-	// Restock
-	for _, l := range sale.Lines {
-		_ = s.applyDelta(r.Context(), orgID, sale.LocationID, sale.StockBin, l.Sku, l.Qty, MoveSaleVoid, "SALE", saleID, actor, "void")
-		_ = s.syncReorderCurrentStock(r.Context(), orgID, l.Sku)
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil && !errors.Is(err, io.EOF) {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+		return
 	}
-	sale.Status = PosSaleVoided
-	sale.VoidedAt = s.now().UTC().Format(time.RFC3339Nano)
-	sale.VoidedByUserID = actor
-	sale.VoidReason = strings.TrimSpace(req.Reason)
-	// C2.1: void ledger + HQ void deltas in one Apply.
-	if err := s.savePosSaleWithHQ(r.Context(), sale, true); err != nil {
+
+	voidedSale, alreadyVoided, err := s.commitPosVoidAtomic(r.Context(), orgID, saleID, actor, strings.TrimSpace(req.Reason))
+	if err != nil {
+		if errors.Is(err, errPosSaleNotFound) {
+			writeJSON(w, http.StatusNotFound, map[string]string{"error": "sale_not_found"})
+			return
+		}
+		if s.log != nil {
+			s.log.Warn("pos sale void atomic commit failed", "retailer_id", orgID, "sale_id", saleID, "err", err)
+		}
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "void_failed"})
 		return
 	}
-	s.refreshHqStockSnapshotsForSale(r.Context(), orgID, sale.LocationID, sale.StockBin, sale.Lines)
-	s.recordSellThroughVoid(r.Context(), orgID, sale.LocationID, sale.Lines)
-	_ = s.emitPosEvent(r.Context(), orgID, events.EventPosSaleVoided, map[string]any{
-		"sale_id": saleID, "reason": sale.VoidReason,
+	if !alreadyVoided {
+		for _, l := range voidedSale.Lines {
+			if err := s.syncReorderCurrentStock(r.Context(), orgID, l.Sku); err != nil && s.log != nil {
+				s.log.Warn("pos void reorder stock sync failed", "retailer_id", orgID, "sku", l.Sku, "err", err)
+			}
+		}
+		s.refreshHqStockSnapshotsForSale(r.Context(), orgID, voidedSale.LocationID, voidedSale.StockBin, voidedSale.Lines)
+		s.recordSellThroughVoid(r.Context(), orgID, voidedSale.LocationID, voidedSale.Lines)
+	}
+	sessForVoid, sessFound, sessErr := s.getPosSession(r.Context(), voidedSale.SessionID)
+	if sessErr != nil && s.log != nil {
+		s.log.Warn("load pos session for void anomaly review failed", "session_id", voidedSale.SessionID, "err", sessErr)
+	}
+	if !sessFound {
+		sessForVoid = PosSessionDTO{SessionID: voidedSale.SessionID, RegisterID: voidedSale.RegisterID, LocationID: voidedSale.LocationID, RetailerID: orgID}
+	}
+	sessSales, salesErr := s.listSessionSales(r.Context(), voidedSale.SessionID, 500)
+	if salesErr != nil && s.log != nil {
+		s.log.Warn("list session sales for void anomaly review failed", "session_id", voidedSale.SessionID, "err", salesErr)
+	}
+	if review, flagged := s.inspectSessionPosAnomaly(r.Context(), orgID, sessForVoid, sessSales); flagged {
+		voidedSale.AnomalyFlags = []string{PosAnomalyReviewFlag}
+		voidedSale.AnomalyReview = &review
+	}
+	writeJSON(w, http.StatusOK, voidedSale)
+}
+
+var (
+	errPosSessionNotOpen = errors.New("session_not_open")
+	errPosSaleNotFound   = errors.New("sale_not_found")
+)
+
+type posStockConflictError struct {
+	sku string
+	err error
+}
+
+func (e *posStockConflictError) Error() string {
+	return e.err.Error()
+}
+
+func (e *posStockConflictError) Unwrap() error {
+	return e.err
+}
+
+func posSaleRowMap(sale PosSaleDTO, linesJSON, tendersJSON []byte) map[string]any {
+	row := map[string]any{
+		"SaleId":        sale.SaleID,
+		"SessionId":     sale.SessionID,
+		"RegisterId":    sale.RegisterID,
+		"LocationId":    sale.LocationID,
+		"RetailerId":    sale.RetailerID,
+		"CashierUserId": sale.CashierUserID,
+		"Status":        sale.Status,
+		"TotalMinor":    sale.TotalMinor,
+		"Currency":      sale.Currency,
+		"ReceiptNumber": sale.ReceiptNumber,
+		"LinesJson":     string(linesJSON),
+		"TendersJson":   string(tendersJSON),
+		"StockBin":      sale.StockBin,
+		"CreatedAt":     spanner.CommitTimestamp,
+	}
+	if sale.ClientSaleID != "" {
+		row["ClientSaleId"] = sale.ClientSaleID
+	}
+	if sale.Origin != "" {
+		row["Origin"] = sale.Origin
+	}
+	if sale.ClientCreatedAt != "" {
+		if t, err := time.Parse(time.RFC3339Nano, sale.ClientCreatedAt); err == nil {
+			row["ClientCreatedAt"] = t
+		} else if t, err := time.Parse(time.RFC3339, sale.ClientCreatedAt); err == nil {
+			row["ClientCreatedAt"] = t
+		}
+	}
+	if sale.Status == PosSaleVoided {
+		row["VoidedAt"] = spanner.CommitTimestamp
+		row["VoidedByUserId"] = nullableStr(sale.VoidedByUserID)
+		row["VoidReason"] = nullableStr(sale.VoidReason)
+	}
+	return row
+}
+
+// commitPosSaleAtomic deducts stock for all sale lines, persists RetailerPosSales,
+// updates RetailerHqSalesDaily, and emits EventPosSaleCompleted in one transaction.
+func (s *Service) commitPosSaleAtomic(ctx context.Context, sale PosSaleDTO, preferredBin, actor string, allowClosedOffline bool) (PosSaleDTO, []string, bool, error) {
+	linesJSON, err := json.Marshal(sale.Lines)
+	if err != nil {
+		return PosSaleDTO{}, nil, false, err
+	}
+	tendersJSON, err := json.Marshal(sale.Tenders)
+	if err != nil {
+		return PosSaleDTO{}, nil, false, err
+	}
+
+	if s.spannerClient == nil {
+		return s.commitPosSaleMemoryAtomic(sale, preferredBin, actor, allowClosedOffline)
+	}
+
+	var (
+		committedSale PosSaleDTO
+		chosenBins    []string
+		replayed      bool
+	)
+	_, err = s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		committedSale = sale
+		replayed = false
+		chosenBins = make([]string, len(sale.Lines))
+
+		// Re-check offline client_sale_id inside txn so concurrent retries cannot double-deduct stock.
+		if sale.ClientSaleID != "" {
+			if existing, ok, lookupErr := findPosSaleByClientInTxn(ctx, txn, sale.RetailerID, sale.ClientSaleID); lookupErr == nil && ok {
+				committedSale = existing
+				replayed = true
+				return nil
+			}
+		}
+
+		// Re-verify session ownership & status inside txn.
+		sessRow, sessErr := txn.ReadRow(ctx, "RetailerPosSessions", spanner.Key{sale.SessionID}, []string{"RetailerId", "Status"})
+		if sessErr != nil {
+			if isNotFound(sessErr) {
+				return errPosSessionNotOpen
+			}
+			return sessErr
+		}
+		var sessRetailerID, sessStatus string
+		if err := sessRow.Columns(&sessRetailerID, &sessStatus); err != nil {
+			return err
+		}
+		if sessRetailerID != sale.RetailerID || (sessStatus != PosSessionOpen && !(allowClosedOffline && sessStatus == PosSessionClosed)) {
+			return errPosSessionNotOpen
+		}
+
+		type balState struct {
+			onHand   int64
+			reserved int64
+			dirty    bool
+		}
+		balances := map[stockBalanceKey]balState{}
+		balOrder := make([]stockBalanceKey, 0, len(sale.Lines))
+		loadBal := func(bin, sku string) (balState, error) {
+			k := stockBalanceKey{sale.LocationID, bin, sku}
+			if st, ok := balances[k]; ok {
+				return st, nil
+			}
+			row, err := txn.ReadRow(ctx, "RetailerStockBalances", spanner.Key{sale.LocationID, bin, sku}, []string{"OnHand", "Reserved"})
+			if err != nil && !isNotFound(err) {
+				return balState{}, err
+			}
+			var st balState
+			if err == nil {
+				if err := row.Columns(&st.onHand, &st.reserved); err != nil {
+					return balState{}, err
+				}
+			}
+			balances[k] = st
+			return st, nil
+		}
+
+		var muts []*spanner.Mutation
+		binCandidates := []string{preferredBin, BinFloor, BinBackroom}
+		for i, l := range sale.Lines {
+			seen := map[string]bool{}
+			selectedBin := ""
+			for _, candidate := range binCandidates {
+				b := normalizeBin(candidate)
+				if b == "" || seen[b] {
+					continue
+				}
+				seen[b] = true
+				st, err := loadBal(b, l.Sku)
+				if err != nil {
+					return err
+				}
+				if st.onHand >= l.Qty {
+					k := stockBalanceKey{sale.LocationID, b, l.Sku}
+					if !st.dirty {
+						balOrder = append(balOrder, k)
+					}
+					st.onHand -= l.Qty
+					st.dirty = true
+					balances[k] = st
+					selectedBin = b
+					break
+				}
+			}
+			if selectedBin == "" {
+				return &posStockConflictError{sku: l.Sku, err: errors.New("insufficient_stock")}
+			}
+			chosenBins[i] = selectedBin
+			muts = append(muts, spanner.InsertMap("RetailerStockMovements", map[string]any{
+				"MovementId":   s.newID(),
+				"RetailerId":   sale.RetailerID,
+				"LocationId":   sale.LocationID,
+				"StockBin":     selectedBin,
+				"Sku":          l.Sku,
+				"Qty":          -l.Qty,
+				"MovementType": MoveSale,
+				"RefType":      nullableStr("SALE"),
+				"RefId":        nullableStr(sale.SaleID),
+				"ActorUserId":  nullableStr(actor),
+				"Note":         nullableStr("pos_sale"),
+				"CreatedAt":    spanner.CommitTimestamp,
+			}))
+		}
+
+		for _, k := range balOrder {
+			st := balances[k]
+			muts = append(muts, spanner.InsertOrUpdateMap("RetailerStockBalances", map[string]any{
+				"LocationId": k.LocationID,
+				"StockBin":   k.StockBin,
+				"Sku":        k.Sku,
+				"RetailerId": sale.RetailerID,
+				"OnHand":     st.onHand,
+				"Reserved":   st.reserved,
+				"UpdatedAt":  spanner.CommitTimestamp,
+			}))
+		}
+
+		muts = append(muts, spanner.InsertOrUpdateMap("RetailerPosSales", posSaleRowMap(sale, linesJSON, tendersJSON)))
+		if hqMuts, hqErr := s.hqSalesMutationsInTxn(ctx, txn, sale, false); hqErr == nil {
+			muts = append(muts, hqMuts...)
+		} else if s.log != nil {
+			s.log.Warn("hq sales mutations skipped", "sale_id", sale.SaleID, "err", hqErr)
+		}
+
+		if err := txn.BufferWrite(muts); err != nil {
+			return err
+		}
+		buf := &spannerTxnBuffer{}
+		payload := map[string]any{
+			"type":           events.EventPosSaleCompleted,
+			"timestamp":      s.now().Format(time.RFC3339Nano),
+			"retailer_id":    sale.RetailerID,
+			"sale_id":        sale.SaleID,
+			"session_id":     sale.SessionID,
+			"total_minor":    sale.TotalMinor,
+			"receipt":        sale.ReceiptNumber,
+			"location_id":    sale.LocationID,
+			"origin":         sale.Origin,
+			"client_sale_id": sale.ClientSaleID,
+		}
+		if err := outbox.EmitJSON(ctx, buf, events.AggregateRetailer, sale.RetailerID, events.TopicMain, payload); err != nil {
+			return err
+		}
+		return buf.Flush(txn)
 	})
-	writeJSON(w, http.StatusOK, sale)
+	if err != nil {
+		return PosSaleDTO{}, nil, false, err
+	}
+	return committedSale, chosenBins, replayed, nil
+}
+
+func (s *Service) commitPosSaleMemoryAtomic(sale PosSaleDTO, preferredBin, actor string, allowClosedOffline bool) (PosSaleDTO, []string, bool, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if sale.ClientSaleID != "" && s.posSalesByClient != nil {
+		if existingID, ok := s.posSalesByClient[sale.RetailerID+"|"+sale.ClientSaleID]; ok {
+			if existing, okSale := s.posSales[existingID]; okSale {
+				return existing, nil, true, nil
+			}
+		}
+	}
+
+	if s.posSessions != nil {
+		sess, ok := s.posSessions[sale.SessionID]
+		if !ok || sess.RetailerID != sale.RetailerID || (sess.Status != PosSessionOpen && !(allowClosedOffline && sess.Status == PosSessionClosed)) {
+			return PosSaleDTO{}, nil, false, errPosSessionNotOpen
+		}
+	}
+
+	// Stage balance decrements before mutating state so multi-line stock failures never leak.
+	staged := map[stockBalanceKey]memStockBalance{}
+	chosenBins := make([]string, len(sale.Lines))
+	type stagedMove struct {
+		bin string
+		sku string
+		qty int64
+	}
+	moves := make([]stagedMove, 0, len(sale.Lines))
+	binCandidates := []string{preferredBin, BinFloor, BinBackroom}
+
+	for i, l := range sale.Lines {
+		seen := map[string]bool{}
+		selectedBin := ""
+		for _, candidate := range binCandidates {
+			b := normalizeBin(candidate)
+			if b == "" || seen[b] {
+				continue
+			}
+			seen[b] = true
+			k := stockBalanceKey{sale.LocationID, b, l.Sku}
+			cur, ok := staged[k]
+			if !ok && s.stockBalances != nil {
+				cur = s.stockBalances[k]
+			}
+			if cur.OnHand >= l.Qty {
+				cur.RetailerID = sale.RetailerID
+				cur.OnHand -= l.Qty
+				staged[k] = cur
+				selectedBin = b
+				break
+			}
+		}
+		if selectedBin == "" {
+			return PosSaleDTO{}, nil, false, &posStockConflictError{sku: l.Sku, err: errors.New("insufficient_stock")}
+		}
+		chosenBins[i] = selectedBin
+		moves = append(moves, stagedMove{bin: selectedBin, sku: l.Sku, qty: l.Qty})
+	}
+
+	if s.stockBalances == nil {
+		s.stockBalances = map[stockBalanceKey]memStockBalance{}
+	}
+	for k, v := range staged {
+		s.stockBalances[k] = v
+		s.bumpStockLocationVersionLocked(sale.RetailerID, k.LocationID, k.StockBin)
+	}
+	nowStr := s.now().UTC().Format(time.RFC3339Nano)
+	for _, mv := range moves {
+		s.stockMovements = append(s.stockMovements, StockMovementDTO{
+			MovementID: s.newID(), LocationID: sale.LocationID, StockBin: mv.bin, Sku: mv.sku,
+			Qty: -mv.qty, MovementType: MoveSale, RefType: "SALE", RefID: sale.SaleID,
+			ActorUserID: actor, Note: "pos_sale", CreatedAt: nowStr,
+		})
+	}
+	if s.posSales == nil {
+		s.posSales = map[string]PosSaleDTO{}
+	}
+	if s.posSalesByClient == nil {
+		s.posSalesByClient = map[string]string{}
+	}
+	s.posSales[sale.SaleID] = sale
+	if sale.ClientSaleID != "" {
+		s.posSalesByClient[sale.RetailerID+"|"+sale.ClientSaleID] = sale.SaleID
+	}
+	s.applyHqFromSaleMemoryLocked(sale)
+	return sale, chosenBins, false, nil
+}
+
+func (s *Service) commitPosVoidAtomic(ctx context.Context, orgID, saleID, actor, reason string) (PosSaleDTO, bool, error) {
+	now := s.now().UTC()
+	nowStr := now.Format(time.RFC3339Nano)
+
+	if s.spannerClient == nil {
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		sale, ok := s.posSales[saleID]
+		if !ok || sale.RetailerID != orgID {
+			return PosSaleDTO{}, false, errPosSaleNotFound
+		}
+		if sale.Status == PosSaleVoided {
+			return sale, true, nil
+		}
+		if s.stockBalances == nil {
+			s.stockBalances = map[stockBalanceKey]memStockBalance{}
+		}
+		for _, l := range sale.Lines {
+			if l.Qty <= 0 {
+				continue
+			}
+			k := stockBalanceKey{sale.LocationID, sale.StockBin, l.Sku}
+			cur := s.stockBalances[k]
+			cur.RetailerID = orgID
+			cur.OnHand += l.Qty
+			s.stockBalances[k] = cur
+			s.bumpStockLocationVersionLocked(orgID, sale.LocationID, sale.StockBin)
+			s.stockMovements = append(s.stockMovements, StockMovementDTO{
+				MovementID: s.newID(), LocationID: sale.LocationID, StockBin: sale.StockBin, Sku: l.Sku,
+				Qty: l.Qty, MovementType: MoveSaleVoid, RefType: "SALE", RefID: saleID,
+				ActorUserID: actor, Note: "void", CreatedAt: nowStr,
+			})
+		}
+		sale.Status = PosSaleVoided
+		sale.VoidedAt = nowStr
+		sale.VoidedByUserID = actor
+		sale.VoidReason = reason
+		s.posSales[saleID] = sale
+		s.applyHqFromVoidMemoryLocked(sale)
+		return sale, false, nil
+	}
+
+	var (
+		out           PosSaleDTO
+		alreadyVoided bool
+	)
+	_, err := s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		alreadyVoided = false
+		row, err := txn.ReadRow(ctx, "RetailerPosSales", spanner.Key{saleID},
+			[]string{"SaleId", "SessionId", "RegisterId", "LocationId", "RetailerId", "CashierUserId",
+				"Status", "TotalMinor", "Currency", "ReceiptNumber", "LinesJson", "TendersJson", "StockBin",
+				"CreatedAt", "VoidedAt", "VoidedByUserId", "VoidReason"})
+		if err != nil {
+			if isNotFound(err) {
+				return errPosSaleNotFound
+			}
+			return err
+		}
+		sale, ok, err := decodePosSaleRow(row)
+		if err != nil || !ok || sale.RetailerID != orgID {
+			return errPosSaleNotFound
+		}
+		if sale.Status == PosSaleVoided {
+			out = sale
+			alreadyVoided = true
+			return nil
+		}
+
+		type balState struct {
+			onHand   int64
+			reserved int64
+			dirty    bool
+		}
+		balances := map[stockBalanceKey]balState{}
+		balOrder := make([]stockBalanceKey, 0, len(sale.Lines))
+		var muts []*spanner.Mutation
+		for _, l := range sale.Lines {
+			if l.Qty <= 0 {
+				continue
+			}
+			k := stockBalanceKey{sale.LocationID, sale.StockBin, l.Sku}
+			st, seen := balances[k]
+			if !seen {
+				balRow, balErr := txn.ReadRow(ctx, "RetailerStockBalances", spanner.Key{k.LocationID, k.StockBin, k.Sku}, []string{"OnHand", "Reserved"})
+				if balErr != nil && !isNotFound(balErr) {
+					return balErr
+				}
+				if balErr == nil {
+					if err := balRow.Columns(&st.onHand, &st.reserved); err != nil {
+						return err
+					}
+				}
+				balOrder = append(balOrder, k)
+			}
+			st.onHand += l.Qty
+			st.dirty = true
+			balances[k] = st
+			muts = append(muts, spanner.InsertMap("RetailerStockMovements", map[string]any{
+				"MovementId":   s.newID(),
+				"RetailerId":   orgID,
+				"LocationId":   sale.LocationID,
+				"StockBin":     sale.StockBin,
+				"Sku":          l.Sku,
+				"Qty":          l.Qty,
+				"MovementType": MoveSaleVoid,
+				"RefType":      nullableStr("SALE"),
+				"RefId":        nullableStr(saleID),
+				"ActorUserId":  nullableStr(actor),
+				"Note":         nullableStr("void"),
+				"CreatedAt":    spanner.CommitTimestamp,
+			}))
+		}
+		for _, k := range balOrder {
+			st := balances[k]
+			if !st.dirty {
+				continue
+			}
+			muts = append(muts, spanner.InsertOrUpdateMap("RetailerStockBalances", map[string]any{
+				"LocationId": k.LocationID,
+				"StockBin":   k.StockBin,
+				"Sku":        k.Sku,
+				"RetailerId": orgID,
+				"OnHand":     st.onHand,
+				"Reserved":   st.reserved,
+				"UpdatedAt":  spanner.CommitTimestamp,
+			}))
+		}
+
+		sale.Status = PosSaleVoided
+		sale.VoidedAt = nowStr
+		sale.VoidedByUserID = actor
+		sale.VoidReason = reason
+		muts = append(muts, spanner.UpdateMap("RetailerPosSales", map[string]any{
+			"SaleId":         saleID,
+			"Status":         PosSaleVoided,
+			"VoidedAt":       spanner.CommitTimestamp,
+			"VoidedByUserId": nullableStr(actor),
+			"VoidReason":     nullableStr(reason),
+		}))
+
+		if hqMuts, hqErr := s.hqSalesMutationsInTxn(ctx, txn, sale, true); hqErr == nil {
+			muts = append(muts, hqMuts...)
+		} else if s.log != nil {
+			s.log.Warn("hq sales void mutations skipped", "sale_id", saleID, "err", hqErr)
+		}
+
+		if err := txn.BufferWrite(muts); err != nil {
+			return err
+		}
+		buf := &spannerTxnBuffer{}
+		payload := map[string]any{
+			"type":        events.EventPosSaleVoided,
+			"timestamp":   s.now().Format(time.RFC3339Nano),
+			"retailer_id": orgID,
+			"sale_id":     saleID,
+			"reason":      reason,
+		}
+		if err := outbox.EmitJSON(ctx, buf, events.AggregateRetailer, orgID, events.TopicMain, payload); err != nil {
+			return err
+		}
+		if err := buf.Flush(txn); err != nil {
+			return err
+		}
+		out = sale
+		return nil
+	})
+	if err != nil {
+		return PosSaleDTO{}, false, err
+	}
+	return out, alreadyVoided, nil
+}
+
+func findPosSaleByClientInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, retailerID, clientSaleID string) (PosSaleDTO, bool, error) {
+	stmt := spanner.Statement{
+		SQL: `SELECT SaleId, SessionId, RegisterId, LocationId, RetailerId, CashierUserId,
+			Status, TotalMinor, Currency, ReceiptNumber, LinesJson, TendersJson, StockBin,
+			CreatedAt, VoidedAt, VoidedByUserId, VoidReason, ClientSaleId, Origin, ClientCreatedAt
+			FROM RetailerPosSales@{FORCE_INDEX=UQ_RetailerPosSales_ClientSale}
+			WHERE RetailerId = @rid AND ClientSaleId = @cid
+			LIMIT 1`,
+		Params: map[string]any{"rid": retailerID, "cid": clientSaleID},
+	}
+	iter := txn.Query(ctx, stmt)
+	defer iter.Stop()
+	row, err := iter.Next()
+	if err != nil {
+		return PosSaleDTO{}, false, err
+	}
+	return decodePosSaleRowExtended(row)
 }
 
 // HandlePosSaleRefund is alias for void in v1 (same-day full refund).
 func (s *Service) HandlePosSaleRefund(w http.ResponseWriter, r *http.Request) {
 	s.HandlePosSaleVoid(w, r)
-}
-
-// ---- stock helper for POS ----
-
-func (s *Service) decrementForSale(ctx context.Context, retailerID, locationID, preferredBin, sku string, qty int64, saleID, actor string) error {
-	// Try preferred bin first, then FLOOR, then BACKROOM.
-	order := []string{preferredBin, BinFloor, BinBackroom}
-	seen := map[string]bool{}
-	var lastErr error
-	for _, bin := range order {
-		bin = normalizeBin(bin)
-		if bin == "" || seen[bin] {
-			continue
-		}
-		seen[bin] = true
-		onHand, _ := s.getOnHand(ctx, locationID, bin, sku)
-		if onHand >= qty {
-			return s.applyDelta(ctx, retailerID, locationID, bin, sku, -qty, MoveSale, "SALE", saleID, actor, "pos_sale")
-		}
-		lastErr = errors.New("insufficient_stock")
-	}
-	if lastErr == nil {
-		lastErr = errors.New("insufficient_stock")
-	}
-	return lastErr
 }
 
 // ---- persistence ----
@@ -974,8 +1540,14 @@ func (s *Service) savePosSale(ctx context.Context, sale PosSaleDTO) error {
 // savePosSaleWithHQ persists the sale ledger and HQ sales daily deltas in one Apply.
 // void=false → sale complete deltas; void=true → void deltas (same txn as ledger).
 func (s *Service) savePosSaleWithHQ(ctx context.Context, sale PosSaleDTO, isVoid bool) error {
-	linesJSON, _ := json.Marshal(sale.Lines)
-	tendersJSON, _ := json.Marshal(sale.Tenders)
+	linesJSON, err := json.Marshal(sale.Lines)
+	if err != nil {
+		return err
+	}
+	tendersJSON, err := json.Marshal(sale.Tenders)
+	if err != nil {
+		return err
+	}
 	if s.spannerClient == nil {
 		s.mu.Lock()
 		if s.posSales == nil {
@@ -988,50 +1560,15 @@ func (s *Service) savePosSaleWithHQ(ctx context.Context, sale PosSaleDTO, isVoid
 		if sale.ClientSaleID != "" {
 			s.posSalesByClient[sale.RetailerID+"|"+sale.ClientSaleID] = sale.SaleID
 		}
-		s.mu.Unlock()
-		// C2.1 memory HQ writers (same critical section as ledger conceptually)
 		if isVoid {
-			s.applyHqFromVoidMemory(sale)
+			s.applyHqFromVoidMemoryLocked(sale)
 		} else {
-			s.applyHqFromSaleMemory(sale)
+			s.applyHqFromSaleMemoryLocked(sale)
 		}
+		s.mu.Unlock()
 		return nil
 	}
-	row := map[string]any{
-		"SaleId":        sale.SaleID,
-		"SessionId":     sale.SessionID,
-		"RegisterId":    sale.RegisterID,
-		"LocationId":    sale.LocationID,
-		"RetailerId":    sale.RetailerID,
-		"CashierUserId": sale.CashierUserID,
-		"Status":        sale.Status,
-		"TotalMinor":    sale.TotalMinor,
-		"Currency":      sale.Currency,
-		"ReceiptNumber": sale.ReceiptNumber,
-		"LinesJson":     string(linesJSON),
-		"TendersJson":   string(tendersJSON),
-		"StockBin":      sale.StockBin,
-		"CreatedAt":     spanner.CommitTimestamp,
-	}
-	if sale.ClientSaleID != "" {
-		row["ClientSaleId"] = sale.ClientSaleID
-	}
-	if sale.Origin != "" {
-		row["Origin"] = sale.Origin
-	}
-	if sale.ClientCreatedAt != "" {
-		if t, err := time.Parse(time.RFC3339Nano, sale.ClientCreatedAt); err == nil {
-			row["ClientCreatedAt"] = t
-		} else if t, err := time.Parse(time.RFC3339, sale.ClientCreatedAt); err == nil {
-			row["ClientCreatedAt"] = t
-		}
-	}
-	if sale.Status == PosSaleVoided {
-		row["VoidedAt"] = spanner.CommitTimestamp
-		row["VoidedByUserId"] = nullableStr(sale.VoidedByUserID)
-		row["VoidReason"] = nullableStr(sale.VoidReason)
-	}
-
+	row := posSaleRowMap(sale, linesJSON, tendersJSON)
 	// C2.1: HQ sales daily in the SAME Apply as the sale ledger (not a goroutine).
 	muts := []*spanner.Mutation{spanner.InsertOrUpdateMap("RetailerPosSales", row)}
 	var hqMuts []*spanner.Mutation
@@ -1046,7 +1583,7 @@ func (s *Service) savePosSaleWithHQ(ctx context.Context, sale PosSaleDTO, isVoid
 	} else if s.log != nil {
 		s.log.Warn("hq sales mutations skipped", "sale_id", sale.SaleID, "err", hqErr)
 	}
-	_, err := s.spannerClient.Apply(ctx, muts)
+	_, err = s.spannerClient.Apply(ctx, muts)
 	return err
 }
 
@@ -1125,8 +1662,12 @@ func decodePosSaleRow(row *spanner.Row) (PosSaleDTO, bool, error) {
 	); err != nil {
 		return PosSaleDTO{}, false, err
 	}
-	_ = json.Unmarshal([]byte(linesJSON), &sale.Lines)
-	_ = json.Unmarshal([]byte(tendersJSON), &sale.Tenders)
+	if err := json.Unmarshal([]byte(linesJSON), &sale.Lines); err != nil {
+		return PosSaleDTO{}, false, fmt.Errorf("decode pos sale lines: %w", err)
+	}
+	if err := json.Unmarshal([]byte(tendersJSON), &sale.Tenders); err != nil {
+		return PosSaleDTO{}, false, fmt.Errorf("decode pos sale tenders: %w", err)
+	}
 	sale.CreatedAt = created.UTC().Format(time.RFC3339Nano)
 	if voided.Valid {
 		sale.VoidedAt = voided.Time.UTC().Format(time.RFC3339Nano)
@@ -1155,8 +1696,12 @@ func decodePosSaleRowExtended(row *spanner.Row) (PosSaleDTO, bool, error) {
 	); err != nil {
 		return PosSaleDTO{}, false, err
 	}
-	_ = json.Unmarshal([]byte(linesJSON), &sale.Lines)
-	_ = json.Unmarshal([]byte(tendersJSON), &sale.Tenders)
+	if err := json.Unmarshal([]byte(linesJSON), &sale.Lines); err != nil {
+		return PosSaleDTO{}, false, fmt.Errorf("decode pos sale lines: %w", err)
+	}
+	if err := json.Unmarshal([]byte(tendersJSON), &sale.Tenders); err != nil {
+		return PosSaleDTO{}, false, fmt.Errorf("decode pos sale tenders: %w", err)
+	}
 	sale.CreatedAt = created.UTC().Format(time.RFC3339Nano)
 	if voided.Valid {
 		sale.VoidedAt = voided.Time.UTC().Format(time.RFC3339Nano)
@@ -1309,8 +1854,24 @@ func (s *Service) sumSessionCashTenders(ctx context.Context, sessionID string) (
 }
 
 func (s *Service) nextReceiptNumber(retailerID string) string {
-	// Simple monotonic-ish receipt: time-based (unique index handles rare collisions).
-	return fmt.Sprintf("R%s", s.now().UTC().Format("20060102150405.000000"))
+	return s.nextReceiptNumberWithSaleID(retailerID, s.newID())
+}
+
+func (s *Service) nextReceiptNumberWithSaleID(_ string, saleID string) string {
+	ts := s.now().UTC().Format("20060102150405.000000") // 21 chars
+	clean := strings.Map(func(r rune) rune {
+		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') {
+			return r
+		}
+		return -1
+	}, saleID)
+	if len(clean) > 8 {
+		clean = clean[len(clean)-8:]
+	}
+	if clean == "" {
+		return "R" + ts
+	}
+	return "R" + ts + "-" + clean
 }
 
 func (s *Service) emitPosEvent(ctx context.Context, retailerID, eventType string, fields map[string]any) error {

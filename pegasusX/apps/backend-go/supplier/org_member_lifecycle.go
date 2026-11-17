@@ -144,6 +144,7 @@ func (s *Service) handleOrgMemberDeactivate(w http.ResponseWriter, r *http.Reque
 		writeOrgMemberMutationError(w, err)
 		return
 	}
+	_ = auth.GetRevocationStore().RevokeUser(r.Context(), userID, 24*time.Hour)
 	if s.cache != nil {
 		s.cache.Invalidate(r.Context(), supplierCacheKey(sid))
 	}

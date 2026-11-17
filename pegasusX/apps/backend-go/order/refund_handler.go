@@ -31,6 +31,7 @@ func (s *Service) HandleInitiateRefund(w http.ResponseWriter, r *http.Request) {
 		ReasonText     string `json:"reason_text"`
 		IdempotencyKey string `json:"idempotency_key"`
 	}
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	_ = json.NewDecoder(r.Body).Decode(&body)
 
 	res, err := s.InitiateRefund(r.Context(), RefundRequest{

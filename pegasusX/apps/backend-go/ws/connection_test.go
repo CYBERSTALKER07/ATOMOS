@@ -69,3 +69,20 @@ func TestWebsocketOriginAllowed_RejectsUnexpectedBrowserOrigin(t *testing.T) {
 		t.Fatal("expected unexpected browser origin to be rejected")
 	}
 }
+
+func TestWebsocketOriginAllowed_RejectsLocalhostInProduction(t *testing.T) {
+	original := allowedOrigins
+	SetAllowedOrigins(nil)
+	t.Cleanup(func() {
+		allowedOriginMu.Lock()
+		allowedOrigins = original
+		allowedOriginMu.Unlock()
+	})
+
+	t.Setenv("PEGASUSX_ENV", "production")
+	req := httptest.NewRequest("GET", "http://example.test/v1/ws", nil)
+	req.Header.Set("Origin", "http://localhost:3000")
+	if websocketOriginAllowed(req) {
+		t.Fatal("expected localhost origin to be rejected in production unless allowlisted")
+	}
+}

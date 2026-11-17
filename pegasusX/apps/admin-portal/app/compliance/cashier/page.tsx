@@ -23,9 +23,9 @@ export default function CashierVaultPage() {
 
   // Form: Bag Intake
   const [cellId, setCellId] = useState("cell-uz");
-  const [supplierId, setSupplierId] = useState("sup_tashkent_fmcg");
-  const [depotId, setDepotId] = useState("depot_tashkent_central");
-  const [driverId, setDriverId] = useState("drv_tashkent_404");
+  const [supplierId, setSupplierId] = useState("");
+  const [depotId, setDepotId] = useState("");
+  const [driverId, setDriverId] = useState("");
   const [routeId, setRouteId] = useState("route_daily_center_01");
   const [bagSealBarcode, setBagSealBarcode] = useState(`seal_bag_${Date.now()}`);
   const [expectedCashMinor, setExpectedCashMinor] = useState(125000000); // 1,250,000 UZS in tiyins
@@ -44,7 +44,7 @@ export default function CashierVaultPage() {
   const [toleranceMinor, setToleranceMinor] = useState(500000); // 5,000 UZS tolerance
 
   // Form: CIT Handover
-  const [citCourierBadge, setCitCourierBadge] = useState("inkass_uz_badge_992");
+  const [citCourierBadge, setCitCourierBadge] = useState("");
   const [citSealBarcode, setCitSealBarcode] = useState(`cit_seal_${Date.now()}`);
   const [citAmountUZS, setCitAmountUZS] = useState(5000000);
   const [citReceipt, setCitReceipt] = useState<DepotVaultLedgerEntry | null>(null);
@@ -262,6 +262,7 @@ export default function CashierVaultPage() {
                   type="text"
                   value={depotId}
                   onChange={(e) => setDepotId(e.target.value)}
+                  placeholder="e.g. depot_central_01"
                   required
                   className="w-full rounded border px-3 py-1.5 text-xs font-mono"
                 />
@@ -272,6 +273,7 @@ export default function CashierVaultPage() {
                   type="text"
                   value={supplierId}
                   onChange={(e) => setSupplierId(e.target.value)}
+                  placeholder="e.g. sup_fmcg_01"
                   required
                   className="w-full rounded border px-3 py-1.5 text-xs font-mono"
                 />
@@ -285,6 +287,7 @@ export default function CashierVaultPage() {
                   type="text"
                   value={driverId}
                   onChange={(e) => setDriverId(e.target.value)}
+                  placeholder="e.g. drv_404"
                   required
                   className="w-full rounded border px-3 py-1.5 text-xs font-mono"
                 />
@@ -295,6 +298,7 @@ export default function CashierVaultPage() {
                   type="text"
                   value={routeId}
                   onChange={(e) => setRouteId(e.target.value)}
+                  placeholder="e.g. route_daily_center_01"
                   required
                   className="w-full rounded border px-3 py-1.5 text-xs font-mono"
                 />
@@ -453,6 +457,7 @@ export default function CashierVaultPage() {
                   type="text"
                   value={depotId}
                   onChange={(e) => setDepotId(e.target.value)}
+                  placeholder="e.g. depot_central_01"
                   required
                   className="w-full rounded border px-3 py-1.5 text-xs font-mono"
                 />
@@ -463,6 +468,7 @@ export default function CashierVaultPage() {
                   type="text"
                   value={supplierId}
                   onChange={(e) => setSupplierId(e.target.value)}
+                  placeholder="e.g. sup_fmcg_01"
                   required
                   className="w-full rounded border px-3 py-1.5 text-xs font-mono"
                 />
@@ -475,6 +481,7 @@ export default function CashierVaultPage() {
                 type="text"
                 value={citCourierBadge}
                 onChange={(e) => setCitCourierBadge(e.target.value)}
+                placeholder="e.g. inkass_badge_992"
                 required
                 className="w-full rounded border px-3 py-1.5 text-xs font-mono"
               />

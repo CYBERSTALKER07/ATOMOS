@@ -128,3 +128,24 @@ func TestHandleCreate_MintsForAdmin(t *testing.T) {
 		t.Fatalf("%v", body)
 	}
 }
+
+func TestNormalizeRole_DepotCashierAndYardMarshal(t *testing.T) {
+	roles := []string{
+		"role_depot_cashier",
+		"depot_cashier",
+		"cashier",
+		"role_fleet_yard",
+		"fleet_yard",
+		"yard_marshal",
+		"WAREHOUSE",
+		"warehouse_admin",
+		"warehouse_staff",
+		"payloader",
+	}
+	for _, r := range roles {
+		got := NormalizeRole(r)
+		if got != RoleWarehouse {
+			t.Errorf("NormalizeRole(%q) = %q, want %q", r, got, RoleWarehouse)
+		}
+	}
+}

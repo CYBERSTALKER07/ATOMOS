@@ -54,19 +54,19 @@ type Playbook struct {
 
 // PlaybookRun is a matched playbook instance for a concrete exception.
 type PlaybookRun struct {
-	RunID           string          `json:"run_id"`
-	PlaybookID      string          `json:"playbook_id"`
-	ExceptionID     string          `json:"exception_id"`
-	SupplierID      string          `json:"supplier_id"`
-	Mode            string          `json:"mode"`
-	Status          string          `json:"status"`
-	ActionsResult   []ActionResult  `json:"actions_result,omitempty"`
-	CreatedAt       time.Time       `json:"created_at"`
-	ExecutedAt      *time.Time      `json:"executed_at,omitempty"`
-	ExecutedBy      string          `json:"executed_by,omitempty"`
-	PlaybookName    string          `json:"playbook_name,omitempty"`
-	ExceptionType   string          `json:"exception_type,omitempty"`
-	ExceptionOrderID string         `json:"exception_order_id,omitempty"`
+	RunID            string          `json:"run_id"`
+	PlaybookID       string          `json:"playbook_id"`
+	ExceptionID      string          `json:"exception_id"`
+	SupplierID       string          `json:"supplier_id"`
+	Mode             string          `json:"mode"`
+	Status           string          `json:"status"`
+	ActionsResult    []ActionResult  `json:"actions_result,omitempty"`
+	CreatedAt        time.Time       `json:"created_at"`
+	ExecutedAt       *time.Time      `json:"executed_at,omitempty"`
+	ExecutedBy       string          `json:"executed_by,omitempty"`
+	PlaybookName     string          `json:"playbook_name,omitempty"`
+	ExceptionType    string          `json:"exception_type,omitempty"`
+	ExceptionOrderID string          `json:"exception_order_id,omitempty"`
 	ActionsResultRaw json.RawMessage `json:"-"`
 }
 
@@ -80,23 +80,23 @@ type ActionResult struct {
 
 // Exception is the normalized read model for playbook matching.
 type Exception struct {
-	ExceptionID   string
-	Type          string
-	Severity      string
-	EntityType    string
-	EntityID      string
-	OrderID       string
-	SupplierID    string
-	RetailerID    string
-	WarehouseID   string
-	RouteID       string
-	Status        string
-	AmountMinor   int64
+	ExceptionID     string
+	Type            string
+	Severity        string
+	EntityType      string
+	EntityID        string
+	OrderID         string
+	SupplierID      string
+	RetailerID      string
+	WarehouseID     string
+	RouteID         string
+	Status          string
+	AmountMinor     int64
 	RetailerSegment string
-	AssignedRole  string
-	ClaimID       string
-	Payload       json.RawMessage
-	CreatedAt     time.Time
+	AssignedRole    string
+	ClaimID         string
+	Payload         json.RawMessage
+	CreatedAt       time.Time
 }
 
 // CreatePlaybookInput is POST body for new playbook.

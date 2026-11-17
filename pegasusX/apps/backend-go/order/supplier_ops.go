@@ -479,23 +479,35 @@ func (s *Service) HandleApproveEarlyComplete(w http.ResponseWriter, r *http.Requ
 		}
 		byOrderID := make(map[string]orderSnapshot, len(orderIDs))
 		ordIter := txn.Read(ctx, "Orders", spanner.KeySets(orderKeySets...),
-			[]string{"OrderId", "Status", "Version", "SupplierId", "LineItemsJson", "WarehouseId", "Source"})
-		defer ordIter.Stop()
+			[]string{"OrderId", "Status", "Version", "SupplierId", "LineItemsJson", "WarehouseId", "OrderSource"})
 		for {
 			row, readErr := ordIter.Next()
 			if readErr == iterator.Done {
 				break
 			}
 			if readErr != nil {
+				ordIter.Stop()
 				return readErr
 			}
 			var oid string
+			var whNull spanner.NullString
 			var snap orderSnapshot
-			if err := row.Columns(&oid, &snap.status, &snap.version, &snap.supplierID, &snap.lineItemsRaw, &snap.warehouseID, &snap.source); err != nil {
-				continue
+			if err := row.Columns(&oid, &snap.status, &snap.version, &snap.supplierID, &snap.lineItemsRaw, &whNull, &snap.source); err != nil {
+				ordIter.Stop()
+				return err
 			}
+			snap.warehouseID = whNull.StringVal
 			byOrderID[oid] = snap
 		}
+		ordIter.Stop()
+
+		type whSKUKey struct {
+			warehouseID string
+			sku         string
+		}
+		bagReleaseByWH := make(map[whSKUKey]int64)
+		lotReleaseByID := make(map[string]int64)
+		var cancelOrderMuts []*spanner.Mutation
 
 		for _, orderID := range orderIDs {
 			snap, exists := byOrderID[orderID]
@@ -527,9 +539,35 @@ func (s *Service) HandleApproveEarlyComplete(w http.ResponseWriter, r *http.Requ
 				continue
 			}
 
-			if newStatus == StatusCancelled {
-				if err := ReleaseReservationsFromOrderFields(ctx, txn, supplierID, warehouseID, source, lineItemsRaw); err != nil {
+			if newStatus == StatusCancelled && OrderSource(source) != OrderSourceBackorder && OrderSource(source) != OrderSourceMigration && strings.TrimSpace(warehouseID) != "" {
+				var lineItems []LineItem
+				if len(lineItemsRaw) > 0 {
+					if err := json.Unmarshal(lineItemsRaw, &lineItems); err != nil {
+						return fmt.Errorf("parse line items for release: %w", err)
+					}
+				}
+				for sku, qty := range aggregateSKUQuantities(lineItems) {
+					bagReleaseByWH[whSKUKey{warehouseID: strings.TrimSpace(warehouseID), sku: sku}] += qty
+				}
+				orderLots, err := loadOrderLotReservationsMapInTxn(ctx, txn, orderID)
+				if err != nil {
 					return err
+				}
+				for _, lid := range sortedMapKeys(orderLots) {
+					lotReleaseByID[lid] += orderLots[lid]
+					cancelOrderMuts = append(cancelOrderMuts, spanner.Delete("OrderLotReservations", spanner.Key{orderID, lid}))
+				}
+				if len(orderLots) > 0 {
+					lotEv := buildInventoryLotReleasedEvent(orderID, supplierID, warehouseID, orderLots, now)
+					if len(lotEv.ReleasedLots) > 0 {
+						lotBuf := &spannerTxnBuffer{}
+						if err := outbox.EmitJSON(ctx, lotBuf, events.AggregateOrder, orderID, events.TopicMain, lotEv); err != nil {
+							return fmt.Errorf("emit inventory lot released event: %w", err)
+						}
+						for _, e := range lotBuf.events {
+							cancelOrderMuts = append(cancelOrderMuts, outboxMutation(e))
+						}
+					}
 				}
 			}
 
@@ -567,10 +605,69 @@ func (s *Service) HandleApproveEarlyComplete(w http.ResponseWriter, r *http.Requ
 			for _, a := range buf.audits {
 				mutations = append(mutations, spanner.InsertMap("AuditLog", a.AuditRowMap()))
 			}
-			if err := txn.BufferWrite(mutations); err != nil {
+			cancelOrderMuts = append(cancelOrderMuts, mutations...)
+			approved++
+		}
+
+		// Batch-read & write aggregated inventory releases once to eliminate Spanner read-your-writes hazards across orders.
+		if len(bagReleaseByWH) > 0 {
+			keySets := make([]spanner.KeySet, 0, len(bagReleaseByWH))
+			for k := range bagReleaseByWH {
+				keySets = append(keySets, spanner.Key{supplierID, k.warehouseID, k.sku})
+			}
+			invIter := txn.Read(ctx, "SupplierInventoryV2", spanner.KeySets(keySets...), []string{"WarehouseId", "ProductId", "QuantityReserved"})
+			defer invIter.Stop()
+			for {
+				row, err := invIter.Next()
+				if err == iterator.Done {
+					break
+				}
+				if err != nil {
+					return fmt.Errorf("read reserved qty batch: %w", err)
+				}
+				var wh, sku string
+				var qr int64
+				if err := row.Columns(&wh, &sku, &qr); err != nil {
+					return err
+				}
+				rel := bagReleaseByWH[whSKUKey{warehouseID: wh, sku: sku}]
+				next := qr - rel
+				if next < 0 {
+					next = 0
+				}
+				cancelOrderMuts = append(cancelOrderMuts, spanner.UpdateMap("SupplierInventoryV2", map[string]any{
+					"SupplierId":       supplierID,
+					"WarehouseId":      wh,
+					"ProductId":        sku,
+					"QuantityReserved": next,
+					"UpdatedAt":        spanner.CommitTimestamp,
+				}))
+			}
+		}
+		if len(lotReleaseByID) > 0 {
+			lotIDs := sortedMapKeys(lotReleaseByID)
+			stockReserved, err := readStockLotsReservedInTxn(ctx, txn, lotIDs)
+			if err != nil {
 				return err
 			}
-			approved++
+			for _, lid := range lotIDs {
+				if qr, exists := stockReserved[lid]; exists {
+					next := qr - lotReleaseByID[lid]
+					if next < 0 {
+						next = 0
+					}
+					cancelOrderMuts = append(cancelOrderMuts, spanner.UpdateMap("StockLots", map[string]any{
+						"LotId":            lid,
+						"QuantityReserved": next,
+						"UpdatedAt":        spanner.CommitTimestamp,
+					}))
+				}
+			}
+		}
+		if len(cancelOrderMuts) > 0 {
+			if err := txn.BufferWrite(cancelOrderMuts); err != nil {
+				return err
+			}
 		}
 		return nil
 	})

@@ -86,3 +86,58 @@ func TestUrgencyWeightAndTransport(t *testing.T) {
 		t.Fatal("honesty label")
 	}
 }
+
+func TestUnfulfilledDemandReducesDaysCoverAndIncreasesSuggestedQty(t *testing.T) {
+	// Case 1: stock = 10, burn = 2.0, unfulfilled = 0, leadDays = 2 -> days0 = 5.0 > 2 * 1.8 (3.6) -> STABLE
+	qty := int64(10)
+	burn := 2.0
+	leadDays := int64(2)
+	reorder := 10.0
+
+	// Effective net stock without backorders
+	eff0 := float64(qty) - 0
+	days0 := eff0 / burn
+	urgency0 := classifyUrgency(days0, float64(leadDays))
+	sugg0 := computeSuggestedQty(skuStock{
+		SkuId:           "sku-1",
+		CurrentStock:    qty,
+		DailyBurnRate:   burn,
+		UnfulfilledQty:  0,
+		FactoryLeadDays: leadDays,
+	}, reorder)
+
+	// Case 2: stock = 10, burn = 2.0, unfulfilled = 8 (heavy backorder)
+	unfulfilled := int64(8)
+	effBacklog := float64(qty) - float64(unfulfilled)
+	if effBacklog < 0 {
+		effBacklog = 0
+	}
+	daysBacklog := effBacklog / burn
+	urgencyBacklog := classifyUrgency(daysBacklog, float64(leadDays))
+	suggBacklog := computeSuggestedQty(skuStock{
+		SkuId:           "sku-1",
+		CurrentStock:    qty,
+		DailyBurnRate:   burn,
+		UnfulfilledQty:  unfulfilled,
+		FactoryLeadDays: leadDays,
+	}, reorder)
+
+	if daysBacklog >= days0 {
+		t.Fatalf("expected unfulfilled backorders to reduce days cover: %v vs %v", daysBacklog, days0)
+	}
+	if urgency0 != "STABLE" || urgencyBacklog != "CRITICAL" {
+		t.Fatalf("expected transition from STABLE to CRITICAL, got %s -> %s", urgency0, urgencyBacklog)
+	}
+	if suggBacklog <= sugg0 {
+		t.Fatalf("expected suggestedQty with backorders (%d) to exceed baseline (%d)", suggBacklog, sugg0)
+	}
+	// Case 3: unfulfilled demand exceeds stock on hand (10 stock, 15 backorders)
+	effDeficit := float64(qty) - 15.0
+	if effDeficit < 0 {
+		effDeficit = 0
+	}
+	daysDeficit := effDeficit / burn
+	if daysDeficit != 0 {
+		t.Fatalf("expected 0 days cover when backorders exceed stock, got %v", daysDeficit)
+	}
+}

@@ -17,8 +17,20 @@ public final class WebSocketStreamClient {
     public private(set) var events: [TelemetryLogEvent] = []
     public var isPaused: Bool = false
 
+    public static func isAllowedStreamURL(_ url: URL) -> Bool {
+        guard let scheme = url.scheme?.lowercased(), let host = url.host?.lowercased(), !host.isEmpty else {
+            return false
+        }
+        if scheme == "wss" {
+            return true
+        }
+        return scheme == "ws" && (host == "127.0.0.1" || host == "localhost" || host == "::1")
+    }
+
     public let url: URL
     private var webSocketTask: URLSessionWebSocketTask?
+    private var urlSession: URLSession?
+    private var isManuallyDisconnected: Bool = false
     private let maxBufferSize: Int = 50
     private var retryAttempt: Int = 0
 
@@ -28,8 +40,15 @@ public final class WebSocketStreamClient {
     }
 
     public func connect() {
+        guard Self.isAllowedStreamURL(url) else {
+            isConnected = false
+            return
+        }
         guard webSocketTask == nil else { return }
-        let session = URLSession(configuration: .default)
+        isManuallyDisconnected = false
+        urlSession?.invalidateAndCancel()
+        let session = URLSession(configuration: .ephemeral)
+        self.urlSession = session
         let task = session.webSocketTask(with: url)
         self.webSocketTask = task
         task.resume()
@@ -39,9 +58,18 @@ public final class WebSocketStreamClient {
     }
 
     public func disconnect() {
+        isManuallyDisconnected = true
         webSocketTask?.cancel(with: .normalClosure, reason: nil)
         webSocketTask = nil
+        urlSession?.invalidateAndCancel()
+        urlSession = nil
         self.isConnected = false
+    }
+
+    public func clearSession() {
+        disconnect()
+        events.removeAll()
+        retryAttempt = 0
     }
 
     public func togglePause() {
@@ -81,8 +109,14 @@ public final class WebSocketStreamClient {
                     }
                     self.receiveNextMessage()
                 case .failure:
-                    self.disconnect()
-                    self.scheduleReconnect()
+                    let shouldReconnect = !self.isManuallyDisconnected
+                    self.webSocketTask = nil
+                    self.urlSession?.invalidateAndCancel()
+                    self.urlSession = nil
+                    self.isConnected = false
+                    if shouldReconnect {
+                        self.scheduleReconnect()
+                    }
                 }
             }
         }
@@ -94,6 +128,7 @@ public final class WebSocketStreamClient {
     }
 
     private func scheduleReconnect() {
+        guard !isManuallyDisconnected else { return }
         let backoff = min(pow(2.0, Double(retryAttempt)), 30.0)
         let jitter = Double.random(in: 0.1...0.8)
         retryAttempt += 1

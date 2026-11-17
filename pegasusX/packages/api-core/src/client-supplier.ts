@@ -308,10 +308,34 @@ import type { SupplierSettingsResponse, RecommendReassignRequest, RecommendReass
   WarehouseDispatchRun,
   WarehouseOpsBoardResponse,
   WarehouseOpsExceptionsResponse,
+  INNLookupRequest,
+  INNLookupResponse,
+  JoinRequestDecisionResponse,
+  JoinRequestsListResponse,
+  MigrationApplyResult,
+  MigrationArtifactDescriptorInput,
+  MigrationBundleSortOverrideRequest,
+  MigrationBundleSortOverrideResponse,
+  MigrationBundleUploadedResponse,
+  MigrationConfirmMappingRequest,
+  MigrationConfirmMappingResponse,
+  MigrationCreateBundleResponse,
+  MigrationCutoverResult,
+  MigrationDryRunResponse,
+  MigrationGetMappingResponse,
+  MigrationOpenOrderReleaseRequest,
+  MigrationOpenOrderReleaseResponse,
+  MigrationProject,
+  MigrationProjectTree,
+  MigrationRollbackResult,
+  MigrationSession,
+  MigrationSessionRowsResponse,
+  MigrationUploadedArtifactInput,
 } from "@pegasusx/types";
 import { claimFileKey, claimApproveKey, claimRejectKey } from "../idempotency";
 import { type ConditionalGet } from "../conditional-get";
 import { ApiClientBase, ApiError, appendQuery, extractErrorMessage, parseResponsePayload } from "./client-base";
+import * as mig from "./client-migration";
 
 export class SupplierApiClient extends ApiClientBase {
   async registerSupplier(request: SupplierRegisterRequest, idempotencyKey: string): Promise<SupplierRegisterResponse> {
@@ -1522,5 +1546,155 @@ export class SupplierApiClient extends ApiClientBase {
 
   async getSupplierMEIONetworkSummary(): Promise<SupplierMEIONetworkSummary> {
     return this.request<SupplierMEIONetworkSummary>("/v1/supplier/meio/network-summary", "GET");
+  }
+
+  async lookupPlatformINN(body: INNLookupRequest): Promise<INNLookupResponse> {
+    return mig.lookupPlatformINN(this, body);
+  }
+
+  async createMigrationProject(
+    body: { name: string; mode?: "CUTOVER"; default_warehouse_id?: string },
+    idempotencyKey?: string,
+  ): Promise<MigrationProject> {
+    return mig.createSupplierMigrationProject(this, body, idempotencyKey);
+  }
+
+  async listMigrationProjects(): Promise<{ projects: MigrationProject[] }> {
+    return mig.listSupplierMigrationProjects(this);
+  }
+
+  async getMigrationProject(projectId: string): Promise<MigrationProjectTree> {
+    return mig.getSupplierMigrationProject(this, projectId);
+  }
+
+  async createMigrationBundle(
+    projectId: string,
+    artifacts: MigrationArtifactDescriptorInput[],
+    idempotencyKey?: string,
+  ): Promise<MigrationCreateBundleResponse> {
+    return mig.createSupplierMigrationBundle(this, projectId, artifacts, idempotencyKey);
+  }
+
+  async markMigrationBundleUploaded(
+    projectId: string,
+    bundleId: string,
+    artifacts:
+      | MigrationUploadedArtifactInput[]
+      | Record<string, Omit<MigrationUploadedArtifactInput, "artifact_id">>,
+    idempotencyKey?: string,
+    sync = true,
+  ): Promise<MigrationBundleUploadedResponse> {
+    return mig.markSupplierMigrationBundleUploaded(
+      this,
+      projectId,
+      bundleId,
+      artifacts,
+      idempotencyKey,
+      sync,
+    );
+  }
+
+  async overrideMigrationBundleSort(
+    projectId: string,
+    bundleId: string,
+    body: MigrationBundleSortOverrideRequest,
+    idempotencyKey?: string,
+  ): Promise<MigrationBundleSortOverrideResponse> {
+    return mig.overrideSupplierMigrationBundleSort(this, projectId, bundleId, body, idempotencyKey);
+  }
+
+  async getMigrationSession(sessionId: string): Promise<MigrationSession> {
+    return mig.getSupplierMigrationSession(this, sessionId);
+  }
+
+  async getMigrationSessionRows(
+    sessionId: string,
+    params?: { limit?: number; offset?: number; invalid_only?: boolean },
+  ): Promise<MigrationSessionRowsResponse> {
+    return mig.getSupplierMigrationSessionRows(this, sessionId, params);
+  }
+
+  async getMigrationSessionMapping(sessionId: string): Promise<MigrationGetMappingResponse> {
+    return mig.getSupplierMigrationSessionMapping(this, sessionId);
+  }
+
+  async confirmMigrationSessionMapping(
+    sessionId: string,
+    body: MigrationConfirmMappingRequest,
+    idempotencyKey?: string,
+  ): Promise<MigrationConfirmMappingResponse> {
+    return mig.confirmSupplierMigrationSessionMapping(this, sessionId, body, idempotencyKey);
+  }
+
+  async runMigrationProjectDryRun(
+    projectId: string,
+    idempotencyKey?: string,
+    applyMode?: "MERGE" | "SET_ON_HAND" | string,
+  ): Promise<MigrationDryRunResponse> {
+    return mig.runSupplierMigrationProjectDryRun(this, projectId, idempotencyKey, applyMode);
+  }
+
+  async runMigrationSessionDryRun(
+    sessionId: string,
+    idempotencyKey?: string,
+    applyMode?: "MERGE" | "SET_ON_HAND" | string,
+  ): Promise<MigrationDryRunResponse> {
+    return mig.runSupplierMigrationSessionDryRun(this, sessionId, idempotencyKey, applyMode);
+  }
+
+  async getMigrationReport(reportId: string): Promise<MigrationDryRunResponse> {
+    return mig.getSupplierMigrationReport(this, reportId);
+  }
+
+  async approveMigrationSession(
+    sessionId: string,
+    body: { apply_mode?: string; set_on_hand_confirmed?: boolean; expected_report_id?: string },
+    idempotencyKey?: string,
+  ): Promise<{ session: MigrationSession }> {
+    return mig.approveSupplierMigrationSession(this, sessionId, body, idempotencyKey);
+  }
+
+  async applyMigrationSession(
+    sessionId: string,
+    body?: { apply_mode?: string; chunk_size?: number },
+    idempotencyKey?: string,
+  ): Promise<MigrationApplyResult> {
+    return mig.applySupplierMigrationSession(this, sessionId, body, idempotencyKey);
+  }
+
+  async rollbackMigrationSession(sessionId: string, idempotencyKey?: string): Promise<MigrationRollbackResult> {
+    return mig.rollbackSupplierMigrationSession(this, sessionId, idempotencyKey);
+  }
+
+  async releaseMigrationProjectOpenOrders(
+    projectId: string,
+    body: MigrationOpenOrderReleaseRequest,
+    idempotencyKey?: string,
+  ): Promise<MigrationOpenOrderReleaseResponse> {
+    return mig.releaseSupplierMigrationProjectOpenOrders(this, projectId, body, idempotencyKey);
+  }
+
+  async cutoverMigrationProject(projectId: string, idempotencyKey?: string): Promise<MigrationCutoverResult> {
+    return mig.cutoverSupplierMigrationProject(this, projectId, idempotencyKey);
+  }
+
+  async listSupplierJoinRequests(status?: string): Promise<JoinRequestsListResponse> {
+    return mig.fetchSupplierJoinRequests(this, status);
+  }
+
+  async approveSupplierJoinRequest(
+    requestId: string,
+    reason?: string,
+    idempotencyKey?: string,
+  ): Promise<JoinRequestDecisionResponse> {
+    return mig.decideSupplierJoinRequest(this, requestId, "approve", reason, idempotencyKey);
+  }
+
+  async rejectSupplierJoinRequest(
+    requestId: string,
+    reason?: string,
+    idempotencyKey?: string,
+  ): Promise<JoinRequestDecisionResponse> {
+    return mig.decideSupplierJoinRequest(this, requestId, "reject", reason, idempotencyKey);
   }
 }

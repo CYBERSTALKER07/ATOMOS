@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.util.Log
+import com.pegasusx.driver.BuildConfig
 import com.pegasusx.driver.data.remote.TokenHolder
 
 /**
@@ -17,7 +18,7 @@ class BootReceiver : BroadcastReceiver() {
             return
         }
         if (!TelemetryTrackingPrefs.isActive(context)) {
-            Log.d(TAG, "Boot: telemetry not active — skip")
+            if (BuildConfig.DEBUG) Log.d(TAG, "Boot: telemetry not active — skip")
             return
         }
         val token = TokenHolder.token
@@ -34,7 +35,7 @@ class BootReceiver : BroadcastReceiver() {
             } else {
                 context.startService(serviceIntent)
             }
-            Log.d(TAG, "Boot: resumed TelemetryService")
+            if (BuildConfig.DEBUG) Log.d(TAG, "Boot: resumed TelemetryService")
         } catch (e: Exception) {
             Log.e(TAG, "Boot: failed to start TelemetryService", e)
         }

@@ -12,7 +12,20 @@ struct OrderDetailPanel: View {
                 LabeledContent("mobile_supplier.chrome.id_label", value: order.orderId)
                 LabeledContent("mobile_supplier.chrome.retailer", value: detailVM.warehouseDetail?.retailerName ?? order.retailerId)
                 LabeledContent("mobile_supplier.chrome.status") {
-                    SupplierStatusBadge(text: detailVM.warehouseDetail?.state ?? detailVM.warehouseDetail?.status ?? order.status)
+                    HStack(spacing: SupplierTheme.spacingXS) {
+                        if order.status == "MIGRATION_OPEN" {
+                            SupplierStatusBadge(text: "HELD · MIGRATION", tint: SupplierTheme.warning)
+                        } else if order.source?.uppercased() == "MIGRATION" {
+                            SupplierStatusBadge(text: "MIGRATION")
+                        }
+                        SupplierStatusBadge(text: detailVM.warehouseDetail?.state ?? detailVM.warehouseDetail?.status ?? order.status)
+                    }
+                }
+                if let source = order.source, !source.isEmpty {
+                    LabeledContent("Source", value: source)
+                }
+                if let externalOrderId = order.externalOrderId, !externalOrderId.isEmpty {
+                    LabeledContent("External Order ID", value: externalOrderId)
                 }
                 if let decision = order.decision, !decision.isEmpty {
                     LabeledContent("mobile_supplier.chrome.decision", value: decision)

@@ -13,6 +13,9 @@ import (
 	"context"
 	"log/slog"
 	"strings"
+
+	"cloud.google.com/go/spanner"
+	"github.com/pegasusx/pegasusx/apps/backend-go/seasonalcore"
 )
 
 // DefaultSupplierID is the deterministic single-tenant seed supplier identity.
@@ -61,4 +64,22 @@ func EnsureSupplier(ctx context.Context, repo Repository, name, country, currenc
 		logger.Info("seed supplier ensured", "supplier_id", s.SupplierID, "name", s.Name, "country", s.CountryCode, "currency", s.Currency)
 	}
 	return s, nil
+}
+
+// SeedUzbekistanHolidays idempotently seeds the 2025-2035 Uzbekistan Muftiate
+// and national seasonal holiday windows into SeasonalTemplateOverrides.
+// When client is nil (memory boot), it is a no-op returning (0, nil).
+func SeedUzbekistanHolidays(ctx context.Context, client *spanner.Client, supplierID string, logger *slog.Logger) (int, error) {
+	sid := strings.TrimSpace(supplierID)
+	if sid == "" {
+		sid = DefaultSupplierID
+	}
+	n, err := seasonalcore.SeedUzbekistanHolidays(ctx, client, sid)
+	if err != nil {
+		return 0, err
+	}
+	if logger != nil {
+		logger.Info("seeded Uzbekistan 2025-2035 seasonal holidays", "supplier_id", sid, "count", n)
+	}
+	return n, nil
 }

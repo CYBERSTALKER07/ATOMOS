@@ -44,20 +44,20 @@ final class PaymentWaitingViewModel {
     }
 
     var headerTint: Color {
-        if isFiscalFailed { return LabTheme.destructive }
+        if isFiscalFailed { return LabTheme.warning }
         if isSettled && !isFiscalizing { return LabTheme.success }
         return LabTheme.warning
     }
 
     var headerTitle: String {
-        if isFiscalFailed { return "Fiscal Failed" }
+        if isFiscalFailed { return L10n.string("mobile_driver.ui.fiscal_retry_queued_title") }
         if isFiscalizing { return "Fiscalizing" }
         if isSettled { return "Payment Received" }
         return "Awaiting Payment"
     }
 
     var subtitle: String {
-        if isFiscalFailed { return "Retry fiscal receipt or call supervisor for force-complete." }
+        if isFiscalFailed { return L10n.string("mobile_driver.ui.fiscal_retry_queued_body") }
         if isFiscalizing { return "Payment captured. Waiting for fiscal receipt…" }
         if isSettled { return "Finalizing delivery…" }
         return "Retailer is completing payment..."
@@ -92,7 +92,7 @@ final class PaymentWaitingViewModel {
             isSettled = true
             isFiscalizing = false
             isFiscalFailed = true
-            errorMessage = "Fiscal receipt failed. Retry or call supervisor."
+            errorMessage = nil
             Haptics.warning()
         case "ORDER_STATUS_CHANGED", "PAYMENT_REQUIRED":
             if status == "PENDING_CASH_COLLECTION" {
@@ -101,11 +101,12 @@ final class PaymentWaitingViewModel {
                 isSettled = true
                 isFiscalizing = true
                 isFiscalFailed = false
-            } else if status == "FISCAL_FAILED" {
+                errorMessage = nil
+            } else if status == "FISCAL_FAILED" || status == "FISCAL_RETRY_QUEUED" || status == "PENDING_FISCAL_ISSUE" {
                 isSettled = true
                 isFiscalizing = false
                 isFiscalFailed = true
-                errorMessage = "Fiscal receipt failed. Retry or call supervisor."
+                errorMessage = nil
             } else if status == "COMPLETED" {
                 isDone = true
             }
@@ -138,6 +139,16 @@ final class PaymentWaitingViewModel {
                 isCompleting = false
                 errorMessage = message
             }
+        }
+    }
+
+    /// Non-blocking fiscal: payment and PoD are recorded, so the driver can continue immediately.
+    func continueNextStop() {
+        if isFiscalFailed || isSettled {
+            isFiscalizing = false
+            errorMessage = nil
+            isDone = true
+            Haptics.success()
         }
     }
 

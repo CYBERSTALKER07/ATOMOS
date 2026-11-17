@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
+	"github.com/pegasusx/pegasusx/apps/backend-go/gl"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
 	"google.golang.org/api/iterator"
@@ -130,7 +131,7 @@ func (r *SpannerRepository) SaveAttempt(ctx context.Context, a PaymentAttemptRec
 	return r.writeWithOutbox(ctx, emit, base)
 }
 
-// SaveChargeback persists one chargeback request and optional outbox events.
+// SaveChargeback persists one chargeback request and optional outbox events idempotently.
 func (r *SpannerRepository) SaveChargeback(ctx context.Context, c ChargebackRecord, emit func(outbox.TxnBuffer) error) error {
 	if r == nil || r.client == nil {
 		return fmt.Errorf("spanner payment repository: nil client")
@@ -156,7 +157,7 @@ func (r *SpannerRepository) SaveChargeback(ctx context.Context, c ChargebackReco
 		return fmt.Errorf("chargeback journal: %w", err)
 	}
 	muts = append(muts, jeMuts...)
-	return r.writeWithOutbox(ctx, emit, muts...)
+	return r.writeChargebackIfAbsentWithGL(ctx, c, emit, muts...)
 }
 
 // SaveReversal persists one chargeback reversal and optional outbox events.
@@ -222,8 +223,8 @@ func (r *SpannerRepository) SaveWebhook(ctx context.Context, w WebhookRecord, em
 			entryType := "WEBHOOK_" + normalizedUpper(w.Status, "UNKNOWN")
 			gateway := normalizedUpper(w.Gateway, "UNKNOWN")
 			stmtLedger := spanner.Statement{
-				SQL: `SELECT LedgerEntryId FROM PaymentLedgerEntries@{FORCE_INDEX=Idx_PaymentLedgerEntries_GatewayTypeRef}
-				      WHERE Gateway = @gateway AND EntryType = @entryType AND ReferenceId = @refId LIMIT 1`,
+				SQL: `SELECT LedgerEntryId FROM PaymentLedgerEntries@{FORCE_INDEX=Idx_PaymentLedgerEntries_GatewayTypeRef,spanner_emulator.disable_query_null_filtered_index_check=true}
+				      WHERE Gateway = @gateway AND EntryType = @entryType AND ReferenceId = @refId AND ReferenceId IS NOT NULL LIMIT 1`,
 				Params: map[string]any{
 					"gateway":   gateway,
 					"entryType": entryType,
@@ -619,15 +620,90 @@ func (r *SpannerRepository) SummarizeLedgerEntries(ctx context.Context, q Settle
 }
 
 func (r *SpannerRepository) writeWithOutbox(ctx context.Context, emit func(outbox.TxnBuffer) error, bases ...*spanner.Mutation) error {
+	return r.writeWithOutboxPrecheck(ctx, nil, emit, bases...)
+}
+
+func (r *SpannerRepository) writeChargebackIfAbsentWithGL(ctx context.Context, c ChargebackRecord, emit func(outbox.TxnBuffer) error, bases ...*spanner.Mutation) error {
+	return r.writeWithOutboxPrecheckHook(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) (bool, error) {
+		if strings.TrimSpace(c.ChargebackID) == "" {
+			return false, nil
+		}
+		row, err := txn.ReadRow(ctx, "PaymentChargebacks", spanner.Key{c.ChargebackID}, []string{"ChargebackId"})
+		if err != nil && spanner.ErrCode(err) != codes.NotFound {
+			return false, fmt.Errorf("read chargeback: %w", err)
+		}
+		return err == nil && row != nil, nil
+	}, emit, func(ctx context.Context, txn *spanner.ReadWriteTransaction, buf outbox.TxnBuffer) error {
+		if c.AmountMinor <= 0 {
+			return nil
+		}
+		supplierID := strings.TrimSpace(c.SupplierID)
+		if supplierID == "" {
+			supplierID = "_platform"
+		}
+		occurredAt := c.CreatedAt
+		if occurredAt.IsZero() {
+			occurredAt = time.Now().UTC()
+		}
+		_, err := gl.PostEventInTxn(ctx, txn, buf, gl.RuleEventClaimDispute, gl.RuleEvalContext{
+			EntityID:       supplierID,
+			SupplierID:     supplierID,
+			RetailerID:     strings.TrimSpace(c.RetailerID),
+			OrderID:        strings.TrimSpace(c.OrderID),
+			SourceID:       c.ChargebackID,
+			Currency:       normalizedUpper(c.Currency, "UZS"),
+			SettlementMode: "LEDGER_ONLY",
+			GrossMinor:     c.AmountMinor,
+			IdempotencyKey: "gl:claim:" + c.ChargebackID,
+			Memo:           "Claim dispute settlement " + c.ChargebackID,
+			OccurredAt:     occurredAt,
+		})
+		return err
+	}, bases...)
+}
+
+func (r *SpannerRepository) writeChargebackIfAbsent(ctx context.Context, chargebackID string, emit func(outbox.TxnBuffer) error, bases ...*spanner.Mutation) error {
+	return r.writeWithOutboxPrecheck(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) (bool, error) {
+		if strings.TrimSpace(chargebackID) == "" {
+			return false, nil
+		}
+		row, err := txn.ReadRow(ctx, "PaymentChargebacks", spanner.Key{chargebackID}, []string{"ChargebackId"})
+		if err != nil && spanner.ErrCode(err) != codes.NotFound {
+			return false, fmt.Errorf("read chargeback: %w", err)
+		}
+		return err == nil && row != nil, nil
+	}, emit, bases...)
+}
+
+func (r *SpannerRepository) writeWithOutboxPrecheck(ctx context.Context, alreadyApplied func(context.Context, *spanner.ReadWriteTransaction) (bool, error), emit func(outbox.TxnBuffer) error, bases ...*spanner.Mutation) error {
+	return r.writeWithOutboxPrecheckHook(ctx, alreadyApplied, emit, nil, bases...)
+}
+
+func (r *SpannerRepository) writeWithOutboxPrecheckHook(ctx context.Context, alreadyApplied func(context.Context, *spanner.ReadWriteTransaction) (bool, error), emit func(outbox.TxnBuffer) error, postHook func(context.Context, *spanner.ReadWriteTransaction, outbox.TxnBuffer) error, bases ...*spanner.Mutation) error {
 	err := spannerutils.RunReadWriteTransaction(ctx, r.client, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		if alreadyApplied != nil {
+			skip, err := alreadyApplied(ctx, txn)
+			if err != nil {
+				return err
+			}
+			if skip {
+				return nil
+			}
+		}
+
 		buf := &spannerTxnBuffer{}
 		if emit != nil {
 			if err := emit(buf); err != nil {
 				return err
 			}
 		}
+		if postHook != nil {
+			if err := postHook(ctx, txn, buf); err != nil {
+				return err
+			}
+		}
 
-		mutations := make([]*spanner.Mutation, 0, len(bases)+len(buf.events))
+		mutations := make([]*spanner.Mutation, 0, len(bases)+len(buf.events)+len(buf.audits))
 		mutations = append(mutations, bases...)
 		for _, e := range buf.events {
 			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", outbox.EventRowMap(e)))
@@ -688,7 +764,8 @@ func buildChargebackLedgerEntry(c ChargebackRecord) LedgerEntryRecord {
 		source = "payment.chargeback"
 	}
 	return LedgerEntryRecord{
-		// Deterministic ledger id (matches chargeback id) so InsertOrUpdate is idempotent.
+		// Deterministic ledger id tied to chargeback id; SaveChargeback pre-checks PaymentChargebacks
+		// for claim-retry idempotency while InsertMap keeps PaymentLedgerEntries strictly append-only.
 		LedgerEntryID: "pledger_chargeback_" + c.ChargebackID,
 		OrderID:       c.OrderID,
 		SupplierID:    c.SupplierID,
@@ -758,7 +835,7 @@ func ledgerMutation(entry LedgerEntryRecord) *spanner.Mutation {
 		createdAt = occurredAt
 	}
 
-	return spanner.InsertOrUpdateMap("PaymentLedgerEntries", map[string]any{
+	return spanner.InsertMap("PaymentLedgerEntries", map[string]any{
 		"LedgerEntryId": entry.LedgerEntryID,
 		"SessionId":     nullIfEmpty(entry.SessionID),
 		"OrderId":       nullIfEmpty(entry.OrderID),
@@ -775,7 +852,7 @@ func ledgerMutation(entry LedgerEntryRecord) *spanner.Mutation {
 	})
 }
 
-// LedgerMutation transforms a LedgerEntryRecord into a Spanner insert/update mutation on PaymentLedgerEntries.
+// LedgerMutation transforms a LedgerEntryRecord into an append-only Spanner insert mutation on PaymentLedgerEntries.
 func LedgerMutation(entry LedgerEntryRecord) *spanner.Mutation {
 	return ledgerMutation(entry)
 }
@@ -793,30 +870,139 @@ func WriteSettlementJournal(txn *spanner.ReadWriteTransaction, batchID, supplier
 	if err != nil {
 		return err
 	}
-	if len(muts) == 0 {
-		return nil
+	if len(muts) > 0 {
+		if err := txn.BufferWrite(muts); err != nil {
+			return err
+		}
 	}
-	return txn.BufferWrite(muts)
+	if grossMinor > 0 {
+		supID := strings.TrimSpace(supplierID)
+		if supID == "" {
+			supID = "_platform"
+		}
+		if _, err := gl.PostEventInTxn(context.Background(), txn, nil, gl.RuleEventPayoutPaid, gl.RuleEvalContext{
+			EntityID:       supID,
+			SupplierID:     supID,
+			SourceID:       strings.TrimSpace(batchID),
+			Currency:       normalizedUpper(currency, "UZS"),
+			GrossMinor:     grossMinor,
+			FeeMinor:       feeMinor,
+			IdempotencyKey: "gl:payout:" + strings.TrimSpace(batchID),
+			Memo:           "Payout batch settlement " + strings.TrimSpace(batchID),
+			OccurredAt:     time.Now().UTC(),
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+const (
+	doorstepShortfallRefPrefix       = "jentry_shortfall_"
+	legacyDoorstepShortfallRefPrefix = "jentry_doorstep_shortfall_"
+)
+
+func doorstepShortfallReferenceIDs(orderID string) []string {
+	oid := strings.TrimSpace(orderID)
+	return []string{
+		doorstepShortfallRefPrefix + oid,
+		legacyDoorstepShortfallRefPrefix + oid,
+	}
+}
+
+func doorstepShortfallAlreadyJournaled(ctx context.Context, txn *spanner.ReadWriteTransaction, orderID string) (bool, error) {
+	refs := doorstepShortfallReferenceIDs(orderID)
+	iter := txn.Query(ctx, spanner.Statement{
+		SQL: `SELECT 1 FROM PaymentLedgerEntries
+		      WHERE OrderId = @oid AND ReferenceId IN UNNEST(@refs)
+		      LIMIT 1`,
+		Params: map[string]any{
+			"oid":  strings.TrimSpace(orderID),
+			"refs": refs,
+		},
+	})
+	defer iter.Stop()
+	_, err := iter.Next()
+	if err == iterator.Done {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 // WriteDoorstepShortfall buffers a balanced cash-shortfall journal on txn.
 // Call it inside the same read-write transaction as the cash capture.
-func WriteDoorstepShortfall(_ context.Context, txn *spanner.ReadWriteTransaction, orderID, supplierID, driverID, currency string, expectedMinor, receivedMinor int64, occurredAt time.Time) error {
+func WriteDoorstepShortfall(ctx context.Context, txn *spanner.ReadWriteTransaction, orderID, supplierID, driverID, currency string, expectedMinor, receivedMinor int64, occurredAt time.Time) error {
 	if txn == nil {
 		return fmt.Errorf("doorstep shortfall: nil transaction")
+	}
+	if ctx == nil {
+		ctx = context.Background()
 	}
 	je, err := BuildDoorstepCashShortfallJournalEntry(orderID, supplierID, driverID, currency, expectedMinor, receivedMinor, occurredAt)
 	if err != nil {
 		return err
 	}
+	alreadyJournaled, err := doorstepShortfallAlreadyJournaled(ctx, txn, orderID)
+	if err != nil {
+		return err
+	}
+	if alreadyJournaled {
+		return nil
+	}
 	muts, err := JournalEntryMutations(je)
 	if err != nil {
 		return err
 	}
-	if len(muts) == 0 {
+	if len(muts) > 0 {
+		if err := txn.BufferWrite(muts); err != nil {
+			return err
+		}
+	}
+	supID := strings.TrimSpace(supplierID)
+	if supID == "" {
+		supID = "_platform"
+	}
+	if occurredAt.IsZero() {
+		occurredAt = time.Now().UTC()
+	}
+	deliveredIter := txn.Query(ctx, spanner.Statement{
+		SQL: `SELECT EntryId FROM JournalEntries
+		      WHERE EntityId = @eid AND IdempotencyKey = @k
+		      LIMIT 1`,
+		Params: map[string]any{
+			"eid": supID,
+			"k":   "gl:order_delivered:" + strings.TrimSpace(orderID),
+		},
+	})
+	_, delivErr := deliveredIter.Next()
+	deliveredIter.Stop()
+	if delivErr != nil && delivErr != iterator.Done {
+		return delivErr
+	}
+	if delivErr == nil {
+		// Delivery/credit-leave GL has already recognized AR/Sales Revenue for this order;
+		// posting gl:shortfall: would double-debit CASH:DRIVER and strand CR ESCROW:ORDER.
 		return nil
 	}
-	return txn.BufferWrite(muts)
+	if _, err := gl.PostEventInTxn(ctx, txn, nil, gl.RuleEventDoorstepShortfall, gl.RuleEvalContext{
+		EntityID:       supID,
+		SupplierID:     supID,
+		DriverID:       strings.TrimSpace(driverID),
+		OrderID:        strings.TrimSpace(orderID),
+		SourceID:       strings.TrimSpace(orderID),
+		Currency:       normalizedUpper(currency, "UZS"),
+		ExpectedMinor:  expectedMinor,
+		ReceivedMinor:  receivedMinor,
+		IdempotencyKey: "gl:shortfall:" + strings.TrimSpace(orderID),
+		Memo:           "Doorstep cash shortfall order " + strings.TrimSpace(orderID),
+		OccurredAt:     occurredAt,
+	}); err != nil {
+		return err
+	}
+	return nil
 }
 
 // JournalEntryMutations validates and transforms a JournalEntry into Spanner mutations on PaymentLedgerEntries.

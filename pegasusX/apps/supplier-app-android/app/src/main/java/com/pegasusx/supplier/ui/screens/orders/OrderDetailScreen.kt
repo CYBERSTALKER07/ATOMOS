@@ -199,9 +199,23 @@ fun OrderDetailScreen(
                                 detail?.retailerName ?: listOrder?.retailerId ?: orderId,
                                 style = MaterialTheme.typography.titleMedium,
                             )
-                            SupplierStatusChip(status = detail?.state ?: detail?.status ?: listOrder?.status.orEmpty())
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                SupplierStatusChip(status = detail?.state ?: detail?.status ?: listOrder?.status.orEmpty())
+                                if (listOrder?.status == "MIGRATION_OPEN") {
+                                    SupplierStatusChip(status = "HELD · MIGRATION")
+                                } else if (listOrder?.source.equals("MIGRATION", ignoreCase = true)) {
+                                    SupplierStatusChip(status = "MIGRATION")
+                                }
+                            }
                             listOrder?.let {
                                 Text(formatMinorAmount(it.totalMinor, it.currency), style = MaterialTheme.typography.bodyMedium)
+                                it.externalOrderId?.takeIf { ext -> ext.isNotBlank() }?.let { ext ->
+                                    Text(
+                                        "External Order: $ext",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
                             }
                             Text(orderId, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             

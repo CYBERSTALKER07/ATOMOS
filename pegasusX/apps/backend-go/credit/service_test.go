@@ -354,3 +354,43 @@ func TestCheckOrder_RepositoryError(t *testing.T) {
 		t.Fatal("expected error")
 	}
 }
+
+func TestCheckOrder_PrepayOnlyLocked(t *testing.T) {
+	t.Setenv("UNLIMITED_PAYMENTS", "true")
+	repo := &testCreditRepo{
+		found: true,
+		profile: Profile{
+			RetailerID:       "ret-1",
+			SupplierID:       "sup-1",
+			CreditLimitMinor: 1_000_000,
+			Status:           StatusActive,
+			PrepayOnlyLocked: true,
+		},
+	}
+	svc := newTestService(repo)
+
+	res, err := svc.CheckOrder(context.Background(), "ret-1", "sup-1", 50000)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if res.Allowed || res.Reason != "prepay_only_locked" || !res.PrepayOnlyLocked || res.Shortfall != 50000 {
+		t.Fatalf("expected prepay_only_locked rejection even under UNLIMITED_PAYMENTS, got %+v", res)
+	}
+
+	unlocked, err := svc.SetPrepayOnlyLocked(context.Background(), "sup-1", "ret-1", false, "admin-1", "")
+	if err != nil {
+		t.Fatalf("SetPrepayOnlyLocked(false) failed: %v", err)
+	}
+	if unlocked.PrepayOnlyLocked || unlocked.Status != StatusActive || unlocked.CreditLimitMinor != 1_000_000 {
+		t.Fatalf("unexpected profile after unlock: %+v", unlocked)
+	}
+	repo.profile = unlocked
+
+	resAfter, err := svc.CheckOrder(context.Background(), "ret-1", "sup-1", 50000)
+	if err != nil {
+		t.Fatalf("unexpected error after unlock: %v", err)
+	}
+	if !resAfter.Allowed || resAfter.PrepayOnlyLocked {
+		t.Fatalf("expected credit order allowed after PrepayOnlyLocked=false, got %+v", resAfter)
+	}
+}

@@ -1,12 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from "react";
 import { useSupplierSessionReconcile } from "@/lib/use-supplier-session-reconcile";
 import { supplierFetch } from "@/lib/auth";
 import { createSupplierApi } from "@/lib/api";
 import { PageChrome } from "@/components/PageChrome";
-import { BulkImportWizard } from "@/components/BulkImportWizard";
 import type { CatalogProduct, CatalogCategory, CreateProductFormState } from "./components/types";
 import { ALLOWED_IMAGE_TYPES, MAX_IMAGE_SIZE } from "./components/types";
 import { CreateProductForm } from "./components/CreateProductForm";
@@ -22,7 +22,6 @@ export default function CatalogPage() {
   const [error, setError] = useState<string | null>(null);
   
   const [showCreate, setShowCreate] = useState(false);
-  const [showBulkImport, setShowBulkImport] = useState(false);
 
   const load = useCallback(async () => {
     setError(null);
@@ -167,13 +166,12 @@ export default function CatalogPage() {
       empty={!showCreate && products.length === 0}
       actions={
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setShowBulkImport(true)}
+          <Link
+            href="/migrations?domain=products_prices"
             className="md-btn md-btn-outlined md-typescale-label-large px-4 py-2"
           >
-            Bulk import
-          </button>
+            {t("supplier_portal.migrations.title")}
+          </Link>
           <button
             type="button"
             onClick={() => setShowCreate(value => !value)}
@@ -184,15 +182,6 @@ export default function CatalogPage() {
         </div>
       }
     >
-      <BulkImportWizard
-        isOpen={showBulkImport}
-        onClose={() => setShowBulkImport(false)}
-        onImport={(rows) => {
-          // Future integration: send rows to API
-          setShowBulkImport(false);
-          alert(`Successfully initiated import for ${rows.length} products`);
-        }}
-      />
       
       {showCreate && (
         <CreateProductForm

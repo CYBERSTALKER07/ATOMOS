@@ -49,6 +49,7 @@ const (
 	ExportFormatCSV  = "csv"
 	ExportFormatJSON = "json"
 	ExportFormatXML  = "xml"
+	ExportFormatXLSX = "xlsx"
 
 	MaxExportRows       = 50000
 	MaxExportWindowDays = 90
@@ -75,8 +76,8 @@ const (
 	EdiStatusFailed    = "FAILED"
 	EdiStatusEmitted   = "EMITTED"
 
-	KeyEnvLive    = "LIVE"
-	KeyEnvSandbox = "SANDBOX"
+	KeyEnvLive       = "LIVE"
+	KeyEnvSandbox    = "SANDBOX"
 	RateLimitSandbox = "partner_sandbox"
 )
 
@@ -112,7 +113,7 @@ type IssuedKey struct {
 	TenantID    string   `json:"tenant_id"`
 	Scopes      []string `json:"scopes"`
 	Prefix      string   `json:"key_prefix"`
-	Secret      string   `json:"secret"` // shown once: pxk_|pxs_<prefix>_<secret>
+	Secret      string   `json:"secret"`      // shown once: pxk_|pxs_<prefix>_<secret>
 	Environment string   `json:"environment"` // LIVE|SANDBOX
 	ExpiresAt   *string  `json:"expires_at,omitempty"`
 }
@@ -179,6 +180,7 @@ type ExportJob struct {
 	Resource   string
 	Format     string
 	Status     string
+	Unlimited  bool
 	FromDate   *time.Time
 	ToDate     *time.Time
 	ObjectPath string

@@ -7,7 +7,9 @@ import (
 	"log/slog"
 	"strings"
 
+	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
+	"github.com/pegasusx/pegasusx/apps/backend-go/drivercmd"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/notifications"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
@@ -34,6 +36,7 @@ type DispatcherDeps struct {
 	Push            *notifications.PushBridge
 	Inbox           *notifications.Service
 	EventDedup      EventDedupStore
+	CommandSpanner  *spanner.Client
 	ConsumerGroupID string
 	Cache           *cache.Cache
 	// RetailerActors optional: multi-user FCM targets under a retailer org.
@@ -779,11 +782,12 @@ func (d *NotificationDispatcher) handleRouteEvent(ctx context.Context, payload [
 		return nil
 	}
 	d.broadcastSupplier(ctx, e.SupplierID, payload)
-	d.broadcastDriver(ctx, e.DriverID, payload)
+	driverPayload := d.prepareDriverCommand(ctx, e.DriverID, payload)
+	d.deliverDriverPrepared(ctx, e.DriverID, driverPayload)
 	d.broadcastWarehouse(ctx, e.WarehouseID, payload)
-	
+
 	if e.Type == events.EventRouteReplanned && e.DriverID != "" && d.deps.DriverHub != nil {
-		d.deps.DriverHub.Broadcast(ctx, ws.DriverCommandRoom(e.DriverID), payload)
+		d.deps.DriverHub.Broadcast(ctx, ws.DriverCommandRoom(e.DriverID), driverPayload)
 	}
 
 	return nil
@@ -1004,7 +1008,19 @@ func (d *NotificationDispatcher) broadcastRetailerPromoSupplier(ctx context.Cont
 	d.deps.RetailerHub.Broadcast(ctx, ws.SupplierPromoRoom(supplierID), payload)
 }
 
+func (d *NotificationDispatcher) prepareDriverCommand(ctx context.Context, driverID string, payload []byte) []byte {
+	return drivercmd.PrepareAndRecordJSON(ctx, d.deps.CommandSpanner, driverID, payload)
+}
+
 func (d *NotificationDispatcher) broadcastDriver(ctx context.Context, driverID string, payload []byte) {
+	if driverID == "" {
+		return
+	}
+	prepared := d.prepareDriverCommand(ctx, driverID, payload)
+	d.deliverDriverPrepared(ctx, driverID, prepared)
+}
+
+func (d *NotificationDispatcher) deliverDriverPrepared(ctx context.Context, driverID string, payload []byte) {
 	if driverID == "" {
 		return
 	}
@@ -1085,7 +1101,9 @@ func (d *NotificationDispatcher) handleReturnGateEvent(ctx context.Context, payl
 		}
 	}
 	if env.DriverID != "" && d.deps.DriverHub != nil {
-		d.deps.DriverHub.Broadcast(ctx, "driver:"+strings.TrimSpace(env.DriverID), payload)
+		driverID := strings.TrimSpace(env.DriverID)
+		prepared := d.prepareDriverCommand(ctx, driverID, payload)
+		d.deps.DriverHub.Broadcast(ctx, "driver:"+driverID, prepared)
 	}
 	return nil
 }

@@ -49,7 +49,7 @@ func (r *Repository) Insert(ctx context.Context, b Batch) error {
 			SQL: `UPDATE InvoiceSettlementSlices
 			      SET Status = 'BATCHED', PayoutBatchId = @b
 			      WHERE SupplierId = @s AND Currency = @c AND Status = 'UNSETTLED'
-			        AND CreatedAt >= @start AND CreatedAt < @end`,
+			        AND CreatedAt < @end AND (CreatedAt >= @start OR NetPayoutMinor < 0 OR GrossMinor < 0)`,
 			Params: map[string]any{
 				"b":     b.BatchID,
 				"s":     b.SupplierID,
@@ -166,7 +166,7 @@ func readUnsettledSettlementSlicesInTxn(
 		SQL: `SELECT Currency, GrossMinor, CommissionMinor, NetPayoutMinor, SliceId
 		      FROM InvoiceSettlementSlices
 		      WHERE SupplierId = @sid AND Status = 'UNSETTLED'
-		        AND CreatedAt >= @start AND CreatedAt < @end`,
+		        AND CreatedAt < @end AND (CreatedAt >= @start OR NetPayoutMinor < 0 OR GrossMinor < 0)`,
 		Params: map[string]any{"sid": supplierID, "start": start, "end": end},
 	})
 	defer iter.Stop()
@@ -351,21 +351,89 @@ func (r *Repository) UpdateStatus(ctx context.Context, batchID, status, exportUR
 	return r.UpdateStatusRef(ctx, batchID, status, exportURI, "")
 }
 
+// ClaimDispatchInTxn atomically transitions an eligible batch from DRAFT/EXPORTED to
+// SUBMITTING before external rail submission, returning the previous status for rollback on failure.
+func (r *Repository) ClaimDispatchInTxn(ctx context.Context, supplierID, batchID string) (prevStatus string, b Batch, err error) {
+	err = spannerutils.RunReadWriteTransaction(ctx, r.client, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		row, rerr := txn.ReadRow(ctx, "PayoutBatches", spanner.Key{batchID}, []string{
+			"SupplierId", "Status", "GrossCapturedMinor", "RefundedMinor", "CommissionMinor", "NetPayoutMinor", "Currency",
+		})
+		if rerr != nil {
+			if spanner.ErrCode(rerr) == codes.NotFound {
+				return ErrBatchNotFound
+			}
+			return rerr
+		}
+		if cerr := row.Columns(&b.SupplierID, &prevStatus, &b.GrossCapturedMinor, &b.RefundedMinor, &b.CommissionMinor, &b.NetPayoutMinor, &b.Currency); cerr != nil {
+			return cerr
+		}
+		if b.SupplierID != supplierID {
+			return ErrBatchNotFound
+		}
+		if prevStatus != StatusDraft && prevStatus != StatusExported {
+			return fmt.Errorf("%w: batch %s not dispatchable from status %s", ErrBatchConflict, batchID, prevStatus)
+		}
+		b.BatchID = batchID
+		b.Status = StatusSubmitting
+		return txn.BufferWrite([]*spanner.Mutation{
+			spanner.UpdateMap("PayoutBatches", map[string]any{
+				"BatchId":   batchID,
+				"Status":    StatusSubmitting,
+				"UpdatedAt": spanner.CommitTimestamp,
+			}),
+		})
+	})
+	return prevStatus, b, err
+}
+
+// RevertDispatchInTxn restores prevStatus when a claimed external live rail call fails.
+func (r *Repository) RevertDispatchInTxn(ctx context.Context, batchID, prevStatus string) error {
+	return spannerutils.RunReadWriteTransaction(ctx, r.client, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		row, rerr := txn.ReadRow(ctx, "PayoutBatches", spanner.Key{batchID}, []string{"Status"})
+		if rerr != nil {
+			return rerr
+		}
+		var cur string
+		if err := row.Columns(&cur); err != nil {
+			return err
+		}
+		if cur != StatusSubmitting {
+			return nil
+		}
+		return txn.BufferWrite([]*spanner.Mutation{
+			spanner.UpdateMap("PayoutBatches", map[string]any{
+				"BatchId":   batchID,
+				"Status":    prevStatus,
+				"UpdatedAt": spanner.CommitTimestamp,
+			}),
+		})
+	})
+}
+
 // UpdateStatusRef updates status, optional export URI, and optional rail
-// reference (set when a live rail dispatches or confirms settlement). Emits the
-// matching payout lifecycle outbox event in the same transaction so partner
-// webhooks / search / notifications see the state change atomically.
+// reference (set when a live rail dispatches or confirms settlement). Enforces valid
+// monotonic status transitions atomically inside Spanner and emits matching outbox events.
 func (r *Repository) UpdateStatusRef(ctx context.Context, batchID, status, exportURI, railRef string) error {
 	return spannerutils.RunReadWriteTransaction(ctx, r.client, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		row, err := txn.ReadRow(ctx, "PayoutBatches", spanner.Key{batchID}, []string{
-			"SupplierId", "GrossCapturedMinor", "RefundedMinor", "CommissionMinor", "NetPayoutMinor", "Currency",
+			"SupplierId", "Status", "GrossCapturedMinor", "RefundedMinor", "CommissionMinor", "NetPayoutMinor", "Currency",
 		})
 		if err != nil {
+			if spanner.ErrCode(err) == codes.NotFound {
+				return ErrBatchNotFound
+			}
 			return err
 		}
 		var b Batch
-		if err := row.Columns(&b.SupplierID, &b.GrossCapturedMinor, &b.RefundedMinor, &b.CommissionMinor, &b.NetPayoutMinor, &b.Currency); err != nil {
+		var curStatus string
+		if err := row.Columns(&b.SupplierID, &curStatus, &b.GrossCapturedMinor, &b.RefundedMinor, &b.CommissionMinor, &b.NetPayoutMinor, &b.Currency); err != nil {
 			return err
+		}
+		if curStatus == StatusPaid && status == StatusPaid {
+			return nil // idempotent settlement confirmation replay
+		}
+		if !isValidBatchTransition(curStatus, status) {
+			return fmt.Errorf("%w: invalid batch status transition %s -> %s", ErrBatchConflict, curStatus, status)
 		}
 		b.BatchID = batchID
 		b.Status = status
@@ -397,19 +465,27 @@ func (r *Repository) UpdateStatusRef(ctx context.Context, batchID, status, expor
 		if strings.TrimSpace(railRef) != "" {
 			m["RailReference"] = spanner.NullString{StringVal: railRef, Valid: true}
 		}
-		if status == StatusPaid && SettlementJournal != nil {
-			gross := b.GrossCapturedMinor - b.RefundedMinor
-			if gross > 0 {
-				if err := SettlementJournal(txn, batchID, b.SupplierID, b.Currency, gross, b.CommissionMinor); err != nil {
-					return err
-				}
-			}
+		if err := applySettlementJournalInTxn(txn, batchID, status, b.SupplierID, b.Currency, b.GrossCapturedMinor, b.RefundedMinor, b.CommissionMinor); err != nil {
+			return err
 		}
 		if err := txn.BufferWrite([]*spanner.Mutation{spanner.UpdateMap("PayoutBatches", m)}); err != nil {
 			return err
 		}
 		return buf.Flush(ctx)
 	})
+}
+
+func isValidBatchTransition(from, to string) bool {
+	switch to {
+	case StatusExported:
+		return from == StatusDraft || from == StatusExported || from == StatusSubmitting
+	case StatusSubmitted:
+		return from == StatusSubmitting || from == StatusDraft || from == StatusExported
+	case StatusPaid:
+		return from == StatusExported || from == StatusSubmitted
+	default:
+		return false
+	}
 }
 
 // SupplierBankDetails holds the beneficiary account for the bank file.
@@ -421,6 +497,20 @@ type SupplierBankDetails struct {
 	AccountNumber string
 	SwiftBic      string
 	IBAN          string
+}
+
+func applySettlementJournalInTxn(txn *spanner.ReadWriteTransaction, batchID, status, supplierID, currency string, grossCapturedMinor, refundedMinor, commissionMinor int64) error {
+	if status != StatusPaid {
+		return nil
+	}
+	gross := grossCapturedMinor - refundedMinor
+	if gross <= 0 {
+		return nil
+	}
+	if SettlementJournal == nil {
+		return fmt.Errorf("payout: settlement journal hook required for paid batch %s", batchID)
+	}
+	return SettlementJournal(txn, batchID, supplierID, currency, gross, commissionMinor)
 }
 
 func (r *Repository) SupplierBankDetails(ctx context.Context, supplierID string) (SupplierBankDetails, error) {

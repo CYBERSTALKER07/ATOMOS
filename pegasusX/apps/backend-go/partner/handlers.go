@@ -321,10 +321,11 @@ func (h *Handlers) HandleCreateExport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req struct {
-		Resource string  `json:"resource"`
-		Format   string  `json:"format"`
-		From     *string `json:"from"`
-		To       *string `json:"to"`
+		Resource  string  `json:"resource"`
+		Format    string  `json:"format"`
+		From      *string `json:"from"`
+		To        *string `json:"to"`
+		Unlimited bool    `json:"unlimited"`
 	}
 	if err := json.Unmarshal(body, &req); err != nil {
 		writePartnerError(w, http.StatusBadRequest, "invalid_json")
@@ -351,11 +352,11 @@ func (h *Handlers) HandleCreateExport(w http.ResponseWriter, r *http.Request) {
 				writePartnerError(w, http.StatusUnprocessableEntity, "invalid_to")
 				return
 			}
-			t = t2
+			t = t2.Add(24*time.Hour - time.Nanosecond)
 		}
 		to = &t
 	}
-	j, err := h.Svc.CreateExportJob(r.Context(), p, req.Resource, req.Format, from, to)
+	j, err := h.Svc.CreateExportJobWithOptions(r.Context(), p, req.Resource, req.Format, from, to, req.Unlimited)
 	if err != nil {
 		writePartnerError(w, http.StatusUnprocessableEntity, err.Error())
 		return
@@ -693,11 +694,18 @@ func ediDocDTO(d EdiDocument) map[string]any {
 }
 
 func exportJobDTO(j ExportJob, downloadURL string) map[string]any {
+	unlimited := j.Unlimited || (j.FromDate != nil && j.FromDate.UTC().Year() <= 1970)
 	m := map[string]any{
 		"job_id": j.JobID, "tenant_type": j.TenantType, "tenant_id": j.TenantID,
 		"resource": j.Resource, "format": j.Format, "status": j.Status,
-		"row_count": j.RowCount, "sftp_status": j.SftpStatus,
+		"unlimited": unlimited, "row_count": j.RowCount, "sftp_status": j.SftpStatus,
 		"created_at": j.CreatedAt.UTC().Format(time.RFC3339),
+	}
+	if j.FromDate != nil {
+		m["from"] = j.FromDate.UTC().Format("2006-01-02")
+	}
+	if j.ToDate != nil {
+		m["to"] = j.ToDate.UTC().Format("2006-01-02")
 	}
 	if j.Error != "" {
 		m["error"] = j.Error
@@ -729,14 +737,63 @@ func (h *Handlers) principalOrClaims(w http.ResponseWriter, r *http.Request) (Pr
 	}, true
 }
 
+func rejectPartnerAuditorOrAgent(w http.ResponseWriter, r *http.Request) bool {
+	if _, pok := PrincipalFromContext(r.Context()); pok {
+		return false
+	}
+	claims, has := auth.FromContext(r.Context())
+	if !has {
+		if auth.IsAuditorExpiredInContext(r.Context()) {
+			writeJSON(w, http.StatusUnauthorized, map[string]any{
+				"error":   "auditor_access_expired",
+				"code":    "auditor_access_expired",
+				"message": "auditor grant has expired",
+			})
+			return true
+		}
+		return false
+	}
+	if auth.IsAuditorExpired(claims, time.Now().UTC()) {
+		writeJSON(w, http.StatusUnauthorized, map[string]any{
+			"error":   "auditor_access_expired",
+			"code":    "auditor_access_expired",
+			"message": "auditor grant has expired",
+		})
+		return true
+	}
+	if r.Method != http.MethodGet && r.Method != http.MethodHead && r.Method != http.MethodOptions {
+		if auth.IsReadOnlyAuditor(claims) {
+			writePartnerError(w, http.StatusForbidden, "auditor_read_only")
+			return true
+		}
+		if auth.IsAgentActor(claims) {
+			writePartnerError(w, http.StatusForbidden, "agent_mutation_forbidden")
+			return true
+		}
+	}
+	return false
+}
+
 func (h *Handlers) jwtTenant(w http.ResponseWriter, r *http.Request) (tenantType, tenantID string, ok bool) {
+	if rejectPartnerAuditorOrAgent(w, r) {
+		return "", "", false
+	}
 	claims, has := auth.FromContext(r.Context())
 	if !has {
 		writePartnerError(w, http.StatusUnauthorized, "unauthorized")
 		return "", "", false
 	}
 	if claims.Role == auth.RoleRetailer {
-		return TenantRetailer, auth.ResolveRetailerOrgID(claims), true
+		if !auth.HasRetailerPerm(claims, auth.PermStaffManage) && !auth.HasRetailerPerm(claims, auth.PermCapManage) {
+			writePartnerError(w, http.StatusForbidden, "forbidden")
+			return "", "", false
+		}
+		orgID := auth.ResolveRetailerOrgID(claims)
+		if orgID == "" {
+			writePartnerError(w, http.StatusForbidden, "forbidden")
+			return "", "", false
+		}
+		return TenantRetailer, orgID, true
 	}
 	if claims.Role == auth.RolePlatformAdmin {
 		tt := strings.ToUpper(strings.TrimSpace(r.URL.Query().Get("tenant_type")))
@@ -760,6 +817,9 @@ func (h *Handlers) jwtTenant(w http.ResponseWriter, r *http.Request) (tenantType
 
 // HandleIssueKey POST /v1/admin/partner-keys or supplier/retailer issue
 func (h *Handlers) HandleIssueKey(w http.ResponseWriter, r *http.Request) {
+	if rejectPartnerAuditorOrAgent(w, r) {
+		return
+	}
 	claims, ok := auth.FromContext(r.Context())
 	if !ok {
 		writePartnerError(w, http.StatusUnauthorized, "unauthorized")
@@ -785,12 +845,16 @@ func (h *Handlers) HandleIssueKey(w http.ResponseWriter, r *http.Request) {
 
 	switch claims.Role {
 	case auth.RoleAdmin:
-		if tenantType == "" {
-			tenantType = TenantSupplier
+		if tenantType != "" && tenantType != TenantSupplier {
+			writePartnerError(w, http.StatusForbidden, "forbidden")
+			return
 		}
-		if tenantID == "" {
-			tenantID = claims.SupplierID
+		if tenantID != "" && tenantID != claims.SupplierID {
+			writePartnerError(w, http.StatusForbidden, "forbidden")
+			return
 		}
+		tenantType = TenantSupplier
+		tenantID = claims.SupplierID
 	case auth.RolePlatformAdmin:
 		if tenantType == "" {
 			tenantType = TenantSupplier
@@ -800,14 +864,40 @@ func (h *Handlers) HandleIssueKey(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	case auth.RoleRetailer:
+		if !auth.HasRetailerPerm(claims, auth.PermStaffManage) && !auth.HasRetailerPerm(claims, auth.PermCapManage) {
+			writePartnerError(w, http.StatusForbidden, "forbidden")
+			return
+		}
+		if tenantType != "" && tenantType != TenantRetailer {
+			writePartnerError(w, http.StatusForbidden, "forbidden")
+			return
+		}
+		resolvedOrg := auth.ResolveRetailerOrgID(claims)
+		if resolvedOrg == "" {
+			writePartnerError(w, http.StatusForbidden, "forbidden")
+			return
+		}
+		if tenantID != "" && tenantID != resolvedOrg {
+			writePartnerError(w, http.StatusForbidden, "forbidden")
+			return
+		}
 		tenantType = TenantRetailer
-		tenantID = auth.ResolveRetailerOrgID(claims)
+		tenantID = resolvedOrg
 	case auth.RoleWarehouseAdmin, auth.RoleWarehouse:
 		writePartnerError(w, http.StatusForbidden, "forbidden")
 		return
 	default:
-		if claims.Role == auth.RoleAdmin || strings.EqualFold(string(claims.SupplierRole), string(auth.RoleAdmin)) {
-			// already handled
+		if strings.EqualFold(string(claims.SupplierRole), string(auth.RoleAdmin)) {
+			if tenantType != "" && tenantType != TenantSupplier {
+				writePartnerError(w, http.StatusForbidden, "forbidden")
+				return
+			}
+			if tenantID != "" && tenantID != claims.SupplierID {
+				writePartnerError(w, http.StatusForbidden, "forbidden")
+				return
+			}
+			tenantType = TenantSupplier
+			tenantID = claims.SupplierID
 		} else if claims.SupplierID != "" && (tenantType == "" || tenantType == TenantSupplier) {
 			tenantType = TenantSupplier
 			if tenantID == "" {
@@ -837,6 +927,9 @@ func (h *Handlers) HandleIssueKey(w http.ResponseWriter, r *http.Request) {
 
 // HandleListKeys GET /v1/admin/partner-keys
 func (h *Handlers) HandleListKeys(w http.ResponseWriter, r *http.Request) {
+	if rejectPartnerAuditorOrAgent(w, r) {
+		return
+	}
 	claims, ok := auth.FromContext(r.Context())
 	if !ok {
 		writePartnerError(w, http.StatusUnauthorized, "unauthorized")
@@ -845,8 +938,16 @@ func (h *Handlers) HandleListKeys(w http.ResponseWriter, r *http.Request) {
 	tenantType := TenantSupplier
 	tenantID := claims.SupplierID
 	if claims.Role == auth.RoleRetailer {
+		if !auth.HasRetailerPerm(claims, auth.PermStaffManage) && !auth.HasRetailerPerm(claims, auth.PermCapManage) {
+			writePartnerError(w, http.StatusForbidden, "forbidden")
+			return
+		}
 		tenantType = TenantRetailer
 		tenantID = auth.ResolveRetailerOrgID(claims)
+		if tenantID == "" {
+			writePartnerError(w, http.StatusForbidden, "forbidden")
+			return
+		}
 	}
 	if claims.Role == auth.RolePlatformAdmin {
 		if q := strings.ToUpper(strings.TrimSpace(r.URL.Query().Get("tenant_type"))); q != "" {
@@ -876,6 +977,9 @@ func (h *Handlers) HandleListKeys(w http.ResponseWriter, r *http.Request) {
 // HandleRevokeKey POST /v1/admin/partner-keys/{keyID}/revoke
 // B5 M-P0-10: PLATFORM_ADMIN must pass tenant_type/tenant_id (query or body), same as list/issue.
 func (h *Handlers) HandleRevokeKey(w http.ResponseWriter, r *http.Request) {
+	if rejectPartnerAuditorOrAgent(w, r) {
+		return
+	}
 	claims, ok := auth.FromContext(r.Context())
 	if !ok {
 		writePartnerError(w, http.StatusUnauthorized, "unauthorized")
@@ -885,8 +989,16 @@ func (h *Handlers) HandleRevokeKey(w http.ResponseWriter, r *http.Request) {
 	tenantType := TenantSupplier
 	tenantID := claims.SupplierID
 	if claims.Role == auth.RoleRetailer {
+		if !auth.HasRetailerPerm(claims, auth.PermStaffManage) && !auth.HasRetailerPerm(claims, auth.PermCapManage) {
+			writePartnerError(w, http.StatusForbidden, "forbidden")
+			return
+		}
 		tenantType = TenantRetailer
 		tenantID = auth.ResolveRetailerOrgID(claims)
+		if tenantID == "" {
+			writePartnerError(w, http.StatusForbidden, "forbidden")
+			return
+		}
 	}
 	if claims.Role == auth.RolePlatformAdmin {
 		// Prefer query (matches ListKeys); body optional for clients that POST JSON.

@@ -13,6 +13,11 @@ struct OrderRow: View {
                     .font(.subheadline.weight(.semibold))
                     .lineLimit(1)
                 Spacer()
+                if order.status == "MIGRATION_OPEN" {
+                    SupplierStatusBadge(text: "HELD · MIGRATION", tint: SupplierTheme.warning)
+                } else if order.source?.uppercased() == "MIGRATION" {
+                    SupplierStatusBadge(text: "MIGRATION")
+                }
                 SupplierStatusBadge(text: order.status)
             }
             Text(MoneyFormat.minor(order.totalMinor, currency: order.currency))

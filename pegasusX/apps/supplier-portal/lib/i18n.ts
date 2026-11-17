@@ -20,8 +20,8 @@ function getSnapshot(): Locale {
   return resolveActiveLocale();
 }
 
-function getServerSnapshot(): Locale {
-  return "en";
+export function getServerSnapshot(): Locale {
+  return "uz";
 }
 
 /** Portal chrome translator — reacts to LanguageSwitcher / LocaleBootstrap. */

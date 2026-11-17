@@ -37,3 +37,10 @@ jwt_secret                     = ""
 firebase_auth_enabled          = false
 enable_observability_resources = false
 billing_account_id             = ""
+
+# M0.5 Analytics, Vertex AI & WORM Audit Storage (cell-regional europe-west1)
+worm_audit_bucket_name        = "pegasusx-cell-eu-worm-audit"
+vertex_staging_bucket_name    = "pegasusx-cell-eu-vertex-staging"
+bigquery_dataset_prefix       = ""
+enable_analytics_cmek         = false
+enable_analytics_iam_bindings = true

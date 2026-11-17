@@ -203,10 +203,22 @@ func (s *Service) HandleOpenFiscal(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	if s.spanner != nil && snap.RetryQueuedCount == 0 && len(snap.RetryOrderIDs) == 0 {
+		if rIDs, rErr := s.queryRetryQueuedFiscalOrders(r.Context(), driverID); rErr == nil && len(rIDs) > 0 {
+			snap.RetryOrderIDs = rIDs
+			snap.RetryQueuedCount = int64(len(rIDs))
+		}
+	}
+	if snap.FiscalIssueCount < snap.Count+snap.RetryQueuedCount {
+		snap.FiscalIssueCount = snap.Count + snap.RetryQueuedCount
+	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"open_fiscal_count": snap.Count,
-		"order_ids":         snap.OrderIDs,
-		"cash_bag_frozen":   snap.Frozen || snap.Count > 0,
+		"open_fiscal_count":  snap.Count,
+		"retry_queued_count": snap.RetryQueuedCount,
+		"fiscal_issue_count": snap.FiscalIssueCount,
+		"order_ids":          snap.OrderIDs,
+		"retry_order_ids":    snap.RetryOrderIDs,
+		"cash_bag_frozen":    snap.Frozen || snap.Count > 0,
 	})
 }
 
@@ -252,13 +264,20 @@ func (s *Service) HandleDriverReturnComplete(w http.ResponseWriter, r *http.Requ
 			return
 		}
 		if snap.Frozen || snap.Count > 0 {
+			issueCount := snap.FiscalIssueCount
+			if issueCount < snap.Count+snap.RetryQueuedCount {
+				issueCount = snap.Count + snap.RetryQueuedCount
+			}
 			writeJSON(w, http.StatusConflict, map[string]any{
-				"status":            "open_fiscal_block",
-				"error":             "open_fiscal_block",
-				"open_fiscal_count": snap.Count,
-				"order_ids":         snap.OrderIDs,
-				"cash_bag_frozen":   true,
-				"message":           "Clear fiscalizing / fiscal-failed orders before ending shift.",
+				"status":             "open_fiscal_block",
+				"error":              "open_fiscal_block",
+				"open_fiscal_count":  snap.Count,
+				"retry_queued_count": snap.RetryQueuedCount,
+				"fiscal_issue_count": issueCount,
+				"order_ids":          snap.OrderIDs,
+				"retry_order_ids":    snap.RetryOrderIDs,
+				"cash_bag_frozen":    true,
+				"message":            "Unrecorded cash collection or missing delivery proof blocks shift-end.",
 			})
 			return
 		}
@@ -348,41 +367,6 @@ func (s *Service) HandleDriverReturnComplete(w http.ResponseWriter, r *http.Requ
 	writeJSONBytes(w, http.StatusOK, respBytes)
 }
 
-// HandleOrderDeliver serves POST /v1/order/deliver.
-func (s *Service) HandleOrderDeliver(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
-		return
-	}
-	writeJSON(w, http.StatusOK, map[string]any{"success": true, "message": "delivered", "new_state": "COMPLETED"})
-}
-
-// HandleOrderValidateQR serves POST /v1/order/validate-qr.
-func (s *Service) HandleOrderValidateQR(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
-		return
-	}
-	writeJSON(w, http.StatusOK, map[string]any{"valid": true, "message": "ok"})
-}
-
-// HandleOrderConfirmOffload serves POST /v1/order/confirm-offload.
-func (s *Service) HandleOrderConfirmOffload(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
-		return
-	}
-	writeJSON(w, http.StatusOK, map[string]any{"status": "offloaded", "state": "AWAITING_PAYMENT"})
-}
-
-// HandleOrderComplete serves POST /v1/order/complete.
-func (s *Service) HandleOrderComplete(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
-		return
-	}
-	writeJSON(w, http.StatusOK, map[string]string{"status": "completed"})
-}
 
 // HandleOrderCollectCash serves POST /v1/order/collect-cash when OrderService is absent.
 // B1 M-P0-2: never fake money capture — clients must hit order.HandleCollectCash.
@@ -646,24 +630,6 @@ func (s *Service) HandleDeliveryCompatOK(w http.ResponseWriter, r *http.Request)
 	writeCompatNotImplemented(w)
 }
 
-func iosRouteManifest(driverID, date string) map[string]any {
-	if date == "" {
-		date = time.Now().UTC().Format("2006-01-02")
-	}
-	demoTokens := demoOrderDeliveryTokens()
-	hashes := make(map[string]string)
-	for _, orderID := range []string{"ord_factory_1", "ord_factory_2"} {
-		if token := demoTokens[orderID]; token != "" {
-			hashes[orderID] = hashDeliveryToken(token)
-		}
-	}
-	return map[string]any{
-		"driver_id":  driverID,
-		"date":       date,
-		"expires_at": time.Now().UTC().Add(24 * time.Hour).Unix(),
-		"hashes":     hashes,
-	}
-}
 
 func demoRouteGeometry(routeID string) routing.RouteGeometry {
 	waypoints := []routing.LatLng{

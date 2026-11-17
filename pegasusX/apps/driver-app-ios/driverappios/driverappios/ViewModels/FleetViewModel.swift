@@ -456,10 +456,10 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
         Haptics.heavy()
 
         do {
-            // Phase 6 soft-freeze: block local UX when open fiscal exists.
+            // Non-blocking fiscal: trust server cash_bag_frozen flag instead of blocking on retry-queued receipts.
             if let snap = try? await APIClient.shared.getOpenFiscal(),
-               snap.cashBagFrozen || snap.openFiscalCount > 0 {
-                deliveryEdgeMessage = "Cash bag frozen: \(snap.openFiscalCount) order(s) still fiscalizing. Retry fiscal or call supervisor."
+               snap.cashBagFrozen {
+                deliveryEdgeMessage = "Cash bag frozen: \(snap.openFiscalCount) order(s) have uncollected cash or missing PoD before closing shift."
                 return
             }
             _ = try await APIClient.shared.returnComplete(truckId: vehicleId)

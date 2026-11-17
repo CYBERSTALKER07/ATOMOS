@@ -7,13 +7,13 @@ import (
 
 func TestShopClosedOrdersColumns_coverGraceProximity(t *testing.T) {
 	need := map[string]bool{
-		"ShopClosedAt":           false,
-		"ShopClosedGraceEndsAt":  false,
-		"PartialDelivery":        false,
-		"ProximityUnlockedAt":    false,
-		"ProximityMethod":        false,
-		"ShopClosedReason":       false,
-		"ShopClosedResolution":   false,
+		"ShopClosedAt":          false,
+		"ShopClosedGraceEndsAt": false,
+		"PartialDelivery":       false,
+		"ProximityUnlockedAt":   false,
+		"ProximityMethod":       false,
+		"ShopClosedReason":      false,
+		"ShopClosedResolution":  false,
 	}
 	for _, col := range ShopClosedOrdersColumns {
 		if _, ok := need[col]; ok {

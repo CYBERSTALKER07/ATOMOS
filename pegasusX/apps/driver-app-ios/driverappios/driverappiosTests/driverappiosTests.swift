@@ -199,3 +199,63 @@ struct DriverOfflineEnqueueTests {
         ))
     }
 }
+
+// MARK: - Offline HTTP Semantics Tests (S1-9)
+
+struct OfflineHttpSemanticsTests {
+
+    @Test func httpSuccessClassification() {
+        #expect(OfflineHttpSemantics.isSuccessHTTP(200))
+        #expect(OfflineHttpSemantics.isSuccessHTTP(201))
+        #expect(OfflineHttpSemantics.isSuccessHTTP(204))
+        #expect(!OfflineHttpSemantics.isSuccessHTTP(409), "409 is a conflict, not unconditional success")
+        #expect(!OfflineHttpSemantics.isSuccessHTTP(422))
+        #expect(!OfflineHttpSemantics.isSuccessHTTP(503))
+    }
+
+    @Test func httpConflictClassification() {
+        #expect(OfflineHttpSemantics.isConflictHTTP(409))
+        #expect(!OfflineHttpSemantics.isConflictHTTP(200))
+        #expect(!OfflineHttpSemantics.isConflictHTTP(503))
+    }
+
+    @Test func idempotentReplay409Classification() {
+        // Idempotent markers
+        #expect(OfflineHttpSemantics.isIdempotentReplay409(statusCode: 409, responseBody: "{\"error\":\"duplicate_mutation\"}"))
+        #expect(OfflineHttpSemantics.isIdempotentReplay409(statusCode: 409, responseBody: "{\"code\":\"already_exists\"}"))
+        #expect(OfflineHttpSemantics.isIdempotentReplay409(statusCode: 409, responseBody: "{\"detail\":\"idempotent replay acknowledged\"}"))
+        #expect(OfflineHttpSemantics.isIdempotentReplay409(statusCode: 409, responseBody: "{\"status\":\"already_processed\"}"))
+
+        // Business conflicts (NOT idempotent replay)
+        #expect(!OfflineHttpSemantics.isIdempotentReplay409(statusCode: 409, responseBody: "{\"error\":\"order_cancelled\"}"))
+        #expect(!OfflineHttpSemantics.isIdempotentReplay409(statusCode: 409, responseBody: "{\"error\":\"invalid_state_transition\"}"))
+        #expect(!OfflineHttpSemantics.isIdempotentReplay409(statusCode: 409, responseBody: "{\"error\":\"manifest_reassigned\"}"))
+        #expect(!OfflineHttpSemantics.isIdempotentReplay409(statusCode: 409, responseBody: ""))
+        #expect(!OfflineHttpSemantics.isIdempotentReplay409(statusCode: 409, responseBody: String?.none))
+
+        // Non-409 with duplicate text must not match
+        #expect(!OfflineHttpSemantics.isIdempotentReplay409(statusCode: 200, responseBody: "duplicate"))
+        #expect(!OfflineHttpSemantics.isIdempotentReplay409(statusCode: 422, responseBody: "duplicate"))
+
+        // Data overload
+        let dataIdempotent = "{\"error\":\"duplicate_key\"}".data(using: .utf8)
+        let dataConflict = "{\"error\":\"state_conflict\"}".data(using: .utf8)
+        #expect(OfflineHttpSemantics.isIdempotentReplay409(statusCode: 409, responseBody: dataIdempotent))
+        #expect(!OfflineHttpSemantics.isIdempotentReplay409(statusCode: 409, responseBody: dataConflict))
+    }
+
+    @Test func outcomeMapping() {
+        #expect(OfflineHttpSemantics.outcome(forHTTP: 200) == .ack)
+        #expect(OfflineHttpSemantics.outcome(forHTTP: 204) == .ack)
+        #expect(OfflineHttpSemantics.outcome(forHTTP: 503) == .retry)
+        #expect(OfflineHttpSemantics.outcome(forHTTP: 429) == .retry)
+        #expect(OfflineHttpSemantics.outcome(forHTTP: 408) == .retry)
+        #expect(OfflineHttpSemantics.outcome(forHTTP: 422) == .dead)
+
+        // 409 outcomes: ack if idempotent, dead if business conflict
+        #expect(OfflineHttpSemantics.outcome(forHTTP: 409, bodyString: "idempotent replay") == .ack)
+        #expect(OfflineHttpSemantics.outcome(forHTTP: 409, bodyString: "order cancelled") == .dead)
+        #expect(OfflineHttpSemantics.outcome(forHTTP: 409, bodyString: nil) == .dead)
+    }
+}
+

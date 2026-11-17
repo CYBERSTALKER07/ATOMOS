@@ -12,228 +12,704 @@ import kotlinx.serialization.encoding.*
 
 @Serializable
 data class PegasusWSEventEnvelope (
-    val type: Type
+    @SerialName("aggregate_id")
+    val aggregateID: String? = null,
+
+    @SerialName("aggregate_type")
+    val aggregateType: String? = null,
+
+    @SerialName("base_event")
+    val baseEvent: JsonElement?,
+
+    @SerialName("decided_by")
+    val decidedBy: String? = null,
+
+    val decision: String? = null,
+    val note: String? = null,
+
+    @SerialName("recommendation_id")
+    val recommendationID: String? = null,
+
+    val status: String? = null,
+
+    @SerialName("supplier_id")
+    val supplierID: String? = null,
+
+    val action: String? = null,
+
+    @SerialName("actor_id")
+    val actorID: String? = null,
+
+    @SerialName("actor_role")
+    val actorRole: String? = null,
+
+    @SerialName("attempt_id")
+    val attemptID: String? = null,
+
+    @SerialName("confirmation_status")
+    val confirmationStatus: String? = null,
+
+    val currency: String? = null,
+
+    @SerialName("customer_progress_percent")
+    val customerProgressPercent: Long? = null,
+
+    @SerialName("customer_stage")
+    val customerStage: String? = null,
+
+    @SerialName("driver_id")
+    val driverID: String? = null,
+
+    @SerialName("escalated_to")
+    val escalatedTo: String? = null,
+
+    @SerialName("from_driver_id")
+    val fromDriverID: String? = null,
+
+    @SerialName("from_route_id")
+    val fromRouteID: String? = null,
+
+    @SerialName("gps_lat")
+    val gpsLat: Double? = null,
+
+    @SerialName("gps_lng")
+    val gpsLng: Double? = null,
+
+    @SerialName("h3_cell")
+    val h3Cell: String? = null,
+
+    val lat: Double? = null,
+
+    @SerialName("license_plate")
+    val licensePlate: String? = null,
+
+    @SerialName("line_items")
+    val lineItems: JsonElement? = null,
+
+    val lng: Double? = null,
+
+    @SerialName("manifest_id")
+    val manifestID: String? = null,
+
+    val message: String? = null,
+
+    @SerialName("negotiation_id")
+    val negotiationID: String? = null,
+
+    @SerialName("order_id")
+    val orderID: String? = null,
+
+    @SerialName("order_source")
+    val orderSource: String? = null,
+
+    @SerialName("payment_method")
+    val paymentMethod: String? = null,
+
+    @SerialName("previous_status")
+    val previousStatus: String? = null,
+
+    @SerialName("proposal_id")
+    val proposalID: String? = null,
+
+    @SerialName("proposed_price_minor")
+    val proposedPriceMinor: Long? = null,
+
+    val reason: String? = null,
+
+    @SerialName("receiving_window_close")
+    val receivingWindowClose: String? = null,
+
+    @SerialName("receiving_window_open")
+    val receivingWindowOpen: String? = null,
+
+    @SerialName("requested_delivery_date")
+    val requestedDeliveryDate: String? = null,
+
+    val resolution: String? = null,
+    val response: String? = null,
+
+    @SerialName("retailer_id")
+    val retailerID: String? = null,
+
+    @SerialName("route_id")
+    val routeID: String? = null,
+
+    @SerialName("to_driver_id")
+    val toDriverID: String? = null,
+
+    @SerialName("to_route_id")
+    val toRouteID: String? = null,
+
+    @SerialName("total_minor")
+    val totalMinor: Long? = null,
+
+    @SerialName("vehicle_id")
+    val vehicleID: String? = null,
+
+    val version: Version? = null,
+
+    @SerialName("warehouse_id")
+    val warehouseID: String? = null,
+
+    @SerialName("baseline_qty")
+    val baselineQty: Long? = null,
+
+    @SerialName("baseline_source")
+    val baselineSource: String? = null,
+
+    @SerialName("blocked_reason")
+    val blockedReason: String? = null,
+
+    val confidence: Double? = null,
+
+    @SerialName("confidence_pct")
+    val confidencePct: Long? = null,
+
+    @SerialName("factory_id")
+    val factoryID: String? = null,
+
+    @SerialName("high_units")
+    val highUnits: Long? = null,
+
+    @SerialName("insight_id")
+    val insightID: String? = null,
+
+    @SerialName("low_units")
+    val lowUnits: Long? = null,
+
+    @SerialName("network_nodes")
+    val networkNodes: Long? = null,
+
+    @SerialName("override_id")
+    val overrideID: String? = null,
+
+    @SerialName("polygon_geojson")
+    val polygonGeojson: String? = null,
+
+    @SerialName("product_id")
+    val productID: String? = null,
+
+    @SerialName("published_by")
+    val publishedBy: String? = null,
+
+    @SerialName("scenario_id")
+    val scenarioID: String? = null,
+
+    @SerialName("signal_id")
+    val signalID: String? = null,
+
+    @SerialName("simulation_id")
+    val simulationID: String? = null,
+
+    @SerialName("transfer_recommendations")
+    val transferRecommendations: Long? = null,
+
+    @SerialName("ttl_seconds")
+    val ttlSeconds: Long? = null,
+
+    @SerialName("aging_bucket")
+    val agingBucket: String? = null,
+
+    @SerialName("amount_minor")
+    val amountMinor: Long? = null,
+
+    @SerialName("balance_minor")
+    val balanceMinor: Long? = null,
+
+    @SerialName("due_at")
+    val dueAt: String? = null,
+
+    @SerialName("dunning_step")
+    val dunningStep: Long? = null,
+
+    @SerialName("invoice_id")
+    val invoiceID: String? = null,
+
+    @SerialName("last_dunned_at")
+    val lastDunnedAt: String? = null,
+
+    @SerialName("principal_minor")
+    val principalMinor: Long? = null,
+
+    val deadline: String? = null,
+
+    @SerialName("ehf_id")
+    val ehfID: String? = null,
+
+    @SerialName("account_holder")
+    val accountHolder: String? = null,
+
+    @SerialName("assigned_warehouse_id")
+    val assignedWarehouseID: String? = null,
+
+    @SerialName("bank_name")
+    val bankName: String? = null,
+
+    @SerialName("contact_name")
+    val contactName: String? = null,
+
+    val email: String? = null,
+
+    @SerialName("legal_name")
+    val legalName: String? = null,
+
+    @SerialName("selected_gateways")
+    val selectedGateways: List<String>? = null,
+
+    @SerialName("supplier_role")
+    val supplierRole: String? = null,
+
+    @SerialName("user_id")
+    val userID: String? = null,
+
+    @SerialName("expected_minor")
+    val expectedMinor: Long? = null,
+
+    @SerialName("overage_minor")
+    val overageMinor: Long? = null,
+
+    @SerialName("received_minor")
+    val receivedMinor: Long? = null,
+
+    @SerialName("shortfall_minor")
+    val shortfallMinor: Long? = null,
+
+    @SerialName("trace_id")
+    val traceID: String? = null,
+
+    @SerialName("category_id")
+    val categoryID: String? = null,
+
+    @SerialName("icon_key")
+    val iconKey: String? = null,
+
+    val name: String? = null,
+
+    @SerialName("parent_category_id")
+    val parentCategoryID: String? = null,
+
+    @SerialName("sort_order")
+    val sortOrder: Long? = null,
+
+    @SerialName("chargeback_id")
+    val chargebackID: String? = null,
+
+    @SerialName("claim_id")
+    val claimID: String? = null,
+
+    @SerialName("claim_type")
+    val claimType: String? = null,
+
+    @SerialName("photo_urls")
+    val photoUrls: List<String>? = null,
+
+    @SerialName("resolution_note")
+    val resolutionNote: String? = null,
+
+    @SerialName("settlement_mode")
+    val settlementMode: String? = null,
+
+    val source: String? = null,
+
+    @SerialName("command_id")
+    val commandID: String? = null,
+
+    val actor: String? = null,
+
+    @SerialName("campaign_id")
+    val campaignID: String? = null,
+
+    @SerialName("impacted_lot_count")
+    val impactedLotCount: Long? = null,
+
+    @SerialName("impacted_order_count")
+    val impactedOrderCount: Long? = null,
+
+    @SerialName("impacted_units_count")
+    val impactedUnitsCount: Long? = null,
+
+    @SerialName("lot_code")
+    val lotCode: String? = null,
+
+    @SerialName("lot_id")
+    val lotID: String? = null,
+
+    @SerialName("recall_reason")
+    val recallReason: String? = null,
+
+    val severity: String? = null,
+
+    @SerialName("photo_proof_url")
+    val photoProofURL: String? = null,
+
+    @SerialName("signature_url")
+    val signatureURL: String? = null,
+
+    @SerialName("session_id")
+    val sessionID: String? = null,
+
+    @SerialName("country_code")
+    val countryCode: String? = null,
+
+    val phone: String? = null,
+
+    @SerialName("order_count")
+    val orderCount: Long? = null,
+
+    @SerialName("order_ids")
+    val orderIDS: List<String>? = null,
+
+    val available: Boolean? = null,
+
+    @SerialName("home_node_id")
+    val homeNodeID: String? = null,
+
+    @SerialName("home_node_type")
+    val homeNodeType: String? = null,
+
+    @SerialName("on_shift")
+    val onShift: Boolean? = null,
+
+    @SerialName("return_id")
+    val returnID: String? = null,
+
+    @SerialName("item_count")
+    val itemCount: Long? = null,
+
+    @SerialName("request_id")
+    val requestID: String? = null,
+
+    @SerialName("error_code")
+    val errorCode: String? = null,
+
+    @SerialName("error_message")
+    val errorMessage: String? = null,
+
+    @SerialName("fiscal_qr")
+    val fiscalQr: String? = null,
+
+    @SerialName("fiscal_receipt_id")
+    val fiscalReceiptID: String? = null,
+
+    val provider: String? = null,
+
+    @SerialName("lock_name")
+    val lockName: String? = null,
+
+    @SerialName("system_id")
+    val systemID: String? = null,
+
+    @SerialName("gcs_path")
+    val gcsPath: String? = null,
+
+    @SerialName("suggested_mappings")
+    val suggestedMappings: Long? = null,
+
+    @SerialName("committed_units")
+    val committedUnits: Long? = null,
+
+    @SerialName("coverage_days")
+    val coverageDays: Long? = null,
+
+    @SerialName("coverage_start_date")
+    val coverageStartDate: String? = null,
+
+    @SerialName("linked_transfer_id")
+    val linkedTransferID: String? = null,
+
+    @SerialName("lock_id")
+    val lockID: String? = null,
+
+    @SerialName("pending_confirmation_units")
+    val pendingConfirmationUnits: Long? = null,
+
+    @SerialName("projected_units")
+    val projectedUnits: Long? = null,
+
+    @SerialName("requested_by")
+    val requestedBy: String? = null,
+
+    @SerialName("requested_units")
+    val requestedUnits: Long? = null,
+
+    val state: String? = null,
+
+    @SerialName("transfer_id")
+    val transferID: String? = null,
+
+    @SerialName("transfer_mode")
+    val transferMode: String? = null,
+
+    @SerialName("decision_reason")
+    val decisionReason: String? = null,
+
+    @SerialName("normalized_inn")
+    val normalizedInn: String? = null,
+
+    @SerialName("requester_name")
+    val requesterName: String? = null,
+
+    @SerialName("requester_phone")
+    val requesterPhone: String? = null,
+
+    @SerialName("role_sought")
+    val roleSought: String? = null,
+
+    @SerialName("target_tenant_id")
+    val targetTenantID: String? = null,
+
+    @SerialName("target_tenant_type")
+    val targetTenantType: String? = null,
+
+    @SerialName("attempt_count")
+    val attemptCount: Long? = null,
+
+    val depth: Long? = null,
+    val escalated: Boolean? = null,
+
+    @SerialName("from_manifest_id")
+    val fromManifestID: String? = null,
+
+    @SerialName("from_vehicle_id")
+    val fromVehicleID: String? = null,
+
+    @SerialName("manifest_domain")
+    val manifestDomain: String? = null,
+
+    @SerialName("stop_count")
+    val stopCount: Long? = null,
+
+    @SerialName("to_manifest_id")
+    val toManifestID: String? = null,
+
+    @SerialName("to_vehicle_id")
+    val toVehicleID: String? = null,
+
+    @SerialName("total_volume_vu")
+    val totalVolumeVu: TotalVolumeVu? = null,
+
+    @SerialName("transfer_count")
+    val transferCount: Long? = null,
+
+    @SerialName("bundle_id")
+    val bundleID: String? = null,
+
+    val domain: String? = null,
+
+    @SerialName("imported_count")
+    val importedCount: Long? = null,
+
+    @SerialName("processed_rows")
+    val processedRows: Long? = null,
+
+    @SerialName("project_id")
+    val projectID: String? = null,
+
+    @SerialName("quarantine_count")
+    val quarantineCount: Long? = null,
+
+    @SerialName("report_id")
+    val reportID: String? = null,
+
+    @SerialName("total_rows")
+    val totalRows: Long? = null,
+
+    @SerialName("driver_ids")
+    val driverIDS: List<String>? = null,
+
+    @SerialName("manifest_ids")
+    val manifestIDS: List<String>? = null,
+
+    @SerialName("shared_route_id")
+    val sharedRouteID: String? = null,
+
+    @SerialName("split_group_id")
+    val splitGroupID: String? = null,
+
+    @SerialName("truck_count")
+    val truckCount: Long? = null,
+
+    @SerialName("condition_type")
+    val conditionType: String? = null,
+
+    @SerialName("gcs_paths")
+    val gcsPaths: List<String>? = null,
+
+    val notes: String? = null,
+    val quantity: Long? = null,
+
+    @SerialName("reporter_id")
+    val reporterID: String? = null,
+
+    @SerialName("reporter_role")
+    val reporterRole: String? = null,
+
+    val sku: String? = null,
+
+    @SerialName("delivered_at")
+    val deliveredAt: String? = null,
+
+    @SerialName("dispute_note")
+    val disputeNote: String? = null,
+
+    @SerialName("proof_photo_url")
+    val proofPhotoURL: String? = null,
+
+    @SerialName("proof_signature")
+    val proofSignature: String? = null,
+
+    @SerialName("reason_code")
+    val reasonCode: String? = null,
+
+    @SerialName("card_minor")
+    val cardMinor: Long? = null,
+
+    @SerialName("cash_minor")
+    val cashMinor: Long? = null,
+
+    @SerialName("execution_action")
+    val executionAction: String? = null,
+
+    @SerialName("execution_mode")
+    val executionMode: String? = null,
+
+    val gateway: String? = null,
+
+    @SerialName("policy_source")
+    val policySource: String? = null,
+
+    @SerialName("provider_reference")
+    val providerReference: String? = null,
+
+    @SerialName("transaction_id")
+    val transactionID: String? = null,
+
+    @SerialName("batch_id")
+    val batchID: String? = null,
+
+    @SerialName("net_payout_minor")
+    val netPayoutMinor: Long? = null,
+
+    @SerialName("rail_reference")
+    val railReference: String? = null,
+
+    @SerialName("pre_order_id")
+    val preOrderID: String? = null,
+
+    val barcode: String? = null,
+
+    @SerialName("handling_class")
+    val handlingClass: String? = null,
+
+    @SerialName("is_active")
+    val isActive: Boolean? = null,
+
+    @SerialName("is_hazardous")
+    val isHazardous: Boolean? = null,
+
+    @SerialName("is_perishable")
+    val isPerishable: Boolean? = null,
+
+    @SerialName("previous_price_minor")
+    val previousPriceMinor: Long? = null,
+
+    @SerialName("price_minor")
+    val priceMinor: Long? = null,
+
+    @SerialName("stock_quantity")
+    val stockQuantity: Long? = null,
+
+    val unit: String? = null,
+
+    @SerialName("promotion_id")
+    val promotionID: String? = null,
+
+    @SerialName("retailer_ids")
+    val retailerIDS: List<String>? = null,
+
+    @SerialName("retailer_scope")
+    val retailerScope: String? = null,
+
+    @SerialName("credit_limit_minor")
+    val creditLimitMinor: Long? = null,
+
+    @SerialName("current_balance")
+    val currentBalance: Long? = null,
+
+    @SerialName("requested_amount")
+    val requestedAmount: Long? = null,
+
+    val delinquent: Boolean? = null,
+
+    @SerialName("profile_id")
+    val profileID: String? = null,
+
+    @SerialName("risk_tier")
+    val riskTier: String? = null,
+
+    @SerialName("set_by")
+    val setBy: String? = null,
+
+    @SerialName("set_by_role")
+    val setByRole: String? = null,
+
+    @SerialName("assigned_factory_id")
+    val assignedFactoryID: String? = null,
+
+    val categories: List<String>? = null,
+    val country: String? = null,
+
+    @SerialName("is_configured")
+    val isConfigured: Boolean? = null,
+
+    @SerialName("is_registered")
+    val isRegistered: Boolean? = null,
+
+    @SerialName("breach_reason")
+    val breachReason: String? = null,
+
+    @SerialName("breached_at")
+    val breachedAt: String? = null,
+
+    @SerialName("cutoff_applied_at")
+    val cutoffAppliedAt: String? = null,
+
+    @SerialName("fill_rate_target_bps")
+    val fillRateTargetBps: Long? = null,
+
+    @SerialName("guaranteed_delivery_date")
+    val guaranteedDeliveryDate: String? = null,
+
+    @SerialName("min_order_minor")
+    val minOrderMinor: Long? = null,
+
+    @SerialName("promise_type")
+    val promiseType: String? = null,
+
+    @SerialName("sla_hours")
+    val slaHours: Long? = null,
+
+    @SerialName("from_warehouse")
+    val fromWarehouse: String? = null,
+
+    @SerialName("to_warehouse")
+    val toWarehouse: String? = null,
+
+    @SerialName("unavailable_note")
+    val unavailableNote: String? = null,
+
+    @SerialName("unavailable_reason")
+    val unavailableReason: String? = null
 )
 
 @Serializable
-enum class Type(val value: String) {
-    @SerialName("AI_RECOMMENDATION_CREATED") AIRecommendationCreated("AI_RECOMMENDATION_CREATED"),
-    @SerialName("AI_RECOMMENDATION_DECIDED") AIRecommendationDecided("AI_RECOMMENDATION_DECIDED"),
-    @SerialName("ALLOCATION_FAIR_SHARE_APPLIED") AllocationFairShareApplied("ALLOCATION_FAIR_SHARE_APPLIED"),
-    @SerialName("ALLOCATION_POLICY_APPLIED") AllocationPolicyApplied("ALLOCATION_POLICY_APPLIED"),
-    @SerialName("AR_INVOICE_AGING_UPDATED") ArInvoiceAgingUpdated("AR_INVOICE_AGING_UPDATED"),
-    @SerialName("AR_INVOICE_DUNNED") ArInvoiceDunned("AR_INVOICE_DUNNED"),
-    @SerialName("AR_INVOICE_OPENED") ArInvoiceOpened("AR_INVOICE_OPENED"),
-    @SerialName("AR_INVOICE_PAYMENT") ArInvoicePayment("AR_INVOICE_PAYMENT"),
-    @SerialName("AR_INVOICE_SETTLED") ArInvoiceSettled("AR_INVOICE_SETTLED"),
-    @SerialName("BUYER_ACCEPTANCE_ACCEPTED") BuyerAcceptanceAccepted("BUYER_ACCEPTANCE_ACCEPTED"),
-    @SerialName("BUYER_ACCEPTANCE_EXPIRED") BuyerAcceptanceExpired("BUYER_ACCEPTANCE_EXPIRED"),
-    @SerialName("BUYER_ACCEPTANCE_PENDING") BuyerAcceptancePending("BUYER_ACCEPTANCE_PENDING"),
-    @SerialName("BUYER_ACCEPTANCE_REJECTED") BuyerAcceptanceRejected("BUYER_ACCEPTANCE_REJECTED"),
-    @SerialName("CART_SYNC_UPDATED") CartSyncUpdated("CART_SYNC_UPDATED"),
-    @SerialName("CASH_OVERAGE") CashOverage("CASH_OVERAGE"),
-    @SerialName("CASH_SHORTFALL") CashShortfall("CASH_SHORTFALL"),
-    @SerialName("CATEGORY_CREATED") CategoryCreated("CATEGORY_CREATED"),
-    @SerialName("CATEGORY_UPDATED") CategoryUpdated("CATEGORY_UPDATED"),
-    @SerialName("CLAIM_FILED") ClaimFiled("CLAIM_FILED"),
-    @SerialName("CLAIM_RESOLVED") ClaimResolved("CLAIM_RESOLVED"),
-    @SerialName("CLAIM_UNDER_REVIEW") ClaimUnderReview("CLAIM_UNDER_REVIEW"),
-    @SerialName("COMMAND_DISPATCHED") CommandDispatched("COMMAND_DISPATCHED"),
-    @SerialName("COMMAND_RECEIVED") CommandReceived("COMMAND_RECEIVED"),
-    @SerialName("COMMAND_SETTLED") CommandSettled("COMMAND_SETTLED"),
-    @SerialName("CONTROL_TOWER_PLAYBOOK_CHANGED") ControlTowerPlaybookChanged("CONTROL_TOWER_PLAYBOOK_CHANGED"),
-    @SerialName("CONTROL_TOWER_RUN_CREATED") ControlTowerRunCreated("CONTROL_TOWER_RUN_CREATED"),
-    @SerialName("CONTROL_TOWER_RUN_UPDATED") ControlTowerRunUpdated("CONTROL_TOWER_RUN_UPDATED"),
-    @SerialName("CREDIT_DELIVERY_MARKED") CreditDeliveryMarked("CREDIT_DELIVERY_MARKED"),
-    @SerialName("CREDIT_DELIVERY_RESOLVED") CreditDeliveryResolved("CREDIT_DELIVERY_RESOLVED"),
-    @SerialName("CREDIT_LEAVE") CreditLeave("CREDIT_LEAVE"),
-    @SerialName("DELIVERY_DISPUTED") DeliveryDisputed("DELIVERY_DISPUTED"),
-    @SerialName("DELIVERY_SESSION_UPDATED") DeliverySessionUpdated("DELIVERY_SESSION_UPDATED"),
-    @SerialName("DEMAND_BASELINE_UPDATED") DemandBaselineUpdated("DEMAND_BASELINE_UPDATED"),
-    @SerialName("DEMAND_SIGNAL") DemandSignal("DEMAND_SIGNAL"),
-    @SerialName("DISPATCH_PLANNED") DispatchPlanned("DISPATCH_PLANNED"),
-    @SerialName("DISPATCH_REQUESTED") DispatchRequested("DISPATCH_REQUESTED"),
-    @SerialName("DISPATCH_ZONE_OVERRIDE") DispatchZoneOverride("DISPATCH_ZONE_OVERRIDE"),
-    @SerialName("DRIVER_AVAILABILITY_CHANGED") DriverAvailabilityChanged("DRIVER_AVAILABILITY_CHANGED"),
-    @SerialName("DRIVER_CREATED") DriverCreated("DRIVER_CREATED"),
-    @SerialName("DRIVER_LOCATION_UPDATED") DriverLocationUpdated("DRIVER_LOCATION_UPDATED"),
-    @SerialName("DRIVER_RETURN_APPROACHING") DriverReturnApproaching("DRIVER_RETURN_APPROACHING"),
-    @SerialName("FACTORY_CREATED") FactoryCreated("FACTORY_CREATED"),
-    @SerialName("FACTORY_LOCATION_UPDATED") FactoryLocationUpdated("FACTORY_LOCATION_UPDATED"),
-    @SerialName("FACTORY_SLA_BREACH") FactorySlaBreach("FACTORY_SLA_BREACH"),
-    @SerialName("FACTORY_STAFF_CREATED") FactoryStaffCreated("FACTORY_STAFF_CREATED"),
-    @SerialName("FACTORY_STAFF_PASSWORD_SET") FactoryStaffPasswordSet("FACTORY_STAFF_PASSWORD_SET"),
-    @SerialName("FACTORY_SUPPLY_REQUEST_UPDATE") FactorySupplyRequestUpdate("FACTORY_SUPPLY_REQUEST_UPDATE"),
-    @SerialName("FISCAL_CORRECTIVE_REQUESTED") FiscalCorrectiveRequested("FISCAL_CORRECTIVE_REQUESTED"),
-    @SerialName("FISCAL_RECEIPT_FAILED") FiscalReceiptFailed("FISCAL_RECEIPT_FAILED"),
-    @SerialName("FISCAL_RECEIPT_REQUESTED") FiscalReceiptRequested("FISCAL_RECEIPT_REQUESTED"),
-    @SerialName("FISCAL_RECEIPT_SUCCEEDED") FiscalReceiptSucceeded("FISCAL_RECEIPT_SUCCEEDED"),
-    @SerialName("FREEZE_LOCK_ACQUIRED") FreezeLockAcquired("FREEZE_LOCK_ACQUIRED"),
-    @SerialName("FREEZE_LOCK_RELEASED") FreezeLockReleased("FREEZE_LOCK_RELEASED"),
-    @SerialName("INVENTORY_IMPORT_STATUS_UPDATE") InventoryImportStatusUpdate("INVENTORY_IMPORT_STATUS_UPDATE"),
-    @SerialName("INVENTORY_IMPORT_UPLOADED") InventoryImportUploaded("INVENTORY_IMPORT_UPLOADED"),
-    @SerialName("INVENTORY_POLICY_UPDATED") InventoryPolicyUpdated("INVENTORY_POLICY_UPDATED"),
-    @SerialName("INVENTORY_QUANTITY_UPDATED") InventoryQuantityUpdated("INVENTORY_QUANTITY_UPDATED"),
-    @SerialName("INVENTORY_SYNC_COMPLETE") InventorySyncComplete("INVENTORY_SYNC_COMPLETE"),
-    @SerialName("LOGISTICS_EXCEPTION_REPORTED") LogisticsExceptionReported("LOGISTICS_EXCEPTION_REPORTED"),
-    @SerialName("LOGISTICS_TELEMETRY") LogisticsTelemetry("LOGISTICS_TELEMETRY"),
-    @SerialName("LOOK_AHEAD_COMPLETED") LookAheadCompleted("LOOK_AHEAD_COMPLETED"),
-    @SerialName("LOT_QUARANTINED") LotQuarantined("LOT_QUARANTINED"),
-    @SerialName("LOT_RECALL_INITIATED") LotRecallInitiated("LOT_RECALL_INITIATED"),
-    @SerialName("LOT_RELEASED") LotReleased("LOT_RELEASED"),
-    @SerialName("LOYALTY_POINTS_EARNED") LoyaltyPointsEarned("LOYALTY_POINTS_EARNED"),
-    @SerialName("MANIFEST_CANCELLED") ManifestCancelled("MANIFEST_CANCELLED"),
-    @SerialName("MANIFEST_COMPLETED") ManifestCompleted("MANIFEST_COMPLETED"),
-    @SerialName("MANIFEST_DISPATCHED") ManifestDispatched("MANIFEST_DISPATCHED"),
-    @SerialName("MANIFEST_DLQ_ESCALATION") ManifestDlqEscalation("MANIFEST_DLQ_ESCALATION"),
-    @SerialName("MANIFEST_DRAFT_CREATED") ManifestDraftCreated("MANIFEST_DRAFT_CREATED"),
-    @SerialName("MANIFEST_EXCEPTION_RESOLVED") ManifestExceptionResolved("MANIFEST_EXCEPTION_RESOLVED"),
-    @SerialName("MANIFEST_LOADING_STARTED") ManifestLoadingStarted("MANIFEST_LOADING_STARTED"),
-    @SerialName("MANIFEST_ORDER_EXCEPTION") ManifestOrderException("MANIFEST_ORDER_EXCEPTION"),
-    @SerialName("MANIFEST_ORDER_INJECTED") ManifestOrderInjected("MANIFEST_ORDER_INJECTED"),
-    @SerialName("MANIFEST_REBALANCED") ManifestRebalanced("MANIFEST_REBALANCED"),
-    @SerialName("MANIFEST_SEALED") ManifestSealed("MANIFEST_SEALED"),
-    @SerialName("MISSING_ITEMS_REPORTED") MissingItemsReported("MISSING_ITEMS_REPORTED"),
-    @SerialName("NEGOTIATION_PROPOSED") NegotiationProposed("NEGOTIATION_PROPOSED"),
-    @SerialName("NEGOTIATION_RESOLVED") NegotiationResolved("NEGOTIATION_RESOLVED"),
-    @SerialName("NETWORK_MODE_CHANGED") NetworkModeChanged("NETWORK_MODE_CHANGED"),
-    @SerialName("ORDER_ALLOCATED") OrderAllocated("ORDER_ALLOCATED"),
-    @SerialName("ORDER_AMENDED") OrderAmended("ORDER_AMENDED"),
-    @SerialName("ORDER_ASSIGNED") OrderAssigned("ORDER_ASSIGNED"),
-    @SerialName("ORDER_CAPACITY_OVERFLOW") OrderCapacityOverflow("ORDER_CAPACITY_OVERFLOW"),
-    @SerialName("ORDER_CONDITION_REPORTED") OrderConditionReported("ORDER_CONDITION_REPORTED"),
-    @SerialName("ORDER_CONFLICT_RECONCILED") OrderConflictReconciled("ORDER_CONFLICT_RECONCILED"),
-    @SerialName("ORDER_CREATED") OrderCreated("ORDER_CREATED"),
-    @SerialName("ORDER_FINALIZED") OrderFinalized("ORDER_FINALIZED"),
-    @SerialName("ORDER_FORCE_COMPLETED") OrderForceCompleted("ORDER_FORCE_COMPLETED"),
-    @SerialName("ORDER_REASSIGNED") OrderReassigned("ORDER_REASSIGNED"),
-    @SerialName("ORDER_STATUS_CHANGED") OrderStatusChanged("ORDER_STATUS_CHANGED"),
-    @SerialName("ORDER_VALIDATION_FAILED") OrderValidationFailed("ORDER_VALIDATION_FAILED"),
-    @SerialName("PARENT_ORDER_CREATED") ParentOrderCreated("PARENT_ORDER_CREATED"),
-    @SerialName("PARENT_ORDER_UPDATED") ParentOrderUpdated("PARENT_ORDER_UPDATED"),
-    @SerialName("PARTIAL_OFFLOAD") PartialOffload("PARTIAL_OFFLOAD"),
-    @SerialName("PAYMENT_CLEARED") PaymentCleared("PAYMENT_CLEARED"),
-    @SerialName("PAYMENT_FAILED") PaymentFailed("PAYMENT_FAILED"),
-    @SerialName("PAYMENT_REQUIRED") PaymentRequired("PAYMENT_REQUIRED"),
-    @SerialName("PAYOUT_BATCH_DISPATCHED") PayoutBatchDispatched("PAYOUT_BATCH_DISPATCHED"),
-    @SerialName("PAYOUT_BATCH_EXPORTED") PayoutBatchExported("PAYOUT_BATCH_EXPORTED"),
-    @SerialName("PAYOUT_BATCH_GENERATED") PayoutBatchGenerated("PAYOUT_BATCH_GENERATED"),
-    @SerialName("PAYOUT_BATCH_PAID") PayoutBatchPaid("PAYOUT_BATCH_PAID"),
-    @SerialName("PAYOUT_POLICY_UPDATED") PayoutPolicyUpdated("PAYOUT_POLICY_UPDATED"),
-    @SerialName("PLANNING_AGENT_BROADCAST") PlanningAgentBroadcast("PLANNING_AGENT_BROADCAST"),
-    @SerialName("PLANNING_CONFIDENCE_DOWNGRADED") PlanningConfidenceDowngraded("PLANNING_CONFIDENCE_DOWNGRADED"),
-    @SerialName("PLANNING_FORECAST_UPDATED") PlanningForecastUpdated("PLANNING_FORECAST_UPDATED"),
-    @SerialName("planning.meio.recommendation.v1") PlanningMeioRecommendationV1("planning.meio.recommendation.v1"),
-    @SerialName("PLANNING_PROMO_SIMULATION_READY") PlanningPromoSimulationReady("PLANNING_PROMO_SIMULATION_READY"),
-    @SerialName("planning.scenario.published.v1") PlanningScenarioPublishedV1("planning.scenario.published.v1"),
-    @SerialName("planning.signal.ingest.v1") PlanningSignalIngestV1("planning.signal.ingest.v1"),
-    @SerialName("POS_SALE_COMPLETED") PosSaleCompleted("POS_SALE_COMPLETED"),
-    @SerialName("POS_SALE_VOIDED") PosSaleVoided("POS_SALE_VOIDED"),
-    @SerialName("POS_SESSION_CLOSED") PosSessionClosed("POS_SESSION_CLOSED"),
-    @SerialName("POS_SESSION_OPENED") PosSessionOpened("POS_SESSION_OPENED"),
-    @SerialName("PRE_ORDER_AUTO_ACCEPTED") PreOrderAutoAccepted("PRE_ORDER_AUTO_ACCEPTED"),
-    @SerialName("PRE_ORDER_CANCELLED") PreOrderCancelled("PRE_ORDER_CANCELLED"),
-    @SerialName("PRE_ORDER_CONFIRMATION") PreOrderConfirmation("PRE_ORDER_CONFIRMATION"),
-    @SerialName("PRE_ORDER_CONFIRMED") PreOrderConfirmed("PRE_ORDER_CONFIRMED"),
-    @SerialName("PRE_ORDER_DATE_ACCEPTED") PreOrderDateAccepted("PRE_ORDER_DATE_ACCEPTED"),
-    @SerialName("PRE_ORDER_DATE_PROPOSED") PreOrderDateProposed("PRE_ORDER_DATE_PROPOSED"),
-    @SerialName("PRE_ORDER_DATE_REJECTED") PreOrderDateRejected("PRE_ORDER_DATE_REJECTED"),
-    @SerialName("PRE_ORDER_EDITED") PreOrderEdited("PRE_ORDER_EDITED"),
-    @SerialName("PRE_ORDER_NOTIFIED") PreOrderNotified("PRE_ORDER_NOTIFIED"),
-    @SerialName("PRE_ORDER_NUDGE") PreOrderNudge("PRE_ORDER_NUDGE"),
-    @SerialName("PRODUCT_CREATED") ProductCreated("PRODUCT_CREATED"),
-    @SerialName("PRODUCT_DEACTIVATED") ProductDeactivated("PRODUCT_DEACTIVATED"),
-    @SerialName("PRODUCT_HANDLING_UPDATED") ProductHandlingUpdated("PRODUCT_HANDLING_UPDATED"),
-    @SerialName("PRODUCT_PRICE_CHANGED") ProductPriceChanged("PRODUCT_PRICE_CHANGED"),
-    @SerialName("PRODUCT_UPDATED") ProductUpdated("PRODUCT_UPDATED"),
-    @SerialName("PROMOTION_CHANGED") PromotionChanged("PROMOTION_CHANGED"),
-    @SerialName("PROXIMITY_UNLOCKED") ProximityUnlocked("PROXIMITY_UNLOCKED"),
-    @SerialName("PULL_MATRIX_COMPLETED") PullMatrixCompleted("PULL_MATRIX_COMPLETED"),
-    @SerialName("REASSIGN_HANDSHAKE_COMPLETED") ReassignHandshakeCompleted("REASSIGN_HANDSHAKE_COMPLETED"),
-    @SerialName("RECEIVING_VARIANCE_REPORTED") ReceivingVarianceReported("RECEIVING_VARIANCE_REPORTED"),
-    @SerialName("REFUND_FAILED") RefundFailed("REFUND_FAILED"),
-    @SerialName("REFUND_REQUESTED") RefundRequested("REFUND_REQUESTED"),
-    @SerialName("REFUND_SUCCEEDED") RefundSucceeded("REFUND_SUCCEEDED"),
-    @SerialName("REPLENISHMENT_AUTO_APPROVED") ReplenishmentAutoApproved("REPLENISHMENT_AUTO_APPROVED"),
-    @SerialName("REPLENISHMENT_INSIGHT_CREATED") ReplenishmentInsightCreated("REPLENISHMENT_INSIGHT_CREATED"),
-    @SerialName("REPLENISHMENT_POLICY_UPDATED") ReplenishmentPolicyUpdated("REPLENISHMENT_POLICY_UPDATED"),
-    @SerialName("RETAILER_ASSIST_SLA_BREACHED") RetailerAssistSlaBreached("RETAILER_ASSIST_SLA_BREACHED"),
-    @SerialName("RETAILER_ASSIST_TICKET_CANCELLED") RetailerAssistTicketCancelled("RETAILER_ASSIST_TICKET_CANCELLED"),
-    @SerialName("RETAILER_ASSIST_TICKET_CLAIMED") RetailerAssistTicketClaimed("RETAILER_ASSIST_TICKET_CLAIMED"),
-    @SerialName("RETAILER_ASSIST_TICKET_COMPLETED") RetailerAssistTicketCompleted("RETAILER_ASSIST_TICKET_COMPLETED"),
-    @SerialName("RETAILER_ASSIST_TICKET_OPENED") RetailerAssistTicketOpened("RETAILER_ASSIST_TICKET_OPENED"),
-    @SerialName("RETAILER_AUTO_ORDER_UPDATED") RetailerAutoOrderUpdated("RETAILER_AUTO_ORDER_UPDATED"),
-    @SerialName("RETAILER_CAPABILITY_PACK_CHANGED") RetailerCapabilityPackChanged("RETAILER_CAPABILITY_PACK_CHANGED"),
-    @SerialName("RETAILER_CLOCK_IN") RetailerClockIn("RETAILER_CLOCK_IN"),
-    @SerialName("RETAILER_CLOCK_OUT") RetailerClockOut("RETAILER_CLOCK_OUT"),
-    @SerialName("RETAILER_CREDIT_LIMIT_BREACHED") RetailerCreditLimitBreached("RETAILER_CREDIT_LIMIT_BREACHED"),
-    @SerialName("RETAILER_CREDIT_PROFILE_CHANGED") RetailerCreditProfileChanged("RETAILER_CREDIT_PROFILE_CHANGED"),
-    @SerialName("RETAILER_LOCATION_CREATED") RetailerLocationCreated("RETAILER_LOCATION_CREATED"),
-    @SerialName("RETAILER_LOCATION_UPDATED") RetailerLocationUpdated("RETAILER_LOCATION_UPDATED"),
-    @SerialName("RETAILER_PRICE_OVERRIDE") RetailerPriceOverride("RETAILER_PRICE_OVERRIDE"),
-    @SerialName("RETAILER_REGISTERED") RetailerRegistered("RETAILER_REGISTERED"),
-    @SerialName("RETAILER_SECTION_CREATED") RetailerSectionCreated("RETAILER_SECTION_CREATED"),
-    @SerialName("RETAILER_SECTION_SKU_MAPPED") RetailerSectionSkuMapped("RETAILER_SECTION_SKU_MAPPED"),
-    @SerialName("RETAILER_SECTION_UPDATED") RetailerSectionUpdated("RETAILER_SECTION_UPDATED"),
-    @SerialName("RETAILER_SEGMENT_UPDATED") RetailerSegmentUpdated("RETAILER_SEGMENT_UPDATED"),
-    @SerialName("RETAILER_SELL_THROUGH_UPDATED") RetailerSellThroughUpdated("RETAILER_SELL_THROUGH_UPDATED"),
-    @SerialName("RETAILER_SHIFT_CASH_VARIANCE") RetailerShiftCashVariance("RETAILER_SHIFT_CASH_VARIANCE"),
-    @SerialName("RETAILER_SHIFT_CLOSED") RetailerShiftClosed("RETAILER_SHIFT_CLOSED"),
-    @SerialName("RETAILER_SHIFT_OPENED") RetailerShiftOpened("RETAILER_SHIFT_OPENED"),
-    @SerialName("RETAILER_STAFF_CREATED") RetailerStaffCreated("RETAILER_STAFF_CREATED"),
-    @SerialName("RETAILER_STAFF_SECTION_ASSIGNED") RetailerStaffSectionAssigned("RETAILER_STAFF_SECTION_ASSIGNED"),
-    @SerialName("RETURN_RECEIVED_AT_WAREHOUSE") ReturnReceivedAtWarehouse("RETURN_RECEIVED_AT_WAREHOUSE"),
-    @SerialName("RETURN_SCAN_RECEIVED") ReturnScanReceived("RETURN_SCAN_RECEIVED"),
-    @SerialName("REVERSE_LOGISTICS_REQUIRED") ReverseLogisticsRequired("REVERSE_LOGISTICS_REQUIRED"),
-    @SerialName("ROUTE_CREATED") RouteCreated("ROUTE_CREATED"),
-    @SerialName("ROUTE_REORDERED") RouteReordered("ROUTE_REORDERED"),
-    @SerialName("ROUTE_REPLANNED") RouteReplanned("ROUTE_REPLANNED"),
-    @SerialName("SERVICE_POLICY_UPDATED") ServicePolicyUpdated("SERVICE_POLICY_UPDATED"),
-    @SerialName("SETTLEMENT_REQUIRED") SettlementRequired("SETTLEMENT_REQUIRED"),
-    @SerialName("SHOP_CLOSED") ShopClosed("SHOP_CLOSED"),
-    @SerialName("SHOP_CLOSED_BYPASS_OFFLOAD") ShopClosedBypassOffload("SHOP_CLOSED_BYPASS_OFFLOAD"),
-    @SerialName("SHOP_CLOSED_ESCALATED") ShopClosedEscalated("SHOP_CLOSED_ESCALATED"),
-    @SerialName("SHOP_CLOSED_RESOLVED") ShopClosedResolved("SHOP_CLOSED_RESOLVED"),
-    @SerialName("SHOP_CLOSED_RESPONSE") ShopClosedResponse("SHOP_CLOSED_RESPONSE"),
-    @SerialName("SHOP_CLOSED_TIMEOUT") ShopClosedTimeout("SHOP_CLOSED_TIMEOUT"),
-    @SerialName("SKU_CLASS_UPDATED") SkuClassUpdated("SKU_CLASS_UPDATED"),
-    @SerialName("SPLIT_PAYMENT_CREATED") SplitPaymentCreated("SPLIT_PAYMENT_CREATED"),
-    @SerialName("SPLIT_SHIPMENT_CREATED") SplitShipmentCreated("SPLIT_SHIPMENT_CREATED"),
-    @SerialName("STORE_STOCK_ADJUSTED") StoreStockAdjusted("STORE_STOCK_ADJUSTED"),
-    @SerialName("STORE_STOCK_CLAIM_HOLD") StoreStockClaimHold("STORE_STOCK_CLAIM_HOLD"),
-    @SerialName("STORE_STOCK_COUNTED") StoreStockCounted("STORE_STOCK_COUNTED"),
-    @SerialName("STORE_STOCK_RECEIVED") StoreStockReceived("STORE_STOCK_RECEIVED"),
-    @SerialName("STORE_STOCK_TRANSFERRED") StoreStockTransferred("STORE_STOCK_TRANSFERRED"),
-    @SerialName("SUPPLIER_BILLING_CONFIGURED") SupplierBillingConfigured("SUPPLIER_BILLING_CONFIGURED"),
-    @SerialName("SUPPLIER_BILLING_UPDATED") SupplierBillingUpdated("SUPPLIER_BILLING_UPDATED"),
-    @SerialName("SUPPLIER_BROADCAST") SupplierBroadcast("SUPPLIER_BROADCAST"),
-    @SerialName("SUPPLIER_CREATED") SupplierCreated("SUPPLIER_CREATED"),
-    @SerialName("SUPPLIER_CREDIT_PROGRAM_CHANGED") SupplierCreditProgramChanged("SUPPLIER_CREDIT_PROGRAM_CHANGED"),
-    @SerialName("SUPPLIER_CREDIT_TERMS_CHANGED") SupplierCreditTermsChanged("SUPPLIER_CREDIT_TERMS_CHANGED"),
-    @SerialName("SUPPLIER_MEMBER_ADDED") SupplierMemberAdded("SUPPLIER_MEMBER_ADDED"),
-    @SerialName("SUPPLIER_PROFILE_UPDATED") SupplierProfileUpdated("SUPPLIER_PROFILE_UPDATED"),
-    @SerialName("SUPPLIER_RETURN_CREATED") SupplierReturnCreated("SUPPLIER_RETURN_CREATED"),
-    @SerialName("SUPPLIER_RETURN_RESOLVED") SupplierReturnResolved("SUPPLIER_RETURN_RESOLVED"),
-    @SerialName("SUPPLIER_SERVICE_PROMISE_BREACHED") SupplierServicePromiseBreached("SUPPLIER_SERVICE_PROMISE_BREACHED"),
-    @SerialName("SUPPLIER_SERVICE_PROMISE_CREATED") SupplierServicePromiseCreated("SUPPLIER_SERVICE_PROMISE_CREATED"),
-    @SerialName("SUPPLIER_UPDATED") SupplierUpdated("SUPPLIER_UPDATED"),
-    @SerialName("SUPPLY_REQUEST_ACCEPTED") SupplyRequestAccepted("SUPPLY_REQUEST_ACCEPTED"),
-    @SerialName("SUPPLY_REQUEST_UPDATE") SupplyRequestUpdate("SUPPLY_REQUEST_UPDATE"),
-    @SerialName("SUPPLY_TRANSFER_APPROACHING") SupplyTransferApproaching("SUPPLY_TRANSFER_APPROACHING"),
-    @SerialName("SUPPLY_TRANSFER_ARRIVED") SupplyTransferArrived("SUPPLY_TRANSFER_ARRIVED"),
-    @SerialName("SYSTEM_APP_OUTDATED") SystemAppOutdated("SYSTEM_APP_OUTDATED"),
-    @SerialName("TRANSFER_CREATED") TransferCreated("TRANSFER_CREATED"),
-    @SerialName("VEHICLE_AVAILABILITY_CHANGED") VehicleAvailabilityChanged("VEHICLE_AVAILABILITY_CHANGED"),
-    @SerialName("VEHICLE_CREATED") VehicleCreated("VEHICLE_CREATED"),
-    @SerialName("WAREHOUSE_BROADCAST") WarehouseBroadcast("WAREHOUSE_BROADCAST"),
-    @SerialName("WAREHOUSE_CREATED") WarehouseCreated("WAREHOUSE_CREATED"),
-    @SerialName("WAREHOUSE_DISPATCH_LOCK_CHANGED") WarehouseDispatchLockChanged("WAREHOUSE_DISPATCH_LOCK_CHANGED"),
-    @SerialName("WAREHOUSE_LOCATION_UPDATED") WarehouseLocationUpdated("WAREHOUSE_LOCATION_UPDATED"),
-    @SerialName("WAREHOUSE_SUPPLY_REQUEST_OPENED") WarehouseSupplyRequestOpened("WAREHOUSE_SUPPLY_REQUEST_OPENED"),
-    @SerialName("WAREHOUSE_TRANSFER_CREATED") WarehouseTransferCreated("WAREHOUSE_TRANSFER_CREATED"),
-    @SerialName("WAREHOUSE_TRANSFER_RECEIVED") WarehouseTransferReceived("WAREHOUSE_TRANSFER_RECEIVED"),
-    @SerialName("WMS_CYCLE_APPROVED") WmsCycleApproved("WMS_CYCLE_APPROVED"),
-    @SerialName("WMS_PICK_CONFIRMED") WmsPickConfirmed("WMS_PICK_CONFIRMED"),
-    @SerialName("WMS_PUTAWAY") WmsPutaway("WMS_PUTAWAY"),
-    @SerialName("WMS_TEMPERATURE_BREACH") WmsTemperatureBreach("WMS_TEMPERATURE_BREACH");
+sealed class TotalVolumeVu {
+    class DoubleValue(val value: Double) : TotalVolumeVu()
+    class IntegerValue(val value: Long)  : TotalVolumeVu()
+}
+
+@Serializable
+sealed class Version {
+    class IntegerValue(val value: Long)  : Version()
+    class StringValue(val value: String) : Version()
 }

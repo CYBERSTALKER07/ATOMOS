@@ -168,22 +168,33 @@ func (h *Handlers) HandleSupplierProgram(w http.ResponseWriter, r *http.Request)
 			web.JSONError(w, "invalid_json", http.StatusBadRequest)
 			return
 		}
+		if req.EarnBps < 0 || req.EarnBps > 10000 {
+			web.JSONError(w, "invalid_earn_bps", http.StatusBadRequest)
+			return
+		}
 		if strings.TrimSpace(req.Reason) == "" {
 			web.JSONError(w, "reason_required", http.StatusBadRequest)
 			return
+		}
+		tiers := req.Tiers
+		if len(tiers) == 0 {
+			tiers = DefaultTiers
+		}
+		for i, t := range tiers {
+			if t.MinPoints < 0 {
+				web.JSONError(w, "invalid_tier_min_points", http.StatusBadRequest)
+				return
+			}
+			if i > 0 && t.MinPoints < tiers[i-1].MinPoints {
+				web.JSONError(w, "tiers_must_be_non_decreasing", http.StatusBadRequest)
+				return
+			}
 		}
 		if h == nil || h.Spanner == nil {
 			web.JSONError(w, "loyalty_unavailable", http.StatusServiceUnavailable)
 			return
 		}
 		bps := req.EarnBps
-		if bps <= 0 {
-			bps = defaultEarnBps
-		}
-		tiers := req.Tiers
-		if len(tiers) == 0 {
-			tiers = DefaultTiers
-		}
 		tiersJSON, _ := json.Marshal(tiers)
 		claims, _ := auth.FromContext(r.Context())
 		actor := ""

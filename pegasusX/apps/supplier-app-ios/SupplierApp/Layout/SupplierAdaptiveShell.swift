@@ -255,6 +255,10 @@ struct SupplierAdaptiveShell: View {
             JSONFeedView(title: "POS flywheel", path: "v1/supplier/analytics/demand/flywheel", query: ["days": "7"])
         case .paydayCalendar:
             JSONFeedView(title: "Payday calendar", path: "v1/demand/signals", query: ["type": "PAYDAY"])
+        case .migrations:
+            MigrationCenterView()
+        case .joinRequests:
+            JoinRequestsView()
         }
     }
 }

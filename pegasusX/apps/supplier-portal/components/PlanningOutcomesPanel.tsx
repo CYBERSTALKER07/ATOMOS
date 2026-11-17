@@ -65,8 +65,8 @@ export default function PlanningOutcomesPanel() {
   const demandConfidence = demand ? forecastConfidenceFromDemand(demand) : null;
   const touchlessEnabled =
     policy?.auto_approve_stable || policy?.auto_approve_predictive_push || false;
-  const criticalSkus =
-    meio?.warehouse_balances.reduce((sum, node) => sum + node.critical_skus, 0) ?? 0;
+  const warehouseBalances = Array.isArray(meio?.warehouse_balances) ? meio.warehouse_balances : [];
+  const criticalSkus = warehouseBalances.reduce((sum, node) => sum + (node.critical_skus ?? 0), 0);
 
   const stages: PipelineStage[] = [
     {

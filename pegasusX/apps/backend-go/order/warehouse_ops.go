@@ -234,6 +234,12 @@ func (s *Service) WarehouseEditPreorder(ctx context.Context, ops *auth.Warehouse
 	if err != nil {
 		return RetailerOrderLifecycleResponse{}, err
 	}
+	if err := s.validateOrderPackMultiples(ctx, lineItems); err != nil {
+		return RetailerOrderLifecycleResponse{}, err
+	}
+	if req.AutoConfirmOptIn != nil {
+		current.AutoConfirmOptIn = *req.AutoConfirmOptIn
+	}
 	if current.OriginalTotalMinor == 0 {
 		current.OriginalTotalMinor = current.TotalMinor
 	}
@@ -279,6 +285,7 @@ func (s *Service) ListWarehousePreordersForOps(ctx context.Context, ops *auth.Wa
 type warehousePreorderEditBody struct {
 	LineItems             []LineItem `json:"line_items"`
 	RequestedDeliveryDate string     `json:"requested_delivery_date"`
+	AutoConfirmOptIn      *bool      `json:"auto_confirm_opt_in,omitempty"`
 	Reason                string     `json:"reason"`
 }
 
@@ -337,6 +344,7 @@ func (s *Service) HandleWarehouseEditPreorder(w http.ResponseWriter, r *http.Req
 		OrderID:               orderID,
 		LineItems:             body.LineItems,
 		RequestedDeliveryDate: body.RequestedDeliveryDate,
+		AutoConfirmOptIn:      body.AutoConfirmOptIn,
 	}, body.Reason)
 	if err != nil {
 		mapWarehouseOrderMutationError(w, r, orderID, err)
@@ -552,6 +560,9 @@ func (s *Service) HandleWarehousePayloadOverflow(w http.ResponseWriter, r *http.
 }
 
 func mapWarehouseOrderMutationError(w http.ResponseWriter, r *http.Request, orderID string, err error) {
+	if writePackValidationOrMetadataError(w, err) {
+		return
+	}
 	switch {
 	case errors.Is(err, ErrOrderNotFound):
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": "order_not_found", "order_id": orderID})

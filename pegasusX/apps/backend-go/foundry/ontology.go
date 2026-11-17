@@ -132,11 +132,24 @@ type RecallBlastRadiusReport struct {
 }
 
 // Engine coordinates the Foundry Semantic, Kinetic, Dynamic, Cashier, Fleet, and Edge-Guard layers.
+// EdgeGuardRepository persists and queries Guard #2 (AML exposure + OfflineQuotaLeases)
+// in Cloud Spanner instead of process-local RAM maps.
+type EdgeGuardRepository interface {
+	CheckAndIncrementAMLExposure(ctx context.Context, legalEntityTIN, supplierID, calendarDate string, deltaMinor, ceilingMinor int64, enforced bool) (int64, error)
+	GetAMLExposureMinor(ctx context.Context, legalEntityTIN, supplierID, calendarDate string) (int64, error)
+	IssueOfflineQuotaLease(ctx context.Context, calendarDate string, lease *OfflineQuotaLease, ceilingMinor int64, enforced bool) error
+	GetOfflineQuotaLease(ctx context.Context, leaseID string) (*OfflineQuotaLease, error)
+}
+
+// Engine is the in-process runtime hosting the Object Graph, Dynamic Security Markings,
+// Precondition Gatekeepers, Action Executor, and Scenario Overlays.
 type Engine struct {
 	mu sync.RWMutex
 
-	now         func() time.Time
-	spannerRepo *SpannerRepository
+	now           func() time.Time
+	spannerRepo   *SpannerRepository
+	edgeGuardRepo EdgeGuardRepository
+	auditHook     func(ctx context.Context, rec *ActionExecutionRecord) error
 
 	objects map[string]*OntologyObject
 	edges   map[string][]OntologyGraphEdge
@@ -190,6 +203,48 @@ func NewEngine() *Engine {
 	}
 	eng.registerDefaultPreExecutionGuards()
 	return eng
+}
+
+// WithEdgeGuardRepository attaches a Spanner-compatible EdgeGuardRepository (primarily for tests).
+func (e *Engine) WithEdgeGuardRepository(repo EdgeGuardRepository) *Engine {
+	if e == nil {
+		return e
+	}
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.edgeGuardRepo = repo
+	return e
+}
+
+func (e *Engine) currentEdgeGuardRepo() EdgeGuardRepository {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	return e.edgeGuardRepo
+}
+
+// WithAuditHook attaches an optional audit recorder hook invoked by ExecuteKineticAction.
+func (e *Engine) WithAuditHook(hook func(ctx context.Context, rec *ActionExecutionRecord) error) *Engine {
+	if e == nil {
+		return e
+	}
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.auditHook = hook
+	return e
+}
+
+// SetAuditHook sets the optional audit recorder hook on Engine.
+func (e *Engine) SetAuditHook(hook func(ctx context.Context, rec *ActionExecutionRecord) error) *Engine {
+	return e.WithAuditHook(hook)
+}
+
+func (e *Engine) currentAuditHook() func(ctx context.Context, rec *ActionExecutionRecord) error {
+	if e == nil {
+		return nil
+	}
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	return e.auditHook
 }
 
 // ActionHistoryCount returns the current count of items in the actionHistory ring buffer.

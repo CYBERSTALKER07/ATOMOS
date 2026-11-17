@@ -26,6 +26,9 @@ const CookieName = "supplier_jwt"
 // ErrInvalidToken is returned when signature or structure fails verification.
 var ErrInvalidToken = errors.New("invalid token")
 
+// ErrAuditorAccessExpired is returned when a time-boxed AUDITOR JWT has passed AuditorExpiresAt.
+var ErrAuditorAccessExpired = errors.New("auditor_access_expired")
+
 // IssueOptions controls token shape.
 type IssueOptions struct {
 	Secret  string
@@ -59,15 +62,19 @@ type jwtPayload struct {
 	TokenUse     string `json:"token_use,omitempty"`
 
 	// Retail OS multi-user (optional; additive for backward compatibility).
-	RetailerOrgID    string   `json:"retailer_org_id,omitempty"`
-	RetailerRole     string   `json:"retailer_role,omitempty"`
-	RetailerUserID   string   `json:"retailer_user_id,omitempty"`
-	LocationIDs      []string `json:"location_ids,omitempty"`
-	ActiveLocationID string   `json:"active_location_id,omitempty"`
-	CapabilityPacks  []string `json:"capability_packs,omitempty"`
-	MFAVerified      bool     `json:"mfa_verified,omitempty"`
-	MarketCode       string   `json:"market_code,omitempty"`
-	HomeCell         string   `json:"home_cell,omitempty"`
+	RetailerOrgID      string   `json:"retailer_org_id,omitempty"`
+	RetailerRole       string   `json:"retailer_role,omitempty"`
+	RetailerUserID     string   `json:"retailer_user_id,omitempty"`
+	LocationIDs        []string `json:"location_ids,omitempty"`
+	ActiveLocationID   string   `json:"active_location_id,omitempty"`
+	CapabilityPacks    []string `json:"capability_packs,omitempty"`
+	MFAVerified        bool     `json:"mfa_verified,omitempty"`
+	MarketCode         string   `json:"market_code,omitempty"`
+	HomeCell           string   `json:"home_cell,omitempty"`
+	ActorType          string   `json:"actor_type,omitempty"`
+	SupplierPerms      []string `json:"supplier_perms,omitempty"`
+	AuditorExpiresAt   int64    `json:"auditor_expires_at,omitempty"`
+	AuditorExpiresAtNS int64    `json:"auditor_expires_at_ns,omitempty"`
 }
 
 // Issue returns a signed HS256 JWT for the given claims.
@@ -83,7 +90,15 @@ func Issue(c Claims, opts IssueOptions) (string, error) {
 		return "", errors.New("jwt: empty secret")
 	}
 	if opts.TTL <= 0 {
-		opts.TTL = 24 * time.Hour
+		if IsReadOnlyAuditor(c) && c.AuditorExpiresAt != nil && !c.AuditorExpiresAt.IsZero() {
+			if ttl := c.AuditorExpiresAt.UTC().Sub(time.Now().UTC()); ttl > 0 {
+				opts.TTL = ttl
+			} else {
+				opts.TTL = time.Second
+			}
+		} else {
+			opts.TTL = 24 * time.Hour
+		}
 	}
 	if opts.Now == nil {
 		opts.Now = func() time.Time { return time.Now().UTC() }
@@ -93,31 +108,41 @@ func Issue(c Claims, opts IssueOptions) (string, error) {
 	if jti == "" {
 		jti = uuid.NewString()
 	}
+	var audExpSec, audExpNS int64
+	if c.AuditorExpiresAt != nil && !c.AuditorExpiresAt.IsZero() {
+		expUTC := c.AuditorExpiresAt.UTC()
+		audExpSec = expUTC.Unix()
+		audExpNS = expUTC.UnixNano()
+	}
 	h, _ := json.Marshal(jwtHeader{Alg: "HS256", Typ: "JWT", Kid: kid})
 	p, _ := json.Marshal(jwtPayload{
-		Sub:              c.Subject,
-		Iss:              opts.Issuer,
-		Iat:              now.Unix(),
-		Exp:              now.Add(opts.TTL).Unix(),
-		JTI:              jti,
-		Role:             string(c.Role),
-		SupplierID:       c.SupplierID,
-		SupplierRole:     string(c.SupplierRole),
-		HomeNodeType:     string(c.HomeNodeType),
-		HomeNodeID:       c.HomeNodeID,
-		IsRegistered:     c.IsRegistered,
-		IsConfigured:     c.IsConfigured,
-		PhoneNumber:      c.PhoneNumber,
-		TokenUse:         c.TokenUse,
-		RetailerOrgID:    c.RetailerOrgID,
-		RetailerRole:     c.RetailerRole,
-		RetailerUserID:   c.RetailerUserID,
-		LocationIDs:      c.LocationIDs,
-		ActiveLocationID: c.ActiveLocationID,
-		CapabilityPacks:  c.CapabilityPacks,
-		MFAVerified:      c.MFAVerified,
-		MarketCode:       c.MarketCode,
-		HomeCell:         c.HomeCell,
+		Sub:                c.Subject,
+		Iss:                opts.Issuer,
+		Iat:                now.Unix(),
+		Exp:                now.Add(opts.TTL).Unix(),
+		JTI:                jti,
+		Role:               string(c.Role),
+		SupplierID:         c.SupplierID,
+		SupplierRole:       string(c.SupplierRole),
+		HomeNodeType:       string(c.HomeNodeType),
+		HomeNodeID:         c.HomeNodeID,
+		IsRegistered:       c.IsRegistered,
+		IsConfigured:       c.IsConfigured,
+		PhoneNumber:        c.PhoneNumber,
+		TokenUse:           c.TokenUse,
+		RetailerOrgID:      c.RetailerOrgID,
+		RetailerRole:       c.RetailerRole,
+		RetailerUserID:     c.RetailerUserID,
+		LocationIDs:        c.LocationIDs,
+		ActiveLocationID:   c.ActiveLocationID,
+		CapabilityPacks:    c.CapabilityPacks,
+		MFAVerified:        c.MFAVerified,
+		MarketCode:         c.MarketCode,
+		HomeCell:           c.HomeCell,
+		ActorType:          c.ActorType,
+		SupplierPerms:      c.SupplierPerms,
+		AuditorExpiresAt:   audExpSec,
+		AuditorExpiresAtNS: audExpNS,
 	})
 	head := b64(h) + "." + b64(p)
 	sig := sign(head, secret)
@@ -181,6 +206,11 @@ func ParseWithKeyring(token string, keyring Keyring) (Claims, error) {
 	return parseWithKeyring(token, keyring, false)
 }
 
+// ParseTokenWithKeyring is an alias for ParseWithKeyring.
+func ParseTokenWithKeyring(token string, keyring Keyring) (Claims, error) {
+	return ParseWithKeyring(token, keyring)
+}
+
 // ParseWithKeyringIgnoreExpiry verifies signature with a Keyring but allows expired tokens.
 func ParseWithKeyringIgnoreExpiry(token string, keyring Keyring) (Claims, error) {
 	return parseWithKeyring(token, keyring, true)
@@ -230,6 +260,17 @@ func parseWithKeyring(token string, keyring Keyring, ignoreExpiry bool) (Claims,
 	if err := json.Unmarshal(pb, &p); err != nil {
 		return Claims{}, fmt.Errorf("jwt: payload json: %w", err)
 	}
+	var audExpAt *time.Time
+	if p.AuditorExpiresAtNS > 0 {
+		t := time.Unix(0, p.AuditorExpiresAtNS).UTC()
+		audExpAt = &t
+	} else if p.AuditorExpiresAt > 0 {
+		t := time.Unix(p.AuditorExpiresAt, 0).UTC()
+		audExpAt = &t
+	}
+	if audExpAt != nil && time.Now().UTC().After(*audExpAt) {
+		return Claims{}, fmt.Errorf("jwt: %w: %w", ErrInvalidToken, ErrAuditorAccessExpired)
+	}
 	if !ignoreExpiry && p.Exp > 0 && time.Now().UTC().Unix() > p.Exp {
 		return Claims{}, fmt.Errorf("jwt: %w (expired)", ErrInvalidToken)
 	}
@@ -259,6 +300,9 @@ func parseWithKeyring(token string, keyring Keyring, ignoreExpiry bool) (Claims,
 		MFAVerified:      p.MFAVerified,
 		MarketCode:       p.MarketCode,
 		HomeCell:         p.HomeCell,
+		ActorType:        p.ActorType,
+		SupplierPerms:    p.SupplierPerms,
+		AuditorExpiresAt: audExpAt,
 	}
 	if err := rejectForeignCell(claims); err != nil {
 		return Claims{}, err
@@ -319,13 +363,21 @@ func attachSessionClaims(r *http.Request, secret string) *http.Request {
 
 func attachSessionClaimsWithKeyring(r *http.Request, keyring Keyring) *http.Request {
 	if c, err := r.Cookie(CookieName); err == nil && c.Value != "" {
-		if claims, err := ParseWithKeyring(c.Value, keyring); err == nil && !tokenRevoked(r.Context(), claims) && !IsWSTicket(claims) {
+		claims, parseErr := ParseWithKeyring(c.Value, keyring)
+		if parseErr == nil && !tokenRevoked(r.Context(), claims) && !IsWSTicket(claims) {
 			return r.WithContext(WithClaims(r.Context(), claims))
+		}
+		if errors.Is(parseErr, ErrAuditorAccessExpired) {
+			r = r.WithContext(WithAuditorExpired(r.Context()))
 		}
 	}
 	if token := BearerToken(r); token != "" {
-		if claims, err := ParseWithKeyring(token, keyring); err == nil && !tokenRevoked(r.Context(), claims) && !IsWSTicket(claims) {
+		claims, parseErr := ParseWithKeyring(token, keyring)
+		if parseErr == nil && !tokenRevoked(r.Context(), claims) && !IsWSTicket(claims) {
 			return r.WithContext(WithClaims(r.Context(), claims))
+		}
+		if errors.Is(parseErr, ErrAuditorAccessExpired) {
+			r = r.WithContext(WithAuditorExpired(r.Context()))
 		}
 	}
 	return r
@@ -334,7 +386,11 @@ func attachSessionClaimsWithKeyring(r *http.Request, keyring Keyring) *http.Requ
 func tokenRevoked(ctx context.Context, claims Claims) bool {
 	revoked, err := checkTokenRevoked(ctx, claims)
 	// Store errors fail closed so a Redis blip cannot revive a denylisted jti.
-	return err != nil || revoked
+	if err != nil || revoked {
+		return true
+	}
+	userRevoked, uerr := checkUserRevoked(ctx, claims)
+	return uerr != nil || userRevoked
 }
 
 func checkTokenRevoked(ctx context.Context, claims Claims) (revoked bool, err error) {
@@ -344,6 +400,14 @@ func checkTokenRevoked(ctx context.Context, claims Claims) (revoked bool, err er
 		return false, nil
 	}
 	return GetRevocationStore().IsRevoked(ctx, jti)
+}
+
+func checkUserRevoked(ctx context.Context, claims Claims) (revoked bool, err error) {
+	sub := strings.TrimSpace(claims.Subject)
+	if sub == "" {
+		return false, nil
+	}
+	return GetRevocationStore().IsUserRevoked(ctx, sub)
 }
 
 func b64(b []byte) string { return base64.RawURLEncoding.EncodeToString(b) }

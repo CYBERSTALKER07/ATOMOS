@@ -31,6 +31,12 @@ export interface RetailerProfileResponse {
   location?: string;
   country_code?: string;
   status?: string;
+  tax_id?: string;
+  normalized_tax_id?: string;
+  home_cell?: string;
+  legal_entity_status?: "LEGAL_VERIFIED" | "INFORMAL_PHONE" | string;
+  is_configured?: boolean;
+  inn_verified_at?: string;
   h3_cell?: H3Cell;
   lat?: number;
   lng?: number;
@@ -1149,5 +1155,38 @@ export interface CommandLifecycle {
   command_state: CommandState;
   target_role?: Role;
   target_id?: string;
+}
+
+export interface MigrationEventPayload {
+  project_id?: string;
+  bundle_id?: string;
+  session_id?: string;
+  supplier_id: SupplierId;
+  domain?: string;
+  status?: string;
+  report_id?: string;
+  processed_rows?: number;
+  total_rows?: number;
+  imported_count?: number;
+  quarantine_count?: number;
+  error_code?: string;
+  error_message?: string;
+  timestamp?: string;
+}
+
+export interface JoinRequestEventPayload {
+  request_id: string;
+  target_tenant_type: "SUPPLIER" | "RETAILER" | string;
+  target_tenant_id: string;
+  supplier_id?: SupplierId;
+  retailer_id?: RetailerId;
+  normalized_inn?: string;
+  requester_phone?: string;
+  requester_name?: string;
+  role_sought?: string;
+  status?: "PENDING" | "APPROVED" | "REJECTED" | string;
+  decided_by?: string;
+  decision_reason?: string;
+  timestamp?: string;
 }
 

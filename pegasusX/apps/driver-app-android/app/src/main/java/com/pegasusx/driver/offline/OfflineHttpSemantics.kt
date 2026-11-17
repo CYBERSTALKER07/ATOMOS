@@ -16,10 +16,20 @@ object OfflineHttpSemantics {
         code == 408 || code == 429 || code in 500..599
 
     fun isSuccessHttp(code: Int): Boolean =
-        code in 200..299 || code == 409
+        code in 200..299
+
+    fun isConflictHttp(code: Int): Boolean =
+        code == 409
+
+    fun isIdempotentReplay409(statusCode: Int, responseBody: String?): Boolean {
+        if (statusCode != 409) return false
+        val body = responseBody?.lowercase() ?: return false
+        val markers = listOf("idempotent", "duplicate", "already_exists", "already_processed")
+        return markers.any { body.contains(it) }
+    }
 
     fun isDeadHttp(code: Int): Boolean =
-        code in 400..499 && !isRetryableHttp(code) && code != 409
+        code in 400..499 && !isRetryableHttp(code)
 
     fun isNetworkEnqueueable(error: Throwable): Boolean = when (error) {
         is java.io.IOException -> true
@@ -38,8 +48,8 @@ object OfflineHttpSemantics {
         DEAD,
     }
 
-    fun outcomeForHttp(code: Int): FlushOutcome = when {
-        isSuccessHttp(code) -> FlushOutcome.ACK
+    fun outcomeForHttp(code: Int, body: String? = null): FlushOutcome = when {
+        isSuccessHttp(code) || isIdempotentReplay409(code, body) -> FlushOutcome.ACK
         isRetryableHttp(code) -> FlushOutcome.RETRY
         else -> FlushOutcome.DEAD
     }

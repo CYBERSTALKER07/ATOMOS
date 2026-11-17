@@ -9,7 +9,7 @@ metadata:
     app: supplier-portal
     app.kubernetes.io/part-of: pegasusx
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: supplier-portal
@@ -91,3 +91,40 @@ spec:
     - name: http
       port: 80
       targetPort: 8080
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: supplier-portal
+  namespace: pegasusx-ssmr
+  labels:
+    app: supplier-portal
+    app.kubernetes.io/part-of: pegasusx
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: supplier-portal
+  minReplicas: 2
+  maxReplicas: 6
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: supplier-portal
+  namespace: pegasusx-ssmr
+  labels:
+    app: supplier-portal
+    app.kubernetes.io/part-of: pegasusx
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: supplier-portal

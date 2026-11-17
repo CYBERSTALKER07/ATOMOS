@@ -10,29 +10,59 @@ import com.pegasusx.warehouse.data.foundry.CashierSessionView
 import com.pegasusx.warehouse.data.foundry.DepotVaultLedgerEntry
 import com.pegasusx.warehouse.data.foundry.RRNTenderReclassificationRequest
 import com.pegasusx.warehouse.data.foundry.StartCashierSessionRequest
+import com.pegasusx.warehouse.data.model.Driver
+import com.pegasusx.warehouse.data.model.Manifest
+import com.pegasusx.warehouse.data.model.WarehouseFleetLiveRoute
+import com.pegasusx.warehouse.data.remote.TokenHolder
 import com.pegasusx.warehouse.data.remote.WarehouseApi
+import com.pegasusx.warehouse.ui.design.MarketPackStore
+import com.pegasusx.warehouse.util.JwtPayload
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.text.DecimalFormat
+import java.text.DecimalFormatSymbols
+import java.util.Locale
 import javax.inject.Inject
 
 data class DenominationEntry(
-    val noteUzs: Long,
+    val noteSom: Long,
     val count: Long = 0L,
 ) {
-    val totalTiyin: Long get() = noteUzs * count * 100L
-    val totalUzs: Long get() = noteUzs * count
+    val totalMinor: Long get() = noteSom * count * 100L
+    val totalSom: Long get() = noteSom * count
 }
 
+data class CashierDriverOption(
+    val driverId: String,
+    val label: String,
+    val routeId: String? = null,
+)
+
+data class CashierRouteOption(
+    val routeId: String,
+    val label: String,
+    val driverId: String? = null,
+    val manifestId: String? = null,
+)
+
 data class CashierUiState(
-    val depotId: String = "depot-tashkent-south",
-    val supplierId: String = "supplier-tashkent-1",
-    val driverId: String = "driver-uz-09",
-    val routeId: String = "route-tashkent-042",
-    val bagSealBarcode: String = "BAG-UZ-99120",
+    val cellId: String = "",
+    val depotId: String = "",
+    val supplierId: String = "",
+    val driverId: String = "",
+    val routeId: String = "",
+    val bagSealBarcode: String = "",
+    val driverOptions: List<CashierDriverOption> = emptyList(),
+    val routeOptions: List<CashierRouteOption> = emptyList(),
+    val selectorsLoading: Boolean = false,
+    val selectorsError: String? = null,
+    val manualEntryMode: Boolean = false,
     val session: CashierSessionView? = null,
     val attemptNumber: Long = 1L,
     val denominations: Map<Long, Long> = mapOf(
@@ -69,23 +99,148 @@ class CashierViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(CashierUiState())
     val uiState: StateFlow<CashierUiState> = _uiState.asStateFlow()
 
+    init {
+        val token = runCatching { TokenHolder.token }.getOrNull()
+        val resolvedDepot = runCatching { TokenHolder.warehouseId }.getOrNull()
+            ?.takeIf { it.isNotBlank() }
+            ?: JwtPayload.homeNodeId(token).orEmpty()
+        val resolvedCell = JwtPayload.homeCell(token)
+            ?: runCatching { MarketPackStore.current?.homeCell }.getOrNull()?.takeIf { it.isNotBlank() }
+            ?: ""
+        val resolvedSupplier = JwtPayload.supplierId(token).orEmpty()
+
+        _uiState.update {
+            it.copy(
+                cellId = resolvedCell,
+                depotId = resolvedDepot,
+                supplierId = resolvedSupplier,
+            )
+        }
+    }
+
+    fun applyScope(cellId: String, depotId: String, supplierId: String) {
+        _uiState.update {
+            it.copy(
+                cellId = cellId,
+                depotId = depotId,
+                supplierId = supplierId,
+                errorMessage = null,
+            )
+        }
+    }
+
+    fun updateDepotId(id: String) {
+        _uiState.update { it.copy(depotId = id, errorMessage = null) }
+    }
+
+    fun updateSupplierId(id: String) {
+        _uiState.update { it.copy(supplierId = id, errorMessage = null) }
+    }
+
     fun updateBagSealBarcode(barcode: String) {
         _uiState.update { it.copy(bagSealBarcode = barcode, errorMessage = null) }
     }
 
     fun updateDriverId(id: String) {
-        _uiState.update { it.copy(driverId = id) }
+        _uiState.update { it.copy(driverId = id, errorMessage = null) }
     }
 
     fun updateRouteId(id: String) {
-        _uiState.update { it.copy(routeId = id) }
+        _uiState.update { it.copy(routeId = id, errorMessage = null) }
     }
 
-    fun setDenominationCount(noteUzs: Long, count: Long) {
+    fun selectDriver(driverId: String) {
+        _uiState.update { current ->
+            val linkedRoute = current.driverOptions.firstOrNull { it.driverId == driverId }?.routeId
+            val nextRoute = if (current.routeId.isBlank() && !linkedRoute.isNullOrBlank()) {
+                linkedRoute
+            } else {
+                current.routeId
+            }
+            current.copy(driverId = driverId, routeId = nextRoute, errorMessage = null)
+        }
+    }
+
+    fun selectRoute(routeId: String) {
+        _uiState.update { current ->
+            val linkedDriver = current.routeOptions.firstOrNull { it.routeId == routeId }?.driverId
+            val nextDriver = if (current.driverId.isBlank() && !linkedDriver.isNullOrBlank()) {
+                linkedDriver
+            } else {
+                current.driverId
+            }
+            current.copy(routeId = routeId, driverId = nextDriver, errorMessage = null)
+        }
+    }
+
+    fun toggleManualEntryMode() {
+        _uiState.update { it.copy(manualEntryMode = !it.manualEntryMode) }
+    }
+
+    fun loadSelectors() {
+        val currentDepot = _uiState.value.depotId.trim()
+        _uiState.update { it.copy(selectorsLoading = true, selectorsError = null) }
+        viewModelScope.launch {
+            var anyFailed = false
+            val (drivers, manifests, fleetRoutes) = coroutineScope {
+                val driversDef = async {
+                    runCatching { api.getDrivers() }
+                        .onFailure { anyFailed = true }
+                        .getOrNull()
+                        ?.let { resp ->
+                            if (resp.isSuccessful) resp.body()?.drivers.orEmpty() else {
+                                anyFailed = true
+                                emptyList()
+                            }
+                        } ?: emptyList()
+                }
+                val manifestsDef = async {
+                    runCatching { api.getManifests() }
+                        .onFailure { anyFailed = true }
+                        .getOrNull()
+                        ?.let { resp ->
+                            if (resp.isSuccessful) resp.body()?.manifests.orEmpty() else {
+                                anyFailed = true
+                                emptyList()
+                            }
+                        } ?: emptyList()
+                }
+                val fleetDef = async {
+                    runCatching { api.getFleetLiveMap(warehouseId = currentDepot.ifBlank { null }) }
+                        .onFailure { anyFailed = true }
+                        .getOrNull()
+                        ?.let { resp ->
+                            if (resp.isSuccessful) resp.body()?.routes.orEmpty() else {
+                                anyFailed = true
+                                emptyList()
+                            }
+                        } ?: emptyList()
+                }
+                Triple(driversDef.await(), manifestsDef.await(), fleetDef.await())
+            }
+
+            val (driverOpts, routeOpts) = buildSelectorOptions(drivers, manifests, fleetRoutes)
+            _uiState.update { current ->
+                current.copy(
+                    driverOptions = driverOpts,
+                    routeOptions = routeOpts,
+                    selectorsLoading = false,
+                    manualEntryMode = current.manualEntryMode || (driverOpts.isEmpty() && routeOpts.isEmpty()),
+                    selectorsError = if (anyFailed && driverOpts.isEmpty() && routeOpts.isEmpty()) {
+                        "Live driver and route lists are unavailable; manual ID entry enabled."
+                    } else {
+                        null
+                    },
+                )
+            }
+        }
+    }
+
+    fun setDenominationCount(noteSom: Long, count: Long) {
         val safeCount = if (count < 0L) 0L else count
         _uiState.update { current ->
             val updated = current.denominations.toMutableMap()
-            updated[noteUzs] = safeCount
+            updated[noteSom] = safeCount
             val totalMinor = updated.entries.sumOf { (note, cnt) -> note * cnt * 100L }
             current.copy(
                 denominations = updated,
@@ -94,9 +249,9 @@ class CashierViewModel @Inject constructor(
         }
     }
 
-    fun adjustDenominationCount(noteUzs: Long, delta: Long) {
-        val currentCount = _uiState.value.denominations[noteUzs] ?: 0L
-        setDenominationCount(noteUzs, currentCount + delta)
+    fun adjustDenominationCount(noteSom: Long, delta: Long) {
+        val currentCount = _uiState.value.denominations[noteSom] ?: 0L
+        setDenominationCount(noteSom, currentCount + delta)
     }
 
     fun clearCounts() {
@@ -106,18 +261,35 @@ class CashierViewModel @Inject constructor(
         }
     }
 
-    fun startSession(expectedCashMinor: Long = 1425000000L) {
+    fun startSession(expectedCashMinor: Long = 0L) {
         val state = _uiState.value
+        if (state.bagSealBarcode.isBlank()) {
+            _uiState.update { it.copy(errorMessage = "Bag seal barcode is required") }
+            return
+        }
+        if (state.driverId.isBlank()) {
+            _uiState.update { it.copy(errorMessage = "Driver selection or ID is required") }
+            return
+        }
+        if (state.routeId.isBlank()) {
+            _uiState.update { it.copy(errorMessage = "Route selection or ID is required") }
+            return
+        }
+        if (state.depotId.isBlank() || state.supplierId.isBlank()) {
+            _uiState.update { it.copy(errorMessage = "Depot and supplier scope are required") }
+            return
+        }
+
         _uiState.update { it.copy(isLoading = true, errorMessage = null, statusMessage = null) }
         viewModelScope.launch {
             try {
                 val req = StartCashierSessionRequest(
-                    cellId = "cell-uz",
-                    supplierId = state.supplierId,
-                    depotId = state.depotId,
-                    driverId = state.driverId,
-                    routeId = state.routeId,
-                    bagSealBarcode = state.bagSealBarcode,
+                    cellId = state.cellId.trim(),
+                    supplierId = state.supplierId.trim(),
+                    depotId = state.depotId.trim(),
+                    driverId = state.driverId.trim(),
+                    routeId = state.routeId.trim(),
+                    bagSealBarcode = state.bagSealBarcode.trim(),
                     expectedCashMinor = expectedCashMinor,
                 )
                 val resp = api.startCashierSession(req)
@@ -217,13 +389,18 @@ class CashierViewModel @Inject constructor(
         orderId: String,
         gatewayRrn: String,
         disputedCashMinor: Long,
-        terminalId: String = "POS-TASH-01",
-        cardLastFour: String = "8821",
+        terminalId: String = "",
+        cardLastFour: String = "",
         paymentNetwork: String = "HUMO",
+        authCode: String = "",
     ) {
         val sessionId = _uiState.value.session?.sessionId
         if (sessionId.isNullOrBlank()) {
             _uiState.update { it.copy(errorMessage = "Active session required for reclassification") }
+            return
+        }
+        if (orderId.isBlank() || gatewayRrn.isBlank() || disputedCashMinor <= 0L) {
+            _uiState.update { it.copy(errorMessage = "Order ID, Gateway RRN, and disputed so'm amount are required") }
             return
         }
 
@@ -233,12 +410,12 @@ class CashierViewModel @Inject constructor(
                 val nowIso = java.time.Instant.now().toString()
                 val req = RRNTenderReclassificationRequest(
                     sessionId = sessionId,
-                    orderId = orderId,
+                    orderId = orderId.trim(),
                     disputedCashMinor = disputedCashMinor,
-                    gatewayRrn = gatewayRrn,
-                    terminalId = terminalId,
-                    cardLastFour = cardLastFour,
-                    authCode = "AUTH-${(100000..999999).random()}",
+                    gatewayRrn = gatewayRrn.trim(),
+                    terminalId = terminalId.trim(),
+                    cardLastFour = cardLastFour.trim(),
+                    authCode = authCode.trim(),
                     paymentNetwork = paymentNetwork,
                     rrnCapturedAt = nowIso,
                     podGeofenceTimestamp = nowIso,
@@ -273,19 +450,36 @@ class CashierViewModel @Inject constructor(
         courierBadgeId: String,
         citSealBarcode: String,
         amountMinor: Long,
+        sessionIds: List<String> = emptyList(),
     ) {
         val state = _uiState.value
-        val sessionId = state.session?.sessionId ?: "sess-batch-01"
-        _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+        val resolvedSessionIds = sessionIds
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .ifEmpty { listOfNotNull(state.session?.sessionId?.takeIf { it.isNotBlank() }) }
 
+        if (resolvedSessionIds.isEmpty()) {
+            _uiState.update { it.copy(errorMessage = "At least one cashier session ID is required for CIT handover") }
+            return
+        }
+        if (courierBadgeId.isBlank() || citSealBarcode.isBlank() || amountMinor <= 0L) {
+            _uiState.update { it.copy(errorMessage = "Courier badge, seal barcode, and positive so'm amount are required") }
+            return
+        }
+        if (state.depotId.isBlank() || state.supplierId.isBlank()) {
+            _uiState.update { it.copy(errorMessage = "Depot and supplier scope are required for CIT handover") }
+            return
+        }
+
+        _uiState.update { it.copy(isLoading = true, errorMessage = null) }
         viewModelScope.launch {
             try {
                 val req = CITHandoverRequest(
-                    depotId = state.depotId,
-                    supplierId = state.supplierId,
-                    sessionIds = listOf(sessionId),
-                    courierBadgeId = courierBadgeId,
-                    citSealBarcode = citSealBarcode,
+                    depotId = state.depotId.trim(),
+                    supplierId = state.supplierId.trim(),
+                    sessionIds = resolvedSessionIds,
+                    courierBadgeId = courierBadgeId.trim(),
+                    citSealBarcode = citSealBarcode.trim(),
                     cashMinor = amountMinor,
                 )
                 val resp = api.executeCITHandover(req)
@@ -313,13 +507,22 @@ class CashierViewModel @Inject constructor(
 
     fun checkAMLExposure(tin: String, cashMinor: Long) {
         val state = _uiState.value
+        if (tin.isBlank()) {
+            _uiState.update { it.copy(errorMessage = "Legal entity TIN is required for AML check") }
+            return
+        }
+        if (state.supplierId.isBlank()) {
+            _uiState.update { it.copy(errorMessage = "Supplier scope is required for AML check") }
+            return
+        }
+
         _uiState.update { it.copy(isLoading = true, errorMessage = null) }
         viewModelScope.launch {
             try {
                 val today = java.time.LocalDate.now().toString()
                 val req = AMLCheckRequest(
-                    legalEntityTin = tin,
-                    supplierId = state.supplierId,
+                    legalEntityTin = tin.trim(),
+                    supplierId = state.supplierId.trim(),
                     calendarDate = today,
                     cashMinor = cashMinor,
                 )
@@ -334,7 +537,11 @@ class CashierViewModel @Inject constructor(
                             amlExposureMinor = acc,
                             amlCeilingMinor = ceil,
                             amlExceeded = ceil > 0 && acc > ceil,
-                            statusMessage = if (ceil > 0) "AML Exposure OK: ${acc / 100} / ${ceil / 100} UZS" else "AML Exposure OK: ${acc / 100} UZS (Uncapped)",
+                            statusMessage = if (ceil > 0) {
+                                "AML Exposure OK: ${formatWholeSom(acc)} / ${formatWholeSom(ceil)}"
+                            } else {
+                                "AML Exposure OK: ${formatWholeSom(acc)} (Uncapped)"
+                            },
                         )
                     }
                 } else if (resp.code() == 409) {
@@ -355,6 +562,86 @@ class CashierViewModel @Inject constructor(
                     it.copy(isLoading = false, errorMessage = e.message ?: "Failed to check AML exposure")
                 }
             }
+        }
+    }
+
+    companion object {
+        fun formatWholeSom(minor: Long): String = formatWholeSomMajor(minor / 100L)
+
+        fun formatWholeSomMajor(wholeSom: Long): String {
+            val symbols = DecimalFormatSymbols(Locale.US).apply {
+                groupingSeparator = ' '
+            }
+            val formatter = DecimalFormat("#,##0", symbols)
+            return "${formatter.format(wholeSom)} so'm"
+        }
+
+        fun buildSelectorOptions(
+            drivers: List<Driver>,
+            manifests: List<Manifest>,
+            fleetRoutes: List<WarehouseFleetLiveRoute>,
+        ): Pair<List<CashierDriverOption>, List<CashierRouteOption>> {
+            val driverMap = LinkedHashMap<String, CashierDriverOption>()
+            val routeMap = LinkedHashMap<String, CashierRouteOption>()
+            val seenManifestIds = HashSet<String>()
+
+            for (driver in drivers) {
+                val id = driver.driverId.trim()
+                if (id.isEmpty()) continue
+                val name = driver.name.trim()
+                driverMap[id] = CashierDriverOption(
+                    driverId = id,
+                    label = if (name.isNotEmpty()) "$name ($id)" else id,
+                )
+            }
+
+            for (route in fleetRoutes) {
+                val rId = route.routeId.trim()
+                val dId = route.driverId.trim().takeIf { it.isNotEmpty() }
+                val mId = route.manifestId.trim().takeIf { it.isNotEmpty() }
+                if (mId != null) seenManifestIds.add(mId)
+
+                if (rId.isNotEmpty()) {
+                    val suffix = route.driverName?.trim()?.takeIf { it.isNotEmpty() } ?: dId.orEmpty()
+                    routeMap[rId] = CashierRouteOption(
+                        routeId = rId,
+                        label = if (suffix.isNotEmpty()) "$rId · $suffix" else rId,
+                        driverId = dId,
+                        manifestId = mId,
+                    )
+                }
+
+                if (dId != null) {
+                    val existing = driverMap[dId]
+                    if (existing == null) {
+                        val name = route.driverName?.trim().orEmpty()
+                        driverMap[dId] = CashierDriverOption(
+                            driverId = dId,
+                            label = if (name.isNotEmpty()) "$name ($dId)" else dId,
+                            routeId = rId.takeIf { it.isNotEmpty() },
+                        )
+                    } else if (existing.routeId == null && rId.isNotEmpty()) {
+                        driverMap[dId] = existing.copy(routeId = rId)
+                    }
+                }
+            }
+
+            for (manifest in manifests) {
+                val mId = manifest.manifestId.trim()
+                if (mId.isEmpty() || seenManifestIds.contains(mId) || routeMap.containsKey(mId)) {
+                    continue
+                }
+                val parts = mutableListOf(mId)
+                manifest.driverName.trim().takeIf { it.isNotEmpty() }?.let { parts.add(it) }
+                manifest.vehicleLabel.trim().takeIf { it.isNotEmpty() }?.let { parts.add(it) }
+                routeMap[mId] = CashierRouteOption(
+                    routeId = mId,
+                    label = parts.joinToString(" · "),
+                    manifestId = mId,
+                )
+            }
+
+            return driverMap.values.toList() to routeMap.values.toList()
         }
     }
 }

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import type { CashierSessionView as CashierSessionViewType } from '@pegasusx/types';
-import { minorToWholeTrunc } from '@/lib/money';
+import { formatSignedWholeSom, formatWholeSom } from '@/lib/cashier-helpers';
 import { Lock, ShieldAlert, CheckCircle2, AlertTriangle, ShieldCheck, RefreshCw, FileText } from 'lucide-react';
 
 interface CashierSessionViewProps {
@@ -137,10 +137,7 @@ export function CashierSessionView({
             Physical Counted Cash
           </span>
           <div className="text-xl font-bold font-mono text-emerald-400">
-            {minorToWholeTrunc(session.counted_cash_minor || 0).toLocaleString()} UZS
-          </div>
-          <div className="text-xs text-neutral-500 font-mono mt-0.5">
-            {(session.counted_cash_minor || 0).toLocaleString()} Tiyin
+            {formatWholeSom(session.counted_cash_minor || 0)}
           </div>
         </div>
 
@@ -159,10 +156,7 @@ export function CashierSessionView({
           ) : session.expected_cash_minor !== undefined && session.expected_cash_minor !== null ? (
             <div>
               <div className="text-xl font-bold font-mono text-neutral-200">
-                {minorToWholeTrunc(session.expected_cash_minor).toLocaleString()} UZS
-              </div>
-              <div className="text-xs text-neutral-500 font-mono mt-0.5">
-                {session.expected_cash_minor.toLocaleString()} Tiyin
+                {formatWholeSom(session.expected_cash_minor)}
               </div>
             </div>
           ) : (
@@ -193,11 +187,7 @@ export function CashierSessionView({
                       : 'text-amber-400'
                 }`}
               >
-                {session.variance_minor > 0 ? '+' : ''}
-                {minorToWholeTrunc(session.variance_minor).toLocaleString()} UZS
-              </div>
-              <div className="text-xs text-neutral-500 font-mono mt-0.5">
-                {session.variance_minor.toLocaleString()} Tiyin
+                {formatSignedWholeSom(session.variance_minor)}
               </div>
             </div>
           ) : (

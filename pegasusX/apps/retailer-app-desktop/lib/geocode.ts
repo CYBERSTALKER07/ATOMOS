@@ -1,4 +1,4 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8180";
+import { apiFetch } from "./auth";
 
 export type ResolvedLocation = {
   address: string;
@@ -42,7 +42,7 @@ export async function autocompleteAddress(input: string): Promise<AutocompletePr
 
   const q = encodeURIComponent(trimmed);
   try {
-    const res = await fetch(`${API_BASE}/v1/platform/geocode/autocomplete?input=${q}`, {
+    const res = await apiFetch(`/v1/platform/geocode/autocomplete?input=${q}`, {
       signal: controller.signal,
     });
     if (res.ok) {
@@ -73,7 +73,7 @@ export async function resolvePlace(placeId: string): Promise<ResolvedLocation | 
     return cached.data;
   }
   try {
-    const res = await fetch(`${API_BASE}/v1/platform/geocode/place?place_id=${encodeURIComponent(id)}`);
+    const res = await apiFetch(`/v1/platform/geocode/place?place_id=${encodeURIComponent(id)}`);
     if (res.ok) {
       const resolved = (await res.json()) as ResolvedLocation;
       placeCache.set(id, { expiresAt: Date.now() + GEOCODE_CACHE_TTL_MS, data: resolved });
@@ -100,8 +100,8 @@ export async function reverseGeocode(lat: number, lng: number): Promise<Resolved
     return cached.data;
   }
   try {
-    const res = await fetch(
-      `${API_BASE}/v1/platform/geocode/reverse?lat=${encodeURIComponent(String(lat))}&lng=${encodeURIComponent(String(lng))}`,
+    const res = await apiFetch(
+      `/v1/platform/geocode/reverse?lat=${encodeURIComponent(String(lat))}&lng=${encodeURIComponent(String(lng))}`,
     );
     if (res.ok) {
       const resolved = (await res.json()) as ResolvedLocation;
@@ -122,9 +122,8 @@ export async function forwardGeocode(address: string): Promise<ResolvedLocation 
   const trimmed = address.trim();
   if (!trimmed) return null;
   try {
-    const res = await fetch(`${API_BASE}/v1/platform/geocode/forward`, {
+    const res = await apiFetch(`/v1/platform/geocode/forward`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ address: trimmed }),
     });
     if (res.ok) return (await res.json()) as ResolvedLocation;

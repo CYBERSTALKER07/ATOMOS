@@ -31,6 +31,11 @@ fun OrdersList(
             SupplierOpsListCard(
                 headline = order.orderId.take(12),
                 supporting = buildString {
+                    if (order.status == "MIGRATION_OPEN") {
+                        append("HELD · MIGRATION · ")
+                    } else if (order.source.equals("MIGRATION", ignoreCase = true)) {
+                        append("MIGRATION · ")
+                    }
                     append(amount)
                     append(" · Retailer ")
                     append(order.retailerId.take(8))

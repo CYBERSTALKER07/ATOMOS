@@ -121,29 +121,30 @@ stateDiagram-v2
     COMPLETED --> [*]
 ```
 
-### Complete 18-State Enumeration & Phase Taxonomy
+### Complete 19-State Enumeration & Phase Taxonomy
 
 | # | Canonical State Name | Lifecycle Phase | Invariant Flags & Behavioral Constraints | Permitted Outbound Successors | Exit Count |
 |:---:|:---|:---|:---|:---|:---:|
-| 1 | `SCHEDULED` | Phase 1: Intake & Preorders | Future-dated reservation. Blocked from direct warehouse picking (`LOADED` blocked). Auto-promotes at T-1 window. | `AUTO_ACCEPTED`, `PENDING`, `CANCELLED`, `CANCEL_REQUESTED` | 4 |
-| 2 | `AUTO_ACCEPTED` | Phase 1: Intake & Preorders | AI midnight-guard approved preorder awaiting morning wave injection. | `PENDING`, `CANCELLED`, `CANCEL_REQUESTED` | 3 |
+| 1 | `SCHEDULED` | Phase 1: Intake & Preorders | Future-dated reservation. Blocked from direct warehouse picking (`LOADED` blocked). Auto-promotes at T-1 window. | `AUTO_ACCEPTED`, `PENDING`, `DELAYED`, `CANCELLED`, `CANCEL_REQUESTED` | 5 |
+| 2 | `AUTO_ACCEPTED` | Phase 1: Intake & Preorders | AI midnight-guard approved preorder awaiting morning wave injection. | `PENDING`, `DELAYED`, `CANCELLED`, `CANCEL_REQUESTED` | 4 |
 | 3 | `BACKORDERED` | Phase 1: Intake & Preorders | Stock insufficient. Payment collection strictly deferred (`ErrBackorderPaymentDeferred`). | `PENDING`, `SCHEDULED`, `CANCELLED` | 3 |
-| 4 | `PENDING` | Phase 1: Operational Queue | Root operational queue state. Stock reservation marker held in Spanner. | `LOADED`, `DELAYED`, `CANCELLED` | 3 |
+| 4 | `PENDING` | Phase 1: Operational Queue | Root operational queue state. Stock reservation marker held in Spanner. | `LOADED`, `DELAYED`, `CANCELLED`, `CANCEL_REQUESTED` | 4 |
 | 5 | `DELAYED` | Phase 1: Queue Recovery | SLA deadline slipped. Can only transition back to `PENDING` for re-sequencing. | `PENDING` | 1 |
 | 6 | `LOADED` | Phase 2: Warehouse Fulfillment | Physical inventory staged in vehicle cage. Mints EPOD cryptographic delivery token. | `IN_TRANSIT`, `PENDING`, `DELAYED`, `CANCELLED`, `CANCEL_REQUESTED` | 5 |
 | 7 | `IN_TRANSIT` | Phase 2: Transit & Telemetry | Vehicle in motion. Continuous telemetry streaming. Token protected. | `ARRIVED`, `PENDING`, `CANCELLED`, `CANCEL_REQUESTED` | 4 |
 | 8 | `ARRIVED` | Phase 3: Delivery Site | Geofenced arrival (150m or H3 cell match). **ADR-009 Hard-Gate**: Zero direct path to `COMPLETED`. | `AWAITING_PAYMENT`, `PENDING_CASH_COLLECTION`, `DELIVERED_ON_CREDIT`, `SHOP_CLOSED_PENDING`, `CANCEL_REQUESTED` | 5 |
 | 9 | `SHOP_CLOSED_PENDING` | Phase 3: Site Exceptions | Storefront shuttered. Requires photo upload + GPS proof. 5-minute countdown starts. | `AWAITING_PAYMENT`, `PENDING_CASH_COLLECTION`, `DELIVERED_ON_CREDIT`, `ARRIVED`, `CANCEL_REQUESTED`, `CANCELLED` | 6 |
-| 10 | `AWAITING_PAYMENT` | Phase 4: Multi-Tender Settlement | Digital gateway pending (Uzum, Payme, Octo, Card). Allows tender switching. | `FISCALIZING`, `PENDING_CASH_COLLECTION`, `DELIVERED_ON_CREDIT` | 3 |
-| 11 | `PENDING_CASH_COLLECTION`| Phase 4: Multi-Tender Settlement | Physical fiat tender active. Driver holds cash bag responsibility. | `FISCALIZING` | 1 |
+| 10 | `AWAITING_PAYMENT` | Phase 4: Multi-Tender Settlement | Digital gateway pending (Uzum, Payme, Octo, Card). Allows tender switching. | `FISCALIZING`, `PENDING_CASH_COLLECTION`, `DELIVERED_ON_CREDIT`, `CANCEL_REQUESTED`, `SHOP_CLOSED_PENDING` | 5 |
+| 11 | `PENDING_CASH_COLLECTION`| Phase 4: Multi-Tender Settlement | Physical fiat tender active. Driver holds cash bag responsibility. | `FISCALIZING`, `AWAITING_PAYMENT`, `DELIVERED_ON_CREDIT`, `CANCEL_REQUESTED` | 4 |
 | 12 | `DELIVERED_ON_CREDIT` | Phase 4: Multi-Tender Settlement | **Section 9.1 Invariant**: Goods left behind, financial settlement open. Force-complete prohibited. | `FISCALIZING` | 1 |
 | 13 | `FISCALIZING` | Phase 4: ADR-009 Fiscal Gate | Synchronous/asynchronous Soliq OFD submission in-flight. 8-second hard timeout. | `COMPLETED`, `FISCAL_FAILED` | 2 |
 | 14 | `FISCAL_FAILED` | Phase 4: ADR-009 Fiscal Gate | OFD printer or API failure. Maximum 3 automated retries before escalation. | `FISCALIZING`, `COMPLETED` | 2 |
-| 15 | `CANCEL_REQUESTED` | Phase 5: Anti-Brick Handshake | Mutual cancellation handshake. **Anti-Brick Safeguard**: Denying returns order to prior leg. | `CANCELLED`, `LOADED`, `IN_TRANSIT`, `ARRIVED` | 4 |
+| 15 | `CANCEL_REQUESTED` | Phase 5: Anti-Brick Handshake | Mutual cancellation handshake. **Anti-Brick Safeguard**: Denying returns order to prior leg. | `CANCELLED`, `LOADED`, `IN_TRANSIT`, `ARRIVED`, `SCHEDULED`, `AUTO_ACCEPTED`, `SHOP_CLOSED_PENDING`, `PENDING` | 8 |
 | 16 | `CANCELLED` | Phase 5: Reversal & Reconcile | Commercial execution voided. Triggers lot reservation releases and credit limit restoration. | `RECONCILIATION_REQUIRED` | 1 |
 | 17 | `RECONCILIATION_REQUIRED`| Phase 5: Reversal & Reconcile | Post-cancellation discrepancy (trapped fiat cash, partial offload inventory variance). | `COMPLETED`, `CANCELLED` | 2 |
-| 18 | `COMPLETED` | Terminal State | **Terminal State (Zero Outbound Edges)**. Receipt sealed, tax stamp logged, claim window open. | *(None — Terminal)* | **0** |
-| **TOTAL** | **18 States** | **5 Integrated Phases** | **Provably Deterministic Finite State Machine** | **Total Directed Transitions:** | **50** |
+| 18 | `MIGRATION_OPEN` | Phase 1: Migration Intake | Internal migration intake state for enterprise cutover. Bypasses live fiscal OFD. | `PENDING`, `SCHEDULED`, `CANCELLED` | 3 |
+| 19 | `COMPLETED` | Terminal State | **Terminal State (Zero Outbound Edges)**. Receipt sealed, tax stamp logged, claim window open. | *(None — Terminal)* | **0** |
+| **TOTAL** | **19 States** | **5 Integrated Phases** | **Provably Deterministic Finite State Machine** | **Total Directed Transitions:** | **60** |
 
 ---
 

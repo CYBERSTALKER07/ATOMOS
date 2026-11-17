@@ -80,18 +80,36 @@ struct PaymentWaitingView: View {
             }
 
             if vm.isFiscalFailed {
-                Button {
-                    Haptics.light()
-                    Task { await vm.retryFiscal() }
-                } label: {
-                    Text("mobile_driver.ui.retry_fiscal")
-                        .font(.system(.subheadline, weight: .bold))
-                        .foregroundStyle(LabTheme.buttonFg)
-                        .frame(maxWidth: .infinity, minHeight: 44)
-                        .padding(.vertical, 10)
-                        .background(LabTheme.fg, in: .rect(cornerRadius: LabTheme.buttonRadius))
+                VStack(spacing: 10) {
+                    Button {
+                        Haptics.success()
+                        vm.continueNextStop()
+                    } label: {
+                        Text(L10n.string("mobile_driver.ui.continue_next_stop"))
+                            .font(.system(.subheadline, weight: .bold))
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                            .padding(.vertical, 10)
+                            .background(LabTheme.success, in: .rect(cornerRadius: LabTheme.buttonRadius))
+                    }
+                    .disabled(vm.isCompleting)
+
+                    Button {
+                        Haptics.light()
+                        Task { await vm.retryFiscal() }
+                    } label: {
+                        Text(L10n.string("mobile_driver.ui.retry_soliq_now"))
+                            .font(.system(.subheadline, weight: .semibold))
+                            .foregroundStyle(LabTheme.fg)
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                            .padding(.vertical, 8)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: LabTheme.buttonRadius)
+                                    .stroke(LabTheme.fgTertiary.opacity(0.4), lineWidth: 1)
+                            )
+                    }
+                    .disabled(vm.isCompleting)
                 }
-                .disabled(vm.isCompleting)
                 .padding(.horizontal, LabTheme.s24)
                 .padding(.bottom, LabTheme.s24)
             } else if vm.errorMessage != nil && vm.isSettled && !vm.isFiscalizing {

@@ -121,6 +121,7 @@ func TestSendVerifiesMDN(t *testing.T) {
 	defer ts.Close()
 
 	c := NewClient()
+	c.AllowPrivateForTest()
 	res, err := c.Send(context.Background(), SendRequest{
 		URL: ts.URL, From: "US", To: "PARTNER", EDI: edi, Plain: true, RequestMDN: true,
 	})
@@ -173,5 +174,81 @@ func TestUnwrapEncrypted(t *testing.T) {
 	}
 	if string(p.Content) != string(edi) {
 		t.Fatalf("got %q", p.Content)
+	}
+}
+
+func TestUnwrapMultipartSecurity(t *testing.T) {
+	partner, err := GenerateSelfSignedRSA("partner")
+	if err != nil {
+		t.Fatal(err)
+	}
+	attacker, err := GenerateSelfSignedRSA("attacker")
+	if err != nil {
+		t.Fatal(err)
+	}
+	edi := []byte("UNA:+.? 'UNH+1+ORDERS:D:96A:UN'")
+
+	// 1. Unsigned multipart/* must be rejected when insecurePlain=false.
+	unsignedBoundary := "unsigned_b1"
+	unsignedBody := []byte("--" + unsignedBoundary + "\r\nContent-Type: application/edifact\r\n\r\n" + string(edi) + "\r\n--" + unsignedBoundary + "--\r\n")
+	hUnsigned := http.Header{}
+	hUnsigned.Set("Content-Type", `multipart/mixed; boundary="`+unsignedBoundary+`"`)
+	if _, err := UnwrapInbound(hUnsigned, unsignedBody, Material{}, EncodeCertPEM(partner.Cert), false); err == nil || !strings.Contains(err.Error(), "as2_signature_required") {
+		t.Fatalf("expected as2_signature_required for unsigned multipart, got %v", err)
+	}
+	// Allowed only when insecurePlain=true.
+	pPlain, err := UnwrapInbound(hUnsigned, unsignedBody, Material{}, nil, true)
+	if err != nil || string(pPlain.Content) != string(edi) {
+		t.Fatalf("expected insecurePlain multipart extraction to work, err=%v got=%q", err, pPlain.Content)
+	}
+
+	// 2. Valid RFC 4130 multipart/signed verifies and extracts EDI when insecurePlain=false.
+	ctSigned, signedBody, err := BuildMultipartSignedBody(edi, partner, "orders.edi")
+	if err != nil {
+		t.Fatal(err)
+	}
+	hSigned := http.Header{}
+	hSigned.Set("Content-Type", ctSigned)
+	pSigned, err := UnwrapInbound(hSigned, signedBody, Material{}, EncodeCertPEM(partner.Cert), false)
+	if err != nil {
+		t.Fatalf("valid multipart/signed failed: %v", err)
+	}
+	if string(pSigned.Content) != string(edi) {
+		t.Fatalf("signed content mismatch: %q", pSigned.Content)
+	}
+
+	// 3. Wrong signer cert must fail signature verification even if attacker cert is embedded.
+	ctAttacker, attackerBody, err := BuildMultipartSignedBody(edi, attacker, "orders.edi")
+	if err != nil {
+		t.Fatal(err)
+	}
+	hAttacker := http.Header{}
+	hAttacker.Set("Content-Type", ctAttacker)
+	if _, err := UnwrapInbound(hAttacker, attackerBody, Material{}, EncodeCertPEM(partner.Cert), false); err == nil {
+		t.Fatal("expected signature verification failure for wrong signer")
+	}
+
+	// 4. Tampered EDI content in multipart/signed must fail verification.
+	tampered := strings.Replace(string(signedBody), "ORDERS:D:96A:UN", "ORDERS:D:99Z:UN", 1)
+	if _, err := UnwrapInbound(hSigned, []byte(tampered), Material{}, EncodeCertPEM(partner.Cert), false); err == nil {
+		t.Fatal("expected tampered multipart/signed body to fail verification")
+	}
+}
+
+func TestAS2Client_BlocksSSRF(t *testing.T) {
+	c := NewClient()
+	for _, target := range []string{
+		"https://169.254.169.254/latest/meta-data/",
+		"https://127.0.0.1:8443/as2",
+		"https://10.0.0.10/as2",
+		"http://as2.example.com/as2",
+		"https://metadata.google.internal/as2",
+	} {
+		_, err := c.Send(context.Background(), SendRequest{
+			URL: target, From: "US", To: "PARTNER", EDI: []byte("test"), Plain: true,
+		})
+		if err == nil {
+			t.Fatalf("expected SSRF block for %s", target)
+		}
 	}
 }

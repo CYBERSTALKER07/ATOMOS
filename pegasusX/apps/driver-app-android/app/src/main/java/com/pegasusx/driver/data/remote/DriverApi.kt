@@ -43,6 +43,8 @@ import com.pegasusx.driver.data.model.ReorderStopsRequest
 import com.pegasusx.driver.data.model.ReturnCompleteRequest
 import com.pegasusx.driver.data.model.ReturnGoodsResponse
 import com.pegasusx.driver.data.model.RouteManifest
+import com.pegasusx.driver.data.model.SyncEscalationRequest
+import com.pegasusx.driver.data.model.SyncEscalationResponse
 import com.pegasusx.driver.data.model.RouteReorderResponse
 import com.pegasusx.driver.data.model.SplitPaymentPayload
 import com.pegasusx.driver.data.model.SplitPaymentResponse
@@ -227,9 +229,15 @@ interface DriverApi {
     @GET("v1/driver/return-goods")
     suspend fun getReturnGoods(): ReturnGoodsResponse
 
-    /** Phase 6: open fiscal count soft-freezes cash bag / shift-end. */
+    /** Phase 6: open fiscal count soft-freezes cash bag / shift-end only when cash/PoD is incomplete. */
     @GET("v1/driver/open-fiscal")
     suspend fun getOpenFiscal(): OpenFiscalResponse
+
+    @POST("v1/driver/sync-escalation")
+    suspend fun escalateSyncDeadLetters(
+        @Body request: SyncEscalationRequest,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): SyncEscalationResponse
 
     @POST("v1/fleet/driver/return-complete")
     suspend fun returnComplete(

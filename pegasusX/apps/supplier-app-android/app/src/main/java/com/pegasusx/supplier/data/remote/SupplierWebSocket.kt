@@ -12,6 +12,10 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.longOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
@@ -31,7 +35,32 @@ data class SupplierWSMessage(
     @SerialName("event_id") val eventId: String? = null,
     @SerialName("trace_id") val traceId: String? = null,
     @SerialName("minimum_version") val minimumVersion: String? = null,
-)
+    @SerialName("session_id") val sessionId: String? = null,
+    @SerialName("processed_rows") val processedRows: Long? = null,
+    @SerialName("total_rows") val totalRows: Long? = null,
+    @SerialName("chunk_id") val chunkId: String? = null,
+    val payload: JsonObject? = null,
+) {
+    fun migrationApplyProgress(): com.pegasusx.supplier.data.model.MigrationApplyProgressEvent? {
+        if (type != "MIGRATION_APPLY_PROGRESS") return null
+        val sid = sessionId?.takeIf { it.isNotBlank() }
+            ?: payload?.get("session_id")?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }
+            ?: return null
+        val processed = processedRows
+            ?: payload?.get("processed_rows")?.jsonPrimitive?.longOrNull
+            ?: 0L
+        val total = totalRows
+            ?: payload?.get("total_rows")?.jsonPrimitive?.longOrNull
+            ?: 0L
+        val chunk = chunkId ?: payload?.get("chunk_id")?.jsonPrimitive?.contentOrNull
+        return com.pegasusx.supplier.data.model.MigrationApplyProgressEvent(
+            sessionId = sid,
+            processedRows = processed,
+            totalRows = total,
+            chunkId = chunk,
+        )
+    }
+}
 
 @Singleton
 class SupplierWebSocket @Inject constructor(

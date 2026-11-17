@@ -62,19 +62,22 @@ const (
 	StatusBackordered            Status = "BACKORDERED"
 	StatusScheduled              Status = "SCHEDULED"
 	StatusAutoAccepted           Status = "AUTO_ACCEPTED"
+	StatusMigrationOpen          Status = "MIGRATION_OPEN"
 )
 
 // OrderSource captures how an order entered the system.
 type OrderSource string
 
 const (
-	OrderSourceManual         OrderSource = "MANUAL"
-	OrderSourceManualPreorder OrderSource = "MANUAL_PREORDER"
-	OrderSourceAIPreorder     OrderSource = "AI_PREORDER"
-	OrderSourceBackorder      OrderSource = "BACKORDER"
-	OrderSourceAutoOrder      OrderSource = "AUTO_ORDER"      // L3.5 place mode
-	OrderSourcePartnerEDI     OrderSource = "PARTNER_EDI"     // Gate-3 Wave 2B EDI-lite ORDERS
-	OrderSourcePartnerSandbox OrderSource = "PARTNER_SANDBOX" // partner sandbox API key orders
+	OrderSourceManual            OrderSource = "MANUAL"
+	OrderSourceManualPreorder    OrderSource = "MANUAL_PREORDER"
+	OrderSourceAIPreorder        OrderSource = "AI_PREORDER"
+	OrderSourceBackorder         OrderSource = "BACKORDER"
+	OrderSourceAutoOrder         OrderSource = "AUTO_ORDER"         // L3.5 place mode
+	OrderSourcePartnerEDI        OrderSource = "PARTNER_EDI"        // Gate-3 Wave 2B EDI-lite ORDERS
+	OrderSourcePartnerSandbox    OrderSource = "PARTNER_SANDBOX"    // partner sandbox API key orders
+	OrderSourceMigration         OrderSource = "MIGRATION"          // historical or unreleased migrated order
+	OrderSourceMigrationReleased OrderSource = "MIGRATION_RELEASED" // released live after cutover
 )
 
 // ConfirmationStatus captures whether a future-dated order still needs a
@@ -133,6 +136,16 @@ type LineItem struct {
 	// Additive fiscal fields (Soliq OFD compliance):
 	VatRateBps  *int64 `json:"vat_rate_bps,omitempty"`
 	TaxCategory string `json:"tax_category,omitempty"` // "STANDARD" | "ZERO" | "EXEMPT"
+	// Operating-model substitution & shortage preferences + disclosure fields:
+	BrandID               string         `json:"brand_id,omitempty"`
+	MustHave              bool           `json:"must_have,omitempty"`
+	AllowSubstitutes      bool           `json:"allow_substitutes,omitempty"`
+	AllowedSubstituteSKUs []string       `json:"allowed_substitute_skus,omitempty"`
+	ShortageAction        ShortageAction `json:"shortage_action,omitempty"`
+	OriginalSKU           string         `json:"original_sku,omitempty"`
+	SubstituteSKU         string         `json:"substitute_sku,omitempty"`
+	PriceGapMinor         int64          `json:"price_gap_minor,omitempty"`
+	SubstitutionReason    string         `json:"substitution_reason,omitempty"`
 }
 
 // Order is the persisted aggregate.
@@ -141,6 +154,7 @@ type Order struct {
 	SupplierID             string
 	RetailerID             string
 	ParentOrderID          string
+	IdempotencyKey         string
 	WarehouseID            string
 	DriverID               string
 	VehicleID              string
@@ -196,8 +210,8 @@ type Order struct {
 	ShopClosedResolution        string
 	RecentClosedShopLeavesCount int
 	PartialDelivery             bool
-	ProximityUnlockedAt   *time.Time
-	ProximityMethod       string
+	ProximityUnlockedAt         *time.Time
+	ProximityMethod             string
 
 	BuyerAcceptanceStatus   string
 	BuyerAcceptanceDeadline *time.Time
@@ -206,6 +220,14 @@ type Order struct {
 	ClaimWindowHours        int64
 	ClaimWindowEndsAt       *time.Time
 	ClaimWindowPolicySource string
+
+	// Preorder auto-confirm opt-in (Orders.AutoConfirmOptIn DDL column).
+	AutoConfirmOptIn bool `json:"auto_confirm_opt_in"`
+
+	// Non-persisted operating-model evaluation metadata (optional runtime projection).
+	HoldReason    string                     `json:"-"`
+	Substitutions []ShortageEvaluationResult `json:"-"`
+	CutLines      []ShortageEvaluationResult `json:"-"`
 
 	// PendingSupplierReturns is written in the same UpdateOrder transaction and not stored on Orders.
 	PendingSupplierReturns []SupplierReturn `json:"-"`
@@ -225,6 +247,10 @@ type Order struct {
 	FiscalReceiptUpdate *FiscalReceiptRow `json:"-"`
 	// PendingFiscalSnapshots are inserted in the same UpdateOrder transaction at COMPLETED time.
 	PendingFiscalSnapshots []tax.OrderLineFiscalSnapshot `json:"-"`
+	// Migration & cutover linkage (M6 / Orders DDL additive columns).
+	ExternalOrderNo      string `json:"external_order_no,omitempty"`
+	ExternalFiscalRef    string `json:"external_fiscal_ref,omitempty"`
+	SupersededByRollback bool   `json:"superseded_by_rollback,omitempty"`
 	// PendingExceptionTicket is written in the same UpdateOrder transaction.
 	PendingExceptionTicket *ExceptionTicket `json:"-"`
 }
@@ -360,37 +386,58 @@ type Service struct {
 	commissionResolver payout.CommissionResolver
 
 	// seedSupplierID is fixtures/bootstrap only — request paths use resolveSupplierScope.
-	seedSupplierID     string
-	supplierName       string
-	currency           string
-	retailerHub        *ws.Hub
-	supplierHub        *ws.Hub
-	driverHub          *ws.Hub
-	spannerClient      *spanner.Client
-	manifestStore      *manifest.Store
-	idem               idempotency.Store
-	shopGrace          time.Duration
-	log                *slog.Logger
-	now                func() time.Time
-	newID              func() string
-	jwtSecret          string
-	handoff            *handoff.Engine
-	gatewayPolicy      GatewayPolicyReader
-	dispatchPlanWarm   func(ctx context.Context, warehouseID string)
-	previewRateLimiter RateLimiter
-	ofd                FiscalProvider  // optional; nil → ProviderFromEnv()
-	claimsBridge       claimsBridge    // optional logistics claims domain
-	taxSvc             *tax.Service    // optional tax regime service
-	pricingSvc         pricing.Service // optional pricing engine
-	proximityCfg       ProximityConfig
-	allocator          Allocator
-	allocationRequired bool
-	locations          telemetry.LastLocationReader
-	returnPolicies     ReturnPolicyStore
-	doorstepShortfall  func(ctx context.Context, txn *spanner.ReadWriteTransaction, orderID, supplierID, driverID, currency string, expectedMinor, receivedMinor int64, occurredAt time.Time) error
+	seedSupplierID      string
+	supplierName        string
+	currency            string
+	retailerHub         *ws.Hub
+	supplierHub         *ws.Hub
+	driverHub           *ws.Hub
+	spannerClient       *spanner.Client
+	manifestStore       *manifest.Store
+	idem                idempotency.Store
+	shopGrace           time.Duration
+	log                 *slog.Logger
+	now                 func() time.Time
+	newID               func() string
+	jwtSecret           string
+	handoff             *handoff.Engine
+	gatewayPolicy       GatewayPolicyReader
+	dispatchPlanWarm    func(ctx context.Context, warehouseID string)
+	previewRateLimiter  RateLimiter
+	ofd                 FiscalProvider        // optional; nil → ProviderFromEnv()
+	fiscalNotifier      FiscalSuccessNotifier // optional; async SMS + Telegram QR receipt delivery
+	fiscalNotifyWG      sync.WaitGroup
+	claimsBridge        claimsBridge    // optional logistics claims domain
+	taxSvc              *tax.Service    // optional tax regime service
+	pricingSvc          pricing.Service // optional pricing engine
+	draftSoDCheck       func(ctx context.Context, in DraftSoDCheckInput) error
+	draftApprovalBridge DraftApprovalBridge
+	proximityCfg        ProximityConfig
+	allocator           Allocator
+	allocationRequired  bool
+	packRuleReader      PackRuleReader
+	shortageStockReader ShortageStockReader
+	locations           telemetry.LastLocationReader
+	returnPolicies      ReturnPolicyStore
+	doorstepShortfall   func(ctx context.Context, txn *spanner.ReadWriteTransaction, orderID, supplierID, driverID, currency string, expectedMinor, receivedMinor int64, occurredAt time.Time) error
+	creditTermsLookup   func(ctx context.Context, retailerID, supplierID string) (credit.ResolvedTerms, error)
+	perOrderFeeFn       func(ctx context.Context, supplierID string) (feeMinor int64, currency string, err error)
 
 	currencyPickerEnabled bool
 	currencyAllowlist     []string
+
+	mandateReader          MandateReader
+	usageMu                sync.Mutex
+	sellerDailyUsage       map[sellerUsageKey]SellerDailyUsage
+	recordedOrderUsage     map[string]orderUsageDelta
+	approvalRequests       map[string]ApprovalRequestDTO
+	approvalsByClientOrder map[string]string
+	approvedReplayResults  map[string]ApprovalDecisionResponse
+	ordersByIdemKey        map[string]Order
+	parentSagaStates       map[string]string
+	timeoutCfg             TimeoutConfig
+	approvalApproveMu      map[string]*sync.Mutex
+	lockOrderTracer        func(string)
 }
 
 // RouteReplanner handles continuous dynamic resequencing.
@@ -402,6 +449,17 @@ type Allocator interface {
 	AllocateOrder(ctx context.Context, req *allocation.AllocationRequest) (*allocation.AllocationResult, error)
 	AllocateOrderTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, req *allocation.AllocationRequest) (*allocation.AllocationResult, error)
 }
+
+// ShortageContext supplies live warehouse stock and same-brand substitution candidates.
+type ShortageContext struct {
+	AvailableBySKU   map[string]int64
+	CandidatesBySKU  map[string][]SubstituteCandidate
+	EnforceAllowlist bool
+}
+
+// ShortageStockReader loads live SKU availability and approved substitution candidates
+// inside an active Spanner ReadWriteTransaction (or in-memory test seam).
+type ShortageStockReader func(ctx context.Context, txn *spanner.ReadWriteTransaction, supplierID, warehouseID string, items []LineItem) (ShortageContext, error)
 
 // ServiceConfig is the constructor input.
 type ServiceConfig struct {
@@ -433,6 +491,7 @@ type ServiceConfig struct {
 	Allocator       Allocator
 	Locations       telemetry.LastLocationReader
 	ReturnPolicies  ReturnPolicyStore
+	MandateReader   MandateReader
 
 	// CurrencyPickerEnabled + CurrencyAllowlist gate CreateRequest.currency (theatre #13 Wave 2+).
 	CurrencyPickerEnabled bool
@@ -470,34 +529,43 @@ func NewService(c ServiceConfig) *Service {
 		seedID = strings.TrimSpace(c.SupplierID)
 	}
 	svc := &Service{
-		repo:                  c.Repo,
-		cache:                 c.Cache,
-		warehouse:             c.Warehouse,
-		promotions:            c.Promotions,
-		replanner:             c.Replanner,
-		commissionResolver:    c.CommissionResolver,
-		seedSupplierID:        seedID,
-		supplierName:          strings.TrimSpace(c.SupplierName),
-		currency:              c.Currency,
-		retailerHub:           c.RetailerHub,
-		supplierHub:           c.SupplierHub,
-		driverHub:             c.DriverHub,
-		spannerClient:         c.SpannerClient,
-		shopGrace:             grace,
-		log:                   c.Log,
-		now:                   c.Now,
-		newID:                 c.NewID,
-		jwtSecret:             c.JWTSecret,
-		handoff:               c.Handoff,
-		idem:                  c.Idem,
-		credit:                c.Credit,
-		previewRateLimiter:    newSimpleRateLimiter(100 * time.Millisecond),
-		allocator:             c.Allocator,
-		allocationRequired:    false,
-		locations:             c.Locations,
-		returnPolicies:        c.ReturnPolicies,
-		currencyPickerEnabled: c.CurrencyPickerEnabled,
-		currencyAllowlist:     allow,
+		repo:                   c.Repo,
+		cache:                  c.Cache,
+		warehouse:              c.Warehouse,
+		promotions:             c.Promotions,
+		replanner:              c.Replanner,
+		commissionResolver:     c.CommissionResolver,
+		seedSupplierID:         seedID,
+		supplierName:           strings.TrimSpace(c.SupplierName),
+		currency:               c.Currency,
+		retailerHub:            c.RetailerHub,
+		supplierHub:            c.SupplierHub,
+		driverHub:              c.DriverHub,
+		spannerClient:          c.SpannerClient,
+		shopGrace:              grace,
+		log:                    c.Log,
+		now:                    c.Now,
+		newID:                  c.NewID,
+		jwtSecret:              c.JWTSecret,
+		handoff:                c.Handoff,
+		idem:                   c.Idem,
+		credit:                 c.Credit,
+		previewRateLimiter:     newSimpleRateLimiter(100 * time.Millisecond),
+		allocator:              c.Allocator,
+		allocationRequired:     false,
+		locations:              c.Locations,
+		returnPolicies:         c.ReturnPolicies,
+		currencyPickerEnabled:  c.CurrencyPickerEnabled,
+		currencyAllowlist:      allow,
+		mandateReader:          c.MandateReader,
+		sellerDailyUsage:       make(map[sellerUsageKey]SellerDailyUsage),
+		recordedOrderUsage:     make(map[string]orderUsageDelta),
+		approvalRequests:       make(map[string]ApprovalRequestDTO),
+		approvalsByClientOrder: make(map[string]string),
+		approvedReplayResults:  make(map[string]ApprovalDecisionResponse),
+		ordersByIdemKey:        make(map[string]Order),
+		parentSagaStates:       make(map[string]string),
+		approvalApproveMu:      make(map[string]*sync.Mutex),
 	}
 	if svc.handoff == nil {
 		svc.handoff = handoff.FromEnv()
@@ -534,6 +602,13 @@ func (s *Service) SetLocationReader(r telemetry.LastLocationReader) {
 	}
 }
 
+// SetDraftSoDCheck wires runtime four-eyes SoD & violation recording for financial draft reviews.
+func (s *Service) SetDraftSoDCheck(fn func(ctx context.Context, in DraftSoDCheckInput) error) {
+	if s != nil {
+		s.draftSoDCheck = fn
+	}
+}
+
 // SetPaymentCapturer sets the capturer after construction.
 func (s *Service) SetPaymentCapturer(pc PaymentCapturer) {
 	s.paymentCapturer = pc
@@ -555,6 +630,39 @@ func (s *Service) SetARService(svc *ar.Service) {
 	s.ar = svc
 }
 
+// SetCreditTermsLookup wires Net terms and grace-period lookup for credit-leave AR invoices.
+func (s *Service) SetCreditTermsLookup(fn func(ctx context.Context, retailerID, supplierID string) (credit.ResolvedTerms, error)) {
+	s.creditTermsLookup = fn
+}
+
+func (s *Service) resolveARTerms(ctx context.Context, retailerID, supplierID string, leaveAt time.Time) (int64, int64, time.Time) {
+	termsDays := int64(30)
+	var graceDays int64
+	tzName := ""
+	if s.creditTermsLookup != nil {
+		if terms, err := s.creditTermsLookup(ctx, retailerID, supplierID); err == nil {
+			if terms.TermsDays > 0 {
+				termsDays = terms.TermsDays
+			}
+			if terms.GracePeriodDays >= 0 {
+				graceDays = terms.GracePeriodDays
+			}
+			tzName = terms.Timezone
+		}
+	} else if s.credit != nil {
+		if check, cerr := s.credit.CheckCreditPath(ctx, retailerID, supplierID, 0); cerr == nil && check.TermsDays > 0 {
+			termsDays = check.TermsDays
+		}
+	}
+	base := leaveAt
+	if tzName != "" {
+		if loc, err := time.LoadLocation(tzName); err == nil {
+			base = leaveAt.In(loc)
+		}
+	}
+	return termsDays, graceDays, base.AddDate(0, 0, int(termsDays)).UTC()
+}
+
 func creditReserveAtCreateEnabled() bool {
 	v := strings.ToLower(strings.TrimSpace(os.Getenv("CREDIT_RESERVE_AT_CREATE")))
 	return v == "1" || v == "true" || v == "yes" || v == "on"
@@ -563,6 +671,10 @@ func creditReserveAtCreateEnabled() bool {
 // SetTaxService wires the tax domain (optional).
 func (s *Service) SetTaxService(t *tax.Service) {
 	s.taxSvc = t
+}
+
+func (s *Service) SetTimeoutConfig(cfg TimeoutConfig) {
+	s.timeoutCfg = cfg
 }
 
 func (s *Service) SetAllocator(a Allocator) {
@@ -580,6 +692,16 @@ func (s *Service) SetGatewayPolicyReader(reader GatewayPolicyReader) {
 
 func (s *Service) SetAllocationRequired(req bool) {
 	s.allocationRequired = req
+}
+
+// SetPackRuleReader overrides Spanner Products lookup for pack validation (used in tests).
+func (s *Service) SetPackRuleReader(reader PackRuleReader) {
+	s.packRuleReader = reader
+}
+
+// SetShortageStockReader overrides live stock + candidate lookup during shortage evaluation (used in tests).
+func (s *Service) SetShortageStockReader(reader ShortageStockReader) {
+	s.shortageStockReader = reader
 }
 
 // GetOrder returns a single order payload snapshot by ID (used by claims and other domains).
@@ -663,27 +785,38 @@ type CreateRequest struct {
 	// Currency is optional ISO-4217. Honoured only when ORDER_CURRENCY_PICKER_ENABLED
 	// and value is on ORDER_CURRENCY_ALLOWLIST; otherwise operating currency is stamped.
 	Currency string `json:"currency,omitempty"`
+	// AutoConfirmOptIn controls whether unconfirmed future/auto orders auto-confirm at cutoff.
+	AutoConfirmOptIn bool `json:"auto_confirm_opt_in,omitempty"`
+	// PaymentMethod optionally specifies CREDIT | CASH | CARD for seller mandate checks.
+	PaymentMethod string `json:"payment_method,omitempty"`
+	// ClientOrderID optionally provides caller-assigned idempotency key stored in Orders.IdempotencyKey.
+	ClientOrderID string `json:"client_order_id,omitempty"`
 }
 
 // CreateResponse is what callers get back.
 type CreateResponse struct {
-	OrderID               string             `json:"order_id"`
-	WarehouseID           string             `json:"warehouse_id,omitempty"`
-	Status                Status             `json:"status"`
-	Source                OrderSource        `json:"order_source"`
-	ConfirmationStatus    ConfirmationStatus `json:"confirmation_status"`
-	RequestedDeliveryDate string             `json:"requested_delivery_date,omitempty"`
-	DeliverBefore         string             `json:"deliver_before,omitempty"`
-	DeliveryPriority      string             `json:"delivery_priority,omitempty"`
-	DeliveryMode          string             `json:"delivery_mode,omitempty"`
-	TotalMinor            int64              `json:"total_minor"`
-	Currency              string             `json:"currency"`
-	CreatedAt             string             `json:"created_at"`
-	ReceivingWindowOpen   string             `json:"receiving_window_open,omitempty"`
-	ReceivingWindowClose  string             `json:"receiving_window_close,omitempty"`
-	BackorderOrderID      string             `json:"backorder_order_id,omitempty"`
-	BackorderedItemCount  int                `json:"backordered_item_count,omitempty"`
-	StockWarnings         []StockWarning     `json:"stock_warnings,omitempty"`
+	OrderID               string                     `json:"order_id"`
+	WarehouseID           string                     `json:"warehouse_id,omitempty"`
+	Status                Status                     `json:"status"`
+	Source                OrderSource                `json:"order_source"`
+	ConfirmationStatus    ConfirmationStatus         `json:"confirmation_status"`
+	AutoConfirmOptIn      bool                       `json:"auto_confirm_opt_in"`
+	HoldReason            string                     `json:"hold_reason,omitempty"`
+	RequestedDeliveryDate string                     `json:"requested_delivery_date,omitempty"`
+	DeliverBefore         string                     `json:"deliver_before,omitempty"`
+	DeliveryPriority      string                     `json:"delivery_priority,omitempty"`
+	DeliveryMode          string                     `json:"delivery_mode,omitempty"`
+	TotalMinor            int64                      `json:"total_minor"`
+	Currency              string                     `json:"currency"`
+	CreatedAt             string                     `json:"created_at"`
+	ReceivingWindowOpen   string                     `json:"receiving_window_open,omitempty"`
+	ReceivingWindowClose  string                     `json:"receiving_window_close,omitempty"`
+	BackorderOrderID      string                     `json:"backorder_order_id,omitempty"`
+	BackorderedItemCount  int                        `json:"backordered_item_count,omitempty"`
+	StockWarnings         []StockWarning             `json:"stock_warnings,omitempty"`
+	LineItems             []LineItem                 `json:"line_items,omitempty"`
+	Substitutions         []ShortageEvaluationResult `json:"substitutions,omitempty"`
+	CutLines              []ShortageEvaluationResult `json:"cut_lines,omitempty"`
 }
 
 // ConfirmAIOrderRequest confirms an AI-created future order and optionally
@@ -692,6 +825,7 @@ type ConfirmAIOrderRequest struct {
 	OrderID               string     `json:"order_id"`
 	LineItems             []LineItem `json:"line_items,omitempty"`
 	RequestedDeliveryDate string     `json:"requested_delivery_date,omitempty"`
+	AutoConfirmOptIn      *bool      `json:"auto_confirm_opt_in,omitempty"`
 }
 
 // RejectAIOrderRequest rejects an AI-created future order.
@@ -705,6 +839,7 @@ type EditPreorderRequest struct {
 	OrderID               string     `json:"order_id"`
 	LineItems             []LineItem `json:"line_items"`
 	RequestedDeliveryDate string     `json:"requested_delivery_date"`
+	AutoConfirmOptIn      *bool      `json:"auto_confirm_opt_in,omitempty"`
 }
 
 // ConfirmPreorderRequest confirms a draft manual preorder.
@@ -738,25 +873,29 @@ type ProposeDeliveryDateRequest struct {
 // RetailerOrderLifecycleResponse returns a durable order-side snapshot for AI
 // and preorder actions.
 type RetailerOrderLifecycleResponse struct {
-	OrderID                 string             `json:"order_id"`
-	Status                  Status             `json:"status"`
-	CustomerStage           CustomerStage      `json:"customer_stage,omitempty"`
-	CustomerProgressPercent int                `json:"customer_progress_percent,omitempty"`
-	Source                  OrderSource        `json:"order_source"`
-	ConfirmationStatus      ConfirmationStatus `json:"confirmation_status"`
-	RequestedDeliveryDate   string             `json:"requested_delivery_date,omitempty"`
-	DeliverBefore           string             `json:"deliver_before,omitempty"`
-	DeliveryPriority        string             `json:"delivery_priority,omitempty"`
-	DeliveryMode            string             `json:"delivery_mode,omitempty"`
-	PreorderBadge           string             `json:"preorder_badge,omitempty"`
-	ProposedDeliveryDate    string             `json:"proposed_delivery_date,omitempty"`
-	DeliveryProposalReason  string             `json:"delivery_proposal_reason,omitempty"`
-	AutoConfirmAt           string             `json:"auto_confirm_at,omitempty"`
-	TotalMinor              int64              `json:"total_minor"`
-	Currency                string             `json:"currency"`
-	Version                 int64              `json:"version"`
-	UpdatedAt               string             `json:"updated_at"`
-	Created                 bool               `json:"created,omitempty"`
+	OrderID                 string                     `json:"order_id"`
+	Status                  Status                     `json:"status"`
+	CustomerStage           CustomerStage              `json:"customer_stage,omitempty"`
+	CustomerProgressPercent int                        `json:"customer_progress_percent,omitempty"`
+	Source                  OrderSource                `json:"order_source"`
+	ConfirmationStatus      ConfirmationStatus         `json:"confirmation_status"`
+	AutoConfirmOptIn        bool                       `json:"auto_confirm_opt_in"`
+	HoldReason              string                     `json:"hold_reason,omitempty"`
+	RequestedDeliveryDate   string                     `json:"requested_delivery_date,omitempty"`
+	DeliverBefore           string                     `json:"deliver_before,omitempty"`
+	DeliveryPriority        string                     `json:"delivery_priority,omitempty"`
+	DeliveryMode            string                     `json:"delivery_mode,omitempty"`
+	PreorderBadge           string                     `json:"preorder_badge,omitempty"`
+	ProposedDeliveryDate    string                     `json:"proposed_delivery_date,omitempty"`
+	DeliveryProposalReason  string                     `json:"delivery_proposal_reason,omitempty"`
+	AutoConfirmAt           string                     `json:"auto_confirm_at,omitempty"`
+	TotalMinor              int64                      `json:"total_minor"`
+	Currency                string                     `json:"currency"`
+	Version                 int64                      `json:"version"`
+	UpdatedAt               string                     `json:"updated_at"`
+	Created                 bool                       `json:"created,omitempty"`
+	Substitutions           []ShortageEvaluationResult `json:"substitutions,omitempty"`
+	CutLines                []ShortageEvaluationResult `json:"cut_lines,omitempty"`
 }
 
 // RetailerAIPrediction projects a pending AI preorder for retailer review.
@@ -765,6 +904,7 @@ type RetailerAIPrediction struct {
 	SupplierID            string             `json:"supplier_id,omitempty"`
 	Source                OrderSource        `json:"order_source"`
 	ConfirmationStatus    ConfirmationStatus `json:"confirmation_status"`
+	AutoConfirmOptIn      bool               `json:"auto_confirm_opt_in"`
 	RequestedDeliveryDate string             `json:"requested_delivery_date,omitempty"`
 	AutoConfirmAt         string             `json:"auto_confirm_at,omitempty"`
 	TotalMinor            int64              `json:"total_minor"`
@@ -1015,7 +1155,7 @@ func (r UpdateStatusRequest) Validate() (Status, error) {
 		return "", errors.New("status required")
 	}
 	switch next {
-	case StatusPending, StatusLoaded, StatusInTransit, StatusArrived, StatusAwaitingPayment, StatusPendingCashCollection, StatusCompleted, StatusCancelled:
+	case StatusPending, StatusLoaded, StatusInTransit, StatusArrived, StatusAwaitingPayment, StatusPendingCashCollection, StatusCompleted, StatusCancelled, StatusCancelRequested:
 		return next, nil
 	default:
 		return "", fmt.Errorf("unsupported status: %s", next)
@@ -1037,6 +1177,30 @@ func (r AssignOrderRequest) Validate() (AssignOrderRequest, error) {
 		return AssignOrderRequest{}, errors.New("route_id required")
 	}
 	return normalized, nil
+}
+
+func applyLineItemPreferences(dst *LineItem, src LineItem) {
+	if dst == nil {
+		return
+	}
+	dst.UnitVolumeVU = src.UnitVolumeVU
+	dst.PromotionID = strings.TrimSpace(src.PromotionID)
+	dst.VatRateBps = src.VatRateBps
+	dst.TaxCategory = strings.TrimSpace(src.TaxCategory)
+	dst.BrandID = strings.TrimSpace(src.BrandID)
+	dst.MustHave = src.MustHave
+	dst.AllowSubstitutes = src.AllowSubstitutes
+	if len(src.AllowedSubstituteSKUs) > 0 {
+		allow := make([]string, 0, len(src.AllowedSubstituteSKUs))
+		for _, cand := range src.AllowedSubstituteSKUs {
+			if trimmed := strings.TrimSpace(cand); trimmed != "" {
+				allow = append(allow, trimmed)
+			}
+		}
+		if len(allow) > 0 {
+			dst.AllowedSubstituteSKUs = allow
+		}
+	}
 }
 
 func (s *Service) normalizeAndQuoteLineItems(ctx context.Context, items []LineItem, reqDate *time.Time) ([]LineItem, int64, error) {
@@ -1066,6 +1230,7 @@ func (s *Service) normalizeAndQuoteLineItems(ctx context.Context, items []LineIt
 				IsHazardous:   li.IsHazardous,
 				IsPerishable:  li.IsPerishable,
 			}
+			applyLineItemPreferences(&item, li)
 			total += item.UnitPrice * item.Quantity
 			normalized = append(normalized, item)
 		}
@@ -1157,6 +1322,7 @@ func (s *Service) normalizeAndQuoteLineItems(ctx context.Context, items []LineIt
 			IsHazardous:   snap.isHazardous,
 			IsPerishable:  snap.isPerishable,
 		}
+		applyLineItemPreferences(&item, li)
 
 		total += item.UnitPrice * item.Quantity
 		normalized = append(normalized, item)
@@ -1196,6 +1362,8 @@ func lifecycleResponse(orderRecord Order, version int64, created bool) RetailerO
 		CustomerProgressPercent: CustomerStageProgressPercent(stage),
 		Source:                  orderRecord.Source,
 		ConfirmationStatus:      orderRecord.ConfirmationStatus,
+		AutoConfirmOptIn:        orderRecord.AutoConfirmOptIn,
+		HoldReason:              orderRecord.HoldReason,
 		RequestedDeliveryDate:   formatOptionalRFC3339(orderRecord.RequestedDeliveryDate),
 		DeliverBefore:           formatOptionalRFC3339(orderRecord.DeliverBefore),
 		DeliveryPriority:        string(orderRecord.DeliveryPriority),
@@ -1209,6 +1377,8 @@ func lifecycleResponse(orderRecord Order, version int64, created bool) RetailerO
 		Version:                 version,
 		UpdatedAt:               orderRecord.UpdatedAt.Format(time.RFC3339Nano),
 		Created:                 created,
+		Substitutions:           append([]ShortageEvaluationResult(nil), orderRecord.Substitutions...),
+		CutLines:                append([]ShortageEvaluationResult(nil), orderRecord.CutLines...),
 	}
 }
 
@@ -1218,6 +1388,7 @@ func retailerPrediction(orderRecord Order) RetailerAIPrediction {
 		SupplierID:            orderRecord.SupplierID,
 		Source:                orderRecord.Source,
 		ConfirmationStatus:    orderRecord.ConfirmationStatus,
+		AutoConfirmOptIn:      orderRecord.AutoConfirmOptIn,
 		RequestedDeliveryDate: formatOptionalRFC3339(orderRecord.RequestedDeliveryDate),
 		AutoConfirmAt:         formatOptionalRFC3339(orderRecord.AutoConfirmAt),
 		TotalMinor:            orderRecord.TotalMinor,

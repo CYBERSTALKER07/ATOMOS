@@ -3,17 +3,30 @@
 import { Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
+function safeReturnToPath(raw: string | null): string {
+  if (!raw) return "/overview";
+  try {
+    const decoded = decodeURIComponent(raw).trim();
+    if (!decoded.startsWith("/") || decoded.startsWith("//") || decoded.startsWith("/\\")) {
+      return "/overview";
+    }
+    const check = new URL(decoded, "https://pegasusx.local");
+    if (check.origin !== "https://pegasusx.local") {
+      return "/overview";
+    }
+    return `${check.pathname}${check.search}${check.hash}` || "/overview";
+  } catch {
+    return "/overview";
+  }
+}
+
 function RootRedirector() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
   useEffect(() => {
-    const returnTo = searchParams.get("return_to");
-    if (returnTo) {
-      router.replace(decodeURIComponent(returnTo));
-    } else {
-      router.replace("/overview");
-    }
+    const returnTo = safeReturnToPath(searchParams.get("return_to"));
+    router.replace(returnTo);
   }, [router, searchParams]);
 
   return (

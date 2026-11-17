@@ -1372,7 +1372,8 @@ async function executeP2P() {
     });
     let data = await resp.json();
     if (!resp.ok) {
-      resEl.innerHTML = '<span style="color:#EF4444">&#x274C; Xatolik: ' + (data.error || 'Muvaffaqiyatsiz') + '</span>';
+      resEl.style.color = '#EF4444';
+      resEl.textContent = '\u274C Xatolik: ' + String(data.error || 'Muvaffaqiyatsiz');
       return;
     }
 
@@ -1388,12 +1389,15 @@ async function executeP2P() {
     });
     let confirmData = await confirmResp.json();
     if (confirmResp.ok) {
-      resEl.innerHTML = '<span style="color:#00C389">&#x2705; Muvaffaqiyatli o'tkazildi! RRN: ' + confirmData.rrn + '</span>';
+      resEl.style.color = '#00C389';
+      resEl.textContent = '\u2705 Muvaffaqiyatli o\'tkazildi! RRN: ' + String(confirmData.rrn || '');
     } else {
-      resEl.innerHTML = '<span style="color:#EF4444">&#x274C; Tasdiqlash xatoligi: ' + confirmData.error + '</span>';
+      resEl.style.color = '#EF4444';
+      resEl.textContent = '\u274C Tasdiqlash xatoligi: ' + String(confirmData.error || '');
     }
   } catch(e) {
-    resEl.innerHTML = '<span style="color:#EF4444">&#x274C; Tarmoq xatoligi: ' + e + '</span>';
+    resEl.style.color = '#EF4444';
+    resEl.textContent = '\u274C Tarmoq xatoligi: ' + String(e);
   }
 }
 </script>

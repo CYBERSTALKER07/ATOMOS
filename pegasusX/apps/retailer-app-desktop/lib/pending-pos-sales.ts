@@ -10,6 +10,7 @@ import {
   removePendingPosSale as cacheRemove,
   saveParkedPosCart,
   updatePendingPosSale as cacheUpdate,
+  SYNCING_LEASE_MS,
   type ParkedPosCart,
   type PendingPosSale,
 } from "@pegasusx/desktop-cache";
@@ -22,6 +23,7 @@ export {
   countPendingForSession,
   loadParkedPosCart,
   saveParkedPosCart,
+  SYNCING_LEASE_MS,
 };
 
 export async function listPendingPosSales(): Promise<PendingPosSale[]> {
@@ -58,7 +60,11 @@ export async function flushPendingPosSales(): Promise<{
   try {
     const queue = await listPendingPosSales();
     const active = queue.filter(
-      (q) => q.status === "PENDING" || q.status === "FAILED",
+      (q) =>
+        q.status === "PENDING" ||
+        q.status === "FAILED" ||
+        (q.status === "SYNCING" &&
+          (!q.syncingStartedAt || Date.now() - q.syncingStartedAt > SYNCING_LEASE_MS)),
     );
     if (active.length === 0) {
       return { flushed: 0, failed: 0, remaining: 0 };
@@ -68,7 +74,11 @@ export async function flushPendingPosSales(): Promise<{
     let failed = 0;
 
     for (const entry of active) {
-      await cacheUpdate(entry.id, { status: "SYNCING", lastError: undefined });
+      await cacheUpdate(entry.id, {
+        status: "SYNCING",
+        lastError: undefined,
+        syncingStartedAt: Date.now(),
+      });
       try {
         const res = await apiFetch("/v1/retailer/pos/sales", {
           method: "POST",
@@ -78,19 +88,51 @@ export async function flushPendingPosSales(): Promise<{
           },
           body: entry.payloadJson,
         });
+
+        const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+
         if (res.status === 409) {
-          // Idempotency conflict means the sale was already accepted by the server.
-          await cacheRemove(entry.id);
-          flushed += 1;
+          const isIdempotent = Boolean(
+            body.sale_id ||
+              (typeof body.code === "string" &&
+                /idempot|duplicate|already_exists|already_processed/i.test(body.code)) ||
+              (typeof body.error === "string" &&
+                /idempot|duplicate|already_exists|already_processed/i.test(body.error)) ||
+              (typeof body.message === "string" &&
+                /idempot|duplicate|already_exists|already_processed/i.test(body.message)),
+          );
+
+          if (isIdempotent) {
+            // Idempotency conflict means the sale was already accepted by the server.
+            await cacheRemove(entry.id);
+            flushed += 1;
+            continue;
+          }
+
+          // Business conflict (e.g. session_closed, insufficient_stock, version_conflict)
+          const conflictCode =
+            (typeof body.error === "string" && body.error) ||
+            (typeof body.code === "string" && body.code) ||
+            (typeof body.message === "string" && body.message) ||
+            "conflict_409";
+
+          await cacheUpdate(entry.id, {
+            status: "FAILED",
+            retryCount: entry.retryCount + 1,
+            lastError: conflictCode,
+          });
+          failed += 1;
           continue;
         }
-        const body = await res.json().catch(() => ({}));
+
         if (!res.ok) {
           const code =
-            typeof (body as { error?: string }).error === "string"
-              ? (body as { error: string }).error
+            typeof body.error === "string"
+              ? body.error
+              : typeof body.code === "string"
+              ? body.code
               : `sale_failed_${res.status}`;
-          // Permanent session closed — keep FAILED, don't spin forever
+          // Permanent session closed or other error — keep FAILED, don't spin forever
           await cacheUpdate(entry.id, {
             status: "FAILED",
             retryCount: entry.retryCount + 1,
@@ -99,6 +141,7 @@ export async function flushPendingPosSales(): Promise<{
           failed += 1;
           continue;
         }
+
         const sale = body as { sale_id?: string; receipt_number?: string };
         await cacheUpdate(entry.id, {
           status: "SYNCED",

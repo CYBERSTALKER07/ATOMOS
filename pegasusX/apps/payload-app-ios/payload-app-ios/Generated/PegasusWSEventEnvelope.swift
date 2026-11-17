@@ -79,7 +79,9 @@ struct PegasusWSEventEnvelope: Codable {
     let pendingConfirmationUnits, projectedUnits: Int?
     let requestedBy: String?
     let requestedUnits: Int?
-    let state, transferID, transferMode: String?
+    let state, transferID, transferMode, decisionReason: String?
+    let normalizedInn, requesterName, requesterPhone, roleSought: String?
+    let targetTenantID, targetTenantType: String?
     let attemptCount, depth: Int?
     let escalated: Bool?
     let fromManifestID, fromVehicleID, manifestDomain: String?
@@ -87,6 +89,12 @@ struct PegasusWSEventEnvelope: Codable {
     let toManifestID, toVehicleID: String?
     let totalVolumeVu: TotalVolumeVu?
     let transferCount: Int?
+    let bundleID, domain: String?
+    let importedCount, processedRows: Int?
+    let projectID: String?
+    let quarantineCount: Int?
+    let reportID: String?
+    let totalRows: Int?
     let driverIDS, manifestIDS: [String]?
     let sharedRouteID, splitGroupID: String?
     let truckCount: Int?
@@ -94,9 +102,8 @@ struct PegasusWSEventEnvelope: Codable {
     let gcsPaths: [String]?
     let notes: String?
     let quantity: Int?
-    let reportID, reporterID, reporterRole, sku: String?
-    let deliveredAt, disputeNote, proofPhotoURL, proofSignature: String?
-    let reasonCode: String?
+    let reporterID, reporterRole, sku, deliveredAt: String?
+    let disputeNote, proofPhotoURL, proofSignature, reasonCode: String?
     let cardMinor, cashMinor: Int?
     let executionAction, executionMode, gateway, policySource: String?
     let providerReference, transactionID, batchID: String?
@@ -121,6 +128,97 @@ struct PegasusWSEventEnvelope: Codable {
     let promiseType: String?
     let slaHours: Int?
     let fromWarehouse, toWarehouse, unavailableNote, unavailableReason: String?
+    let assignedTo, caseID, category, detectedAt: String?
+    let exposureMinor: Int?
+    let objectID, objectType, occurredAt, playbookAction: String?
+    let resolvedAt, resolvedBy, ruleCode: String?
+    let scoreBps: Int?
+    let tenantID, approverID: String?
+    let breakGlass: Bool?
+    let comment, decisionID, delegatedFrom: String?
+    let mfaVerified: Bool?
+    let stepIndex: Int?
+    let actorType, expiresAt, payloadHash, policyID: String?
+    let policyVersion, requiredApprovers: Int?
+    let anchoredAt, anchoredBy, dayBucket: String?
+    let eventCount: Int?
+    let headEventID, rootHash, signerKeyID, wormURI: String?
+    let affectedLotIDS: [String]?
+    let complianceRateBps, excursionCount, maxMilliC, minMilliC: Int?
+    let openBreaches: Int?
+    let readingID, sensorID: String?
+    let tempMilliC, totalReadings: Int?
+    let accountLabel, approvalID, completedAt, direction: String?
+    let externalRef: String?
+    let recordsProcessed: Int?
+    let runID, streamName, triggeredBy: String?
+    let balanceDeltaCount, balanceDeltaMinor, mismatchCount, missingExternalCount: Int?
+    let missingInternalCount, stockDeltaCount: Int?
+    let summaryJSON, startedAt: String?
+    let prepayOnlyLocked: Bool?
+    let score, newLimitMinor, previousLimitMinor: Int?
+    let reasonCodesJSON, computedAt: String?
+    let consentVerified: Bool?
+    let featuresHash, modelVersion: String?
+    let pdBps: Int?
+    let scope, scoreID, scorerSource: String?
+    let suggestedLimitMinor: Int?
+    let createdBy, creditJournalID, debitJournalID, fromEntityID: String?
+    let periodID, referenceID, referenceType, toEntityID: String?
+    let transferType, counterpartyTin, entityID, esfID: String?
+    let pegasusWSEventEnvelopeOperator, operatorRef, poID: String?
+    let vatMinor, vatRateBps: Int?
+    let createdAt, format, fromDate, packID: String?
+    let packType: String?
+    let rowCount: Int?
+    let sha256Hex, toDate, challengerModel: String?
+    let challengerWapeBps: Int?
+    let championModel: String?
+    let championWapeBps, horizonDays, locationCount: Int?
+    let locationID: String?
+    let skuCount, wapeImprovementBps: Int?
+    let winnerModel, baseCurrency, journalEntryID, ratesJSON: String?
+    let roundingDeltaMinor, unrealizedGainLossMinor: Int?
+    let entryID, hash, reversesEntryID, sourceID: String?
+    let sourceType: String?
+    let totalCreditMinor, totalDebitMinor: Int?
+    let grantedBy, roleName, assignedBy: String?
+    let active: Bool?
+    let displayName, externalID, resourceID, resourceType: String?
+    let rolesSynced: [String]?
+    let userName: String?
+    let daysRemaining, daysToExpiry: Int?
+    let expiryDate, layerID: String?
+    let qtyRemaining, unitCostMinor, valueAtRiskMinor: Int?
+    let glEntryID, movementID: String?
+    let totalCostMinor: Int?
+    let releasedLots: [JSONAny]?
+    let actionMode, approvalRequestID: String?
+    let confidenceBps, qty: Int?
+    let sourceWarehouseID, targetWarehouseID, cellID, changeKind: String?
+    let securityMarkings: [String]?
+    let sourceEventID, sourceEventType, updatedAt, esfDocID: String?
+    let lineCount: Int?
+    let matchStatus, receiptID: String?
+    let subtotalMinor, totalReceivedMinor, varianceMinor: Int?
+    let varianceReason, vendorID, vendorInvoiceID, snapshotHash: String?
+    let snapshotURI, timezone, agentID: String?
+    let expectedImpactMinor: Int?
+    let proposalType, roiEventID, targetObjectID, targetObjectType: String?
+    let autonomyLevel: String?
+    let estimatedImpactMinor, rollbackRateBps, soakDays, soakExecutedCount: Int?
+    let actualMinor: Int?
+    let breakID, controlTowerExceptionID: String?
+    let deltaMinor: Int?
+    let dimension, ownerID, slaDueAt: String?
+    let breakCount: Int?
+    let mode, eventID, evidenceRefID, evidenceRefType: String?
+    let holdoutControl, isEstimate: Bool?
+    let methodology: String?
+    let savingsMinor: Int?
+    let makerID, routePath, violationID: String?
+    let creditExposureDeltaMinor, dispatchCostDeltaMinor, forecastDeltaMinor, netPnlDeltaMinor: Int?
+    let replenishmentCostMinor: Int?
 
     enum CodingKeys: String, CodingKey {
         case aggregateID = "aggregate_id"
@@ -272,6 +370,13 @@ struct PegasusWSEventEnvelope: Codable {
         case state
         case transferID = "transfer_id"
         case transferMode = "transfer_mode"
+        case decisionReason = "decision_reason"
+        case normalizedInn = "normalized_inn"
+        case requesterName = "requester_name"
+        case requesterPhone = "requester_phone"
+        case roleSought = "role_sought"
+        case targetTenantID = "target_tenant_id"
+        case targetTenantType = "target_tenant_type"
         case attemptCount = "attempt_count"
         case depth, escalated
         case fromManifestID = "from_manifest_id"
@@ -282,6 +387,14 @@ struct PegasusWSEventEnvelope: Codable {
         case toVehicleID = "to_vehicle_id"
         case totalVolumeVu = "total_volume_vu"
         case transferCount = "transfer_count"
+        case bundleID = "bundle_id"
+        case domain
+        case importedCount = "imported_count"
+        case processedRows = "processed_rows"
+        case projectID = "project_id"
+        case quarantineCount = "quarantine_count"
+        case reportID = "report_id"
+        case totalRows = "total_rows"
         case driverIDS = "driver_ids"
         case manifestIDS = "manifest_ids"
         case sharedRouteID = "shared_route_id"
@@ -290,7 +403,6 @@ struct PegasusWSEventEnvelope: Codable {
         case conditionType = "condition_type"
         case gcsPaths = "gcs_paths"
         case notes, quantity
-        case reportID = "report_id"
         case reporterID = "reporter_id"
         case reporterRole = "reporter_role"
         case sku
@@ -347,6 +459,210 @@ struct PegasusWSEventEnvelope: Codable {
         case toWarehouse = "to_warehouse"
         case unavailableNote = "unavailable_note"
         case unavailableReason = "unavailable_reason"
+        case assignedTo = "assigned_to"
+        case caseID = "case_id"
+        case category
+        case detectedAt = "detected_at"
+        case exposureMinor = "exposure_minor"
+        case objectID = "object_id"
+        case objectType = "object_type"
+        case occurredAt = "occurred_at"
+        case playbookAction = "playbook_action"
+        case resolvedAt = "resolved_at"
+        case resolvedBy = "resolved_by"
+        case ruleCode = "rule_code"
+        case scoreBps = "score_bps"
+        case tenantID = "tenant_id"
+        case approverID = "approver_id"
+        case breakGlass = "break_glass"
+        case comment
+        case decisionID = "decision_id"
+        case delegatedFrom = "delegated_from"
+        case mfaVerified = "mfa_verified"
+        case stepIndex = "step_index"
+        case actorType = "actor_type"
+        case expiresAt = "expires_at"
+        case payloadHash = "payload_hash"
+        case policyID = "policy_id"
+        case policyVersion = "policy_version"
+        case requiredApprovers = "required_approvers"
+        case anchoredAt = "anchored_at"
+        case anchoredBy = "anchored_by"
+        case dayBucket = "day_bucket"
+        case eventCount = "event_count"
+        case headEventID = "head_event_id"
+        case rootHash = "root_hash"
+        case signerKeyID = "signer_key_id"
+        case wormURI = "worm_uri"
+        case affectedLotIDS = "affected_lot_ids"
+        case complianceRateBps = "compliance_rate_bps"
+        case excursionCount = "excursion_count"
+        case maxMilliC = "max_milli_c"
+        case minMilliC = "min_milli_c"
+        case openBreaches = "open_breaches"
+        case readingID = "reading_id"
+        case sensorID = "sensor_id"
+        case tempMilliC = "temp_milli_c"
+        case totalReadings = "total_readings"
+        case accountLabel = "account_label"
+        case approvalID = "approval_id"
+        case completedAt = "completed_at"
+        case direction
+        case externalRef = "external_ref"
+        case recordsProcessed = "records_processed"
+        case runID = "run_id"
+        case streamName = "stream_name"
+        case triggeredBy = "triggered_by"
+        case balanceDeltaCount = "balance_delta_count"
+        case balanceDeltaMinor = "balance_delta_minor"
+        case mismatchCount = "mismatch_count"
+        case missingExternalCount = "missing_external_count"
+        case missingInternalCount = "missing_internal_count"
+        case stockDeltaCount = "stock_delta_count"
+        case summaryJSON = "summary_json"
+        case startedAt = "started_at"
+        case prepayOnlyLocked = "prepay_only_locked"
+        case score
+        case newLimitMinor = "new_limit_minor"
+        case previousLimitMinor = "previous_limit_minor"
+        case reasonCodesJSON = "reason_codes_json"
+        case computedAt = "computed_at"
+        case consentVerified = "consent_verified"
+        case featuresHash = "features_hash"
+        case modelVersion = "model_version"
+        case pdBps = "pd_bps"
+        case scope
+        case scoreID = "score_id"
+        case scorerSource = "scorer_source"
+        case suggestedLimitMinor = "suggested_limit_minor"
+        case createdBy = "created_by"
+        case creditJournalID = "credit_journal_id"
+        case debitJournalID = "debit_journal_id"
+        case fromEntityID = "from_entity_id"
+        case periodID = "period_id"
+        case referenceID = "reference_id"
+        case referenceType = "reference_type"
+        case toEntityID = "to_entity_id"
+        case transferType = "transfer_type"
+        case counterpartyTin = "counterparty_tin"
+        case entityID = "entity_id"
+        case esfID = "esf_id"
+        case pegasusWSEventEnvelopeOperator = "operator"
+        case operatorRef = "operator_ref"
+        case poID = "po_id"
+        case vatMinor = "vat_minor"
+        case vatRateBps = "vat_rate_bps"
+        case createdAt = "created_at"
+        case format
+        case fromDate = "from_date"
+        case packID = "pack_id"
+        case packType = "pack_type"
+        case rowCount = "row_count"
+        case sha256Hex = "sha256_hex"
+        case toDate = "to_date"
+        case challengerModel = "challenger_model"
+        case challengerWapeBps = "challenger_wape_bps"
+        case championModel = "champion_model"
+        case championWapeBps = "champion_wape_bps"
+        case horizonDays = "horizon_days"
+        case locationCount = "location_count"
+        case locationID = "location_id"
+        case skuCount = "sku_count"
+        case wapeImprovementBps = "wape_improvement_bps"
+        case winnerModel = "winner_model"
+        case baseCurrency = "base_currency"
+        case journalEntryID = "journal_entry_id"
+        case ratesJSON = "rates_json"
+        case roundingDeltaMinor = "rounding_delta_minor"
+        case unrealizedGainLossMinor = "unrealized_gain_loss_minor"
+        case entryID = "entry_id"
+        case hash
+        case reversesEntryID = "reverses_entry_id"
+        case sourceID = "source_id"
+        case sourceType = "source_type"
+        case totalCreditMinor = "total_credit_minor"
+        case totalDebitMinor = "total_debit_minor"
+        case grantedBy = "granted_by"
+        case roleName = "role_name"
+        case assignedBy = "assigned_by"
+        case active
+        case displayName = "display_name"
+        case externalID = "external_id"
+        case resourceID = "resource_id"
+        case resourceType = "resource_type"
+        case rolesSynced = "roles_synced"
+        case userName = "user_name"
+        case daysRemaining = "days_remaining"
+        case daysToExpiry = "days_to_expiry"
+        case expiryDate = "expiry_date"
+        case layerID = "layer_id"
+        case qtyRemaining = "qty_remaining"
+        case unitCostMinor = "unit_cost_minor"
+        case valueAtRiskMinor = "value_at_risk_minor"
+        case glEntryID = "gl_entry_id"
+        case movementID = "movement_id"
+        case totalCostMinor = "total_cost_minor"
+        case releasedLots = "released_lots"
+        case actionMode = "action_mode"
+        case approvalRequestID = "approval_request_id"
+        case confidenceBps = "confidence_bps"
+        case qty
+        case sourceWarehouseID = "source_warehouse_id"
+        case targetWarehouseID = "target_warehouse_id"
+        case cellID = "cell_id"
+        case changeKind = "change_kind"
+        case securityMarkings = "security_markings"
+        case sourceEventID = "source_event_id"
+        case sourceEventType = "source_event_type"
+        case updatedAt = "updated_at"
+        case esfDocID = "esf_doc_id"
+        case lineCount = "line_count"
+        case matchStatus = "match_status"
+        case receiptID = "receipt_id"
+        case subtotalMinor = "subtotal_minor"
+        case totalReceivedMinor = "total_received_minor"
+        case varianceMinor = "variance_minor"
+        case varianceReason = "variance_reason"
+        case vendorID = "vendor_id"
+        case vendorInvoiceID = "vendor_invoice_id"
+        case snapshotHash = "snapshot_hash"
+        case snapshotURI = "snapshot_uri"
+        case timezone
+        case agentID = "agent_id"
+        case expectedImpactMinor = "expected_impact_minor"
+        case proposalType = "proposal_type"
+        case roiEventID = "roi_event_id"
+        case targetObjectID = "target_object_id"
+        case targetObjectType = "target_object_type"
+        case autonomyLevel = "autonomy_level"
+        case estimatedImpactMinor = "estimated_impact_minor"
+        case rollbackRateBps = "rollback_rate_bps"
+        case soakDays = "soak_days"
+        case soakExecutedCount = "soak_executed_count"
+        case actualMinor = "actual_minor"
+        case breakID = "break_id"
+        case controlTowerExceptionID = "control_tower_exception_id"
+        case deltaMinor = "delta_minor"
+        case dimension
+        case ownerID = "owner_id"
+        case slaDueAt = "sla_due_at"
+        case breakCount = "break_count"
+        case mode
+        case eventID = "event_id"
+        case evidenceRefID = "evidence_ref_id"
+        case evidenceRefType = "evidence_ref_type"
+        case holdoutControl = "holdout_control"
+        case isEstimate = "is_estimate"
+        case methodology
+        case savingsMinor = "savings_minor"
+        case makerID = "maker_id"
+        case routePath = "route_path"
+        case violationID = "violation_id"
+        case creditExposureDeltaMinor = "credit_exposure_delta_minor"
+        case dispatchCostDeltaMinor = "dispatch_cost_delta_minor"
+        case forecastDeltaMinor = "forecast_delta_minor"
+        case netPnlDeltaMinor = "net_pnl_delta_minor"
+        case replenishmentCostMinor = "replenishment_cost_minor"
     }
 }
 
@@ -520,6 +836,13 @@ extension PegasusWSEventEnvelope {
         state: String?? = nil,
         transferID: String?? = nil,
         transferMode: String?? = nil,
+        decisionReason: String?? = nil,
+        normalizedInn: String?? = nil,
+        requesterName: String?? = nil,
+        requesterPhone: String?? = nil,
+        roleSought: String?? = nil,
+        targetTenantID: String?? = nil,
+        targetTenantType: String?? = nil,
         attemptCount: Int?? = nil,
         depth: Int?? = nil,
         escalated: Bool?? = nil,
@@ -531,6 +854,14 @@ extension PegasusWSEventEnvelope {
         toVehicleID: String?? = nil,
         totalVolumeVu: TotalVolumeVu?? = nil,
         transferCount: Int?? = nil,
+        bundleID: String?? = nil,
+        domain: String?? = nil,
+        importedCount: Int?? = nil,
+        processedRows: Int?? = nil,
+        projectID: String?? = nil,
+        quarantineCount: Int?? = nil,
+        reportID: String?? = nil,
+        totalRows: Int?? = nil,
         driverIDS: [String]?? = nil,
         manifestIDS: [String]?? = nil,
         sharedRouteID: String?? = nil,
@@ -540,7 +871,6 @@ extension PegasusWSEventEnvelope {
         gcsPaths: [String]?? = nil,
         notes: String?? = nil,
         quantity: Int?? = nil,
-        reportID: String?? = nil,
         reporterID: String?? = nil,
         reporterRole: String?? = nil,
         sku: String?? = nil,
@@ -597,7 +927,211 @@ extension PegasusWSEventEnvelope {
         fromWarehouse: String?? = nil,
         toWarehouse: String?? = nil,
         unavailableNote: String?? = nil,
-        unavailableReason: String?? = nil
+        unavailableReason: String?? = nil,
+        assignedTo: String?? = nil,
+        caseID: String?? = nil,
+        category: String?? = nil,
+        detectedAt: String?? = nil,
+        exposureMinor: Int?? = nil,
+        objectID: String?? = nil,
+        objectType: String?? = nil,
+        occurredAt: String?? = nil,
+        playbookAction: String?? = nil,
+        resolvedAt: String?? = nil,
+        resolvedBy: String?? = nil,
+        ruleCode: String?? = nil,
+        scoreBps: Int?? = nil,
+        tenantID: String?? = nil,
+        approverID: String?? = nil,
+        breakGlass: Bool?? = nil,
+        comment: String?? = nil,
+        decisionID: String?? = nil,
+        delegatedFrom: String?? = nil,
+        mfaVerified: Bool?? = nil,
+        stepIndex: Int?? = nil,
+        actorType: String?? = nil,
+        expiresAt: String?? = nil,
+        payloadHash: String?? = nil,
+        policyID: String?? = nil,
+        policyVersion: Int?? = nil,
+        requiredApprovers: Int?? = nil,
+        anchoredAt: String?? = nil,
+        anchoredBy: String?? = nil,
+        dayBucket: String?? = nil,
+        eventCount: Int?? = nil,
+        headEventID: String?? = nil,
+        rootHash: String?? = nil,
+        signerKeyID: String?? = nil,
+        wormURI: String?? = nil,
+        affectedLotIDS: [String]?? = nil,
+        complianceRateBps: Int?? = nil,
+        excursionCount: Int?? = nil,
+        maxMilliC: Int?? = nil,
+        minMilliC: Int?? = nil,
+        openBreaches: Int?? = nil,
+        readingID: String?? = nil,
+        sensorID: String?? = nil,
+        tempMilliC: Int?? = nil,
+        totalReadings: Int?? = nil,
+        accountLabel: String?? = nil,
+        approvalID: String?? = nil,
+        completedAt: String?? = nil,
+        direction: String?? = nil,
+        externalRef: String?? = nil,
+        recordsProcessed: Int?? = nil,
+        runID: String?? = nil,
+        streamName: String?? = nil,
+        triggeredBy: String?? = nil,
+        balanceDeltaCount: Int?? = nil,
+        balanceDeltaMinor: Int?? = nil,
+        mismatchCount: Int?? = nil,
+        missingExternalCount: Int?? = nil,
+        missingInternalCount: Int?? = nil,
+        stockDeltaCount: Int?? = nil,
+        summaryJSON: String?? = nil,
+        startedAt: String?? = nil,
+        prepayOnlyLocked: Bool?? = nil,
+        score: Int?? = nil,
+        newLimitMinor: Int?? = nil,
+        previousLimitMinor: Int?? = nil,
+        reasonCodesJSON: String?? = nil,
+        computedAt: String?? = nil,
+        consentVerified: Bool?? = nil,
+        featuresHash: String?? = nil,
+        modelVersion: String?? = nil,
+        pdBps: Int?? = nil,
+        scope: String?? = nil,
+        scoreID: String?? = nil,
+        scorerSource: String?? = nil,
+        suggestedLimitMinor: Int?? = nil,
+        createdBy: String?? = nil,
+        creditJournalID: String?? = nil,
+        debitJournalID: String?? = nil,
+        fromEntityID: String?? = nil,
+        periodID: String?? = nil,
+        referenceID: String?? = nil,
+        referenceType: String?? = nil,
+        toEntityID: String?? = nil,
+        transferType: String?? = nil,
+        counterpartyTin: String?? = nil,
+        entityID: String?? = nil,
+        esfID: String?? = nil,
+        pegasusWSEventEnvelopeOperator: String?? = nil,
+        operatorRef: String?? = nil,
+        poID: String?? = nil,
+        vatMinor: Int?? = nil,
+        vatRateBps: Int?? = nil,
+        createdAt: String?? = nil,
+        format: String?? = nil,
+        fromDate: String?? = nil,
+        packID: String?? = nil,
+        packType: String?? = nil,
+        rowCount: Int?? = nil,
+        sha256Hex: String?? = nil,
+        toDate: String?? = nil,
+        challengerModel: String?? = nil,
+        challengerWapeBps: Int?? = nil,
+        championModel: String?? = nil,
+        championWapeBps: Int?? = nil,
+        horizonDays: Int?? = nil,
+        locationCount: Int?? = nil,
+        locationID: String?? = nil,
+        skuCount: Int?? = nil,
+        wapeImprovementBps: Int?? = nil,
+        winnerModel: String?? = nil,
+        baseCurrency: String?? = nil,
+        journalEntryID: String?? = nil,
+        ratesJSON: String?? = nil,
+        roundingDeltaMinor: Int?? = nil,
+        unrealizedGainLossMinor: Int?? = nil,
+        entryID: String?? = nil,
+        hash: String?? = nil,
+        reversesEntryID: String?? = nil,
+        sourceID: String?? = nil,
+        sourceType: String?? = nil,
+        totalCreditMinor: Int?? = nil,
+        totalDebitMinor: Int?? = nil,
+        grantedBy: String?? = nil,
+        roleName: String?? = nil,
+        assignedBy: String?? = nil,
+        active: Bool?? = nil,
+        displayName: String?? = nil,
+        externalID: String?? = nil,
+        resourceID: String?? = nil,
+        resourceType: String?? = nil,
+        rolesSynced: [String]?? = nil,
+        userName: String?? = nil,
+        daysRemaining: Int?? = nil,
+        daysToExpiry: Int?? = nil,
+        expiryDate: String?? = nil,
+        layerID: String?? = nil,
+        qtyRemaining: Int?? = nil,
+        unitCostMinor: Int?? = nil,
+        valueAtRiskMinor: Int?? = nil,
+        glEntryID: String?? = nil,
+        movementID: String?? = nil,
+        totalCostMinor: Int?? = nil,
+        releasedLots: [JSONAny]?? = nil,
+        actionMode: String?? = nil,
+        approvalRequestID: String?? = nil,
+        confidenceBps: Int?? = nil,
+        qty: Int?? = nil,
+        sourceWarehouseID: String?? = nil,
+        targetWarehouseID: String?? = nil,
+        cellID: String?? = nil,
+        changeKind: String?? = nil,
+        securityMarkings: [String]?? = nil,
+        sourceEventID: String?? = nil,
+        sourceEventType: String?? = nil,
+        updatedAt: String?? = nil,
+        esfDocID: String?? = nil,
+        lineCount: Int?? = nil,
+        matchStatus: String?? = nil,
+        receiptID: String?? = nil,
+        subtotalMinor: Int?? = nil,
+        totalReceivedMinor: Int?? = nil,
+        varianceMinor: Int?? = nil,
+        varianceReason: String?? = nil,
+        vendorID: String?? = nil,
+        vendorInvoiceID: String?? = nil,
+        snapshotHash: String?? = nil,
+        snapshotURI: String?? = nil,
+        timezone: String?? = nil,
+        agentID: String?? = nil,
+        expectedImpactMinor: Int?? = nil,
+        proposalType: String?? = nil,
+        roiEventID: String?? = nil,
+        targetObjectID: String?? = nil,
+        targetObjectType: String?? = nil,
+        autonomyLevel: String?? = nil,
+        estimatedImpactMinor: Int?? = nil,
+        rollbackRateBps: Int?? = nil,
+        soakDays: Int?? = nil,
+        soakExecutedCount: Int?? = nil,
+        actualMinor: Int?? = nil,
+        breakID: String?? = nil,
+        controlTowerExceptionID: String?? = nil,
+        deltaMinor: Int?? = nil,
+        dimension: String?? = nil,
+        ownerID: String?? = nil,
+        slaDueAt: String?? = nil,
+        breakCount: Int?? = nil,
+        mode: String?? = nil,
+        eventID: String?? = nil,
+        evidenceRefID: String?? = nil,
+        evidenceRefType: String?? = nil,
+        holdoutControl: Bool?? = nil,
+        isEstimate: Bool?? = nil,
+        methodology: String?? = nil,
+        savingsMinor: Int?? = nil,
+        makerID: String?? = nil,
+        routePath: String?? = nil,
+        violationID: String?? = nil,
+        creditExposureDeltaMinor: Int?? = nil,
+        dispatchCostDeltaMinor: Int?? = nil,
+        forecastDeltaMinor: Int?? = nil,
+        netPnlDeltaMinor: Int?? = nil,
+        replenishmentCostMinor: Int?? = nil
     ) -> PegasusWSEventEnvelope {
         return PegasusWSEventEnvelope(
             aggregateID: aggregateID ?? self.aggregateID,
@@ -751,6 +1285,13 @@ extension PegasusWSEventEnvelope {
             state: state ?? self.state,
             transferID: transferID ?? self.transferID,
             transferMode: transferMode ?? self.transferMode,
+            decisionReason: decisionReason ?? self.decisionReason,
+            normalizedInn: normalizedInn ?? self.normalizedInn,
+            requesterName: requesterName ?? self.requesterName,
+            requesterPhone: requesterPhone ?? self.requesterPhone,
+            roleSought: roleSought ?? self.roleSought,
+            targetTenantID: targetTenantID ?? self.targetTenantID,
+            targetTenantType: targetTenantType ?? self.targetTenantType,
             attemptCount: attemptCount ?? self.attemptCount,
             depth: depth ?? self.depth,
             escalated: escalated ?? self.escalated,
@@ -762,6 +1303,14 @@ extension PegasusWSEventEnvelope {
             toVehicleID: toVehicleID ?? self.toVehicleID,
             totalVolumeVu: totalVolumeVu ?? self.totalVolumeVu,
             transferCount: transferCount ?? self.transferCount,
+            bundleID: bundleID ?? self.bundleID,
+            domain: domain ?? self.domain,
+            importedCount: importedCount ?? self.importedCount,
+            processedRows: processedRows ?? self.processedRows,
+            projectID: projectID ?? self.projectID,
+            quarantineCount: quarantineCount ?? self.quarantineCount,
+            reportID: reportID ?? self.reportID,
+            totalRows: totalRows ?? self.totalRows,
             driverIDS: driverIDS ?? self.driverIDS,
             manifestIDS: manifestIDS ?? self.manifestIDS,
             sharedRouteID: sharedRouteID ?? self.sharedRouteID,
@@ -771,7 +1320,6 @@ extension PegasusWSEventEnvelope {
             gcsPaths: gcsPaths ?? self.gcsPaths,
             notes: notes ?? self.notes,
             quantity: quantity ?? self.quantity,
-            reportID: reportID ?? self.reportID,
             reporterID: reporterID ?? self.reporterID,
             reporterRole: reporterRole ?? self.reporterRole,
             sku: sku ?? self.sku,
@@ -828,7 +1376,211 @@ extension PegasusWSEventEnvelope {
             fromWarehouse: fromWarehouse ?? self.fromWarehouse,
             toWarehouse: toWarehouse ?? self.toWarehouse,
             unavailableNote: unavailableNote ?? self.unavailableNote,
-            unavailableReason: unavailableReason ?? self.unavailableReason
+            unavailableReason: unavailableReason ?? self.unavailableReason,
+            assignedTo: assignedTo ?? self.assignedTo,
+            caseID: caseID ?? self.caseID,
+            category: category ?? self.category,
+            detectedAt: detectedAt ?? self.detectedAt,
+            exposureMinor: exposureMinor ?? self.exposureMinor,
+            objectID: objectID ?? self.objectID,
+            objectType: objectType ?? self.objectType,
+            occurredAt: occurredAt ?? self.occurredAt,
+            playbookAction: playbookAction ?? self.playbookAction,
+            resolvedAt: resolvedAt ?? self.resolvedAt,
+            resolvedBy: resolvedBy ?? self.resolvedBy,
+            ruleCode: ruleCode ?? self.ruleCode,
+            scoreBps: scoreBps ?? self.scoreBps,
+            tenantID: tenantID ?? self.tenantID,
+            approverID: approverID ?? self.approverID,
+            breakGlass: breakGlass ?? self.breakGlass,
+            comment: comment ?? self.comment,
+            decisionID: decisionID ?? self.decisionID,
+            delegatedFrom: delegatedFrom ?? self.delegatedFrom,
+            mfaVerified: mfaVerified ?? self.mfaVerified,
+            stepIndex: stepIndex ?? self.stepIndex,
+            actorType: actorType ?? self.actorType,
+            expiresAt: expiresAt ?? self.expiresAt,
+            payloadHash: payloadHash ?? self.payloadHash,
+            policyID: policyID ?? self.policyID,
+            policyVersion: policyVersion ?? self.policyVersion,
+            requiredApprovers: requiredApprovers ?? self.requiredApprovers,
+            anchoredAt: anchoredAt ?? self.anchoredAt,
+            anchoredBy: anchoredBy ?? self.anchoredBy,
+            dayBucket: dayBucket ?? self.dayBucket,
+            eventCount: eventCount ?? self.eventCount,
+            headEventID: headEventID ?? self.headEventID,
+            rootHash: rootHash ?? self.rootHash,
+            signerKeyID: signerKeyID ?? self.signerKeyID,
+            wormURI: wormURI ?? self.wormURI,
+            affectedLotIDS: affectedLotIDS ?? self.affectedLotIDS,
+            complianceRateBps: complianceRateBps ?? self.complianceRateBps,
+            excursionCount: excursionCount ?? self.excursionCount,
+            maxMilliC: maxMilliC ?? self.maxMilliC,
+            minMilliC: minMilliC ?? self.minMilliC,
+            openBreaches: openBreaches ?? self.openBreaches,
+            readingID: readingID ?? self.readingID,
+            sensorID: sensorID ?? self.sensorID,
+            tempMilliC: tempMilliC ?? self.tempMilliC,
+            totalReadings: totalReadings ?? self.totalReadings,
+            accountLabel: accountLabel ?? self.accountLabel,
+            approvalID: approvalID ?? self.approvalID,
+            completedAt: completedAt ?? self.completedAt,
+            direction: direction ?? self.direction,
+            externalRef: externalRef ?? self.externalRef,
+            recordsProcessed: recordsProcessed ?? self.recordsProcessed,
+            runID: runID ?? self.runID,
+            streamName: streamName ?? self.streamName,
+            triggeredBy: triggeredBy ?? self.triggeredBy,
+            balanceDeltaCount: balanceDeltaCount ?? self.balanceDeltaCount,
+            balanceDeltaMinor: balanceDeltaMinor ?? self.balanceDeltaMinor,
+            mismatchCount: mismatchCount ?? self.mismatchCount,
+            missingExternalCount: missingExternalCount ?? self.missingExternalCount,
+            missingInternalCount: missingInternalCount ?? self.missingInternalCount,
+            stockDeltaCount: stockDeltaCount ?? self.stockDeltaCount,
+            summaryJSON: summaryJSON ?? self.summaryJSON,
+            startedAt: startedAt ?? self.startedAt,
+            prepayOnlyLocked: prepayOnlyLocked ?? self.prepayOnlyLocked,
+            score: score ?? self.score,
+            newLimitMinor: newLimitMinor ?? self.newLimitMinor,
+            previousLimitMinor: previousLimitMinor ?? self.previousLimitMinor,
+            reasonCodesJSON: reasonCodesJSON ?? self.reasonCodesJSON,
+            computedAt: computedAt ?? self.computedAt,
+            consentVerified: consentVerified ?? self.consentVerified,
+            featuresHash: featuresHash ?? self.featuresHash,
+            modelVersion: modelVersion ?? self.modelVersion,
+            pdBps: pdBps ?? self.pdBps,
+            scope: scope ?? self.scope,
+            scoreID: scoreID ?? self.scoreID,
+            scorerSource: scorerSource ?? self.scorerSource,
+            suggestedLimitMinor: suggestedLimitMinor ?? self.suggestedLimitMinor,
+            createdBy: createdBy ?? self.createdBy,
+            creditJournalID: creditJournalID ?? self.creditJournalID,
+            debitJournalID: debitJournalID ?? self.debitJournalID,
+            fromEntityID: fromEntityID ?? self.fromEntityID,
+            periodID: periodID ?? self.periodID,
+            referenceID: referenceID ?? self.referenceID,
+            referenceType: referenceType ?? self.referenceType,
+            toEntityID: toEntityID ?? self.toEntityID,
+            transferType: transferType ?? self.transferType,
+            counterpartyTin: counterpartyTin ?? self.counterpartyTin,
+            entityID: entityID ?? self.entityID,
+            esfID: esfID ?? self.esfID,
+            pegasusWSEventEnvelopeOperator: pegasusWSEventEnvelopeOperator ?? self.pegasusWSEventEnvelopeOperator,
+            operatorRef: operatorRef ?? self.operatorRef,
+            poID: poID ?? self.poID,
+            vatMinor: vatMinor ?? self.vatMinor,
+            vatRateBps: vatRateBps ?? self.vatRateBps,
+            createdAt: createdAt ?? self.createdAt,
+            format: format ?? self.format,
+            fromDate: fromDate ?? self.fromDate,
+            packID: packID ?? self.packID,
+            packType: packType ?? self.packType,
+            rowCount: rowCount ?? self.rowCount,
+            sha256Hex: sha256Hex ?? self.sha256Hex,
+            toDate: toDate ?? self.toDate,
+            challengerModel: challengerModel ?? self.challengerModel,
+            challengerWapeBps: challengerWapeBps ?? self.challengerWapeBps,
+            championModel: championModel ?? self.championModel,
+            championWapeBps: championWapeBps ?? self.championWapeBps,
+            horizonDays: horizonDays ?? self.horizonDays,
+            locationCount: locationCount ?? self.locationCount,
+            locationID: locationID ?? self.locationID,
+            skuCount: skuCount ?? self.skuCount,
+            wapeImprovementBps: wapeImprovementBps ?? self.wapeImprovementBps,
+            winnerModel: winnerModel ?? self.winnerModel,
+            baseCurrency: baseCurrency ?? self.baseCurrency,
+            journalEntryID: journalEntryID ?? self.journalEntryID,
+            ratesJSON: ratesJSON ?? self.ratesJSON,
+            roundingDeltaMinor: roundingDeltaMinor ?? self.roundingDeltaMinor,
+            unrealizedGainLossMinor: unrealizedGainLossMinor ?? self.unrealizedGainLossMinor,
+            entryID: entryID ?? self.entryID,
+            hash: hash ?? self.hash,
+            reversesEntryID: reversesEntryID ?? self.reversesEntryID,
+            sourceID: sourceID ?? self.sourceID,
+            sourceType: sourceType ?? self.sourceType,
+            totalCreditMinor: totalCreditMinor ?? self.totalCreditMinor,
+            totalDebitMinor: totalDebitMinor ?? self.totalDebitMinor,
+            grantedBy: grantedBy ?? self.grantedBy,
+            roleName: roleName ?? self.roleName,
+            assignedBy: assignedBy ?? self.assignedBy,
+            active: active ?? self.active,
+            displayName: displayName ?? self.displayName,
+            externalID: externalID ?? self.externalID,
+            resourceID: resourceID ?? self.resourceID,
+            resourceType: resourceType ?? self.resourceType,
+            rolesSynced: rolesSynced ?? self.rolesSynced,
+            userName: userName ?? self.userName,
+            daysRemaining: daysRemaining ?? self.daysRemaining,
+            daysToExpiry: daysToExpiry ?? self.daysToExpiry,
+            expiryDate: expiryDate ?? self.expiryDate,
+            layerID: layerID ?? self.layerID,
+            qtyRemaining: qtyRemaining ?? self.qtyRemaining,
+            unitCostMinor: unitCostMinor ?? self.unitCostMinor,
+            valueAtRiskMinor: valueAtRiskMinor ?? self.valueAtRiskMinor,
+            glEntryID: glEntryID ?? self.glEntryID,
+            movementID: movementID ?? self.movementID,
+            totalCostMinor: totalCostMinor ?? self.totalCostMinor,
+            releasedLots: releasedLots ?? self.releasedLots,
+            actionMode: actionMode ?? self.actionMode,
+            approvalRequestID: approvalRequestID ?? self.approvalRequestID,
+            confidenceBps: confidenceBps ?? self.confidenceBps,
+            qty: qty ?? self.qty,
+            sourceWarehouseID: sourceWarehouseID ?? self.sourceWarehouseID,
+            targetWarehouseID: targetWarehouseID ?? self.targetWarehouseID,
+            cellID: cellID ?? self.cellID,
+            changeKind: changeKind ?? self.changeKind,
+            securityMarkings: securityMarkings ?? self.securityMarkings,
+            sourceEventID: sourceEventID ?? self.sourceEventID,
+            sourceEventType: sourceEventType ?? self.sourceEventType,
+            updatedAt: updatedAt ?? self.updatedAt,
+            esfDocID: esfDocID ?? self.esfDocID,
+            lineCount: lineCount ?? self.lineCount,
+            matchStatus: matchStatus ?? self.matchStatus,
+            receiptID: receiptID ?? self.receiptID,
+            subtotalMinor: subtotalMinor ?? self.subtotalMinor,
+            totalReceivedMinor: totalReceivedMinor ?? self.totalReceivedMinor,
+            varianceMinor: varianceMinor ?? self.varianceMinor,
+            varianceReason: varianceReason ?? self.varianceReason,
+            vendorID: vendorID ?? self.vendorID,
+            vendorInvoiceID: vendorInvoiceID ?? self.vendorInvoiceID,
+            snapshotHash: snapshotHash ?? self.snapshotHash,
+            snapshotURI: snapshotURI ?? self.snapshotURI,
+            timezone: timezone ?? self.timezone,
+            agentID: agentID ?? self.agentID,
+            expectedImpactMinor: expectedImpactMinor ?? self.expectedImpactMinor,
+            proposalType: proposalType ?? self.proposalType,
+            roiEventID: roiEventID ?? self.roiEventID,
+            targetObjectID: targetObjectID ?? self.targetObjectID,
+            targetObjectType: targetObjectType ?? self.targetObjectType,
+            autonomyLevel: autonomyLevel ?? self.autonomyLevel,
+            estimatedImpactMinor: estimatedImpactMinor ?? self.estimatedImpactMinor,
+            rollbackRateBps: rollbackRateBps ?? self.rollbackRateBps,
+            soakDays: soakDays ?? self.soakDays,
+            soakExecutedCount: soakExecutedCount ?? self.soakExecutedCount,
+            actualMinor: actualMinor ?? self.actualMinor,
+            breakID: breakID ?? self.breakID,
+            controlTowerExceptionID: controlTowerExceptionID ?? self.controlTowerExceptionID,
+            deltaMinor: deltaMinor ?? self.deltaMinor,
+            dimension: dimension ?? self.dimension,
+            ownerID: ownerID ?? self.ownerID,
+            slaDueAt: slaDueAt ?? self.slaDueAt,
+            breakCount: breakCount ?? self.breakCount,
+            mode: mode ?? self.mode,
+            eventID: eventID ?? self.eventID,
+            evidenceRefID: evidenceRefID ?? self.evidenceRefID,
+            evidenceRefType: evidenceRefType ?? self.evidenceRefType,
+            holdoutControl: holdoutControl ?? self.holdoutControl,
+            isEstimate: isEstimate ?? self.isEstimate,
+            methodology: methodology ?? self.methodology,
+            savingsMinor: savingsMinor ?? self.savingsMinor,
+            makerID: makerID ?? self.makerID,
+            routePath: routePath ?? self.routePath,
+            violationID: violationID ?? self.violationID,
+            creditExposureDeltaMinor: creditExposureDeltaMinor ?? self.creditExposureDeltaMinor,
+            dispatchCostDeltaMinor: dispatchCostDeltaMinor ?? self.dispatchCostDeltaMinor,
+            forecastDeltaMinor: forecastDeltaMinor ?? self.forecastDeltaMinor,
+            netPnlDeltaMinor: netPnlDeltaMinor ?? self.netPnlDeltaMinor,
+            replenishmentCostMinor: replenishmentCostMinor ?? self.replenishmentCostMinor
         )
     }
 

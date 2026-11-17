@@ -339,14 +339,14 @@ func TestFleetDVIRRedTagAndMidRouteBreakdownRescue(t *testing.T) {
 	if rescueRes.OriginalDriverLiabilityMinor != 25_000_000 {
 		t.Fatalf("expected OriginalDriverLiabilityMinor=25000000, got %d", rescueRes.OriginalDriverLiabilityMinor)
 	}
-	if rescueRes.RescueDriverLiabilityMinor != 50_000_000 {
-		t.Fatalf("expected RescueDriverLiabilityMinor=50000000, got %d", rescueRes.RescueDriverLiabilityMinor)
+	if rescueRes.RescueDriverLiabilityMinor != 30_000_000 {
+		t.Fatalf("expected RescueDriverLiabilityMinor=30000000 (excluding quarantined tote_3_spoiled), got %d", rescueRes.RescueDriverLiabilityMinor)
 	}
-	if len(rescueRes.QuarantinedSpoiledToteIDs) != 0 {
-		t.Fatalf("temperature quarantine removed, got %v", rescueRes.QuarantinedSpoiledToteIDs)
+	if len(rescueRes.QuarantinedSpoiledToteIDs) != 1 || rescueRes.QuarantinedSpoiledToteIDs[0] != "tote_3_spoiled" {
+		t.Fatalf("expected tote_3_spoiled to be quarantined, got %v", rescueRes.QuarantinedSpoiledToteIDs)
 	}
-	if len(rescueRes.TransferredToteIDs) != 2 {
-		t.Fatalf("expected both remaining totes transferred, got %v", rescueRes.TransferredToteIDs)
+	if len(rescueRes.TransferredToteIDs) != 1 || rescueRes.TransferredToteIDs[0] != "tote_4_ok" {
+		t.Fatalf("expected only tote_4_ok transferred, got %v", rescueRes.TransferredToteIDs)
 	}
 }
 
@@ -951,5 +951,250 @@ func TestStructuredDomainErrorsUA1UA2UA8UA11(t *testing.T) {
 	}
 	if toteErr.ToteID != "tote_ua11_active" || toteErr.CurrentPickerID != "picker_active" || toteErr.RemainingIdleSeconds <= 0 {
 		t.Fatalf("unexpected ToteTakeoverNotPermittedError: %+v", toteErr)
+	}
+}
+
+func TestVolumeBreakCliffCapAndRejectionReason(t *testing.T) {
+	ctx := context.Background()
+	eng := foundry.NewEngine()
+
+	tiers := []foundry.VolumeBreakTier{
+		{MinCases: 10, DiscountBps: 500},  // 5%
+		{MinCases: 50, DiscountBps: 1200}, // 12%
+	}
+
+	// 1. Invalid / empty rejection reasons must return ErrPreconditionFailed
+	for _, invalidReason := range []string{"", "   ", "DAMAGED", "CUSTOMER_CANCELLED", "OTHER"} {
+		_, err := eng.ReconcileSplitTenderPartialRejection(ctx, foundry.SplitTenderRejectionInput{
+			OrderID:                     "ord_cliff_inv",
+			OrderedCases:                50,
+			AcceptedCases:               45,
+			BaseCasePriceMinor:          1_000_000,
+			RejectionReason:             invalidReason,
+			Tiers:                       tiers,
+			OriginalCreditReservedMinor: 22_000_000,
+			OriginalCashPlannedMinor:    22_000_000,
+		})
+		if !errors.Is(err, foundry.ErrPreconditionFailed) {
+			t.Fatalf("expected ErrPreconditionFailed for rejection reason %q, got: %v", invalidReason, err)
+		}
+	}
+
+	// 2. BUYER_REMORSE_REFUSAL with AcceptedCases == 0 releases all credit and zeroes totals
+	zeroAccepted, err := eng.ReconcileSplitTenderPartialRejection(ctx, foundry.SplitTenderRejectionInput{
+		OrderID:                     "ord_cliff_zero",
+		OrderedCases:                50,
+		AcceptedCases:               0,
+		BaseCasePriceMinor:          1_000_000,
+		RejectionReason:             "BUYER_REMORSE_REFUSAL",
+		Tiers:                       tiers,
+		OriginalCreditReservedMinor: 22_000_000,
+		OriginalCashPlannedMinor:    22_000_000,
+	})
+	if err != nil {
+		t.Fatalf("zero accepted remorse failed: %v", err)
+	}
+	if zeroAccepted.FinalTotalMinor != 0 || zeroAccepted.FinalCreditBookedMinor != 0 || zeroAccepted.FinalCashDueMinor != 0 {
+		t.Fatalf("expected all zeros for 0 accepted remorse cases, got total=%d credit=%d cash=%d",
+			zeroAccepted.FinalTotalMinor, zeroAccepted.FinalCreditBookedMinor, zeroAccepted.FinalCashDueMinor)
+	}
+	if zeroAccepted.CreditReleasedMinor != 22_000_000 {
+		t.Fatalf("expected all credit 22000000 released, got %d", zeroAccepted.CreditReleasedMinor)
+	}
+
+	// 3. Volume-Break Cliff: 47 cases accepted drops buyer from 12% to 5% tier.
+	// Without cap: 47 * 950,000 = 44,650,000 tiyin > original planned total 44,000,000 tiyin.
+	// With cap: FinalTotalMinor is capped at 44,000,000 tiyin.
+	reconciledCliff, err := eng.ReconcileSplitTenderPartialRejection(ctx, foundry.SplitTenderRejectionInput{
+		OrderID:                     "ord_cliff_47",
+		OrderedCases:                50,
+		AcceptedCases:               47,
+		BaseCasePriceMinor:          1_000_000,
+		RejectionReason:             "BUYER_REMORSE_REFUSAL",
+		Tiers:                       tiers,
+		OriginalCreditReservedMinor: 22_000_000,
+		OriginalCashPlannedMinor:    22_000_000,
+	})
+	if err != nil {
+		t.Fatalf("cliff remorse reconcile failed: %v", err)
+	}
+	if reconciledCliff.FinalTotalMinor != 44_000_000 {
+		t.Fatalf("expected FinalTotalMinor capped at 44000000, got %d", reconciledCliff.FinalTotalMinor)
+	}
+	if reconciledCliff.FinalCreditBookedMinor != 22_000_000 || reconciledCliff.FinalCashDueMinor != 22_000_000 {
+		t.Fatalf("expected Credit=22000000 and Cash=22000000, got credit=%d cash=%d",
+			reconciledCliff.FinalCreditBookedMinor, reconciledCliff.FinalCashDueMinor)
+	}
+	if reconciledCliff.CreditReleasedMinor != 0 {
+		t.Fatalf("expected CreditReleasedMinor=0, got %d", reconciledCliff.CreditReleasedMinor)
+	}
+}
+
+func TestCashierMarketPackDenominationsAndToleranceCap(t *testing.T) {
+	ctx := context.Background()
+	eng := foundry.NewEngine()
+
+	sess, err := eng.StartBlindCountSession(ctx, foundry.StartCashierSessionRequest{
+		DepotID:           "dep_test",
+		DriverID:          "drv_test",
+		BagSealBarcode:    "SEAL-MP-1",
+		ExpectedCashMinor: 100_000, // 1,000 UZS
+	})
+	if err != nil {
+		t.Fatalf("StartBlindCountSession: %v", err)
+	}
+
+	// 1. Invalid denominations like 13 or 777 or <= 0 must fail with ErrPreconditionFailed
+	for _, badDenom := range []int64{13, 777, 0, -10, 3, 7} {
+		_, err := eng.SubmitBlindDenominationCount(ctx, sess.SessionID, map[int64]int64{badDenom: 1}, 500_000)
+		if !errors.Is(err, foundry.ErrPreconditionFailed) {
+			t.Fatalf("expected ErrPreconditionFailed for denomination %d, got %v", badDenom, err)
+		}
+	}
+
+	// 2. Tolerance exceeding MaxCashierToleranceMinor or negative must fail with ErrPreconditionFailed
+	_, err = eng.SubmitBlindDenominationCount(ctx, sess.SessionID, map[int64]int64{1000: 1}, foundry.MaxCashierToleranceMinor+1)
+	if !errors.Is(err, foundry.ErrPreconditionFailed) {
+		t.Fatalf("expected ErrPreconditionFailed for tolerance > MaxCashierToleranceMinor, got %v", err)
+	}
+	_, err = eng.SubmitBlindDenominationCount(ctx, sess.SessionID, map[int64]int64{1000: 1}, -1)
+	if !errors.Is(err, foundry.ErrPreconditionFailed) {
+		t.Fatalf("expected ErrPreconditionFailed for tolerance < 0, got %v", err)
+	}
+
+	// 3. Valid market pack banknote (e.g. 10 Som note = 10 * 100 = 1,000 tiyin)
+	// Submit 100 notes of 10 Som = 1,000 Som = 100,000 tiyin -> Exact match!
+	view, err := eng.SubmitBlindDenominationCount(ctx, sess.SessionID, map[int64]int64{10: 100}, foundry.MaxCashierToleranceMinor)
+	if err != nil {
+		t.Fatalf("SubmitBlindDenominationCount valid market pack denomination: %v", err)
+	}
+	if view.Status != foundry.CashierStatusBalanced {
+		t.Fatalf("expected BALANCED status, got %s", view.Status)
+	}
+
+	// 4. Test GetCashierSession on Engine
+	retrieved, err := eng.GetCashierSession(ctx, sess.SessionID)
+	if err != nil {
+		t.Fatalf("GetCashierSession: %v", err)
+	}
+	if retrieved.SessionID != sess.SessionID || retrieved.Status != foundry.CashierStatusBalanced {
+		t.Fatalf("retrieved session mismatch: %+v", retrieved)
+	}
+}
+
+func TestFXCorridorLargeB2BOrderOverflowProtection(t *testing.T) {
+	ctx := context.Background()
+	eng := foundry.NewEngine()
+
+	// 100,000,000 UZS = 10,000,000,000 tiyin (10B tiyin)
+	// At 12,800 UZS/USD -> 12,800,000,000 micros.
+	// 10B tiyin * 12.8B micros = 1.28e20, which overflows int64 (max ~9.22e18).
+	b2bPriceMinor := int64(10_000_000_000)
+	checkoutFXRate := int64(12_800_000_000)
+	// Slight move: +10 bps (12,800 -> 12,812.8)
+	currentFXRate := int64(12_812_800_000)
+
+	adjusted, err := eng.EvaluateFXCorridorBeforeWave(ctx, "FLOAT_WITH_CORRIDOR_CAP", b2bPriceMinor, checkoutFXRate, currentFXRate, 100, false)
+	if err != nil {
+		t.Fatalf("unexpected error on large B2B FX evaluation: %v", err)
+	}
+	expected := int64(10_010_000_000)
+	if adjusted != expected {
+		t.Fatalf("expected adjusted price %d, got %d", expected, adjusted)
+	}
+
+	// 10,000,000,000 UZS = 1,000,000,000,000 tiyin (1T tiyin)
+	hugeB2BPrice := int64(1_000_000_000_000)
+	adjustedHuge, err := eng.EvaluateFXCorridorBeforeWave(ctx, "FLOAT_WITH_CORRIDOR_CAP", hugeB2BPrice, checkoutFXRate, currentFXRate, 100, false)
+	if err != nil {
+		t.Fatalf("unexpected error on 10B UZS order: %v", err)
+	}
+	expectedHuge := int64(1_001_000_000_000)
+	if adjustedHuge != expectedHuge {
+		t.Fatalf("expected adjusted huge price %d, got %d", expectedHuge, adjustedHuge)
+	}
+
+	// Beyond corridor (+500 bps with 100 bps cap)
+	jumpFXRate := int64(13_440_000_000)
+	adjOver, err := eng.EvaluateFXCorridorBeforeWave(ctx, "FLOAT_WITH_CORRIDOR_CAP", b2bPriceMinor, checkoutFXRate, jumpFXRate, 100, false)
+	if !errors.Is(err, foundry.ErrFXReconfirmationRequired) {
+		t.Fatalf("expected ErrFXReconfirmationRequired on large order corridor breach, got %v", err)
+	}
+	expectedOver := int64(10_500_000_000)
+	if adjOver != expectedOver {
+		t.Fatalf("expected adjusted price %d on breach, got %d", expectedOver, adjOver)
+	}
+}
+
+func TestCashierVaultInflowIdempotentOnRRNReclassification(t *testing.T) {
+	ctx := context.Background()
+	eng := foundry.NewEngine()
+
+	// Initialize session with 1,000,000 UZS (100,000,000 tiyin) expected cash
+	sess, err := eng.StartBlindCountSession(ctx, foundry.StartCashierSessionRequest{
+		CellID:            "cell-uz",
+		SupplierID:        "sup-idempotent-vault",
+		DepotID:           "depot-tashkent-1",
+		DriverID:          "drv-rrn-1",
+		RouteID:           "rt-rrn-1",
+		BagSealBarcode:    "SEAL-IDEMP-001",
+		ExpectedCashMinor: 100_000_000,
+	})
+	if err != nil {
+		t.Fatalf("StartBlindCountSession: %v", err)
+	}
+
+	// Driver brings 99,600,000 tiyin (-400,000 tiyin variance = -4,000 UZS, within 500,000 tolerance)
+	// 498 notes of 200,000 UZS = 99,600,000 UZS = 9,960,000,000 tiyin? Wait!
+	// 200,000 UZS note * 100 tiyin = 20,000,000 tiyin.
+	// For 99,600,000 tiyin:
+	// Note denominations: 200000 UZS (20,000,000 tiyin), 100000 (10,000,000 tiyin), etc.
+	// 4 notes of 200,000 UZS = 80,000,000 tiyin.
+	// 1 note of 100,000 UZS = 10,000,000 tiyin.
+	// 9 notes of 10,000 UZS = 9,000,000 tiyin.
+	// 6 notes of 1,000 UZS = 600,000 tiyin.
+	// Total = 99,600,000 tiyin.
+	denoms := map[int64]int64{
+		200000: 4, // 80M
+		100000: 1, // 10M
+		10000:  9, // 9M
+		1000:   6, // 600k
+	}
+
+	view1, err := eng.SubmitBlindDenominationCount(ctx, sess.SessionID, denoms, 500_000)
+	if err != nil {
+		t.Fatalf("SubmitBlindDenominationCount: %v", err)
+	}
+	if view1.Status != foundry.CashierStatusToleranceVariance {
+		t.Fatalf("expected TOLERANCE_VARIANCE, got %s", view1.Status)
+	}
+
+	// Check vault balance in memory
+	bal1 := eng.GetDepotVaultBalance("depot-tashkent-1")
+	if bal1 != 99_600_000 {
+		t.Fatalf("expected vault balance 99,600,000 after tolerance variance, got %d", bal1)
+	}
+
+	// Driver provides payment gateway RRN showing 4,000 UZS (400,000 tiyin) was paid by card
+	now := time.Now().UTC()
+	reclassView, err := eng.ReclassifyCashToCardByRRN(ctx, foundry.RRNTenderReclassificationRequest{
+		SessionID:         sess.SessionID,
+		GatewayRRN:        "RRN-20261115-9988",
+		DisputedCashMinor: 400_000,
+		RRNAmountMinor:    400_000,
+		EPODCapturedAt:    now.Add(-2 * time.Minute),
+		RRNCapturedAt:     now.Add(-2 * time.Minute),
+	})
+	if err != nil {
+		t.Fatalf("ReclassifyCashToCardByRRN: %v", err)
+	}
+	if reclassView.Status != foundry.CashierStatusBalanced {
+		t.Fatalf("expected BALANCED status after RRN reclassification, got %s", reclassView.Status)
+	}
+
+	// CRITICAL CHECK: Vault balance must NOT have double-counted! It must remain 99,600,000!
+	bal2 := eng.GetDepotVaultBalance("depot-tashkent-1")
+	if bal2 != 99_600_000 {
+		t.Fatalf("DOUBLE INFLOW BUG DETECTED: expected vault balance 99,600,000, but got %d", bal2)
 	}
 }

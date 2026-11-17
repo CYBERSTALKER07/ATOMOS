@@ -7,6 +7,7 @@ import { VirtualScrollList } from "@/components/ui/VirtualScrollList";
 import EmptyState from "../EmptyState";
 import { ListRowSkeleton } from "../Skeleton";
 import type { Order } from "../../lib/types";
+import { usePortalT } from "@/lib/i18n";
 
 interface OrderListProps {
   loading: boolean;
@@ -33,6 +34,7 @@ export function OrderList({
   chipCfg,
   list,
 }: OrderListProps) {
+  const t = usePortalT();
   return (
     <AnimatePresence mode="popLayout">
       {loading ? (
@@ -71,10 +73,17 @@ export function OrderList({
                   <PackageOpen size={20} />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="mb-1 flex items-center justify-between">
-                    <span className="md-typescale-title-small font-light text-[var(--desk-text-primary)]">
-                      #{order.order_id.slice(-8)}
-                    </span>
+                  <div className="mb-1 flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="md-typescale-title-small font-light text-[var(--desk-text-primary)]">
+                        #{order.order_id.slice(-8)}
+                      </span>
+                      {order.order_source === "MIGRATION" ? (
+                        <span className="rounded-md bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-amber-700">
+                          {t("retailer_desktop.nasiya_opening.migration_badge")}
+                        </span>
+                      ) : null}
+                    </div>
                     <span
                       className={`rounded-md px-2 py-0.5 text-[10px] font-light uppercase tracking-widest ${c.color === "success" ? "bg-green-100 text-green-700" : c.color === "warning" ? "bg-orange-100 text-orange-700" : c.color === "danger" ? "bg-red-100 text-red-700" : "bg-gray-100 text-gray-700"}`}
                     >

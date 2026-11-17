@@ -24,7 +24,8 @@ type LineResidual struct {
 
 // GetRemainingClaimable calculates the remaining residual value and quantity claimable on an order.
 // This is the canonical, integer-safe function required by compliance dashboards, claim creation, and settlement.
-func (s *Service) GetRemainingClaimable(ctx context.Context, orderID string) (*ResidualResult, error) {
+// Optional excludeClaimIDs excludes specified claims (e.g. the claim currently being approved) so they do not block themselves.
+func (s *Service) GetRemainingClaimable(ctx context.Context, orderID string, excludeClaimIDs ...string) (*ResidualResult, error) {
 	if s == nil || s.orders == nil || s.repo == nil {
 		return nil, ErrOrderNotFound
 	}
@@ -48,12 +49,22 @@ func (s *Service) GetRemainingClaimable(ctx context.Context, orderID string) (*R
 		return nil, err
 	}
 
-	// 3. Sum claimed values and quantities from APPROVED/SETTLED/RESOLVED claims only
+	// 3. Sum claimed values and quantities from APPROVED/RESOLVED/UNDER_REVIEW claims (excluding excludeClaimIDs)
 	var claimedMinor int64
 	claimedQtyBySKU := make(map[string]int64)
 
+	excluded := make(map[string]bool, len(excludeClaimIDs))
+	for _, id := range excludeClaimIDs {
+		if trimmed := strings.TrimSpace(id); trimmed != "" {
+			excluded[trimmed] = true
+		}
+	}
+
 	for _, c := range claimsList {
-		if c.Status == StatusApproved || c.Status == StatusResolved {
+		if excluded[c.ClaimID] {
+			continue
+		}
+		if c.Status == StatusApproved || c.Status == StatusResolved || c.Status == StatusUnderReview {
 			claimedMinor += c.AmountMinor
 			for _, li := range c.LineItems {
 				sku := strings.TrimSpace(li.SKU)

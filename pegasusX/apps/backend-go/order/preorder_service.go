@@ -39,9 +39,13 @@ func (s *Service) ConfirmAIOrder(ctx context.Context, retailerID string, req Con
 		return RetailerOrderLifecycleResponse{}, ErrInvalidStatusTransition
 	}
 	prevLines := append([]LineItem(nil), current.LineItems...)
+	prevTotal := current.TotalMinor
 	if len(req.LineItems) > 0 {
 		lineItems, _, err := s.normalizeAndQuoteLineItems(ctx, req.LineItems, nil)
 		if err != nil {
+			return RetailerOrderLifecycleResponse{}, err
+		}
+		if err := s.validateOrderPackMultiples(ctx, lineItems); err != nil {
 			return RetailerOrderLifecycleResponse{}, err
 		}
 		requestedLines := lineItems
@@ -55,17 +59,25 @@ func (s *Service) ConfirmAIOrder(ctx context.Context, retailerID string, req Con
 			tot += current.DeliveryFeeMinor
 		}
 		current.TotalMinor = tot
-	} else if s.spannerClient != nil {
-		fulfillable, _, err := s.applyPreorderInventoryGuard(ctx, current.SupplierID, current.WarehouseID, current.LineItems, current.LineItems)
-		if err != nil {
+	} else {
+		if err := s.validateOrderPackMultiples(ctx, current.LineItems); err != nil {
 			return RetailerOrderLifecycleResponse{}, err
 		}
-		current.LineItems = fulfillable
-		tot := totalMinorForLines(fulfillable)
-		if tot > 0 && current.DeliveryFeeMinor > 0 {
-			tot += current.DeliveryFeeMinor
+		if s.spannerClient != nil {
+			fulfillable, _, err := s.applyPreorderInventoryGuard(ctx, current.SupplierID, current.WarehouseID, current.LineItems, current.LineItems)
+			if err != nil {
+				return RetailerOrderLifecycleResponse{}, err
+			}
+			current.LineItems = fulfillable
+			tot := totalMinorForLines(fulfillable)
+			if tot > 0 && current.DeliveryFeeMinor > 0 {
+				tot += current.DeliveryFeeMinor
+			}
+			current.TotalMinor = tot
 		}
-		current.TotalMinor = tot
+	}
+	if req.AutoConfirmOptIn != nil {
+		current.AutoConfirmOptIn = *req.AutoConfirmOptIn
 	}
 	if strings.TrimSpace(req.RequestedDeliveryDate) != "" {
 		requestedDeliveryDate, err := parseOptionalRFC3339(req.RequestedDeliveryDate)
@@ -83,7 +95,14 @@ func (s *Service) ConfirmAIOrder(ctx context.Context, retailerID string, req Con
 	toConfirm := current
 	if err := s.repo.UpdateOrderWithTxn(ctx, toConfirm, nil, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		if s.spannerClient != nil {
-			return reconcilePreorderReservationsInTxn(ctx, txn, toConfirm.SupplierID, toConfirm.WarehouseID, toConfirm.Source, prevLines, toConfirm.LineItems)
+			if err := reconcilePreorderReservationsInTxn(ctx, txn, toConfirm.SupplierID, toConfirm.WarehouseID, toConfirm.OrderID, toConfirm.Source, prevLines, toConfirm.LineItems); err != nil {
+				return err
+			}
+		}
+		if s.credit != nil && txn != nil && toConfirm.TotalMinor != prevTotal {
+			if err := s.credit.AdjustReserveInTxn(ctx, txn, toConfirm.OrderID, toConfirm.TotalMinor); err != nil {
+				return fmt.Errorf("adjust credit reserve on confirm ai order: %w", err)
+			}
 		}
 		return nil
 	}, func(txn outbox.TxnBuffer) error {
@@ -174,6 +193,9 @@ func (s *Service) EditPreorder(ctx context.Context, retailerID string, req EditP
 	if err != nil {
 		return RetailerOrderLifecycleResponse{}, err
 	}
+	if err := s.validateOrderPackMultiples(ctx, lineItems); err != nil {
+		return RetailerOrderLifecycleResponse{}, err
+	}
 	requestedDeliveryDate, err := parseOptionalRFC3339(req.RequestedDeliveryDate)
 	if err != nil || requestedDeliveryDate == nil {
 		if err == nil {
@@ -203,6 +225,9 @@ func (s *Service) EditPreorder(ctx context.Context, retailerID string, req EditP
 	}
 	if current.ConfirmationStatus == ConfirmationStatusRejected {
 		return RetailerOrderLifecycleResponse{}, ErrInvalidStatusTransition
+	}
+	if req.AutoConfirmOptIn != nil {
+		current.AutoConfirmOptIn = *req.AutoConfirmOptIn
 	}
 	current.RequestedDeliveryDate = requestedDeliveryDate
 	current.UpdatedAt = s.now()
@@ -325,7 +350,8 @@ func (s *Service) WarehouseDemandForecast(ctx context.Context, warehouseID strin
 	return series, nil
 }
 
-// AutoConfirmDueOrders promotes due AI preorders to auto-confirmed.
+// AutoConfirmDueOrders promotes due AI/auto-order proposals to auto-confirmed
+// ONLY when AutoConfirmOptIn == true; unconfirmed opt-out proposals expire cleanly.
 func (s *Service) AutoConfirmDueOrders(ctx context.Context, limit int) error {
 	if limit <= 0 {
 		limit = 50
@@ -335,7 +361,17 @@ func (s *Service) AutoConfirmDueOrders(ctx context.Context, limit int) error {
 		return fmt.Errorf("list due auto-confirm orders: %w", err)
 	}
 	for _, orderRecord := range orders {
-		if orderRecord.Source != OrderSourceAIPreorder || orderRecord.ConfirmationStatus != ConfirmationStatusPending {
+		if (orderRecord.Source != OrderSourceAIPreorder && orderRecord.Source != OrderSourceAutoOrder) ||
+			orderRecord.ConfirmationStatus != ConfirmationStatusPending {
+			continue
+		}
+		if orderRecord.Status == StatusCancelled || orderRecord.Status == StatusCompleted {
+			continue
+		}
+		if !orderRecord.AutoConfirmOptIn {
+			if _, expErr := s.expireUnconfirmedProposal(ctx, orderRecord, s.now(), "AUTO_CONFIRM_OPT_OUT_EXPIRED", "system:auto_confirm_opt_out_expired"); expErr != nil {
+				s.log.Warn("expire opt-out preorder failed", "order_id", orderRecord.OrderID, "err", expErr)
+			}
 			continue
 		}
 		updated := orderRecord
@@ -367,4 +403,110 @@ func (s *Service) AutoConfirmDueOrders(ctx context.Context, limit int) error {
 		s.afterOrderMutation(ctx, updated)
 	}
 	return nil
+}
+
+type txnOrderMutator interface {
+	mutateOrderWithTxn(
+		ctx context.Context,
+		orderID string,
+		expectedVersion int64,
+		fn func(context.Context, *spanner.ReadWriteTransaction, *Order) (func(outbox.TxnBuffer) error, error),
+	) (Order, error)
+}
+
+func (s *Service) expireUnconfirmedProposal(ctx context.Context, o Order, now time.Time, reason, actorID string) (Order, error) {
+	if o.Status == StatusCancelled {
+		return o, nil
+	}
+	applyExpiry := func(target *Order) (Status, bool, error) {
+		if target.Status == StatusCancelled {
+			return StatusCancelled, false, nil
+		}
+		if target.AutoConfirmOptIn ||
+			target.ConfirmationStatus == ConfirmationStatusConfirmed ||
+			target.ConfirmationStatus == ConfirmationStatusAutoConfirmed {
+			return target.Status, false, nil
+		}
+		prev := target.Status
+		if err := ValidateStatusTransition(string(prev), string(StatusCancelled), TransitionOpts{
+			Actor:  actorID,
+			Reason: reason,
+		}); err != nil {
+			return "", false, err
+		}
+		decAt := now
+		target.Status = StatusCancelled
+		target.ConfirmationStatus = ConfirmationStatusRejected
+		target.AutoConfirmAt = nil
+		target.DecisionAt = &decAt
+		target.DecisionBy = actorID
+		target.UpdatedAt = now
+		target.TransitionReason = reason
+		target.TransitionActorRole = "SYSTEM"
+		target.TransitionActorID = actorID
+		target.TransitionEventKind = "EXPIRE"
+		return prev, true, nil
+	}
+	emitExpiry := func(txn outbox.TxnBuffer, prev Status, updated Order) error {
+		return outbox.EmitJSON(ctx, txn, events.AggregateOrder, updated.OrderID, events.TopicMain, events.OrderEvent{
+			BaseEvent:             events.BaseEvent{Type: events.EventOrderStatusChanged, Timestamp: updated.UpdatedAt.Format(time.RFC3339Nano)},
+			OrderID:               updated.OrderID,
+			SupplierID:            updated.SupplierID,
+			RetailerID:            updated.RetailerID,
+			WarehouseID:           updated.WarehouseID,
+			PreviousStatus:        string(prev),
+			Status:                string(updated.Status),
+			Reason:                reason,
+			ActorRole:             "SYSTEM",
+			ActorID:               actorID,
+			OrderSource:           string(updated.Source),
+			ConfirmationStatus:    string(updated.ConfirmationStatus),
+			RequestedDeliveryDate: formatOptionalRFC3339(updated.RequestedDeliveryDate),
+		})
+	}
+
+	if mut, ok := s.repo.(txnOrderMutator); ok {
+		changed := false
+		updated, err := mut.mutateOrderWithTxn(ctx, o.OrderID, 0, func(txCtx context.Context, txn *spanner.ReadWriteTransaction, curr *Order) (func(outbox.TxnBuffer) error, error) {
+			prev, didChange, err := applyExpiry(curr)
+			if err != nil || !didChange {
+				return nil, err
+			}
+			changed = true
+			if s.credit != nil {
+				if err := s.credit.AdjustReserveInTxn(txCtx, txn, curr.OrderID, 0); err != nil {
+					return nil, fmt.Errorf("release credit reserve on proposal expiry: %w", err)
+				}
+			}
+			snapshot := *curr
+			return func(buf outbox.TxnBuffer) error {
+				return emitExpiry(buf, prev, snapshot)
+			}, nil
+		})
+		if err != nil {
+			return o, err
+		}
+		if changed {
+			s.afterOrderMutation(ctx, updated)
+		}
+		return updated, nil
+	}
+
+	prev, didChange, err := applyExpiry(&o)
+	if err != nil || !didChange {
+		return o, err
+	}
+	if err := s.repo.UpdateOrder(ctx, o, nil, func(txn outbox.TxnBuffer) error {
+		return emitExpiry(txn, prev, o)
+	}); err != nil {
+		return o, err
+	}
+	if s.credit != nil {
+		if cerr := s.credit.ReleaseReserve(ctx, o.OrderID); cerr != nil {
+			s.log.Warn("credit reserve release on proposal expiry failed", "order_id", o.OrderID, "err", cerr)
+		}
+	}
+	o.Version++
+	s.afterOrderMutation(ctx, o)
+	return o, nil
 }

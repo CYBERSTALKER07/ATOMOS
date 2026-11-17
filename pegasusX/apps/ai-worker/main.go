@@ -26,6 +26,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/ai-worker/planningingest"
 	"github.com/pegasusx/pegasusx/apps/ai-worker/predictivepush"
 	"github.com/pegasusx/pegasusx/apps/ai-worker/synthesis"
+	"github.com/pegasusx/pegasusx/apps/backend-go/bqexport"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/kafkautil"
 	"github.com/pegasusx/pegasusx/apps/backend-go/supplier"
@@ -50,9 +51,9 @@ type consumerLagMetrics struct {
 }
 
 type CircuitBreaker struct {
-	mu          sync.Mutex
-	failures    int
-	threshold   int
+	mu        sync.Mutex
+	failures  int
+	threshold int
 }
 
 func (cb *CircuitBreaker) RecordFailure() {
@@ -144,7 +145,7 @@ func aiWorkerHTTPPort(getenv func(string) string) string {
 	return defaultAIWorkerHTTPPort
 }
 
-func newMonitoringServer(addr string, healthy, ready *atomic.Bool, metrics *consumerLagMetrics, internalAPIKey string, logger *slog.Logger) *http.Server {
+func newMonitoringServer(addr string, healthy, ready *atomic.Bool, metrics *consumerLagMetrics, cfg *Config, internalAPIKey string, logger *slog.Logger) *http.Server {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
 		if healthy != nil && healthy.Load() {
@@ -180,6 +181,20 @@ func newMonitoringServer(addr string, healthy, ready *atomic.Bool, metrics *cons
 		fmt.Fprintln(w, "# HELP void_ai_worker_ready AI worker readiness state.")
 		fmt.Fprintln(w, "# TYPE void_ai_worker_ready gauge")
 		fmt.Fprintf(w, "void_ai_worker_ready %d\n", readyState)
+		bqUp := 0
+		vertexUp := 0
+		if cfg != nil && strings.TrimSpace(cfg.BigQueryProjectID) != "" {
+			bqUp = 1
+		}
+		if cfg != nil && strings.TrimSpace(cfg.VertexAIProjectID) != "" && strings.TrimSpace(cfg.VertexStagingBucket) != "" {
+			vertexUp = 1
+		}
+		fmt.Fprintln(w, "# HELP void_ai_worker_bigquery_configured BigQuery feature store configuration flag.")
+		fmt.Fprintln(w, "# TYPE void_ai_worker_bigquery_configured gauge")
+		fmt.Fprintf(w, "void_ai_worker_bigquery_configured %d\n", bqUp)
+		fmt.Fprintln(w, "# HELP void_ai_worker_vertex_configured Vertex AI staging configuration flag.")
+		fmt.Fprintln(w, "# TYPE void_ai_worker_vertex_configured gauge")
+		fmt.Fprintf(w, "void_ai_worker_vertex_configured %d\n", vertexUp)
 		metrics.writePrometheus(w)
 	})
 	if strings.TrimSpace(internalAPIKey) != "" {
@@ -269,16 +284,17 @@ func main() {
 	}
 	defer dlqWriter.Close()
 
-	reader := kafka.NewReader(kafka.ReaderConfig{
-		Brokers:        brokers,
-		Dialer:         dialer,
-		GroupID:        aiWorkerConsumerName,
-		Topic:          events.TopicMain,
-		MinBytes:       10e3,
-		MaxBytes:       10e6,
-		CommitInterval: 0,
-		StartOffset:    kafka.FirstOffset,
-	})
+	featureSink, err := initFeatureSink(ctx, cfg, logger)
+	if err != nil {
+		slog.Error("failed to initialize BigQuery feature sink", "err", err)
+		os.Exit(1)
+	}
+	if closer, ok := featureSink.(io.Closer); ok {
+		defer closer.Close()
+	}
+
+	inputTopics := aiWorkerInputTopics(cfg)
+	reader := kafka.NewReader(newAIWorkerReaderConfig(brokers, dialer, aiWorkerConsumerName, inputTopics))
 	defer reader.Close()
 
 	freezeReader := kafka.NewReader(kafka.ReaderConfig{
@@ -300,15 +316,19 @@ func main() {
 	var healthy atomic.Bool
 	var ready atomic.Bool
 	healthy.Store(true)
-	monitoringServer := newMonitoringServer(":"+workerHTTPPort, &healthy, &ready, metrics, cfg.InternalAPIKey, logger)
+	monitoringServer := newMonitoringServer(":"+workerHTTPPort, &healthy, &ready, metrics, cfg, cfg.InternalAPIKey, logger)
 
 	slog.Info("ai-worker starting",
-		"topic", events.TopicMain,
+		"topics", inputTopics,
 		"freeze_topic", events.TopicFreezeLocks,
 		"import_topic", events.TopicInventoryImportEvents,
 		"dlq_topic", events.TopicDeadLetter,
 		"brokers", brokers,
 		"health_port", workerHTTPPort,
+		"bigquery_project", cfg.BigQueryProjectID,
+		"bigquery_features_dataset", cfg.BigQueryFeaturesDataset,
+		"vertex_location", cfg.VertexAILocation,
+		"vertex_staging_bucket", cfg.VertexStagingBucket,
 	)
 
 	g, gCtx := errgroup.WithContext(ctx)
@@ -320,13 +340,16 @@ func main() {
 	importRepo := supplier.NewImportRepository(spannerClient)
 	if importOpener, importOpenerErr := supplier.NewImportObjectOpenerFromEnv(ctx); importOpenerErr != nil {
 		slog.Warn("inventory import worker disabled", "err", importOpenerErr)
-	} else if importRuntime := newInventoryImportRuntime(brokers, dialer, dlqWriter, importRepo, importOpener, logger); importRuntime != nil {
-		g.Go(func() error {
-			defer importRuntime.Close()
-			defer importOpener.Close()
-			importRuntime.Run(gCtx, metrics)
-			return nil
-		})
+	} else {
+		migProc := newMigrationBundleProcessor(spannerClient, importOpener, logger)
+		if importRuntime := newInventoryImportRuntime(brokers, dialer, dlqWriter, importRepo, importOpener, migProc, logger); importRuntime != nil {
+			g.Go(func() error {
+				defer importRuntime.Close()
+				defer importOpener.Close()
+				importRuntime.Run(gCtx, metrics)
+				return nil
+			})
+		}
 	}
 
 	if planningIngest := planningingest.NewRuntimeWithDLQ(brokers, dialer, dlqWriter, spannerClient, logger); planningIngest != nil {
@@ -378,7 +401,7 @@ func main() {
 				procCtx, cancelProc := detachedDrainContext(gCtx, 4*time.Second)
 				defer cancelProc()
 
-				if err := processMessage(procCtx, msg, spannerClient, frozen, dlqWriter); err != nil {
+				if err := processMessage(procCtx, msg, spannerClient, frozen, cfg, featureSink, dlqWriter); err != nil {
 					slog.Error("failed to process message", "err", err, "topic", msg.Topic, "partition", msg.Partition, "offset", msg.Offset)
 					cb.RecordFailure()
 
@@ -412,9 +435,11 @@ func main() {
 			}
 			metrics.observe(aiWorkerConsumerName+"-freeze", m)
 			frozen.applyPayload(m.Value)
-			if err := freezeReader.CommitMessages(context.Background(), m); err != nil {
+			fCommitCtx, fCommitCancel := context.WithTimeout(context.WithoutCancel(gCtx), 2*time.Second)
+			if err := freezeReader.CommitMessages(fCommitCtx, m); err != nil {
 				slog.Error("failed to commit freeze message", "err", err, "partition", m.Partition, "offset", m.Offset)
 			}
+			fCommitCancel()
 		}
 	})
 
@@ -439,12 +464,15 @@ func main() {
 	slog.Info("ai-worker shutdown complete")
 }
 
-func processMessage(ctx context.Context, msg kafka.Message, spannerClient *spanner.Client, frozen *freezeRegistry, dlqWriter *kafka.Writer) error {
+func processMessage(ctx context.Context, msg kafka.Message, spannerClient *spanner.Client, frozen *freezeRegistry, cfg *Config, featureSink bqexport.Sink, dlqWriter *kafka.Writer) error {
 	var env EventEnvelope
 	if err := json.Unmarshal(msg.Value, &env); err != nil {
 		slog.Warn("failed to parse event envelope; routing poison pill to DLQ", "err", err, "body", string(msg.Value))
-		if dlqErr := routeToDLQ(ctx, dlqWriter, msg, "unmarshal_error: "+err.Error()); dlqErr != nil {
-			slog.Error("failed to route poison pill to DLQ", "err", dlqErr)
+		if dlqWriter != nil {
+			if dlqErr := routeToDLQ(ctx, dlqWriter, msg, "unmarshal_error: "+err.Error()); dlqErr != nil {
+				slog.Error("failed to route poison pill to DLQ; leaving offset uncommitted", "err", dlqErr)
+				return dlqErr
+			}
 		}
 		return nil
 	}
@@ -453,9 +481,16 @@ func processMessage(ctx context.Context, msg kafka.Message, spannerClient *spann
 	logger.Info("processing event")
 
 	switch env.Type {
+	case events.EventOntologyObjectChanged, events.EventOntologyObjectUpdated:
+		if err := handleOntologyChangedEvent(msg.Value, frozen, logger); err != nil {
+			logger.Warn("failed to handle ontology change event", "err", err)
+			return err
+		}
+		return nil
 	case events.EventOrderCreated,
+		events.EventOrderStatusChanged,
+		events.EventOrderFinalized,
 		"ORDER_COMPLETED",
-		"ORDER_STATUS_CHANGED",
 		"ORDER_DELIVERED":
 		if synthesisDisabled() {
 			logger.Debug("ai synthesis disabled via AI_SYNTHESIS_ENABLED=false")
@@ -465,6 +500,22 @@ func processMessage(ctx context.Context, msg kafka.Message, spannerClient *spann
 		if err := engine.HandleOrderEvent(ctx, env.Type, msg.Value); err != nil {
 			logger.Error("ai synthesis failed", "err", err)
 			return err
+		}
+		if featureSink != nil {
+			if sig, parseErr := synthesis.ParseOrderSignal(msg.Value); parseErr == nil && !strings.EqualFold(sig.OrderSource, "AI_PREORDER") {
+				cellID := "uz"
+				if cfg != nil && strings.TrimSpace(cfg.CellID) != "" {
+					cellID = cfg.CellID
+				}
+				rows, mapErr := BuildOrderSignalFeatureRows(cellID, sig, predictivepush.CrostonSBAResult{}, time.Now().UTC())
+				if mapErr != nil {
+					logger.Warn("failed to map order signal to feature rows", "err", mapErr)
+				} else if len(rows) > 0 {
+					if sinkErr := featureSink.WriteBatch(ctx, rows); sinkErr != nil {
+						logger.Warn("failed to write order signal features to sink", "err", sinkErr, "rows", len(rows))
+					}
+				}
+			}
 		}
 		return nil
 	default:

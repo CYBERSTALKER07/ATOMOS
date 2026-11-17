@@ -17,10 +17,10 @@ import (
 )
 
 func (s *Service) planningService() *planning.Service {
-	if s.portalSpanner == nil {
+	if s.portalSpanner == nil && s.unifiedGraph == nil {
 		return nil
 	}
-	svc := planning.NewService(s.portalSpanner).WithCache(s.cache)
+	svc := planning.NewService(s.portalSpanner).WithCache(s.cache).WithUnifiedGraph(s.unifiedGraph)
 	svc.TwinScenarioEnabled = strings.EqualFold(strings.TrimSpace(os.Getenv("TWIN_SCENARIO_ENABLED")), "true")
 	return svc
 }
@@ -257,7 +257,11 @@ func (s *Service) HandleKnowledgeGraph(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "knowledge_graph_unavailable"})
 		return
 	}
-	kg, err := svc.GetKnowledgeGraph(r.Context(), s.scopedSupplierID(r))
+	viewerRole := ""
+	if claims, ok := auth.FromContext(r.Context()); ok {
+		viewerRole = auth.EffectiveSupplierRole(claims)
+	}
+	kg, err := svc.GetKnowledgeGraphForViewer(r.Context(), s.scopedSupplierID(r), viewerRole)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "knowledge_graph_failed"})
 		return
@@ -436,6 +440,35 @@ func (s *Service) HandlePlanningSeasonalOverrides(w http.ResponseWriter, r *http
 	default:
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 	}
+}
+
+// HandlePlanningSeasonalHolidaysSeed serves POST /v1/supplier/planning/seasonal-holidays/seed.
+func (s *Service) HandlePlanningSeasonalHolidaysSeed(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	svc := s.planningService()
+	if svc == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "planning_unavailable"})
+		return
+	}
+	sid := s.scopedSupplierID(r)
+	if sid == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "supplier_id_required"})
+		return
+	}
+	n, err := svc.SeedUzbekistanHolidays(r.Context(), sid)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "seasonal_holidays_seed_failed"})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"status":      "seeded",
+		"supplier_id": sid,
+		"seeded":      n,
+		"years":       "2025-2035",
+	})
 }
 
 // HandlePlanningSeasonalEstimate serves POST /v1/supplier/planning/seasonal-estimate.

@@ -101,21 +101,39 @@ func retailerProfileDTO(ret Retailer, boundSupplierID string) map[string]any {
 		supplierID = boundSupplierID
 	}
 	displayName := strings.TrimSpace(ret.Name)
+	legalStatus := strings.TrimSpace(ret.LegalEntityStatus)
+	if legalStatus == "" {
+		legalStatus = LegalEntityInformalPhone
+	}
 	dto := map[string]any{
-		"retailer_id":  ret.RetailerID,
-		"id":           ret.RetailerID,
-		"supplier_id":  supplierID,
-		"name":         displayName,
-		"phone":        ret.Phone,
-		"company":      displayName,
-		"location":     retailerLocationLabel(ret.DeliveryAddress, ret.Lat, ret.Lng),
-		"country_code": ret.CountryCode,
-		"status":       "ACTIVE",
-		"h3_cell":      ret.H3Cell,
-		"lat":          ret.Lat,
-		"lng":          ret.Lng,
-		"created_at":   ret.CreatedAt.Format(time.RFC3339Nano),
-		"updated_at":   ret.UpdatedAt.Format(time.RFC3339Nano),
+		"retailer_id":         ret.RetailerID,
+		"id":                  ret.RetailerID,
+		"supplier_id":         supplierID,
+		"name":                displayName,
+		"phone":               ret.Phone,
+		"company":             displayName,
+		"location":            retailerLocationLabel(ret.DeliveryAddress, ret.Lat, ret.Lng),
+		"country_code":        ret.CountryCode,
+		"legal_entity_status": legalStatus,
+		"is_configured":       retailerProfileConfigured(ret),
+		"status":              "ACTIVE",
+		"h3_cell":             ret.H3Cell,
+		"lat":                 ret.Lat,
+		"lng":                 ret.Lng,
+		"created_at":          ret.CreatedAt.Format(time.RFC3339Nano),
+		"updated_at":          ret.UpdatedAt.Format(time.RFC3339Nano),
+	}
+	if taxID := strings.TrimSpace(ret.TaxID); taxID != "" {
+		dto["tax_id"] = taxID
+	}
+	if normTaxID := strings.TrimSpace(ret.NormalizedTaxID); normTaxID != "" {
+		dto["normalized_tax_id"] = normTaxID
+	}
+	if cell := strings.TrimSpace(ret.HomeCell); cell != "" {
+		dto["home_cell"] = cell
+	}
+	if ret.InnVerifiedAt != nil && !ret.InnVerifiedAt.IsZero() {
+		dto["inn_verified_at"] = ret.InnVerifiedAt.UTC().Format(time.RFC3339Nano)
 	}
 	if addr := strings.TrimSpace(ret.DeliveryAddress); addr != "" {
 		dto["delivery_address"] = addr

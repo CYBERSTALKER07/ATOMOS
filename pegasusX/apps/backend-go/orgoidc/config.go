@@ -4,8 +4,11 @@ package orgoidc
 
 import (
 	"errors"
+	"net"
 	"net/url"
 	"strings"
+
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 )
 
 var (
@@ -63,6 +66,11 @@ func normalizeConfig(c Config) (Config, error) {
 	if err := validateIssuer(c.Issuer); err != nil {
 		return Config{}, err
 	}
+	if c.RedirectURI != "" {
+		if err := validateIssuer(c.RedirectURI); err != nil {
+			return Config{}, ErrRedirectMismatch
+		}
+	}
 	return c, nil
 }
 
@@ -71,11 +79,20 @@ func validateIssuer(issuer string) error {
 	if err != nil || u.Host == "" {
 		return ErrInvalidIssuer
 	}
+	host := strings.ToLower(strings.TrimSuffix(u.Hostname(), "."))
 	if strings.EqualFold(u.Scheme, "https") {
+		if auth.IsProduction() {
+			if ip := net.ParseIP(host); ip != nil && (ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast()) {
+				return ErrInvalidIssuer
+			}
+			if host == "localhost" || strings.HasSuffix(host, ".localhost") || host == "metadata.google.internal" {
+				return ErrInvalidIssuer
+			}
+		}
 		return nil
 	}
-	// Tests / local IdP only.
-	if strings.EqualFold(u.Scheme, "http") && (u.Hostname() == "127.0.0.1" || u.Hostname() == "localhost") {
+	// Tests / local IdP only (blocked in production).
+	if !auth.IsProduction() && strings.EqualFold(u.Scheme, "http") && (host == "127.0.0.1" || host == "localhost") {
 		return nil
 	}
 	return ErrInvalidIssuer

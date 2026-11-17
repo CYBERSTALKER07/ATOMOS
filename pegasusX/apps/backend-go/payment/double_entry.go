@@ -34,7 +34,8 @@ const (
 	AccountDriverPayableVariance = "AP:DRIVER:VARIANCE" // Surplus cash held pending investigation
 
 	// Equity / Revenue / Expense
-	AccountPlatformFeeRevenue      = "REV:PLATFORM:FEE"      // Pegasus platform marketplace cut
+	AccountOpeningBalanceEquity    = "EQUITY:OPENING_BALANCE" // Migration opening AR equity offset
+	AccountPlatformFeeRevenue      = "REV:PLATFORM:FEE"       // Pegasus platform marketplace cut
 	AccountDiscountsAndAllowances  = "EXP:PROMO:DISCOUNT"    // Promo code / marketing subsidy
 	AccountCashWriteOffExpense     = "EXP:CASH:WRITEOFF"     // Uncollectible cash variance written off
 	AccountCashOverShortRevenue    = "REV:CASH:OVERAGE"      // Unclaimed surplus recognized as revenue
@@ -739,6 +740,76 @@ func BuildCreditNoteJournalEntry(
 
 	if err := je.Validate(); err != nil {
 		return nil, fmt.Errorf("credit note ledger validation failed: %w", err)
+	}
+	return je, nil
+}
+
+// BuildMigrationOpeningBalanceJournalEntry constructs and validates a balanced double-entry
+// journal for a migrated opening balance invoice (Dr AR:{supplierId} / Cr EQUITY:OPENING_BALANCE).
+func BuildMigrationOpeningBalanceJournalEntry(
+	entryID, sessionID, orderID, supplierID, retailerID, currency string,
+	amountMinor int64,
+	memo string,
+	occurredAt time.Time,
+) (*JournalEntry, error) {
+	supplierID = strings.TrimSpace(supplierID)
+	retailerID = strings.TrimSpace(retailerID)
+	if supplierID == "" {
+		return nil, fmt.Errorf("ledger: migration opening balance requires supplier_id")
+	}
+	if retailerID == "" {
+		return nil, fmt.Errorf("ledger: migration opening balance requires retailer_id")
+	}
+	if amountMinor <= 0 {
+		return nil, fmt.Errorf("ledger: migration opening balance amount must be positive, got %d", amountMinor)
+	}
+	cur := strings.ToUpper(strings.TrimSpace(currency))
+	if cur == "" {
+		return nil, fmt.Errorf("ledger: migration opening balance requires currency")
+	}
+	entryID = strings.TrimSpace(entryID)
+	if entryID == "" {
+		return nil, fmt.Errorf("ledger: migration opening balance requires entry_id")
+	}
+	if occurredAt.IsZero() {
+		occurredAt = time.Now().UTC()
+	}
+	if strings.TrimSpace(memo) == "" {
+		memo = fmt.Sprintf("Opening migrated nasiya AR balance for invoice/order %s", orderID)
+	}
+	je := &JournalEntry{
+		EntryID:       entryID,
+		TransactionID: entryID,
+		OrderID:       orderID,
+		SessionID:     sessionID,
+		SupplierID:    supplierID,
+		RetailerID:    retailerID,
+		Currency:      cur,
+		Memo:          memo,
+		OccurredAt:    occurredAt.UTC(),
+		Postings: []Posting{
+			{
+				AccountCode: fmt.Sprintf("AR:%s", supplierID),
+				AccountType: AccountClassAsset,
+				Direction:   PostingDebit,
+				AmountMinor: amountMinor,
+				Currency:    cur,
+				PartyID:     retailerID,
+				Description: "Opening migrated AR asset",
+			},
+			{
+				AccountCode: AccountOpeningBalanceEquity,
+				AccountType: AccountClassEquity,
+				Direction:   PostingCredit,
+				AmountMinor: amountMinor,
+				Currency:    cur,
+				PartyID:     supplierID,
+				Description: "Opening migration AR equity offset",
+			},
+		},
+	}
+	if err := je.Validate(); err != nil {
+		return nil, fmt.Errorf("migration opening balance ledger validation failed: %w", err)
 	}
 	return je, nil
 }

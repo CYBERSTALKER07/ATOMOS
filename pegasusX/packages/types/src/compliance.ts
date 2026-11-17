@@ -308,6 +308,11 @@ export interface SupplierProfile {
   is_registered: boolean;
   is_configured: boolean;
   selected_gateways: PaymentGateway[];
+  tax_id?: string;
+  normalized_tax_id?: string;
+  inn_verified_at?: string;
+  market_code?: string;
+  home_cell?: string;
   /** GS1 Global Location Number (13 digits). */
   gln?: string;
   /** GS1 company prefix (7–10 digits) used to mint SSCC-18 at seal. */

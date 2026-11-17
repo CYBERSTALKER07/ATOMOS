@@ -41,6 +41,17 @@ struct CartView: View {
                                         cart.updateQuantity(itemId: item.id, quantity: newVal)
                                     }
                                 },
+                                onToggleMustHave: {
+                                    cart.toggleMustHave(itemId: item.id)
+                                },
+                                onToggleAllowSubstitutes: {
+                                    cart.toggleAllowSubstitutes(itemId: item.id)
+                                },
+                                onSnapPack: {
+                                    withAnimation(AnimationConstants.express) {
+                                        cart.snapToPackMultiple(itemId: item.id)
+                                    }
+                                },
                                 onRemove: {
                                     Haptics.medium()
                                     withAnimation(AnimationConstants.fluid) {
@@ -227,6 +238,9 @@ struct CartView: View {
 private struct CartItemRowView: View {
     let item: CartItem
     let onUpdateQuantity: (Int) -> Void
+    let onToggleMustHave: () -> Void
+    let onToggleAllowSubstitutes: () -> Void
+    let onSnapPack: () -> Void
     let onRemove: () -> Void
 
     @State private var quantity: Int
@@ -234,18 +248,25 @@ private struct CartItemRowView: View {
     init(
         item: CartItem,
         onUpdateQuantity: @escaping (Int) -> Void,
+        onToggleMustHave: @escaping () -> Void,
+        onToggleAllowSubstitutes: @escaping () -> Void,
+        onSnapPack: @escaping () -> Void,
         onRemove: @escaping () -> Void
     ) {
         self.item = item
         self.onUpdateQuantity = onUpdateQuantity
+        self.onToggleMustHave = onToggleMustHave
+        self.onToggleAllowSubstitutes = onToggleAllowSubstitutes
+        self.onSnapPack = onSnapPack
         self.onRemove = onRemove
         self._quantity = State(initialValue: item.quantity)
     }
 
     var body: some View {
+        let packSize = RetailerPackHelper.effectivePackSize(product: item.product, variant: item.variant)
         HStack(spacing: AppTheme.spacingMD) {
             ZStack {
-                RoundedRectangle(cornerRadius: AppTheme.radiusMD)
+                RoundedRectangle(cornerRadius: AppTheme.radiusMD, style: .continuous)
                     .fill(AppTheme.surfaceElevated)
                     .frame(width: 72, height: 72)
                 Image(systemName: "leaf.fill")
@@ -276,8 +297,18 @@ private struct CartItemRowView: View {
                 Text(L10n.format("mobile_retailer.ui.formatted_each", "\(item.variant.priceMinor.formatted())"))
                     .font(.system(.caption, design: .rounded))
                     .foregroundStyle(AppTheme.textTertiary)
+
+                OrderLineFlagPills(
+                    mustHave: item.mustHave,
+                    allowSubstitutes: item.allowSubstitutes,
+                    packSize: packSize,
+                    currentQuantity: item.quantity,
+                    onToggleMustHave: onToggleMustHave,
+                    onToggleAllowSubstitutes: onToggleAllowSubstitutes,
+                    onSnapPack: onSnapPack
+                )
             }
-            .accessibilityElement(children: .combine)
+            .accessibilityElement(children: .contain)
             .accessibilityLabel("\(item.product.name), \(item.variant.size), \(item.variant.pack), \(item.variant.priceMinor.formatted()) each")
 
             Spacer()

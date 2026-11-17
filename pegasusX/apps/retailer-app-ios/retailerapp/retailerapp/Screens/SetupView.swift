@@ -71,25 +71,175 @@ struct SetupView: View {
 
     private var taxStep: some View {
         VStack(spacing: AppTheme.spacingLG) {
-            setupField(title: "Tax ID / VAT", text: $vm.taxId, icon: "doc.text")
-            Button {
-                _ = vm.advanceFromTax()
-            } label: {
-                Text("supplier_portal.bulk_import_wizard.text.continue")
-                    .font(.system(.headline, design: .rounded, weight: .bold))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(AppTheme.accent)
-                    .foregroundStyle(.white)
-                    .clipShape(.rect(cornerRadius: AppTheme.radiusCard))
+            if vm.joinRequestSent {
+                joinRequestConfirmationCard
+            } else {
+                Text("retailer_desktop.tax_identity.subtitle")
+                    .font(.caption)
+                    .foregroundStyle(AppTheme.textSecondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                informalShopToggle
+
+                if !vm.isInformalShop {
+                    innFieldRow
+                    if let lookup = vm.innLookup, lookup.isVerifiedFound {
+                        innVerifiedCard(lookup)
+                    }
+                    if let innErr = vm.innError, !innErr.isEmpty {
+                        Text(innErr)
+                            .font(.caption)
+                            .foregroundStyle(AppTheme.error)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+
+                continueFromTaxButton
             }
-            .pegasusMinimumHitTarget()
-            .accessibilityLabel("Continue to delivery address step")
         }
+    }
+
+    private var informalShopToggle: some View {
+        Toggle(isOn: $vm.isInformalShop) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("retailer_desktop.tax_identity.mode_informal_phone")
+                    .font(.subheadline.weight(.semibold))
+                Text("retailer_desktop.tax_identity.legal_status_informal")
+                    .font(.caption)
+                    .foregroundStyle(AppTheme.textSecondary)
+            }
+        }
+        .padding()
+        .background(AppTheme.cardBackground)
+        .clipShape(.rect(cornerRadius: AppTheme.radiusSM))
+        .onChange(of: vm.isInformalShop) { _, isInformal in
+            if isInformal {
+                vm.innError = nil
+                vm.innLookup = nil
+                vm.errorMessage = nil
+            }
+        }
+    }
+
+    private var innFieldRow: some View {
+        HStack(spacing: 8) {
+            setupField(
+                title: String(localized: "retailer_desktop.tax_identity.tax_id_label"),
+                text: $vm.taxId,
+                icon: "doc.text"
+            )
+            Button {
+                Task { await vm.verifyINN() }
+            } label: {
+                Group {
+                    if vm.innChecking {
+                        ProgressView()
+                            .frame(width: 80, height: 44)
+                    } else {
+                        Text("supplier_portal.onboarding_inn.verify_button")
+                            .font(.caption.weight(.semibold))
+                            .padding(.horizontal, 12)
+                            .frame(height: 44)
+                    }
+                }
+            }
+            .buttonStyle(.borderedProminent)
+            .disabled(vm.innChecking || vm.taxId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+        }
+    }
+
+    private func innVerifiedCard(_ lookup: RetailerINNLookupResponse) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Label("supplier_portal.onboarding_inn.verified_badge", systemImage: "checkmark.seal.fill")
+                .font(.caption.weight(.bold))
+                .foregroundStyle(AppTheme.success)
+            if let legal = lookup.legalName, !legal.isEmpty {
+                Text(legal)
+                    .font(.subheadline.weight(.semibold))
+            }
+            if let addr = lookup.address, !addr.isEmpty {
+                Text(addr)
+                    .font(.caption)
+                    .foregroundStyle(AppTheme.textSecondary)
+            }
+            if lookup.existingJoinEligible == true {
+                Text("retailer_desktop.tax_identity.existing_retailer_join_hint")
+                    .font(.caption)
+                    .foregroundStyle(AppTheme.warning)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding()
+        .background(AppTheme.success.opacity(0.08))
+        .clipShape(.rect(cornerRadius: AppTheme.radiusSM))
+    }
+
+    private var continueFromTaxButton: some View {
+        Button {
+            Task { _ = await vm.advanceFromTaxAsync() }
+        } label: {
+            Group {
+                if vm.isInformalShop {
+                    Text("retailer_desktop.tax_identity.save_informal")
+                } else {
+                    Text("supplier_portal.bulk_import_wizard.text.continue")
+                }
+            }
+            .font(.system(.headline, design: .rounded, weight: .bold))
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
+            .background(AppTheme.accent)
+            .foregroundStyle(.white)
+            .clipShape(.rect(cornerRadius: AppTheme.radiusCard))
+        }
+        .pegasusMinimumHitTarget()
+        .accessibilityLabel("Continue to delivery address step")
+    }
+
+    private var joinRequestConfirmationCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label("supplier_portal.onboarding_inn.existing_company_title", systemImage: "person.badge.clock")
+                .font(.headline)
+                .foregroundStyle(AppTheme.warning)
+            Text("supplier_portal.onboarding_inn.join_request_sent")
+                .font(.subheadline)
+                .foregroundStyle(AppTheme.textPrimary)
+            if let conflict = vm.joinRequestConflict {
+                if let legal = conflict.legalName, !legal.isEmpty {
+                    Text(legal)
+                        .font(.subheadline.weight(.semibold))
+                }
+                if let reqId = conflict.requestId, !reqId.isEmpty {
+                    Text("Request ID: \(reqId)")
+                        .font(.caption.monospaced())
+                        .foregroundStyle(AppTheme.textSecondary)
+                }
+            }
+            Button {
+                vm.joinRequestSent = false
+                vm.joinRequestConflict = nil
+                vm.step = .tax
+            } label: {
+                Text("common.action.back")
+                    .font(.system(.subheadline, design: .rounded, weight: .semibold))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                    .background(AppTheme.surfaceElevated)
+                    .foregroundStyle(AppTheme.textPrimary)
+                    .clipShape(.rect(cornerRadius: AppTheme.radiusSM))
+            }
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(AppTheme.cardBackground)
+        .clipShape(.rect(cornerRadius: AppTheme.radiusCard))
     }
 
     private var addressStep: some View {
         VStack(spacing: AppTheme.spacingLG) {
+            if vm.joinRequestSent {
+                joinRequestConfirmationCard
+            } else {
             setupField(title: "Billing Address", text: $vm.billingAddress, icon: "building")
             setupField(title: "Shipping Address", text: $vm.shippingAddress, icon: "shippingbox")
             setupField(title: "City", text: $vm.city, icon: "mappin.and.ellipse")
@@ -115,6 +265,8 @@ struct SetupView: View {
                     Task {
                         if await vm.submit() {
                             Haptics.success()
+                        } else if vm.joinRequestSent {
+                            Haptics.selection()
                         } else {
                             Haptics.error()
                         }
@@ -137,6 +289,7 @@ struct SetupView: View {
                 .pegasusMinimumHitTarget()
                 .disabled(vm.isSubmitting)
                 .accessibilityLabel("Complete setup")
+            }
             }
         }
     }

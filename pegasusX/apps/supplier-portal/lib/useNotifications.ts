@@ -9,6 +9,52 @@ import type { HandoffCardMetadata } from '@pegasusx/types';
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 const SUPPLIER_NOTIFICATIONS_SSE_PATH = '/v1/supplier/events';
 
+export const SUPPLIER_SSE_EVENT_TYPES: string[] = [
+  'notification',
+  'ORDER_CREATED',
+  'ORDER_UPDATED',
+  'ORDER_STATUS_CHANGED',
+  'ORDER_CANCELLED',
+  'ORDER_DELIVERED',
+  'CLAIM_CREATED',
+  'CLAIM_UPDATED',
+  'PAYMENT_CLEARED',
+  'PAYMENT_FAILED',
+  'INVENTORY_UPDATED',
+  'LOW_STOCK_ALERT',
+  'EXCEPTION_CREATED',
+  'EXCEPTION_RESOLVED',
+  'PLAYBOOK_RUN_UPDATED',
+  'FISCAL_RECEIPT_ISSUED',
+  'FISCAL_RECEIPT_FAILED',
+  'SUPPLY_REQUEST_UPDATED',
+  'CASHIER_SESSION_STARTED',
+  'CASHIER_SESSION_TRANSITION',
+  'HANDOFF_CARD',
+  'order.created',
+  'order.updated',
+  'order.status_changed',
+  'SUPPLIER_CREATED',
+  'SUPPLIER_UPDATED',
+  'SUPPLIER_PROFILE_UPDATED',
+  'SUPPLIER_BILLING_UPDATED',
+  'SUPPLIER_BILLING_CONFIGURED',
+  'SUPPLIER_MEMBER_ADDED',
+  'SUPPLIER_BROADCAST',
+  'WAREHOUSE_SUPPLY_REQUEST_OPENED',
+  'SUPPLY_REQUEST_ACCEPTED',
+  'SUPPLY_REQUEST_UPDATE',
+  'INVENTORY_QUANTITY_UPDATED',
+  'INVENTORY_POLICY_UPDATED',
+  'CLAIM_FILED',
+  'CLAIM_UNDER_REVIEW',
+  'CLAIM_RESOLVED',
+  'FISCAL_RECEIPT_REQUESTED',
+  'FISCAL_RECEIPT_SUCCEEDED',
+  'CONTROL_TOWER_RUN_CREATED',
+  'CONTROL_TOWER_RUN_UPDATED',
+];
+
 interface BackendNotification {
   notification_id: string;
   type: string;
@@ -90,6 +136,7 @@ export function useNotifications() {
   const reconnectAttempt = useRef(0);
   const hasConnectedOnce = useRef(false);
   const disposedRef = useRef(false);
+  const processedEventIds = useRef<Set<string>>(new Set());
 
   const fetchAllInboxPages = useCallback(async (signal?: AbortSignal) => {
     const pageSize = 100;
@@ -170,21 +217,42 @@ export function useNotifications() {
   }, []);
 
   // ── SSE for real-time notifications ──
-  const connectSSE = useCallback(() => {
-    if (disposedRef.current) return;
-    clearTimeout(reconnectTimer.current);
-    if (esRef.current) {
-      esRef.current.close();
-      esRef.current = null;
-    }
+  const connectSSE = useCallback((tokenOverride?: string) => {
+    void (async () => {
+      if (disposedRef.current) return;
+      const authToken = (tokenOverride || readTokenFromCookie() || (await resolveSupplierToken())).trim();
+      if (disposedRef.current || !authToken) return;
 
-    const token = readTokenFromCookie();
-    const sseUrl = new URL(SUPPLIER_NOTIFICATIONS_SSE_PATH, API);
-    if (token) {
-      sseUrl.searchParams.set('token', token);
-    }
-    const es = new EventSource(sseUrl.toString(), { withCredentials: true });
-    esRef.current = es;
+      let wsTicket = '';
+      try {
+        const wsRes = await supplierFetch('/v1/supplier/ws-session', {
+          method: 'GET',
+          headers: tokenOverride ? { Authorization: `Bearer ${authToken}` } : undefined,
+          cache: 'no-store',
+        });
+        const payload = (await wsRes.json().catch(() => null)) as { token?: string } | null;
+        if (wsRes.ok && typeof payload?.token === 'string' && payload.token.trim()) {
+          wsTicket = payload.token.trim();
+        }
+      } catch {
+        wsTicket = '';
+      }
+      if (disposedRef.current || !wsTicket) return;
+
+      clearTimeout(reconnectTimer.current);
+      if (esRef.current) {
+        esRef.current.close();
+        esRef.current = null;
+      }
+
+      const sseUrl = new URL(SUPPLIER_NOTIFICATIONS_SSE_PATH, API);
+      sseUrl.searchParams.set('token', wsTicket);
+      const es = new EventSource(sseUrl.toString(), { withCredentials: true });
+      if (disposedRef.current) {
+        es.close();
+        return;
+      }
+      esRef.current = es;
 
     es.onopen = () => {
       if (disposedRef.current) return;
@@ -197,29 +265,44 @@ export function useNotifications() {
       }
     };
 
-    es.onmessage = (event) => {
+    const handleSSEMessage = (event: MessageEvent) => {
       if (disposedRef.current) return;
       try {
         const msg = JSON.parse(event.data) as RealtimeNotificationFrame;
+        const rawId = (event.lastEventId || msg.id || '').trim();
+        const eventType = msg.type || (event.type && event.type !== 'message' ? event.type : undefined);
+        const dedupeKey = rawId || (eventType ? `${eventType}:${event.data}` : '');
+
+        if (dedupeKey) {
+          if (processedEventIds.current.has(dedupeKey)) {
+            return;
+          }
+          processedEventIds.current.add(dedupeKey);
+          if (processedEventIds.current.size > 2000) {
+            const first = processedEventIds.current.values().next().value;
+            if (first) processedEventIds.current.delete(first);
+          }
+        }
 
         // Dispatch hybrid sync event globally
-        if (msg.type && typeof window !== "undefined") {
-          window.dispatchEvent(new CustomEvent("sync-invalidate", { detail: msg.type }));
+        if (eventType && typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("sync-invalidate", { detail: eventType }));
 
           const payload = parseRealtimePayload(msg.payload);
           window.dispatchEvent(new CustomEvent("supplier-live-event", {
             detail: {
               ...payload,
               ...msg,
-              type: msg.type,
+              type: eventType,
             },
           }));
         }
 
-        if (msg.type && msg.title) {
+        if (eventType && msg.title) {
+          const notifId = rawId || crypto.randomUUID();
           const notif: Notification = {
-            id: msg.id || crypto.randomUUID(),
-            type: msg.type,
+            id: notifId,
+            type: eventType,
             title: msg.title,
             body: msg.body || '',
             payload: msg.payload || '',
@@ -239,14 +322,20 @@ export function useNotifications() {
       } catch { /* ignore malformed */ }
     };
 
+    es.onmessage = handleSSEMessage;
+    for (const evtName of SUPPLIER_SSE_EVENT_TYPES) {
+      es.addEventListener(evtName, handleSSEMessage as EventListener);
+    }
+
     es.onerror = () => {
       // EventSource reconnects natively. If closed, retry.
       if (es.readyState === EventSource.CLOSED && !disposedRef.current) {
         const delay = reconnectDelayMs(reconnectAttempt.current, { baseMs: 3_000, maxMs: 30_000 });
         reconnectAttempt.current += 1;
-        reconnectTimer.current = setTimeout(connectSSE, delay);
+        reconnectTimer.current = setTimeout(() => { connectSSE(); }, delay);
       }
     };
+    })();
   }, [fetchInbox]);
 
   // ── Lifecycle ──
@@ -262,10 +351,13 @@ export function useNotifications() {
         return;
       }
       void fetchInbox(ac.signal);
-      connectSSE();
+      connectSSE(token);
     })();
 
     const reconnectIfNeeded = () => {
+      if (!hasConnectedOnce.current && !readTokenFromCookie()) {
+        return;
+      }
       if (esRef.current && (esRef.current.readyState === EventSource.OPEN || esRef.current.readyState === EventSource.CONNECTING)) {
         return;
       }

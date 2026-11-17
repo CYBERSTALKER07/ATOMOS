@@ -228,6 +228,55 @@ enum SupplierIdempotencyKeys {
         "supplier-control-tower-override:\(scopeId):\(stableHash("\(action):\(polygonFingerprint)"))"
     }
 
+    static func migrationProjectCreate(scopeId: String, name: String) -> String {
+        "mig-proj-create:\(scopeId):\(stableHash(name.trimmingCharacters(in: .whitespacesAndNewlines)))"
+    }
+
+    static func migrationBundleCreate(projectId: String, fingerprint: String) -> String {
+        "mig-bundle-create:\(projectId):\(stableHash(fingerprint))"
+    }
+
+    static func migrationBundleUploaded(bundleId: String, fingerprint: String) -> String {
+        "mig-bundle-up:\(bundleId):\(stableHash(fingerprint))"
+    }
+
+    static func migrationBundleSort(bundleId: String, fingerprint: String) -> String {
+        "mig-bundle-sort:\(bundleId):\(stableHash(fingerprint))"
+    }
+
+    static func migrationMappingConfirm(sessionId: String, fingerprint: String) -> String {
+        "mig-map:\(sessionId):\(stableHash(fingerprint))"
+    }
+
+    static func migrationDryRun(scopeId: String, applyMode: String) -> String {
+        "mig-dryrun:\(scopeId):\(applyMode.uppercased())"
+    }
+
+    static func migrationSessionApprove(sessionId: String, reportId: String?) -> String {
+        "mig-approve:\(sessionId):\(reportId ?? "latest")"
+    }
+
+    static func migrationSessionApply(sessionId: String, fingerprint: String?) -> String {
+        "mig-apply:\(sessionId):\(fingerprint ?? "latest")"
+    }
+
+    static func migrationSessionRollback(sessionId: String) -> String {
+        "mig-rollback:\(sessionId)"
+    }
+
+    static func migrationOpenOrdersRelease(scopeId: String, orderIds: [String], targetStatus: String) -> String {
+        let joined = orderIds.sorted().joined(separator: ",")
+        return "mig-release:\(scopeId):\(targetStatus.uppercased()):\(stableHash(joined))"
+    }
+
+    static func migrationCutover(projectId: String) -> String {
+        "mig-cutover:\(projectId)"
+    }
+
+    static func joinRequestDecide(requestId: String, decision: String) -> String {
+        "sup-join-req:\(requestId):\(decision.lowercased())"
+    }
+
     private static func stableHash(_ input: String) -> String {
         var hash: UInt32 = 2166136261
         for scalar in input.unicodeScalars {

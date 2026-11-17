@@ -17,6 +17,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/manifest"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/planning"
 	"github.com/pegasusx/pegasusx/apps/backend-go/replenishment"
 	"github.com/pegasusx/pegasusx/apps/backend-go/routing"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
@@ -40,6 +41,7 @@ type PortalOpsConfig struct {
 	FallbackDepotLng     float64
 	ReplenishmentEngine  *replenishment.Engine
 	FactoryPlanning      FactoryPlanner
+	UnifiedGraph         planning.UnifiedGraphProvider
 }
 
 // SetPortalOps attaches cross-cutting deps used by supplier admin-parity handlers.
@@ -59,6 +61,16 @@ func (s *Service) SetPortalOps(cfg PortalOpsConfig) {
 	s.fallbackDepotLng = cfg.FallbackDepotLng
 	s.replenishmentEngine = cfg.ReplenishmentEngine
 	s.factoryPlanning = cfg.FactoryPlanning
+	if cfg.UnifiedGraph != nil {
+		s.unifiedGraph = cfg.UnifiedGraph
+	}
+}
+
+// SetUnifiedGraph attaches the ontology-backed UnifiedGraphProvider to the supplier service.
+func (s *Service) SetUnifiedGraph(p planning.UnifiedGraphProvider) {
+	if s != nil {
+		s.unifiedGraph = p
+	}
 }
 
 // SetControlTower wires playbook scoring for exception enrichment.
@@ -93,7 +105,7 @@ func (s *Service) HandleEmpathyAdoption(w http.ResponseWriter, r *http.Request) 
 	adoption := EmpathyAdoption{}
 
 	count := func(sql string, params map[string]any) int64 {
-		iter := s.portalSpanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{SQL: sql, Params: params})
+		iter := s.portalSpanner.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, spanner.Statement{SQL: sql, Params: params})
 		defer iter.Stop()
 		row, err := iter.Next()
 		if err != nil {
@@ -112,7 +124,7 @@ func (s *Service) HandleEmpathyAdoption(w http.ResponseWriter, r *http.Request) 
 	)
 
 	statusSQL := `SELECT Status, COUNT(*) AS c FROM AIPredictions WHERE SupplierId = @sid GROUP BY Status`
-	iter := s.portalSpanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
+	iter := s.portalSpanner.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, spanner.Statement{
 		SQL: statusSQL, Params: map[string]any{"sid": sid},
 	})
 	defer iter.Stop()

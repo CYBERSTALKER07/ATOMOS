@@ -199,6 +199,14 @@ struct OrderLineItem: Codable, Identifiable, Hashable {
     let quantity: Int
     let unitPrice: Int64
     let totalPrice: Int64
+    let mustHave: Bool
+    let allowSubstitutes: Bool
+    let substituteSku: String?
+    let substituteName: String?
+    let originalSku: String?
+    let priceGapMinor: Int64?
+    let shortageAction: String?
+    let shortageReason: String?
 
     enum CodingKeys: String, CodingKey {
         case lineItemID = "line_item_id"
@@ -212,9 +220,34 @@ struct OrderLineItem: Codable, Identifiable, Hashable {
         case quantity = "quantity"
         case unitPrice = "unit_price"
         case totalPrice = "total_price"
+        case mustHave = "must_have"
+        case allowSubstitutes = "allow_substitutes"
+        case substituteSku = "substitute_sku"
+        case substituteName = "substitute_name"
+        case originalSku = "original_sku"
+        case priceGapMinor = "price_gap_minor"
+        case shortageAction = "shortage_action"
+        case shortageReason = "shortage_reason"
     }
 
-    init(id: String, productId: String, productName: String, variantId: String, variantSize: String, quantity: Int, unitPrice: Int64, totalPrice: Int64) {
+    init(
+        id: String,
+        productId: String,
+        productName: String,
+        variantId: String,
+        variantSize: String,
+        quantity: Int,
+        unitPrice: Int64,
+        totalPrice: Int64,
+        mustHave: Bool = false,
+        allowSubstitutes: Bool = false,
+        substituteSku: String? = nil,
+        substituteName: String? = nil,
+        originalSku: String? = nil,
+        priceGapMinor: Int64? = nil,
+        shortageAction: String? = nil,
+        shortageReason: String? = nil
+    ) {
         self.id = id
         self.productId = productId
         self.productName = productName
@@ -223,6 +256,14 @@ struct OrderLineItem: Codable, Identifiable, Hashable {
         self.quantity = quantity
         self.unitPrice = unitPrice
         self.totalPrice = totalPrice
+        self.mustHave = mustHave
+        self.allowSubstitutes = allowSubstitutes
+        self.substituteSku = substituteSku
+        self.substituteName = substituteName
+        self.originalSku = originalSku
+        self.priceGapMinor = priceGapMinor
+        self.shortageAction = shortageAction
+        self.shortageReason = shortageReason
     }
 
     init(from decoder: Decoder) throws {
@@ -242,6 +283,16 @@ struct OrderLineItem: Codable, Identifiable, Hashable {
         self.unitPrice = basePrice
         let decodedTotal = try container.decodeInt64Lossy(forKey: .totalPrice)
         self.totalPrice = decodedTotal > 0 ? decodedTotal : basePrice * Int64(self.quantity)
+        self.mustHave = try container.decodeIfPresent(Bool.self, forKey: .mustHave) ?? false
+        self.allowSubstitutes = try container.decodeIfPresent(Bool.self, forKey: .allowSubstitutes) ?? false
+        self.substituteSku = try container.decodeIfPresent(String.self, forKey: .substituteSku)
+        self.substituteName = try container.decodeIfPresent(String.self, forKey: .substituteName)
+        self.originalSku = try container.decodeIfPresent(String.self, forKey: .originalSku)
+        self.priceGapMinor = container.contains(.priceGapMinor)
+            ? try? container.decodeInt64Lossy(forKey: .priceGapMinor)
+            : nil
+        self.shortageAction = try container.decodeIfPresent(String.self, forKey: .shortageAction)
+        self.shortageReason = try container.decodeIfPresent(String.self, forKey: .shortageReason)
     }
 
     func encode(to encoder: Encoder) throws {
@@ -254,6 +305,14 @@ struct OrderLineItem: Codable, Identifiable, Hashable {
         try container.encode(quantity, forKey: .quantity)
         try container.encode(unitPrice, forKey: .unitPrice)
         try container.encode(totalPrice, forKey: .totalPrice)
+        try container.encode(mustHave, forKey: .mustHave)
+        try container.encode(allowSubstitutes, forKey: .allowSubstitutes)
+        try container.encodeIfPresent(substituteSku, forKey: .substituteSku)
+        try container.encodeIfPresent(substituteName, forKey: .substituteName)
+        try container.encodeIfPresent(originalSku, forKey: .originalSku)
+        try container.encodeIfPresent(priceGapMinor, forKey: .priceGapMinor)
+        try container.encodeIfPresent(shortageAction, forKey: .shortageAction)
+        try container.encodeIfPresent(shortageReason, forKey: .shortageReason)
     }
 }
 
@@ -279,6 +338,7 @@ struct Order: Codable, Identifiable, Hashable {
     let preorderBadge: String?
     let proposedDeliveryDate: String?
     let deliveryProposalReason: String?
+    let autoConfirmOptIn: Bool
     let createdAt: String
     let updatedAt: String
     let estimatedDelivery: String?
@@ -305,6 +365,7 @@ struct Order: Codable, Identifiable, Hashable {
         case preorderBadge = "preorder_badge"
         case proposedDeliveryDate = "proposed_delivery_date"
         case deliveryProposalReason = "delivery_proposal_reason"
+        case autoConfirmOptIn = "auto_confirm_opt_in"
         case createdAt = "created_at"
         case updatedAt = "updated_at"
         case estimatedDelivery = "estimated_delivery"
@@ -312,7 +373,7 @@ struct Order: Codable, Identifiable, Hashable {
         case version = "version"
     }
 
-    init(id: String, retailerId: String, supplierId: String?, supplierName: String?, status: OrderStatus, items: [OrderLineItem], totalAmount: Int64, currency: String = packCurrency(MarketPackStore.pack), paymentGateway: String = "", paymentStatus: String? = nil, routeId: String? = nil, autoConfirmAt: String? = nil, deliverBefore: String? = nil, orderSource: String?, confirmationStatus: String? = nil, deliveryPriority: String? = nil, preorderBadge: String? = nil, proposedDeliveryDate: String? = nil, deliveryProposalReason: String? = nil, createdAt: String, updatedAt: String, estimatedDelivery: String?, qrCode: String?, version: Int64 = 0) {
+    init(id: String, retailerId: String, supplierId: String?, supplierName: String?, status: OrderStatus, items: [OrderLineItem], totalAmount: Int64, currency: String = packCurrency(MarketPackStore.pack), paymentGateway: String = "", paymentStatus: String? = nil, routeId: String? = nil, autoConfirmAt: String? = nil, deliverBefore: String? = nil, orderSource: String?, confirmationStatus: String? = nil, deliveryPriority: String? = nil, preorderBadge: String? = nil, proposedDeliveryDate: String? = nil, deliveryProposalReason: String? = nil, autoConfirmOptIn: Bool = false, createdAt: String, updatedAt: String, estimatedDelivery: String?, qrCode: String?, version: Int64 = 0) {
         self.id = id
         self.retailerId = retailerId
         self.supplierId = supplierId
@@ -332,6 +393,7 @@ struct Order: Codable, Identifiable, Hashable {
         self.preorderBadge = preorderBadge
         self.proposedDeliveryDate = proposedDeliveryDate
         self.deliveryProposalReason = deliveryProposalReason
+        self.autoConfirmOptIn = autoConfirmOptIn
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.estimatedDelivery = estimatedDelivery
@@ -367,6 +429,7 @@ struct Order: Codable, Identifiable, Hashable {
         self.preorderBadge = try c.decodeIfPresent(String.self, forKey: .preorderBadge)
         self.proposedDeliveryDate = try c.decodeIfPresent(String.self, forKey: .proposedDeliveryDate)
         self.deliveryProposalReason = try c.decodeIfPresent(String.self, forKey: .deliveryProposalReason)
+        self.autoConfirmOptIn = try c.decodeIfPresent(Bool.self, forKey: .autoConfirmOptIn) ?? false
         self.createdAt = try c.decodeIfPresent(String.self, forKey: .createdAt) ?? ""
                 self.updatedAt = try c.decodeIfPresent(String.self, forKey: .updatedAt) ?? self.createdAt
                 self.estimatedDelivery = try c.decodeIfPresent(String.self, forKey: .estimatedDelivery) ?? self.deliverBefore
@@ -376,6 +439,10 @@ struct Order: Codable, Identifiable, Hashable {
 
     var isAiGenerated: Bool {
         orderSource == "AI_PREDICTED"
+    }
+
+    var isMigrationOrigin: Bool {
+        orderSource == "MIGRATION"
     }
 
     var needsManualPreorderAction: Bool {

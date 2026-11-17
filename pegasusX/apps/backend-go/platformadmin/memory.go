@@ -13,10 +13,14 @@ type MemoryRepository struct {
 	mu      sync.Mutex
 	tenants map[string]Tenant
 	audit   []AuditRow
+	flags   map[string]FeatureFlag
 }
 
 func NewMemoryRepository() *MemoryRepository {
-	return &MemoryRepository{tenants: map[string]Tenant{}}
+	return &MemoryRepository{
+		tenants: map[string]Tenant{},
+		flags:   map[string]FeatureFlag{},
+	}
 }
 
 func tenantKey(tt, id string) string {

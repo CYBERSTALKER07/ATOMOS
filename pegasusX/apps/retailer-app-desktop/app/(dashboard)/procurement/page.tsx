@@ -26,6 +26,7 @@ import EmptyState from "../../../components/EmptyState";
 import { BentoGrid, BentoCard } from "../../../components/BentoGrid";
 import CountUp from "../../../components/CountUp";
 import MiniSparkline from "../../../components/MiniSparkline";
+import { SuggestedOrdersApprovePanel } from "../../../components/dashboard/SuggestedOrdersApprovePanel";
 import { useLiveData } from "../../../lib/hooks";
 import { apiFetch } from "../../../lib/auth";
 import {
@@ -555,6 +556,10 @@ export default function ProcurementPage() {
             )}
           </div>
         </aside>
+      </div>
+
+      <div className="mt-8">
+        <SuggestedOrdersApprovePanel onApproved={() => void refreshAll()} />
       </div>
 
       {/* Add Vendor Modal */}

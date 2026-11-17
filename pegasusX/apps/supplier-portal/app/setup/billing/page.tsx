@@ -2,7 +2,7 @@
 
 import { usePortalT } from "@/lib/i18n";
 import { useEffect, useState } from "react";
-import { supplierFetch } from "@/lib/auth";
+import { persistSession, supplierFetch } from "@/lib/auth";
 import {
   SelectionOption,
   SetupCallout,
@@ -60,7 +60,12 @@ const ACCEPTOR_OPTIONS = [
 export default function BillingSetupPage() {
   const t = usePortalT();
   const { catalog, currency, gateways } = useSupplierPaymentCatalog();
+  const [mounted, setMounted] = useState(false);
   const [state, setState] = useState<BillingState>(INITIAL);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (gateways.length === 0) return;
@@ -116,6 +121,10 @@ export default function BillingSetupPage() {
       if (!res.ok) {
         const body = await res.text();
         throw new Error(body || `billing setup failed: ${res.status}`);
+      }
+      const data = (await res.json().catch(() => null)) as { token?: string } | null;
+      if (data?.token) {
+        persistSession(data.token);
       }
       window.location.href = "/";
     } catch (err) {
@@ -227,7 +236,7 @@ export default function BillingSetupPage() {
         description={t("supplier_portal.residual.text.retailers_see_these_options_at_checkout_select_all_that_apply")}
       >
         <p className="setup-helper">
-          Operating currency is pack-owned and read-only: {currency || "unset"}.
+          Operating currency is pack-owned and read-only: {(mounted ? currency : "") || "unset"}.
         </p>
         <div className="setup-selection-grid setup-selection-grid--2" role="group" aria-label={t("supplier_portal.setup.billing.text.payment_gateways")}>
           {catalog.map((gateway) => (

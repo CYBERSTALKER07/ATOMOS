@@ -1,7 +1,9 @@
 import json
 import logging
-import uuid
+import signal
+import threading
 import time
+import uuid
 try:
     from confluent_kafka import Consumer, Producer
 except ImportError:
@@ -65,24 +67,72 @@ def solve_vrp(payload):
                     "vehicle_id": r.vehicle_id,
                     "route_id": str(uuid.uuid4()),
                     "order_ids": r.location_ids,
+                    "wave_index": getattr(r, "wave_index", 1),
                 })
             return {"routes": routes}
         except Exception as e:
             logger.warning(f"OR-Tools solve_vrp failed, falling back to chunking: {e}")
 
-    # Fallback chunking heuristic
+    # Fallback capacity-aware bin packing across vehicles and waves
     routes = []
-    chunk_size = max(1, len(orders) // len(fleet))
-    for i, driver in enumerate(fleet):
-        start = i * chunk_size
-        end = (i + 1) * chunk_size if i < len(fleet) - 1 else len(orders)
-        route_orders = orders[start:end]
-        if route_orders:
+    positive_fleet = [
+        (d, max(1, int(d.get("capacity_vu", d.get("max_volume_vu", 100)))))
+        for d in fleet
+    ]
+    bins = [
+        {
+            "driver": drv,
+            "remaining": cap,
+            "cap": cap,
+            "wave_index": 1,
+            "order_ids": [],
+        }
+        for drv, cap in positive_fleet
+    ]
+    for o in sorted(
+        orders,
+        key=lambda x: int(x.get("demand_vu", x.get("volume_vu", 10))),
+        reverse=True,
+    ):
+        demand = max(0, int(o.get("demand_vu", o.get("volume_vu", 10))))
+        oid = o.get("order_id")
+        if not oid:
+            continue
+        placed = False
+        best_bin = None
+        for b in bins:
+            if b["remaining"] >= demand:
+                if best_bin is None or (b["wave_index"], -b["remaining"]) < (best_bin["wave_index"], -best_bin["remaining"]):
+                    best_bin = b
+        if best_bin is not None:
+            best_bin["remaining"] -= demand
+            best_bin["order_ids"].append(oid)
+            placed = True
+        if not placed:
+            wave_num = (len(bins) // len(positive_fleet)) + 1
+            for drv, cap in positive_fleet:
+                bins.append({
+                    "driver": drv,
+                    "remaining": cap,
+                    "cap": cap,
+                    "wave_index": wave_num,
+                    "order_ids": [],
+                })
+            for b in bins[-len(positive_fleet):]:
+                if b["remaining"] >= demand or b["cap"] == max(c for _, c in positive_fleet):
+                    b["remaining"] = max(0, b["remaining"] - demand)
+                    b["order_ids"].append(oid)
+                    break
+
+    for b in bins:
+        if b["order_ids"]:
+            drv = b["driver"]
             routes.append({
-                "driver_id": driver.get("driver_id"),
-                "vehicle_id": driver.get("vehicle_id"),
+                "driver_id": drv.get("driver_id"),
+                "vehicle_id": drv.get("vehicle_id"),
                 "route_id": str(uuid.uuid4()),
-                "order_ids": [o.get("order_id") for o in route_orders],
+                "order_ids": b["order_ids"],
+                "wave_index": b["wave_index"],
             })
 
     return {"routes": routes}
@@ -119,6 +169,25 @@ def solve_replan(event_type: str, payload: dict) -> dict:
             optimized_candidate_ids = [o.get("order_id") for o in candidates if o.get("order_id")]
     else:
         optimized_candidate_ids = [o.get("order_id") for o in candidates if o.get("order_id")]
+
+    rem_cap = payload.get("remaining_capacity_vu")
+    if isinstance(rem_cap, (int, float)) and rem_cap >= 0:
+        cand_by_id = {
+            o.get("order_id", o.get("id")): o
+            for o in candidates
+            if o.get("order_id", o.get("id"))
+        }
+        fitted = []
+        used = 0
+        for oid in optimized_candidate_ids:
+            if oid in anchored_order_ids:
+                continue
+            item = cand_by_id.get(oid, {})
+            vol = max(0, int(item.get("demand_vu", item.get("volume_vu", 0))))
+            if used + vol <= int(rem_cap):
+                used += vol
+                fitted.append(oid)
+        optimized_candidate_ids = fitted
 
     final_sequence = list(anchored_order_ids) + [
         oid for oid in optimized_candidate_ids if oid not in anchored_order_ids
@@ -202,10 +271,22 @@ def start_consumer(brokers="localhost:9092", topics=None, max_retries=3):
     }
     producer = Producer(producer_conf)
 
+    stop_event = threading.Event()
+
+    def _handle_shutdown(signum, _frame):
+        logger.info(f"Received shutdown signal {signum}, draining optimizer consumer...")
+        stop_event.set()
+
+    try:
+        signal.signal(signal.SIGTERM, _handle_shutdown)
+        signal.signal(signal.SIGINT, _handle_shutdown)
+    except (ValueError, OSError):
+        pass
+
     logger.info(f"Starting optimizer consumer on {brokers}, topics {topics}")
 
     try:
-        while True:
+        while not stop_event.is_set():
             msg = consumer.poll(timeout=1.0)
             if msg is None:
                 continue

@@ -17,8 +17,47 @@ final class ProfileViewModel {
     var creditLoading = true
     var creditMissing = false
     var creditError: String?
+    var isOwner = false
+    var retailerRole = ""
+    var telegramStatus: TelegramLinkStatusResponse?
+    var telegramLinkRequest: TelegramLinkRequestResponse?
+    var telegramLoading = false
+    var telegramError: String?
 
     private let api = APIClient.shared
+    private let preferencesStore: RetailerPreferencesStore
+    private let telegramStatusLoader: (() async throws -> TelegramLinkStatusResponse)?
+    private let telegramRequestLoader: (() async throws -> TelegramLinkRequestResponse)?
+
+    init(
+        preferencesStore: RetailerPreferencesStore = .shared,
+        telegramStatusLoader: (() async throws -> TelegramLinkStatusResponse)? = nil,
+        telegramRequestLoader: (() async throws -> TelegramLinkRequestResponse)? = nil
+    ) {
+        self.preferencesStore = preferencesStore
+        self.telegramStatusLoader = telegramStatusLoader
+        self.telegramRequestLoader = telegramRequestLoader
+    }
+
+    var currentLanguage: RetailerLanguage {
+        preferencesStore.currentLanguage
+    }
+
+    var workspaceMode: RetailerWorkspaceMode {
+        FastHomeContractHelper.resolveEffectiveWorkspaceMode(
+            persistedOverride: preferencesStore.workspaceModeOverride,
+            retailerRole: retailerRole,
+            isOwner: isOwner
+        )
+    }
+
+    func setLanguage(_ language: RetailerLanguage) {
+        preferencesStore.setLanguage(language)
+    }
+
+    func setWorkspaceMode(_ mode: RetailerWorkspaceMode) {
+        preferencesStore.setWorkspaceMode(mode)
+    }
 
     private struct RetailerPricingRulesResponse: Decodable {
         let summary: String?
@@ -29,6 +68,7 @@ final class ProfileViewModel {
         await loadProfile(currentUser: currentUser)
         let syncedGlobalAutoOrder = await loadStats(retailerId: retailerId)
         await loadCreditProfile()
+        await loadTelegramStatus()
         return syncedGlobalAutoOrder
     }
 
@@ -57,6 +97,11 @@ final class ProfileViewModel {
             }
         } catch {
             pricingRulesSummary = ""
+        }
+
+        if let me = try? await api.getRetailerMe() {
+            isOwner = me.resolvedIsOwner
+            retailerRole = me.retailerRole
         }
     }
 
@@ -103,6 +148,37 @@ final class ProfileViewModel {
             )
             Haptics.selection()
         } catch {
+            Haptics.error()
+        }
+    }
+
+    func loadTelegramStatus() async {
+        do {
+            if let loader = telegramStatusLoader {
+                telegramStatus = try await loader()
+            } else {
+                telegramStatus = try await api.getTelegramLinkStatus()
+            }
+        } catch {
+            // Non-fatal: backend endpoint may not yet be enabled on older environments
+        }
+    }
+
+    func requestTelegramOtp() async {
+        telegramLoading = true
+        telegramError = nil
+        defer { telegramLoading = false }
+        do {
+            let response: TelegramLinkRequestResponse
+            if let loader = telegramRequestLoader {
+                response = try await loader()
+            } else {
+                response = try await api.requestTelegramLink()
+            }
+            telegramLinkRequest = response
+            Haptics.success()
+        } catch {
+            telegramError = error.localizedDescription
             Haptics.error()
         }
     }

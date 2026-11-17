@@ -269,12 +269,9 @@ func (s *Service) computeBaseVelocities(ctx context.Context, now time.Time) ([]r
 
 	stmt := spanner.Statement{
 		SQL: `
-			SELECT o.RetailerId, o.SupplierId, l.Sku, SUM(l.DeliveredQty) / 28.0 as BaseVelocity
-			FROM Orders o
-			JOIN OrderLines l ON o.OrderId = l.OrderId
-			WHERE o.Status = 'DELIVERED' AND o.CreatedAt >= @Start
-			GROUP BY o.RetailerId, o.SupplierId, l.Sku
-			HAVING SUM(l.DeliveredQty) > 0
+			SELECT RetailerId, COALESCE(SupplierId, '') AS SupplierId, LineItemsJson
+			FROM Orders
+			WHERE Status = 'DELIVERED' AND CreatedAt >= @Start
 		`,
 		Params: map[string]interface{}{
 			"Start": twentyEightDaysAgo,
@@ -283,7 +280,7 @@ func (s *Service) computeBaseVelocities(ctx context.Context, now time.Time) ([]r
 	iter := s.spanner.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 
-	byKey := map[velocityKey]retailerSkuVelocity{}
+	deliveredUnits := map[velocityKey]float64{}
 	for {
 		row, err := iter.Next()
 		if err == iterator.Done {
@@ -292,11 +289,66 @@ func (s *Service) computeBaseVelocities(ctx context.Context, now time.Time) ([]r
 		if err != nil {
 			return nil, err
 		}
-		var v retailerSkuVelocity
-		if err := row.Columns(&v.RetailerId, &v.SupplierId, &v.Sku, &v.BaseVelocity); err != nil {
+		var retailerID, supplierID string
+		var raw []byte
+		if err := row.ColumnByName("RetailerId", &retailerID); err != nil {
 			return nil, err
 		}
-		byKey[velocityKey{v.RetailerId, v.SupplierId, v.Sku}] = v
+		if err := row.ColumnByName("SupplierId", &supplierID); err != nil {
+			return nil, err
+		}
+		if err := row.ColumnByName("LineItemsJson", &raw); err != nil {
+			var rawStr string
+			if errStr := row.ColumnByName("LineItemsJson", &rawStr); errStr == nil {
+				raw = []byte(rawStr)
+			} else {
+				return nil, err
+			}
+		}
+		if len(raw) == 0 {
+			continue
+		}
+		var lines []struct {
+			SKU          string  `json:"sku"`
+			ProductID    string  `json:"product_id"`
+			DeliveredQty float64 `json:"delivered_qty"`
+			Quantity     float64 `json:"quantity"`
+			Qty          float64 `json:"qty"`
+		}
+		if err := json.Unmarshal(raw, &lines); err != nil {
+			continue
+		}
+		for _, l := range lines {
+			sku := strings.TrimSpace(l.SKU)
+			if sku == "" {
+				sku = strings.TrimSpace(l.ProductID)
+			}
+			if sku == "" {
+				continue
+			}
+			qty := l.DeliveredQty
+			if qty == 0 {
+				qty = l.Quantity
+			}
+			if qty == 0 {
+				qty = l.Qty
+			}
+			if qty > 0 {
+				deliveredUnits[velocityKey{retailer: retailerID, supplier: supplierID, sku: sku}] += qty
+			}
+		}
+	}
+
+	byKey := map[velocityKey]retailerSkuVelocity{}
+	for k, sumQty := range deliveredUnits {
+		if sumQty > 0 {
+			byKey[k] = retailerSkuVelocity{
+				RetailerId:   k.retailer,
+				SupplierId:   k.supplier,
+				Sku:          k.sku,
+				BaseVelocity: sumQty / 28.0,
+			}
+		}
 	}
 
 	flywheel, err := s.loadFlywheelDailyAvg(ctx, now)
@@ -340,7 +392,7 @@ func (s *Service) loadFlywheelDailyAvg(ctx context.Context, now time.Time) (map[
 			WHERE Day >= @Start AND NetSold > 0
 			GROUP BY RetailerId, SupplierId, SkuId
 		`,
-		Params: map[string]any{"Start": start},
+		Params: map[string]any{"Start": civil.DateOf(start)},
 	}
 	iter := s.spanner.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -234,10 +235,14 @@ func (s *Service) listAutoOrderRunsSpanner(ctx context.Context, orgID string, li
 			run.FinishedAt = finishedAt.Time.UTC().Format(time.RFC3339Nano)
 		}
 		if len(skippedRaw) > 0 {
-			_ = json.Unmarshal(skippedRaw, &run.Skipped)
+			if err := json.Unmarshal(skippedRaw, &run.Skipped); err != nil && s.log != nil {
+				s.log.Warn("auto-order skipped json decode failed", "run_id", run.RunID, "err", err)
+			}
 		}
 		if len(placedRaw) > 0 {
-			_ = json.Unmarshal(placedRaw, &run.PlacedOrders)
+			if err := json.Unmarshal(placedRaw, &run.PlacedOrders); err != nil && s.log != nil {
+				s.log.Warn("auto-order placed orders json decode failed", "run_id", run.RunID, "err", err)
+			}
 		}
 		if run.Skipped == nil {
 			run.Skipped = []AutoOrderSkip{}
@@ -259,12 +264,18 @@ func (s *Service) SeedAutoOrderCandidates(orgID string, cands []AutoOrderCandida
 
 // RunAutoOrderForRetailer executes one tick (testable without HTTP).
 func (s *Service) RunAutoOrderForRetailer(ctx context.Context, orgID, mode string) AutoOrderRun {
-	mode = NormalizeExecutionMode(mode)
-	if mode == "" || mode == AutoOrderModeOff {
+	rawMode := strings.TrimSpace(mode)
+	settings := s.loadAutoOrderDurable(ctx, orgID)
+	settingsMode := NormalizeExecutionMode(settings.ExecutionMode)
+	if rawMode == "" {
+		mode = settingsMode
 		if mode == "" {
 			mode = AutoOrderModeDraft
 		}
+	} else {
+		mode = NormalizeExecutionMode(rawMode)
 	}
+
 	now := s.now().UTC()
 	bucket := now.Format("2006-01-02")
 	run := AutoOrderRun{
@@ -277,8 +288,6 @@ func (s *Service) RunAutoOrderForRetailer(ctx context.Context, orgID, mode strin
 		Status:         "OK",
 	}
 
-	settings := s.loadAutoOrderDurable(ctx, orgID)
-	settingsMode := NormalizeExecutionMode(settings.ExecutionMode)
 	if mode == AutoOrderModeOff || settingsMode == AutoOrderModeOff {
 		run.Mode = AutoOrderModeOff
 		run.Status = "SKIPPED_ALL"
@@ -372,6 +381,7 @@ func (s *Service) RunAutoOrderForRetailer(ctx context.Context, orgID, mode strin
 				}
 			}
 			s.markBucket(key, run.RunID)
+			s.persistAutoOrderBucket(ctx, orgID, bucket, mode, c.SKU, run.RunID, "")
 			st.mu.Lock()
 			st.bucketDone[key] = true
 			st.mu.Unlock()
@@ -399,29 +409,35 @@ func (s *Service) RunAutoOrderForRetailer(ctx context.Context, orgID, mode strin
 
 	if run.PlacedLines > 0 {
 		if w, ok := s.notifSvc.(NotificationWriter); ok && w != nil {
-			_ = w.CreateNotification(ctx, orgID, "RETAILER", events.EventRetailerAutoOrderUpdated,
+			if err := w.CreateNotification(ctx, orgID, "RETAILER", events.EventRetailerAutoOrderUpdated,
 				"Auto-order placed",
 				fmt.Sprintf("Auto-order placed %d line(s) across %d order(s).", run.PlacedLines, len(run.PlacedOrders)),
-				"/orders")
+				"/orders"); err != nil && s.log != nil {
+				s.log.Warn("auto-order placed notification failed", "retailer_id", orgID, "err", err)
+			}
 		}
 	} else if mode == AutoOrderModeShadow && run.DraftLines > 0 {
 		if w, ok := s.notifSvc.(NotificationWriter); ok && w != nil {
-			_ = w.CreateNotification(ctx, orgID, "RETAILER", events.EventRetailerAutoOrderUpdated,
+			if err := w.CreateNotification(ctx, orgID, "RETAILER", events.EventRetailerAutoOrderUpdated,
 				"Auto-order shadow proposals",
 				fmt.Sprintf("Shadow recorded %d proposal(s) — no cart or orders created.", run.DraftLines),
-				"/auto-order")
+				"/auto-order"); err != nil && s.log != nil {
+				s.log.Warn("auto-order shadow notification failed", "retailer_id", orgID, "err", err)
+			}
 		}
 	} else if run.DraftLines > 0 {
 		if w, ok := s.notifSvc.(NotificationWriter); ok && w != nil {
-			_ = w.CreateNotification(ctx, orgID, "RETAILER", events.EventRetailerAutoOrderUpdated,
+			if err := w.CreateNotification(ctx, orgID, "RETAILER", events.EventRetailerAutoOrderUpdated,
 				"Auto-order draft ready",
 				"Auto-order added draft lines — review cart before checkout.",
-				"/cart")
+				"/cart"); err != nil && s.log != nil {
+				s.log.Warn("auto-order draft notification failed", "retailer_id", orgID, "err", err)
+			}
 		}
 	}
 	run.FinishedAt = s.now().UTC().Format(time.RFC3339Nano)
 	s.recordAutoOrderRun(run)
-	_ = s.emitPosEvent(ctx, orgID, events.EventRetailerAutoOrderUpdated, map[string]any{
+	if err := s.emitPosEvent(ctx, orgID, events.EventRetailerAutoOrderUpdated, map[string]any{
 		"run_id":           run.RunID,
 		"draft_lines":      run.DraftLines,
 		"placed_lines":     run.PlacedLines,
@@ -429,7 +445,9 @@ func (s *Service) RunAutoOrderForRetailer(ctx context.Context, orgID, mode strin
 		"status":           run.Status,
 		"mode":             run.Mode,
 		"candidate_source": run.CandidateSource,
-	})
+	}); err != nil && s.log != nil {
+		s.log.Warn("auto-order event emit failed", "retailer_id", orgID, "run_id", run.RunID, "err", err)
+	}
 	return run
 }
 
@@ -479,14 +497,21 @@ func (s *Service) runAutoOrderPlace(ctx context.Context, orgID, bucket string, c
 			continue
 		}
 		if s.cartRepo != nil {
-			_ = s.cartRepo.UpsertItems(ctx, []CartItem{{
+			if err := s.cartRepo.UpsertItems(ctx, []CartItem{{
 				CartItemID: s.newID(), RetailerID: orgID, SupplierID: c.SupplierID,
 				ProductID: aoFirstNonEmpty(c.ProductID, c.SKU), Quantity: c.Qty,
 				Currency: autoOrderCartCurrency(ctx, c.SupplierID), UpdatedAt: now,
-			}})
+			}}); err != nil {
+				if s.log != nil {
+					s.log.Warn("auto-order draft cart upsert failed", "retailer_id", orgID, "sku", c.SKU, "err", err)
+				}
+				run.Skipped = append(run.Skipped, AutoOrderSkip{SKU: c.SKU, Reason: "cart_upsert_failed"})
+				continue
+			}
 		}
 		key := orgID + "|" + bucket + "|" + AutoOrderModeDraft + "|" + c.SKU
 		s.markBucket(key, run.RunID)
+		s.persistAutoOrderBucket(ctx, orgID, bucket, AutoOrderModeDraft, c.SKU, run.RunID, "")
 		run.DraftLines++
 	}
 	if run.DraftLines > 0 {
@@ -528,7 +553,7 @@ func (s *Service) persistAutoOrderBucket(ctx context.Context, retailerID, day, m
 	if s.spannerClient == nil {
 		return
 	}
-	_, _ = s.spannerClient.Apply(ctx, []*spanner.Mutation{
+	if _, err := s.spannerClient.Apply(ctx, []*spanner.Mutation{
 		spanner.InsertOrUpdateMap("RetailerAutoOrderBucket", map[string]any{
 			"RetailerId": retailerID,
 			"Day":        day,
@@ -538,7 +563,9 @@ func (s *Service) persistAutoOrderBucket(ctx context.Context, retailerID, day, m
 			"OrderId":    orderID,
 			"CreatedAt":  spanner.CommitTimestamp,
 		}),
-	})
+	}); err != nil && s.log != nil {
+		s.log.Warn("auto-order persist bucket failed", "retailer_id", retailerID, "sku", sku, "err", err)
+	}
 }
 
 // loadDurableBucketTaken returns true if Spanner already has a bucket row (multi-pod safe).
@@ -574,14 +601,16 @@ func (s *Service) markReorderSuggestionConverted(ctx context.Context, orgID, sku
 	if s.spannerClient == nil {
 		return
 	}
-	_, _ = s.spannerClient.Apply(ctx, []*spanner.Mutation{
+	if _, err := s.spannerClient.Apply(ctx, []*spanner.Mutation{
 		spanner.UpdateMap("ReorderSuggestions", map[string]any{
 			"RetailerId": orgID,
 			"Sku":        sku,
 			"Status":     "CONVERTED",
 			"ComputedAt": spanner.CommitTimestamp,
 		}),
-	})
+	}); err != nil && s.log != nil {
+		s.log.Warn("auto-order mark reorder converted failed", "retailer_id", orgID, "sku", sku, "err", err)
+	}
 }
 
 func (s *Service) recordAutoOrderRun(run AutoOrderRun) {
@@ -600,13 +629,31 @@ func (s *Service) persistAutoOrderRun(ctx context.Context, run AutoOrderRun) {
 	if s.spannerClient == nil {
 		return
 	}
-	skippedRaw, _ := json.Marshal(run.Skipped)
+	var skippedRaw []byte
 	if run.Skipped == nil {
 		skippedRaw = []byte("[]")
+	} else {
+		var err error
+		skippedRaw, err = json.Marshal(run.Skipped)
+		if err != nil {
+			if s.log != nil {
+				s.log.Warn("auto-order marshal skipped failed", "run_id", run.RunID, "err", err)
+			}
+			skippedRaw = []byte("[]")
+		}
 	}
-	placedRaw, _ := json.Marshal(run.PlacedOrders)
+	var placedRaw []byte
 	if run.PlacedOrders == nil {
 		placedRaw = []byte("[]")
+	} else {
+		var err error
+		placedRaw, err = json.Marshal(run.PlacedOrders)
+		if err != nil {
+			if s.log != nil {
+				s.log.Warn("auto-order marshal placed orders failed", "run_id", run.RunID, "err", err)
+			}
+			placedRaw = []byte("[]")
+		}
 	}
 	startedAt := s.now().UTC()
 	if t, err := time.Parse(time.RFC3339Nano, run.StartedAt); err == nil {
@@ -641,9 +688,11 @@ func (s *Service) persistAutoOrderRun(ctx context.Context, run AutoOrderRun) {
 	if finishedAt != nil {
 		cols["FinishedAt"] = finishedAt
 	}
-	_, _ = s.spannerClient.Apply(ctx, []*spanner.Mutation{
+	if _, err := s.spannerClient.Apply(ctx, []*spanner.Mutation{
 		spanner.InsertOrUpdateMap("RetailerAutoOrderRuns", cols),
-	})
+	}); err != nil && s.log != nil {
+		s.log.Warn("auto-order persist run failed", "run_id", run.RunID, "err", err)
+	}
 }
 
 func (s *Service) loadAutoOrderCandidates(ctx context.Context, orgID string) []AutoOrderCandidate {
@@ -708,23 +757,7 @@ func (s *Service) loadAutoOrderCandidatesWithSource(ctx context.Context, orgID s
 				bySKU[sku] = a
 				orderKeys = append(orderKeys, sku)
 			}
-			// Use Python AI sidecar for optimal demand
-			// Passing synthetic history for now
-			aiResp, err := PredictDemand(ctx, DemandPredictionRequest{
-				SKU:                  sku,
-				HistoricalDailySales: []int{10, 15, 12, 18, 5, 20},
-				CurrentStock:         5, // Stub: should pull from StoreStock
-				LeadTimeDays:         2,
-			})
-			if err == nil && aiResp.OptimalReorderQty > 0 {
-				a.qty = aiResp.OptimalReorderQty
-			} else {
-				a.qty += li.Quantity
-				if a.qty <= 0 {
-					a.qty = 1
-				}
-			}
-
+			a.qty += li.Quantity
 			if name := strings.TrimSpace(li.Name); name != "" {
 				a.name = name
 			}
@@ -734,9 +767,157 @@ func (s *Service) loadAutoOrderCandidatesWithSource(ctx context.Context, orgID s
 		}
 	}
 
+	const defaultLeadTimeDays = 2
+	const trailingSalesWindowDays = 14
+	predictFn := PredictDemand
+	if s.predictDemandFn != nil {
+		predictFn = s.predictDemandFn
+	}
+
+	var batchStock map[string]int64
+	var batchSellThrough map[string]map[string]int64
+	var batchOrders map[string]map[string]int64
+	useBatch := s.spannerClient != nil && s.historicalSalesQuery == nil
+
+	if useBatch {
+		batchStock = make(map[string]int64, len(orderKeys))
+		stockIter := s.spannerClient.Single().Query(ctx, spanner.Statement{
+			SQL: `SELECT Sku, COALESCE(SUM(OnHand), 0)
+				FROM RetailerStockBalances
+				WHERE RetailerId = @rid AND Sku IN UNNEST(@skus)
+				GROUP BY Sku`,
+			Params: map[string]any{"rid": orgID, "skus": orderKeys},
+		})
+		for {
+			row, err := stockIter.Next()
+			if err != nil {
+				break
+			}
+			var skuStr string
+			var onHand int64
+			if err := row.Columns(&skuStr, &onHand); err == nil {
+				batchStock[skuStr] = onHand
+			}
+		}
+		stockIter.Stop()
+
+		now := s.now().UTC()
+		fromDay := now.AddDate(0, 0, -(trailingSalesWindowDays - 1)).Format("2006-01-02")
+		batchSellThrough = make(map[string]map[string]int64)
+		stIter := s.spannerClient.Single().Query(ctx, spanner.Statement{
+			SQL: `SELECT SkuId, CAST(Day AS STRING), COALESCE(SUM(GREATEST(QtySold - QtyVoided, 0)), 0)
+				FROM RetailerSellThroughDaily
+				WHERE RetailerId = @rid AND SkuId IN UNNEST(@skus) AND Day >= DATE(@fromDay)
+				GROUP BY SkuId, Day
+				ORDER BY Day ASC`,
+			Params: map[string]any{"rid": orgID, "skus": orderKeys, "fromDay": fromDay},
+		})
+		for {
+			row, err := stIter.Next()
+			if err != nil {
+				break
+			}
+			var skuStr, dayStr string
+			var qty int64
+			if err := row.Columns(&skuStr, &dayStr, &qty); err == nil && skuStr != "" && dayStr != "" && qty >= 0 {
+				if batchSellThrough[skuStr] == nil {
+					batchSellThrough[skuStr] = make(map[string]int64)
+				}
+				batchSellThrough[skuStr][dayStr] += qty
+			}
+		}
+		stIter.Stop()
+
+		fromTs := now.AddDate(0, 0, -(trailingSalesWindowDays - 1))
+		batchOrders = make(map[string]map[string]int64)
+		ordIter := s.spannerClient.Single().Query(ctx, spanner.Statement{
+			SQL: `SELECT LineItemsJson, CAST(DATE(CreatedAt) AS STRING)
+				FROM Orders
+				WHERE RetailerId = @rid
+				  AND UPPER(Status) NOT IN ('CANCELLED', 'REJECTED', 'DRAFT', 'VOIDED')
+				  AND CreatedAt >= @fromTs
+				ORDER BY CreatedAt DESC
+				LIMIT 500`,
+			Params: map[string]any{"rid": orgID, "fromTs": fromTs},
+		})
+		for {
+			row, err := ordIter.Next()
+			if err != nil {
+				break
+			}
+			var raw []byte
+			var dayStr string
+			if err := row.Columns(&raw, &dayStr); err != nil {
+				continue
+			}
+			var lines []struct {
+				SKU       string `json:"sku"`
+				ProductID string `json:"product_id"`
+				Quantity  int64  `json:"quantity"`
+				Qty       int64  `json:"qty"`
+			}
+			if err := json.Unmarshal(raw, &lines); err != nil {
+				continue
+			}
+			for _, l := range lines {
+				lineSKU := strings.TrimSpace(l.SKU)
+				if lineSKU == "" {
+					lineSKU = strings.TrimSpace(l.ProductID)
+				}
+				if lineSKU == "" {
+					continue
+				}
+				q := l.Quantity
+				if q <= 0 {
+					q = l.Qty
+				}
+				if q > 0 && dayStr != "" {
+					if batchOrders[lineSKU] == nil {
+						batchOrders[lineSKU] = make(map[string]int64)
+					}
+					batchOrders[lineSKU][dayStr] += q
+				}
+			}
+		}
+		ordIter.Stop()
+	}
+
 	out := make([]AutoOrderCandidate, 0, len(orderKeys))
 	for _, sku := range orderKeys {
 		a := bySKU[sku]
+		var currentStock int64
+		var history []int
+
+		if useBatch {
+			currentStock = batchStock[sku]
+			history = mergeSalesHistory(batchSellThrough[sku], batchOrders[sku])
+		} else {
+			var stockErr error
+			currentStock, stockErr = s.SumOnHandForSKU(ctx, orgID, sku)
+			if stockErr != nil && s.log != nil {
+				s.log.Warn("auto-order stock lookup failed", "retailer_id", orgID, "sku", sku, "err", stockErr)
+			}
+			history = s.trailingDailySalesForSKU(ctx, orgID, sku, trailingSalesWindowDays)
+		}
+
+		aiResp, err := predictFn(ctx, DemandPredictionRequest{
+			SKU:                  sku,
+			HistoricalDailySales: history,
+			CurrentStock:         currentStock,
+			LeadTimeDays:         defaultLeadTimeDays,
+		})
+		if err == nil && aiResp != nil {
+			if aiResp.OptimalReorderQty <= 0 {
+				continue
+			}
+			a.qty = aiResp.OptimalReorderQty
+		} else {
+			fallbackQty := autoOrderFallbackQty(history, currentStock, defaultLeadTimeDays, a.qty)
+			if fallbackQty <= 0 {
+				continue
+			}
+			a.qty = fallbackQty
+		}
 		out = append(out, AutoOrderCandidate{
 			SKU:        a.sku,
 			ProductID:  a.productID,
@@ -746,6 +927,185 @@ func (s *Service) loadAutoOrderCandidatesWithSource(ctx context.Context, orgID s
 		})
 	}
 	return out, "ai_predictions"
+}
+
+func autoOrderFallbackQty(history []int, currentStock int64, leadTimeDays int, baselineQty int64) int64 {
+	if currentStock < 0 {
+		currentStock = 0
+	}
+	if len(history) > 0 {
+		var total int64
+		for _, v := range history {
+			if v > 0 {
+				total += int64(v)
+			}
+		}
+		if total <= 0 {
+			return 0
+		}
+		avgDaily := (total + int64(len(history)) - 1) / int64(len(history))
+		target := avgDaily * int64(leadTimeDays+1)
+		if target-currentStock <= 0 {
+			return 0
+		}
+		return target - currentStock
+	}
+	if baselineQty > 0 {
+		if baselineQty <= currentStock {
+			return 0
+		}
+		return baselineQty - currentStock
+	}
+	return 0
+}
+
+func (s *Service) trailingDailySalesForSKU(ctx context.Context, orgID, sku string, windowDays int) []int {
+	if windowDays <= 0 {
+		windowDays = 14
+	}
+	if s.historicalSalesQuery != nil {
+		vals, err := s.historicalSalesQuery(ctx, orgID, sku, windowDays)
+		if err == nil {
+			return vals
+		}
+		return []int{}
+	}
+	now := s.now().UTC()
+	fromDay := now.AddDate(0, 0, -(windowDays - 1)).Format("2006-01-02")
+	sellThroughByDay := make(map[string]int64)
+	ordersByDay := make(map[string]int64)
+
+	if s.spannerClient != nil {
+		stIter := s.spannerClient.Single().Query(ctx, spanner.Statement{
+			SQL: `SELECT CAST(Day AS STRING), COALESCE(SUM(GREATEST(QtySold - QtyVoided, 0)), 0)
+				FROM RetailerSellThroughDaily
+				WHERE RetailerId = @rid AND SkuId = @sku AND Day >= DATE(@fromDay)
+				GROUP BY Day
+				ORDER BY Day ASC`,
+			Params: map[string]any{"rid": orgID, "sku": sku, "fromDay": fromDay},
+		})
+		for {
+			row, err := stIter.Next()
+			if err != nil {
+				break
+			}
+			var dayStr string
+			var qty int64
+			if err := row.Columns(&dayStr, &qty); err == nil && dayStr != "" && qty >= 0 {
+				sellThroughByDay[dayStr] += qty
+			}
+		}
+		stIter.Stop()
+
+		fromTs := now.AddDate(0, 0, -(windowDays - 1))
+		ordIter := s.spannerClient.Single().Query(ctx, spanner.Statement{
+			SQL: `SELECT LineItemsJson, CAST(DATE(CreatedAt) AS STRING)
+				FROM Orders
+				WHERE RetailerId = @rid
+				  AND UPPER(Status) NOT IN ('CANCELLED', 'REJECTED', 'DRAFT', 'VOIDED')
+				  AND CreatedAt >= @fromTs
+				ORDER BY CreatedAt DESC
+				LIMIT 500`,
+			Params: map[string]any{"rid": orgID, "fromTs": fromTs},
+		})
+		for {
+			row, err := ordIter.Next()
+			if err != nil {
+				break
+			}
+			var raw []byte
+			var dayStr string
+			if err := row.Columns(&raw, &dayStr); err != nil {
+				continue
+			}
+			var lines []struct {
+				SKU       string `json:"sku"`
+				ProductID string `json:"product_id"`
+				Quantity  int64  `json:"quantity"`
+				Qty       int64  `json:"qty"`
+			}
+			if err := json.Unmarshal(raw, &lines); err != nil {
+				continue
+			}
+			for _, l := range lines {
+				lineSKU := strings.TrimSpace(l.SKU)
+				if lineSKU == "" {
+					lineSKU = strings.TrimSpace(l.ProductID)
+				}
+				if lineSKU != sku {
+					continue
+				}
+				q := l.Quantity
+				if q <= 0 {
+					q = l.Qty
+				}
+				if q > 0 && dayStr != "" {
+					ordersByDay[dayStr] += q
+				}
+			}
+		}
+		ordIter.Stop()
+	} else {
+		s.mu.RLock()
+		for k, v := range s.sellThroughDaily {
+			if k.RetailerID == orgID && k.SkuID == sku && k.Day >= fromDay {
+				net := v.NetSold
+				if net == 0 && (v.QtySold > 0 || v.QtyVoided > 0) {
+					net = v.QtySold - v.QtyVoided
+				}
+				if net > 0 {
+					sellThroughByDay[k.Day] += net
+				}
+			}
+		}
+		s.mu.RUnlock()
+
+		if s.repo != nil {
+			if receipts, err := s.repo.ListRecentReceipts(ctx, orgID, 200); err == nil {
+				for _, ord := range receipts {
+					dayStr := ord.CreatedAt
+					if len(dayStr) >= 10 {
+						dayStr = dayStr[:10]
+					}
+					if dayStr < fromDay {
+						continue
+					}
+					for _, li := range ord.Items {
+						if strings.TrimSpace(li.ProductID) == sku && li.Quantity > 0 {
+							ordersByDay[dayStr] += li.Quantity
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return mergeSalesHistory(sellThroughByDay, ordersByDay)
+}
+
+func mergeSalesHistory(sellThroughByDay, ordersByDay map[string]int64) []int {
+	merged := make(map[string]int64, len(sellThroughByDay)+len(ordersByDay))
+	for d, q := range ordersByDay {
+		merged[d] = q
+	}
+	for d, q := range sellThroughByDay {
+		if q > 0 || merged[d] == 0 {
+			merged[d] = q
+		}
+	}
+	if len(merged) == 0 {
+		return []int{}
+	}
+	days := make([]string, 0, len(merged))
+	for d := range merged {
+		days = append(days, d)
+	}
+	sort.Strings(days)
+	out := make([]int, 0, len(days))
+	for _, d := range days {
+		out = append(out, int(merged[d]))
+	}
+	return out
 }
 
 func (s *Service) candidatesFromReorderSuggestions(ctx context.Context, orgID string) []AutoOrderCandidate {
@@ -779,17 +1139,54 @@ func (s *Service) candidatesFromReorderSuggestions(ctx context.Context, orgID st
 func (s *Service) supplierIDForRetailerSKU(ctx context.Context, orgID, sku string) string {
 	if s.spannerClient != nil {
 		iter := s.spannerClient.Single().Query(ctx, spanner.Statement{
-			SQL: `SELECT o.SupplierId FROM Orders o
-				JOIN OrderLines l ON l.OrderId = o.OrderId
-				WHERE o.RetailerId = @rid AND l.Sku = @sku
-				  AND o.SupplierId IS NOT NULL AND o.SupplierId != ''
-				ORDER BY o.UpdatedAt DESC LIMIT 1`,
-			Params: map[string]any{"rid": orgID, "sku": sku},
+			SQL: `SELECT SupplierId, LineItemsJson FROM Orders
+				WHERE RetailerId = @rid
+				  AND SupplierId IS NOT NULL AND SupplierId != ''
+				ORDER BY UpdatedAt DESC LIMIT 50`,
+			Params: map[string]any{"rid": orgID},
 		})
 		defer iter.Stop()
-		if row, err := iter.Next(); err == nil {
+		targetSKU := strings.TrimSpace(sku)
+		for {
+			row, err := iter.Next()
+			if err != nil {
+				break
+			}
 			var sid string
-			if err := row.Column(0, &sid); err == nil && strings.TrimSpace(sid) != "" {
+			var raw []byte
+			if err := row.ColumnByName("SupplierId", &sid); err != nil {
+				continue
+			}
+			if err := row.ColumnByName("LineItemsJson", &raw); err != nil {
+				var rawStr string
+				if errStr := row.ColumnByName("LineItemsJson", &rawStr); errStr == nil {
+					raw = []byte(rawStr)
+				} else {
+					continue
+				}
+			}
+			if len(raw) == 0 {
+				continue
+			}
+			var lines []struct {
+				SKU       string `json:"sku"`
+				ProductID string `json:"product_id"`
+			}
+			if err := json.Unmarshal(raw, &lines); err != nil {
+				continue
+			}
+			found := false
+			for _, l := range lines {
+				lineSKU := strings.TrimSpace(l.SKU)
+				if lineSKU == "" {
+					lineSKU = strings.TrimSpace(l.ProductID)
+				}
+				if lineSKU == targetSKU {
+					found = true
+					break
+				}
+			}
+			if found && strings.TrimSpace(sid) != "" {
 				return strings.TrimSpace(sid)
 			}
 		}
@@ -848,6 +1245,8 @@ func (s *Service) RunAutoOrderWorker(ctx context.Context, interval time.Duration
 	}
 }
 
+const autoOrderEnabledPageSize = 200
+
 func (s *Service) sweepAutoOrderEnabled(ctx context.Context) {
 	ids := s.listAutoOrderEnabledRetailerIDs(ctx)
 	for _, rid := range ids {
@@ -862,7 +1261,10 @@ func (s *Service) sweepAutoOrderEnabled(ctx context.Context) {
 		if mode == AutoOrderModePlace && !s.placeAllowedForRetailer(ctx, rid) {
 			mode = AutoOrderModeDraft
 		}
-		_ = s.RunAutoOrderForRetailer(ctx, rid, mode)
+		run := s.RunAutoOrderForRetailer(ctx, rid, mode)
+		if run.Status == "FAILED" && s.log != nil {
+			s.log.Warn("auto-order sweep run failed", "retailer_id", rid, "run_id", run.RunID, "message", run.Message)
+		}
 	}
 }
 
@@ -888,26 +1290,70 @@ func (s *Service) listAutoOrderEnabledRetailerIDs(ctx context.Context) []string 
 	}
 	s.autoOrderMu.RUnlock()
 	if s.spannerClient != nil {
-		iter := s.spannerClient.Single().Query(ctx, spanner.Statement{
-			SQL: `SELECT RetailerId FROM RetailerAutoOrderSettings
-			      WHERE GlobalEnabled = true LIMIT 200`,
-		})
-		defer iter.Stop()
-		for {
-			row, err := iter.Next()
-			if err == iterator.Done {
-				break
-			}
-			if err != nil {
-				break
-			}
-			var rid string
-			if err := row.Column(0, &rid); err == nil {
-				add(rid)
-			}
-		}
+		iterateKeysetCursor(
+			autoOrderEnabledPageSize,
+			func(after string, limit int) ([]string, int, string, error) {
+				page, nextCursor, err := s.fetchAutoOrderEnabledRetailerPage(ctx, after, limit)
+				return page, len(page), nextCursor, err
+			},
+			add,
+			func(after string, err error) {
+				if s.log != nil {
+					s.log.Warn("auto-order enabled retailer scan failed", "after", after, "err", err)
+				}
+			},
+		)
 	}
 	return out
+}
+
+func (s *Service) fetchAutoOrderEnabledRetailerPage(ctx context.Context, after string, limit int) ([]string, string, error) {
+	if limit <= 0 {
+		limit = autoOrderEnabledPageSize
+	}
+	stmt := buildAutoOrderEnabledRetailerStmt(after, limit)
+	iter := s.spannerClient.Single().Query(ctx, stmt)
+	defer iter.Stop()
+	var ids []string
+	var lastRaw string
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return ids, lastRaw, err
+		}
+		var rid string
+		if err := row.Column(0, &rid); err != nil {
+			return ids, lastRaw, err
+		}
+		lastRaw = rid
+		ids = append(ids, rid)
+	}
+	return ids, lastRaw, nil
+}
+
+func buildAutoOrderEnabledRetailerStmt(after string, limit int) spanner.Statement {
+	if limit <= 0 {
+		limit = autoOrderEnabledPageSize
+	}
+	if after == "" {
+		return spanner.Statement{
+			SQL: `SELECT RetailerId FROM RetailerAutoOrderSettings
+				WHERE GlobalEnabled = true
+				ORDER BY RetailerId ASC
+				LIMIT @lim`,
+			Params: map[string]any{"lim": int64(limit)},
+		}
+	}
+	return spanner.Statement{
+		SQL: `SELECT RetailerId FROM RetailerAutoOrderSettings
+			WHERE GlobalEnabled = true AND RetailerId > @after
+			ORDER BY RetailerId ASC
+			LIMIT @lim`,
+		Params: map[string]any{"after": after, "lim": int64(limit)},
+	}
 }
 
 func hasAnyScopedEnable(s AutoOrderSettings) bool {

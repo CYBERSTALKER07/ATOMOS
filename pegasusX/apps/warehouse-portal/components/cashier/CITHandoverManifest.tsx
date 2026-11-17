@@ -1,45 +1,58 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { type DepotVaultLedgerEntry } from '@pegasusx/types';
 import { foundryWarehouseApi } from '@/lib/foundry-api';
-import { formatGroupedInteger, majorIntToMinor, majorIntToMinorBigInt, minorToWholeTrunc } from '@/lib/money';
+import { majorIntToMinor } from '@/lib/money';
+import { formatWholeSom, formatWholeSomInteger } from '@/lib/cashier-helpers';
 import { Shield, CheckCircle2, Barcode, Printer, AlertCircle } from 'lucide-react';
 
 interface CITHandoverManifestProps {
   depotId?: string;
   supplierId?: string;
+  defaultSessionId?: string;
   onHandoverComplete?: (entry: DepotVaultLedgerEntry) => void;
 }
 
 const CARRIER_PRESETS = [
-  { name: 'Inkassatsiya Xizmati DUK (Central Bank Armored Division)', badgePrefix: 'INK-UZ-' },
-  { name: 'NBU Security Logistics Fleet', badgePrefix: 'NBU-CIT-' },
-  { name: 'Trastbank Armored Carrier Service', badgePrefix: 'TB-CIT-' },
+  { name: 'Inkassatsiya Xizmati DUK (Central Bank Armored Division)' },
+  { name: 'NBU Security Logistics Fleet' },
+  { name: 'Trastbank Armored Carrier Service' },
 ];
 
 export function CITHandoverManifest({
-  depotId = 'depot_tashkent_central',
-  supplierId = 'sup_samarkand_dairy',
+  depotId = '',
+  supplierId = '',
+  defaultSessionId = '',
   onHandoverComplete,
 }: CITHandoverManifestProps) {
-  const [courierBadgeId, setCourierBadgeId] = useState('INK-UZ-77821');
-  const [citSealBarcode, setCitSealBarcode] = useState('CIT-SEAL-889900');
-  const [handoverUZS, setHandoverUZS] = useState<number>(15000000);
-  const [sessionIdsInput, setSessionIdsInput] = useState('sess_101, sess_102');
+  const [courierBadgeId, setCourierBadgeId] = useState('');
+  const [citSealBarcode, setCitSealBarcode] = useState('');
+  const [handoverSom, setHandoverSom] = useState<number>(0);
+  const [sessionIdsInput, setSessionIdsInput] = useState(defaultSessionId);
   const [selectedCarrier, setSelectedCarrier] = useState(CARRIER_PRESETS[0].name);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [completedEntry, setCompletedEntry] = useState<DepotVaultLedgerEntry | null>(null);
+
+  useEffect(() => {
+    if (!sessionIdsInput && defaultSessionId) {
+      setSessionIdsInput(defaultSessionId);
+    }
+  }, [defaultSessionId, sessionIdsInput]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setCompletedEntry(null);
 
-    const amountMinor = majorIntToMinor(handoverUZS);
+    const amountMinor = majorIntToMinor(handoverSom);
     if (amountMinor <= 0) {
-      setError('Handover cash amount must be greater than 0 tiyin');
+      setError("Handover cash amount must be greater than 0 so'm");
+      return;
+    }
+    if (!depotId.trim() || !supplierId.trim()) {
+      setError('Depot and Supplier scope are required for CIT handover');
       return;
     }
     if (!courierBadgeId.trim()) {
@@ -55,16 +68,20 @@ export function CITHandoverManifest({
       .split(',')
       .map((s) => s.trim())
       .filter(Boolean);
+    if (sessionIds.length === 0) {
+      setError('At least one reconciled session ID is required');
+      return;
+    }
 
     setSubmitting(true);
     try {
       const entry = await foundryWarehouseApi.citVaultHandover({
-        depot_id: depotId,
-        supplier_id: supplierId,
+        depot_id: depotId.trim(),
+        supplier_id: supplierId.trim(),
         courier_badge_id: courierBadgeId.trim(),
         cit_seal_barcode: citSealBarcode.trim(),
         amount_minor: amountMinor,
-        session_ids: sessionIds.length > 0 ? sessionIds : ['sess_auto_reconcile'],
+        session_ids: sessionIds,
       });
       setCompletedEntry(entry);
       onHandoverComplete?.(entry);
@@ -103,13 +120,7 @@ export function CITHandoverManifest({
           </label>
           <select
             value={selectedCarrier}
-            onChange={(e) => {
-              setSelectedCarrier(e.target.value);
-              const found = CARRIER_PRESETS.find(c => c.name === e.target.value);
-              if (found) {
-                setCourierBadgeId(`${found.badgePrefix}${Math.floor(10000 + Math.random() * 90000)}`);
-              }
-            }}
+            onChange={(e) => setSelectedCarrier(e.target.value)}
             className="w-full bg-neutral-950 border border-neutral-750 rounded-xl px-3 py-2 text-xs font-mono text-neutral-100 focus:outline-none focus:border-amber-500"
           >
             {CARRIER_PRESETS.map((c) => (
@@ -130,7 +141,7 @@ export function CITHandoverManifest({
               required
               value={courierBadgeId}
               onChange={(e) => setCourierBadgeId(e.target.value)}
-              placeholder="e.g. INK-77821"
+              placeholder="Enter armored courier badge ID"
               className="w-full bg-neutral-950 border border-neutral-750 rounded-xl px-3 py-2 text-xs font-mono text-neutral-100 focus:outline-none focus:border-amber-500"
             />
           </div>
@@ -145,7 +156,7 @@ export function CITHandoverManifest({
                 required
                 value={citSealBarcode}
                 onChange={(e) => setCitSealBarcode(e.target.value)}
-                placeholder="e.g. CIT-SEAL-889900"
+                placeholder="Scan armored bag seal barcode"
                 className="w-full bg-neutral-950 border border-neutral-750 rounded-xl px-3 py-2 text-xs font-mono text-neutral-100 focus:outline-none focus:border-amber-500 pr-10"
               />
               <Barcode size={18} className="absolute right-3 top-2 text-neutral-500" />
@@ -155,7 +166,7 @@ export function CITHandoverManifest({
 
         <div>
           <label className="block text-[11px] font-semibold text-neutral-400 uppercase tracking-wider mb-1">
-            Handover Cash Amount (UZS)
+            Handover Cash Amount (so&apos;m)
           </label>
           <div className="relative">
             <input
@@ -163,16 +174,16 @@ export function CITHandoverManifest({
               inputMode="numeric"
               pattern="[0-9]*"
               required
-              value={handoverUZS === 0 ? '' : handoverUZS}
+              value={handoverSom === 0 ? '' : handoverSom}
               onChange={(e) => {
                 const s = e.target.value.replace(/\D/g, '');
-                setHandoverUZS(Math.max(0, parseInt(s || '0', 10) || 0));
+                setHandoverSom(Math.max(0, parseInt(s || '0', 10) || 0));
               }}
-              placeholder="e.g. 15000000"
+              placeholder="Enter whole so'm amount"
               className="w-full bg-neutral-950 border border-neutral-750 rounded-xl px-3 py-2 text-xs font-mono text-neutral-100 focus:outline-none focus:border-amber-500"
             />
             <span className="absolute right-3 top-2 text-[11px] text-neutral-500 font-mono">
-              = {formatGroupedInteger(majorIntToMinorBigInt(handoverUZS))} Tiyin
+              {formatWholeSomInteger(handoverSom)}
             </span>
           </div>
         </div>
@@ -185,7 +196,7 @@ export function CITHandoverManifest({
             type="text"
             value={sessionIdsInput}
             onChange={(e) => setSessionIdsInput(e.target.value)}
-            placeholder="sess_101, sess_102"
+            placeholder="Enter session IDs (comma-separated)"
             className="w-full bg-neutral-950 border border-neutral-750 rounded-xl px-3 py-2 text-xs font-mono text-neutral-100 focus:outline-none focus:border-amber-500"
           />
         </div>
@@ -233,13 +244,13 @@ export function CITHandoverManifest({
             <div>
               <span className="text-neutral-500 block font-mono text-[10px] uppercase">Outflow Amount:</span>
               <span className="font-mono font-bold text-neutral-100">
-                {Math.abs(minorToWholeTrunc(completedEntry.amount_minor)).toLocaleString()} UZS
+                {formatWholeSom(Math.abs(completedEntry.amount_minor))}
               </span>
             </div>
             <div>
               <span className="text-neutral-500 block font-mono text-[10px] uppercase">Remaining Safe Balance:</span>
               <span className="font-mono font-bold text-emerald-400">
-                {minorToWholeTrunc(completedEntry.running_balance_minor).toLocaleString()} UZS
+                {formatWholeSom(completedEntry.running_balance_minor)}
               </span>
             </div>
             <div>

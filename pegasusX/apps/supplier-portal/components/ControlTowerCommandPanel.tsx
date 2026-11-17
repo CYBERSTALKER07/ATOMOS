@@ -2,10 +2,12 @@
 
 import { usePortalT } from "@/lib/i18n";
 import { useCallback, useState } from "react";
-import FleetLiveMapPanel from "@/components/FleetLiveMapPanel";
+import dynamic from "next/dynamic";
 import { supplierFetch } from "@/lib/auth";
 import { sessionMapCenter } from "@pegasusx/api-core";
 import { validateAndSimplifyPolygon } from "@pegasusx/validation";
+
+const FleetLiveMapPanel = dynamic(() => import("@/components/FleetLiveMapPanel"), { ssr: false });
 
 function packZonePolygon() {
   const c = sessionMapCenter();

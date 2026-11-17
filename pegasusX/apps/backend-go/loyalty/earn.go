@@ -12,7 +12,10 @@ import (
 	"google.golang.org/grpc/codes"
 )
 
-const defaultEarnBps int64 = 100
+const (
+	defaultEarnBps        int64 = 100
+	MinorUnitsPerMajor    int64 = 100
+)
 
 // DefaultTiers is STANDARD/SILVER/GOLD on lifetime points.
 var DefaultTiers = []Tier{
@@ -58,7 +61,22 @@ func PointsFor(amountMinor, earnBps int64) int64 {
 	if amountMinor <= 0 || earnBps <= 0 {
 		return 0
 	}
-	return amountMinor * earnBps / 10000
+	return (amountMinor * earnBps) / (MinorUnitsPerMajor * 10000)
+}
+
+func ClawbackBalance(lifetimePoints, availablePoints, clawbackPoints int64) (newLifetime, newAvailable int64) {
+	if clawbackPoints <= 0 {
+		return lifetimePoints, availablePoints
+	}
+	newLifetime = lifetimePoints - clawbackPoints
+	if newLifetime < 0 {
+		newLifetime = 0
+	}
+	newAvailable = availablePoints - clawbackPoints
+	if newAvailable < 0 {
+		newAvailable = 0
+	}
+	return newLifetime, newAvailable
 }
 
 func TierFor(points int64, tiers []Tier) (current Tier, next *Tier) {
@@ -155,6 +173,107 @@ func EarnInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, buf outbo
 	return txn.BufferWrite(muts)
 }
 
+func deriveClawbackLedgerID(orderID, refundID string, pts, refundAmountMinor int64) (string, string) {
+	if refundID != "" {
+		return "clawback:" + orderID + ":" + refundID, orderID + "#clawback:" + refundID
+	}
+	return fmt.Sprintf("clawback:%s:pts%d:amt%d", orderID, pts, refundAmountMinor),
+		fmt.Sprintf("%s#clawback:pts%d:amt%d", orderID, pts, refundAmountMinor)
+}
+
+// ClawbackInTxn writes an idempotent clawback row for a refunded order/amount. No program → no-op.
+func ClawbackInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, buf outbox.TxnBuffer, supplierID, retailerID, orderID, refundID string, refundAmountMinor int64) error {
+	supplierID = strings.TrimSpace(supplierID)
+	retailerID = strings.TrimSpace(retailerID)
+	orderID = strings.TrimSpace(orderID)
+	refundID = strings.TrimSpace(refundID)
+	if txn == nil || supplierID == "" || retailerID == "" || orderID == "" || refundAmountMinor <= 0 {
+		return nil
+	}
+	prog, err := readProgram(ctx, txn, supplierID)
+	if err != nil {
+		return err
+	}
+	if prog == nil {
+		return nil
+	}
+	pts := PointsFor(refundAmountMinor, prog.EarnBps)
+	if pts <= 0 {
+		return nil
+	}
+
+	ledgerID, clawbackOrderID := deriveClawbackLedgerID(orderID, refundID, pts, refundAmountMinor)
+
+	_, err = txn.ReadRow(ctx, "LoyaltyLedger", spanner.Key{supplierID, ledgerID}, []string{"LedgerId"})
+	if err == nil {
+		if refundID != "" {
+			return nil
+		}
+		// Subsequent partial refunds on the same order with refundID == "" and identical amount get a unique suffix
+		found := false
+		for i := 2; i <= 100; i++ {
+			candidateID := fmt.Sprintf("%s#%d", ledgerID, i)
+			_, cErr := txn.ReadRow(ctx, "LoyaltyLedger", spanner.Key{supplierID, candidateID}, []string{"LedgerId"})
+			if spanner.ErrCode(cErr) == codes.NotFound {
+				ledgerID = candidateID
+				clawbackOrderID = fmt.Sprintf("%s#%d", clawbackOrderID, i)
+				found = true
+				break
+			}
+		}
+		if !found {
+			return nil
+		}
+	} else if spanner.ErrCode(err) != codes.NotFound {
+		return err
+	}
+
+	life, avail := int64(0), int64(0)
+	acc, accErr := txn.ReadRow(ctx, "LoyaltyAccounts", spanner.Key{supplierID, retailerID}, []string{"LifetimePoints", "AvailablePoints"})
+	if accErr == nil {
+		_ = acc.Columns(&life, &avail)
+	} else if spanner.ErrCode(accErr) != codes.NotFound {
+		return accErr
+	}
+
+	newLife, newAvail := ClawbackBalance(life, avail, pts)
+
+	muts := []*spanner.Mutation{
+		spanner.InsertMap("LoyaltyLedger", map[string]any{
+			"SupplierId":  supplierID,
+			"LedgerId":    ledgerID,
+			"RetailerId":  retailerID,
+			"OrderId":     clawbackOrderID,
+			"Points":      -pts,
+			"EarnBps":     prog.EarnBps,
+			"AmountMinor": -refundAmountMinor,
+			"CreatedAt":   spanner.CommitTimestamp,
+		}),
+		spanner.InsertOrUpdateMap("LoyaltyAccounts", map[string]any{
+			"SupplierId":      supplierID,
+			"RetailerId":      retailerID,
+			"LifetimePoints":  newLife,
+			"AvailablePoints": newAvail,
+			"UpdatedAt":       spanner.CommitTimestamp,
+		}),
+	}
+
+	if buf != nil {
+		if err := outbox.EmitJSON(ctx, buf, events.AggregateOrder, orderID, events.TopicMain, map[string]any{
+			"type":         "LOYALTY_POINTS_CLAWED_BACK",
+			"supplier_id":  supplierID,
+			"retailer_id":  retailerID,
+			"order_id":     orderID,
+			"refund_id":    refundID,
+			"points":       pts,
+			"amount_minor": refundAmountMinor,
+		}); err != nil {
+			return err
+		}
+	}
+	return txn.BufferWrite(muts)
+}
+
 func readProgram(ctx context.Context, txn *spanner.ReadWriteTransaction, supplierID string) (*Program, error) {
 	row, err := txn.ReadRow(ctx, "LoyaltyPrograms", spanner.Key{supplierID}, []string{"EarnBps", "TiersJson"})
 	if err != nil {
@@ -169,7 +288,7 @@ func readProgram(ctx context.Context, txn *spanner.ReadWriteTransaction, supplie
 		return nil, err
 	}
 	p := &Program{SupplierID: supplierID, EarnBps: bps, Tiers: DefaultTiers, Source: "program"}
-	if bps <= 0 {
+	if bps < 0 {
 		p.EarnBps = defaultEarnBps
 	}
 	if tiersJSON.Valid && strings.TrimSpace(tiersJSON.StringVal) != "" {
@@ -198,7 +317,7 @@ func ReadProgramStrong(ctx context.Context, client *spanner.Client, supplierID s
 		return nil, err
 	}
 	p := &Program{SupplierID: supplierID, EarnBps: bps, Tiers: DefaultTiers, Source: "program"}
-	if bps <= 0 {
+	if bps < 0 {
 		p.EarnBps = defaultEarnBps
 	}
 	if tiersJSON.Valid && strings.TrimSpace(tiersJSON.StringVal) != "" {

@@ -13,7 +13,7 @@ import {
 } from "@/lib/geocode";
 import { mapInitialViewState, readCachedAuthSession } from "@pegasusx/api-core";
 import MapGL, { Marker, NavigationControl } from 'react-map-gl/maplibre';
-import maplibregl from 'maplibre-gl';
+import * as maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
 export type LocationValue = {

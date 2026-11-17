@@ -66,6 +66,11 @@ func StartFiscalSweeperContext(ctx context.Context, svc *Service, wg ...*sync.Wa
 		if waitGroup != nil {
 			defer waitGroup.Done()
 		}
+		defer func() {
+			if rec := recover(); rec != nil {
+				svc.log.Error("fiscal sweeper panic recovered", "panic", rec)
+			}
+		}()
 		ticker := time.NewTicker(30 * time.Second)
 		defer ticker.Stop()
 		for {
@@ -85,6 +90,10 @@ func StartFiscalSweeperContext(ctx context.Context, svc *Service, wg ...*sync.Wa
 
 // RunFiscalSweeperOnce performs one sweep across pending FISCAL_FAILED orders.
 func (s *Service) RunFiscalSweeperOnce(ctx context.Context) error {
+	if _, sErr := s.SweepStuckFiscalizingOrders(ctx, 0); sErr != nil {
+		s.log.WarnContext(ctx, "failed sweeping stuck fiscalizing orders", "err", sErr)
+	}
+
 	orders, err := s.repo.ListOrdersByStatus(ctx, "", string(StatusFiscalFailed), 100)
 	if err != nil {
 		return fmt.Errorf("list fiscal failed orders: %w", err)
@@ -92,8 +101,8 @@ func (s *Service) RunFiscalSweeperOnce(ctx context.Context) error {
 	now := s.now().UTC()
 
 	for _, o := range orders {
-		// If already dead-lettered / quarantined, skip
-		if o.FiscalStatus == FiscalStatusDeadLetter {
+		// If already dead-lettered / quarantined or excluded by migration guard, skip
+		if o.FiscalStatus == FiscalStatusDeadLetter || isMigrationFiscalExcluded(o) {
 			continue
 		}
 
@@ -150,7 +159,23 @@ func (s *Service) quarantineFiscalOrderToDLQ(ctx context.Context, orderRecord Or
 		"reason":          "fiscal_max_attempts_exhausted",
 		"quarantined_at":  now.Format(time.RFC3339),
 	}
-	payloadBytes, _ := json.Marshal(payload)
+	payloadBytes, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("marshal dlq payload: %w", err)
+	}
+	orderRecord.PendingExceptionTicket = &ExceptionTicket{
+		TicketID:     uuid.New().String(),
+		Type:         "FISCAL_DEAD_LETTER",
+		OrderID:      orderRecord.OrderID,
+		Severity:     "CRITICAL",
+		Status:       "OPEN",
+		Title:        "Fiscal dead-lettered after retry exhaustion",
+		Description:  fmt.Sprintf("fiscalization exhausted %d attempts", failedAttempts),
+		AssignedRole: "FINANCE",
+		CreatedAt:    now,
+		CreatedBy:    "system:fiscal-sweeper",
+		Payload:      payloadBytes,
+	}
 
 	var inTxn func(context.Context, *spanner.ReadWriteTransaction) error
 	if s.spannerClient != nil {
@@ -171,7 +196,7 @@ func (s *Service) quarantineFiscalOrderToDLQ(ctx context.Context, orderRecord Or
 		}
 	}
 
-	err := s.repo.UpdateOrderWithTxn(ctx, orderRecord, nil, inTxn, func(txn outbox.TxnBuffer) error {
+	err = s.repo.UpdateOrderWithTxn(ctx, orderRecord, nil, inTxn, func(txn outbox.TxnBuffer) error {
 		return emitOrderStatusChanged(ctx, txn, orderStatusEmitParams{
 			Order:          orderRecord,
 			PreviousStatus: StatusFiscalFailed,

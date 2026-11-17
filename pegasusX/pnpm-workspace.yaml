@@ -20,4 +20,3 @@ packages:
   - "packages/desktop-cache"
   - "packages/ui-maps"
   - "packages/ui-charts"
-  - "apps/bot-telegram"

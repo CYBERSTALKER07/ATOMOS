@@ -40,23 +40,70 @@ final class CartManager {
 
     // MARK: - Add to Cart
 
-    func add(product: Product, variant: Variant, quantity: Int = 1) {
+    func add(
+        product: Product,
+        variant: Variant,
+        quantity: Int = 1,
+        mustHave: Bool = false,
+        allowSubstitutes: Bool = false
+    ) {
         guard !product.blocksAddToCart else { return }
         let itemId = "\(product.id)-\(variant.id)"
         let capped = min(quantity, product.cartMaxQuantity ?? quantity)
         if let index = items.firstIndex(where: { $0.id == itemId }) {
             let next = items[index].quantity + capped
             items[index].quantity = min(next, product.cartMaxQuantity ?? next)
+            if mustHave { items[index].mustHave = true }
+            if allowSubstitutes { items[index].allowSubstitutes = true }
         } else {
             let item = CartItem(
                 id: itemId,
                 product: product,
                 variant: variant,
-                quantity: capped
+                quantity: capped,
+                mustHave: mustHave,
+                allowSubstitutes: allowSubstitutes
             )
             items.append(item)
         }
         Task { await refreshCheckoutQuote() }
+    }
+
+    func toggleMustHave(itemId: String) {
+        guard let index = items.firstIndex(where: { $0.id == itemId }) else { return }
+        items[index].mustHave.toggle()
+    }
+
+    func toggleAllowSubstitutes(itemId: String) {
+        guard let index = items.firstIndex(where: { $0.id == itemId }) else { return }
+        items[index].allowSubstitutes.toggle()
+    }
+
+    func snapToPackMultiple(itemId: String, mode: PackSnapMode = .nearest) {
+        guard let index = items.firstIndex(where: { $0.id == itemId }) else { return }
+        let packSize = RetailerPackHelper.effectivePackSize(
+            product: items[index].product,
+            variant: items[index].variant
+        )
+        let snapped = RetailerPackHelper.snapToPackMultiple(
+            items[index].quantity,
+            packSize: packSize,
+            mode: mode
+        )
+        if snapped > 0 {
+            updateQuantity(itemId: itemId, quantity: snapped)
+        }
+    }
+
+    func applyPackSuggestion(skuId: String, suggestedQuantity: Int) {
+        guard suggestedQuantity > 0 else { return }
+        guard let target = items.first(where: {
+            let sku = $0.variant.id.isEmpty ? $0.product.id : $0.variant.id
+            return sku == skuId || $0.product.id == skuId || $0.variant.id == skuId
+        }) else {
+            return
+        }
+        updateQuantity(itemId: target.id, quantity: suggestedQuantity)
     }
 
     // MARK: - Remove from Cart
@@ -150,7 +197,10 @@ final class CartManager {
         requestedDeliveryDate: String? = nil,
         deliveryPriority: String? = nil,
         checkoutPolicyToken: String? = nil,
-        currency: String? = nil
+        currency: String? = nil,
+        autoConfirmOptIn: Bool = false,
+        paymentMethod: String? = nil,
+        clientOrderId: String? = nil
     ) -> UnifiedCheckoutPayload {
         UnifiedCheckoutPayload(
             retailerId: retailerId,
@@ -161,14 +211,19 @@ final class CartManager {
                 UnifiedCheckoutPayload.Item(
                     skuId: item.variant.id.isEmpty ? item.product.id : item.variant.id,
                     quantity: item.quantity,
-                    unitPriceUzs: item.variant.priceMinor
+                    unitPriceUzs: item.variant.priceMinor,
+                    mustHave: item.mustHave,
+                    allowSubstitutes: item.allowSubstitutes
                 )
             },
             deliveryMode: deliveryMode,
             requestedDeliveryDate: requestedDeliveryDate,
             deliveryPriority: deliveryPriority,
             checkoutPolicyToken: checkoutPolicyToken,
-            currency: currency
+            currency: currency,
+            autoConfirmOptIn: autoConfirmOptIn,
+            paymentMethod: paymentMethod,
+            clientOrderId: clientOrderId
         )
     }
 
@@ -268,16 +323,46 @@ struct UnifiedCheckoutPayload: Codable {
     let deliveryPriority: String?
     let checkoutPolicyToken: String?
     let currency: String?
+    let autoConfirmOptIn: Bool
+    let paymentMethod: String?
+    let clientOrderId: String?
 
     struct Item: Codable {
         let skuId: String
         let quantity: Int
         let unitPriceUzs: Int64
+        let mustHave: Bool
+        let allowSubstitutes: Bool
 
         enum CodingKeys: String, CodingKey {
             case skuId = "sku_id"
             case quantity
             case unitPriceUzs = "unit_price"
+            case mustHave = "must_have"
+            case allowSubstitutes = "allow_substitutes"
+        }
+
+        init(
+            skuId: String,
+            quantity: Int,
+            unitPriceUzs: Int64,
+            mustHave: Bool = false,
+            allowSubstitutes: Bool = false
+        ) {
+            self.skuId = skuId
+            self.quantity = quantity
+            self.unitPriceUzs = unitPriceUzs
+            self.mustHave = mustHave
+            self.allowSubstitutes = allowSubstitutes
+        }
+
+        init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            self.skuId = try c.decode(String.self, forKey: .skuId)
+            self.quantity = try c.decode(Int.self, forKey: .quantity)
+            self.unitPriceUzs = try c.decode(Int64.self, forKey: .unitPriceUzs)
+            self.mustHave = try c.decodeIfPresent(Bool.self, forKey: .mustHave) ?? false
+            self.allowSubstitutes = try c.decodeIfPresent(Bool.self, forKey: .allowSubstitutes) ?? false
         }
     }
 
@@ -290,6 +375,56 @@ struct UnifiedCheckoutPayload: Codable {
         case deliveryPriority = "delivery_priority"
         case checkoutPolicyToken = "checkout_policy_token"
         case currency
+        case autoConfirmOptIn = "auto_confirm_opt_in"
+        case paymentMethod = "payment_method"
+        case clientOrderId = "client_order_id"
+    }
+
+    init(
+        retailerId: String,
+        paymentGateway: String,
+        latitude: Double,
+        longitude: Double,
+        items: [Item],
+        deliveryMode: String?,
+        requestedDeliveryDate: String?,
+        deliveryPriority: String?,
+        checkoutPolicyToken: String?,
+        currency: String?,
+        autoConfirmOptIn: Bool = false,
+        paymentMethod: String? = nil,
+        clientOrderId: String? = nil
+    ) {
+        self.retailerId = retailerId
+        self.paymentGateway = paymentGateway
+        self.latitude = latitude
+        self.longitude = longitude
+        self.items = items
+        self.deliveryMode = deliveryMode
+        self.requestedDeliveryDate = requestedDeliveryDate
+        self.deliveryPriority = deliveryPriority
+        self.checkoutPolicyToken = checkoutPolicyToken
+        self.currency = currency
+        self.autoConfirmOptIn = autoConfirmOptIn
+        self.paymentMethod = paymentMethod
+        self.clientOrderId = clientOrderId
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.retailerId = try c.decode(String.self, forKey: .retailerId)
+        self.paymentGateway = try c.decode(String.self, forKey: .paymentGateway)
+        self.latitude = try c.decodeIfPresent(Double.self, forKey: .latitude) ?? 0
+        self.longitude = try c.decodeIfPresent(Double.self, forKey: .longitude) ?? 0
+        self.items = try c.decode([Item].self, forKey: .items)
+        self.deliveryMode = try c.decodeIfPresent(String.self, forKey: .deliveryMode)
+        self.requestedDeliveryDate = try c.decodeIfPresent(String.self, forKey: .requestedDeliveryDate)
+        self.deliveryPriority = try c.decodeIfPresent(String.self, forKey: .deliveryPriority)
+        self.checkoutPolicyToken = try c.decodeIfPresent(String.self, forKey: .checkoutPolicyToken)
+        self.currency = try c.decodeIfPresent(String.self, forKey: .currency)
+        self.autoConfirmOptIn = try c.decodeIfPresent(Bool.self, forKey: .autoConfirmOptIn) ?? false
+        self.paymentMethod = try c.decodeIfPresent(String.self, forKey: .paymentMethod)
+        self.clientOrderId = try c.decodeIfPresent(String.self, forKey: .clientOrderId)
     }
 }
 
@@ -368,7 +503,7 @@ extension CartManager {
             .map { item in
                 let skuID = item.variant.id.isEmpty ? item.product.id : item.variant.id
                 let supplierID = item.product.supplierID ?? ""
-                return "\(skuID):\(supplierID):\(item.quantity):\(item.variant.priceMinor)"
+                return "\(skuID):\(supplierID):\(item.quantity):\(item.variant.priceMinor):\(item.mustHave ? 1 : 0):\(item.allowSubstitutes ? 1 : 0)"
             }
             .joined(separator: "|")
     }
@@ -409,7 +544,9 @@ extension CartManager {
                 id: "\(updatedProduct.id)-\(updatedVariant.id)",
                 product: updatedProduct,
                 variant: updatedVariant,
-                quantity: quantity
+                quantity: quantity,
+                mustHave: serverItem.mustHave || existing.mustHave,
+                allowSubstitutes: serverItem.allowSubstitutes || existing.allowSubstitutes
             )
         }
 
@@ -442,7 +579,9 @@ extension CartManager {
             id: "\(fallbackProduct.id)-\(fallbackVariant.id)",
             product: fallbackProduct,
             variant: fallbackVariant,
-            quantity: quantity
+            quantity: quantity,
+            mustHave: serverItem.mustHave,
+            allowSubstitutes: serverItem.allowSubstitutes
         )
     }
 
@@ -497,7 +636,9 @@ extension CartManager {
                 supplierId: supplierID,
                 quantity: Int64(item.quantity),
                 unitPrice: item.variant.priceMinor,
-                currency: packCurrency(MarketPackStore.pack)
+                currency: packCurrency(MarketPackStore.pack),
+                mustHave: item.mustHave,
+                allowSubstitutes: item.allowSubstitutes
             )
         }
         let request = CartSyncRequest(items: cartItems)

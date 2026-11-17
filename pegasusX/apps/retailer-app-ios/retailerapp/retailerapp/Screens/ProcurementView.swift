@@ -14,6 +14,40 @@ struct ProcurementView: View {
             ScrollView {
                 VStack(spacing: AppTheme.spacingLG) {
                     headerSection.slideIn(delay: 0)
+                    if !vm.packSuggestions.isEmpty {
+                        PackSuggestionBannerView(suggestions: vm.packSuggestions) { skuId, suggestedQty in
+                            vm.applyPackSuggestion(skuId: skuId, suggestedQuantity: suggestedQty)
+                        }
+                    }
+                    if let approval = vm.ownerApprovalRequired {
+                        OwnerApprovalBannerView(
+                            detail: approval,
+                            isSubmitting: vm.isSubmitting,
+                            onPayCash: {
+                                Task {
+                                    await vm.retryWithFallbackMethod("CASH", modelContext: modelContext, refreshCenter: refreshCenter)
+                                }
+                            },
+                            onPayCard: {
+                                Task {
+                                    await vm.retryWithFallbackMethod("CARD", modelContext: modelContext, refreshCenter: refreshCenter)
+                                }
+                            },
+                            onDismiss: { vm.ownerApprovalRequired = nil }
+                        )
+                    }
+                    if let notice = vm.pendingQueueNotice {
+                        LabCard {
+                            HStack(spacing: AppTheme.spacingSM) {
+                                Image(systemName: "clock.arrow.circlepath")
+                                    .foregroundStyle(AppTheme.warning)
+                                Text(notice.message)
+                                    .font(.caption)
+                                    .foregroundStyle(AppTheme.textPrimary)
+                            }
+                            .padding(AppTheme.spacingLG)
+                        }
+                    }
                     suggestionsSection.slideIn(delay: 0.05)
 
                     if !vm.selectedItems.isEmpty {
@@ -38,11 +72,15 @@ struct ProcurementView: View {
         } message: {
             Text("mobile_retailer.ui.your_procurement_order_has_been_submitted_successfully")
         }
-        .alert("Order Failed", isPresented: $vm.showError) {
-            Button("common.action.retry") {
-                Task { await vm.createOrder(modelContext: modelContext, refreshCenter: refreshCenter) }
+        .alert(vm.queuedForSyncMessage != nil ? "Saved to Sync Queue" : "Order Failed", isPresented: $vm.showError) {
+            if vm.queuedForSyncMessage != nil {
+                Button("OK", role: .cancel) {}
+            } else {
+                Button("common.action.retry") {
+                    Task { await vm.createOrder(modelContext: modelContext, refreshCenter: refreshCenter) }
+                }
+                Button("common.action.cancel", role: .cancel) {}
             }
-            Button("common.action.cancel", role: .cancel) {}
         } message: {
             Text(vm.errorMessage)
         }
@@ -113,11 +151,23 @@ struct ProcurementView: View {
                     forecast: forecast,
                     isSelected: vm.selectedItems.contains(forecast.id),
                     externalQuantity: vm.quantities[forecast.id] ?? forecast.predictedQuantity,
+                    mustHave: vm.mustHaveByForecastId[forecast.id] ?? false,
+                    allowSubstitutes: vm.allowSubstitutesByForecastId[forecast.id] ?? false,
+                    packSize: vm.effectivePackSize(for: forecast.productId),
                     onToggleSelection: {
                         vm.toggleSelection(for: forecast)
                     },
                     onUpdateQuantity: { newQty in
                         vm.updateQuantity(for: forecast.id, quantity: newQty)
+                    },
+                    onToggleMustHave: {
+                        vm.toggleMustHave(for: forecast.id)
+                    },
+                    onToggleAllowSubstitutes: {
+                        vm.toggleAllowSubstitutes(for: forecast.id)
+                    },
+                    onSnapPack: {
+                        vm.snapQuantityToPackMultiple(for: forecast.id)
                     }
                 )
                 .staggeredSlideIn(index: index)
@@ -128,27 +178,32 @@ struct ProcurementView: View {
     // MARK: - Summary
 
     private var selectedSummary: some View {
-        LabCard {
-            HStack {
-                HStack(spacing: AppTheme.spacingSM) {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(AppTheme.accent)
-                    Text(L10n.format("mobile_retailer.ui.count_items_selected", "\(vm.selectedItems.count)"))
-                        .font(.system(.subheadline, design: .rounded, weight: .medium))
-                        .foregroundStyle(AppTheme.textPrimary)
+        @Bindable var vm = vm
+        return LabCard {
+            VStack(alignment: .leading, spacing: AppTheme.spacingSM) {
+                HStack {
+                    HStack(spacing: AppTheme.spacingSM) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(AppTheme.accent)
+                        Text(L10n.format("mobile_retailer.ui.count_items_selected", "\(vm.selectedItems.count)"))
+                            .font(.system(.subheadline, design: .rounded, weight: .medium))
+                            .foregroundStyle(AppTheme.textPrimary)
+                    }
+                    Spacer()
+                    AnimatedNumberText(
+                        value: vm.selectedTotalUnits,
+                        font: .system(.subheadline, design: .rounded, weight: .bold),
+                        color: AppTheme.accent
+                    )
+                    Text("retailer_desktop.auto_order.auto_order_list.text.units")
+                        .font(.system(.caption, design: .rounded))
+                        .foregroundStyle(AppTheme.textTertiary)
                 }
-                Spacer()
-                AnimatedNumberText(
-                    value: vm.selectedTotalUnits,
-                    font: .system(.subheadline, design: .rounded, weight: .bold),
-                    color: AppTheme.accent
-                )
-                Text("retailer_desktop.auto_order.auto_order_list.text.units")
+                Toggle("Auto-confirm preorder", isOn: $vm.autoConfirmOptIn)
                     .font(.system(.caption, design: .rounded))
-                    .foregroundStyle(AppTheme.textTertiary)
             }
             .padding(AppTheme.spacingLG)
-            .accessibilityElement(children: .combine)
+            .accessibilityElement(children: .contain)
             .accessibilityLabel("\(vm.selectedItems.count) items selected, \(vm.selectedTotalUnits) units")
         }
     }
@@ -183,8 +238,14 @@ private struct ProcurementSuggestionCardView: View {
     let forecast: DemandForecast
     let isSelected: Bool
     let externalQuantity: Int
+    let mustHave: Bool
+    let allowSubstitutes: Bool
+    let packSize: Int
     let onToggleSelection: () -> Void
     let onUpdateQuantity: (Int) -> Void
+    let onToggleMustHave: () -> Void
+    let onToggleAllowSubstitutes: () -> Void
+    let onSnapPack: () -> Void
 
     @State private var localQuantity: Int
 
@@ -192,14 +253,26 @@ private struct ProcurementSuggestionCardView: View {
         forecast: DemandForecast,
         isSelected: Bool,
         externalQuantity: Int,
+        mustHave: Bool,
+        allowSubstitutes: Bool,
+        packSize: Int,
         onToggleSelection: @escaping () -> Void,
-        onUpdateQuantity: @escaping (Int) -> Void
+        onUpdateQuantity: @escaping (Int) -> Void,
+        onToggleMustHave: @escaping () -> Void,
+        onToggleAllowSubstitutes: @escaping () -> Void,
+        onSnapPack: @escaping () -> Void
     ) {
         self.forecast = forecast
         self.isSelected = isSelected
         self.externalQuantity = externalQuantity
+        self.mustHave = mustHave
+        self.allowSubstitutes = allowSubstitutes
+        self.packSize = packSize
         self.onToggleSelection = onToggleSelection
         self.onUpdateQuantity = onUpdateQuantity
+        self.onToggleMustHave = onToggleMustHave
+        self.onToggleAllowSubstitutes = onToggleAllowSubstitutes
+        self.onSnapPack = onSnapPack
         self._localQuantity = State(initialValue: externalQuantity)
     }
 
@@ -256,12 +329,22 @@ private struct ProcurementSuggestionCardView: View {
                     .font(.system(.caption, design: .rounded))
                     .foregroundStyle(AppTheme.textTertiary)
                     .lineLimit(2)
+
+                OrderLineFlagPills(
+                    mustHave: mustHave,
+                    allowSubstitutes: allowSubstitutes,
+                    packSize: packSize,
+                    currentQuantity: localQuantity,
+                    onToggleMustHave: onToggleMustHave,
+                    onToggleAllowSubstitutes: onToggleAllowSubstitutes,
+                    onSnapPack: isSelected ? onSnapPack : nil
+                )
             }
             .padding(AppTheme.spacingLG)
         }
         .overlay {
             if isSelected {
-                RoundedRectangle(cornerRadius: AppTheme.radiusCard)
+                RoundedRectangle(cornerRadius: AppTheme.radiusCard, style: .continuous)
                     .strokeBorder(AppTheme.accent.opacity(0.4), lineWidth: 2)
             }
         }

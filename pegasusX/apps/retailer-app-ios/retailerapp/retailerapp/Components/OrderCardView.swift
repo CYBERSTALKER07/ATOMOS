@@ -40,6 +40,15 @@ struct OrderCardView: View {
 
                 // Status Badge
                 statusBadge
+                if order.isMigrationOrigin {
+                    Text("mobile_retailer.nasiya_opening.migration_badge")
+                        .font(.system(.caption2, design: .rounded, weight: .bold))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(AppTheme.warning.opacity(0.15))
+                        .foregroundStyle(AppTheme.warning)
+                        .clipShape(Capsule())
+                }
             }
 
             if order.needsDeliveryProposalReview {

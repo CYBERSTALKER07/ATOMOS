@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { STATUTORY_AML_CASH_CEILING_MINOR, type AMLCheckResponse } from '@pegasusx/types';
 import { foundryWarehouseApi } from '@/lib/foundry-api';
 import { majorIntToMinor, minorToWholeTrunc, ratioPercentInt } from '@/lib/money';
+import { formatWholeSomInteger } from '@/lib/cashier-helpers';
 import { Building2, ShieldCheck, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 interface AMLExposureCheckProps {
@@ -12,17 +13,17 @@ interface AMLExposureCheckProps {
 }
 
 export function AMLExposureCheck({
-  initialTin = '301234567',
-  supplierId = 'sup_samarkand_dairy',
+  initialTin = '',
+  supplierId = '',
 }: AMLExposureCheckProps) {
   const [tin, setTin] = useState(initialTin);
   const [calendarDate, setCalendarDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [cashUZS, setCashUZS] = useState<number>(0);
+  const [cashSom, setCashSom] = useState<number>(0);
   const [checking, setChecking] = useState(false);
   const [result, setResult] = useState<AMLCheckResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const ceilingUZS = minorToWholeTrunc(STATUTORY_AML_CASH_CEILING_MINOR);
+  const ceilingSom = minorToWholeTrunc(STATUTORY_AML_CASH_CEILING_MINOR);
 
   const handleCheck = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,7 +34,7 @@ export function AMLExposureCheck({
     }
     setChecking(true);
     try {
-      const cashMinor = majorIntToMinor(cashUZS);
+      const cashMinor = majorIntToMinor(cashSom);
       const res = await foundryWarehouseApi.amlCheck({
         legal_entity_tin: tin.trim(),
         supplier_id: supplierId,
@@ -48,8 +49,8 @@ export function AMLExposureCheck({
     }
   };
 
-  const accumulatedUZS = result ? minorToWholeTrunc(result.accumulated_cash_minor) : 0;
-  const percentage = Math.min(100, ratioPercentInt(accumulatedUZS, ceilingUZS));
+  const accumulatedSom = result ? minorToWholeTrunc(result.accumulated_cash_minor) : 0;
+  const percentage = Math.min(100, ratioPercentInt(accumulatedSom, ceilingSom));
 
   return (
     <div className="rounded-2xl border border-neutral-800 bg-neutral-900/90 p-6 shadow-xl space-y-5 backdrop-blur-sm">
@@ -82,7 +83,7 @@ export function AMLExposureCheck({
               required
               value={tin}
               onChange={(e) => setTin(e.target.value)}
-              placeholder="e.g. 301234567"
+              placeholder="Enter 9-digit TIN"
               className="w-full bg-neutral-950 border border-neutral-750 rounded-xl px-3 py-2 text-xs font-mono text-neutral-100 focus:outline-none focus:border-cyan-500"
             />
           </div>
@@ -102,16 +103,16 @@ export function AMLExposureCheck({
 
           <div>
             <label className="block text-[11px] font-semibold text-neutral-400 uppercase tracking-wider mb-1">
-              Incremental Cash Tender (UZS)
+              Incremental Cash Tender (so&apos;m)
             </label>
             <input
               type="text"
               inputMode="numeric"
               pattern="[0-9]*"
-              value={cashUZS === 0 ? '' : cashUZS}
+              value={cashSom === 0 ? '' : cashSom}
               onChange={(e) => {
                 const s = e.target.value.replace(/\D/g, '');
-                setCashUZS(Math.max(0, parseInt(s || '0', 10) || 0));
+                setCashSom(Math.max(0, parseInt(s || '0', 10) || 0));
               }}
               placeholder="0 (check balance only)"
               className="w-full bg-neutral-950 border border-neutral-750 rounded-xl px-3 py-2 text-xs font-mono text-neutral-100 focus:outline-none focus:border-cyan-500"
@@ -145,7 +146,7 @@ export function AMLExposureCheck({
               Taxpayer INN: <span className="font-mono text-neutral-100 font-bold">{result.legal_entity_tin}</span>
             </span>
             <span className="font-mono text-neutral-400 text-[11px]">
-              Statutory Benchmark: {ceilingUZS.toLocaleString()} UZS (2.5B Tiyin)
+              Statutory Benchmark: {formatWholeSomInteger(ceilingSom)}
             </span>
           </div>
 
@@ -159,7 +160,7 @@ export function AMLExposureCheck({
 
           <div className="flex items-center justify-between text-xs font-mono">
             <span className="text-neutral-300 font-bold">
-              Accumulated Today: {accumulatedUZS.toLocaleString()} UZS
+              Accumulated Today: {formatWholeSomInteger(accumulatedSom)}
             </span>
             <span className="text-emerald-400 font-bold">Uncapped Multi-Tender Active</span>
           </div>

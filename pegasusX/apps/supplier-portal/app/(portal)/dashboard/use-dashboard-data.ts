@@ -169,13 +169,15 @@ export function useDashboardData() {
     }
 
     try {
-      const dashResp = await api.getSupplierDashboardConditional(etagRef.current ?? undefined);
+      const [dashResp, profResp] = await Promise.all([
+        api.getSupplierDashboardConditional(etagRef.current ?? undefined),
+        silent ? Promise.resolve(null) : api.getSupplierProfile().catch(() => null),
+      ]);
       if (!dashResp.notModified) {
         etagRef.current = dashResp.etag;
         const nextData = mapDashboard(dashResp.data);
         setData(nextData);
         if (!silent) {
-          const profResp = await api.getSupplierProfile();
           const paymentConfigured =
             Boolean(profResp?.selected_gateways && profResp.selected_gateways.length > 0);
           setIsPaymentConfigured(paymentConfigured);

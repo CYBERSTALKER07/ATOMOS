@@ -29,16 +29,18 @@ var SettlementJournal func(txn *spanner.ReadWriteTransaction, batchID, supplierI
 // existing batch; money never double-pays.
 
 const (
-	StatusDraft     = "DRAFT"
-	StatusExported  = "EXPORTED"
-	StatusSubmitted = "SUBMITTED" // dispatched to a live rail, awaiting settlement webhook
-	StatusPaid      = "PAID"
+	StatusDraft      = "DRAFT"
+	StatusExported   = "EXPORTED"
+	StatusSubmitting = "SUBMITTING" // live dispatch claim acquired in Spanner CAS
+	StatusSubmitted  = "SUBMITTED"  // dispatched to a live rail, awaiting settlement webhook
+	StatusPaid       = "PAID"
 )
 
 var (
 	ErrNothingPayable     = errors.New("nothing payable for the period")
 	ErrBankDetailsMissing = errors.New("supplier bank details incomplete")
 	ErrBatchNotFound      = errors.New("payout batch not found")
+	ErrBatchConflict      = errors.New("payout batch state conflict")
 )
 
 type Batch struct {

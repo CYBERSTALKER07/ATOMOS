@@ -225,5 +225,56 @@ spec:
     cleanup.policy: delete
     retention.ms: "604800000" # 7d
     retention.bytes: "536870912"
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: pegasusx-ledger
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: pegasusx
+    app.kubernetes.io/part-of: pegasusx
+spec:
+  partitions: 12
+  replicas: 3
+  config:
+    min.insync.replicas: "2"
+    cleanup.policy: delete
+    retention.ms: "2592000000" # 30d
+    retention.bytes: "1073741824"
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: pegasusx-intel
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: pegasusx
+    app.kubernetes.io/part-of: pegasusx
+spec:
+  partitions: 12
+  replicas: 3
+  config:
+    min.insync.replicas: "2"
+    cleanup.policy: delete
+    retention.ms: "604800000" # 7d
+    retention.bytes: "1073741824"
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: pegasusx-connectors
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: pegasusx
+    app.kubernetes.io/part-of: pegasusx
+spec:
+  partitions: 6
+  replicas: 3
+  config:
+    min.insync.replicas: "2"
+    cleanup.policy: delete
+    retention.ms: "604800000" # 7d
+    retention.bytes: "536870912"
 
 

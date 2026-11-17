@@ -99,7 +99,11 @@ func (h *Handlers) HandlePayoutPolicy(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 			return
 		}
+		if !requirePayoutPermIfClaimsPresent(w, r, auth.PermConfigManage) {
+			return
+		}
 		var req policyPatch
+		r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 			return

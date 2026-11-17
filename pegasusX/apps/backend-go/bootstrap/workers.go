@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"sync"
 	"time"
 
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ar"
+	"github.com/pegasusx/pegasusx/apps/backend-go/audit"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
 	"github.com/pegasusx/pegasusx/apps/backend-go/claims"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
@@ -18,13 +20,16 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/kafka"
 	"github.com/pegasusx/pegasusx/apps/backend-go/kafkautil"
 	"github.com/pegasusx/pegasusx/apps/backend-go/notifications"
+	"github.com/pegasusx/pegasusx/apps/backend-go/ontology"
 	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"github.com/pegasusx/pegasusx/apps/backend-go/partner"
+	"github.com/pegasusx/pegasusx/apps/backend-go/recon"
 	"github.com/pegasusx/pegasusx/apps/backend-go/retailer"
 	"github.com/pegasusx/pegasusx/apps/backend-go/returns"
 	"github.com/pegasusx/pegasusx/apps/backend-go/routing"
 	"github.com/pegasusx/pegasusx/apps/backend-go/twin"
 	"github.com/pegasusx/pegasusx/apps/backend-go/warehouse"
+	"github.com/pegasusx/pegasusx/apps/backend-go/workerlease"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
 )
 
@@ -37,6 +42,7 @@ type kafkaConsumers struct {
 	billingTierConsumer    *kafka.Consumer
 	partnerEventConsumer   *kafka.Consumer
 	twinEventConsumer      *kafka.Consumer
+	ontologyEventConsumer  *kafka.Consumer
 	cleanup                func()
 }
 
@@ -64,6 +70,7 @@ func setupKafkaConsumers(
 	fxSvc *fxrates.Service,
 	telemetryHub *ws.Hub,
 	routingSvc *routing.Service,
+	ontSvc *ontology.Service,
 	log *slog.Logger,
 ) (*kafkaConsumers, error) {
 	dlqWriter, err := newKafkaRuntimeDLQWriter(cfg.KafkaBrokers, cfg.KafkaTopicMainDLQ, kafkaAuth)
@@ -106,6 +113,7 @@ func setupKafkaConsumers(
 		Push:            pushBridge,
 		Inbox:           notifSvc,
 		EventDedup:      kafkaEventDedup,
+		CommandSpanner:  spannerClient,
 		ConsumerGroupID: notificationConsumerGroup,
 		Cache:           cacheClient,
 		RetailerActors:  retailerSvc, // Phase 1 multi-user FCM fanout
@@ -212,6 +220,20 @@ func setupKafkaConsumers(
 		})
 	}
 
+	var ontologyEventConsumer *kafka.Consumer
+	if ontSvc != nil {
+		ontologyHandler := kafka.WithEventDedup(kafkaEventDedup, OntologyConsumerGroupID, ontology.NewEventConsumer(ontSvc, log).HandleEvent)
+		ontologyEventConsumer = kafka.NewMultiTopicConsumer(kafka.ConsumerDeps{
+			Brokers:   strings.Split(cfg.KafkaBrokers, ","),
+			GroupID:   OntologyConsumerGroupID,
+			Topics:    OntologyConsumerTopics(),
+			Handler:   ontologyHandler,
+			DLQWriter: dlqWriter,
+			OnDLQ:     dlqHook,
+			Auth:      kafkaAuth,
+		})
+	}
+
 	cleanup := func() {
 		if err := notificationConsumer.Close(); err != nil {
 			log.Warn("notification consumer close failed", "err", err)
@@ -227,6 +249,11 @@ func setupKafkaConsumers(
 		if twinEventConsumer != nil {
 			if err := twinEventConsumer.Close(); err != nil {
 				log.Warn("twin event consumer close failed", "err", err)
+			}
+		}
+		if ontologyEventConsumer != nil {
+			if err := ontologyEventConsumer.Close(); err != nil {
+				log.Warn("ontology event consumer close failed", "err", err)
 			}
 		}
 		if err := warehouseEventConsumer.Close(); err != nil {
@@ -258,6 +285,7 @@ func setupKafkaConsumers(
 		"billing_tier", billingTierConsumer != nil,
 		"returns_reverse", returnsEventConsumer != nil,
 		"digital_twin", twinEventConsumer != nil,
+		"ontology_projector", ontologyEventConsumer != nil,
 	)
 
 	return &kafkaConsumers{
@@ -269,6 +297,7 @@ func setupKafkaConsumers(
 		billingTierConsumer:    billingTierConsumer,
 		partnerEventConsumer:   partnerEventConsumer,
 		twinEventConsumer:      twinEventConsumer,
+		ontologyEventConsumer:  ontologyEventConsumer,
 		cleanup:                cleanup,
 	}, nil
 }
@@ -309,4 +338,38 @@ func setupDunningNotification(
 		offAppErr := offAppNotify(ctx, inv, prevStep, nextStep)
 		return errors.Join(inAppErr, offAppErr)
 	}, nil
+}
+
+// startReconNightlyWorker launches the lease-gated 24h four-way reconciliation worker when reconSvc is configured.
+func startReconNightlyWorker(
+	ctx context.Context,
+	wg *sync.WaitGroup,
+	leaseMgr workerlease.Manager,
+	holderID string,
+	log *slog.Logger,
+	reconSvc *recon.Service,
+) {
+	if reconSvc == nil || reconSvc.Repo() == nil {
+		return
+	}
+	startSpawningSweeper(ctx, wg, leaseMgr, "sweeper:recon_nightly", holderID, log, func(leaseCtx context.Context, _ *sync.WaitGroup) {
+		reconSvc.RunNightlyWorker(leaseCtx, 24*time.Hour)
+	})
+}
+
+// startAuditAnchorDailyWorker launches the lease-gated 24h daily audit hash-chain WORM anchor worker.
+func startAuditAnchorDailyWorker(
+	ctx context.Context,
+	wg *sync.WaitGroup,
+	leaseMgr workerlease.Manager,
+	holderID string,
+	log *slog.Logger,
+	auditSvc *audit.Service,
+) {
+	if auditSvc == nil || auditSvc.Repo() == nil {
+		return
+	}
+	startSpawningSweeper(ctx, wg, leaseMgr, "sweeper:audit_anchor_daily", holderID, log, func(leaseCtx context.Context, _ *sync.WaitGroup) {
+		audit.StartNightlyAnchorWorker(leaseCtx, 24*time.Hour, auditSvc)
+	})
 }

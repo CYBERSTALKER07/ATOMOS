@@ -18,10 +18,14 @@ const orderH3Resolution = 7
 
 // UnifiedCheckoutLineItem is one cart row from retailer clients.
 type UnifiedCheckoutLineItem struct {
-	SkuID      string `json:"sku_id"`
-	Quantity   int64  `json:"quantity"`
-	UnitPrice  int64  `json:"unit_price"`
-	SupplierID string `json:"supplier_id,omitempty"`
+	SkuID                 string   `json:"sku_id"`
+	Quantity              int64    `json:"quantity"`
+	UnitPrice             int64    `json:"unit_price"`
+	SupplierID            string   `json:"supplier_id,omitempty"`
+	BrandID               string   `json:"brand_id,omitempty"`
+	MustHave              bool     `json:"must_have,omitempty"`
+	AllowSubstitutes      bool     `json:"allow_substitutes,omitempty"`
+	AllowedSubstituteSKUs []string `json:"allowed_substitute_skus,omitempty"`
 }
 
 // UnifiedCheckoutRequest is POST /v1/checkout/unified when the body carries cart items.
@@ -37,7 +41,10 @@ type UnifiedCheckoutRequest struct {
 	DeliveryPriority      string                    `json:"delivery_priority,omitempty"`
 	CheckoutPolicyToken   string                    `json:"checkout_policy_token,omitempty"`
 	// Currency optional; same rules as CreateRequest.Currency.
-	Currency string `json:"currency,omitempty"`
+	Currency         string `json:"currency,omitempty"`
+	AutoConfirmOptIn bool   `json:"auto_confirm_opt_in,omitempty"`
+	PaymentMethod    string `json:"payment_method,omitempty"`
+	ClientOrderID    string `json:"client_order_id,omitempty"`
 }
 
 // SupplierOrderResult is one supplier slice returned to clients.
@@ -163,9 +170,18 @@ func (s *Service) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	resp, err := s.UnifiedCheckout(r.Context(), retailerID, req)
+	reqCtx := WithClientOrderID(r.Context(), idempotencyKeyFromRequest(r, body))
+	resp, err := s.UnifiedCheckout(reqCtx, retailerID, req)
 	if err != nil {
 		s.log.Warn("unified checkout failed", "retailer_id", retailerID, "err", err)
+		var approvalErr *OwnerApprovalRequiredError
+		if errors.As(err, &approvalErr) {
+			writeOwnerApprovalConflict(w, approvalErr)
+			return
+		}
+		if writePackValidationOrMetadataError(w, err) {
+			return
+		}
 		var multiErr *MultiSupplierCheckoutError
 		if errors.As(err, &multiErr) {
 			writeJSON(w, http.StatusUnprocessableEntity, map[string]any{
@@ -245,6 +261,13 @@ func (s *Service) UnifiedCheckout(ctx context.Context, retailerID string, req Un
 		return UnifiedCheckoutResponse{}, fmt.Errorf("derive h3 cell: %w", err)
 	}
 
+	clientOrderID := strings.TrimSpace(req.ClientOrderID)
+	if clientOrderID == "" {
+		clientOrderID = clientOrderIDFromContext(ctx)
+	}
+	paymentMethod := NormalizeCheckoutPaymentMethod(req.PaymentMethod, req.PaymentGateway)
+	usageUserID, usageRole, _ := resolveOrderActorAndRole(ctx, retailerID)
+
 	if MultiSupplierCheckoutEnabled() {
 		// Do not quote under the JWT trading-partner tenant for mixed carts —
 		// each Create leg re-quotes under that supplier's TenantContext.
@@ -258,12 +281,16 @@ func (s *Service) UnifiedCheckout(ctx context.Context, retailerID string, req Un
 				return UnifiedCheckoutResponse{}, fmt.Errorf("items[%d].unit_price must be >= 0", i)
 			}
 			draft = append(draft, LineItem{
-				SKU:       sku,
-				Quantity:  item.Quantity,
-				UnitPrice: item.UnitPrice,
+				SKU:                   sku,
+				Quantity:              item.Quantity,
+				UnitPrice:             item.UnitPrice,
+				BrandID:               strings.TrimSpace(item.BrandID),
+				MustHave:              item.MustHave,
+				AllowSubstitutes:      item.AllowSubstitutes,
+				AllowedSubstituteSKUs: append([]string(nil), item.AllowedSubstituteSKUs...),
 			})
 		}
-		return s.unifiedCheckoutMultiSupplier(ctx, retailerID, req, draft, h3Cell, lat, lng, pack)
+		return s.unifiedCheckoutMultiSupplier(ctx, retailerID, req, draft, h3Cell, lat, lng, pack, clientOrderID, paymentMethod, usageUserID, usageRole)
 	}
 
 	lineItems, err := s.authoritativeCheckoutLines(ctx, retailerID, req.Items)
@@ -271,7 +298,30 @@ func (s *Service) UnifiedCheckout(ctx context.Context, retailerID string, req Un
 		return UnifiedCheckoutResponse{}, err
 	}
 
-	created, err := s.Create(ctx, retailerID, CreateRequest{
+	var estimatedTotal int64
+	for _, li := range lineItems {
+		estimatedTotal += li.Quantity * li.UnitPrice
+	}
+	gateClientOrderID := clientOrderID
+	if gateClientOrderID == "" {
+		gateClientOrderID = newMandateUUID()
+	}
+	reqCopy := req
+	reqCopy.RetailerID = retailerID
+	reqCopy.PaymentMethod = paymentMethod
+	reqCopy.ClientOrderID = gateClientOrderID
+	singleSupplierID := s.resolveSupplierScope(ctx)
+	if err := s.checkSellerMandateGate(ctx, retailerID, usageUserID, usageRole, singleSupplierID, gateClientOrderID, paymentMethod, estimatedTotal, ApprovalPayloadEnvelope{
+		Kind:           ApprovalPayloadUnifiedCheckout,
+		SupplierID:     singleSupplierID,
+		Currency:       req.Currency,
+		UnifiedRequest: &reqCopy,
+	}); err != nil {
+		return UnifiedCheckoutResponse{}, err
+	}
+
+	createCtx := withMandatePrechecked(ctx)
+	created, err := s.Create(createCtx, retailerID, CreateRequest{
 		LineItems:             lineItems,
 		H3Cell:                h3Cell,
 		Lat:                   lat,
@@ -282,6 +332,9 @@ func (s *Service) UnifiedCheckout(ctx context.Context, retailerID string, req Un
 		DeliveryPriority:      req.DeliveryPriority,
 		CheckoutPolicyToken:   req.CheckoutPolicyToken,
 		Currency:              req.Currency,
+		AutoConfirmOptIn:      req.AutoConfirmOptIn,
+		PaymentMethod:         paymentMethod,
+		ClientOrderID:         clientOrderID,
 	})
 	if err != nil {
 		return UnifiedCheckoutResponse{}, err
@@ -314,6 +367,18 @@ func (s *Service) UnifiedCheckout(ctx context.Context, retailerID string, req Un
 	}, nil
 }
 
+func legClientOrderIDWithRetry(parentClientOrderID, supplierID string, retryGen int) string {
+	base := legClientOrderID(parentClientOrderID, supplierID)
+	if retryGen <= 0 {
+		return base
+	}
+	suffix := fmt.Sprintf(":r%d", retryGen)
+	if len(base)+len(suffix) <= 128 {
+		return base + suffix
+	}
+	return base[:128-len(suffix)] + suffix
+}
+
 func (s *Service) unifiedCheckoutMultiSupplier(
 	ctx context.Context,
 	retailerID string,
@@ -322,6 +387,7 @@ func (s *Service) unifiedCheckoutMultiSupplier(
 	h3Cell string,
 	lat, lng float64,
 	pack auth.MarketPack,
+	clientOrderID, paymentMethod, usageUserID, usageRole string,
 ) (UnifiedCheckoutResponse, error) {
 	groups, err := s.groupCheckoutLinesBySupplier(ctx, req.Items, lineItems)
 	if err != nil {
@@ -332,6 +398,119 @@ func (s *Service) unifiedCheckoutMultiSupplier(
 	}
 	if err := assertChildSuppliersSameMarket(ctx, pack, groups); err != nil {
 		return UnifiedCheckoutResponse{}, err
+	}
+
+	// Estimate authoritative whole-cart total before creating ParentOrders or child legs.
+	var estimatedCartTotal int64
+	for i := range groups {
+		legCtx := withRetailerID(createCtxForSupplier(ctx, groups[i].SupplierID), retailerID)
+		authoritativeLines, err := s.authoritativeCheckoutLines(legCtx, groups[i].Lines)
+		if err != nil {
+			return UnifiedCheckoutResponse{}, err
+		}
+		groups[i].Lines = authoritativeLines
+		var sub int64
+		for _, li := range groups[i].Lines {
+			sub += li.Quantity * li.UnitPrice
+		}
+		estimatedCartTotal += sub
+	}
+
+	gateClientOrderID := clientOrderID
+	if gateClientOrderID == "" {
+		gateClientOrderID = newMandateUUID()
+	}
+	reqCopy := req
+	reqCopy.RetailerID = retailerID
+	reqCopy.PaymentMethod = paymentMethod
+	reqCopy.ClientOrderID = gateClientOrderID
+	if err := s.checkSellerMandateGate(ctx, retailerID, usageUserID, usageRole, groups[0].SupplierID, gateClientOrderID, paymentMethod, estimatedCartTotal, ApprovalPayloadEnvelope{
+		Kind:           ApprovalPayloadUnifiedCheckout,
+		Currency:       req.Currency,
+		UnifiedRequest: &reqCopy,
+	}); err != nil {
+		return UnifiedCheckoutResponse{}, err
+	}
+
+	// Idempotent replay guard across all supplier legs when ClientOrderID was supplied.
+	var activeRetryGen int
+	if clientOrderID != "" {
+		supplierName := strings.TrimSpace(s.supplierName)
+		if supplierName == "" {
+			supplierName = "Supplier"
+		}
+		for gen := 0; gen <= 20; gen++ {
+			allFound := true
+			allActive := true
+			existingResults := make([]SupplierOrderResult, 0, len(groups))
+			var existingTotal int64
+			var existingParentID string
+			existingCcy := strings.TrimSpace(req.Currency)
+
+			for _, g := range groups {
+				legKey := legClientOrderIDWithRetry(clientOrderID, g.SupplierID, gen)
+				exOrder, found, exErr := s.findExistingOrderByIdempotencyKey(ctx, retailerID, g.SupplierID, legKey)
+				if exErr != nil || !found {
+					allFound = false
+					break
+				}
+				if exOrder.Status == StatusCancelled {
+					allActive = false
+					break
+				}
+				if existingParentID == "" {
+					existingParentID = exOrder.ParentOrderID
+				}
+				if existingCcy == "" {
+					existingCcy = exOrder.Currency
+				}
+				existingTotal += exOrder.TotalMinor
+				existingResults = append(existingResults, SupplierOrderResult{
+					OrderID:      exOrder.OrderID,
+					SupplierID:   g.SupplierID,
+					SupplierName: supplierName,
+					Total:        exOrder.TotalMinor,
+					Currency:     exOrder.Currency,
+					ItemCount:    g.ItemCount,
+				})
+			}
+			if allFound && allActive && len(existingResults) == len(groups) {
+				sagaCompensated := false
+				if existingParentID != "" {
+					sagaCompensated = s.isParentSagaCompensated(ctx, existingParentID)
+				}
+				if !sagaCompensated {
+					if existingCcy == "" {
+						existingCcy = pack.CurrencyCode
+					}
+					return UnifiedCheckoutResponse{
+						Status:         "ok",
+						InvoiceID:      strings.Replace(s.newID(), "ord_", "inv_", 1),
+						Total:          existingTotal,
+						Currency:       existingCcy,
+						MarketCode:     pack.Code,
+						ParentOrderID:  existingParentID,
+						SupplierOrders: existingResults,
+					}, nil
+				}
+			}
+		}
+
+		for gen := 0; gen <= 100; gen++ {
+			hasAnyOrder := false
+			for _, g := range groups {
+				legKey := legClientOrderIDWithRetry(clientOrderID, g.SupplierID, gen)
+				_, found, _ := s.findExistingOrderByIdempotencyKey(ctx, retailerID, g.SupplierID, legKey)
+				if found {
+					hasAnyOrder = true
+					break
+				}
+			}
+			if !hasAnyOrder {
+				activeRetryGen = gen
+				break
+			}
+		}
 	}
 
 	parentID := strings.Replace(s.newID(), "ord_", "par_", 1)
@@ -361,8 +540,9 @@ func (s *Service) unifiedCheckoutMultiSupplier(
 		failures             []SupplierCheckoutFailure
 	)
 
+	precheckedCtx := withMandatePrechecked(ctx)
 	for _, g := range groups {
-		legCtx := createCtxForSupplier(ctx, g.SupplierID)
+		legCtx := createCtxForSupplier(precheckedCtx, g.SupplierID)
 		created, createErr := s.Create(legCtx, retailerID, CreateRequest{
 			LineItems:             g.Lines,
 			H3Cell:                h3Cell,
@@ -376,6 +556,9 @@ func (s *Service) unifiedCheckoutMultiSupplier(
 			Currency:              req.Currency,
 			SupplierID:            g.SupplierID,
 			ParentOrderID:         parentID,
+			AutoConfirmOptIn:      req.AutoConfirmOptIn,
+			PaymentMethod:         paymentMethod,
+			ClientOrderID:         legClientOrderIDWithRetry(clientOrderID, g.SupplierID, activeRetryGen),
 		})
 		if createErr != nil {
 			failures = append(failures, SupplierCheckoutFailure{
@@ -383,13 +566,17 @@ func (s *Service) unifiedCheckoutMultiSupplier(
 				Error:      createErr.Error(),
 			})
 			_ = s.CompensateSaga(ctx, parentID, createdOrders, createErr.Error())
+			var approvalErr *OwnerApprovalRequiredError
+			if errors.As(createErr, &approvalErr) {
+				return UnifiedCheckoutResponse{}, approvalErr
+			}
 			return UnifiedCheckoutResponse{}, &MultiSupplierCheckoutError{
 				Failures: failures,
 				Message:  fmt.Sprintf("multi_supplier_checkout_failed: supplier %s: %v", g.SupplierID, createErr),
 			}
 		}
-		_ = s.RecordSagaChildCreated(ctx, parentID, created.OrderID)
-		createdOrders = append(createdOrders, Order{
+
+		createdOrder := Order{
 			OrderID:       created.OrderID,
 			SupplierID:    g.SupplierID,
 			RetailerID:    retailerID,
@@ -397,7 +584,21 @@ func (s *Service) unifiedCheckoutMultiSupplier(
 			Status:        created.Status,
 			TotalMinor:    created.TotalMinor,
 			Currency:      created.Currency,
-		})
+		}
+		createdOrders = append(createdOrders, createdOrder)
+
+		if recordErr := s.RecordSagaChildCreated(ctx, parentID, created.OrderID); recordErr != nil {
+			failures = append(failures, SupplierCheckoutFailure{
+				SupplierID: g.SupplierID,
+				Error:      fmt.Sprintf("record saga child failed: %v", recordErr),
+			})
+			_ = s.CompensateSaga(ctx, parentID, createdOrders, recordErr.Error())
+			return UnifiedCheckoutResponse{}, &MultiSupplierCheckoutError{
+				Failures: failures,
+				Message:  fmt.Sprintf("record saga child failed: %v", recordErr),
+			}
+		}
+
 		supplierOrders = append(supplierOrders, SupplierOrderResult{
 			OrderID:      created.OrderID,
 			SupplierID:   g.SupplierID,
@@ -418,7 +619,12 @@ func (s *Service) unifiedCheckoutMultiSupplier(
 	}
 
 	if err := s.CompleteSaga(ctx, parentID, currency, totalMinor, len(supplierOrders)); err != nil {
-		s.log.Warn("parent order saga complete failed", "parent_order_id", parentID, "err", err)
+		s.log.Warn("parent order saga complete failed, retrying once", "parent_order_id", parentID, "err", err)
+		if retryErr := s.CompleteSaga(ctx, parentID, currency, totalMinor, len(supplierOrders)); retryErr != nil {
+			s.log.Error("parent order saga complete retry failed, compensating", "parent_order_id", parentID, "err", retryErr)
+			_ = s.CompensateSaga(ctx, parentID, createdOrders, retryErr.Error())
+			return UnifiedCheckoutResponse{}, fmt.Errorf("complete saga failed: %w", retryErr)
+		}
 	}
 
 	invoiceID := strings.Replace(s.newID(), "ord_", "inv_", 1)
@@ -458,27 +664,93 @@ func h3CellFromLatLng(lat, lng float64) (string, error) {
 	return strings.ToLower(cell.String()), nil
 }
 
+type retailerCtxKey struct{}
+
+func withRetailerID(ctx context.Context, id string) context.Context {
+	return context.WithValue(ctx, retailerCtxKey{}, strings.TrimSpace(id))
+}
+
+func retailerIDFromCtx(ctx context.Context) string {
+	if id, ok := ctx.Value(retailerCtxKey{}).(string); ok && id != "" {
+		return id
+	}
+	if c, ok := auth.FromContext(ctx); ok {
+		return auth.ResolveRetailerOrgID(c)
+	}
+	return ""
+}
+
 func (s *Service) authoritativeCheckoutLines(
 	ctx context.Context,
-	retailerID string,
-	items []UnifiedCheckoutLineItem,
+	args ...any,
 ) ([]LineItem, error) {
-	// Client unit_price is a hint only. Enterprise path loads catalog PriceMinor
-	// (and optional promos/overrides) so checkout cannot underpay.
-	draft := make([]LineItem, 0, len(items))
-	for i, item := range items {
-		sku := strings.TrimSpace(item.SkuID)
-		if sku == "" || item.Quantity <= 0 {
-			return nil, fmt.Errorf("items[%d] requires sku_id and positive quantity", i)
+	var retailerID string
+	var rawItems any
+
+	if len(args) == 0 {
+		return nil, errors.New("missing items argument")
+	} else if len(args) == 1 {
+		rawItems = args[0]
+		retailerID = retailerIDFromCtx(ctx)
+	} else {
+		if r, ok := args[0].(string); ok {
+			retailerID = r
+			rawItems = args[1]
+		} else if r, ok := args[1].(string); ok {
+			retailerID = r
+			rawItems = args[0]
+		} else {
+			rawItems = args[0]
 		}
-		if item.UnitPrice < 0 {
-			return nil, fmt.Errorf("items[%d].unit_price must be >= 0", i)
+	}
+	if retailerID == "" {
+		retailerID = retailerIDFromCtx(ctx)
+	}
+
+	var draft []LineItem
+	switch items := rawItems.(type) {
+	case []UnifiedCheckoutLineItem:
+		draft = make([]LineItem, 0, len(items))
+		for i, item := range items {
+			sku := strings.TrimSpace(item.SkuID)
+			if sku == "" || item.Quantity <= 0 {
+				return nil, fmt.Errorf("items[%d] requires sku_id and positive quantity", i)
+			}
+			if item.UnitPrice < 0 {
+				return nil, fmt.Errorf("items[%d].unit_price must be >= 0", i)
+			}
+			draft = append(draft, LineItem{
+				SKU:                   sku,
+				Quantity:              item.Quantity,
+				UnitPrice:             item.UnitPrice, // overwritten by catalog when Spanner is available
+				BrandID:               strings.TrimSpace(item.BrandID),
+				MustHave:              item.MustHave,
+				AllowSubstitutes:      item.AllowSubstitutes,
+				AllowedSubstituteSKUs: append([]string(nil), item.AllowedSubstituteSKUs...),
+			})
 		}
-		draft = append(draft, LineItem{
-			SKU:       sku,
-			Quantity:  item.Quantity,
-			UnitPrice: item.UnitPrice, // overwritten by catalog when Spanner is available
-		})
+	case []LineItem:
+		draft = make([]LineItem, 0, len(items))
+		for i, item := range items {
+			sku := strings.TrimSpace(item.SKU)
+			if sku == "" || item.Quantity <= 0 {
+				return nil, fmt.Errorf("items[%d] requires sku and positive quantity", i)
+			}
+			if item.UnitPrice < 0 {
+				return nil, fmt.Errorf("items[%d].unit_price must be >= 0", i)
+			}
+			draft = append(draft, LineItem{
+				SKU:                   sku,
+				Quantity:              item.Quantity,
+				UnitPrice:             item.UnitPrice,
+				BrandID:               strings.TrimSpace(item.BrandID),
+				MustHave:              item.MustHave,
+				AllowSubstitutes:      item.AllowSubstitutes,
+				AllowedSubstituteSKUs: append([]string(nil), item.AllowedSubstituteSKUs...),
+			})
+		}
+	default:
+		return nil, fmt.Errorf("unsupported line items type: %T", rawItems)
 	}
 
 	// Production / SSMR: Spanner catalog is the price authority (same as Create).
@@ -498,31 +770,14 @@ func (s *Service) authoritativeCheckoutLines(
 
 	// No Spanner: promotion service can still rewrite list prices when its repo is wired.
 	if s.promotions != nil {
-		inputs := make([]promotion.LineInput, 0, len(draft))
-		for _, line := range draft {
-			inputs = append(inputs, promotion.LineInput{
-				ProductID: line.SKU,
-				Quantity:  line.Quantity,
-				UnitPrice: line.UnitPrice,
-				Currency:  s.currency,
-			})
-		}
-		quote, err := s.promotions.QuoteCheckout(ctx, s.resolveSupplierScope(ctx), retailerID, inputs)
+		lineItems, err := s.applyPromotionsToLines(ctx, retailerID, draft)
 		if err != nil {
 			return nil, err
 		}
-		lineItems := make([]LineItem, 0, len(quote.Lines))
-		for _, line := range quote.Lines {
+		for _, line := range lineItems {
 			if line.UnitPrice < 0 {
-				return nil, fmt.Errorf("catalog price missing for sku %s", line.ProductID)
+				return nil, fmt.Errorf("catalog price missing for sku %s", line.SKU)
 			}
-			lineItems = append(lineItems, LineItem{
-				SKU:         line.ProductID,
-				Name:        line.ProductID,
-				Quantity:    line.Quantity,
-				UnitPrice:   line.UnitPrice,
-				PromotionID: line.PromotionID,
-			})
 		}
 		return s.enrichLineItemVolumes(ctx, lineItems)
 	}

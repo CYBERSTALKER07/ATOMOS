@@ -10,7 +10,8 @@ import (
 
 // Deps bundles dependencies for the Foundry HTTP router.
 type Deps struct {
-	Engine *foundry.Engine
+	Engine                   *foundry.Engine
+	AllowOntologyWriteBypass bool
 }
 
 // RegisterRoutes mounts all /v1/foundry/* endpoints onto the chi router.
@@ -24,7 +25,7 @@ func RegisterRoutes(r chi.Router, deps Deps) {
 
 	r.Group(func(gr chi.Router) {
 		gr.Use(requireFoundrySession)
-		newOntologyHandler(eng).mountRoutes(gr)
+		newOntologyHandler(eng, deps.AllowOntologyWriteBypass).mountRoutes(gr)
 		newCashierHandler(eng).mountRoutes(gr)
 		newFleetHandler(eng).mountRoutes(gr)
 		newGuardsHandler(eng).mountRoutes(gr)

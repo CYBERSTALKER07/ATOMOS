@@ -6,6 +6,7 @@ import (
 
 	"cloud.google.com/go/spanner"
 	"google.golang.org/api/iterator"
+	"google.golang.org/grpc/codes"
 )
 
 // SpannerContactResolver resolves dunning contacts from live master data:
@@ -20,16 +21,31 @@ func NewSpannerContactResolver(client *spanner.Client) *SpannerContactResolver {
 }
 
 func (r *SpannerContactResolver) ResolveRetailer(ctx context.Context, retailerID string) (Contact, error) {
-	row, err := r.client.Single().ReadRow(ctx, "Retailers", spanner.Key{retailerID}, []string{"Phone", "Name"})
+	row, err := r.client.Single().ReadRow(ctx, "Retailers", spanner.Key{retailerID}, []string{"Phone", "Name", "CountryCode"})
 	if err != nil {
 		return Contact{}, err
 	}
 	var phone string
-	var name spanner.NullString
-	if err := row.Columns(&phone, &name); err != nil {
+	var name, countryCode spanner.NullString
+	if err := row.Columns(&phone, &name, &countryCode); err != nil {
 		return Contact{}, err
 	}
-	return Contact{Phone: phone, Name: name.StringVal}, nil
+	var packCfg string
+	packRow, pErr := r.client.Single().ReadRow(ctx, "RetailerCapabilityPacks",
+		spanner.Key{retailerID, "LOCALE_PREF"}, []string{"ConfigJson"})
+	if pErr == nil {
+		var cfg spanner.NullString
+		if colErr := packRow.Columns(&cfg); colErr == nil && cfg.Valid {
+			packCfg = cfg.StringVal
+		}
+	} else if spanner.ErrCode(pErr) != codes.NotFound {
+		return Contact{}, pErr
+	}
+	return Contact{
+		Phone:  phone,
+		Name:   name.StringVal,
+		Locale: ResolveLocale(countryCode.StringVal, packCfg),
+	}, nil
 }
 
 func (r *SpannerContactResolver) ResolveSupplierStaff(ctx context.Context, supplierID string) ([]Contact, error) {

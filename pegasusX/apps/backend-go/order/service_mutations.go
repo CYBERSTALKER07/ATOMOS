@@ -19,6 +19,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/ar"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/credit"
+	"github.com/pegasusx/pegasusx/apps/backend-go/drivercmd"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/loyalty"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
@@ -82,6 +83,10 @@ func (s *Service) Create(ctx context.Context, retailerID string, req CreateReque
 		return CreateResponse{}, fmt.Errorf("%w: no_eligible_warehouse", ErrZoneMiss)
 	}
 
+	if err := s.validateOrderPackMultiples(ctx, lineItems); err != nil {
+		return CreateResponse{}, err
+	}
+
 	var whPolicy WarehouseOpsPolicy
 	var deliveryFeeMinor int64
 	if s.spannerClient != nil {
@@ -91,9 +96,6 @@ func (s *Service) Create(ctx context.Context, retailerID string, req CreateReque
 		}
 		if lineErrs := ValidateLineQuantities(lineItems, whPolicy); len(lineErrs) > 0 {
 			return CreateResponse{}, fmt.Errorf("%w: %v", ErrLineQuantityOutOfRange, lineErrs)
-		}
-		if packErrs := validatePackMultiples(ctx, s.spannerClient, lineItems); len(packErrs) > 0 {
-			return CreateResponse{}, fmt.Errorf("%w: %v", ErrLineQuantityOutOfRange, packErrs)
 		}
 		if open, _, _, closedMsg := checkOrderAcceptanceGate(whPolicy, now); !open {
 			return CreateResponse{}, fmt.Errorf("%w: %s", ErrOrderAcceptanceClosed, closedMsg)
@@ -122,257 +124,673 @@ func (s *Service) Create(ctx context.Context, retailerID string, req CreateReque
 	if req.Source != "" {
 		source = req.Source
 		if source == OrderSourceAutoOrder {
-			status = StatusPending
+			if req.AutoConfirmOptIn {
+				status = StatusPending
+				confirmation = ConfirmationStatusAutoConfirmed
+			} else {
+				status = StatusScheduled
+				confirmation = ConfirmationStatusPending
+			}
 		}
+	}
+
+	type atomicOrderCreator interface {
+		CreateAtomicInTxn(ctx context.Context, fn func(context.Context, *spanner.ReadWriteTransaction) error) error
+	}
+	type backorderTxnWriter interface {
+		writeOrderWithBackorderInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, o *Order, backorder *Order, emit func(outbox.TxnBuffer) error, stockOpts StockReservationOpts) error
+	}
+
+	policyOverride, _ := s.resolveCheckoutPolicyOverride(whPolicy, req.CheckoutPolicyToken)
+	baseLines := append([]LineItem(nil), lineItems...)
+	baseTotal := total
+	orderEstimate := baseTotal + deliveryFeeMinor
+	paymentMethod := NormalizeCheckoutPaymentMethod(req.PaymentMethod, "")
+	explicitClientOrderID := strings.TrimSpace(req.ClientOrderID)
+	if explicitClientOrderID == "" {
+		explicitClientOrderID = clientOrderIDFromContext(ctx)
+	}
+	explicitClientOrderID = truncateClientOrderID(explicitClientOrderID)
+	usageUserID, usageRole, _ := resolveOrderActorAndRole(ctx, retailerID)
+	usageDate := sellerUsageDate(now)
+	approvedReplay, isApproved := approvedApprovalFromContext(ctx)
+	if isApproved && !approvedReplay.UsageDate.IsZero() {
+		usageDate = approvedReplay.UsageDate
+	}
+
+	if explicitClientOrderID != "" {
+		if existing, found, exErr := s.findExistingOrderByIdempotencyKey(ctx, retailerID, supplierID, explicitClientOrderID); exErr == nil && found {
+			if existing.Status == StatusCancelled && (existing.ParentOrderID != "" && s.isParentSagaCompensated(ctx, existing.ParentOrderID)) {
+				return CreateResponse{}, fmt.Errorf("order for idempotency key %q was cancelled as part of a compensated saga and cannot be replayed; retry with fresh order id", explicitClientOrderID)
+			}
+			return CreateResponse{
+				OrderID:               existing.OrderID,
+				WarehouseID:           existing.WarehouseID,
+				Status:                existing.Status,
+				Source:                existing.Source,
+				ConfirmationStatus:    existing.ConfirmationStatus,
+				AutoConfirmOptIn:      existing.AutoConfirmOptIn,
+				HoldReason:            existing.HoldReason,
+				RequestedDeliveryDate: formatOptionalRFC3339(existing.RequestedDeliveryDate),
+				DeliverBefore:         formatOptionalRFC3339(existing.DeliverBefore),
+				DeliveryPriority:      string(existing.DeliveryPriority),
+				DeliveryMode:          normalizeDeliveryMode(req.DeliveryMode),
+				TotalMinor:            existing.TotalMinor,
+				Currency:              existing.Currency,
+				CreatedAt:             existing.CreatedAt.UTC().Format(time.RFC3339Nano),
+				ReceivingWindowOpen:   existing.ReceivingWindowOpen,
+				ReceivingWindowClose:  existing.ReceivingWindowClose,
+				LineItems:             append([]LineItem(nil), existing.LineItems...),
+			}, nil
+		}
+	}
+
+	if !isMandatePrechecked(ctx) {
+		gateClientOrderID := explicitClientOrderID
+		if gateClientOrderID == "" {
+			gateClientOrderID = newMandateUUID()
+		}
+		reqCopy := req
+		reqCopy.SupplierID = supplierID
+		reqCopy.PaymentMethod = paymentMethod
+		reqCopy.ClientOrderID = gateClientOrderID
+		if err := s.checkSellerMandateGate(ctx, retailerID, usageUserID, usageRole, supplierID, gateClientOrderID, paymentMethod, orderEstimate, ApprovalPayloadEnvelope{
+			Kind:          ApprovalPayloadCreate,
+			SupplierID:    supplierID,
+			Currency:      orderCurrency,
+			CreateRequest: &reqCopy,
+		}); err != nil {
+			return CreateResponse{}, err
+		}
+	}
+
+	mandateLookup, mandateErr := s.resolveEffectiveMandate(ctx, retailerID, usageUserID, usageRole)
+	if mandateErr != nil {
+		return CreateResponse{}, mandateErr
+	}
+	enforceCapInTxn := !isApproved && !mandateLookup.IsOwner && !strings.EqualFold(mandateLookup.Role, "OWNER")
+
+	orderID := s.newID()
+	boID := s.newID()
+	if boID == orderID {
+		boID = s.newID()
 	}
 
 	var invPlan InventoryPlan
-	if s.spannerClient != nil {
-		policyOverride, _ := s.resolveCheckoutPolicyOverride(whPolicy, req.CheckoutPolicyToken)
-		invPlan, err = PlanInventoryCheckout(ctx, s.spannerClient, supplierID, warehouseID, lineItems, policyOverride)
-		if err != nil {
-			return CreateResponse{}, err
-		}
-		lineItems = invPlan.Fulfillable
-
-		if s.cache != nil {
-			var inflightKeys []string
-			var inflightQtys []int64
-			defer func() {
-				for i, key := range inflightKeys {
-					_, _ = s.cache.DecrBy(context.Background(), key, inflightQtys[i])
-				}
-			}()
-
-			for _, li := range invPlan.Fulfillable {
-				sku := strings.TrimSpace(li.SKU)
-				if sku == "" {
-					continue
-				}
-				key := fmt.Sprintf("inflight_rsv:%s:%s", warehouseID, sku)
-				inflight, cerr := s.cache.IncrBy(ctx, key, li.Quantity)
-				if cerr != nil {
-					continue
-				}
-				inflightKeys = append(inflightKeys, key)
-				inflightQtys = append(inflightQtys, li.Quantity)
-
-				avail := invPlan.AvailableStock[sku]
-				if inflight > avail {
-					return CreateResponse{}, &InventoryCheckoutError{
-						Code:         "PARTIAL_OUT_OF_STOCK_REJECTED",
-						Message:      "inventory_exhausted_concurrent",
-						OOSItems:     []string{sku},
-						RejectedSKUs: []string{sku},
-						Shortfall:    map[string]int64{sku: inflight - avail},
-					}
-				}
-			}
-		}
-
-		total = 0
-		for _, li := range lineItems {
-			total += li.Quantity * li.UnitPrice
-		}
-		total += deliveryFeeMinor
-	} else {
-		invPlan.Fulfillable = lineItems
-		total += deliveryFeeMinor
-	}
-
-	// Credit check is credit-path only. Cash/card/COD orders must not require a profile.
-	// Optional reserve at create when CREDIT_RESERVE_AT_CREATE=1 and relationship allows credit.
-	if s.credit != nil && total > 0 && creditReserveAtCreateEnabled() {
-		check, err := s.credit.CheckCreditPath(ctx, retailerID, supplierID, total)
-		if err != nil {
-			return CreateResponse{}, fmt.Errorf("credit check failed: %w", err)
-		}
-		if !check.Allowed {
-			// Soft-skip: create still proceeds without reserve (cash/card remain available).
-			s.log.Info("credit reserve skipped", "reason", check.Reason, "retailer_id", retailerID, "supplier_id", supplierID)
-		}
-	}
-
-	if len(lineItems) == 0 && len(invPlan.Backorder) == 0 {
-		return CreateResponse{}, ErrInventoryExhausted
-	}
-
-	// All lines are backordered — single BACKORDERED order (no empty primary).
-	if len(lineItems) == 0 && len(invPlan.Backorder) > 0 {
-		boID, err := s.createBackorderOrder(ctx, retailerID, warehouseID, "", invPlan.Backorder, Order{
-			H3Cell:   req.H3Cell,
-			Lat:      req.Lat,
-			Lng:      req.Lng,
-			Currency: orderCurrency,
-		})
-		if err != nil {
-			return CreateResponse{}, fmt.Errorf("persist backorder: %w", err)
-		}
-		var boTotal int64
-		for _, li := range invPlan.Backorder {
-			boTotal += li.Quantity * li.UnitPrice
-		}
-		return CreateResponse{
-			OrderID:              boID,
-			WarehouseID:          warehouseID,
-			Status:               StatusBackordered,
-			Source:               OrderSourceBackorder,
-			ConfirmationStatus:   ConfirmationStatusConfirmed,
-			TotalMinor:           boTotal,
-			Currency:             orderCurrency,
-			CreatedAt:            s.now().Format(time.RFC3339Nano),
-			BackorderedItemCount: invPlan.BackorderCount,
-			StockWarnings:        invPlan.Warnings,
-		}, nil
-	}
-
-	o := Order{
-		OrderID:               s.newID(),
-		SupplierID:            supplierID,
-		RetailerID:            retailerID,
-		ParentOrderID:         strings.TrimSpace(req.ParentOrderID),
-		WarehouseID:           warehouseID,
-		Status:                status,
-		Source:                source,
-		ConfirmationStatus:    confirmation,
-		LineItems:             lineItems,
-		TotalMinor:            total,
-		Currency:              orderCurrency,
-		H3Cell:                req.H3Cell,
-		Lat:                   req.Lat,
-		Lng:                   req.Lng,
-		RequestedDeliveryDate: committedDate,
-		DeliverBefore:         latestDelivery,
-		DeliveryPriority:      priority,
-		DeliveryFeeMinor:      deliveryFeeMinor,
-		Version:               1,
-		CreatedAt:             now,
-		UpdatedAt:             now,
-	}
-
-	stockOpts := StockReservationOpts{
-		Skip: deferStockReservationAtCreate(s.allocationRequired, status, source, warehouseID, len(lineItems)),
-	}
-
+	var o Order
 	var bo *Order
-	if len(invPlan.Backorder) > 0 {
-		var boTotal int64
-		for _, li := range invPlan.Backorder {
-			boTotal += li.Quantity * li.UnitPrice
-		}
-		boCurrency := strings.TrimSpace(o.Currency)
-		if boCurrency == "" {
-			boCurrency = s.currency
-		}
-		bo = &Order{
-			OrderID:            s.newID(),
-			SupplierID:         o.SupplierID,
-			RetailerID:         o.RetailerID,
-			WarehouseID:        o.WarehouseID,
-			Status:             StatusBackordered,
-			Source:             OrderSourceBackorder,
-			ConfirmationStatus: ConfirmationStatusConfirmed,
-			LineItems:          invPlan.Backorder,
-			TotalMinor:         boTotal,
-			Currency:           boCurrency,
-			H3Cell:             o.H3Cell,
-			Lat:                o.Lat,
-			Lng:                o.Lng,
-			DerivedFromOrderID: o.OrderID,
-			Version:            1,
-			CreatedAt:          now,
-			UpdatedAt:          now,
-		}
-	}
+	var allBackordered bool
 
-	inTxn := func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-		if s.credit != nil && total > 0 && creditReserveAtCreateEnabled() {
-			check, cerr := s.credit.CheckCreditPath(ctx, retailerID, supplierID, total)
+	var heldCacheKeys []string
+	var heldCacheQtys []int64
+	releaseInflight := func() {
+		if s.cache == nil {
+			return
+		}
+		for i, key := range heldCacheKeys {
+			if _, decrErr := s.cache.DecrBy(context.Background(), key, heldCacheQtys[i]); decrErr != nil && s.log != nil {
+				s.log.Warn("release inflight cache counter failed", "key", key, "qty", heldCacheQtys[i], "error", decrErr)
+			}
+		}
+		heldCacheKeys = nil
+		heldCacheQtys = nil
+	}
+	defer releaseInflight()
+
+	acquireInflight := func(checkCtx context.Context, fulfillable []LineItem, availableStock map[string]int64) error {
+		if s.cache == nil {
+			return nil
+		}
+		for _, li := range fulfillable {
+			sku := strings.TrimSpace(li.SKU)
+			if sku == "" {
+				continue
+			}
+			key := fmt.Sprintf("inflight_rsv:%s:%s", warehouseID, sku)
+			inflight, cerr := s.cache.IncrBy(checkCtx, key, li.Quantity)
 			if cerr != nil {
-				return cerr
+				continue
 			}
-			if !check.Allowed {
-				return ErrCreditLimitBreached
-			}
-			if rerr := s.credit.ReserveOrderInTxn(ctx, txn, retailerID, supplierID, o.OrderID, total); rerr != nil {
-				if errors.Is(rerr, credit.ErrLimitBreached) || errors.Is(rerr, credit.ErrCreditNotEnabled) {
-					return ErrCreditLimitBreached
+			heldCacheKeys = append(heldCacheKeys, key)
+			heldCacheQtys = append(heldCacheQtys, li.Quantity)
+
+			avail := availableStock[sku]
+			if inflight > avail {
+				return &InventoryCheckoutError{
+					Code:         "PARTIAL_OUT_OF_STOCK_REJECTED",
+					Message:      "inventory_exhausted_concurrent",
+					OOSItems:     []string{sku},
+					RejectedSKUs: []string{sku},
+					Shortfall:    map[string]int64{sku: inflight - avail},
 				}
-				return fmt.Errorf("credit reserve failed: %w", rerr)
 			}
 		}
 		return nil
 	}
 
-	err = s.repo.CreateOrderWithBackorder(ctx, &o, bo, inTxn, func(txn outbox.TxnBuffer) error {
-		if err := outbox.EmitJSON(ctx, txn, events.AggregateOrder, o.OrderID, events.TopicMain, events.OrderEvent{
-			BaseEvent:             events.BaseEvent{Type: events.EventOrderCreated, Timestamp: o.CreatedAt.Format(time.RFC3339Nano)},
-			OrderID:               o.OrderID,
-			SupplierID:            o.SupplierID,
-			RetailerID:            o.RetailerID,
-			WarehouseID:           o.WarehouseID,
-			Status:                string(o.Status),
-			OrderSource:           string(o.Source),
-			ConfirmationStatus:    string(o.ConfirmationStatus),
-			TotalMinor:            o.TotalMinor,
-			Currency:              o.Currency,
-			H3Cell:                o.H3Cell,
-			Lat:                   o.Lat,
-			Lng:                   o.Lng,
-			RequestedDeliveryDate: formatOptionalRFC3339(o.RequestedDeliveryDate),
-			ReceivingWindowOpen:   o.ReceivingWindowOpen,
-			ReceivingWindowClose:  o.ReceivingWindowClose,
-			LineItems:             o.LineItems,
-		}); err != nil {
-			return err
+	buildPrimaryAndBackorder := func(plan InventoryPlan, orderTotal int64) (Order, *Order) {
+		primary := Order{
+			OrderID:               orderID,
+			SupplierID:            supplierID,
+			RetailerID:            retailerID,
+			ParentOrderID:         strings.TrimSpace(req.ParentOrderID),
+			IdempotencyKey:        explicitClientOrderID,
+			WarehouseID:           warehouseID,
+			Status:                status,
+			Source:                source,
+			ConfirmationStatus:    confirmation,
+			AutoConfirmOptIn:      req.AutoConfirmOptIn,
+			LineItems:             plan.Fulfillable,
+			TotalMinor:            orderTotal,
+			OriginalTotalMinor:    baseTotal + deliveryFeeMinor,
+			Currency:              orderCurrency,
+			H3Cell:                req.H3Cell,
+			Lat:                   req.Lat,
+			Lng:                   req.Lng,
+			RequestedDeliveryDate: committedDate,
+			DeliverBefore:         latestDelivery,
+			DeliveryPriority:      priority,
+			DeliveryFeeMinor:      deliveryFeeMinor,
+			Version:               1,
+			CreatedAt:             now,
+			UpdatedAt:             now,
 		}
-		if bo != nil {
-			if err := outbox.EmitJSON(ctx, txn, events.AggregateOrder, bo.OrderID, events.TopicMain, events.OrderEvent{
-				BaseEvent:          events.BaseEvent{Type: events.EventOrderCreated, Timestamp: bo.CreatedAt.Format(time.RFC3339Nano)},
-				OrderID:            bo.OrderID,
-				SupplierID:         bo.SupplierID,
-				RetailerID:         bo.RetailerID,
-				WarehouseID:        bo.WarehouseID,
-				Status:             string(bo.Status),
-				OrderSource:        string(bo.Source),
-				ConfirmationStatus: string(bo.ConfirmationStatus),
-				TotalMinor:         bo.TotalMinor,
-				Currency:           bo.Currency,
-				LineItems:          bo.LineItems,
+		var splitBO *Order
+		if len(plan.Backorder) > 0 {
+			var boTotal int64
+			for _, li := range plan.Backorder {
+				boTotal += li.Quantity * li.UnitPrice
+			}
+			boCurrency := strings.TrimSpace(primary.Currency)
+			if boCurrency == "" {
+				boCurrency = s.currency
+			}
+			splitBO = &Order{
+				OrderID:            boID,
+				SupplierID:         primary.SupplierID,
+				RetailerID:         primary.RetailerID,
+				WarehouseID:        primary.WarehouseID,
+				Status:             StatusBackordered,
+				Source:             OrderSourceBackorder,
+				ConfirmationStatus: ConfirmationStatusConfirmed,
+				LineItems:          plan.Backorder,
+				TotalMinor:         boTotal,
+				Currency:           boCurrency,
+				H3Cell:             primary.H3Cell,
+				Lat:                primary.Lat,
+				Lng:                primary.Lng,
+				DerivedFromOrderID: primary.OrderID,
+				Version:            1,
+				CreatedAt:          now,
+				UpdatedAt:          now,
+			}
+		}
+		return primary, splitBO
+	}
+
+	buildMainEmit := func(emitCtx context.Context, primary *Order, splitBO *Order) func(outbox.TxnBuffer) error {
+		return func(txn outbox.TxnBuffer) error {
+			if err := outbox.EmitJSON(emitCtx, txn, events.AggregateOrder, primary.OrderID, events.TopicMain, events.OrderEvent{
+				BaseEvent:             events.BaseEvent{Type: events.EventOrderCreated, Timestamp: primary.CreatedAt.Format(time.RFC3339Nano)},
+				OrderID:               primary.OrderID,
+				SupplierID:            primary.SupplierID,
+				RetailerID:            primary.RetailerID,
+				WarehouseID:           primary.WarehouseID,
+				Status:                string(primary.Status),
+				OrderSource:           string(primary.Source),
+				ConfirmationStatus:    string(primary.ConfirmationStatus),
+				TotalMinor:            primary.TotalMinor,
+				Currency:              primary.Currency,
+				H3Cell:                primary.H3Cell,
+				Lat:                   primary.Lat,
+				Lng:                   primary.Lng,
+				RequestedDeliveryDate: formatOptionalRFC3339(primary.RequestedDeliveryDate),
+				ReceivingWindowOpen:   primary.ReceivingWindowOpen,
+				ReceivingWindowClose:  primary.ReceivingWindowClose,
+				LineItems:             primary.LineItems,
 			}); err != nil {
 				return err
 			}
-		}
-		if o.Status == StatusScheduled {
-			if err := emitPreorderEvent(ctx, txn, events.EventPreOrderNotified, o, string(auth.RoleRetailer), retailerID); err != nil {
-				return err
-			}
-		}
-		if ab, ok := txn.(outbox.AuditBuffer); ok {
-			return outbox.WriteAudit(ctx, ab, o.SupplierID, retailerID, "RETAILER", "ORDER_CREATED", "Order", o.OrderID, map[string]any{
-				"receiving_window_open":  o.ReceivingWindowOpen,
-				"receiving_window_close": o.ReceivingWindowClose,
-			})
-		}
-		return nil
-	}, stockOpts)
-	if err != nil {
-		return CreateResponse{}, fmt.Errorf("persist order: %w", err)
-	}
-
-	if stockOpts.Skip && o.Status == StatusPending {
-		if err := s.ConfirmAndAllocate(ctx, o.OrderID); err != nil {
-			if _, cancelErr := s.cancelOrderWithReason(ctx, &o, "system", "SYSTEM", "allocation_failed", ""); cancelErr != nil {
-				s.log.Warn("failed to cancel order after allocation failure", "order_id", o.OrderID, "err", cancelErr)
-			}
-			if bo != nil {
-				if _, cancelErr := s.cancelOrderWithReason(ctx, bo, "system", "SYSTEM", "parent_allocation_failed", ""); cancelErr != nil {
-					s.log.Warn("failed to cancel backorder after allocation failure", "order_id", bo.OrderID, "err", cancelErr)
+			if splitBO != nil {
+				if err := outbox.EmitJSON(emitCtx, txn, events.AggregateOrder, splitBO.OrderID, events.TopicMain, events.OrderEvent{
+					BaseEvent:          events.BaseEvent{Type: events.EventOrderCreated, Timestamp: splitBO.CreatedAt.Format(time.RFC3339Nano)},
+					OrderID:            splitBO.OrderID,
+					SupplierID:         splitBO.SupplierID,
+					RetailerID:         splitBO.RetailerID,
+					WarehouseID:        splitBO.WarehouseID,
+					Status:             string(splitBO.Status),
+					OrderSource:        string(splitBO.Source),
+					ConfirmationStatus: string(splitBO.ConfirmationStatus),
+					TotalMinor:         splitBO.TotalMinor,
+					Currency:           splitBO.Currency,
+					LineItems:          splitBO.LineItems,
+				}); err != nil {
+					return err
 				}
 			}
-			return CreateResponse{}, fmt.Errorf("allocation failed: %w", err)
+			if primary.Status == StatusScheduled {
+				if err := emitPreorderEvent(emitCtx, txn, events.EventPreOrderNotified, *primary, string(auth.RoleRetailer), retailerID); err != nil {
+					return err
+				}
+			}
+			if ab, ok := txn.(outbox.AuditBuffer); ok {
+				creditDelta, cashDelta := usageDeltasForPayment(paymentMethod, primary.TotalMinor)
+				return outbox.WriteAudit(emitCtx, ab, primary.SupplierID, retailerID, "RETAILER", "ORDER_CREATED", "Order", primary.OrderID, map[string]any{
+					"receiving_window_open":  primary.ReceivingWindowOpen,
+					"receiving_window_close": primary.ReceivingWindowClose,
+					"usage_user_id":          usageUserID,
+					"usage_date":             usageDate.String(),
+					"payment_method":         paymentMethod,
+					"spent_credit_minor":     creditDelta,
+					"spent_cash_minor":       cashDelta,
+					"order_count":            int64(1),
+				})
+			}
+			return nil
 		}
-		o, _, _ = s.repo.GetOrder(ctx, o.OrderID)
+	}
+
+	atomicCreator, hasAtomic := s.repo.(atomicOrderCreator)
+	txnWriter, hasTxnWriter := s.repo.(backorderTxnWriter)
+	var existingDuplicate bool
+	if s.spannerClient != nil && hasAtomic && hasTxnWriter {
+		err = atomicCreator.CreateAtomicInTxn(ctx, func(txCtx context.Context, txn *spanner.ReadWriteTransaction) error {
+			// Ensure Spanner transaction aborts/retries start with clean inflight Redis locks.
+			releaseInflight()
+
+			// Mandatory lock order: RetailerSellerDailyUsage -> CreditProfile -> Orders.
+			lockRes, lockErr := s.acquireCreateLocksInTxn(txCtx, txn, retailerID, usageUserID, supplierID, usageDate, paymentMethod, orderEstimate, mandateLookup, enforceCapInTxn)
+			if lockErr != nil {
+				return lockErr
+			}
+
+			if explicitClientOrderID != "" {
+				if dupOID, dupFound, dupErr := findExistingOrderByIdempotencyInTxn(txCtx, txn, retailerID, supplierID, explicitClientOrderID); dupErr != nil {
+					return dupErr
+				} else if dupFound && dupOID != "" {
+					if loaded, lOK, lErr := s.repo.GetOrderTxn(txCtx, txn, dupOID); lErr == nil && lOK {
+						o = loaded
+						bo = nil
+						existingDuplicate = true
+						return nil
+					}
+				}
+			}
+
+			bufferUsageBeforeOrder := func(actualAmountMinor int64) error {
+				if enforceCapInTxn && actualAmountMinor > orderEstimate {
+					curUsage := SellerDailyUsage{
+						RetailerID:       retailerID,
+						UserID:           usageUserID,
+						UsageDate:        usageDate,
+						SpentCreditMinor: lockRes.BaseCreditMinor,
+						SpentCashMinor:   lockRes.BaseCashMinor,
+						OrderCount:       lockRes.BaseOrderCount,
+					}
+					if eval := evaluateSellerMandate(mandateLookup.Mandate, mandateLookup.IsOwner, mandateLookup.Role, paymentMethod, actualAmountMinor, curUsage); !eval.Allowed {
+						return &OwnerApprovalRequiredError{
+							TrippedRule:            eval.TrippedRule,
+							AmountMinor:            actualAmountMinor,
+							ThresholdMinor:         eval.ThresholdMinor,
+							RemainingCapMinor:      eval.RemainingCapMinor,
+							FallbackPaymentMethods: eval.Fallbacks,
+						}
+					}
+				}
+				uMut, _, _ := buildSellerDailyUsageMutation(retailerID, usageUserID, usageDate, paymentMethod, actualAmountMinor, lockRes)
+				if err := txn.BufferWrite([]*spanner.Mutation{uMut}); err != nil {
+					return err
+				}
+				recordLockStage(txCtx, s.lockOrderTracer, LockStageOrders)
+				return nil
+			}
+
+			evalLines := baseLines
+			var shortPlan *OrderShortagePlan
+			if source != OrderSourceBackorder && (s.shortageStockReader != nil || hasLineShortageConstraints(baseLines)) {
+				workingLines, sc, scErr := s.loadOrderShortageContext(txCtx, txn, supplierID, warehouseID, baseLines)
+				if scErr != nil {
+					return scErr
+				}
+				evaluated := EvaluateOrderShortages(workingLines, sc.AvailableBySKU, sc.CandidatesBySKU, OrderShortageOptions{
+					SupplierID:       supplierID,
+					EnforceAllowlist: sc.EnforceAllowlist,
+				})
+				shortPlan = &evaluated
+				if evaluated.HoldOrder {
+					heldOrder, _ := buildPrimaryAndBackorder(InventoryPlan{Fulfillable: evaluated.Lines}, evaluated.UpdatedTotalMinor+deliveryFeeMinor)
+					heldOrder.Status = StatusDelayed
+					heldOrder.ConfirmationStatus = ConfirmationStatusPendingWarehouse
+					heldOrder.HoldReason = evaluated.HoldReason
+					heldOrder.WarehouseNotes = evaluated.HoldReason
+					heldOrder.Substitutions = evaluated.Substitutions
+					heldOrder.CutLines = evaluated.CutLines
+					if bErr := bufferUsageBeforeOrder(heldOrder.TotalMinor); bErr != nil {
+						return bErr
+					}
+					if werr := txnWriter.writeOrderWithBackorderInTxn(txCtx, txn, &heldOrder, nil, buildMainEmit(txCtx, &heldOrder, nil), StockReservationOpts{Skip: true}); werr != nil {
+						return fmt.Errorf("persist held order: %w", werr)
+					}
+					if paymentMethod == PaymentMethodCredit {
+						if cerr := s.reserveCreditForOrderInTxn(txCtx, txn, retailerID, supplierID, heldOrder.OrderID, heldOrder.TotalMinor); cerr != nil {
+							return cerr
+						}
+					}
+					o = heldOrder
+					bo = nil
+					invPlan = InventoryPlan{Fulfillable: heldOrder.LineItems}
+					allBackordered = false
+					return nil
+				}
+				if len(evaluated.Lines) == 0 {
+					return ErrInventoryExhausted
+				}
+				evalLines = evaluated.Lines
+			}
+
+			txPlan, perr := PlanInventoryCheckoutInTxn(txCtx, txn, supplierID, warehouseID, evalLines, policyOverride)
+			if perr != nil {
+				return perr
+			}
+			if len(txPlan.Fulfillable) == 0 && len(txPlan.Backorder) == 0 {
+				return ErrInventoryExhausted
+			}
+
+			if len(txPlan.Fulfillable) == 0 && len(txPlan.Backorder) > 0 {
+				var boTotal int64
+				for _, li := range txPlan.Backorder {
+					boTotal += li.Quantity * li.UnitPrice
+				}
+				boCurrency := strings.TrimSpace(orderCurrency)
+				if boCurrency == "" {
+					boCurrency = s.currency
+				}
+				boOnly := Order{
+					OrderID:            boID,
+					SupplierID:         supplierID,
+					RetailerID:         retailerID,
+					ParentOrderID:      strings.TrimSpace(req.ParentOrderID),
+					IdempotencyKey:     explicitClientOrderID,
+					WarehouseID:        warehouseID,
+					Status:             StatusBackordered,
+					Source:             OrderSourceBackorder,
+					ConfirmationStatus: ConfirmationStatusConfirmed,
+					AutoConfirmOptIn:   req.AutoConfirmOptIn,
+					LineItems:          txPlan.Backorder,
+					TotalMinor:         boTotal,
+					Currency:           boCurrency,
+					H3Cell:             req.H3Cell,
+					Lat:                req.Lat,
+					Lng:                req.Lng,
+					Version:            1,
+					CreatedAt:          now,
+					UpdatedAt:          now,
+				}
+				boEmit := func(outTxn outbox.TxnBuffer) error {
+					if err := outbox.EmitJSON(txCtx, outTxn, events.AggregateOrder, boOnly.OrderID, events.TopicMain, events.OrderEvent{
+						BaseEvent:          events.BaseEvent{Type: events.EventOrderCreated, Timestamp: boOnly.CreatedAt.Format(time.RFC3339Nano)},
+						OrderID:            boOnly.OrderID,
+						SupplierID:         boOnly.SupplierID,
+						RetailerID:         boOnly.RetailerID,
+						WarehouseID:        boOnly.WarehouseID,
+						Status:             string(boOnly.Status),
+						OrderSource:        string(boOnly.Source),
+						ConfirmationStatus: string(boOnly.ConfirmationStatus),
+						TotalMinor:         boOnly.TotalMinor,
+						Currency:           boOnly.Currency,
+						LineItems:          boOnly.LineItems,
+					}); err != nil {
+						return err
+					}
+					if ab, ok := outTxn.(outbox.AuditBuffer); ok {
+						creditDelta, cashDelta := usageDeltasForPayment(paymentMethod, boOnly.TotalMinor)
+						return outbox.WriteAudit(txCtx, ab, boOnly.SupplierID, retailerID, "RETAILER", "ORDER_CREATED", "Order", boOnly.OrderID, map[string]any{
+							"usage_user_id":      usageUserID,
+							"usage_date":         usageDate.String(),
+							"payment_method":     paymentMethod,
+							"spent_credit_minor": creditDelta,
+							"spent_cash_minor":   cashDelta,
+							"order_count":        int64(1),
+						})
+					}
+					return nil
+				}
+				if bErr := bufferUsageBeforeOrder(boOnly.TotalMinor); bErr != nil {
+					return bErr
+				}
+				if werr := txnWriter.writeOrderWithBackorderInTxn(txCtx, txn, &boOnly, nil, boEmit, StockReservationOpts{}); werr != nil {
+					return fmt.Errorf("persist backorder: %w", werr)
+				}
+				o = boOnly
+				bo = nil
+				invPlan = txPlan
+				allBackordered = true
+				return nil
+			}
+
+			if ierr := acquireInflight(txCtx, txPlan.Fulfillable, txPlan.AvailableStock); ierr != nil {
+				return ierr
+			}
+
+			var txTotal int64
+			for _, li := range txPlan.Fulfillable {
+				txTotal += li.Quantity * li.UnitPrice
+			}
+			txTotal += deliveryFeeMinor
+
+			txOrder, txBO := buildPrimaryAndBackorder(txPlan, txTotal)
+			if shortPlan != nil {
+				txOrder.Substitutions = shortPlan.Substitutions
+				txOrder.CutLines = shortPlan.CutLines
+			}
+			stockOpts := StockReservationOpts{
+				Skip: deferStockReservationAtCreate(s.allocationRequired, txOrder.Status, source, warehouseID, len(txOrder.LineItems)),
+			}
+
+			if stockOpts.Skip && txOrder.Status == StatusPending {
+				prepAlloc, aerr := s.prepareAllocationInTxn(txCtx, txn, &txOrder)
+				if aerr != nil {
+					if errors.Is(aerr, ErrOrderHoldRequired) {
+						txOrder.Status = StatusDelayed
+						txOrder.ConfirmationStatus = ConfirmationStatusPendingWarehouse
+						txOrder.HoldReason = aerr.Error()
+						txOrder.WarehouseNotes = aerr.Error()
+						if bErr := bufferUsageBeforeOrder(txOrder.TotalMinor); bErr != nil {
+							return bErr
+						}
+						if werr := txnWriter.writeOrderWithBackorderInTxn(txCtx, txn, &txOrder, nil, buildMainEmit(txCtx, &txOrder, nil), StockReservationOpts{Skip: true}); werr != nil {
+							return fmt.Errorf("persist held order: %w", werr)
+						}
+						if paymentMethod == PaymentMethodCredit {
+							if cerr := s.reserveCreditForOrderInTxn(txCtx, txn, retailerID, supplierID, txOrder.OrderID, txOrder.TotalMinor); cerr != nil {
+								return cerr
+							}
+						}
+						o = txOrder
+						bo = nil
+						invPlan = txPlan
+						allBackordered = false
+						return nil
+					}
+					return fmt.Errorf("allocation failed: %w", aerr)
+				}
+				if prepAlloc != nil && prepAlloc.targetWarehouse != "" {
+					txOrder.WarehouseID = prepAlloc.targetWarehouse
+				}
+				if bErr := bufferUsageBeforeOrder(txOrder.TotalMinor); bErr != nil {
+					return bErr
+				}
+				if werr := txnWriter.writeOrderWithBackorderInTxn(txCtx, txn, &txOrder, txBO, buildMainEmit(txCtx, &txOrder, txBO), StockReservationOpts{Skip: true}); werr != nil {
+					return fmt.Errorf("persist order: %w", werr)
+				}
+				if cerr := s.commitAllocationInTxn(txCtx, txn, &txOrder, prepAlloc, false); cerr != nil {
+					return fmt.Errorf("allocation failed: %w", cerr)
+				}
+			} else {
+				if bErr := bufferUsageBeforeOrder(txOrder.TotalMinor); bErr != nil {
+					return bErr
+				}
+				if werr := txnWriter.writeOrderWithBackorderInTxn(txCtx, txn, &txOrder, txBO, buildMainEmit(txCtx, &txOrder, txBO), stockOpts); werr != nil {
+					return fmt.Errorf("persist order: %w", werr)
+				}
+			}
+
+			if paymentMethod == PaymentMethodCredit {
+				if cerr := s.reserveCreditForOrderInTxn(txCtx, txn, retailerID, supplierID, txOrder.OrderID, txOrder.TotalMinor); cerr != nil {
+					return cerr
+				}
+			}
+
+			o = txOrder
+			bo = txBO
+			invPlan = txPlan
+			allBackordered = false
+			return nil
+		})
+		if err != nil {
+			var approvalErr *OwnerApprovalRequiredError
+			if errors.As(err, &approvalErr) && !isMandatePrechecked(ctx) {
+				gateID := explicitClientOrderID
+				if gateID == "" {
+					gateID = newMandateUUID()
+				}
+				reqCopy := req
+				reqCopy.SupplierID = supplierID
+				reqCopy.PaymentMethod = paymentMethod
+				reqCopy.ClientOrderID = gateID
+				if gateErr := s.checkSellerMandateGate(ctx, retailerID, usageUserID, usageRole, supplierID, gateID, paymentMethod, approvalErr.AmountMinor, ApprovalPayloadEnvelope{
+					Kind:          ApprovalPayloadCreate,
+					SupplierID:    supplierID,
+					Currency:      orderCurrency,
+					CreateRequest: &reqCopy,
+				}); gateErr != nil {
+					return CreateResponse{}, gateErr
+				}
+				return CreateResponse{}, approvalErr
+			}
+			var ice *InventoryCheckoutError
+			if errors.Is(err, ErrInventoryExhausted) ||
+				errors.Is(err, ErrCreditLimitBreached) ||
+				errors.As(err, &ice) {
+				return CreateResponse{}, err
+			}
+			return CreateResponse{}, err
+		}
+		if existingDuplicate {
+			return CreateResponse{
+				OrderID:               o.OrderID,
+				WarehouseID:           o.WarehouseID,
+				Status:                o.Status,
+				Source:                o.Source,
+				ConfirmationStatus:    o.ConfirmationStatus,
+				AutoConfirmOptIn:      o.AutoConfirmOptIn,
+				HoldReason:            o.HoldReason,
+				RequestedDeliveryDate: formatOptionalRFC3339(o.RequestedDeliveryDate),
+				DeliverBefore:         formatOptionalRFC3339(o.DeliverBefore),
+				DeliveryPriority:      string(o.DeliveryPriority),
+				DeliveryMode:          normalizeDeliveryMode(req.DeliveryMode),
+				TotalMinor:            o.TotalMinor,
+				Currency:              o.Currency,
+				CreatedAt:             o.CreatedAt.UTC().Format(time.RFC3339Nano),
+				ReceivingWindowOpen:   o.ReceivingWindowOpen,
+				ReceivingWindowClose:  o.ReceivingWindowClose,
+				LineItems:             append([]LineItem(nil), o.LineItems...),
+			}, nil
+		}
+	} else {
+		evalLines := baseLines
+		evalTotal := baseTotal
+		var shortPlan *OrderShortagePlan
+		if source != OrderSourceBackorder && s.shortageStockReader != nil {
+			workingLines, sc, scErr := s.loadOrderShortageContext(ctx, nil, supplierID, warehouseID, baseLines)
+			if scErr != nil {
+				return CreateResponse{}, scErr
+			}
+			evaluated := EvaluateOrderShortages(workingLines, sc.AvailableBySKU, sc.CandidatesBySKU, OrderShortageOptions{
+				SupplierID:       supplierID,
+				EnforceAllowlist: sc.EnforceAllowlist,
+			})
+			shortPlan = &evaluated
+			if !evaluated.HoldOrder && len(evaluated.Lines) == 0 {
+				return CreateResponse{}, ErrInventoryExhausted
+			}
+			evalLines = evaluated.Lines
+			evalTotal = evaluated.UpdatedTotalMinor
+		}
+
+		invPlan.Fulfillable = evalLines
+		total = evalTotal + deliveryFeeMinor
+		if len(invPlan.Fulfillable) == 0 && len(invPlan.Backorder) == 0 {
+			return CreateResponse{}, ErrInventoryExhausted
+		}
+		o, bo = buildPrimaryAndBackorder(invPlan, total)
+		if shortPlan != nil {
+			o.Substitutions = shortPlan.Substitutions
+			o.CutLines = shortPlan.CutLines
+			if shortPlan.HoldOrder {
+				o.Status = StatusDelayed
+				o.ConfirmationStatus = ConfirmationStatusPendingWarehouse
+				o.HoldReason = shortPlan.HoldReason
+				o.WarehouseNotes = shortPlan.HoldReason
+			}
+		}
+		stockOpts := StockReservationOpts{
+			Skip: deferStockReservationAtCreate(s.allocationRequired, o.Status, source, warehouseID, len(o.LineItems)),
+		}
+		if s.spannerClient == nil {
+			recordLockStage(ctx, s.lockOrderTracer, LockStageUsage)
+			if paymentMethod == PaymentMethodCredit {
+				recordLockStage(ctx, s.lockOrderTracer, LockStageCreditProfile)
+			}
+			recordLockStage(ctx, s.lockOrderTracer, LockStageOrders)
+		}
+		createCtx := withPreOrderTxnPlan(ctx, func(txCtx context.Context, txn *spanner.ReadWriteTransaction, _ *Order) error {
+			lockRes, lockErr := s.acquireCreateLocksInTxn(txCtx, txn, retailerID, usageUserID, supplierID, usageDate, paymentMethod, o.TotalMinor, mandateLookup, enforceCapInTxn)
+			if lockErr != nil {
+				return lockErr
+			}
+			uMut, _, _ := buildSellerDailyUsageMutation(retailerID, usageUserID, usageDate, paymentMethod, o.TotalMinor, lockRes)
+			if err := txn.BufferWrite([]*spanner.Mutation{uMut}); err != nil {
+				return err
+			}
+			recordLockStage(txCtx, s.lockOrderTracer, LockStageOrders)
+			return nil
+		})
+		inTxn := func(txCtx context.Context, txn *spanner.ReadWriteTransaction) error {
+			if paymentMethod != PaymentMethodCredit {
+				return nil
+			}
+			return s.reserveCreditForOrderInTxn(txCtx, txn, retailerID, supplierID, o.OrderID, o.TotalMinor)
+		}
+		if err := s.repo.CreateOrderWithBackorder(createCtx, &o, bo, inTxn, buildMainEmit(ctx, &o, bo), stockOpts); err != nil {
+			return CreateResponse{}, fmt.Errorf("persist order: %w", err)
+		}
+		if s.spannerClient == nil {
+			s.recordOrderDailyUsageMemory(o.OrderID, retailerID, usageUserID, usageDate, paymentMethod, o.TotalMinor)
+			s.recordOrderIdempotencyMemory(o)
+		}
+	}
+
+	if allBackordered {
+		if s.cache != nil {
+			s.cache.Invalidate(ctx, append(
+				[]string{retailerOrdersKey(o.RetailerID), supplierOrdersKey(o.SupplierID)},
+				dashboardCacheKeys(o.SupplierID, o.WarehouseID)...,
+			)...)
+		}
+		return CreateResponse{
+			OrderID:              o.OrderID,
+			WarehouseID:          o.WarehouseID,
+			Status:               StatusBackordered,
+			Source:               OrderSourceBackorder,
+			ConfirmationStatus:   ConfirmationStatusConfirmed,
+			AutoConfirmOptIn:     o.AutoConfirmOptIn,
+			TotalMinor:           o.TotalMinor,
+			Currency:             o.Currency,
+			CreatedAt:            o.CreatedAt.Format(time.RFC3339Nano),
+			BackorderedItemCount: invPlan.BackorderCount,
+			StockWarnings:        invPlan.Warnings,
+		}, nil
 	}
 
 	var backorderOrderID string
@@ -410,6 +828,8 @@ func (s *Service) Create(ctx context.Context, retailerID string, req CreateReque
 		Status:                o.Status,
 		Source:                o.Source,
 		ConfirmationStatus:    o.ConfirmationStatus,
+		AutoConfirmOptIn:      o.AutoConfirmOptIn,
+		HoldReason:            o.HoldReason,
 		RequestedDeliveryDate: formatOptionalRFC3339(o.RequestedDeliveryDate),
 		DeliverBefore:         formatOptionalRFC3339(o.DeliverBefore),
 		DeliveryPriority:      string(o.DeliveryPriority),
@@ -422,7 +842,35 @@ func (s *Service) Create(ctx context.Context, retailerID string, req CreateReque
 		BackorderOrderID:      backorderOrderID,
 		BackorderedItemCount:  invPlan.BackorderCount,
 		StockWarnings:         invPlan.Warnings,
+		LineItems:             append([]LineItem(nil), o.LineItems...),
+		Substitutions:         append([]ShortageEvaluationResult(nil), o.Substitutions...),
+		CutLines:              append([]ShortageEvaluationResult(nil), o.CutLines...),
 	}, nil
+}
+
+func (s *Service) validateOrderPackMultiples(ctx context.Context, items []LineItem) error {
+	return validatePackMultiplesWithReader(ctx, s.spannerClient, s.packRuleReader, items)
+}
+
+func hasLineShortageConstraints(items []LineItem) bool {
+	for _, it := range items {
+		if it.MustHave || it.AllowSubstitutes || len(it.AllowedSubstituteSKUs) > 0 {
+			return true
+		}
+	}
+	return false
+}
+
+func isOrderEligibleForAssignment(o Order) bool {
+	switch o.Status {
+	case StatusDelayed, StatusScheduled, StatusAutoAccepted, StatusCancelled, StatusBackordered, StatusCompleted:
+		return false
+	}
+	switch o.ConfirmationStatus {
+	case ConfirmationStatusDraft, ConfirmationStatusPending, ConfirmationStatusPendingWarehouse, ConfirmationStatusRejected:
+		return false
+	}
+	return true
 }
 
 func (s *Service) createBackorderOrder(
@@ -488,6 +936,47 @@ func (s *Service) createBackorderOrder(
 	return bo.OrderID, nil
 }
 
+func (s *Service) reserveCreditForOrderInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, retailerID, supplierID, orderID string, totalMinor int64) error {
+	if s.credit == nil || totalMinor <= 0 || !creditReserveAtCreateEnabled() {
+		return nil
+	}
+	check, cerr := s.credit.CheckCreditPath(ctx, retailerID, supplierID, totalMinor)
+	if cerr != nil {
+		return fmt.Errorf("credit check failed: %w", cerr)
+	}
+	if !check.Allowed {
+		if isOptionalCreditSkipReason(check.Reason) {
+			if s.log != nil {
+				s.log.Info("credit reserve skipped", "reason", check.Reason, "retailer_id", retailerID, "supplier_id", supplierID)
+			}
+			return nil
+		}
+		return ErrCreditLimitBreached
+	}
+	if txn == nil {
+		return nil
+	}
+	if rerr := s.credit.ReserveOrderInTxn(ctx, txn, retailerID, supplierID, orderID, totalMinor); rerr != nil {
+		if errors.Is(rerr, credit.ErrProfileNotFound) {
+			if s.log != nil {
+				s.log.Info("credit reserve skipped", "reason", "profile_not_found", "retailer_id", retailerID, "supplier_id", supplierID)
+			}
+			return nil
+		}
+		if errors.Is(rerr, credit.ErrLimitBreached) || errors.Is(rerr, credit.ErrCreditNotEnabled) {
+			return ErrCreditLimitBreached
+		}
+		return fmt.Errorf("credit reserve failed: %w", rerr)
+	}
+	return nil
+}
+
+func isOptionalCreditSkipReason(reason string) bool {
+	return reason == "no_credit_profile" ||
+		strings.HasPrefix(reason, "credit_program_") ||
+		strings.HasPrefix(reason, "credit_relationship_")
+}
+
 // UpdateStatus transitions one order across the canonical lifecycle. Mutations
 // and outbox emission happen atomically in repository UpdateOrder.
 func (s *Service) UpdateStatus(ctx context.Context, claims auth.Claims, orderID string, req UpdateStatusRequest) (UpdateStatusResponse, error) {
@@ -515,7 +1004,7 @@ func (s *Service) UpdateStatus(ctx context.Context, claims auth.Claims, orderID 
 	if claims.Role == auth.RoleRetailer {
 		// B3 M-P0-4: order.RetailerID is org id; staff Subject must not be used for ownership.
 		orgID := auth.ResolveRetailerOrgID(claims)
-		if orgID == "" || orgID != current.RetailerID || nextStatus != StatusCancelled {
+		if orgID == "" || orgID != current.RetailerID || (nextStatus != StatusCancelled && nextStatus != StatusCancelRequested) {
 			return UpdateStatusResponse{}, ErrOrderForbidden
 		}
 		if PreorderCancelLocked(s.now(), current) {
@@ -577,7 +1066,7 @@ func (s *Service) UpdateStatus(ctx context.Context, claims auth.Claims, orderID 
 	current.TransitionActorRole = string(claims.Role)
 	current.TransitionActorID = actorID
 
-	err = s.repo.UpdateOrder(ctx, current, nil, func(txn outbox.TxnBuffer) error {
+	emitStatusUpdate := func(txn outbox.TxnBuffer) error {
 		if err := outbox.EmitJSON(ctx, txn, events.AggregateOrder, current.OrderID, events.TopicMain, events.OrderEvent{
 			BaseEvent:      events.BaseEvent{Type: events.EventOrderStatusChanged, Timestamp: current.UpdatedAt.Format(time.RFC3339Nano)},
 			OrderID:        current.OrderID,
@@ -596,7 +1085,18 @@ func (s *Service) UpdateStatus(ctx context.Context, claims auth.Claims, orderID 
 			return outbox.WriteAudit(ctx, ab, current.SupplierID, actorID, string(claims.Role), "ORDER_STATUS_CHANGED", "Order", current.OrderID, map[string]string{"from": string(prevStatus), "to": string(current.Status)})
 		}
 		return nil
-	})
+	}
+	if nextStatus == StatusCompleted {
+		preFee, feeErr := s.resolvePerOrderFeeBeforeTxn(ctx, current.SupplierID)
+		if feeErr != nil {
+			return UpdateStatusResponse{}, fmt.Errorf("resolve per-order fee %s: %w", orderID, feeErr)
+		}
+		err = s.repo.UpdateOrderWithTxn(ctx, current, nil, func(txnCtx context.Context, txn *spanner.ReadWriteTransaction) error {
+			return s.recordOrderDeliveredGLInTxn(txnCtx, txn, nil, &current, 0, 0, deliveredGrossFromOrder(current), preFee, "", current.UpdatedAt)
+		}, emitStatusUpdate)
+	} else {
+		err = s.repo.UpdateOrder(ctx, current, nil, emitStatusUpdate)
+	}
 	if err != nil {
 		return UpdateStatusResponse{}, fmt.Errorf("update order status %s: %w", orderID, err)
 	}
@@ -656,6 +1156,10 @@ func (s *Service) AssignOrder(ctx context.Context, claims auth.Claims, orderID s
 	}
 	if strings.TrimSpace(claims.SupplierID) != "" && claims.SupplierID != current.SupplierID {
 		return AssignOrderResponse{}, ErrOrderForbidden
+	}
+	if !isOrderEligibleForAssignment(current) {
+		return AssignOrderResponse{}, fmt.Errorf("%w: order status=%s confirmation_status=%s not eligible for assignment",
+			ErrInvalidStatusTransition, current.Status, current.ConfirmationStatus)
 	}
 
 	previousDriverID := strings.TrimSpace(current.DriverID)
@@ -976,6 +1480,7 @@ func (s *Service) CollectCash(ctx context.Context, claims auth.Claims, req Colle
 	var distanceM float64
 	var attemptID string
 	var receivedMinor, shortfallMinor, overageMinor int64
+	var wasDeliveredOnCredit bool
 	// Settlement proximity gate (design §4.1) — unlock or live 100 m / H3.
 	if err := s.requireProximityUnlocked(ctx, req.OrderID, ""); err != nil {
 		// Fallback: accept if request coords satisfy settlement proximity against order.
@@ -992,6 +1497,9 @@ func (s *Service) CollectCash(ctx context.Context, claims auth.Claims, req Colle
 			case StatusPendingCashCollection, StatusAwaitingPayment, StatusDeliveredOnCredit, StatusFiscalizing:
 			default:
 				return fmt.Errorf("%w: collect cash requires payment capture state (current %s)", ErrInvalidStatusTransition, orderRecord.Status)
+			}
+			if orderRecord.Status == StatusDeliveredOnCredit {
+				wasDeliveredOnCredit = true
 			}
 			if orderRecord.Status == StatusFiscalizing {
 				return nil
@@ -1114,8 +1622,16 @@ func (s *Service) CollectCash(ctx context.Context, claims auth.Claims, req Colle
 			if err := s.AssertMoneyCoversDeliveryTxn(txnCtx, txn, req.OrderID, receivedMinor, shortfall); err != nil {
 				return err
 			}
-			if s.doorstepShortfall != nil && orderRecord.TotalMinor > receivedMinor {
-				if err := s.doorstepShortfall(txnCtx, txn, req.OrderID, orderRecord.SupplierID, claims.Subject, orderRecord.Currency, orderRecord.TotalMinor, receivedMinor, s.now()); err != nil {
+			skipDoorstepEscrowShortfall := wasDeliveredOnCredit || orderRecord.Status == StatusDeliveredOnCredit
+			if !skipDoorstepEscrowShortfall {
+				deliveredGL, gErr := hasOrderDeliveredGLInTxn(txnCtx, txn, orderRecord.SupplierID, req.OrderID)
+				if gErr != nil {
+					return gErr
+				}
+				skipDoorstepEscrowShortfall = deliveredGL
+			}
+			if !skipDoorstepEscrowShortfall {
+				if err := s.recordDoorstepShortfallInTxn(txnCtx, txn, req.OrderID, orderRecord.SupplierID, claims.Subject, orderRecord.Currency, orderRecord.TotalMinor, receivedMinor); err != nil {
 					return err
 				}
 			}
@@ -1135,8 +1651,8 @@ func (s *Service) CollectCash(ctx context.Context, claims auth.Claims, req Colle
 			}
 			// G1.A: AR pay-down on the same Spanner RW txn as cash capture.
 			// Fail-closed — abort cash commit if AR apply fails when an invoice exists.
-			if s.ar != nil {
-				if err := s.ar.RecordPaymentForOrderInTxn(txnCtx, txn, req.OrderID, receivedMinor,
+			if s.ar != nil && receivedMinor > 0 {
+				if err := s.ar.RecordPaymentForOrderWithModeInTxn(txnCtx, txn, req.OrderID, receivedMinor, "CASH",
 					"ar-cash-collect-"+req.OrderID, orderRecord.Currency); err != nil {
 					return err
 				}
@@ -1146,9 +1662,9 @@ func (s *Service) CollectCash(ctx context.Context, claims auth.Claims, req Colle
 			// G1-A2: clear credit headroom when cash settles a credit-left order (same txn).
 			// No-op when reservation was never CONVERTED for this order.
 			if s.credit != nil && receivedMinor > 0 {
-				clearAmt := orderRecord.TotalMinor
-				if clearAmt <= 0 {
-					clearAmt = receivedMinor
+				clearAmt := receivedMinor
+				if orderRecord.TotalMinor > 0 && clearAmt > orderRecord.TotalMinor {
+					clearAmt = orderRecord.TotalMinor
 				}
 				if err := s.credit.ClearBalanceInTxn(txnCtx, txn,
 					orderRecord.RetailerID, orderRecord.SupplierID, req.OrderID, clearAmt); err != nil {
@@ -1406,13 +1922,45 @@ func (s *Service) recordDriverTransitionSuccess(ctx context.Context, claims auth
 						"order_id": current.OrderID,
 						"message":  message,
 					}
-					b, _ := json.Marshal(payload)
+					b, merr := json.Marshal(payload)
+					if merr != nil {
+						s.log.Warn("sibling broadcast marshal failed", "order_id", current.OrderID, "err", merr)
+						continue
+					}
 
-					go s.driverHub.Broadcast(context.Background(), "driver:"+sib, b)
+					go func(sibID string, msg []byte) {
+						defer func() {
+							if r := recover(); r != nil {
+								s.log.Error("sibling driver broadcast panic", "driver_id", sibID, "panic", r)
+							}
+						}()
+						bctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+						defer cancel()
+						msg = drivercmd.PrepareAndRecordJSON(bctx, s.spannerClient, sibID, msg)
+						s.driverHub.Broadcast(bctx, "driver:"+sibID, msg)
+					}(sib, b)
 				}
 			}
 		}
 	}
+}
+
+func (s *Service) recordDoorstepShortfallInTxn(
+	ctx context.Context,
+	txn *spanner.ReadWriteTransaction,
+	orderID, supplierID, driverID, currency string,
+	expectedMinor, receivedMinor int64,
+) error {
+	if expectedMinor <= receivedMinor {
+		return nil
+	}
+	if s.doorstepShortfall == nil {
+		if txn != nil {
+			return fmt.Errorf("collect cash: doorstep shortfall journal hook required for order %s", orderID)
+		}
+		return nil
+	}
+	return s.doorstepShortfall(ctx, txn, orderID, supplierID, driverID, currency, expectedMinor, receivedMinor, s.now())
 }
 
 // HandleCreate is POST /v1/order/create. Wired by orderroutes.RegisterRoutes

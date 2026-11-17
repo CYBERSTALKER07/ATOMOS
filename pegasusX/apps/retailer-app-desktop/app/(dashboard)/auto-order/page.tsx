@@ -17,6 +17,7 @@ import { DemandSourceChips } from "@/components/ui/DemandSourceChips";
 import { AutoOrderRules } from "@/components/auto-order/AutoOrderRules";
 import { PageChrome } from "@/components/PageChrome";
 import { useLiveData } from "@/lib/hooks";
+import { approveReplenishmentSuggestion } from "@/lib/api";
 import { apiFetch } from "@/lib/auth";
 import { getRetailerId } from "@/lib/retailer-profile";
 import type {
@@ -27,6 +28,8 @@ import type {
 } from "@/lib/types";
 
 type RetailerReorderSuggestion = {
+  suggestion_id?: string;
+  retailer_id?: string;
   sku: string;
   suggested_qty: number;
   adjusted_demand_per_day?: number;
@@ -70,6 +73,7 @@ export default function AutoOrderPage() {
   >([]);
   const [placeConfirmOpen, setPlaceConfirmOpen] = useState(false);
   const [soakGate, setSoakGate] = useState<SoakGate | null>(null);
+  const [approvingSuggestionSku, setApprovingSuggestionSku] = useState<string | null>(null);
 
   const retailerId = getRetailerId();
   const executionMode: AutoOrderExecutionMode = (() => {
@@ -224,9 +228,11 @@ export default function AutoOrderPage() {
             : `Run ${json.status}${json.message ? `: ${json.message}` : ""}`,
         );
       }
-      await fetchRuns();
-      await fetchReorderSuggestions();
-      await fetchShadowProposals();
+      await Promise.all([
+        fetchRuns(),
+        fetchReorderSuggestions(),
+        fetchShadowProposals(),
+      ]);
     } catch (err) {
       setSyncMessage(err instanceof Error ? err.message : t("retailer_desktop.residual.text.auto_order_run_failed"));
     } finally {
@@ -570,11 +576,55 @@ export default function AutoOrderPage() {
                       <DemandSourceChips sources={row.sources} />
                     </div>
                   </div>
-                  {row.sell_through_velocity != null && row.sell_through_velocity > 0 && (
-                    <span className="text-xs text-[var(--desk-text-tertiary)]">
-                      POS vel {row.sell_through_velocity.toFixed(1)}/d
-                    </span>
-                  )}
+                  <div className="flex items-center gap-3 shrink-0">
+                    {row.sell_through_velocity != null && row.sell_through_velocity > 0 && (
+                      <span className="text-xs text-[var(--desk-text-tertiary)]">
+                        POS vel {row.sell_through_velocity.toFixed(1)}/d
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      disabled={approvingSuggestionSku === row.sku}
+                      onClick={() => {
+                        void (async () => {
+                          setApprovingSuggestionSku(row.sku);
+                          try {
+                            const targetId =
+                              row.suggestion_id ||
+                              (row.retailer_id
+                                ? `${row.retailer_id}:${row.sku}`
+                                : retailerId
+                                  ? `${retailerId}:${row.sku}`
+                                  : row.sku);
+                            const approved = await approveReplenishmentSuggestion(targetId, {
+                              retailer_id: row.retailer_id || retailerId || undefined,
+                              sku: row.sku,
+                              qty: row.suggested_qty,
+                              mode: "order",
+                            });
+                            setSyncMessage(
+                              t("retailer_desktop.suggested_orders.approved_notice", {
+                                sku: approved.sku,
+                                qty: approved.approved_qty,
+                                status: approved.status,
+                              }),
+                            );
+                            await fetchReorderSuggestions();
+                          } catch (err) {
+                            setSyncMessage(
+                              err instanceof Error ? err.message : "Failed to approve suggestion",
+                            );
+                          } finally {
+                            setApprovingSuggestionSku(null);
+                          }
+                        })();
+                      }}
+                      className="portal-btn portal-btn--primary h-8 px-3 rounded-lg text-xs inline-flex items-center gap-1 disabled:opacity-50"
+                    >
+                      <Check size={12} />
+                      {t("retailer_desktop.suggested_orders.approve_one_tap")}
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>

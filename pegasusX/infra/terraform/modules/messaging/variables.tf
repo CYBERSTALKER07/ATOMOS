@@ -147,6 +147,33 @@ variable "topics" {
         "retention.ms"        = "1209600000" # 14 days
       }
     }
+    "pegasusx-ledger" = {
+      partition_count    = 12
+      replication_factor = 3
+      configs = {
+        "cleanup.policy"      = "delete"
+        "min.insync.replicas" = "2"
+        "retention.ms"        = "2592000000" # 30 days (append-only GL, recon & audit anchor events)
+      }
+    }
+    "pegasusx-intel" = {
+      partition_count    = 12
+      replication_factor = 3
+      configs = {
+        "cleanup.policy"      = "delete"
+        "min.insync.replicas" = "2"
+        "retention.ms"        = "604800000" # 7 days (ontology change & intelligence events)
+      }
+    }
+    "pegasusx-connectors" = {
+      partition_count    = 6
+      replication_factor = 3
+      configs = {
+        "cleanup.policy"      = "delete"
+        "min.insync.replicas" = "2"
+        "retention.ms"        = "604800000" # 7 days (external ERP/POS connector ingress)
+      }
+    }
   }
 }
 

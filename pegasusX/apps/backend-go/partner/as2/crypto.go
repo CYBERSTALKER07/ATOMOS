@@ -90,17 +90,49 @@ func SignAttached(content []byte, m Material) ([]byte, error) {
 
 // VerifyAttached verifies PKCS7 signed-data and returns the content.
 func VerifyAttached(signed []byte, expectedSigner *x509.Certificate) ([]byte, error) {
+	if expectedSigner == nil {
+		return nil, fmt.Errorf("partner_cert_required")
+	}
 	p7, err := pkcs7.Parse(signed)
 	if err != nil {
 		return nil, err
 	}
-	if expectedSigner != nil {
-		p7.Certificates = []*x509.Certificate{expectedSigner}
-	}
+	p7.Certificates = []*x509.Certificate{expectedSigner}
 	if err := p7.Verify(); err != nil {
 		return nil, err
 	}
 	return p7.Content, nil
+}
+
+// SignDetached creates a detached PKCS7 signature over content (for RFC 4130 multipart/signed).
+func SignDetached(content []byte, m Material) ([]byte, error) {
+	if m.Cert == nil || m.Key == nil {
+		return nil, fmt.Errorf("signer_material_missing")
+	}
+	sd, err := pkcs7.NewSignedData(content)
+	if err != nil {
+		return nil, err
+	}
+	sd.SetDigestAlgorithm(pkcs7.OIDDigestAlgorithmSHA256)
+	if err := sd.AddSigner(m.Cert, m.Key, pkcs7.SignerInfoConfig{}); err != nil {
+		return nil, err
+	}
+	sd.Detach()
+	return sd.Finish()
+}
+
+// VerifyDetached verifies a detached PKCS7 signature against signedContent using expectedSigner.
+func VerifyDetached(signedContent, sig []byte, expectedSigner *x509.Certificate) error {
+	if expectedSigner == nil {
+		return fmt.Errorf("partner_cert_required")
+	}
+	p7, err := pkcs7.Parse(sig)
+	if err != nil {
+		return err
+	}
+	p7.Content = signedContent
+	p7.Certificates = []*x509.Certificate{expectedSigner}
+	return p7.Verify()
 }
 
 // EncryptCMS encrypts content for recipient cert (enveloped-data).

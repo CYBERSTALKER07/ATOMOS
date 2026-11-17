@@ -208,3 +208,49 @@ func TestPayoutTenantIsolationRejectsForeignSupplierID(t *testing.T) {
 		t.Fatalf("HandleListBatches expected 403 for foreign supplier, got %d", rrList.Code)
 	}
 }
+
+func TestPayoutRBAC_AuditorAgentAndNonReleaseRolesBlocked(t *testing.T) {
+	h := &Handlers{Svc: NewService(nil)}
+	body := `{"period_start":"2026-05-01","period_end":"2026-05-31"}`
+
+	cases := []struct {
+		name   string
+		claims auth.Claims
+		method string
+		path   string
+		fn     http.HandlerFunc
+	}{
+		{
+			name:   "auditor generate",
+			claims: auth.Claims{Subject: "aud-1", Role: auth.RoleAdmin, SupplierRole: auth.SupplierRoleAuditor, SupplierID: "sup-1"},
+			method: http.MethodPost, path: "/v1/supplier/payouts/batches", fn: h.HandleGenerate,
+		},
+		{
+			name:   "agent dispatch",
+			claims: auth.Claims{Subject: "agent-1", Role: auth.RoleAdmin, ActorType: auth.ActorTypeAgent, SupplierRole: auth.SupplierRoleAgent, SupplierID: "sup-1"},
+			method: http.MethodPost, path: "/v1/supplier/payouts/batches/b1/dispatch", fn: h.HandleDispatch,
+		},
+		{
+			name:   "accountant mark-paid missing payout.release",
+			claims: auth.Claims{Subject: "acct-1", Role: auth.RoleAdmin, SupplierRole: auth.SupplierRoleAccountant, SupplierID: "sup-1"},
+			method: http.MethodPost, path: "/v1/supplier/payouts/batches/b1/mark-paid", fn: h.HandleMarkPaid,
+		},
+		{
+			name:   "auditor mark-paid",
+			claims: auth.Claims{Subject: "aud-1", Role: auth.RoleAdmin, SupplierRole: auth.SupplierRoleAuditor, SupplierID: "sup-1"},
+			method: http.MethodPost, path: "/v1/supplier/payouts/batches/b1/mark-paid", fn: h.HandleMarkPaid,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(tc.method, tc.path, strings.NewReader(body))
+			req = req.WithContext(auth.WithClaims(req.Context(), tc.claims))
+			rr := httptest.NewRecorder()
+			tc.fn(rr, req)
+			if rr.Code != http.StatusForbidden {
+				t.Fatalf("status=%d body=%s want 403", rr.Code, rr.Body.String())
+			}
+		})
+	}
+}

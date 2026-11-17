@@ -1,14 +1,16 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { type CashierSessionView } from '@pegasusx/types';
 import { foundryWarehouseApi } from '@/lib/foundry-api';
-import { formatGroupedInteger, majorIntToMinor, majorIntToMinorBigInt } from '@/lib/money';
+import { majorIntToMinor } from '@/lib/money';
+import { formatWholeSomInteger } from '@/lib/cashier-helpers';
 import { X, ShieldAlert, CheckCircle2, Clock, CreditCard, AlertCircle } from 'lucide-react';
 
 interface RRNReclassificationModalProps {
   sessionId: string;
   isOpen: boolean;
+  defaultActorId?: string;
   onClose: () => void;
   onSuccess: (updatedSession: CashierSessionView) => void;
 }
@@ -16,18 +18,25 @@ interface RRNReclassificationModalProps {
 export function RRNReclassificationModal({
   sessionId,
   isOpen,
+  defaultActorId = '',
   onClose,
   onSuccess,
 }: RRNReclassificationModalProps) {
   const [orderId, setOrderId] = useState('');
   const [gatewayRRN, setGatewayRRN] = useState('');
-  const [disputedUZS, setDisputedUZS] = useState<number>(0);
+  const [disputedSom, setDisputedSom] = useState<number>(0);
   const [epodCapturedAt, setEpodCapturedAt] = useState(() => new Date(Date.now() - 5 * 60000).toISOString().slice(0, 16));
   const [rrnCapturedAt, setRrnCapturedAt] = useState(() => new Date().toISOString().slice(0, 16));
   const [gatewayPreset, setGatewayPreset] = useState<'HUMO' | 'UZCARD' | 'VISA' | 'MASTERCARD'>('HUMO');
-  const [actorId, setActorId] = useState('cashier_admin');
+  const [actorId, setActorId] = useState(defaultActorId);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!actorId && defaultActorId) {
+      setActorId(defaultActorId);
+    }
+  }, [actorId, defaultActorId]);
 
   // Real-time calculation of timestamp drift against the 15-minute statutory window
   const driftAnalysis = useMemo(() => {
@@ -48,7 +57,7 @@ export function RRNReclassificationModal({
     e.preventDefault();
     setError(null);
 
-    const disputedMinor = majorIntToMinor(disputedUZS);
+    const disputedMinor = majorIntToMinor(disputedSom);
     if (!orderId.trim()) {
       setError('Order ID is required');
       return;
@@ -58,7 +67,11 @@ export function RRNReclassificationModal({
       return;
     }
     if (disputedMinor <= 0) {
-      setError('Disputed cash amount must be > 0 tiyin');
+      setError("Disputed cash amount must be greater than 0 so'm");
+      return;
+    }
+    if (!actorId.trim()) {
+      setError('Cashier operator ID is required');
       return;
     }
 
@@ -84,7 +97,7 @@ export function RRNReclassificationModal({
         rrn_amount_minor: disputedMinor, // Strict invariant: rrn_amount_minor == disputed_cash_minor
         epod_captured_at: new Date(Date.parse(epodCapturedAt)).toISOString(),
         rrn_captured_at: new Date(Date.parse(rrnCapturedAt)).toISOString(),
-        actor_id: actorId.trim() || 'cashier_desk',
+        actor_id: actorId.trim(),
       });
       onSuccess(updated);
       onClose();
@@ -174,7 +187,7 @@ export function RRNReclassificationModal({
 
           <div>
             <label className="block text-[11px] font-semibold text-neutral-400 uppercase tracking-wider mb-1">
-              Disputed Cash Amount (UZS)
+              Disputed Cash Amount (so&apos;m)
             </label>
             <div className="relative">
               <input
@@ -182,16 +195,16 @@ export function RRNReclassificationModal({
                 inputMode="numeric"
                 pattern="[0-9]*"
                 required
-                value={disputedUZS === 0 ? '' : disputedUZS}
+                value={disputedSom === 0 ? '' : disputedSom}
                 onChange={(e) => {
                   const s = e.target.value.replace(/\D/g, '');
-                  setDisputedUZS(Math.max(0, parseInt(s || '0', 10) || 0));
+                  setDisputedSom(Math.max(0, parseInt(s || '0', 10) || 0));
                 }}
-                placeholder="e.g. 500000"
+                placeholder="Enter whole so'm amount"
                 className="w-full bg-neutral-950 border border-neutral-750 rounded-xl px-3 py-2 text-xs font-mono text-neutral-100 focus:outline-none focus:border-emerald-500"
               />
               <span className="absolute right-3 top-2 text-[11px] text-neutral-500 font-mono">
-                = {formatGroupedInteger(majorIntToMinorBigInt(disputedUZS))} Tiyin
+                {formatWholeSomInteger(disputedSom)}
               </span>
             </div>
           </div>

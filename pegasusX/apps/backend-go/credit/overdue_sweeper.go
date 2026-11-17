@@ -63,62 +63,56 @@ func StartOverdueCreditSweeperContext(ctx context.Context, svc *Service, interva
 	}()
 }
 
-// RunOverdueCreditSweeperOnce executes a single pass of overdue credit evaluation and grace limit enforcement.
+// RunOverdueCreditSweeperOnce executes a full keyset-paginated pass of overdue credit evaluation and grace limit enforcement.
 func (s *Service) RunOverdueCreditSweeperOnce(ctx context.Context) (int, error) {
 	if s == nil || s.repo == nil {
 		return 0, nil
 	}
 	batchSize := overdueBatchSize()
-	candidates, err := s.repo.ListDelinquentCandidates(ctx, batchSize)
-	if err != nil {
-		return 0, err
-	}
-
 	frozenCount := 0
 	tolerance := MaxDelinquencyTolerance()
-	autoHoldMax := ScoreAutoHoldMax()
-	autoHoldEnabled := ScoreAutoHoldEnabled()
 
-	for _, p := range candidates {
-		if p.Status != StatusActive {
-			continue
+	pager, hasPager := s.repo.(ProfilePager)
+	cursor := ""
+	for {
+		var candidates []Profile
+		var nextCursor string
+		var err error
+		if hasPager {
+			candidates, nextCursor, err = pager.ListDelinquentCandidatesPage(ctx, batchSize, cursor)
+		} else {
+			candidates, err = s.repo.ListDelinquentCandidates(ctx, batchSize)
+		}
+		if err != nil {
+			return frozenCount, err
 		}
 
-		shouldFreeze := false
-		reason := ""
+		for _, p := range candidates {
+			if p.Status != StatusActive {
+				continue
+			}
 
-		// 1) Delinquency count reaches or exceeds tolerance
-		if p.DelinquencyCount >= tolerance {
-			shouldFreeze = true
-			reason = "delinquency_tolerance_exceeded"
-		}
+			shouldFreeze := false
+			reason := ""
 
-		// 2) Critical risk score (or RiskTierBlock) auto-hold
-		if !shouldFreeze && autoHoldEnabled && p.RiskScore > 0 && p.RiskScore <= autoHoldMax {
-			shouldFreeze = true
-			reason = "critical_risk_score_auto_hold"
-		}
-		if !shouldFreeze && p.RiskTier == RiskTierBlock {
-			shouldFreeze = true
-			reason = "risk_tier_block_auto_hold"
-		}
+			// Delinquency count reaches or exceeds tolerance.
+			// RiskScore and RiskTier are informational telemetry only and never auto-freeze profiles.
+			if p.DelinquencyCount >= tolerance {
+				shouldFreeze = true
+				reason = "delinquency_tolerance_exceeded"
+			}
 
-		// 3) Evaluated score under live scoring
-		if !shouldFreeze && autoHoldEnabled && ScoringEnabled() {
-			sc, scErr := s.EvaluateProfileScore(ctx, p)
-			if scErr == nil {
-				if sc.RiskTier == RiskTierBlock || (sc.Score > 0 && sc.Score <= autoHoldMax) {
-					shouldFreeze = true
-					reason = "evaluated_risk_tier_block"
+			if shouldFreeze {
+				if err := s.FreezeProfile(ctx, p.RetailerID, p.SupplierID, reason); err == nil {
+					frozenCount++
 				}
 			}
 		}
 
-		if shouldFreeze {
-			if err := s.FreezeProfile(ctx, p.RetailerID, p.SupplierID, reason); err == nil {
-				frozenCount++
-			}
+		if !hasPager || nextCursor == "" || nextCursor == cursor || len(candidates) == 0 {
+			break
 		}
+		cursor = nextCursor
 	}
 
 	return frozenCount, nil

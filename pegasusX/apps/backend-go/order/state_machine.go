@@ -22,7 +22,7 @@ func ValidateStatusTransition(from string, to string, opts TransitionOpts) error
 	allowed := false
 	switch current {
 	case StatusPending:
-		allowed = next == StatusLoaded || next == StatusCancelled || next == StatusDelayed
+		allowed = next == StatusLoaded || next == StatusCancelled || next == StatusDelayed || next == StatusCancelRequested
 	case StatusLoaded:
 		allowed = next == StatusInTransit || next == StatusCancelled || next == StatusCancelRequested || next == StatusDelayed || next == StatusPending
 	case StatusDelayed:
@@ -42,9 +42,9 @@ func ValidateStatusTransition(from string, to string, opts TransitionOpts) error
 		allowed = next == StatusFiscalizing
 	case StatusAwaitingPayment:
 		// Card/cash capture → FISCALIZING; cash choice → PENDING_CASH_COLLECTION.
-		allowed = next == StatusFiscalizing || next == StatusPendingCashCollection || next == StatusDeliveredOnCredit
+		allowed = next == StatusFiscalizing || next == StatusPendingCashCollection || next == StatusDeliveredOnCredit || next == StatusCancelRequested || next == StatusShopClosedPending
 	case StatusPendingCashCollection:
-		allowed = next == StatusFiscalizing
+		allowed = next == StatusFiscalizing || next == StatusAwaitingPayment || next == StatusDeliveredOnCredit || next == StatusCancelRequested
 	case StatusFiscalizing:
 		allowed = next == StatusCompleted || next == StatusFiscalFailed
 	case StatusFiscalFailed:
@@ -53,7 +53,7 @@ func ValidateStatusTransition(from string, to string, opts TransitionOpts) error
 	case StatusCancelRequested:
 		// Approve -> CANCELLED; deny/resume -> back to the operational leg it
 		// was requested from. Without exits this status would brick the order.
-		allowed = next == StatusCancelled || next == StatusLoaded || next == StatusInTransit || next == StatusArrived
+		allowed = next == StatusCancelled || next == StatusLoaded || next == StatusInTransit || next == StatusArrived || next == StatusScheduled || next == StatusAutoAccepted || next == StatusShopClosedPending || next == StatusPending
 	case StatusCompleted:
 		allowed = false
 	case StatusCancelled:
@@ -63,12 +63,15 @@ func ValidateStatusTransition(from string, to string, opts TransitionOpts) error
 	case StatusBackordered:
 		allowed = next == StatusPending || next == StatusScheduled || next == StatusCancelled
 	case StatusScheduled:
-		// Preorder: midnight guard may auto-accept; T-1 promote → PENDING;
+		// Preorder: midnight guard may auto-accept; T-1 promote → PENDING (or DELAYED on MUST_HAVE hold);
 		// retailer/warehouse may cancel before promote.
-		allowed = next == StatusAutoAccepted || next == StatusPending || next == StatusCancelled || next == StatusCancelRequested
+		allowed = next == StatusAutoAccepted || next == StatusPending || next == StatusDelayed || next == StatusCancelled || next == StatusCancelRequested
 	case StatusAutoAccepted:
-		// Confirmed preorder waiting for T-1 promote into the operational queue.
-		allowed = next == StatusPending || next == StatusCancelled || next == StatusCancelRequested
+		// Confirmed preorder waiting for T-1 promote into the operational queue (or DELAYED on MUST_HAVE hold).
+		allowed = next == StatusPending || next == StatusDelayed || next == StatusCancelled || next == StatusCancelRequested
+	case StatusMigrationOpen:
+		// Unreleased migrated open order: excluded from dispatch until explicit ReleaseOpenOrders.
+		allowed = next == StatusPending || next == StatusScheduled || next == StatusCancelled
 	default:
 		allowed = false
 	}

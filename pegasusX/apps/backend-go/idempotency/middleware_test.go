@@ -629,3 +629,53 @@ func TestMiddlewarePrincipalNamespacing(t *testing.T) {
 		t.Fatalf("expected 3 distinct handler executions, got %d", handlerCalled)
 	}
 }
+
+func TestMiddlewareRetailerTenantIsolation(t *testing.T) {
+	store := NewInMemoryStore()
+	handlerCalled := 0
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		handlerCalled++
+		c, _ := auth.FromContext(r.Context())
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write([]byte(`{"org":"` + auth.ResolveRetailerOrgID(c) + `"}`))
+	})
+	mw := Middleware(store)(handler)
+
+	// Same Subject acting under RetailerOrgID org-1 vs org-2 with the same Idempotency-Key
+	// must NOT replay org-1's cached response into org-2 or fail with 409/422.
+	reqOrg1 := httptest.NewRequest(http.MethodPost, "/v1/claims", strings.NewReader(`{"amount":100}`))
+	reqOrg1.Header.Set("Idempotency-Key", "shared-tenant-key")
+	reqOrg1 = reqOrg1.WithContext(auth.WithClaims(reqOrg1.Context(), auth.Claims{
+		Subject:       "multi-org-user",
+		Role:          auth.RoleRetailer,
+		RetailerOrgID: "ret-org-1",
+	}))
+	recOrg1 := httptest.NewRecorder()
+	mw.ServeHTTP(recOrg1, reqOrg1)
+	if recOrg1.Code != http.StatusCreated {
+		t.Fatalf("org-1 status = %d", recOrg1.Code)
+	}
+
+	reqOrg2 := httptest.NewRequest(http.MethodPost, "/v1/claims", strings.NewReader(`{"amount":200}`))
+	reqOrg2.Header.Set("Idempotency-Key", "shared-tenant-key")
+	reqOrg2 = reqOrg2.WithContext(auth.WithClaims(reqOrg2.Context(), auth.Claims{
+		Subject:       "multi-org-user",
+		Role:          auth.RoleRetailer,
+		RetailerOrgID: "ret-org-2",
+	}))
+	recOrg2 := httptest.NewRecorder()
+	mw.ServeHTTP(recOrg2, reqOrg2)
+	if recOrg2.Code != http.StatusCreated {
+		t.Fatalf("org-2 status = %d (want 201, isolated from org-1)", recOrg2.Code)
+	}
+	if recOrg2.Header().Get("Idempotency-Replayed") != "" {
+		t.Fatal("org-2 must not replay org-1 response")
+	}
+	if !strings.Contains(recOrg2.Body.String(), "ret-org-2") {
+		t.Fatalf("unexpected org-2 body: %s", recOrg2.Body.String())
+	}
+	if handlerCalled != 2 {
+		t.Fatalf("handlerCalled = %d, want 2", handlerCalled)
+	}
+}

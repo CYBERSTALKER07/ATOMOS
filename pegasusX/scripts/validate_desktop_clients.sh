@@ -17,7 +17,7 @@ if ! command -v pnpm >/dev/null 2>&1; then
   fail "pnpm is required"
 fi
 
-pnpm install --frozen-lockfile 2>/dev/null || pnpm install
+pnpm install --frozen-lockfile
 
 echo "desktop-bridge: unit tests"
 pnpm --filter @pegasusx/desktop-bridge test

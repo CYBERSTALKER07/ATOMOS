@@ -44,8 +44,9 @@ const (
 	RefundStatusCaptured = "CAPTURED"
 	RefundStatusFailed   = "FAILED"
 
-	RefundMethodCard = "CARD"
-	RefundMethodCash = "CASH"
+	RefundMethodCard  = "CARD"
+	RefundMethodCash  = "CASH"
+	RefundMethodMixed = "MIXED"
 )
 
 var (
@@ -146,11 +147,25 @@ func (s *Service) InitiateRefund(ctx context.Context, req RefundRequest) (Refund
 		idemKey = fmt.Sprintf("refund-%s-%d-%s", orderID, req.AmountMinor, reasonCode)
 	}
 
-	// Replay: same idempotency key returns the stored refund.
-	if existing, found, err := s.refundByIdempotencyKey(ctx, idemKey); err != nil {
+	// Replay: same idempotency key returns completed refund or resumes a stuck PENDING attempt.
+	if existing, cardPending, cashPending, found, err := s.refundByIdempotencyKey(ctx, idemKey); err != nil {
 		return RefundResult{}, err
 	} else if found {
-		return existing, nil
+		if existing.Status != RefundStatusPending {
+			return existing, nil
+		}
+		var orderRow Order
+		row, rerr := s.spannerClient.Single().ReadRow(ctx, "Orders", spanner.Key{existing.OrderID}, []string{"OrderId", "SupplierId", "RetailerId", "Currency"})
+		if rerr != nil {
+			return RefundResult{}, fmt.Errorf("load order for pending refund resume: %w", rerr)
+		}
+		if cerr := row.Columns(&orderRow.OrderID, &orderRow.SupplierID, &orderRow.RetailerID, &orderRow.Currency); cerr != nil {
+			return RefundResult{}, cerr
+		}
+		if cur, curErr := auth.CoalesceCurrency(ctx, orderRow.SupplierID, orderRow.Currency); curErr == nil {
+			orderRow.Currency = cur
+		}
+		return s.confirmAndFinalizeRefund(ctx, existing, orderRow, cardPending, cashPending, reasonCode, actor)
 	}
 
 	refundID := s.newID()
@@ -159,7 +174,7 @@ func (s *Service) InitiateRefund(ctx context.Context, req RefundRequest) (Refund
 	var orderRow Order
 	var cardBal, cashBal, creditBal int64
 	var method string
-	var amount int64
+	var amount, cardAmt, cashAmt int64
 
 	_, err := s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		row, err := txn.ReadRow(ctx, "Orders", spanner.Key{orderID}, []string{"OrderId", "SupplierId", "RetailerId", "Status", "TotalMinor", "Currency"})
@@ -221,30 +236,31 @@ func (s *Service) InitiateRefund(ctx context.Context, req RefundRequest) (Refund
 		if amount <= 0 {
 			return fmt.Errorf("%w: nothing refundable on order %s", ErrRefundExceedsCaptured, orderID)
 		}
-		switch {
-		case amount <= cardBal:
-			method = RefundMethodCard
-		case amount <= cashBal:
-			method = RefundMethodCash
-		case creditBal > 0 && amount <= cardBal+cashBal+creditBal:
-			return fmt.Errorf("%w (remaining credit-covered: %d)", ErrRefundCreditPortion, creditBal)
-		default:
+		totalRefundable := cardBal + cashBal
+		if amount > totalRefundable {
+			if creditBal > 0 && amount <= totalRefundable+creditBal {
+				return fmt.Errorf("%w (remaining credit-covered: %d)", ErrRefundCreditPortion, creditBal)
+			}
 			return fmt.Errorf("%w: requested %d, refundable card=%d cash=%d", ErrRefundExceedsCaptured, amount, cardBal, cashBal)
 		}
 
-		legKeyPrefix := "refund-card:"
-		if method == RefundMethodCash {
-			legKeyPrefix = "refund-cash:"
+		cardAmt = amount
+		if cardAmt > cardBal {
+			cardAmt = cardBal
 		}
-		leg := PaymentLeg{
-			OrderID:        orderID,
-			LegID:          s.newID(),
-			Method:         MethodRefund,
-			AmountMinor:    amount,
-			Status:         PaymentStatusPending,
-			IdempotencyKey: legKeyPrefix + refundID,
-			CreatedAt:      now,
+		if cardAmt < 0 {
+			cardAmt = 0
 		}
+		cashAmt = amount - cardAmt
+		switch {
+		case cardAmt > 0 && cashAmt > 0:
+			method = RefundMethodMixed
+		case cardAmt > 0:
+			method = RefundMethodCard
+		default:
+			method = RefundMethodCash
+		}
+
 		muts := []*spanner.Mutation{
 			spanner.InsertMap("Refunds", map[string]any{
 				"RefundId":       refundID,
@@ -261,15 +277,28 @@ func (s *Service) InitiateRefund(ctx context.Context, req RefundRequest) (Refund
 				"CreatedAt":      spanner.CommitTimestamp,
 				"UpdatedAt":      spanner.CommitTimestamp,
 			}),
-			spanner.InsertMap("OrderPaymentLegs", map[string]any{
-				"OrderId":        leg.OrderID,
-				"LegId":          leg.LegID,
-				"Method":         string(leg.Method),
-				"AmountMinor":    leg.AmountMinor,
-				"Status":         string(leg.Status),
-				"IdempotencyKey": leg.IdempotencyKey,
+		}
+		if cardAmt > 0 {
+			muts = append(muts, spanner.InsertMap("OrderPaymentLegs", map[string]any{
+				"OrderId":        orderID,
+				"LegId":          s.newID(),
+				"Method":         string(MethodRefund),
+				"AmountMinor":    cardAmt,
+				"Status":         string(PaymentStatusPending),
+				"IdempotencyKey": "refund-card:" + refundID,
 				"CreatedAt":      now,
-			}),
+			}))
+		}
+		if cashAmt > 0 {
+			muts = append(muts, spanner.InsertMap("OrderPaymentLegs", map[string]any{
+				"OrderId":        orderID,
+				"LegId":          s.newID(),
+				"Method":         string(MethodRefund),
+				"AmountMinor":    cashAmt,
+				"Status":         string(PaymentStatusPending),
+				"IdempotencyKey": "refund-cash:" + refundID,
+				"CreatedAt":      now,
+			}))
 		}
 		buf := &spannerTxnBuffer{}
 		if err := outbox.EmitJSON(ctx, buf, events.AggregateOrder, orderID, events.TopicMain, events.FinanceEvent{
@@ -297,21 +326,26 @@ func (s *Service) InitiateRefund(ctx context.Context, req RefundRequest) (Refund
 		RefundID: refundID, OrderID: orderID, Method: method,
 		AmountMinor: amount, Currency: orderRow.Currency, Status: RefundStatusPending,
 	}
+	return s.confirmAndFinalizeRefund(ctx, result, orderRow, cardAmt, cashAmt, reasonCode, actor)
+}
 
+func (s *Service) confirmAndFinalizeRefund(ctx context.Context, result RefundResult, orderRow Order, cardAmt, cashAmt int64, reasonCode, actor string) (RefundResult, error) {
 	// Synchronous confirmation — ledger never asserts money that did not move.
 	var providerRef string
 	var confirmErr error
-	switch method {
-	case RefundMethodCard:
+	if cardAmt > 0 {
 		if s.paymentRefunder == nil {
-			confirmErr = fmt.Errorf("card refund configured against order %s but no payment refunder wired", orderID)
-			break
+			confirmErr = fmt.Errorf("card refund configured against order %s but no payment refunder wired", result.OrderID)
+		} else {
+			callCtx, cancel := context.WithTimeout(ctx, 20*time.Second)
+			providerRef, confirmErr = s.paymentRefunder.RefundCardPayment(callCtx, result.OrderID, cardAmt, orderRow.Currency)
+			cancel()
 		}
-		callCtx, cancel := context.WithTimeout(ctx, 20*time.Second)
-		providerRef, confirmErr = s.paymentRefunder.RefundCardPayment(callCtx, orderID, amount, orderRow.Currency)
-		cancel()
-	case RefundMethodCash:
+	} else if cashAmt > 0 {
 		providerRef = "cash-ledger-reversal"
+	}
+	if cardAmt > 0 && cashAmt > 0 && confirmErr == nil && providerRef != "" {
+		providerRef += "+cash-ledger-reversal"
 	}
 
 	finalStatus := RefundStatusCaptured
@@ -322,8 +356,8 @@ func (s *Service) InitiateRefund(ctx context.Context, req RefundRequest) (Refund
 	} else {
 		outboxType = events.EventRefundSucceeded
 	}
-	if err := s.finalizeRefund(ctx, refundID, orderID, method, amount, finalStatus, providerRef, outboxType, orderRow, confirmErr); err != nil {
-		return RefundResult{}, fmt.Errorf("refund %s confirmed as %s but finalization failed: %w", refundID, finalStatus, err)
+	if err := s.finalizeRefund(ctx, result.RefundID, result.OrderID, result.Method, result.AmountMinor, finalStatus, providerRef, outboxType, orderRow, confirmErr); err != nil {
+		return RefundResult{}, fmt.Errorf("refund %s confirmed as %s but finalization failed: %w", result.RefundID, finalStatus, err)
 	}
 	result.Status = finalStatus
 	result.ProviderRef = providerRef
@@ -332,10 +366,10 @@ func (s *Service) InitiateRefund(ctx context.Context, req RefundRequest) (Refund
 	}
 
 	// Fiscal corrective chain (post-success, never blocks the confirmed refund).
-	cnID, correctiveID, cnErr := s.recordRefundCreditNote(ctx, refundID, orderRow, amount, reasonCode, actor)
+	cnID, correctiveID, cnErr := s.recordRefundCreditNote(ctx, result.RefundID, orderRow, result.AmountMinor, reasonCode, actor)
 	if cnErr != nil {
 		s.log.ErrorContext(ctx, "refund credit note / corrective chain failed",
-			"refund_id", refundID, "order_id", orderID, "err", cnErr)
+			"refund_id", result.RefundID, "order_id", result.OrderID, "err", cnErr)
 	} else {
 		result.CreditNoteID = cnID
 		result.CorrectiveEhfID = correctiveID
@@ -357,23 +391,30 @@ func (s *Service) finalizeRefund(ctx context.Context, refundID, orderID, method 
 		if status == RefundStatusFailed {
 			legStatus = string(PaymentStatusFailed)
 		}
-		legKeyPrefix := "refund-card:"
-		if method == RefundMethodCash {
-			legKeyPrefix = "refund-cash:"
-		}
-		// Locate the PENDING reversal leg by its deterministic idempotency key.
+		// Locate all PENDING reversal legs for this refund (single or MIXED split).
+		legKeys := []string{"refund-card:" + refundID, "refund-cash:" + refundID}
 		legRows := txn.Query(ctx, spanner.Statement{
-			SQL:    `SELECT LegId FROM OrderPaymentLegs WHERE OrderId = @oid AND IdempotencyKey = @key`,
-			Params: map[string]any{"oid": orderID, "key": legKeyPrefix + refundID},
+			SQL:    `SELECT LegId FROM OrderPaymentLegs WHERE OrderId = @oid AND IdempotencyKey IN UNNEST(@keys)`,
+			Params: map[string]any{"oid": orderID, "keys": legKeys},
 		})
 		defer legRows.Stop()
-		r, err := legRows.Next()
-		if err != nil {
-			return fmt.Errorf("pending refund leg missing: %w", err)
+		var legIDs []string
+		for {
+			r, err := legRows.Next()
+			if err == iterator.Done {
+				break
+			}
+			if err != nil {
+				return fmt.Errorf("query pending refund legs: %w", err)
+			}
+			var lid string
+			if err := r.Columns(&lid); err != nil {
+				return err
+			}
+			legIDs = append(legIDs, lid)
 		}
-		var legID string
-		if err := r.Columns(&legID); err != nil {
-			return err
+		if len(legIDs) == 0 {
+			return fmt.Errorf("pending refund leg missing for refund %s", refundID)
 		}
 		muts := []*spanner.Mutation{
 			spanner.UpdateMap("Refunds", map[string]any{
@@ -382,13 +423,15 @@ func (s *Service) finalizeRefund(ctx context.Context, refundID, orderID, method 
 				"ProviderRef": updates["ProviderRef"],
 				"UpdatedAt":   updates["UpdatedAt"],
 			}),
-			spanner.UpdateMap("OrderPaymentLegs", map[string]any{
+		}
+		for _, lid := range legIDs {
+			muts = append(muts, spanner.UpdateMap("OrderPaymentLegs", map[string]any{
 				"OrderId":     orderID,
-				"LegId":       legID,
+				"LegId":       lid,
 				"Status":      legStatus,
 				"ProviderRef": spanner.NullString{StringVal: providerRef, Valid: providerRef != ""},
 				"CapturedAt":  spanner.NullTime{Time: now, Valid: status == RefundStatusCaptured},
-			}),
+			}))
 		}
 		evt := events.FinanceEvent{
 			BaseEvent:         events.BaseEvent{Type: outboxType, Timestamp: now.Format(time.RFC3339Nano)},
@@ -529,24 +572,55 @@ func (s *Service) recordRefundCreditNote(ctx context.Context, refundID string, o
 	return creditNoteID, correctiveID, err
 }
 
-func (s *Service) refundByIdempotencyKey(ctx context.Context, key string) (RefundResult, bool, error) {
+func (s *Service) refundByIdempotencyKey(ctx context.Context, key string) (res RefundResult, cardAmt, cashAmt int64, found bool, err error) {
 	iter := s.spannerClient.Single().Query(ctx, spanner.Statement{
 		SQL:    `SELECT RefundId, OrderId, Status, AmountMinor, Currency, ProviderRef FROM Refunds WHERE IdempotencyKey = @key`,
 		Params: map[string]any{"key": key},
 	})
 	defer iter.Stop()
-	row, err := iter.Next()
-	if err == iterator.Done {
-		return RefundResult{}, false, nil
+	row, qerr := iter.Next()
+	if qerr == iterator.Done {
+		return RefundResult{}, 0, 0, false, nil
 	}
-	if err != nil {
-		return RefundResult{}, false, err
+	if qerr != nil {
+		return RefundResult{}, 0, 0, false, qerr
 	}
-	var res RefundResult
 	var ref spanner.NullString
 	if err := row.Columns(&res.RefundID, &res.OrderID, &res.Status, &res.AmountMinor, &res.Currency, &ref); err != nil {
-		return RefundResult{}, false, err
+		return RefundResult{}, 0, 0, false, err
 	}
 	res.ProviderRef = ref.StringVal
-	return res, true, nil
+	legIter := s.spannerClient.Single().Query(ctx, spanner.Statement{
+		SQL:    `SELECT AmountMinor, IdempotencyKey FROM OrderPaymentLegs WHERE OrderId = @oid AND IdempotencyKey IN UNNEST(@keys)`,
+		Params: map[string]any{"oid": res.OrderID, "keys": []string{"refund-card:" + res.RefundID, "refund-cash:" + res.RefundID}},
+	})
+	defer legIter.Stop()
+	for {
+		lr, lerr := legIter.Next()
+		if lerr == iterator.Done {
+			break
+		}
+		if lerr != nil {
+			return RefundResult{}, 0, 0, false, lerr
+		}
+		var amt int64
+		var ik string
+		if err := lr.Columns(&amt, &ik); err != nil {
+			return RefundResult{}, 0, 0, false, err
+		}
+		if strings.HasPrefix(ik, "refund-card:") {
+			cardAmt += amt
+		} else if strings.HasPrefix(ik, "refund-cash:") {
+			cashAmt += amt
+		}
+	}
+	switch {
+	case cardAmt > 0 && cashAmt > 0:
+		res.Method = RefundMethodMixed
+	case cardAmt > 0:
+		res.Method = RefundMethodCard
+	case cashAmt > 0:
+		res.Method = RefundMethodCash
+	}
+	return res, cardAmt, cashAmt, true, nil
 }

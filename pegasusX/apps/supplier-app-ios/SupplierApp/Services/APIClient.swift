@@ -89,10 +89,11 @@ final class APIClient: Sendable {
     func post<B: Encodable, T: Decodable>(
         _ path: String,
         body: B,
+        query: [String: String] = [:],
         idempotencyKey: String? = nil,
         authenticated: Bool = true
     ) async throws -> T {
-        var request = URLRequest(url: baseURL.appendingPathComponent(path))
+        var request = URLRequest(url: try requestURL(path: path, query: query))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         stampIdempotency(idempotencyKey, on: &request)
@@ -331,12 +332,36 @@ final class APIClient: Sendable {
             throw APIError.unauthorized
         }
         guard (200...299).contains(http.statusCode) else {
+            if http.statusCode == 409,
+               let conflict = try? decoder.decode(JoinRequestConflictPayload.self, from: data),
+               conflict.error == "join_request_pending" || conflict.requestId != nil {
+                throw APIError.conflictPayload(conflict)
+            }
             if let err = try? decoder.decode(APIErrorBody.self, from: data) {
                 throw APIError.server(err.error)
             }
             throw APIError.httpError(http.statusCode)
         }
         return try decoder.decode(T.self, from: data)
+    }
+
+    func uploadBinary(
+        to url: URL,
+        method: String,
+        headers: [String: String],
+        body: Data
+    ) async throws -> HTTPURLResponse {
+        var request = URLRequest(url: url)
+        request.httpMethod = method
+        for (key, value) in headers {
+            request.setValue(value, forHTTPHeaderField: key)
+        }
+        request.httpBody = body
+        let (_, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw APIError.invalidResponse
+        }
+        return http
     }
 
     private func executeVoid(_ request: URLRequest) async throws {
@@ -531,6 +556,7 @@ enum APIError: LocalizedError {
     case httpError(Int)
     case unauthorized
     case server(String)
+    case conflictPayload(JoinRequestConflictPayload)
 
     var errorDescription: String? {
         switch self {
@@ -539,6 +565,9 @@ enum APIError: LocalizedError {
         case .httpError(let code): "HTTP \(code)"
         case .unauthorized: "Session expired — sign in again"
         case .server(let message): message.replacingOccurrences(of: "_", with: " ")
+        case .conflictPayload(let payload):
+            payload.legalName.map { "Join request submitted for \($0)" }
+                ?? payload.error.replacingOccurrences(of: "_", with: " ")
         }
     }
 }

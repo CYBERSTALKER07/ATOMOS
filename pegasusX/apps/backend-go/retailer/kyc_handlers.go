@@ -1,12 +1,28 @@
 package retailer
 
 import (
+	"context"
 	"encoding/json"
-	"github.com/go-chi/chi/v5"
 	"net/http"
+	"strings"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 )
+
+type kycDocumentRepository interface {
+	InsertKycDocument(ctx context.Context, doc KycDocument) error
+	ListKycDocumentsByRetailer(ctx context.Context, retailerID string) ([]KycDocument, error)
+}
+
+type kycReviewRepository interface {
+	UpdateKycDocumentStatus(ctx context.Context, docID string, status string, reviewedBy string, rejectionReason string) error
+}
+
+type kycDocumentLookupRepository interface {
+	GetKycDocument(ctx context.Context, docID string) (KycDocument, bool, error)
+}
 
 func (s *Service) HandleSubmitKyc(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -42,10 +58,8 @@ func (s *Service) HandleSubmitKyc(w http.ResponseWriter, r *http.Request) {
 		DocumentURL:  req.DocumentURL,
 	}
 
-	// Assuming the repo is a *SpannerRepository; if it's an interface, we should cast or extend it.
-	// We'll type assert for simplicity in this slice.
-	if sr, ok := s.repo.(*SpannerRepository); ok {
-		if err := sr.InsertKycDocument(r.Context(), doc); err != nil {
+	if kr, ok := s.repo.(kycDocumentRepository); ok {
+		if err := kr.InsertKycDocument(r.Context(), doc); err != nil {
 			s.log.ErrorContext(r.Context(), "failed to insert KYC doc", "err", err)
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal_error"})
 			return
@@ -70,8 +84,8 @@ func (s *Service) HandleListKyc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if sr, ok := s.repo.(*SpannerRepository); ok {
-		docs, err := sr.ListKycDocumentsByRetailer(r.Context(), retailerID)
+	if kr, ok := s.repo.(kycDocumentRepository); ok {
+		docs, err := kr.ListKycDocumentsByRetailer(r.Context(), retailerID)
 		if err != nil {
 			s.log.ErrorContext(r.Context(), "failed to list KYC docs", "err", err)
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal_error"})
@@ -89,13 +103,22 @@ func (s *Service) HandleReviewKyc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	claims, ok := auth.FromContext(r.Context())
+	if !ok || strings.TrimSpace(claims.Subject) == "" {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+		return
+	}
+	if claims.Role != auth.RoleAdmin && claims.Role != auth.RolePlatformAdmin {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
+		return
+	}
+	adminID := claims.Subject
+
 	docID := chi.URLParam(r, "documentID")
 	if docID == "" {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "document_id_required"})
 		return
 	}
-
-	adminID := "admin_id" // Typically from context
 
 	body, ok := readLimitedBody(w, r, 64*1024)
 	if !ok {
@@ -111,14 +134,53 @@ func (s *Service) HandleReviewKyc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if sr, ok := s.repo.(*SpannerRepository); ok {
-		if err := sr.UpdateKycDocumentStatus(r.Context(), docID, req.Status, adminID, req.RejectionReason); err != nil {
-			s.log.ErrorContext(r.Context(), "failed to update KYC doc", "err", err)
+	req.Status = strings.ToUpper(strings.TrimSpace(req.Status))
+	if req.Status != "APPROVED" && req.Status != "REJECTED" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_status"})
+		return
+	}
+
+	sr, ok := s.repo.(kycReviewRepository)
+	if !ok {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "repo_not_supported"})
+		return
+	}
+
+	if claims.Role == auth.RoleAdmin {
+		supplierID := strings.TrimSpace(claims.SupplierID)
+		if supplierID == "" {
+			writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
+			return
+		}
+		var retailerID string
+		if lkp, ok := s.repo.(kycDocumentLookupRepository); ok {
+			doc, found, err := lkp.GetKycDocument(r.Context(), docID)
+			if err != nil {
+				s.log.ErrorContext(r.Context(), "failed to look up KYC doc", "err", err)
+				writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal_error"})
+				return
+			}
+			if !found {
+				writeJSON(w, http.StatusNotFound, map[string]string{"error": "document_not_found"})
+				return
+			}
+			retailerID = doc.RetailerID
+		}
+		authorized, err := s.HasSupplierRetailerLink(r.Context(), supplierID, retailerID)
+		if err != nil {
+			s.log.ErrorContext(r.Context(), "failed to verify supplier-retailer authorization", "err", err)
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal_error"})
 			return
 		}
-	} else {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "repo_not_supported"})
+		if !authorized {
+			writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
+			return
+		}
+	}
+
+	if err := sr.UpdateKycDocumentStatus(r.Context(), docID, req.Status, adminID, req.RejectionReason); err != nil {
+		s.log.ErrorContext(r.Context(), "failed to update KYC doc", "err", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal_error"})
 		return
 	}
 

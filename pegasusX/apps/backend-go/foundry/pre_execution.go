@@ -155,9 +155,22 @@ func (e *Engine) registerDefaultPreExecutionGuards() {
 			tin := stringParam(req.Parameters, "legal_entity_tin")
 			calDate := stringParam(req.Parameters, "calendar_date")
 			if tin != "" && calDate != "" {
-				e.mu.RLock()
-				existing := e.amlDailyExposure[amlExposureKey(tin, req.SupplierID, calDate)]
-				e.mu.RUnlock()
+				var existing int64
+				if repo := e.currentEdgeGuardRepo(); repo != nil {
+					var err error
+					existing, err = repo.GetAMLExposureMinor(ctx, tin, req.SupplierID, calDate)
+					if err != nil {
+						return PreconditionResult{
+							RuleName: "Guard2_TINAntiSmurfingAggregation",
+							Passed:   false,
+							Reason:   fmt.Sprintf("unable to verify accumulated daily cash exposure in Spanner: %v", err),
+						}
+					}
+				} else {
+					e.mu.RLock()
+					existing = e.amlDailyExposure[amlExposureKey(tin, req.SupplierID, calDate)]
+					e.mu.RUnlock()
+				}
 				if ceiling > 0 && existing+cashMinor > ceiling {
 					return PreconditionResult{
 						RuleName: "Guard2_TINAntiSmurfingAggregation",

@@ -1,0 +1,22 @@
+<resources>
+    <string name="app_name">Pegasus Driver</string>
+    <string name="notification_channel_telemetry">Telemetriya</string>
+    <string name="notification_telemetry_title">Pegasus Logistics: Faol yetkazish</string>
+    <string name="notification_telemetry_text">Faol yetkazishlar uchun joylashuv kuzatilmoqda</string>
+    <string name="scanner_prompt">Kamerani yetkazish QR kodiga yo\'naltiring</string>
+    <string name="manifest_empty">Bugun tayinlangan yetkazishlar yo\'q</string>
+    <string name="action_scan">QR skanerlash</string>
+    <string name="action_start_transit">Yo\'lga chiqish</string>
+    <string name="action_end_transit">Safarni tugatish</string>
+    <string name="fiscal_retry_queued_title">SOLIQ CHEKI NAVBATDA</string>
+    <string name="fiscal_retry_queued_message">To\'lov va PoD saqlandi. Soliq fiskal cheki avtomatik qayta urinishga qo\'yildi va do\'kon egasiga SMS/Telegram orqali QR yuboriladi. Keyingi bekatga o\'tishingiz mumkin.</string>
+    <string name="fiscal_continue_next_stop">Keyingi bekatga o\'tish</string>
+    <string name="fiscal_retry_soliq_now">Soliqni hozir qayta urinish</string>
+    <string name="sync_queue_escalate_support">Qo\'llab-quvvatlashga yuborish</string>
+    <string name="sync_queue_retry_now">Hozir qayta urinish</string>
+    <string name="settings_language_title">Til / Язык / Language</string>
+    <string name="settings_language_subtitle">Ilova tilini tanlang</string>
+    <string name="language_uz">O\'zbekcha</string>
+    <string name="language_ru">Русский</string>
+    <string name="language_en">English</string>
+</resources>

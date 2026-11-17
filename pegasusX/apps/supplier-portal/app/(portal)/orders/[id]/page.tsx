@@ -8,6 +8,7 @@ import type { SupplierOrder, WarehouseOrderDetail } from '@pegasusx/types';
 import { ApiError, moneyCurrency, supplierPaymentBypassKey } from '@pegasusx/api-core';
 import Icon from '@/components/Icon';
 import { OrderTimelinePanel } from '@/components/OrderTimelinePanel';
+import { ObjectHistoryPanel } from '@/components/audit/ObjectHistoryPanel';
 import { PageChrome } from '@/components/PageChrome';
 import { OrderStateChip } from '@/components/orders';
 import { OrderLineItems } from '@/components/orders/OrderLineItems';
@@ -46,6 +47,7 @@ export default function SupplierOrderDetailPage() {
   const [acting, setActing] = useState(false);
   const [reason, setReason] = useState('');
   const [proposedDate, setProposedDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [historyTab, setHistoryTab] = useState<'status' | 'audit'>('status');
 
   function isoDeliveryDate(dateInput: string): string {
     return `${dateInput.slice(0, 10)}T12:00:00+05:00`;
@@ -236,8 +238,48 @@ export default function SupplierOrderDetailPage() {
         </div>
 
         <div className="md-card p-5">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-[var(--color-md-outline)] mb-3">{t("supplier_portal.orders._id_.text.status_history")}</h2>
-          <OrderTimelinePanel orderId={orderId} />
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-[var(--color-md-outline)]">
+              {historyTab === 'status'
+                ? t("supplier_portal.orders._id_.text.status_history")
+                : t("supplier_portal.audit.panel_title")}
+            </h2>
+            <div className="inline-flex rounded-lg border border-[var(--desk-border)] p-0.5 text-xs">
+              <button
+                type="button"
+                onClick={() => setHistoryTab('status')}
+                className={`rounded-md px-2.5 py-1 font-medium transition ${
+                  historyTab === 'status'
+                    ? 'bg-[var(--desk-accent)] text-[var(--desk-accent-on)]'
+                    : 'text-[var(--desk-text-secondary)]'
+                }`}
+              >
+                {t("supplier_portal.audit.tab_status_history")}
+              </button>
+              <button
+                type="button"
+                onClick={() => setHistoryTab('audit')}
+                className={`rounded-md px-2.5 py-1 font-medium transition ${
+                  historyTab === 'audit'
+                    ? 'bg-[var(--desk-accent)] text-[var(--desk-accent-on)]'
+                    : 'text-[var(--desk-text-secondary)]'
+                }`}
+              >
+                {t("supplier_portal.audit.tab_audit_history")}
+              </button>
+            </div>
+          </div>
+          {historyTab === 'status' ? (
+            <OrderTimelinePanel orderId={orderId} />
+          ) : (
+            <ObjectHistoryPanel
+              objectType="order"
+              fallbackObjectTypes={['orders']}
+              objectId={orderId}
+              compact
+              autoVerifyChain
+            />
+          )}
         </div>
 
         <OrderLineItems detail={detail} />

@@ -26,6 +26,7 @@ struct RootView: View {
     @Environment(TokenStore.self) private var tokenStore
     @State private var driverSocketState = DriverSocketState.shared
     @State private var rootVM = RootViewModel()
+    @State private var localeManager = DriverLocaleManager.shared
 
     var body: some View {
         VStack(spacing: 0) {
@@ -55,6 +56,7 @@ struct RootView: View {
             }
         }
         .buttonStyle(.pressable)
+        .environment(\.locale, localeManager.locale)
         .animation(Anim.snappy, value: tokenStore.isAuthenticated)
         .task(id: tokenStore.isAuthenticated) {
             await rootVM.loadClientPolicy()

@@ -24,6 +24,7 @@ export {
   type PendingCheckout,
 } from "./pending-checkout";
 export {
+  SYNCING_LEASE_MS,
   clearParkedPosCart,
   countActivePendingPosSales,
   countPendingForSession,

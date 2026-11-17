@@ -13,12 +13,12 @@ import (
 
 // Engine evaluates playbooks and executes runs.
 type Engine struct {
-	repo        Repository
-	executor    *ActionExecutor
-	segmentSvc  *segment.Service
-	cfg         Config
-	log         *slog.Logger
-	now         func() time.Time
+	repo       Repository
+	executor   *ActionExecutor
+	segmentSvc *segment.Service
+	cfg        Config
+	log        *slog.Logger
+	now        func() time.Time
 }
 
 func NewEngine(repo Repository, executor *ActionExecutor, segmentSvc *segment.Service, cfg Config, log *slog.Logger) *Engine {
@@ -37,6 +37,14 @@ func NewEngine(repo Repository, executor *ActionExecutor, segmentSvc *segment.Se
 
 func (e *Engine) Enabled() bool {
 	return e != nil && e.cfg.Enabled
+}
+
+// ActionExecutor returns the engine's domain ActionExecutor for governed proposal execution.
+func (e *Engine) ActionExecutor() *ActionExecutor {
+	if e == nil {
+		return nil
+	}
+	return e.executor
 }
 
 // Evaluate matches open exceptions to playbooks and creates runs.
@@ -133,13 +141,22 @@ func allActionsAutoSafe(actions []ActionSpec) bool {
 // ApproveRun executes a suggested run. Intermediate APPROVED is not persisted
 // alone (avoids double UpdateRun + orphan APPROVED without action side-effects);
 // ExecuteRun writes the single terminal status (EXECUTED|FAILED) + outbox.
-func (e *Engine) ApproveRun(ctx context.Context, runID, actor string) error {
+func (e *Engine) ApproveRun(ctx context.Context, supplierID, runID, actor string) error {
 	if !e.Enabled() {
 		return fmt.Errorf("playbooks_disabled")
 	}
+	if supplierID == "" {
+		return ErrForbidden
+	}
 	run, err := e.repo.GetRun(ctx, runID)
 	if err != nil {
-		return err
+		return ErrRunNotFound
+	}
+	if run.RunID == "" {
+		return ErrRunNotFound
+	}
+	if run.SupplierID == "" || run.SupplierID != supplierID {
+		return ErrForbidden
 	}
 	if run.Status != RunStatusSuggested {
 		return fmt.Errorf("run_not_suggested")
@@ -148,13 +165,22 @@ func (e *Engine) ApproveRun(ctx context.Context, runID, actor string) error {
 }
 
 // SkipRun marks a run skipped.
-func (e *Engine) SkipRun(ctx context.Context, runID, actor string) error {
+func (e *Engine) SkipRun(ctx context.Context, supplierID, runID, actor string) error {
 	if !e.Enabled() {
 		return fmt.Errorf("playbooks_disabled")
 	}
+	if supplierID == "" {
+		return ErrForbidden
+	}
 	run, err := e.repo.GetRun(ctx, runID)
 	if err != nil {
-		return err
+		return ErrRunNotFound
+	}
+	if run.RunID == "" {
+		return ErrRunNotFound
+	}
+	if run.SupplierID == "" || run.SupplierID != supplierID {
+		return ErrForbidden
 	}
 	run.Status = RunStatusSkipped
 	run.ExecutedBy = actor

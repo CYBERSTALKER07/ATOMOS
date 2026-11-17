@@ -81,7 +81,7 @@ func (s *Service) AdjustReserveInTxn(ctx context.Context, txn *spanner.ReadWrite
 	if s == nil || s.repo == nil {
 		return nil
 	}
-	if mut, ok := s.repo.(interface{
+	if mut, ok := s.repo.(interface {
 		AdjustReserveInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, orderID string, newAmountMinor int64) error
 	}); ok && txn != nil {
 		return mut.AdjustReserveInTxn(ctx, txn, orderID, newAmountMinor)

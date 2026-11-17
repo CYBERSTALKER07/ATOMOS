@@ -20,11 +20,13 @@ var OrderStateGraph = map[Status][]Status{
 	StatusScheduled: {
 		StatusAutoAccepted,
 		StatusPending,
+		StatusDelayed,
 		StatusCancelled,
 		StatusCancelRequested,
 	},
 	StatusAutoAccepted: {
 		StatusPending,
+		StatusDelayed,
 		StatusCancelled,
 		StatusCancelRequested,
 	},
@@ -37,6 +39,7 @@ var OrderStateGraph = map[Status][]Status{
 		StatusLoaded,
 		StatusDelayed,
 		StatusCancelled,
+		StatusCancelRequested,
 	},
 	StatusDelayed: {
 		StatusPending,
@@ -73,9 +76,14 @@ var OrderStateGraph = map[Status][]Status{
 		StatusFiscalizing,
 		StatusPendingCashCollection,
 		StatusDeliveredOnCredit,
+		StatusCancelRequested,
+		StatusShopClosedPending,
 	},
 	StatusPendingCashCollection: {
 		StatusFiscalizing,
+		StatusAwaitingPayment,
+		StatusDeliveredOnCredit,
+		StatusCancelRequested,
 	},
 	StatusDeliveredOnCredit: {
 		StatusFiscalizing,
@@ -93,12 +101,21 @@ var OrderStateGraph = map[Status][]Status{
 		StatusLoaded,
 		StatusInTransit,
 		StatusArrived,
+		StatusScheduled,
+		StatusAutoAccepted,
+		StatusShopClosedPending,
+		StatusPending,
 	},
 	StatusCancelled: {
 		StatusReconciliationRequired,
 	},
 	StatusReconciliationRequired: {
 		StatusCompleted,
+		StatusCancelled,
+	},
+	StatusMigrationOpen: {
+		StatusPending,
+		StatusScheduled,
 		StatusCancelled,
 	},
 	StatusCompleted: {}, // Terminal: zero outbound transitions

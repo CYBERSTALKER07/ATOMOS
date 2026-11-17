@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rsa"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
@@ -12,15 +13,22 @@ import (
 // KeyFunc returns the IdP public key for an issuer (tests inject a static key).
 type KeyFunc func(ctx context.Context, issuer, kid string) (*rsa.PublicKey, error)
 
+// NonceConsumer records single-use nonces (e.g. Redis SET NX with TTL) returning true if newly recorded.
+type NonceConsumer func(ctx context.Context, key string, ttl time.Duration) (accepted bool, err error)
+
 // Service attaches IdP config and exchanges an id_token for the cell HS256 JWT.
 type Service struct {
 	Store        Store
 	Keys         KeyFunc
+	ConsumeNonce NonceConsumer
 	JWTSecret    string
 	JWTIssuer    string
 	JWTTTL       time.Duration
 	CookieSecure bool
 	Now          func() time.Time
+
+	nonceMu    sync.Mutex
+	usedNonces map[string]time.Time
 }
 
 func (s *Service) now() time.Time {
@@ -76,7 +84,10 @@ func (s *Service) Discovery(ctx context.Context, supplierID, nonce, state, redir
 	if !c.Enabled {
 		return nil, ErrDisabled
 	}
-	if redir := redirectURI; redir != "" && c.RedirectURI != "" && redir != c.RedirectURI {
+	if strings.TrimSpace(c.RedirectURI) == "" {
+		return nil, ErrRedirectMismatch
+	}
+	if redir := strings.TrimSpace(redirectURI); redir != "" && redir != c.RedirectURI {
 		return nil, ErrRedirectMismatch
 	}
 	return map[string]any{
@@ -111,6 +122,11 @@ func (s *Service) Exchange(ctx context.Context, supplierID, idToken, nonce strin
 	sub, email, err := VerifyIDToken(idToken, c, key, s.now(), nonce)
 	if err != nil {
 		return "", "", err
+	}
+	if strings.TrimSpace(nonce) != "" {
+		if err := s.consumeSingleUseNonce(ctx, c.SupplierID+":"+strings.TrimSpace(nonce)); err != nil {
+			return "", "", err
+		}
 	}
 	
 	role := auth.RoleWarehouse // Default non-admin role
@@ -147,6 +163,35 @@ func (s *Service) Exchange(ctx context.Context, supplierID, idToken, nonce strin
 		return token, "", err
 	}
 	return token, refresh, nil
+}
+
+func (s *Service) consumeSingleUseNonce(ctx context.Context, key string) error {
+	const ttl = 15 * time.Minute
+	if s.ConsumeNonce != nil {
+		accepted, err := s.ConsumeNonce(ctx, key, ttl)
+		if err != nil || !accepted {
+			return ErrNonceMismatch
+		}
+		return nil
+	}
+	now := s.now()
+	s.nonceMu.Lock()
+	defer s.nonceMu.Unlock()
+	if s.usedNonces == nil {
+		s.usedNonces = make(map[string]time.Time)
+	}
+	if len(s.usedNonces) > 10000 {
+		for k, exp := range s.usedNonces {
+			if now.After(exp) {
+				delete(s.usedNonces, k)
+			}
+		}
+	}
+	if exp, exists := s.usedNonces[key]; exists && now.Before(exp) {
+		return ErrNonceMismatch
+	}
+	s.usedNonces[key] = now.Add(ttl)
+	return nil
 }
 
 func firstNonEmpty(a, b string) string {

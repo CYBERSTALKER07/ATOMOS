@@ -64,6 +64,10 @@ func (s *Service) HandleExchange(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
+	if strings.TrimSpace(req.Nonce) == "" {
+		writeErr(w, ErrNonceMismatch)
+		return
+	}
 	token, refresh, err := s.Exchange(r.Context(), req.SupplierID, req.IDToken, req.Nonce)
 	if err != nil {
 		writeErr(w, err)

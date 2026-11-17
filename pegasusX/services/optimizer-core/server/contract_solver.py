@@ -59,6 +59,52 @@ def _parse_hh_mm(value: str) -> int | None:
     return hours * 60 + minutes
 
 
+def _parse_time_val(val: Any) -> int | None:
+    if val is None:
+        return None
+    if isinstance(val, (int, float)):
+        return int(val) if val >= 0 else None
+    s = str(val).strip()
+    if not s:
+        return None
+    if s.isdigit():
+        return int(s)
+    return _parse_hh_mm(s)
+
+
+def _is_cold_chain_required(stop: dict[str, Any]) -> bool:
+    if bool(stop.get("requires_cold_chain")):
+        return True
+    handling = str(stop.get("handling_class") or "").upper()
+    if handling in ("COLD_CHAIN", "CHILLED", "FROZEN", "REFRIGERATED"):
+        return True
+    tz = str(stop.get("temp_zone") or stop.get("temperature_band") or "").upper()
+    if tz and tz not in ("AMBIENT", "DRY", "NONE", "STANDARD"):
+        return True
+    return False
+
+
+def _vehicle_supports_cold_chain(v: dict[str, Any], stop: dict[str, Any]) -> bool:
+    stop_tz = str(stop.get("temp_zone") or stop.get("temperature_band") or "").upper()
+    v_tzs_raw = v.get("temp_zones")
+    v_tzs: set[str] = set()
+    if v_tzs_raw:
+        if isinstance(v_tzs_raw, str):
+            v_tzs = {z.strip().upper() for z in v_tzs_raw.split(",") if z.strip()}
+        elif isinstance(v_tzs_raw, (list, tuple, set)):
+            v_tzs = {str(z).strip().upper() for z in v_tzs_raw if str(z).strip()}
+
+    if stop_tz and stop_tz not in ("AMBIENT", "DRY", "NONE", "STANDARD"):
+        if v_tzs:
+            return stop_tz in v_tzs
+
+    if bool(v.get("cold_chain_capable")):
+        return True
+    if v_tzs and any(z in ("COLD", "CHILLED", "FROZEN", "REFRIGERATED", "COLD_CHAIN") for z in v_tzs):
+        return True
+    return False
+
+
 def _resolve_tunables(raw: dict[str, Any] | None) -> dict[str, float | int]:
     out: dict[str, float | int] = {
         "tetris_buffer": DEFAULT_TETRIS_BUFFER,
@@ -270,23 +316,7 @@ def solve_contract(req: dict[str, Any]) -> dict[str, Any]:
         "StopCount",
     )
 
-    # Per-vehicle travel time in minutes (must not reuse the meters cost callback).
-    time_callback_indices: list[int] = []
-    for vehicle_index, speed in enumerate(vehicle_speeds):
-        def make_time_cb(veh_idx: int = vehicle_index, spd: float = speed):
-            def time_callback(from_index: int, to_index: int) -> int:
-                from_node = manager.IndexToNode(from_index)
-                to_node = manager.IndexToNode(to_index)
-                travel = _travel_minutes(distance_matrix[from_node][to_node], spd)
-                # Service time is paid when leaving a customer node.
-                if from_node >= num_depots:
-                    travel += int(stops[from_node - num_depots]["service_minutes"])
-                return travel
-
-            return time_callback
-
-        time_callback_indices.append(routing.RegisterTransitCallback(make_time_cb()))
-
+    # Only parse and register time-window callbacks when at least one stop carries a window.
     time_windows: list[tuple[int, int] | None] = [None] * num_depots
     has_time_windows = False
     for stop in stops:
@@ -298,11 +328,48 @@ def solve_contract(req: dict[str, Any]) -> dict[str, Any]:
         else:
             time_windows.append(None)
 
-    if has_time_windows:
+    has_vehicle_time_limits = any(
+        bool(v.get("max_route_minutes")) or bool(v.get("shift_start")) or bool(v.get("shift_end"))
+        for v in vehicles_in
+    )
+
+    if has_time_windows or has_vehicle_time_limits:
+        # Per-vehicle travel time in minutes, deduplicated across vehicles sharing the same speed.
+        speed_cb_cache: dict[float, int] = {}
+        time_callback_indices: list[int] = []
+        for speed in vehicle_speeds:
+            speed_key = round(speed, 3)
+            cb_idx = speed_cb_cache.get(speed_key)
+            if cb_idx is None:
+                def make_time_cb(spd: float = speed):
+                    def time_callback(from_index: int, to_index: int) -> int:
+                        from_node = manager.IndexToNode(from_index)
+                        to_node = manager.IndexToNode(to_index)
+                        travel = _travel_minutes(distance_matrix[from_node][to_node], spd)
+                        # Service time is paid when leaving a customer node.
+                        if from_node >= num_depots:
+                            travel += int(stops[from_node - num_depots]["service_minutes"])
+                        return travel
+
+                    return time_callback
+
+                cb_idx = routing.RegisterTransitCallback(make_time_cb())
+                speed_cb_cache[speed_key] = cb_idx
+            time_callback_indices.append(cb_idx)
+
         max_horizon = 24 * 60
         for tw in time_windows:
             if tw is not None:
                 max_horizon = max(max_horizon, tw[1] + DEFAULT_SERVICE_MINUTES)
+        for v in vehicles_in:
+            s_end = _parse_time_val(v.get("shift_end"))
+            if s_end is not None and s_end > max_horizon:
+                max_horizon = s_end
+            s_start = _parse_time_val(v.get("shift_start"))
+            m_dur = _parse_time_val(v.get("max_route_minutes"))
+            if s_start is not None and m_dur is not None and (s_start + m_dur) > max_horizon:
+                max_horizon = s_start + m_dur
+
         routing.AddDimensionWithVehicleTransits(
             time_callback_indices, 30, max_horizon, False, "Time"
         )
@@ -321,20 +388,50 @@ def solve_contract(req: dict[str, Any]) -> dict[str, Any]:
             if soft_upper < hard_upper:
                 time_dim.SetCumulVarSoftUpperBound(manager_index, soft_upper, 50)
 
+        # Enforce per-vehicle shift and route duration bounds
+        for v_idx, v in enumerate(vehicles_in):
+            start_cumul = time_dim.CumulVar(routing.Start(v_idx))
+            end_cumul = time_dim.CumulVar(routing.End(v_idx))
+
+            s_start = _parse_time_val(v.get("shift_start"))
+            s_end = _parse_time_val(v.get("shift_end"))
+            max_dur = _parse_time_val(v.get("max_route_minutes"))
+
+            if s_start is not None and s_start > 0:
+                start_cumul.SetMin(s_start)
+            if s_end is not None and s_end > 0:
+                end_cumul.SetMax(s_end)
+            if max_dur is not None and max_dur > 0:
+                routing.solver().Add(end_cumul - start_cumul <= max_dur)
+                if s_start is not None and s_start > 0:
+                    effective_end = s_start + max_dur
+                    if s_end is not None and s_end > 0:
+                        effective_end = min(s_end, effective_end)
+                    end_cumul.SetMax(effective_end)
+                elif s_end is not None and s_end > 0:
+                    end_cumul.SetMax(s_end)
+                else:
+                    end_cumul.SetMax(max_dur)
+
     # Drop infeasible stops individually instead of collapsing the whole model.
-    # Penalty high enough that assignment is preferred when feasible.
-    drop_penalty = 100_000
+    # Keep disjunction penalty dominant over vehicle fixed cost and regional arcs so
+    # reachable stops are never dropped merely to reduce travel distance.
+    base_drop_penalty = max(10_000_000, int(tunables["vehicle_fixed_cost_m"]) * 100)
     for node_index in range(num_depots, size):
         mgr_idx = manager.NodeToIndex(node_index)
-        routing.AddDisjunction([mgr_idx], drop_penalty)
-
         stop = stops[node_index - num_depots]
-        req_hazmat = bool(stop.get("is_hazardous")) or (stop.get("handling_class") == "HAZMAT")
+        prio_bonus = max(0, min(100, int(stop.get("priority") or 0))) * 100_000
+        routing.AddDisjunction([mgr_idx], base_drop_penalty + prio_bonus)
 
-        if req_hazmat:
+        req_hazmat = bool(stop.get("is_hazardous")) or (stop.get("handling_class") == "HAZMAT")
+        req_cold = _is_cold_chain_required(stop)
+
+        if req_hazmat or req_cold:
             allowed_vehicles: list[int] = []
             for v_idx, v in enumerate(vehicles_in):
                 if req_hazmat and not bool(v.get("hazmat_certified")):
+                    continue
+                if req_cold and not _vehicle_supports_cold_chain(v, stop):
                     continue
                 allowed_vehicles.append(v_idx)
             # Allowed values include -1 so node can be dropped via disjunction if no feasible vehicle

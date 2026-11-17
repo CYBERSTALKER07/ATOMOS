@@ -11,6 +11,9 @@
  */
 
 locals {
+  effective_worm_audit_bucket_name     = trimspace(var.worm_audit_bucket_name) != "" ? trimspace(var.worm_audit_bucket_name) : "${var.project_id}-${local.effective_cell_id}-worm-audit"
+  effective_vertex_staging_bucket_name = trimspace(var.vertex_staging_bucket_name) != "" ? trimspace(var.vertex_staging_bucket_name) : "${var.project_id}-${local.effective_cell_id}-vertex-staging"
+
   base_finops_labels = merge(
     {
       managed_by      = "terraform"
@@ -42,6 +45,8 @@ locals {
     "geocoding-backend.googleapis.com",
     "places.googleapis.com",
     "iam.googleapis.com",
+    "bigquery.googleapis.com",
+    "aiplatform.googleapis.com",
   ])
 }
 
@@ -123,21 +128,24 @@ module "messaging" {
 module "storage_security" {
   source = "./modules/storage_security"
 
-  project_id              = var.project_id
-  region                  = var.region
-  location                = var.region
-  environment             = var.environment
-  media_bucket_name       = var.media_bucket_name
-  updates_bucket_name     = var.updates_bucket_name
-  imports_bucket_name     = var.imports_bucket_name
-  tf_state_bucket_name    = var.tf_state_bucket_name
-  k8s_namespace           = var.k8s_namespace
-  enable_cmek_iam_binding = var.enable_cmek_iam_binding
-  gsm_regional_only       = var.gsm_regional_only
-  cell_scoped_iam         = var.cell_scoped_iam
-  spanner_instance_name   = module.database.spanner_instance_name
-  spanner_database_name   = module.database.spanner_database_name
-  labels                  = merge(local.base_finops_labels, { tier = "storage" })
+  project_id                    = var.project_id
+  region                        = var.region
+  location                      = var.region
+  environment                   = var.environment
+  media_bucket_name             = var.media_bucket_name
+  updates_bucket_name           = var.updates_bucket_name
+  imports_bucket_name           = var.imports_bucket_name
+  tf_state_bucket_name          = var.tf_state_bucket_name
+  worm_audit_bucket_name        = local.effective_worm_audit_bucket_name
+  worm_retention_period_seconds = var.worm_retention_period_seconds
+  worm_retention_locked         = var.worm_retention_locked
+  k8s_namespace                 = var.k8s_namespace
+  enable_cmek_iam_binding       = var.enable_cmek_iam_binding
+  gsm_regional_only             = var.gsm_regional_only
+  cell_scoped_iam               = var.cell_scoped_iam
+  spanner_instance_name         = module.database.spanner_instance_name
+  spanner_database_name         = module.database.spanner_database_name
+  labels                        = merge(local.base_finops_labels, { tier = "storage" })
 
   depends_on = [
     google_project_service.apis
@@ -190,5 +198,33 @@ module "monitoring" {
 
   depends_on = [
     google_project_service.apis
+  ]
+}
+
+# 7. Phase 5: Analytics & ML Platform Module (BigQuery Datasets/Tables/Row-Access + Vertex AI Staging)
+module "analytics" {
+  source = "./modules/analytics"
+
+  project_id                       = var.project_id
+  region                           = var.region
+  cell_id                          = local.effective_cell_id
+  environment                      = var.environment
+  bigquery_dataset_prefix          = var.bigquery_dataset_prefix
+  enable_cmek                      = var.enable_analytics_cmek
+  enable_cmek_iam_binding          = var.enable_cmek_iam_binding
+  kms_key_id                       = module.storage_security.storage_kms_key_id
+  vertex_staging_bucket_name       = local.effective_vertex_staging_bucket_name
+  backend_sa_email                 = module.storage_security.service_account_emails["backend-go-sa"]
+  ai_worker_sa_email               = module.storage_security.service_account_emails["ai-worker-sa"]
+  enable_iam_bindings              = var.enable_analytics_iam_bindings
+  cell_scoped_iam                  = var.cell_scoped_iam
+  deletion_protection              = var.deletion_protection
+  bigquery_authorized_reader_email = var.bigquery_authorized_reader_email
+  tenant_row_access_policies       = var.tenant_row_access_policies
+  labels                           = merge(local.base_finops_labels, { tier = "analytics" })
+
+  depends_on = [
+    google_project_service.apis,
+    module.storage_security
   ]
 }

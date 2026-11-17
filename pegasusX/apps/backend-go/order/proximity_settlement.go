@@ -14,6 +14,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/proximity"
+	"github.com/pegasusx/pegasusx/packages/handoff"
 	"github.com/uber/h3-go/v4"
 )
 
@@ -426,7 +427,7 @@ func assertShopClosedBypassToken(ctx context.Context, txn *spanner.ReadWriteTran
 	if err := row.Columns(&stored); err != nil {
 		return false, err
 	}
-	return stored.Valid && stored.StringVal == token, nil
+	return stored.Valid && handoff.ConstantTimeEqual(stored.StringVal, token), nil
 }
 
 // requireProximityUnlocked fails if settlement proximity is not open.

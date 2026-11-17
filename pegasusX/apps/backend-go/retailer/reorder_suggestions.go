@@ -17,6 +17,7 @@ import (
 
 // RetailerReorderSuggestion is the retailer-org view of OPEN reorder rows (L3.4).
 type RetailerReorderSuggestion struct {
+	SuggestionID    string   `json:"suggestion_id,omitempty"`
 	SKU             string   `json:"sku"`
 	SuggestedQty    int64    `json:"suggested_qty"`
 	AdjustedDemand  float64  `json:"adjusted_demand_per_day"`
@@ -85,6 +86,9 @@ func (s *Service) listRetailerReorderSuggestions(ctx context.Context, orgID stri
 		if seed := s.reorderSuggestionSeed[orgID]; len(seed) > 0 {
 			out := make([]RetailerReorderSuggestion, 0, len(seed))
 			for _, item := range seed {
+				if item.SuggestionID == "" {
+					item.SuggestionID = orgID + ":" + item.SKU
+				}
 				if replenishment.SourcesMatchAny(item.Sources, sourceFilter) {
 					out = append(out, item)
 				}
@@ -138,6 +142,7 @@ func (s *Service) listRetailerReorderSuggestions(ctx context.Context, orgID stri
 		); err != nil {
 			return nil, err
 		}
+		item.SuggestionID = orgID + ":" + item.SKU
 		item.Sources = decodeSourcesJSON(sourcesJSON)
 		if strings.HasPrefix(strings.ToLower(item.SKU), "local:") {
 			continue

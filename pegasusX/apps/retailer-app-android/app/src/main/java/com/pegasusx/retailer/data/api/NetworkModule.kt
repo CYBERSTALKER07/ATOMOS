@@ -15,6 +15,8 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import okhttp3.Authenticator
+import okhttp3.CertificatePinner
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -46,6 +48,10 @@ object NetworkModule {
             .readTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
             .pingInterval(25, TimeUnit.SECONDS)
+            .apply {
+                configuredCertificatePinner(BuildConfig.BASE_URL, BuildConfig.API_TLS_SPKI_PINS)
+                    ?.let { certificatePinner(it) }
+            }
             .addInterceptor(com.pegasusx.retailer.ui.design.CellPinInterceptor(BuildConfig.BASE_URL) { tokenManager.getPreferredToken() })
             .addInterceptor { chain ->
                 val token = tokenManager.getPreferredToken()
@@ -89,6 +95,26 @@ object NetworkModule {
     fun provideRetailerWebSocket(tokenManager: TokenManager, json: Json): RetailerWebSocket {
         return RetailerWebSocket(tokenManager, json)
     }
+
+    @Provides
+    @Singleton
+    fun provideCartRealtimeEventSource(webSocket: RetailerWebSocket): CartRealtimeEventSource = webSocket
+}
+
+internal fun configuredCertificatePinner(baseUrl: String, pinsCsv: String): CertificatePinner? {
+    val parsed = baseUrl.trim().toHttpUrlOrNull() ?: return null
+    if (!parsed.isHttps) return null
+    val host = parsed.host.lowercase()
+    if (host == "localhost" || host == "127.0.0.1" || host == "10.0.2.2" || host == "::1") {
+        return null
+    }
+    val pins = pinsCsv.split(',').map { it.trim() }.filter { it.startsWith("sha256/") }
+    if (pins.isEmpty()) return null
+    val builder = CertificatePinner.Builder()
+    for (pin in pins) {
+        builder.add(host, pin)
+    }
+    return builder.build()
 }
 
 // ── Silent 401 → refresh → retry ──
@@ -100,6 +126,10 @@ private class TokenRefreshAuthenticator(
     private val refreshClient = OkHttpClient.Builder()
         .connectTimeout(10, TimeUnit.SECONDS)
         .readTimeout(10, TimeUnit.SECONDS)
+        .apply {
+            configuredCertificatePinner(BuildConfig.BASE_URL, BuildConfig.API_TLS_SPKI_PINS)
+                ?.let { certificatePinner(it) }
+        }
         .build()
 
     @Synchronized
@@ -181,7 +211,7 @@ private class ProblemDetailInterceptor(private val json: Json) : okhttp3.Interce
         if (!contentType.contains("application/problem+json")) return response
         val body = response.peekBody(8192).string()
         val problem = try {
-            json.decodeFromString<ProblemDetail>(body)
+            json.decodeFromString<ProblemDetail>(body).copy(rawBody = body)
         } catch (_: Exception) {
             return response
         }

@@ -24,9 +24,6 @@ type clickWebhookRequest struct {
 // HandleClickWebhook is the Click SHOP API Prepare (action=0) / Complete
 // (action=1) callback. Signatures follow docs.click.uz SHOP API (complete
 // includes merchant_prepare_id). Amount is so'm at the edge → int64 minor.
-//
-// UNWIRED: webhookroutes does not mount POST /v1/webhooks/click. Tests call
-// this handler directly. Live card checkout for CLICK stays catalog honesty 501.
 func (s *Service) HandleClickWebhook(w http.ResponseWriter, r *http.Request) {
 	const endpoint = "/v1/webhooks/click"
 	if r.Method != http.MethodPost {

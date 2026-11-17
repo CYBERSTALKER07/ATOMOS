@@ -18,6 +18,7 @@ import (
 	"cloud.google.com/go/spanner/admin/instance/apiv1/instancepb"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/bootstrap"
+	"github.com/pegasusx/pegasusx/apps/backend-go/schemadrift"
 	"github.com/pegasusx/pegasusx/apps/backend-go/seed"
 	"google.golang.org/api/option"
 	"google.golang.org/grpc"
@@ -88,16 +89,17 @@ func ensureSpannerSchema(ctx context.Context, cfg *bootstrap.Config) error {
 	}
 
 	migrationFiles, _ := filepath.Glob(filepath.Join(filepath.Dir(schemaPath), "migrations", "*.ddl"))
+	var allMigrations []string
 	for _, migPath := range migrationFiles {
 		migStatements, err := loadDDLStatements(migPath)
 		if err != nil {
 			return fmt.Errorf("load migration %s: %w", migPath, err)
 		}
-		if len(migStatements) == 0 {
-			continue
-		}
-		if err := applyDDLStatements(ctx, databaseAdmin, spannerDatabasePath(cfg), migStatements); err != nil {
-			return fmt.Errorf("apply migration %s: %w", filepath.Base(migPath), err)
+		allMigrations = append(allMigrations, migStatements...)
+	}
+	if len(allMigrations) > 0 {
+		if err := applyDDLStatements(ctx, databaseAdmin, spannerDatabasePath(cfg), allMigrations); err != nil {
+			return fmt.Errorf("apply migrations: %w", err)
 		}
 	}
 
@@ -201,6 +203,9 @@ func ensureSeedSupplier(ctx context.Context, cfg *bootstrap.Config) error {
 
 	if err := auth.EnsureDemoScopeLinks(ctx, client, supplier.SupplierID); err != nil {
 		return fmt.Errorf("ensure demo scope links: %w", err)
+	}
+	if _, err := seed.SeedUzbekistanHolidays(ctx, client, supplier.SupplierID, slog.Default()); err != nil {
+		return fmt.Errorf("seed uzbekistan seasonal holidays: %w", err)
 	}
 
 	return nil
@@ -310,35 +315,7 @@ func applyDDLStatements(
 	databaseName string,
 	statements []string,
 ) error {
-	for _, statement := range statements {
-		op, err := admin.UpdateDatabaseDdl(ctx, &databasepb.UpdateDatabaseDdlRequest{
-			Database:   databaseName,
-			Statements: []string{statement},
-		})
-		if err != nil {
-			if isBenignDDLConflict(err) {
-				continue
-			}
-			return fmt.Errorf("update ddl for %q: %w", truncateStatement(statement), err)
-		}
-		if err := op.Wait(ctx); err != nil {
-			if isBenignDDLConflict(err) {
-				continue
-			}
-			return fmt.Errorf("apply statement %q: %w", truncateStatement(statement), err)
-		}
-	}
-
-	return nil
-}
-
-func truncateStatement(statement string) string {
-	const max = 120
-	trimmed := strings.TrimSpace(statement)
-	if len(trimmed) <= max {
-		return trimmed
-	}
-	return trimmed[:max] + "..."
+	return schemadrift.ConvergeDDLStatements(ctx, admin, databaseName, statements)
 }
 
 func spannerClientOptions(cfg *bootstrap.Config) []option.ClientOption {

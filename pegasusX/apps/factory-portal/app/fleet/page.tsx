@@ -7,7 +7,9 @@ import { useFactorySessionReconcile } from '@/lib/use-factory-session-reconcile'
 import Icon from '@/components/Icon';
 import PageTransition from '@/components/PageTransition';
 import { PageChrome } from '@/components/PageChrome';
-import FleetLiveMap from '@/components/FleetLiveMap';
+import dynamic from 'next/dynamic';
+
+const FleetLiveMap = dynamic(() => import('@/components/FleetLiveMap'), { ssr: false });
 import { useFactoryFleetLiveMap } from '@/lib/use-factory-fleet-live-map';
 import { motion } from 'framer-motion';
 

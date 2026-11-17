@@ -59,6 +59,18 @@ enum DriverOfflineActionCatalog {
         OfflineHttpSemantics.isSuccessHTTP(code)
     }
 
+    static func isConflictHTTP(_ code: Int) -> Bool {
+        OfflineHttpSemantics.isConflictHTTP(code)
+    }
+
+    static func isIdempotentReplay409(statusCode: Int, responseBody: Data?) -> Bool {
+        OfflineHttpSemantics.isIdempotentReplay409(statusCode: statusCode, responseBody: responseBody)
+    }
+
+    static func isIdempotentReplay409(statusCode: Int, responseBody: String?) -> Bool {
+        OfflineHttpSemantics.isIdempotentReplay409(statusCode: statusCode, responseBody: responseBody)
+    }
+
     /// True only for transport / retryable failures. Business 4xx (geofence, forbidden,
     /// invalid transition, etc.) must never enqueue — that caused P0-4 silent "success".
     static func isNetworkEnqueueable(_ error: Error) -> Bool {

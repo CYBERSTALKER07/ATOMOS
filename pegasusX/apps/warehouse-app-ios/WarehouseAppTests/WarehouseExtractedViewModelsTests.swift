@@ -410,6 +410,9 @@ final class WarehouseExtractedViewModelsTests: XCTestCase {
     func testCashierViewModelStartSessionAnd409DuplicateSeal() async {
         var shouldConflict = true
         let vm = CashierViewModel(
+            initialCellId: "cell-test",
+            initialDepotId: "depot-01",
+            initialSupplierId: "sup-01",
             startSessionHandler: { req in
                 if shouldConflict {
                     throw APIError.httpError(409)
@@ -428,6 +431,9 @@ final class WarehouseExtractedViewModelsTests: XCTestCase {
                 )
             }
         )
+        vm.driverId = "drv-test-1"
+        vm.routeId = "route-test-1"
+        vm.bagSealBarcode = "SEAL-TEST-1"
 
         await vm.startSession()
         XCTAssertNil(vm.session)
@@ -444,6 +450,9 @@ final class WarehouseExtractedViewModelsTests: XCTestCase {
     func testCashierViewModelBlindCount409RecountKeepsExpectedMaskedThenBalances() async {
         var callCount = 0
         let vm = CashierViewModel(
+            initialCellId: "cell-test",
+            initialDepotId: "depot-01",
+            initialSupplierId: "sup-01",
             startSessionHandler: { req in
                 CashierSessionView(
                     sessionId: "sess-202",
@@ -488,14 +497,19 @@ final class WarehouseExtractedViewModelsTests: XCTestCase {
         await vm.submitBlindCount()
         XCTAssertEqual(vm.errorMessage, "Please start or select a session first")
 
+        vm.driverId = "drv-test-2"
+        vm.routeId = "route-test-2"
+        vm.bagSealBarcode = "BAG-202"
         await vm.startSession()
-        vm.quickFillSampleDiscrepant()
+        vm.setDenominationCount(noteSom: 200000, count: 6)
         await vm.submitBlindCount()
         XCTAssertTrue(vm.isRecountRequired)
         XCTAssertTrue(vm.isBlindCountMasked, "Expected cash MUST remain masked during blind recount #2")
         XCTAssertEqual(vm.attemptNumber, 2)
 
-        vm.quickFillSampleBalanced()
+        vm.setDenominationCount(noteSom: 200000, count: 7)
+        vm.setDenominationCount(noteSom: 20000, count: 1)
+        vm.setDenominationCount(noteSom: 5000, count: 1)
         await vm.submitBlindCount()
         XCTAssertTrue(vm.isBalanced)
         XCTAssertFalse(vm.isRecountRequired)
@@ -506,6 +520,9 @@ final class WarehouseExtractedViewModelsTests: XCTestCase {
     func testCashierViewModelRRNReclassificationCITHandoverAndAML409() async {
         var shouldExceedAML = false
         let vm = CashierViewModel(
+            initialCellId: "cell-test",
+            initialDepotId: "depot-01",
+            initialSupplierId: "sup-01",
             startSessionHandler: { req in
                 CashierSessionView(
                     sessionId: "sess-303",
@@ -566,6 +583,9 @@ final class WarehouseExtractedViewModelsTests: XCTestCase {
             }
         )
 
+        vm.driverId = "drv-test-3"
+        vm.routeId = "route-test-3"
+        vm.bagSealBarcode = "BAG-303"
         await vm.startSession()
         await vm.reclassifyTender(orderId: "ord-77", gatewayRrn: "998877665544", disputedCashMinor: 22_500_000)
         XCTAssertTrue(vm.isBalanced)
@@ -661,5 +681,293 @@ final class WarehouseExtractedViewModelsTests: XCTestCase {
         vm.clearHistory()
         XCTAssertTrue(vm.scannedRecords.isEmpty)
         XCTAssertEqual(vm.scanState, .idle)
+    }
+
+    // MARK: - TransferActionsViewModel (Pick waves & Cycle counts)
+
+    private func decodeJSON<T: Decodable>(_ type: T.Type, _ json: String) throws -> T {
+        let data = Data(json.utf8)
+        return try JSONDecoder().decode(T.self, from: data)
+    }
+
+    func testPickTaskConfirmEncodesExplicitZeroAndIdempotencyUsesUuid() throws {
+        let zeroData = try JSONEncoder().encode(PickTaskConfirmRequest(quantityPicked: 0))
+        let zeroObj = try XCTUnwrap(JSONSerialization.jsonObject(with: zeroData) as? [String: Any])
+        XCTAssertEqual(zeroObj["quantity_picked"] as? Int, 0)
+
+        let nilData = try JSONEncoder().encode(PickTaskConfirmRequest(quantityPicked: nil))
+        let nilObj = try XCTUnwrap(JSONSerialization.jsonObject(with: nilData) as? [String: Any])
+        XCTAssertNil(nilObj["quantity_picked"])
+
+        let uuidRegex = #"^.*-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"#
+        let k1 = WarehouseIdempotency.confirmPickTask(waveId: "w1", taskId: "t1")
+        let k2 = WarehouseIdempotency.confirmPickTask(waveId: "w1", taskId: "t1")
+        XCTAssertNotEqual(k1, k2)
+        XCTAssertNotNil(k1.range(of: uuidRegex, options: .regularExpression))
+        XCTAssertNotNil(WarehouseIdempotency.waivePickShorts(waveId: "w1").range(of: uuidRegex, options: .regularExpression))
+        XCTAssertNotNil(WarehouseIdempotency.createPickWave(manifestId: "m1").range(of: uuidRegex, options: .regularExpression))
+        XCTAssertNotNil(WarehouseIdempotency.createCycleCount(locationId: "loc1", productId: "p1").range(of: uuidRegex, options: .regularExpression))
+        XCTAssertNotNil(WarehouseIdempotency.submitCycleCount(countId: "cc1").range(of: uuidRegex, options: .regularExpression))
+        XCTAssertNotNil(WarehouseIdempotency.approveInventoryAdjustment(adjustmentId: "adj1").range(of: uuidRegex, options: .regularExpression))
+        XCTAssertNotNil(WarehouseIdempotency.rejectInventoryAdjustment(adjustmentId: "adj1").range(of: uuidRegex, options: .regularExpression))
+        XCTAssertNotNil(WarehouseIdempotency.createBin(zone: "A").range(of: uuidRegex, options: .regularExpression))
+        XCTAssertNotNil(WarehouseIdempotency.putawayLot(productId: "p1", locationId: "l1").range(of: uuidRegex, options: .regularExpression))
+    }
+
+    func testTransferActionsPickZeroConfirmAndWaiveShorts() async throws {
+        var confirmRequests: [(waveId: String, taskId: String, qty: Int?)] = []
+        var waivedWaveIds: [String] = []
+
+        var wave = try decodeJSON(
+            PickWave.self,
+            """
+            {
+              "wave_id": "wave-1",
+              "warehouse_id": "wh-1",
+              "manifest_id": "man-1",
+              "status": "OPEN",
+              "tasks": [
+                {
+                  "task_id": "task-1",
+                  "order_id": "ord-1",
+                  "product_id": "SKU-APPLE",
+                  "lot_id": "lot-1",
+                  "location_id": "A-01",
+                  "quantity_requested": 6,
+                  "quantity_picked": 0,
+                  "status": "PENDING",
+                  "pick_sequence": 1
+                }
+              ]
+            }
+            """
+        )
+
+        let vm = TransferActionsViewModel(
+            createPickWave: { _ in wave },
+            confirmPickTask: { waveId, taskId, qty in
+                confirmRequests.append((waveId, taskId, qty))
+                let picked = qty ?? 6
+                let nextStatus = picked < 6 ? "SHORT" : "CONFIRMED"
+                let waveStatus = picked < 6 ? "IN_PROGRESS" : "READY_TO_SEAL"
+                wave = try self.decodeJSON(
+                    PickWave.self,
+                    """
+                    {
+                      "wave_id": "wave-1",
+                      "warehouse_id": "wh-1",
+                      "manifest_id": "man-1",
+                      "status": "\(waveStatus)",
+                      "tasks": [
+                        {
+                          "task_id": "task-1",
+                          "order_id": "ord-1",
+                          "product_id": "SKU-APPLE",
+                          "lot_id": "lot-1",
+                          "location_id": "A-01",
+                          "quantity_requested": 6,
+                          "quantity_picked": \(picked),
+                          "status": "\(nextStatus)",
+                          "pick_sequence": 1
+                        }
+                      ]
+                    }
+                    """
+                )
+                return wave
+            },
+            waivePickShorts: { waveId in
+                waivedWaveIds.append(waveId)
+                wave = try self.decodeJSON(
+                    PickWave.self,
+                    """
+                    {
+                      "wave_id": "wave-1",
+                      "warehouse_id": "wh-1",
+                      "manifest_id": "man-1",
+                      "status": "READY_TO_SEAL",
+                      "tasks": [
+                        {
+                          "task_id": "task-1",
+                          "order_id": "ord-1",
+                          "product_id": "SKU-APPLE",
+                          "lot_id": "lot-1",
+                          "location_id": "A-01",
+                          "quantity_requested": 6,
+                          "quantity_picked": 0,
+                          "status": "SHORT_WAIVED",
+                          "pick_sequence": 1
+                        }
+                      ]
+                    }
+                    """
+                )
+                return wave
+            }
+        )
+
+        vm.pickManifestId = "man-1"
+        await vm.createPickWave()
+        XCTAssertEqual(vm.pickQtyInput, "6")
+
+        let task = try XCTUnwrap(vm.nextPendingTask)
+        // Blank input must be rejected cleanly and never submit confirm.
+        vm.pickQtyInput = "   "
+        await vm.confirmCurrentPick(wave: wave, task: task)
+        XCTAssertEqual(vm.statusMessage, "Picked qty required")
+        XCTAssertTrue(confirmRequests.isEmpty)
+
+        // Explicit 0 must send 0 (not nil, not quantityRequested 6) and transition task to SHORT.
+        vm.pickQtyInput = "0"
+        await vm.confirmCurrentPick(wave: wave, task: task)
+        XCTAssertEqual(confirmRequests.count, 1)
+        XCTAssertEqual(confirmRequests[0].qty, 0)
+        XCTAssertTrue(vm.hasShortTasks)
+        XCTAssertEqual(vm.activeWave?.tasks?.first?.status, "SHORT")
+
+        // Waiving shorts sends POST waive-shorts and transitions SHORT -> SHORT_WAIVED.
+        await vm.waivePickShorts()
+        XCTAssertEqual(waivedWaveIds, ["wave-1"])
+        XCTAssertFalse(vm.hasShortTasks)
+        XCTAssertEqual(vm.activeWave?.status, "READY_TO_SEAL")
+        XCTAssertEqual(vm.activeWave?.tasks?.first?.status, "SHORT_WAIVED")
+
+        // Direct reportShortZero helper also sends explicit 0.
+        await vm.reportShortZero(wave: wave, task: task)
+        XCTAssertEqual(confirmRequests.last?.qty, 0)
+    }
+
+    func testTransferActionsCycleCountUsesActualUserEnteredQtyIncludingZeroAndAdjustments() async throws {
+        var submittedCalls: [(countId: String, countedQty: Int, reasonCode: String?)] = []
+        var approvedIds: [String] = []
+        var rejectedIds: [String] = []
+
+        var countsJSON = """
+        {
+          "cycle_counts_enabled": true,
+          "counts": [
+            {
+              "count_id": "cc-1",
+              "location_id": "BIN-A1",
+              "product_id": "SKU-MILK",
+              "expected_qty": 15,
+              "counted_qty": null,
+              "status": "OPEN"
+            }
+          ]
+        }
+        """
+        var adjustmentsJSON = """
+        {
+          "cycle_counts_enabled": true,
+          "adjustments": []
+        }
+        """
+
+        let vm = TransferActionsViewModel(
+            listCycleCounts: {
+                try self.decodeJSON(CycleCountListResponse.self, countsJSON)
+            },
+            submitCycleCount: { countId, countedQty, reasonCode in
+                submittedCalls.append((countId, countedQty, reasonCode))
+                let variance = countedQty - 15
+                countsJSON = """
+                {
+                  "cycle_counts_enabled": true,
+                  "counts": [
+                    {
+                      "count_id": "cc-1",
+                      "location_id": "BIN-A1",
+                      "product_id": "SKU-MILK",
+                      "expected_qty": 15,
+                      "counted_qty": \(countedQty),
+                      "variance_qty": \(variance),
+                      "reason_code": \(reasonCode.map { "\"\($0)\"" } ?? "null"),
+                      "status": "ADJUSTMENT_PENDING"
+                    }
+                  ]
+                }
+                """
+                adjustmentsJSON = """
+                {
+                  "cycle_counts_enabled": true,
+                  "adjustments": [
+                    {
+                      "adjustment_id": "adj-1",
+                      "warehouse_id": "wh-1",
+                      "product_id": "SKU-MILK",
+                      "count_id": "cc-1",
+                      "delta_qty": \(variance),
+                      "status": "PENDING"
+                    },
+                    {
+                      "adjustment_id": "adj-2",
+                      "warehouse_id": "wh-1",
+                      "product_id": "SKU-SODA",
+                      "delta_qty": 2,
+                      "status": "PENDING"
+                    }
+                  ]
+                }
+                """
+                return try self.decodeJSON(
+                    CycleCount.self,
+                    """
+                    {
+                      "count_id": "cc-1",
+                      "location_id": "BIN-A1",
+                      "product_id": "SKU-MILK",
+                      "expected_qty": 15,
+                      "counted_qty": \(countedQty),
+                      "variance_qty": \(variance),
+                      "status": "ADJUSTMENT_PENDING"
+                    }
+                    """
+                )
+            },
+            listInventoryAdjustments: {
+                try self.decodeJSON(InventoryAdjustmentListResponse.self, adjustmentsJSON)
+            },
+            approveInventoryAdjustment: { id in
+                approvedIds.append(id)
+                return try self.decodeJSON(InventoryAdjustmentMutationResponse.self, "{\"adjustment_id\":\"\(id)\",\"status\":\"APPROVED\"}")
+            },
+            rejectInventoryAdjustment: { id in
+                rejectedIds.append(id)
+                return try self.decodeJSON(InventoryAdjustmentMutationResponse.self, "{\"adjustment_id\":\"\(id)\",\"status\":\"REJECTED\"}")
+            }
+        )
+
+        await vm.refreshCycleCountsAndAdjustments()
+        XCTAssertEqual(vm.selectedOpenCycleCount?.countId, "cc-1")
+        XCTAssertEqual(vm.countedQtyInput, "15")
+
+        // Blank or negative counted qty must be blocked locally without calling submit.
+        vm.countedQtyInput = " "
+        await vm.submitCycleCount()
+        XCTAssertEqual(vm.statusMessage, "Counted qty required")
+        XCTAssertTrue(submittedCalls.isEmpty)
+
+        vm.countedQtyInput = "-2"
+        await vm.submitCycleCount()
+        XCTAssertEqual(vm.statusMessage, "Counted qty must be >= 0")
+        XCTAssertTrue(submittedCalls.isEmpty)
+
+        // Explicit 0 counted qty must submit 0 (NEVER hardcoded expected_qty 15).
+        vm.countedQtyInput = "0"
+        vm.cycleReasonCode = "EXPIRED"
+        await vm.submitCycleCount()
+
+        XCTAssertEqual(submittedCalls.count, 1)
+        XCTAssertEqual(submittedCalls[0].countId, "cc-1")
+        XCTAssertEqual(submittedCalls[0].countedQty, 0)
+        XCTAssertEqual(submittedCalls[0].reasonCode, "EXPIRED")
+        XCTAssertEqual(TransferActionsViewModel.variance(for: try XCTUnwrap(vm.cycleCounts.first)), -15)
+        XCTAssertEqual(vm.adjustments.count, 2)
+
+        await vm.approveAdjustment("adj-1")
+        await vm.rejectAdjustment("adj-2")
+        XCTAssertEqual(approvedIds, ["adj-1"])
+        XCTAssertEqual(rejectedIds, ["adj-2"])
     }
 }

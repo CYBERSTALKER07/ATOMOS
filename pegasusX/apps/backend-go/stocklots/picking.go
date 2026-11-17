@@ -1,18 +1,59 @@
 package stocklots
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
+	"github.com/pegasusx/pegasusx/apps/backend-go/credit"
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
 	"google.golang.org/api/iterator"
+	"google.golang.org/grpc/codes"
 )
+
+// PickValuationArgs describes a confirmed pick depletion passed to the optional inventory valuation hook.
+type PickValuationArgs struct {
+	EntityID       string
+	WarehouseID    string
+	ProductID      string
+	LotID          string
+	WaveID         string
+	TaskID         string
+	OrderID        string
+	Quantity       int64
+	PickerID       string
+	IdempotencyKey string
+}
+
+// PickValuationHook depletes cost layers FEFO and posts COGS GL entries atomically inside confirmPickTaskCoreInTxn.
+type PickValuationHook func(ctx context.Context, txn *spanner.ReadWriteTransaction, args PickValuationArgs) error
+
+var (
+	pickValuationHookMu sync.RWMutex
+	pickValuationHook   PickValuationHook
+)
+
+// SetPickValuationHook registers an optional transactional FEFO COGS hook for pick confirmation.
+func SetPickValuationHook(fn PickValuationHook) {
+	pickValuationHookMu.Lock()
+	defer pickValuationHookMu.Unlock()
+	pickValuationHook = fn
+}
+
+func getPickValuationHook() PickValuationHook {
+	pickValuationHookMu.RLock()
+	defer pickValuationHookMu.RUnlock()
+	return pickValuationHook
+}
 
 // PickWaveView is the API DTO for a pick wave.
 type PickWaveView struct {
@@ -137,7 +178,7 @@ func CreatePickWaveInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction,
 	var uniqueLocIDs []string
 	locSeen := make(map[string]struct{})
 	for _, lot := range lotsByID {
-		if lot.status != "AVAILABLE" && lot.status != "QUARANTINE" {
+		if lot.status != "AVAILABLE" {
 			continue
 		}
 		if lid := strings.TrimSpace(lot.locationID); lid != "" {
@@ -163,7 +204,7 @@ func CreatePickWaveInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction,
 				if !ok {
 					continue
 				}
-				if lot.status != "AVAILABLE" && lot.status != "QUARANTINE" {
+				if NormalizeLotStatus(lot.status) != "AVAILABLE" {
 					continue
 				}
 				qty := rr.qty
@@ -250,50 +291,103 @@ func CreatePickWaveInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction,
 	}, nil
 }
 
-// ConfirmPickTaskInTxn confirms a task qty and may advance wave to READY_TO_SEAL.
+// resolvePickConfirmQty turns an optional picked qty into a concrete quantity:
+// nil defaults to requested; explicit 0 remains 0 (SHORT); negative values fail.
+func resolvePickConfirmQty(requested int64, qty *int64) (int64, error) {
+	if qty == nil {
+		if requested < 0 {
+			return 0, fmt.Errorf("quantity_requested_negative")
+		}
+		return requested, nil
+	}
+	if *qty < 0 {
+		return 0, fmt.Errorf("quantity_picked_negative")
+	}
+	resolved := *qty
+	if requested >= 0 && resolved > requested {
+		resolved = requested
+	}
+	return resolved, nil
+}
+
+// ConfirmPickTaskInTxn confirms a task qty (0 = explicit SHORT without lot depletion) and may advance wave to READY_TO_SEAL.
 func ConfirmPickTaskInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, waveID, taskID, pickerID string, quantityPicked int64) (*PickWaveView, error) {
+	if quantityPicked < 0 {
+		return nil, fmt.Errorf("quantity_picked_negative")
+	}
+	view, _, err := confirmPickTaskCoreInTxn(ctx, txn, waveID, taskID, pickerID, &quantityPicked)
+	return view, err
+}
+
+// ConfirmPickTaskOptionalInTxn confirms a task using an optional quantity pointer (nil = requested, 0 = explicit SHORT).
+func ConfirmPickTaskOptionalInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, waveID, taskID, pickerID string, quantityPicked *int64) (*PickWaveView, int64, error) {
+	return confirmPickTaskCoreInTxn(ctx, txn, waveID, taskID, pickerID, quantityPicked)
+}
+
+func confirmPickTaskCoreInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, waveID, taskID, pickerID string, quantityPickedOpt *int64) (*PickWaveView, int64, error) {
+	if quantityPickedOpt != nil && *quantityPickedOpt < 0 {
+		return nil, 0, fmt.Errorf("quantity_picked_negative")
+	}
 	waveID = strings.TrimSpace(waveID)
 	taskID = strings.TrimSpace(taskID)
 	taskRow, err := txn.ReadRow(ctx, "PickTasks", spanner.Key{waveID, taskID},
 		[]string{"OrderId", "ProductId", "LotId", "LocationId", "QuantityRequested", "QuantityPicked", "Status", "PickSequence"})
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	var orderID, productID, lotID, locationID, status string
 	var requested, picked, seq int64
 	if err := taskRow.Columns(&orderID, &productID, &lotID, &locationID, &requested, &picked, &status, &seq); err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	status = strings.ToUpper(strings.TrimSpace(status))
 	if status == "CONFIRMED" || status == "SHORT_WAIVED" {
-		return GetPickWaveInTxn(ctx, txn, waveID, true)
+		view, err := GetPickWaveInTxn(ctx, txn, waveID, true)
+		return view, picked, err
 	}
-	if quantityPicked <= 0 {
-		quantityPicked = requested
+	quantityPicked, err := resolvePickConfirmQty(requested, quantityPickedOpt)
+	if err != nil {
+		return nil, 0, err
 	}
-	newStatus := "CONFIRMED"
-	if quantityPicked < requested {
-		newStatus = "SHORT"
-	}
-	if quantityPicked > requested {
-		quantityPicked = requested
+	newStatus := pickTaskStatusForQty(requested, quantityPicked)
+	depleteQty := quantityPicked
+	if status == "SHORT" {
+		depleteQty = quantityPicked - picked
 	}
 
-	if shouldDepleteLot(lotID) {
+	if depleteQty > 0 && shouldDepleteLot(lotID) {
 		lotRow, err := txn.ReadRow(ctx, "StockLots", spanner.Key{lotID},
 			[]string{"SupplierId", "WarehouseId", "ProductId", "QuantityOnHand", "QuantityReserved", "Status"})
 		if err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		var sid, wid, pid, lotStatus string
 		var qoh, qr int64
 		if err := lotRow.Columns(&sid, &wid, &pid, &qoh, &qr, &lotStatus); err != nil {
-			return nil, err
+			return nil, 0, err
 		}
-		nextQoH, nextQR, depleted := applyLotDepletion(qoh, qr, quantityPicked)
+		if NormalizeLotStatus(lotStatus) != "AVAILABLE" {
+			return nil, 0, fmt.Errorf("cannot pick from lot %s in status %s", lotID, lotStatus)
+		}
+		nextQoH, nextQR, depleted := applyLotDepletion(qoh, qr, depleteQty)
 		lotStatusOut := lotStatus
 		if depleted {
 			lotStatusOut = "DEPLETED"
+		}
+		// Compute InventoryV2 rollup using the post-depletion lot snapshot BEFORE buffering
+		// StockLots writes because Spanner txn.Query does not observe same-txn BufferWrite.
+		overrides := map[string]StockLotSnapshot{
+			lotID: {
+				SupplierID:       sid,
+				WarehouseID:      wid,
+				ProductID:        pid,
+				QuantityOnHand:   nextQoH,
+				QuantityReserved: nextQR,
+				Status:           lotStatusOut,
+			},
+		}
+		if err := RollupInventoryV2WithLotOverridesInTxn(ctx, txn, sid, wid, pid, overrides); err != nil {
+			return nil, 0, err
 		}
 		if err := txn.BufferWrite([]*spanner.Mutation{spanner.UpdateMap("StockLots", map[string]any{
 			"LotId":            lotID,
@@ -302,11 +396,31 @@ func ConfirmPickTaskInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction
 			"Status":           lotStatusOut,
 			"UpdatedAt":        spanner.CommitTimestamp,
 		})}); err != nil {
-			return nil, err
+			return nil, 0, err
 		}
-		if err := RollupInventoryV2InTxn(ctx, txn, sid, wid, pid); err != nil {
-			return nil, err
+		if hook := getPickValuationHook(); hook != nil {
+			if hErr := hook(ctx, txn, PickValuationArgs{
+				EntityID:       sid,
+				WarehouseID:    wid,
+				ProductID:      pid,
+				LotID:          lotID,
+				WaveID:         waveID,
+				TaskID:         taskID,
+				OrderID:        orderID,
+				Quantity:       depleteQty,
+				PickerID:       strings.TrimSpace(pickerID),
+				IdempotencyKey: fmt.Sprintf("pick:%s:%s:%d:%d", waveID, taskID, picked, quantityPicked),
+			}); hErr != nil {
+				return nil, 0, hErr
+			}
 		}
+	}
+
+	// Read current wave & task snapshot BEFORE buffering task/wave mutations so readiness
+	// evaluation and returned PickWaveView are consistent in a single atomic transaction.
+	view, err := GetPickWaveInTxn(ctx, txn, waveID, true)
+	if err != nil {
+		return nil, 0, err
 	}
 
 	cols := map[string]any{
@@ -320,119 +434,528 @@ func ConfirmPickTaskInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction
 		cols["PickerId"] = strings.TrimSpace(pickerID)
 	}
 	if err := txn.BufferWrite([]*spanner.Mutation{spanner.UpdateMap("PickTasks", cols)}); err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
-	waveRow, err := txn.ReadRow(ctx, "PickWaves", spanner.Key{waveID}, []string{"Status"})
-	if err != nil {
-		return nil, err
-	}
-	var waveStatus string
-	_ = waveRow.Columns(&waveStatus)
-	if strings.EqualFold(waveStatus, "OPEN") {
-		if err := txn.BufferWrite([]*spanner.Mutation{spanner.UpdateMap("PickWaves", map[string]any{
-			"WaveId":    waveID,
-			"Status":    "PICKING",
-			"UpdatedAt": spanner.CommitTimestamp,
-		})}); err != nil {
-			return nil, err
-		}
-	}
-	if err := maybeMarkWaveReadyInTxn(ctx, txn, waveID, taskID, newStatus); err != nil {
-		return nil, err
-	}
-	view, err := GetPickWaveInTxn(ctx, txn, waveID, true)
-	if err != nil {
-		return nil, err
-	}
 	if view != nil {
 		for i := range view.Tasks {
 			if view.Tasks[i].TaskID == taskID {
 				view.Tasks[i].Status = newStatus
 				view.Tasks[i].QuantityPicked = quantityPicked
+				if strings.TrimSpace(pickerID) != "" {
+					view.Tasks[i].PickerID = strings.TrimSpace(pickerID)
+				}
 			}
 		}
-		if waveReadyFromTasks(view.Tasks) {
-			view.Status = "READY_TO_SEAL"
-		} else if strings.EqualFold(view.Status, "OPEN") {
-			view.Status = "PICKING"
+		nextWaveStatus, readyAt := nextPickWaveStatusAfterTasks(view.Status, view.Tasks, time.Now().UTC())
+		if nextWaveStatus != "" && !strings.EqualFold(view.Status, nextWaveStatus) {
+			waveUpdate := map[string]any{
+				"WaveId":    waveID,
+				"Status":    nextWaveStatus,
+				"UpdatedAt": spanner.CommitTimestamp,
+			}
+			if readyAt != nil {
+				waveUpdate["ReadyAt"] = *readyAt
+				view.ReadyAt = readyAt.UTC().Format(time.RFC3339)
+			}
+			if err := txn.BufferWrite([]*spanner.Mutation{spanner.UpdateMap("PickWaves", waveUpdate)}); err != nil {
+				return nil, 0, err
+			}
+			view.Status = nextWaveStatus
 		}
+	}
+	return view, quantityPicked, nil
+}
+
+// WaivedShortItem describes one line item reduced or cut during a wave short waive.
+type WaivedShortItem struct {
+	SKU            string `json:"sku"`
+	OriginalQty    int64  `json:"original_qty"`
+	PickedQty      int64  `json:"picked_qty"`
+	ShortedQty     int64  `json:"shorted_qty"`
+	UnitPriceMinor int64  `json:"unit_price_minor"`
+	ShortedMinor   int64  `json:"shorted_minor"`
+}
+
+type orderWaiveLinesResult struct {
+	UpdatedJSON       []byte
+	SubtotalMinor     int64
+	NewTotalMinor     int64
+	NextOriginalTotal int64
+	ShortedMinor      int64
+	ShortedItems      []WaivedShortItem
+}
+
+func jsonInt64(v any) (int64, error) {
+	if v == nil {
+		return 0, nil
+	}
+	switch n := v.(type) {
+	case json.Number:
+		if strings.TrimSpace(n.String()) == "" {
+			return 0, nil
+		}
+		return n.Int64()
+	case int64:
+		return n, nil
+	case int:
+		return int64(n), nil
+	default:
+		return 0, fmt.Errorf("expected integer json value, got %T", v)
+	}
+}
+
+func jsonStr(v any) string {
+	s, _ := v.(string)
+	return strings.TrimSpace(s)
+}
+
+func lineSKUFromMap(item map[string]any) string {
+	for _, k := range []string{"sku", "sku_id", "product_id"} {
+		if s := jsonStr(item[k]); s != "" {
+			return s
+		}
+	}
+	return ""
+}
+
+// applyWaivedShortsToLineItems reduces affected SKU line quantities by waivedBySKU using
+// pure int64 arithmetic, cuts zero-qty lines, preserves arbitrary line metadata, and
+// recomputes subtotal and order total (including delivery fee when subtotal > 0).
+func applyWaivedShortsToLineItems(
+	raw []byte,
+	waivedBySKU map[string]int64,
+	prevTotalMinor, origTotalMinor, deliveryFeeMinor int64,
+) (orderWaiveLinesResult, error) {
+	var items []map[string]any
+	if len(bytes.TrimSpace(raw)) > 0 {
+		dec := json.NewDecoder(bytes.NewReader(raw))
+		dec.UseNumber()
+		if err := dec.Decode(&items); err != nil {
+			return orderWaiveLinesResult{}, fmt.Errorf("decode order line items: %w", err)
+		}
+	}
+
+	remaining := make(map[string]int64, len(waivedBySKU))
+	for sku, q := range waivedBySKU {
+		if q > 0 {
+			remaining[strings.TrimSpace(sku)] += q
+		}
+	}
+
+	updated := make([]map[string]any, 0, len(items))
+	var shorted []WaivedShortItem
+	var subtotalMinor int64
+	var shortedMinor int64
+
+	for _, item := range items {
+		sku := lineSKUFromMap(item)
+		qty, err := jsonInt64(item["quantity"])
+		if err != nil {
+			return orderWaiveLinesResult{}, fmt.Errorf("invalid quantity for sku %q: %w", sku, err)
+		}
+		unitPrice, err := jsonInt64(item["unit_price_minor"])
+		if err != nil {
+			return orderWaiveLinesResult{}, fmt.Errorf("invalid unit_price_minor for sku %q: %w", sku, err)
+		}
+
+		if sku != "" && remaining[sku] > 0 && qty > 0 {
+			cut := remaining[sku]
+			if cut > qty {
+				cut = qty
+			}
+			remaining[sku] -= cut
+			newQty := qty - cut
+			origQty := qty
+			if prevOrig, err := jsonInt64(item["original_quantity"]); err == nil && prevOrig > 0 {
+				origQty = prevOrig
+			}
+			prevShorted, _ := jsonInt64(item["shorted_qty"])
+			lineShortMinor := cut * unitPrice
+			shortedMinor += lineShortMinor
+			shorted = append(shorted, WaivedShortItem{
+				SKU:            sku,
+				OriginalQty:    origQty,
+				PickedQty:      newQty,
+				ShortedQty:     cut,
+				UnitPriceMinor: unitPrice,
+				ShortedMinor:   lineShortMinor,
+			})
+			if newQty == 0 {
+				// Cut 0-picked lines from active LineItemsJson; details remain in ShortedItems/outbox.
+				continue
+			}
+			item["quantity"] = newQty
+			item["original_quantity"] = origQty
+			item["shorted_qty"] = prevShorted + cut
+			subtotalMinor += newQty * unitPrice
+			updated = append(updated, item)
+			continue
+		}
+
+		if qty > 0 {
+			subtotalMinor += qty * unitPrice
+		}
+		updated = append(updated, item)
+	}
+
+	newTotalMinor := subtotalMinor
+	if subtotalMinor > 0 && deliveryFeeMinor > 0 {
+		newTotalMinor = subtotalMinor + deliveryFeeMinor
+	}
+	nextOrigTotal := origTotalMinor
+	if nextOrigTotal == 0 {
+		nextOrigTotal = prevTotalMinor
+	}
+
+	encoded, err := json.Marshal(updated)
+	if err != nil {
+		return orderWaiveLinesResult{}, fmt.Errorf("encode updated line items: %w", err)
+	}
+	return orderWaiveLinesResult{
+		UpdatedJSON:       encoded,
+		SubtotalMinor:     subtotalMinor,
+		NewTotalMinor:     newTotalMinor,
+		NextOriginalTotal: nextOrigTotal,
+		ShortedMinor:      shortedMinor,
+		ShortedItems:      shorted,
+	}, nil
+}
+
+// WaiveShortsInTxn marks SHORT tasks as SHORT_WAIVED, trims unpicked order lines and totals,
+// releases unpicked lot/inventory reservations, adjusts credit holds/balances/AR invoices,
+// emits outbox events in the same transaction, and advances to READY_TO_SEAL when eligible.
+func WaiveShortsInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, waveID string) (*PickWaveView, error) {
+	waveID = strings.TrimSpace(waveID)
+	view, err := GetPickWaveInTxn(ctx, txn, waveID, true)
+	if err != nil {
+		return nil, err
+	}
+
+	type orderLotKey struct {
+		orderID string
+		lotID   string
+	}
+	type skuTuple struct {
+		supplierID  string
+		warehouseID string
+		productID   string
+	}
+
+	var taskMuts []*spanner.Mutation
+	waivedByOrderSKU := make(map[string]map[string]int64)
+	waivedByOrderLot := make(map[orderLotKey]int64)
+	pickedByOrderLot := make(map[orderLotKey]int64)
+	waivedByLot := make(map[string]int64)
+	waivedNonLotByTuple := make(map[skuTuple]int64)
+	affectedOrderSet := make(map[string]struct{})
+	var waivedTaskIDs []string
+
+	for i := range view.Tasks {
+		t := &view.Tasks[i]
+		if shouldDepleteLot(t.LotID) && t.QuantityPicked > 0 {
+			pickedByOrderLot[orderLotKey{orderID: t.OrderID, lotID: t.LotID}] += t.QuantityPicked
+		}
+		if !strings.EqualFold(strings.TrimSpace(t.Status), "SHORT") {
+			continue
+		}
+		t.Status = "SHORT_WAIVED"
+		waivedTaskIDs = append(waivedTaskIDs, t.TaskID)
+		taskMuts = append(taskMuts, spanner.UpdateMap("PickTasks", map[string]any{
+			"WaveId":    waveID,
+			"TaskId":    t.TaskID,
+			"Status":    "SHORT_WAIVED",
+			"UpdatedAt": spanner.CommitTimestamp,
+		}))
+
+		shortQty := t.QuantityRequested - t.QuantityPicked
+		if t.QuantityPicked < 0 || shortQty <= 0 {
+			continue
+		}
+		oid := strings.TrimSpace(t.OrderID)
+		if oid != "" {
+			affectedOrderSet[oid] = struct{}{}
+			if waivedByOrderSKU[oid] == nil {
+				waivedByOrderSKU[oid] = make(map[string]int64)
+			}
+			waivedByOrderSKU[oid][t.ProductID] += shortQty
+			if shouldDepleteLot(t.LotID) {
+				waivedByOrderLot[orderLotKey{orderID: oid, lotID: t.LotID}] += shortQty
+			}
+		}
+		if shouldDepleteLot(t.LotID) {
+			waivedByLot[t.LotID] += shortQty
+		} else if strings.TrimSpace(t.ProductID) != "" {
+			waivedNonLotByTuple[skuTuple{
+				supplierID:  view.SupplierID,
+				warehouseID: view.WarehouseID,
+				productID:   strings.TrimSpace(t.ProductID),
+			}] += shortQty
+		}
+	}
+
+	affectedOrderIDs := make([]string, 0, len(affectedOrderSet))
+	for oid := range affectedOrderSet {
+		affectedOrderIDs = append(affectedOrderIDs, oid)
+	}
+	sort.Strings(affectedOrderIDs)
+
+	var domainMuts []*spanner.Mutation
+
+	// 1. Release unpicked OrderLotReservations and StockLots.QuantityReserved + roll up SupplierInventoryV2.
+	rolledUpTuples := make(map[skuTuple]bool)
+	if len(affectedOrderIDs) > 0 && len(waivedByOrderLot) > 0 {
+		resByOrder, err := loadOrderLotReservationsBatch(ctx, txn, affectedOrderIDs)
+		if err != nil {
+			return nil, fmt.Errorf("load order lot reservations: %w", err)
+		}
+		for _, oid := range affectedOrderIDs {
+			for _, res := range resByOrder[oid] {
+				key := orderLotKey{orderID: oid, lotID: res.lotID}
+				if waivedByOrderLot[key] <= 0 {
+					continue
+				}
+				resolved := pickedByOrderLot[key] + waivedByOrderLot[key]
+				remaining := res.qty - resolved
+				if remaining <= 0 {
+					domainMuts = append(domainMuts, spanner.Delete("OrderLotReservations", spanner.Key{oid, res.lotID}))
+				} else {
+					domainMuts = append(domainMuts, spanner.UpdateMap("OrderLotReservations", map[string]any{
+						"OrderId":  oid,
+						"LotId":    res.lotID,
+						"Quantity": remaining,
+					}))
+				}
+			}
+		}
+	}
+
+	if len(waivedByLot) > 0 {
+		lotIDs := make([]string, 0, len(waivedByLot))
+		for lid := range waivedByLot {
+			lotIDs = append(lotIDs, lid)
+		}
+		sort.Strings(lotIDs)
+
+		overridesByTuple := make(map[skuTuple]map[string]StockLotSnapshot)
+		for _, lid := range lotIDs {
+			row, err := txn.ReadRow(ctx, "StockLots", spanner.Key{lid},
+				[]string{"SupplierId", "WarehouseId", "ProductId", "QuantityOnHand", "QuantityReserved", "Status"})
+			if err != nil {
+				return nil, fmt.Errorf("read stock lot %s: %w", lid, err)
+			}
+			var sid, wid, pid, lotStatus string
+			var qoh, qr int64
+			if err := row.Columns(&sid, &wid, &pid, &qoh, &qr, &lotStatus); err != nil {
+				return nil, err
+			}
+			nextQR := qr - waivedByLot[lid]
+			if nextQR < 0 {
+				nextQR = 0
+			}
+			tKey := skuTuple{supplierID: sid, warehouseID: wid, productID: pid}
+			if overridesByTuple[tKey] == nil {
+				overridesByTuple[tKey] = make(map[string]StockLotSnapshot)
+			}
+			overridesByTuple[tKey][lid] = StockLotSnapshot{
+				SupplierID:       sid,
+				WarehouseID:      wid,
+				ProductID:        pid,
+				QuantityOnHand:   qoh,
+				QuantityReserved: nextQR,
+				Status:           lotStatus,
+			}
+			domainMuts = append(domainMuts, spanner.UpdateMap("StockLots", map[string]any{
+				"LotId":            lid,
+				"QuantityReserved": nextQR,
+				"UpdatedAt":        spanner.CommitTimestamp,
+			}))
+		}
+
+		tuples := make([]skuTuple, 0, len(overridesByTuple))
+		for tk := range overridesByTuple {
+			tuples = append(tuples, tk)
+		}
+		sort.Slice(tuples, func(i, j int) bool {
+			if tuples[i].supplierID != tuples[j].supplierID {
+				return tuples[i].supplierID < tuples[j].supplierID
+			}
+			if tuples[i].warehouseID != tuples[j].warehouseID {
+				return tuples[i].warehouseID < tuples[j].warehouseID
+			}
+			return tuples[i].productID < tuples[j].productID
+		})
+		for _, tk := range tuples {
+			if err := RollupInventoryV2WithLotOverridesInTxn(ctx, txn, tk.supplierID, tk.warehouseID, tk.productID, overridesByTuple[tk]); err != nil {
+				return nil, err
+			}
+			rolledUpTuples[tk] = true
+		}
+	}
+
+	if len(waivedNonLotByTuple) > 0 {
+		nonLotTuples := make([]skuTuple, 0, len(waivedNonLotByTuple))
+		for tk := range waivedNonLotByTuple {
+			if !rolledUpTuples[tk] && tk.supplierID != "" && tk.warehouseID != "" && tk.productID != "" {
+				nonLotTuples = append(nonLotTuples, tk)
+			}
+		}
+		sort.Slice(nonLotTuples, func(i, j int) bool {
+			if nonLotTuples[i].supplierID != nonLotTuples[j].supplierID {
+				return nonLotTuples[i].supplierID < nonLotTuples[j].supplierID
+			}
+			if nonLotTuples[i].warehouseID != nonLotTuples[j].warehouseID {
+				return nonLotTuples[i].warehouseID < nonLotTuples[j].warehouseID
+			}
+			return nonLotTuples[i].productID < nonLotTuples[j].productID
+		})
+		for _, tk := range nonLotTuples {
+			row, err := txn.ReadRow(ctx, "SupplierInventoryV2", spanner.Key{tk.supplierID, tk.warehouseID, tk.productID},
+				[]string{"QuantityReserved"})
+			if err != nil {
+				if spanner.ErrCode(err) == codes.NotFound {
+					continue
+				}
+				return nil, fmt.Errorf("read SupplierInventoryV2 reserved: %w", err)
+			}
+			var qr int64
+			if err := row.Columns(&qr); err != nil {
+				return nil, err
+			}
+			nextQR := qr - waivedNonLotByTuple[tk]
+			if nextQR < 0 {
+				nextQR = 0
+			}
+			domainMuts = append(domainMuts, spanner.UpdateMap("SupplierInventoryV2", map[string]any{
+				"SupplierId":       tk.supplierID,
+				"WarehouseId":      tk.warehouseID,
+				"ProductId":        tk.productID,
+				"QuantityReserved": nextQR,
+				"UpdatedAt":        spanner.CommitTimestamp,
+			}))
+		}
+	}
+
+	// 2. Reduce order lines, recompute totals, batch credit/AR adjustments, and emit outbox per affected order.
+	orderNewTotals := make(map[string]int64, len(affectedOrderIDs))
+	orderOutbox := outbox.NewSpannerTxnBuffer(txn)
+	nowStr := time.Now().UTC().Format(time.RFC3339Nano)
+	for _, oid := range affectedOrderIDs {
+		ordRow, err := txn.ReadRow(ctx, "Orders", spanner.Key{oid}, []string{
+			"SupplierId", "RetailerId", "WarehouseId", "Status",
+			"LineItemsJson", "TotalMinor", "OriginalTotalMinor", "DeliveryFeeMinor", "Currency", "Version",
+		})
+		if err != nil {
+			return nil, fmt.Errorf("read order %s: %w", oid, err)
+		}
+		var sid, rid, ordStatus, currency string
+		var wid spanner.NullString
+		var lineRaw []byte
+		var prevTotal, origTotal, deliveryFee, version int64
+		if err := ordRow.Columns(&sid, &rid, &wid, &ordStatus, &lineRaw, &prevTotal, &origTotal, &deliveryFee, &currency, &version); err != nil {
+			return nil, err
+		}
+
+		res, err := applyWaivedShortsToLineItems(lineRaw, waivedByOrderSKU[oid], prevTotal, origTotal, deliveryFee)
+		if err != nil {
+			return nil, err
+		}
+		domainMuts = append(domainMuts, spanner.UpdateMap("Orders", map[string]any{
+			"OrderId":            oid,
+			"LineItemsJson":      res.UpdatedJSON,
+			"TotalMinor":         res.NewTotalMinor,
+			"OriginalTotalMinor": res.NextOriginalTotal,
+			"Version":            version + 1,
+			"UpdatedAt":          spanner.CommitTimestamp,
+		}))
+
+		if res.NewTotalMinor != prevTotal {
+			orderNewTotals[oid] = res.NewTotalMinor
+		}
+
+		whVal := view.WarehouseID
+		if wid.Valid && strings.TrimSpace(wid.StringVal) != "" {
+			whVal = strings.TrimSpace(wid.StringVal)
+		}
+		if err := outbox.EmitJSON(ctx, orderOutbox, events.AggregateOrder, oid, events.TopicMain, map[string]any{
+			"type":               events.EventOrderAmended,
+			"order_id":           oid,
+			"supplier_id":        sid,
+			"retailer_id":        rid,
+			"warehouse_id":       whVal,
+			"wave_id":            waveID,
+			"status":             ordStatus,
+			"reason":             "wms_short_waived",
+			"previous_total":     prevTotal,
+			"subtotal_minor":     res.SubtotalMinor,
+			"adjusted_total":     res.NewTotalMinor,
+			"total_minor":        res.NewTotalMinor,
+			"original_amount":    res.NextOriginalTotal,
+			"short_waived_minor": prevTotal - res.NewTotalMinor,
+			"currency":           currency,
+			"shorted_items":      res.ShortedItems,
+			"timestamp":          nowStr,
+		}); err != nil {
+			return nil, err
+		}
+	}
+
+	if len(orderNewTotals) > 0 {
+		if err := (&credit.SpannerRepository{}).AdjustReservesBatchInTxn(ctx, txn, orderNewTotals); err != nil {
+			return nil, fmt.Errorf("adjust credit reserves for wave %s: %w", waveID, err)
+		}
+	}
+
+	if len(taskMuts) > 0 {
+		domainMuts = append(domainMuts, taskMuts...)
+	}
+	if len(domainMuts) > 0 {
+		if err := txn.BufferWrite(domainMuts); err != nil {
+			return nil, err
+		}
+	}
+	if err := orderOutbox.Flush(ctx); err != nil {
+		return nil, err
+	}
+	if len(waivedTaskIDs) > 0 {
+		if err := emitWMSEvent(ctx, txn, events.EventWMSPickConfirmed, view.WarehouseID, view.SupplierID, waveID, map[string]any{
+			"wave_id":         waveID,
+			"action":          "SHORT_WAIVED",
+			"waived_tasks":    waivedTaskIDs,
+			"affected_orders": affectedOrderIDs,
+		}); err != nil {
+			return nil, err
+		}
+	}
+
+	nextWaveStatus, readyAt := nextPickWaveStatusAfterTasks(view.Status, view.Tasks, time.Now().UTC())
+	if nextWaveStatus == "READY_TO_SEAL" && !strings.EqualFold(view.Status, "READY_TO_SEAL") {
+		waveUpdate := map[string]any{
+			"WaveId":    waveID,
+			"Status":    "READY_TO_SEAL",
+			"UpdatedAt": spanner.CommitTimestamp,
+		}
+		if readyAt != nil {
+			waveUpdate["ReadyAt"] = *readyAt
+			view.ReadyAt = readyAt.UTC().Format(time.RFC3339)
+		}
+		if err := txn.BufferWrite([]*spanner.Mutation{spanner.UpdateMap("PickWaves", waveUpdate)}); err != nil {
+			return nil, err
+		}
+		view.Status = "READY_TO_SEAL"
 	}
 	return view, nil
 }
 
-// WaiveShortsInTxn marks SHORT tasks as SHORT_WAIVED and advances to READY_TO_SEAL when eligible.
-func WaiveShortsInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, waveID string) (*PickWaveView, error) {
-	waveID = strings.TrimSpace(waveID)
-	iter := txn.Query(ctx, spanner.Statement{
-		SQL:    `SELECT TaskId FROM PickTasks WHERE WaveId = @wid AND Status = 'SHORT'`,
-		Params: map[string]any{"wid": waveID},
-	})
-	defer iter.Stop()
-	var taskIDs []string
-	for {
-		row, err := iter.Next()
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			return nil, err
-		}
-		var tid string
-		if err := row.Columns(&tid); err != nil {
-			return nil, err
-		}
-		taskIDs = append(taskIDs, tid)
+func nextPickWaveStatusAfterTasks(currentWaveStatus string, tasks []PickTaskView, now time.Time) (string, *time.Time) {
+	if waveReadyFromTasks(tasks) {
+		t := now.UTC()
+		return "READY_TO_SEAL", &t
 	}
-	for _, tid := range taskIDs {
-		if err := txn.BufferWrite([]*spanner.Mutation{spanner.UpdateMap("PickTasks", map[string]any{
-			"WaveId":    waveID,
-			"TaskId":    tid,
-			"Status":    "SHORT_WAIVED",
-			"UpdatedAt": spanner.CommitTimestamp,
-		})}); err != nil {
-			return nil, err
-		}
+	if strings.EqualFold(strings.TrimSpace(currentWaveStatus), "OPEN") {
+		return "PICKING", nil
 	}
-	if err := maybeMarkWaveReadyInTxn(ctx, txn, waveID, "", ""); err != nil {
-		return nil, err
-	}
-	return GetPickWaveInTxn(ctx, txn, waveID, true)
-}
-
-func maybeMarkWaveReadyInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, waveID, overrideTaskID, overrideStatus string) error {
-	iter := txn.Query(ctx, spanner.Statement{
-		SQL:    `SELECT TaskId, Status FROM PickTasks@{FORCE_INDEX=_BASE_TABLE} WHERE WaveId = @wid`,
-		Params: map[string]any{"wid": waveID},
-	})
-	defer iter.Stop()
-	var tasks []PickTaskView
-	for {
-		row, err := iter.Next()
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			return err
-		}
-		var tid, st string
-		if err := row.Columns(&tid, &st); err != nil {
-			return err
-		}
-		if overrideTaskID != "" && tid == overrideTaskID && strings.TrimSpace(overrideStatus) != "" {
-			st = overrideStatus
-		}
-		tasks = append(tasks, PickTaskView{TaskID: tid, Status: st})
-	}
-	if !waveReadyFromTasks(tasks) {
-		return nil
-	}
-	return txn.BufferWrite([]*spanner.Mutation{spanner.UpdateMap("PickWaves", map[string]any{
-		"WaveId":    waveID,
-		"Status":    "READY_TO_SEAL",
-		"ReadyAt":   time.Now().UTC(),
-		"UpdatedAt": spanner.CommitTimestamp,
-	})})
+	return currentWaveStatus, nil
 }
 
 func waveReadyFromTasks(tasks []PickTaskView) bool {
@@ -532,7 +1055,7 @@ func ListPickWaves(ctx context.Context, client *spanner.Client, warehouseID, man
 	if txn := spannerutils.ReadOnlyTxnFromContext(ctx); txn != nil {
 		iter = txn.Query(ctx, stmt)
 	} else {
-		iter = client.Single().Query(ctx, stmt)
+		iter = client.Single().WithTimestampBound(spanner.StrongRead()).Query(ctx, stmt)
 	}
 	defer iter.Stop()
 	var out []PickWaveView
@@ -563,7 +1086,7 @@ func listTasks(ctx context.Context, client *spanner.Client, waveID string) ([]Pi
 	if txn := spannerutils.ReadOnlyTxnFromContext(ctx); txn != nil {
 		iter = txn.Query(ctx, taskStmt)
 	} else {
-		iter = client.Single().Query(ctx, taskStmt)
+		iter = client.Single().WithTimestampBound(spanner.StrongRead()).Query(ctx, taskStmt)
 	}
 	defer iter.Stop()
 	var out []PickTaskView
@@ -1004,11 +1527,8 @@ func applyLotDepletion(qoh, qr, picked int64) (nextQoH, nextQR int64, depleted b
 	return nextQoH, nextQR, nextQoH == 0
 }
 
-// pickTaskStatusForQty returns CONFIRMED or SHORT for a confirm body.
+// pickTaskStatusForQty returns CONFIRMED or SHORT for an explicit confirm quantity.
 func pickTaskStatusForQty(requested, quantityPicked int64) string {
-	if quantityPicked <= 0 {
-		quantityPicked = requested
-	}
 	if quantityPicked < requested {
 		return "SHORT"
 	}

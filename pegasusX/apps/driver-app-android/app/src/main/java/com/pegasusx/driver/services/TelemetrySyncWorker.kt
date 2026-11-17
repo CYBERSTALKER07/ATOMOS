@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import com.pegasusx.driver.BuildConfig
 import com.pegasusx.driver.data.local.TelemetryDao
 import com.pegasusx.driver.data.model.TelemetryPayload
 import com.pegasusx.driver.data.remote.TelemetrySocket
@@ -29,7 +30,7 @@ class TelemetrySyncWorker @AssistedInject constructor(
         val locations = telemetryDao.getAll()
         if (locations.isEmpty()) return Result.success()
 
-        Log.d(TAG, "Draining ${locations.size} offline telemetry points")
+        if (BuildConfig.DEBUG) Log.d(TAG, "Draining ${locations.size} offline telemetry points")
         val driverId = TokenHolder.userId?.takeIf { it.isNotBlank() } ?: return Result.failure()
 
         // Never treat OkHttp enqueue while disconnected as success (§8.8).
@@ -64,7 +65,7 @@ class TelemetrySyncWorker @AssistedInject constructor(
 
         if (syncedIds.isNotEmpty()) {
             telemetryDao.deleteByIds(syncedIds)
-            Log.d(TAG, "Successfully synced ${syncedIds.size} telemetry points")
+            if (BuildConfig.DEBUG) Log.d(TAG, "Successfully synced ${syncedIds.size} telemetry points")
         }
 
         val remaining = telemetryDao.getAll()

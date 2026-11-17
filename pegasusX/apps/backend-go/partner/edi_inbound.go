@@ -61,9 +61,8 @@ func NewEdiInboundWorker(docs EdiDocumentRepository, sftp SftpConfigRepository, 
 	}
 	return &EdiInboundWorker{
 		ediDocs: docs, sftp: sftp, svc: svc, log: log,
-		profiles:     NewMemoryEdiProfiles(),
-		now:          func() time.Time { return time.Now().UTC() },
-		SecretLoader: LoadSecretRef,
+		profiles: NewMemoryEdiProfiles(),
+		now:      func() time.Time { return time.Now().UTC() },
 	}
 }
 
@@ -187,11 +186,7 @@ func (w *EdiInboundWorker) processTenant(ctx context.Context, cfg SftpConfig) (i
 	if !PartnerSFTPEnabled() || strings.TrimSpace(cfg.Host) == "" {
 		return 0, nil
 	}
-	loader := w.SecretLoader
-	if loader == nil {
-		loader = LoadSecretRef
-	}
-	secret, err := loader(cfg.SecretRef)
+	secret, err := resolveWorkerSecret(w.SecretLoader, cfg.TenantType, cfg.TenantID, cfg.SecretRef)
 	if err != nil || secret == "" {
 		return 0, fmt.Errorf("sftp_secret: %w", err)
 	}

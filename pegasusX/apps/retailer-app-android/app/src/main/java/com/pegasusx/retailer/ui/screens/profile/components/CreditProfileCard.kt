@@ -33,8 +33,7 @@ import com.pegasusx.retailer.ui.components.RetailerStatusChip
 import com.pegasusx.retailer.ui.screens.profile.CreditProfileUiState
 import com.pegasusx.retailer.ui.screens.profile.CreditProfileViewModel
 import com.pegasusx.retailer.ui.theme.PegasusSpacing
-import java.text.NumberFormat
-import java.util.Locale
+import com.pegasusx.retailer.util.OrderLineContractHelper
 import com.pegasusx.retailer.R
 
 @Composable
@@ -121,7 +120,6 @@ fun CreditProfileCardContent(
 
 @Composable
 private fun CreditProfileMetrics(profile: CreditProfile) {
-    val formatter = NumberFormat.getIntegerInstance(Locale.US)
     val util = if (profile.creditLimitMinor > 0L) {
         val tenths = java.math.BigInteger.valueOf(profile.currentBalanceMinor)
             .multiply(java.math.BigInteger.valueOf(1000L))
@@ -140,17 +138,17 @@ private fun CreditProfileMetrics(profile: CreditProfile) {
     ) {
         RetailerMetricTile(
             label = stringResource(R.string.supplier_portal_credit_collections_text_limit),
-            value = formatter.format(profile.creditLimitMinor),
+            value = OrderLineContractHelper.formatWholeSom(profile.creditLimitMinor),
             modifier = Modifier.weight(1f),
         )
         RetailerMetricTile(
             label = stringResource(R.string.mobile_retailer_ui_balance_due),
-            value = formatter.format(profile.currentBalanceMinor),
+            value = OrderLineContractHelper.formatWholeSom(profile.currentBalanceMinor),
             modifier = Modifier.weight(1f),
         )
         RetailerMetricTile(
             label = stringResource(R.string.retailer_desktop_stock_text_available),
-            value = formatter.format(profile.availableCreditMinor),
+            value = OrderLineContractHelper.formatWholeSom(profile.availableCreditMinor),
             modifier = Modifier.weight(1f),
         )
     }

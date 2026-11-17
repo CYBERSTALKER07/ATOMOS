@@ -8,7 +8,7 @@ import kotlinx.serialization.json.JsonElement
 
 @Serializable
 data class StartCashierSessionRequest(
-    @SerialName("cell_id") val cellId: String = "cell-uz",
+    @SerialName("cell_id") val cellId: String = "",
     @SerialName("supplier_id") val supplierId: String,
     @SerialName("depot_id") val depotId: String,
     @SerialName("driver_id") val driverId: String,

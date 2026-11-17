@@ -1,6 +1,7 @@
 package com.pegasusx.driver.data.remote
 
 import android.util.Log
+import com.pegasusx.driver.BuildConfig
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -122,7 +123,7 @@ class DriverWebSocket @Inject constructor(
         reconnectTask = null
         reconnectAttempt.set(0)
         _connectionState.value = ConnectionState.RECONNECTING
-        Log.d(TAG, "resetAndReconnect — network regained")
+        if (BuildConfig.DEBUG) Log.d(TAG, "resetAndReconnect — network regained")
         connectInternal(url, token)
     }
 
@@ -148,7 +149,7 @@ class DriverWebSocket @Inject constructor(
 
         socket = client.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
-                Log.d(TAG, "Connected")
+                if (BuildConfig.DEBUG) Log.d(TAG, "Connected")
                 reconnectAttempt.set(0)
                 _connectionState.value = ConnectionState.CONNECTED
                 if (hasConnectedOnce.getAndSet(true)) {
@@ -183,7 +184,7 @@ class DriverWebSocket @Inject constructor(
             }
 
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
-                Log.d(TAG, "Closed: $reason")
+                if (BuildConfig.DEBUG) Log.d(TAG, "Closed: $reason")
                 socket = null
                 if (intentionalClose.get()) {
                     _connectionState.value = ConnectionState.DISCONNECTED
@@ -207,7 +208,7 @@ class DriverWebSocket @Inject constructor(
             pendingRetryAfterMs,
         )
         pendingRetryAfterMs = null
-        Log.d(TAG, "Reconnecting in ${delay}ms (attempt ${attempt + 1})")
+        if (BuildConfig.DEBUG) Log.d(TAG, "Reconnecting in ${delay}ms (attempt ${attempt + 1})")
         reconnectTask?.cancel(false)
         reconnectTask = reconnectExecutor.schedule(
             {

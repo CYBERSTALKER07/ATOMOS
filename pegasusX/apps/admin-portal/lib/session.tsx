@@ -25,6 +25,8 @@ const TokenCtx = createContext<SessionContextType>({
   login: async () => ({ ok: false }),
 });
 
+export const ADMIN_COOKIE_SESSION = "__cookie_session__";
+
 export function AdminSessionProvider({ children }: { children: ReactNode }) {
   const [token, setTok] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -37,8 +39,12 @@ export function AdminSessionProvider({ children }: { children: ReactNode }) {
         const res = await fetch("/api/auth/session", { cache: "no-store" });
         if (res.ok) {
           const data = await res.json();
-          if (active && data.authenticated && data.token) {
-            setTok(data.token);
+          if (active && data.authenticated) {
+            setTok(
+              typeof data.token === "string" && data.token.length > 0
+                ? data.token
+                : ADMIN_COOKIE_SESSION,
+            );
           }
         }
       } catch {
@@ -57,12 +63,14 @@ export function AdminSessionProvider({ children }: { children: ReactNode }) {
     const cleaned = t.trim();
     setTok(cleaned);
     if (cleaned) {
-      // Sync to cookie
-      void fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ directToken: cleaned }),
-      });
+      if (cleaned !== ADMIN_COOKIE_SESSION) {
+        // Sync explicit bearer token into HttpOnly cookie when allowed (non-prod / Tauri).
+        void fetch("/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ directToken: cleaned }),
+        });
+      }
     } else {
       void fetch("/api/auth/logout", { method: "POST" });
     }
@@ -77,8 +85,12 @@ export function AdminSessionProvider({ children }: { children: ReactNode }) {
           body: JSON.stringify({ subject, password, directToken }),
         });
         const data = await res.json();
-        if (res.ok && data.ok && data.token) {
-          setTok(data.token);
+        if (res.ok && data.ok) {
+          setTok(
+            typeof data.token === "string" && data.token.length > 0
+              ? data.token
+              : ADMIN_COOKIE_SESSION,
+          );
           return { ok: true };
         }
         return { ok: false, error: data.error || "Login failed" };

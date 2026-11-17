@@ -3,6 +3,7 @@ package order
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -10,77 +11,116 @@ import (
 	"google.golang.org/api/iterator"
 )
 
-// OpenFiscalSnapshot is the soft-freeze signal for driver shift-end (Phase 6 / T10).
-// Cash bag must not close while any assigned order is still fiscalizing or fiscal-failed.
+// OpenFiscalSnapshot is the policy-gated shift-end check for driver fiscal state (D-10).
+// Blocking orders (unrecorded cash collection, missing QR/cryptographic PoD, or strict
+// immediate fiscal mode) increment Count/OrderIDs and set Frozen = true.
+// Retryable OFD-outage orders with captured payment and PoD increment RetryQueuedCount
+// and FiscalIssueCount without freezing the driver's shift-end cash bag.
 type OpenFiscalSnapshot struct {
-	Count    int64    `json:"open_fiscal_count"`
-	OrderIDs []string `json:"order_ids,omitempty"`
-	// Frozen is true when Count > 0 — blocks return-complete / cash-bag settle.
-	Frozen bool `json:"cash_bag_frozen"`
+	Count            int64    `json:"open_fiscal_count"`
+	OrderIDs         []string `json:"order_ids,omitempty"`
+	Frozen           bool     `json:"cash_bag_frozen"`
+	RetryQueuedCount int64    `json:"retry_queued_count"`
+	FiscalIssueCount int64    `json:"fiscal_issue_count"`
+	RetryOrderIDs    []string `json:"retry_order_ids,omitempty"`
 }
 
-// CountOpenFiscalForDriver counts orders assigned to the driver in FISCALIZING or FISCAL_FAILED.
-func CountOpenFiscalForDriver(ctx context.Context, client *spanner.Client, driverID string) (OpenFiscalSnapshot, error) {
+// OpenFiscalCandidate captures the minimal per-order state needed to evaluate whether
+// an unfinished fiscal receipt blocks driver shift-end or routes cleanly to async retry.
+type OpenFiscalCandidate struct {
+	OrderID            string
+	Status             string
+	FiscalStatus       string
+	HasPaymentRecorded bool
+	HasCryptoOrQRPoD   bool
+}
+
+// IsStrictImmediateFiscalMode returns true when deployment policy requires synchronous
+// fiscal completion before driver shift-end regardless of PoD/payment capture.
+func IsStrictImmediateFiscalMode() bool {
+	v := strings.ToLower(strings.TrimSpace(os.Getenv("FISCAL_STRICT_IMMEDIATE_BLOCK")))
+	return v == "1" || v == "true" || v == "yes"
+}
+
+// EvaluateOpenFiscalOrders applies the D-10 non-blocking doorstep fiscalization policy.
+// Retryable OFD outage orders with captured payment + QR/cryptographic PoD never freeze
+// the cash bag unless strictImmediate is true.
+func EvaluateOpenFiscalOrders(strictImmediate bool, candidates []OpenFiscalCandidate) OpenFiscalSnapshot {
 	var snap OpenFiscalSnapshot
-	driverID = strings.TrimSpace(driverID)
-	if client == nil || driverID == "" {
-		return snap, nil
-	}
-	stmt := spanner.Statement{
-		SQL: `SELECT OrderId FROM Orders
-		      WHERE DriverId = @did
-		        AND Status IN (@st1, @st2)
-		      ORDER BY UpdatedAt DESC
-		      LIMIT 50`,
-		Params: map[string]any{
-			"did": driverID,
-			"st1": string(StatusFiscalizing),
-			"st2": string(StatusFiscalFailed),
-		},
-	}
-	// Strong enough for shift-end gate — avoid false-clear from 15s stale.
-	iter := client.Single().Query(ctx, stmt)
-	defer iter.Stop()
-	for {
-		row, err := iter.Next()
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			return snap, fmt.Errorf("open fiscal query: %w", err)
-		}
-		var oid string
-		if err := row.Columns(&oid); err != nil {
-			return snap, err
-		}
-		oid = strings.TrimSpace(oid)
+	seen := make(map[string]struct{}, len(candidates))
+	for _, c := range candidates {
+		oid := strings.TrimSpace(c.OrderID)
 		if oid == "" {
 			continue
 		}
+		if _, dup := seen[oid]; dup {
+			continue
+		}
+		seen[oid] = struct{}{}
+
+		st := strings.ToUpper(strings.TrimSpace(c.Status))
+		fst := strings.ToUpper(strings.TrimSpace(c.FiscalStatus))
+		if st == string(StatusMigrationOpen) || fst == FiscalStatusHistoricalSkipped {
+			continue
+		}
+		isRetryableState := st == string(StatusFiscalizing) ||
+			st == string(StatusFiscalFailed) ||
+			fst == FiscalStatusPending ||
+			fst == FiscalStatusFailed ||
+			fst == "FISCAL_RETRY_QUEUED" ||
+			fst == FiscalStatusDeadLetter
+		if !isRetryableState {
+			continue
+		}
+
+		snap.FiscalIssueCount++
+		if !strictImmediate && c.HasPaymentRecorded && c.HasCryptoOrQRPoD {
+			snap.RetryQueuedCount++
+			snap.RetryOrderIDs = append(snap.RetryOrderIDs, oid)
+			continue
+		}
+
 		snap.OrderIDs = append(snap.OrderIDs, oid)
 		snap.Count++
 	}
 	snap.Frozen = snap.Count > 0
-	return snap, nil
+	return snap
+}
+
+// CountOpenFiscalForDriver evaluates orders assigned to the driver whose fiscalization
+// is pending, failed, retry-queued, or dead-lettered against D-10 non-blocking policy.
+func CountOpenFiscalForDriver(ctx context.Context, client *spanner.Client, driverID string) (OpenFiscalSnapshot, error) {
+	return queryOpenFiscalForDriver(ctx, client, driverID, 0)
 }
 
 // CountOpenFiscalForDriverStale is a UI read with slight staleness (dashboard banner).
 func CountOpenFiscalForDriverStale(ctx context.Context, client *spanner.Client, driverID string, stale time.Duration) (OpenFiscalSnapshot, error) {
-	if stale <= 0 {
-		return CountOpenFiscalForDriver(ctx, client, driverID)
-	}
-	// Reuse same SQL via strong path when staleness is tiny; for true stale use bound.
-	// Spanner ExactStaleness is applied on the read below.
-	var snap OpenFiscalSnapshot
+	return queryOpenFiscalForDriver(ctx, client, driverID, stale)
+}
+
+func queryOpenFiscalForDriver(ctx context.Context, client *spanner.Client, driverID string, stale time.Duration) (OpenFiscalSnapshot, error) {
 	driverID = strings.TrimSpace(driverID)
 	if client == nil || driverID == "" {
-		return snap, nil
+		return OpenFiscalSnapshot{}, nil
 	}
 	stmt := spanner.Statement{
-		SQL: `SELECT OrderId FROM Orders
-		      WHERE DriverId = @did
-		        AND Status IN (@st1, @st2)
-		      ORDER BY UpdatedAt DESC
+		SQL: `SELECT o.OrderId,
+		             o.Status,
+		             COALESCE(o.FiscalStatus, ''),
+		             (EXISTS(SELECT 1 FROM OrderPaymentLegs l WHERE l.OrderId = o.OrderId AND l.Status = 'CAPTURED' AND l.Method != 'CREDIT' AND l.IdempotencyKey NOT LIKE 'credit-leave-%')
+		              OR EXISTS(SELECT 1 FROM OrderDeliveryProofs p WHERE p.OrderId = o.OrderId AND p.ProofType = 'CASH_COLLECTION_GEOFENCE')
+		              OR EXISTS(SELECT 1 FROM OrderFiscalReceipts r WHERE r.OrderId = o.OrderId AND r.Status = 'SUCCESS')),
+		             EXISTS(SELECT 1 FROM OrderDeliveryProofs p
+		                    WHERE p.OrderId = o.OrderId
+		                      AND p.ProofType IN ('QR_HANDOFF', 'OFFLINE_CRYPTOGRAPHIC_POD')
+		                      AND (COALESCE(p.QRTokenHash, '') != '' OR COALESCE(p.ScannedTokenHash, '') != ''))
+		      FROM Orders o
+		      WHERE o.DriverId = @did
+		        AND o.Status != 'MIGRATION_OPEN'
+		        AND COALESCE(o.OrderSource, '') != 'MIGRATION'
+		        AND COALESCE(o.FiscalStatus, '') != 'HISTORICAL_SKIPPED'
+		        AND (o.Status IN (@st1, @st2) OR o.FiscalStatus IN ('FAILED', 'FISCAL_RETRY_QUEUED', 'DEAD_LETTER'))
+		      ORDER BY o.UpdatedAt DESC
 		      LIMIT 50`,
 		Params: map[string]any{
 			"did": driverID,
@@ -88,27 +128,26 @@ func CountOpenFiscalForDriverStale(ctx context.Context, client *spanner.Client, 
 			"st2": string(StatusFiscalFailed),
 		},
 	}
-	iter := client.Single().WithTimestampBound(spanner.ExactStaleness(stale)).Query(ctx, stmt)
+	ro := client.Single()
+	if stale > 0 {
+		ro = ro.WithTimestampBound(spanner.ExactStaleness(stale))
+	}
+	iter := ro.Query(ctx, stmt)
 	defer iter.Stop()
+	candidates := make([]OpenFiscalCandidate, 0, 8)
 	for {
 		row, err := iter.Next()
 		if err == iterator.Done {
 			break
 		}
 		if err != nil {
-			return snap, fmt.Errorf("open fiscal stale query: %w", err)
+			return OpenFiscalSnapshot{}, fmt.Errorf("open fiscal query: %w", err)
 		}
-		var oid string
-		if err := row.Columns(&oid); err != nil {
-			return snap, err
+		var cand OpenFiscalCandidate
+		if err := row.Columns(&cand.OrderID, &cand.Status, &cand.FiscalStatus, &cand.HasPaymentRecorded, &cand.HasCryptoOrQRPoD); err != nil {
+			return OpenFiscalSnapshot{}, err
 		}
-		oid = strings.TrimSpace(oid)
-		if oid == "" {
-			continue
-		}
-		snap.OrderIDs = append(snap.OrderIDs, oid)
-		snap.Count++
+		candidates = append(candidates, cand)
 	}
-	snap.Frozen = snap.Count > 0
-	return snap, nil
+	return EvaluateOpenFiscalOrders(IsStrictImmediateFiscalMode(), candidates), nil
 }

@@ -42,6 +42,45 @@ func (r *SpannerRepository) UpdateKycDocumentStatus(ctx context.Context, docID s
 	return err
 }
 
+func (r *SpannerRepository) GetKycDocument(ctx context.Context, docID string) (KycDocument, bool, error) {
+	stmt := spanner.Statement{
+		SQL: `SELECT DocumentId, RetailerId, Status, DocumentType, DocumentUrl, SubmittedAt, ReviewedAt, ReviewedBy, RejectionReason 
+		      FROM RetailerKycDocuments 
+		      WHERE DocumentId = @docId LIMIT 1`,
+		Params: map[string]interface{}{"docId": docID},
+	}
+	iter := r.client.Single().Query(ctx, stmt)
+	defer iter.Stop()
+
+	row, err := iter.Next()
+	if err == iterator.Done {
+		return KycDocument{}, false, nil
+	}
+	if err != nil {
+		return KycDocument{}, false, err
+	}
+	var doc KycDocument
+	var revAt spanner.NullTime
+	var revBy spanner.NullString
+	var rejReason spanner.NullString
+	if err := row.Columns(
+		&doc.DocumentID, &doc.RetailerID, &doc.Status, &doc.DocumentType, &doc.DocumentURL,
+		&doc.SubmittedAt, &revAt, &revBy, &rejReason,
+	); err != nil {
+		return KycDocument{}, false, err
+	}
+	if revAt.Valid {
+		doc.ReviewedAt = revAt.Time
+	}
+	if revBy.Valid {
+		doc.ReviewedBy = revBy.StringVal
+	}
+	if rejReason.Valid {
+		doc.RejectionReason = rejReason.StringVal
+	}
+	return doc, true, nil
+}
+
 func (r *SpannerRepository) ListKycDocumentsByRetailer(ctx context.Context, retailerID string) ([]KycDocument, error) {
 	stmt := spanner.Statement{
 		SQL: `SELECT DocumentId, RetailerId, Status, DocumentType, DocumentUrl, SubmittedAt, ReviewedAt, ReviewedBy, RejectionReason 

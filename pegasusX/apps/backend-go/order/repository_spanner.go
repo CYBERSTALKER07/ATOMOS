@@ -45,7 +45,7 @@ func outboxEventMutation(e outbox.Event) *spanner.Mutation {
 	return spanner.InsertOrUpdateMap("OutboxEvents", outbox.EventRowMap(e))
 }
 
-const orderSelectColumns = `OrderId, SupplierId, RetailerId, WarehouseId, DriverId, VehicleId, RouteId, ManifestId, DeliveryToken, Status, OrderSource, ConfirmationStatus, LineItemsJson, TotalMinor, OriginalTotalMinor, Currency, H3Cell, Lat, Lng, RequestedDeliveryDate, DeliverBefore, DeliveryPriority, DeliveryFeeMinor, WarehouseNotes, AutoConfirmAt, DecisionAt, DecisionBy, DerivedFromOrderId, ReceivingWindowOpen, ReceivingWindowClose, Timezone, PreorderReminderSentAt, NudgeNotifiedAt, ConfirmationNotifiedAt, CancelLockedAt, CancelLockReason, CancelLockExpiresAt, ProposedDeliveryDate, DeliveryProposalAt, DeliveryProposalBy, DeliveryProposalReason, Version, CreatedAt, UpdatedAt, FiscalStatus, LatestFiscalReceiptId, LatestFiscalAttemptId, FiscalizedAt, ShopClosedAt, ShopClosedReason, ShopClosedGraceEndsAt, ShopClosedResolution, PartialDelivery, ProximityUnlockedAt, ProximityMethod, BuyerAcceptanceStatus, BuyerAcceptanceDeadline, ClaimWindowHours, ClaimWindowEndsAt, ClaimWindowPolicySource`
+const orderSelectColumns = `OrderId, SupplierId, RetailerId, WarehouseId, DriverId, VehicleId, RouteId, ManifestId, DeliveryToken, Status, OrderSource, ConfirmationStatus, LineItemsJson, TotalMinor, OriginalTotalMinor, Currency, H3Cell, Lat, Lng, RequestedDeliveryDate, DeliverBefore, DeliveryPriority, DeliveryFeeMinor, WarehouseNotes, AutoConfirmAt, DecisionAt, DecisionBy, DerivedFromOrderId, ReceivingWindowOpen, ReceivingWindowClose, Timezone, PreorderReminderSentAt, NudgeNotifiedAt, ConfirmationNotifiedAt, CancelLockedAt, CancelLockReason, CancelLockExpiresAt, ProposedDeliveryDate, DeliveryProposalAt, DeliveryProposalBy, DeliveryProposalReason, Version, CreatedAt, UpdatedAt, FiscalStatus, LatestFiscalReceiptId, LatestFiscalAttemptId, FiscalizedAt, ShopClosedAt, ShopClosedReason, ShopClosedGraceEndsAt, ShopClosedResolution, PartialDelivery, ProximityUnlockedAt, ProximityMethod, BuyerAcceptanceStatus, BuyerAcceptanceDeadline, ClaimWindowHours, ClaimWindowEndsAt, ClaimWindowPolicySource, AutoConfirmOptIn, ExternalOrderNo, ExternalFiscalRef, SupersededByRollback`
 
 // CreateOrder writes the Orders row and any emitted outbox events atomically.
 func (r *SpannerRepository) CreateOrder(ctx context.Context, o *Order, emit func(outbox.TxnBuffer) error, stockOpts StockReservationOpts) error {
@@ -62,26 +62,14 @@ func (r *SpannerRepository) CreateOrder(ctx context.Context, o *Order, emit func
 	}
 
 	err = spannerutils.RunReadWriteTransaction(ctx, r.client, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		if err := runPreOrderLocksInTxn(ctx, txn, o); err != nil {
+			return err
+		}
 		if err := snapshotReceivingWindowsInTxn(ctx, txn, o); err != nil {
 			return err
 		}
 		if err := snapshotWarehousePolicyInTxn(ctx, txn, o); err != nil {
 			return err
-		}
-
-		// Reserve on-hand stock for fulfillable quantities (all non-backorder orders, including scheduled pre-orders).
-		needReservationMarker := false
-		if !stockOpts.Skip && len(o.LineItems) > 0 && o.WarehouseID != "" && o.Source != OrderSourceBackorder {
-			expected := time.Time{}
-			if o.RequestedDeliveryDate != nil {
-				expected = o.RequestedDeliveryDate.UTC()
-			} else if o.DeliverBefore != nil {
-				expected = o.DeliverBefore.UTC()
-			}
-			if err := ReserveLineItemsForOrderInTxn(ctx, txn, o.SupplierID, o.WarehouseID, o.OrderID, o.RetailerID, expected, o.LineItems); err != nil {
-				return err
-			}
-			needReservationMarker = true
 		}
 
 		buf := &spannerTxnBuffer{}
@@ -92,91 +80,17 @@ func (r *SpannerRepository) CreateOrder(ctx context.Context, o *Order, emit func
 		}
 
 		var mutations []*spanner.Mutation
-
-		orderInsert := map[string]any{
-			"OrderId":                o.OrderID,
-			"SupplierId":             o.SupplierID,
-			"RetailerId":             o.RetailerID,
-			"WarehouseId":            o.WarehouseID,
-			"DriverId":               nullableString(o.DriverID),
-			"VehicleId":              nullableString(o.VehicleID),
-			"RouteId":                nullableString(o.RouteID),
-			"ManifestId":             nullableString(o.ManifestID),
-			"DeliveryToken":          nullableString(o.QRToken),
-			"Status":                 string(o.Status),
-			"OrderSource":            string(o.Source),
-			"ConfirmationStatus":     string(o.ConfirmationStatus),
-			"LineItemsJson":          lineItemsRaw,
-			"TotalMinor":             o.TotalMinor,
-			"OriginalTotalMinor":     originalTotalMinorForInsert(o),
-			"Currency":               o.Currency,
-			"H3Cell":                 o.H3Cell,
-			"Lat":                    o.Lat,
-			"Lng":                    o.Lng,
-			"RequestedDeliveryDate":  nullableTime(o.RequestedDeliveryDate),
-			"DeliverBefore":          nullableTime(o.DeliverBefore),
-			"DeliveryPriority":       string(o.DeliveryPriority),
-			"DeliveryFeeMinor":       o.DeliveryFeeMinor,
-			"WarehouseNotes":         nullableString(o.WarehouseNotes),
-			"AutoConfirmAt":          nullableTime(o.AutoConfirmAt),
-			"DecisionAt":             nullableTime(o.DecisionAt),
-			"DecisionBy":             nullableString(o.DecisionBy),
-			"DerivedFromOrderId":     nullableString(o.DerivedFromOrderID),
-			"ReceivingWindowOpen":    nullableString(o.ReceivingWindowOpen),
-			"ReceivingWindowClose":   nullableString(o.ReceivingWindowClose),
-			"Timezone":               nullableString(o.Timezone),
-			"PreorderReminderSentAt": nullableTime(o.PreorderReminderSentAt),
-			"NudgeNotifiedAt":        nullableTime(o.NudgeNotifiedAt),
-			"ConfirmationNotifiedAt": nullableTime(o.ConfirmationNotifiedAt),
-			"CancelLockedAt":         nullableTime(o.CancelLockedAt),
-			"CancelLockReason":       nullableString(o.CancelLockReason),
-			"CancelLockExpiresAt":    nullableTime(o.CancelLockExpiresAt),
-			"ProposedDeliveryDate":   nullableTime(o.ProposedDeliveryDate),
-			"DeliveryProposalAt":     nullableTime(o.DeliveryProposalAt),
-			"DeliveryProposalBy":     nullableString(o.DeliveryProposalBy),
-			"DeliveryProposalReason": nullableString(o.DeliveryProposalReason),
-			"Version":                o.Version,
-			"CreatedAt":              o.CreatedAt.UTC(),
-			"UpdatedAt":              o.UpdatedAt.UTC(),
-		}
-		if pid := strings.TrimSpace(o.ParentOrderID); pid != "" {
-			orderInsert["ParentOrderId"] = pid
-		}
-		// In Cloud Spanner, parent row Orders must precede interleaved child tables
-		// (OrderStockReservationMarkers, OrderServicePromiseSnapshots) in the mutation buffer.
-		mutations = append(mutations, spanner.InsertMap("Orders", orderInsert))
-
-		if needReservationMarker {
-			if m := stockReservationMarkerMutation(o.OrderID); m != nil {
-				mutations = append(mutations, m)
-			}
-		}
+		mutations = append(mutations, spanner.InsertMap("Orders", buildOrderInsertMap(o, lineItemsRaw)))
 
 		if promiseMut, err := snapshotServicePromiseInTxn(ctx, txn, o); err == nil && promiseMut != nil {
 			mutations = append(mutations, promiseMut)
 		}
 
-		// Deduplicate and atomically redeem promotions.
-		promoMap := make(map[string]bool)
-		for _, line := range o.LineItems {
-			if line.PromotionID != "" && !promoMap[line.PromotionID] {
-				promoMap[line.PromotionID] = true
-				row, readErr := txn.ReadRow(ctx, "SupplierPromotions", spanner.Key{line.PromotionID}, []string{"MaxRedemptions", "CurrentRedemptions"})
-				if readErr == nil {
-					var maxR, currR spanner.NullInt64
-					if err := row.Columns(&maxR, &currR); err == nil {
-						if maxR.Valid && maxR.Int64 > 0 && currR.Int64 >= maxR.Int64 {
-							return fmt.Errorf("promotion redemption limit reached for %s", line.PromotionID)
-						}
-						mutations = append(mutations, spanner.UpdateMap("SupplierPromotions", map[string]any{
-							"PromotionId":        line.PromotionID,
-							"CurrentRedemptions": currR.Int64 + 1,
-							"UpdatedAt":          spanner.CommitTimestamp,
-						}))
-					}
-				}
-			}
+		promoMuts, err := redeemPromotionsInTxn(ctx, txn, o.LineItems)
+		if err != nil {
+			return err
 		}
+		mutations = append(mutations, promoMuts...)
 
 		for _, e := range buf.events {
 			mutations = append(mutations, outboxEventMutation(e))
@@ -186,7 +100,30 @@ func (r *SpannerRepository) CreateOrder(ctx context.Context, o *Order, emit func
 			mutations = append(mutations, spanner.InsertMap("AuditLog", a.AuditRowMap()))
 		}
 
-		return txn.BufferWrite(mutations)
+		if err := txn.BufferWrite(mutations); err != nil {
+			return err
+		}
+
+		// Reserve on-hand stock AFTER buffering the parent Orders insert so interleaved child
+		// tables (OrderLotReservations, OrderStockReservationMarkers) follow Orders in Spanner.
+		if !stockOpts.Skip && len(o.LineItems) > 0 && o.WarehouseID != "" && o.Source != OrderSourceBackorder {
+			expected := time.Time{}
+			if o.RequestedDeliveryDate != nil {
+				expected = o.RequestedDeliveryDate.UTC()
+			} else if o.DeliverBefore != nil {
+				expected = o.DeliverBefore.UTC()
+			}
+			if err := ReserveLineItemsForOrderInTxn(ctx, txn, o.SupplierID, o.WarehouseID, o.OrderID, o.RetailerID, expected, o.LineItems); err != nil {
+				return err
+			}
+			if m := stockReservationMarkerMutation(o.OrderID); m != nil {
+				if err := txn.BufferWrite([]*spanner.Mutation{m}); err != nil {
+					return err
+				}
+			}
+		}
+
+		return nil
 	})
 	if err != nil {
 		return fmt.Errorf("create order transaction: %w", err)
@@ -224,7 +161,7 @@ func (r *SpannerRepository) UpdateOrder(ctx context.Context, o Order, proofs []D
 			orderSource string
 			prevLineRaw []byte
 			supplierID  string
-			warehouseID string
+			warehouseID spanner.NullString
 		)
 		if err := row.Columns(&version, &prevStatus, &orderSource, &prevLineRaw, &supplierID, &warehouseID); err != nil {
 			return err
@@ -242,7 +179,7 @@ func (r *SpannerRepository) UpdateOrder(ctx context.Context, o Order, proofs []D
 			}
 			wh := strings.TrimSpace(o.WarehouseID)
 			if wh == "" {
-				wh = strings.TrimSpace(warehouseID)
+				wh = strings.TrimSpace(warehouseID.StringVal)
 			}
 			sid := strings.TrimSpace(o.SupplierID)
 			if sid == "" {
@@ -251,13 +188,15 @@ func (r *SpannerRepository) UpdateOrder(ctx context.Context, o Order, proofs []D
 			if err := ReleaseReservationsForOrderInTxn(ctx, txn, sid, wh, o.OrderID, OrderSource(orderSource), prevLineItems); err != nil {
 				return fmt.Errorf("release reservations in txn %s: %w", o.OrderID, err)
 			}
+			if err := prepareReleaseAllocationInTxn(ctx, txn, o.OrderID); err != nil {
+				return fmt.Errorf("release allocation in txn %s: %w", o.OrderID, err)
+			}
 		}
 
 		// Derive from the version read in this transaction, not the caller struct:
 		// Spanner may abort and re-run this closure, and `o.Version++` would then
 		// compare an already-incremented copy against the still-old row.
 		o.Version = version + 1
-		o.UpdatedAt = time.Now().UTC()
 
 		buf := &spannerTxnBuffer{}
 		if emit != nil {
@@ -290,6 +229,7 @@ func (r *SpannerRepository) UpdateOrder(ctx context.Context, o Order, proofs []D
 			"DeliveryFeeMinor":       o.DeliveryFeeMinor,
 			"WarehouseNotes":         nullableString(o.WarehouseNotes),
 			"AutoConfirmAt":          nullableTime(o.AutoConfirmAt),
+			"AutoConfirmOptIn":       o.AutoConfirmOptIn,
 			"DecisionAt":             nullableTime(o.DecisionAt),
 			"DecisionBy":             nullableString(o.DecisionBy),
 			"DerivedFromOrderId":     nullableString(o.DerivedFromOrderID),
@@ -304,7 +244,7 @@ func (r *SpannerRepository) UpdateOrder(ctx context.Context, o Order, proofs []D
 			"DeliveryProposalBy":     nullableString(o.DeliveryProposalBy),
 			"DeliveryProposalReason": nullableString(o.DeliveryProposalReason),
 			"Version":                o.Version,
-			"UpdatedAt":              o.UpdatedAt,
+			"UpdatedAt":              spanner.CommitTimestamp,
 		}
 		// ADR-009 denorm fiscal rollup (columns additive; tolerate missing until migrate).
 		if strings.TrimSpace(o.FiscalStatus) != "" {
@@ -377,7 +317,7 @@ func (r *SpannerRepository) UpdateOrder(ctx context.Context, o Order, proofs []D
 				"ActorId":        strings.TrimSpace(o.TransitionActorID),
 				"EventKind":      eventKind,
 				"MetadataJson":   metaRaw,
-				"CreatedAt":      o.UpdatedAt,
+				"CreatedAt":      spanner.CommitTimestamp,
 			}))
 		}
 
@@ -385,13 +325,13 @@ func (r *SpannerRepository) UpdateOrder(ctx context.Context, o Order, proofs []D
 			if strings.TrimSpace(fr.AttemptID) == "" || strings.TrimSpace(fr.OrderID) == "" {
 				continue
 			}
-			createdAt := fr.CreatedAt.UTC()
-			if createdAt.IsZero() {
-				createdAt = time.Now().UTC()
+			var createdAt any = spanner.CommitTimestamp
+			if !fr.CreatedAt.IsZero() {
+				createdAt = fr.CreatedAt.UTC()
 			}
-			updatedAt := fr.UpdatedAt.UTC()
-			if updatedAt.IsZero() {
-				updatedAt = createdAt
+			var updatedAt any = spanner.CommitTimestamp
+			if !fr.UpdatedAt.IsZero() {
+				updatedAt = fr.UpdatedAt.UTC()
 			}
 			mutations = append(mutations, spanner.InsertMap("OrderFiscalReceipts", map[string]any{
 				"OrderId":             fr.OrderID,
@@ -417,9 +357,9 @@ func (r *SpannerRepository) UpdateOrder(ctx context.Context, o Order, proofs []D
 		}
 		if o.FiscalReceiptUpdate != nil {
 			fr := *o.FiscalReceiptUpdate
-			updatedAt := fr.UpdatedAt.UTC()
-			if updatedAt.IsZero() {
-				updatedAt = time.Now().UTC()
+			var updatedAt any = spanner.CommitTimestamp
+			if !fr.UpdatedAt.IsZero() {
+				updatedAt = fr.UpdatedAt.UTC()
 			}
 			mutations = append(mutations, spanner.UpdateMap("OrderFiscalReceipts", map[string]any{
 				"OrderId":             fr.OrderID,
@@ -615,11 +555,11 @@ func (r *SpannerRepository) GetFiscalAttempt(ctx context.Context, orderID, attem
 		"ErrorCode", "ErrorMessage", "ReasonCode", "ActorId", "TraceId", "CreatedAt", "UpdatedAt",
 	})
 	if err != nil {
-		if errors.Is(err, spanner.ErrRowNotFound) {
+		if errors.Is(err, spanner.ErrRowNotFound) || isSpannerNotFound(err) {
 			return FiscalReceiptRow{}, false, nil
 		}
 		// Table may not exist pre-migration.
-		if strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "OrderFiscalReceipts") {
+		if strings.Contains(err.Error(), "Table not found: OrderFiscalReceipts") {
 			return FiscalReceiptRow{}, false, nil
 		}
 		return FiscalReceiptRow{}, false, fmt.Errorf("read fiscal attempt %s/%s: %w", orderID, attemptID, err)
@@ -866,6 +806,10 @@ func collectOrders(iter *spanner.RowIterator) ([]Order, error) {
 
 func scanOrderRowRow(row *spanner.Row) (Order, error) {
 	var (
+		warehouseID            spanner.NullString
+		h3Cell                 spanner.NullString
+		lat                    spanner.NullFloat64
+		lng                    spanner.NullFloat64
 		statusRaw              string
 		sourceRaw              string
 		confirmationRaw        string
@@ -915,12 +859,16 @@ func scanOrderRowRow(row *spanner.Row) (Order, error) {
 		claimWindowHours        spanner.NullInt64
 		claimWindowEndsAt       spanner.NullTime
 		claimWindowPolicySource spanner.NullString
+		autoConfirmOptIn        spanner.NullBool
+		externalOrderNo         spanner.NullString
+		externalFiscalRef       spanner.NullString
+		supersededByRollback    spanner.NullBool
 	)
 	if err := row.Columns(
 		&orderRecord.OrderID,
 		&orderRecord.SupplierID,
 		&orderRecord.RetailerID,
-		&orderRecord.WarehouseID,
+		&warehouseID,
 		&driverID,
 		&vehicleID,
 		&routeID,
@@ -933,9 +881,9 @@ func scanOrderRowRow(row *spanner.Row) (Order, error) {
 		&orderRecord.TotalMinor,
 		&orderRecord.OriginalTotalMinor,
 		&orderRecord.Currency,
-		&orderRecord.H3Cell,
-		&orderRecord.Lat,
-		&orderRecord.Lng,
+		&h3Cell,
+		&lat,
+		&lng,
 		&requestedDeliveryDate,
 		&deliverBefore,
 		&deliveryPriorityRaw,
@@ -977,8 +925,20 @@ func scanOrderRowRow(row *spanner.Row) (Order, error) {
 		&claimWindowHours,
 		&claimWindowEndsAt,
 		&claimWindowPolicySource,
+		&autoConfirmOptIn,
+		&externalOrderNo,
+		&externalFiscalRef,
+		&supersededByRollback,
 	); err != nil {
 		return Order{}, err
+	}
+	orderRecord.WarehouseID = warehouseID.StringVal
+	orderRecord.H3Cell = h3Cell.StringVal
+	if lat.Valid {
+		orderRecord.Lat = lat.Float64
+	}
+	if lng.Valid {
+		orderRecord.Lng = lng.Float64
 	}
 	orderRecord.DriverID = driverID.StringVal
 	orderRecord.VehicleID = vehicleID.StringVal
@@ -1085,6 +1045,10 @@ func scanOrderRowRow(row *spanner.Row) (Order, error) {
 		orderRecord.ClaimWindowEndsAt = &t
 	}
 	orderRecord.ClaimWindowPolicySource = claimWindowPolicySource.StringVal
+	orderRecord.AutoConfirmOptIn = autoConfirmOptIn.Valid && autoConfirmOptIn.Bool
+	orderRecord.ExternalOrderNo = externalOrderNo.StringVal
+	orderRecord.ExternalFiscalRef = externalFiscalRef.StringVal
+	orderRecord.SupersededByRollback = supersededByRollback.Valid && supersededByRollback.Bool
 
 	if len(lineItemsRaw) > 0 {
 		if err := json.Unmarshal(lineItemsRaw, &orderRecord.LineItems); err != nil {

@@ -371,7 +371,7 @@ func (r *SpannerRepository) UpdateSupplyRequestStatus(ctx context.Context, reque
 		mutations := []*spanner.Mutation{spanner.UpdateMap("WarehouseSupplyRequests", map[string]any{
 			"RequestId": requestID,
 			"State":     status,
-			"UpdatedAt": time.Now().UTC(),
+			"UpdatedAt": spanner.CommitTimestamp,
 		})}
 		mutations = append(mutations, outboxMutations(buf.events)...)
 		for _, a := range buf.audits {

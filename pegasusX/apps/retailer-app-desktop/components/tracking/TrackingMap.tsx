@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Skeleton } from "../Skeleton";
 import EmptyState from "../EmptyState";
 import MapGL, { Layer, Marker, NavigationControl, Source } from "react-map-gl/maplibre";
-import maplibregl from "maplibre-gl";
+import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { PageSection } from "../PageSection";
 import type { TrackingOrder } from "../../lib/types";

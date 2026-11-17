@@ -44,6 +44,13 @@ func (s *Service) HandleFactorySetup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	switch claims.Role {
+	case auth.RoleFactory, auth.RoleFactoryAdmin, auth.RoleAdmin:
+	default:
+		web.JSONError(w, "forbidden", http.StatusForbidden)
+		return
+	}
+
 	var req factorySetupRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		web.JSONError(w, "invalid JSON", http.StatusBadRequest)

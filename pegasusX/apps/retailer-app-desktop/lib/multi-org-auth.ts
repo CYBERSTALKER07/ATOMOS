@@ -21,14 +21,19 @@ export function isPendingOrgSelectResponse(
   return data.token_type === "pending_org_select";
 }
 
+function cookieSecureFlag(): string {
+  return typeof window !== "undefined" && window.location.protocol === "https:" ? "; Secure" : "";
+}
+
 export function persistFullAuthTokens(data: {
   token: string;
   refresh_token?: string;
 }): void {
   if (typeof document === "undefined") return;
-  document.cookie = `pegasus_retailer_jwt=${encodeURIComponent(data.token)}; path=/; max-age=86400; SameSite=Lax`;
+  const secureFlag = cookieSecureFlag();
+  document.cookie = `pegasus_retailer_jwt=${encodeURIComponent(data.token)}; path=/; max-age=86400; SameSite=Strict${secureFlag}`;
   if (data.refresh_token) {
-    document.cookie = `pegasus_retailer_refresh=${encodeURIComponent(data.refresh_token)}; path=/; max-age=604800; SameSite=Lax`;
+    document.cookie = `pegasus_retailer_refresh=${encodeURIComponent(data.refresh_token)}; path=/; max-age=604800; SameSite=Strict${secureFlag}`;
   }
   // Drop intermediate cookie if any
   document.cookie = `${PENDING_TOKEN_COOKIE}=; Max-Age=0; path=/`;
@@ -40,7 +45,7 @@ export function persistFullAuthTokens(data: {
 export function persistPendingOrgToken(token: string, expiresInSec = 420): void {
   if (typeof document === "undefined") return;
   const maxAge = Math.max(60, Math.min(600, expiresInSec));
-  document.cookie = `${PENDING_TOKEN_COOKIE}=${encodeURIComponent(token)}; path=/; max-age=${maxAge}; SameSite=Lax`;
+  document.cookie = `${PENDING_TOKEN_COOKIE}=${encodeURIComponent(token)}; path=/; max-age=${maxAge}; SameSite=Strict${cookieSecureFlag()}`;
   // Do not set full session cookie until select-org.
 }
 

@@ -99,6 +99,8 @@ fun CheckoutSheet(
     paymentOptions: List<CheckoutPaymentOption>,
     stockWarnings: List<com.pegasusx.retailer.data.model.StockWarning> = emptyList(),
     oosItems: List<String> = emptyList(),
+    packSuggestions: List<com.pegasusx.retailer.util.PackMultipleSuggestion> = emptyList(),
+    ownerApprovalRequired: com.pegasusx.retailer.util.OwnerApprovalRequiredDetail? = null,
     previewLoading: Boolean = false,
     deliveryMode: String = "STANDARD",
     deliveryDate: String? = null,
@@ -107,6 +109,7 @@ fun CheckoutSheet(
     deliveryFeeLabel: String = "Free",
     deliveryDistanceKm: Double = 0.0,
     expressPriority: Boolean = false,
+    autoConfirmOptIn: Boolean = false,
     currencyPickerEnabled: Boolean = false,
     currencyAllowlist: List<String> = emptyList(),
     operatingCurrency: String = "",
@@ -114,6 +117,11 @@ fun CheckoutSheet(
     onDeliveryModeChange: (String) -> Unit = {},
     onDeliveryDateChange: (String?) -> Unit = {},
     onExpressPriorityChange: (Boolean) -> Unit = {},
+    onAutoConfirmOptInChange: (Boolean) -> Unit = {},
+    onApplyPackSuggestion: (skuId: String, quantity: Int) -> Unit = { _, _ -> },
+    onDismissPackSuggestions: () -> Unit = {},
+    onRetryFallbackPaymentMethod: (String) -> Unit = {},
+    onDismissOwnerApproval: () -> Unit = {},
     onOrderCurrencyChange: (String) -> Unit = {},
     onBuy: () -> Unit,
     onSelectPayment: (String) -> Unit,
@@ -180,6 +188,48 @@ fun CheckoutSheet(
                 onExpressPriorityChange = onExpressPriorityChange,
             )
 
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = SoftSquircleShape,
+                color = MaterialTheme.colorScheme.surfaceContainerLow,
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            "Auto-confirm preorder",
+                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
+                        )
+                        Text(
+                            "Confirm eligible preorders automatically without manual review.",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f),
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(10.dp))
+                    androidx.compose.material3.Switch(
+                        checked = autoConfirmOptIn,
+                        onCheckedChange = onAutoConfirmOptInChange,
+                    )
+                }
+            }
+
+            if (packSuggestions.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(10.dp))
+                PackSuggestionBanner(
+                    suggestions = packSuggestions,
+                    onApply = onApplyPackSuggestion,
+                    onDismiss = onDismissPackSuggestions,
+                )
+            }
+
             Spacer(modifier = Modifier.height(12.dp))
 
             if (stockWarnings.isNotEmpty()) {
@@ -227,6 +277,17 @@ fun CheckoutSheet(
                         }
                     }
                 }
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+
+            ownerApprovalRequired?.let { approval ->
+                OwnerApprovalRequiredBanner(
+                    detail = approval,
+                    isSubmitting = phase == CheckoutPhase.PROCESSING,
+                    onPayCash = { onRetryFallbackPaymentMethod("CASH") },
+                    onPayCard = { onRetryFallbackPaymentMethod("CARD") },
+                    onDismiss = onDismissOwnerApproval,
+                )
                 Spacer(modifier = Modifier.height(12.dp))
             }
 

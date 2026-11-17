@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useMemo } from "react";
+import Link from "next/link";
 import { api, type AuditRow } from "@/lib/api";
 import { useAdminToken } from "@/lib/session";
 import { CopyableId } from "@/components/ui/CopyableId";
@@ -77,6 +78,12 @@ export default function AuditLedgerPage() {
         </div>
 
         <div className="flex items-center gap-2">
+          <Link
+            href="/governance"
+            className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 shadow-sm hover:bg-gray-50"
+          >
+            Audit v2 &amp; SoD
+          </Link>
           <button
             type="button"
             onClick={exportCSV}

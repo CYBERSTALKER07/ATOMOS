@@ -7,6 +7,7 @@ final class TreasuryViewModel {
     var ledgerCount = 0
     var mismatchCount = 0
     var settlementRows = 0
+    var migratedOpeningInvoices: [SupplierARInvoice] = []
     var monthLabel = "—"
     var loading = true
     private var loadGeneration = 0
@@ -22,11 +23,13 @@ final class TreasuryViewModel {
             async let ledgerTask = SupplierOperationsService.paymentLedger()
             async let authorityTask = SupplierOperationsService.paymentSettlementAuthority()
             async let mismatchTask = SupplierOperationsService.paymentReconciliationMismatches()
+            async let openingArTask: [SupplierARInvoice]? = try? await MigrationService.listSupplierARInvoices(limit: 100)
 
             let loadedEarnings = try await earningsTask
             let ledger = try await ledgerTask
             let authority = try await authorityTask
             let mismatches = try await mismatchTask
+            let openingAr = await openingArTask
             guard generation == loadGeneration else { return }
 
             earnings = loadedEarnings
@@ -38,6 +41,7 @@ final class TreasuryViewModel {
             ledgerCount = ledger.count
             settlementRows = authority.items.count
             mismatchCount = mismatches.items.count
+            migratedOpeningInvoices = (openingAr ?? []).filter(\.isMigrationOrigin)
             guard generation == loadGeneration else { return }
             SupplierScreenLoad.succeed(error: &error)
         } catch {

@@ -691,10 +691,16 @@ func reconciliationEntrySign(entryType string) int64 {
 	if strings.Contains(t, "FAILED") || strings.Contains(t, "CANCEL") || strings.Contains(t, "VOID") || strings.Contains(t, "PENDING") || strings.Contains(t, "REQUIRED") || strings.Contains(t, "UNKNOWN") {
 		return 0
 	}
-	if strings.Contains(t, "REVERSAL") {
+	if strings.Contains(t, "CHARGEBACK_REVERSAL") {
 		return 1
 	}
+	if strings.Contains(t, "PAYMENT_REVERSAL") || strings.Contains(t, "ORDER_REVERSAL") {
+		return -1
+	}
 	if strings.Contains(t, "CHARGEBACK") || strings.Contains(t, "REFUND") {
+		return -1
+	}
+	if strings.Contains(t, "REVERSAL") {
 		return -1
 	}
 	if strings.Contains(t, "PAID") || strings.Contains(t, "CAPTURED") || strings.Contains(t, "CLEARED") || strings.Contains(t, "SETTLED") || strings.Contains(t, "SUCCESS") || strings.Contains(t, "SUCCEEDED") || strings.Contains(t, "COMPLETED") || strings.Contains(t, "AUTHORIZED") {
@@ -719,7 +725,7 @@ func isPaymentSuccessStatus(status string) bool {
 
 func isPaymentFailureStatus(status string) bool {
 	s := strings.ToUpper(strings.TrimSpace(status))
-	return s == "FAILED" || s == "DECLINED" || s == "CANCELLED" || s == "VOIDED"
+	return s == "FAILED" || s == "DECLINED" || s == "CANCELLED" || s == "VOIDED" || s == "CHARGEBACK"
 }
 
 func writeJSONError(w http.ResponseWriter, status int, code, message, endpoint string, deprecated bool, migrateTo string) {

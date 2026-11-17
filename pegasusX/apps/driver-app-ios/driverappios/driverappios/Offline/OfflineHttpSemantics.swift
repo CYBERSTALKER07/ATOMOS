@@ -18,11 +18,27 @@ public enum OfflineHttpSemantics {
     }
 
     public static func isSuccessHTTP(_ code: Int) -> Bool {
-        (200...299).contains(code) || code == 409
+        (200...299).contains(code)
+    }
+
+    public static func isConflictHTTP(_ code: Int) -> Bool {
+        code == 409
+    }
+
+    public static func isIdempotentReplay409(statusCode: Int, responseBody: String?) -> Bool {
+        guard statusCode == 409, let body = responseBody?.lowercased(), !body.isEmpty else { return false }
+        let markers = ["idempotent", "duplicate", "already_exists", "already_processed"]
+        return markers.contains { body.contains($0) }
+    }
+
+    public static func isIdempotentReplay409(statusCode: Int, responseBody: Data?) -> Bool {
+        guard statusCode == 409, let data = responseBody, !data.isEmpty else { return false }
+        guard let bodyString = String(data: data, encoding: .utf8) else { return false }
+        return isIdempotentReplay409(statusCode: statusCode, responseBody: bodyString)
     }
 
     public static func isDeadHTTP(_ code: Int) -> Bool {
-        (400...499).contains(code) && !isRetryableHTTP(code) && code != 409
+        (400...499).contains(code) && !isRetryableHTTP(code)
     }
 
     public enum FlushOutcome: Sendable {
@@ -31,8 +47,16 @@ public enum OfflineHttpSemantics {
         case dead
     }
 
-    public static func outcome(forHTTP code: Int) -> FlushOutcome {
+    public static func outcome(forHTTP code: Int, body: Data? = nil) -> FlushOutcome {
         if isSuccessHTTP(code) { return .ack }
+        if isIdempotentReplay409(statusCode: code, responseBody: body) { return .ack }
+        if isRetryableHTTP(code) { return .retry }
+        return .dead
+    }
+
+    public static func outcome(forHTTP code: Int, bodyString: String?) -> FlushOutcome {
+        if isSuccessHTTP(code) { return .ack }
+        if isIdempotentReplay409(statusCode: code, responseBody: bodyString) { return .ack }
         if isRetryableHTTP(code) { return .retry }
         return .dead
     }

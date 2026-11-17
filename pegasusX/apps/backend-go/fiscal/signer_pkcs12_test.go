@@ -1,14 +1,14 @@
 package fiscal
 
 import (
+	"bytes"
 	"context"
-	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
-	"crypto/sha256"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/base64"
+	"encoding/json"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -16,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	"go.mozilla.org/pkcs7"
 	pkcs12 "software.sslmate.com/src/go-pkcs12"
 )
 
@@ -82,17 +83,54 @@ func TestPKCS12Signer_RoundTrip(t *testing.T) {
 		t.Fatalf("Sign: %v", err)
 	}
 	sig := string(sigBytes)
-	if !strings.HasPrefix(sig, "EIMZO.") {
-		t.Fatalf("signature missing EIMZO prefix: %q", sig)
+	if strings.HasPrefix(sig, "EIMZO.") {
+		t.Fatalf("signature must be genuine CMS/PKCS#7, not EIMZO prefix stub: %q", sig)
 	}
-	raw, err := base64.StdEncoding.DecodeString(strings.TrimPrefix(sig, "EIMZO."))
+	der, err := base64.StdEncoding.DecodeString(sig)
 	if err != nil {
-		t.Fatalf("decode signature: %v", err)
+		t.Fatalf("decode base64 PKCS#7 signature: %v", err)
 	}
-	digest := sha256.Sum256(payload)
-	if err := rsa.VerifyPSS(&signer.key.PublicKey, crypto.SHA256, digest[:], raw, nil); err != nil {
-		t.Fatalf("VerifyPSS: %v", err)
+	p7, err := pkcs7.Parse(der)
+	if err != nil {
+		t.Fatalf("pkcs7.Parse: %v", err)
 	}
+	if err := p7.Verify(); err != nil {
+		t.Fatalf("p7.Verify: %v", err)
+	}
+	if !bytes.Equal(p7.Content, payload) {
+		t.Fatalf("signed PKCS#7 content mismatch: got %q want %q", p7.Content, payload)
+	}
+	if signerCert := p7.GetOnlySigner(); signerCert == nil || !signerCert.Equal(signer.cert) {
+		t.Fatalf("unexpected signer cert in PKCS#7: %v", signerCert)
+	}
+	// Mutating signed content after parsing must fail verification.
+	p7.Content = []byte(`{"document":"ehf","amount":9999}`)
+	if err := p7.Verify(); err == nil {
+		t.Fatal("expected p7.Verify to fail on tampered content")
+	}
+
+	// Verify AttachSignature embeds a verifiable Base64 PKCS#7 envelope.
+	attachedBytes, err := AttachSignature(context.Background(), signer, map[string]any{"amount": 1000, "document": "ehf"})
+	if err != nil {
+		t.Fatalf("AttachSignature: %v", err)
+	}
+	var env map[string]any
+	if err := json.Unmarshal(attachedBytes, &env); err != nil {
+		t.Fatalf("unmarshal attached payload: %v", err)
+	}
+	attachedSig, _ := env["signature"].(string)
+	attachedDER, err := base64.StdEncoding.DecodeString(attachedSig)
+	if err != nil {
+		t.Fatalf("decode attached signature: %v", err)
+	}
+	attachedP7, err := pkcs7.Parse(attachedDER)
+	if err != nil {
+		t.Fatalf("parse attached PKCS#7: %v", err)
+	}
+	if err := attachedP7.Verify(); err != nil {
+		t.Fatalf("verify attached PKCS#7: %v", err)
+	}
+
 	if subj := signer.CertSubject(); !strings.Contains(subj, "TEST-123") {
 		t.Fatalf("CertSubject missing serial: %q", subj)
 	}

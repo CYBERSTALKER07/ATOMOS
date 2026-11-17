@@ -79,6 +79,7 @@ fun ProfileScreen(
     onFamilyMembersClick: () -> Unit = {},
     onCapabilitiesClick: () -> Unit = {},
     onTeamClick: () -> Unit = {},
+    onOwnerApprovalsClick: () -> Unit = {},
     onLocationsClick: () -> Unit = {},
     onStoreStockClick: () -> Unit = {},
     onLocalSkusClick: () -> Unit = {},
@@ -91,6 +92,17 @@ fun ProfileScreen(
     viewModel: ProfileViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = androidx.compose.ui.platform.LocalContext.current
+
+    if (uiState.showGeneralSettingsDialog) {
+        com.pegasusx.retailer.ui.screens.profile.components.GeneralSettingsDialog(
+            selectedLanguage = uiState.selectedLanguage,
+            selectedWorkspaceMode = uiState.workspaceMode,
+            onSelectLanguage = { lang -> viewModel.setLanguage(context, lang) },
+            onSelectWorkspaceMode = viewModel::setWorkspaceMode,
+            onDismiss = { viewModel.setShowGeneralSettingsDialog(false) },
+        )
+    }
 
     // History/Fresh dialog when enabling global auto-order
     if (uiState.showHistoryDialog) {
@@ -183,6 +195,8 @@ fun ProfileScreen(
                 onFamilyMembersClick = onFamilyMembersClick,
                 onCapabilitiesClick = onCapabilitiesClick,
                 onTeamClick = onTeamClick,
+                isOwner = uiState.isOwner,
+                onOwnerApprovalsClick = onOwnerApprovalsClick,
                 onLocationsClick = onLocationsClick,
                 onStoreStockClick = onStoreStockClick,
                 onLocalSkusClick = onLocalSkusClick,
@@ -192,6 +206,18 @@ fun ProfileScreen(
                 onPlanogramsClick = onPlanogramsClick,
                 onReportsClick = onReportsClick,
                 onAssistClick = onAssistClick,
+                generalSettingsSubtitle = "${uiState.selectedLanguage.nativeLabel} · ${if (uiState.workspaceMode == com.pegasusx.retailer.data.local.RetailerWorkspaceMode.FAST) "Fast Mode" else "Full ERP"}",
+                onGeneralSettingsClick = { viewModel.setShowGeneralSettingsDialog(true) },
+            )
+        }
+
+        item {
+            com.pegasusx.retailer.ui.screens.profile.components.TelegramQuickBindCard(
+                status = uiState.telegramStatus,
+                linkRequest = uiState.telegramLinkRequest,
+                busy = uiState.telegramBusy,
+                error = uiState.telegramError,
+                onGenerateOtp = viewModel::requestTelegramLink,
             )
         }
 

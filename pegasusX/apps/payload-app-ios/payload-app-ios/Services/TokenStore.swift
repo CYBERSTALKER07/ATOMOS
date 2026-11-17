@@ -122,7 +122,7 @@ final class TokenStore {
             kSecAttrAccount: account,
             kSecAttrService: serviceName,
             kSecValueData: Data(value.utf8),
-            kSecAttrAccessible: kSecAttrAccessibleAfterFirstUnlock,
+            kSecAttrAccessible: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
         ]
         SecItemAdd(q as CFDictionary, nil)
     }

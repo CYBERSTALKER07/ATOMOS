@@ -74,15 +74,26 @@ type SupplierDispatchPreview struct {
 
 // SupplierExceptionRow is an operational exception surfaced to the supplier queue.
 type SupplierExceptionRow struct {
-	OrderID         string `json:"order_id"`
-	Kind            string `json:"kind"`
-	Status          string `json:"status"`
-	RetailerID      string `json:"retailer_id,omitempty"`
-	Note            string `json:"note,omitempty"`
-	ManifestID      string `json:"manifest_id,omitempty"`
-	UpdatedAt       string `json:"updated_at"`
-	Score           *int64 `json:"score,omitempty"`
-	TopPlaybookName string `json:"top_playbook_name,omitempty"`
+	OrderID          string `json:"order_id"`
+	Kind             string `json:"kind"`
+	Status           string `json:"status"`
+	RetailerID       string `json:"retailer_id,omitempty"`
+	DriverID         string `json:"driver_id,omitempty"`
+	Note             string `json:"note,omitempty"`
+	ManifestID       string `json:"manifest_id,omitempty"`
+	UpdatedAt        string `json:"updated_at"`
+	Score            *int64 `json:"score,omitempty"`
+	TopPlaybookName  string `json:"top_playbook_name,omitempty"`
+	MoneyAtRiskMinor int64  `json:"money_at_risk_minor,omitempty"`
+	Severity         string `json:"severity,omitempty"`
+	HandlerGroup     string `json:"handler_group,omitempty"`
+	SeverityTier     string `json:"severity_tier,omitempty"`
+	DisplayName      string `json:"display_name,omitempty"`
+	Phone            string `json:"phone,omitempty"`
+	TIN              string `json:"tin,omitempty"`
+	PostingID        string `json:"posting_id,omitempty"`
+	DocumentKey      string `json:"document_key,omitempty"`
+	DedupClusterID   string `json:"dedup_cluster_id,omitempty"`
 }
 
 // SupplierManifestExceptionRow is a manifest loading-gate exception from ManifestExceptions.
@@ -205,9 +216,39 @@ func (s *Service) HandleExceptions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	financeRows, finErr := s.listFinanceExceptionRows(r.Context(), sid)
-	if finErr == nil && len(financeRows) > 0 {
+	if finErr != nil {
+		s.log.WarnContext(r.Context(), "finance exceptions load failed", "supplier_id", sid, "err", finErr)
+	} else if len(financeRows) > 0 {
 		rows = append(rows, financeRows...)
 	}
+	manifestRows, manErr := s.listSupplierManifestExceptions(r.Context(), sid, false)
+	if manErr == nil {
+		for _, m := range manifestRows {
+			sevTier := "HIGH"
+			if m.Escalated {
+				sevTier = "CRITICAL"
+			}
+			rows = append(rows, SupplierExceptionRow{
+				OrderID:      firstNonEmptyExceptionStr(m.OrderID, m.ExceptionID),
+				Kind:         "MANIFEST_EXCEPTION",
+				Status:       "OPEN",
+				ManifestID:   m.ManifestID,
+				Note:         firstNonEmptyExceptionStr(m.Reason, m.ExceptionID),
+				UpdatedAt:    m.CreatedAt,
+				SeverityTier: sevTier,
+			})
+		}
+	}
+	if s.extraExceptionRowsFn != nil {
+		extra, exErr := s.extraExceptionRowsFn(r.Context(), sid)
+		if exErr != nil {
+			s.log.WarnContext(r.Context(), "extra exceptions query failed", "supplier_id", sid, "err", exErr)
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "load_supplier_exceptions_failed"})
+			return
+		}
+		rows = append(rows, extra...)
+	}
+	rows = s.filterResolvedInMemoryExceptions(rows)
 	if s.controlTower != nil && s.controlTower.Enabled() {
 		byOrder, enrichErr := s.controlTower.ScoredByOrderID(r.Context(), sid)
 		if enrichErr == nil {
@@ -219,6 +260,19 @@ func (s *Service) HandleExceptions(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 		}
+	}
+	s.enrichSupplierExceptionRows(r.Context(), sid, rows)
+	SortSupplierExceptions(rows)
+
+	handlerFilter := strings.ToUpper(strings.TrimSpace(r.URL.Query().Get("handler")))
+	if handlerFilter != "" && handlerFilter != "ALL" {
+		filtered := make([]SupplierExceptionRow, 0, len(rows))
+		for _, row := range rows {
+			if row.HandlerGroup == handlerFilter {
+				filtered = append(filtered, row)
+			}
+		}
+		rows = filtered
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"exceptions": rows})
 }
@@ -503,13 +557,15 @@ func (s *Service) listSupplierExceptions(ctx context.Context, supplierID string)
 			continue
 		}
 		rows = append(rows, SupplierExceptionRow{
-			OrderID:    order.OrderID,
-			Kind:       kind,
-			Status:     order.Status,
-			RetailerID: order.RetailerID,
-			Note:       order.Note,
-			ManifestID: order.ManifestID,
-			UpdatedAt:  order.UpdatedAt,
+			OrderID:          order.OrderID,
+			Kind:             kind,
+			Status:           order.Status,
+			RetailerID:       order.RetailerID,
+			DriverID:         order.DriverID,
+			Note:             order.Note,
+			ManifestID:       order.ManifestID,
+			UpdatedAt:        order.UpdatedAt,
+			MoneyAtRiskMinor: order.TotalMinor,
 		})
 	}
 	sort.Slice(rows, func(i, j int) bool { return rows[i].UpdatedAt > rows[j].UpdatedAt })

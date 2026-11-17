@@ -28,6 +28,10 @@ var (
 	TopicDemand = topicFromEnv("KAFKA_TOPIC_DEMAND", "pegasusx-demand")
 	// TopicDeadLetter carries unparseable poison pills or messages that failed terminal processing.
 	TopicDeadLetter = topicFromEnv("KAFKA_TOPIC_DEAD_LETTER", "pegasusx-dead-letter")
+	// TopicIntel carries typed ontology projection change events for intelligence & analytical sinks.
+	TopicIntel = topicFromEnv("KAFKA_TOPIC_INTEL", "pegasusx-intel")
+	// TopicConnectors carries external connector ingress and sync lifecycle events.
+	TopicConnectors = topicFromEnv("KAFKA_TOPIC_CONNECTORS", "pegasusx-connectors")
 )
 
 // EventType constants. Add new types here, in events.schema.json, and in
@@ -382,6 +386,148 @@ const (
 	EventContainerLedgerUpdated   = "CONTAINER_LEDGER_UPDATED"
 	EventOfflineQuotaLeaseUpdated = "OFFLINE_QUOTA_LEASE_UPDATED"
 	EventAMLExposureUpdated       = "AML_EXPOSURE_UPDATED"
+
+	// @Sync(MigrationEvent)
+	EventMigrationBundleUploaded      = "MIGRATION_BUNDLE_UPLOADED"
+	EventMigrationSorted              = "MIGRATION_SORTED"
+	EventMigrationSessionStatusUpdate = "MIGRATION_SESSION_STATUS_UPDATE"
+	EventMigrationMappingProposed     = "MIGRATION_MAPPING_PROPOSED"
+	EventMigrationDryRunReady         = "MIGRATION_DRY_RUN_READY"
+	EventMigrationApplyProgress       = "MIGRATION_APPLY_PROGRESS"
+	EventMigrationApplied             = "MIGRATION_APPLIED"
+	EventMigrationFailed              = "MIGRATION_FAILED"
+	EventMigrationRolledBack          = "MIGRATION_ROLLED_BACK"
+
+	// @Sync(JoinRequestEvent)
+	EventJoinRequestCreated  = "JOIN_REQUEST_CREATED"
+	EventJoinRequestResolved = "JOIN_REQUEST_RESOLVED"
+
+	// @Sync(ARInvoiceEvent)
+	EventARMigrationAcknowledged = "AR_MIGRATION_ACKNOWLEDGED"
+	EventARMigrationDisputed     = "AR_MIGRATION_DISPUTED"
+
+	// @Sync(InventoryLotReleasedEvent)
+	EventInventoryLotReleased = "inventory.lot.released"
+
+	// @Sync(GLEntryPostedEvent)
+	EventGLEntryPosted = "gl.entry.posted"
+
+	// @Sync(GLEntryReversedEvent)
+	EventGLEntryReversed = "gl.entry.reversed"
+
+	// @Sync(ReconRunCompletedEvent)
+	EventReconRunCompleted = "recon.run.completed"
+
+	// @Sync(ReconBreakOpenedEvent)
+	EventReconBreakOpened = "recon.break.opened"
+
+	// @Sync(ReconBreakResolvedEvent)
+	EventReconBreakResolved = "recon.break.resolved"
+
+	// @Sync(AuditAnchorWrittenEvent)
+	EventAuditAnchorWritten = "audit.anchor.written"
+
+	// @Sync(IAMRoleChangedEvent)
+	EventIAMRoleChanged = "iam.role.changed"
+
+	// @Sync(SodViolationDetectedEvent)
+	EventSodViolationDetected = "sod.violation.detected"
+
+	// @Sync(OntologyObjectChangedEvent)
+	EventOntologyObjectChanged = "ontology.object.changed"
+
+	// @Sync(PeriodEvent)
+	EventPeriodSoftClosed = "period.soft_closed"
+	EventPeriodClosed     = "period.closed"
+	EventPeriodReopened   = "period.reopened"
+
+	// @Sync(ApprovalRequestedEvent)
+	EventApprovalRequested = "approval.requested"
+
+	// @Sync(ApprovalDecidedEvent)
+	EventApprovalDecided = "approval.decided"
+
+	// @Sync(InventoryReceivedEvent)
+	EventInventoryReceived = "inventory.received"
+
+	// @Sync(InventoryIssuedEvent)
+	EventInventoryIssued = "inventory.issued"
+
+	// @Sync(InventoryExpiryRiskEvent)
+	EventInventoryExpiryRisk = "inventory.expiry.risk"
+
+	// @Sync(EsfDocumentEvent)
+	EventEsfSubmitted = "esf.submitted"
+	EventEsfAccepted  = "esf.accepted"
+	EventEsfRejected  = "esf.rejected"
+	EventEsfCancelled = "esf.cancelled"
+
+	// @Sync(ForecastRunCompletedEvent)
+	EventForecastRunCompleted = "forecast.run.completed"
+
+	// @Sync(CreditScoreComputedEvent)
+	EventCreditScoreComputed = "credit.score.computed"
+
+	// @Sync(CreditLimitChangedEvent)
+	EventCreditLimitChanged = "credit.limit.changed"
+
+	// @Sync(CreditHoldEvent)
+	EventCreditHoldApplied  = "credit.hold.applied"
+	EventCreditHoldReleased = "credit.hold.released"
+
+	// @Sync(ProposalEvent)
+	EventProposalCreated  = "proposal.created"
+	EventProposalDecided  = "proposal.decided"
+	EventProposalExecuted = "proposal.executed"
+
+	// @Sync(InventoryRebalanceProposedEvent)
+	EventInventoryRebalanceProposed = "inventory.rebalance.proposed"
+
+	// @Sync(RoiEventRecordedEvent)
+	EventRoiEventRecorded = "roi.event.recorded"
+
+	// @Sync(ConnectorSyncEvent)
+	EventConnectorSyncCompleted = "connector.sync.completed"
+	EventConnectorSyncFailed    = "connector.sync.failed"
+
+	// @Sync(ConnectorShadowMismatchEvent)
+	EventConnectorShadowMismatch = "connector.shadow.mismatch"
+
+	// @Sync(ExportPackCreatedEvent)
+	EventExportPackCreated = "export.pack.created"
+
+	// @Sync(AuditorAccessGrantedEvent)
+	EventAuditorAccessGranted = "iam.auditor_access.granted"
+
+	// @Sync(EntityIntercompanyPostedEvent)
+	EventEntityIntercompanyPosted = "entity.intercompany.posted"
+
+	// @Sync(FxRevaluationPostedEvent)
+	EventFxRevaluationPosted = "fx.revaluation.posted"
+
+	// @Sync(P2PEvent)
+	EventP2PPOCreated              = "p2p.po.created"
+	EventP2PReceiptPosted          = "p2p.receipt.posted"
+	EventP2PThreeWayMatchCompleted = "p2p.three_way_match.completed"
+
+	// @Sync(ConnectorPushCompletedEvent)
+	EventConnectorPushCompleted = "connector.push.completed"
+
+	// @Sync(AnomalyCaseEvent)
+	EventAnomalyDetected = "anomaly.case.detected"
+	EventAnomalyResolved = "anomaly.case.resolved"
+
+	// @Sync(WhatIfSimulatedEvent)
+	EventWhatIfSimulated = "whatif.simulation.completed"
+
+	// @Sync(HaccpExcursionReportedEvent)
+	EventHaccpExcursionReported = "coldchain.haccp.excursion"
+
+	// @Sync(ProposalL2AutoExecutedEvent)
+	EventProposalL2AutoExecuted = "proposal.l2.auto_executed"
+
+	// @Sync(ScimIdentitySyncedEvent)
+	EventScimIdentitySynced = "iam.scim.synced"
 )
 
 const (
@@ -419,6 +565,37 @@ const (
 	AggregateCountryOverride       = "CountryOverride"
 	AggregateLotRecall             = "LotRecall"
 	AggregateCategory              = "Category"
+	AggregateJournalEntry          = "JournalEntry"
+	AggregateReconRun              = "ReconciliationRun"
+	AggregateReconBreak            = "ReconciliationBreak"
+	AggregateAuditAnchor           = "AuditChainAnchor"
+	AggregateSupplierRole          = "SupplierUserRole"
+	AggregateSodViolation          = "SodViolation"
+	AggregateOntologyObject        = "OntologyObject"
+	AggregatePeriod                = "Period"
+	AggregateApprovalRequest       = "ApprovalRequest"
+	AggregateInventoryCostLayer    = "InventoryCostLayer"
+	AggregateInventoryMovement     = "InventoryMovement"
+	AggregateEsfDocument           = "EsfDocument"
+	AggregateForecastRun           = "ForecastRun"
+	AggregateCreditScore           = "CreditScore"
+	AggregateProposal              = "Proposal"
+	AggregateRoiEvent              = "RoiEvent"
+	AggregateExternalCredential    = "ExternalCredential"
+	AggregateConnectorSyncRun      = "ConnectorSyncRun"
+	AggregateExportPack            = "ExportPack"
+	AggregateLegalEntity           = "LegalEntity"
+	AggregateIntercompanyTransfer  = "IntercompanyTransfer"
+	AggregateFxRevaluationRun      = "FxRevaluationRun"
+	AggregateProcessTemplate       = "ProcessTemplate"
+	AggregateProcessInstance       = "ProcessInstance"
+	AggregatePurchaseOrder         = "PurchaseOrder"
+	AggregateGoodsReceipt          = "GoodsReceipt"
+	AggregateVendorInvoice         = "VendorInvoice"
+	AggregateAnomalyCase           = "AnomalyCase"
+	AggregateWhatIfSimulation      = "WhatIfSimulation"
+	AggregateCustomRole            = "CustomRole"
+	AggregateScimIdentity          = "ScimIdentity"
 )
 
 func topicFromEnv(key string, fallback string) string {

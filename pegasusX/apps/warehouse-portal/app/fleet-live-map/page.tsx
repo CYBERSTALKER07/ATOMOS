@@ -3,7 +3,9 @@
 import { usePortalT } from "@/lib/i18n";
 import PageTransition from '@/components/PageTransition';
 import { PageChrome } from '@/components/PageChrome';
-import FleetLiveMapPanel from '@/components/FleetLiveMapPanel';
+import dynamic from 'next/dynamic';
+
+const FleetLiveMapPanel = dynamic(() => import('@/components/FleetLiveMapPanel'), { ssr: false });
 
 export default function FleetLiveMapPage() {
   const t = usePortalT();

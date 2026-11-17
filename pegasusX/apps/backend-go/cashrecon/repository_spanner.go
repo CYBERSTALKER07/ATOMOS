@@ -10,6 +10,7 @@ import (
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/gl"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/payment"
 	"google.golang.org/api/iterator"
@@ -58,8 +59,12 @@ func (r *SpannerRepository) SaveReconciliation(ctx context.Context, cr CashRecon
 			}
 		}
 
-		// Double-entry general ledger balancing in PaymentLedgerEntries
+		// Double-entry general ledger balancing in PaymentLedgerEntries + immutable GL
 		if cr.DifferenceMinor != 0 {
+			supplierID := strings.TrimSpace(cr.SupplierId)
+			if supplierID == "" {
+				supplierID = "sup_61d822c6ab9714ca11f20db9"
+			}
 			switch eventType {
 			case EventCashReconciliationCreated:
 				je, err := payment.BuildCashVarianceJournalEntry(
@@ -82,6 +87,26 @@ func (r *SpannerRepository) SaveReconciliation(ctx context.Context, cr CashRecon
 						return mErr
 					}
 					muts = append(muts, jeMuts...)
+				}
+				occurredAt := cr.CreatedAt
+				if occurredAt.IsZero() {
+					occurredAt = time.Now().UTC()
+				}
+				if _, glErr := gl.PostEventInTxn(ctx, txn, buf, gl.RuleEventCashVariance, gl.RuleEvalContext{
+					EntityID:        supplierID,
+					SupplierID:      supplierID,
+					DriverID:        cr.DriverId,
+					SourceID:        cr.ReconciliationId,
+					Currency:        "UZS",
+					Action:          "OPEN",
+					ExpectedMinor:   cr.ExpectedCashMinor,
+					ReceivedMinor:   cr.DeclaredCashMinor,
+					DifferenceMinor: cr.DifferenceMinor,
+					IdempotencyKey:  "gl:cash_recon:open:" + cr.ReconciliationId,
+					Memo:            "Driver cash variance on shift submission",
+					OccurredAt:      occurredAt,
+				}); glErr != nil {
+					return glErr
 				}
 			case EventCashReconciliationAccepted:
 				resolvedAt := time.Now().UTC()
@@ -108,6 +133,20 @@ func (r *SpannerRepository) SaveReconciliation(ctx context.Context, cr CashRecon
 					}
 					muts = append(muts, jeMuts...)
 				}
+				if _, glErr := gl.PostEventInTxn(ctx, txn, buf, gl.RuleEventCashVariance, gl.RuleEvalContext{
+					EntityID:        supplierID,
+					SupplierID:      supplierID,
+					DriverID:        cr.DriverId,
+					SourceID:        cr.ReconciliationId,
+					Currency:        "UZS",
+					Action:          "ACCEPT",
+					DifferenceMinor: cr.DifferenceMinor,
+					IdempotencyKey:  "gl:cash_recon:accept:" + cr.ReconciliationId,
+					Memo:            "Finance accepted cash variance",
+					OccurredAt:      resolvedAt,
+				}); glErr != nil {
+					return glErr
+				}
 			case EventCashReconciliationWrittenOff:
 				resolvedAt := time.Now().UTC()
 				if cr.ResolvedAt != nil {
@@ -132,6 +171,20 @@ func (r *SpannerRepository) SaveReconciliation(ctx context.Context, cr CashRecon
 						return mErr
 					}
 					muts = append(muts, jeMuts...)
+				}
+				if _, glErr := gl.PostEventInTxn(ctx, txn, buf, gl.RuleEventCashVariance, gl.RuleEvalContext{
+					EntityID:        supplierID,
+					SupplierID:      supplierID,
+					DriverID:        cr.DriverId,
+					SourceID:        cr.ReconciliationId,
+					Currency:        "UZS",
+					Action:          "WRITE_OFF",
+					DifferenceMinor: cr.DifferenceMinor,
+					IdempotencyKey:  "gl:cash_recon:writeoff:" + cr.ReconciliationId,
+					Memo:            "Finance wrote off cash shortage",
+					OccurredAt:      resolvedAt,
+				}); glErr != nil {
+					return glErr
 				}
 			}
 		}
@@ -242,7 +295,7 @@ func (r *SpannerRepository) ListReconciliationsByStatus(ctx context.Context, sta
 	if r == nil || r.client == nil {
 		return nil, fmt.Errorf("cashrecon repository unavailable")
 	}
-	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, spanner.Statement{
 		SQL: `SELECT ReconciliationId, SupplierId, DriverId, RouteId, ShiftDate, ExpectedCashMinor, DeclaredCashMinor,
 		             DifferenceMinor, Status, DriverNote, FinanceNote, CreatedAt, ResolvedAt, ResolvedBy
 		      FROM CashReconciliations WHERE Status = @status ORDER BY CreatedAt DESC LIMIT 200`,
@@ -261,7 +314,7 @@ func (r *SpannerRepository) ListByDriver(ctx context.Context, driverID string, s
 		return nil, fmt.Errorf("driver_id required")
 	}
 	d := civil.DateOf(shiftDate.UTC())
-	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, spanner.Statement{
 		SQL: `SELECT ReconciliationId, SupplierId, DriverId, RouteId, ShiftDate, ExpectedCashMinor, DeclaredCashMinor,
 		             DifferenceMinor, Status, DriverNote, FinanceNote, CreatedAt, ResolvedAt, ResolvedBy
 		      FROM CashReconciliations
@@ -303,7 +356,7 @@ func (r *SpannerRepository) ListBySupplier(ctx context.Context, supplierID strin
 		params["status"] = string(status)
 	}
 	sql += ` ORDER BY cr.CreatedAt DESC LIMIT @limit`
-	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{SQL: sql, Params: params})
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, spanner.Statement{SQL: sql, Params: params})
 	defer iter.Stop()
 	return collectReconciliations(iter)
 }

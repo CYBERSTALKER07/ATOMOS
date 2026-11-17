@@ -33,22 +33,60 @@ spec:
       ports:
         - protocol: TCP
           port: 8080
-    # 3. Allow Redis Memorystore (6379 plaintext / 6378 TLS)
-    - ports:
+    # 3. Allow Redis Memorystore private RFC1918 VPC CIDRs
+    - to:
+        - ipBlock:
+            cidr: 10.0.0.0/8
+        - ipBlock:
+            cidr: 172.16.0.0/12
+        - ipBlock:
+            cidr: 192.168.0.0/16
+      ports:
         - protocol: TCP
           port: 6379
         - protocol: TCP
           port: 6378
-    # 4. Allow Managed Apache Kafka
-    - ports:
+    # 4. Allow Managed Apache Kafka in cluster or private VPC CIDRs
+    - to:
+        - podSelector:
+            matchLabels:
+              app: kafka
+        - ipBlock:
+            cidr: 10.0.0.0/8
+        - ipBlock:
+            cidr: 172.16.0.0/12
+        - ipBlock:
+            cidr: 192.168.0.0/16
+      ports:
         - protocol: TCP
           port: 9092
         - protocol: TCP
           port: 29092
-    # 5. Allow Google Cloud APIs (Cloud Spanner, GCS, Cloud KMS, FCM) via HTTPS/gRPC
-    - ports:
+    # 5. Allow Google Cloud APIs (Cloud Spanner, GCS, Cloud KMS, FCM) via HTTPS/PGA
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 169.254.0.0/16
+              - 127.0.0.0/8
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+        - ipBlock:
+            cidr: 199.36.153.4/30
+        - ipBlock:
+            cidr: 199.36.153.8/30
+      ports:
         - protocol: TCP
           port: 443
+    - to:
+        - ipBlock:
+            cidr: 10.0.0.0/8
+        - ipBlock:
+            cidr: 172.16.0.0/12
+        - ipBlock:
+            cidr: 192.168.0.0/16
+      ports:
         - protocol: TCP
           port: 9010
         - protocol: TCP

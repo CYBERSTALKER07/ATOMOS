@@ -48,7 +48,9 @@ func (e *Engine) WithSpannerClient(client *spanner.Client) *Engine {
 	}
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	e.spannerRepo = NewSpannerRepository(client)
+	repo := NewSpannerRepository(client)
+	e.spannerRepo = repo
+	e.edgeGuardRepo = repo
 	return e
 }
 
@@ -566,6 +568,43 @@ func (r *SpannerRepository) PersistCashierSessionTransition(
 	return err
 }
 
+// PersistDepotVaultLedgerEntry writes a single DepotVaultLedgerEntry to Cloud Spanner with atomic OutboxEvent buffering.
+func (r *SpannerRepository) PersistDepotVaultLedgerEntry(ctx context.Context, entry *DepotVaultLedgerEntry) error {
+	if r == nil || r.client == nil || entry == nil {
+		return nil
+	}
+	_, err := r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		mut := spanner.InsertOrUpdateMap("DepotVaultLedgerEntries", map[string]any{
+			"VaultEntryId":        entry.VaultEntryID,
+			"DepotId":             entry.DepotID,
+			"SupplierId":          entry.SupplierID,
+			"SessionId":           entry.SessionID,
+			"CITManifestId":       entry.CITManifestID,
+			"EntryType":           entry.EntryType,
+			"AmountMinor":         entry.AmountMinor,
+			"RunningBalanceMinor": entry.RunningBalanceMinor,
+			"CourierBadgeId":      entry.CourierBadgeID,
+			"SealBarcode":         entry.SealBarcode,
+			"CreatedAt":           spanner.CommitTimestamp,
+		})
+		buf := &spannerOutboxBuffer{}
+		if emitErr := outbox.EmitJSON(ctx, buf, events.AggregateControlTower, entry.VaultEntryID, events.TopicMain, map[string]any{
+			"type":                  "DEPOT_VAULT_ENTRY_RECORDED",
+			"vault_entry_id":        entry.VaultEntryID,
+			"depot_id":              entry.DepotID,
+			"supplier_id":           entry.SupplierID,
+			"entry_type":            entry.EntryType,
+			"amount_minor":          entry.AmountMinor,
+			"running_balance_minor": entry.RunningBalanceMinor,
+		}); emitErr != nil {
+			return emitErr
+		}
+		muts := append([]*spanner.Mutation{mut}, toOutboxMutations(buf.events)...)
+		return txn.BufferWrite(muts)
+	})
+	return err
+}
+
 // GetCashierSession reads a CashierBlindCountSession by session ID from Cloud Spanner.
 func (r *SpannerRepository) GetCashierSession(ctx context.Context, sessionID string) (*CashierBlindCountSession, error) {
 	if r == nil || r.client == nil {
@@ -823,6 +862,147 @@ func (r *SpannerRepository) GetLatestDVIRForVehicle(ctx context.Context, vehicle
 	return &insp, nil
 }
 
+func (r *SpannerRepository) buildAMLExposureUpdateMuts(
+	ctx context.Context,
+	txn *spanner.ReadWriteTransaction,
+	legalEntityTIN string,
+	supplierID string,
+	parsedDate civil.Date,
+	deltaMinor int64,
+	ceilingMinor int64,
+	enforced bool,
+) ([]*spanner.Mutation, int64, int64, bool, error) {
+	var current int64
+	row, readErr := txn.ReadRow(
+		ctx,
+		"MerchantDailyCashExposure",
+		spanner.Key{legalEntityTIN, supplierID, parsedDate},
+		[]string{"AccumulatedCashMinor"},
+	)
+	if readErr != nil {
+		if spanner.ErrCode(readErr) != codes.NotFound {
+			return nil, 0, 0, false, fmt.Errorf("read MerchantDailyCashExposure: %w", readErr)
+		}
+	} else if scanErr := row.Columns(&current); scanErr != nil {
+		return nil, 0, 0, false, fmt.Errorf("scan MerchantDailyCashExposure: %w", scanErr)
+	}
+
+	if enforced && ceilingMinor > 0 && current+deltaMinor > ceilingMinor {
+		return nil, current, current, true, nil
+	}
+
+	newTotal := current + deltaMinor
+	mut := spanner.InsertOrUpdateMap("MerchantDailyCashExposure", map[string]any{
+		"LegalEntityTIN":       legalEntityTIN,
+		"SupplierId":           supplierID,
+		"CalendarDate":         parsedDate,
+		"AccumulatedCashMinor": newTotal,
+		"UpdatedAt":            spanner.CommitTimestamp,
+	})
+	buf := &spannerOutboxBuffer{}
+	if emitErr := outbox.EmitJSON(ctx, buf, events.AggregateControlTower, legalEntityTIN+":"+parsedDate.String(), events.TopicMain, map[string]any{
+		"type":                   events.EventAMLExposureUpdated,
+		"legal_entity_tin":       legalEntityTIN,
+		"supplier_id":            supplierID,
+		"calendar_date":          parsedDate.String(),
+		"accumulated_cash_minor": newTotal,
+	}); emitErr != nil {
+		return nil, 0, 0, false, emitErr
+	}
+	muts := append([]*spanner.Mutation{mut}, toOutboxMutations(buf.events)...)
+	return muts, newTotal, current, false, nil
+}
+
+// CheckAndIncrementAMLExposure atomically verifies the AML ceiling and increments
+// MerchantDailyCashExposure inside a single Cloud Spanner ReadWriteTransaction.
+func (r *SpannerRepository) CheckAndIncrementAMLExposure(
+	ctx context.Context,
+	legalEntityTIN string,
+	supplierID string,
+	calendarDate string,
+	deltaMinor int64,
+	ceilingMinor int64,
+	enforced bool,
+) (int64, error) {
+	if r == nil || r.client == nil {
+		return 0, errors.New("foundry: spanner repository is nil")
+	}
+	parsedDate, err := civil.ParseDate(calendarDate)
+	if err != nil {
+		return 0, fmt.Errorf("%w: invalid calendar_date %q: %v", ErrPreconditionFailed, calendarDate, err)
+	}
+
+	var (
+		newTotal int64
+		current  int64
+		exceeded bool
+	)
+	_, err = r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		newTotal = 0
+		current = 0
+		exceeded = false
+
+		muts, updated, existing, overLimit, txErr := r.buildAMLExposureUpdateMuts(
+			ctx, txn, legalEntityTIN, supplierID, parsedDate, deltaMinor, ceilingMinor, enforced,
+		)
+		if txErr != nil {
+			return txErr
+		}
+		if overLimit {
+			current = existing
+			exceeded = true
+			return nil
+		}
+		if err := txn.BufferWrite(muts); err != nil {
+			return err
+		}
+		newTotal = updated
+		return nil
+	})
+	if err != nil {
+		return 0, err
+	}
+	if exceeded {
+		return current, &AMLDailyCashLimitExceededError{
+			LegalEntityTIN:       legalEntityTIN,
+			CurrentExposureMinor: current,
+			AttemptedCashMinor:   deltaMinor,
+			CeilingMinor:         ceilingMinor,
+			CalendarDate:         parsedDate.String(),
+			Advice:               "Please settle remaining balance via bank wire transfer or corporate card (Uzcard/Humo).",
+		}
+	}
+	return newTotal, nil
+}
+
+// GetAMLExposureMinor performs a strong read of AccumulatedCashMinor for the TIN/supplier/date bucket.
+func (r *SpannerRepository) GetAMLExposureMinor(ctx context.Context, legalEntityTIN, supplierID, calendarDate string) (int64, error) {
+	if r == nil || r.client == nil {
+		return 0, errors.New("foundry: spanner repository is nil")
+	}
+	parsedDate, err := civil.ParseDate(calendarDate)
+	if err != nil {
+		return 0, fmt.Errorf("%w: invalid calendar_date %q: %v", ErrPreconditionFailed, calendarDate, err)
+	}
+	row, err := r.client.Single().ReadRow(
+		ctx,
+		"MerchantDailyCashExposure",
+		spanner.Key{legalEntityTIN, supplierID, parsedDate},
+		[]string{"AccumulatedCashMinor"},
+	)
+	if err != nil {
+		if spanner.ErrCode(err) == codes.NotFound {
+			return 0, nil
+		}
+		return 0, fmt.Errorf("read MerchantDailyCashExposure: %w", err)
+	}
+	var accumulated int64
+	if err := row.Columns(&accumulated); err != nil {
+		return 0, fmt.Errorf("scan MerchantDailyCashExposure: %w", err)
+	}
+	return accumulated, nil
+}
+
 // PersistAMLExposure writes a MerchantDailyCashExposure record to Cloud Spanner with atomic OutboxEvent buffering.
 func (r *SpannerRepository) PersistAMLExposure(ctx context.Context, legalEntityTIN, supplierID, calendarDate string, accumulatedMinor int64) error {
 	if r == nil || r.client == nil {
@@ -830,7 +1010,7 @@ func (r *SpannerRepository) PersistAMLExposure(ctx context.Context, legalEntityT
 	}
 	parsedDate, err := civil.ParseDate(calendarDate)
 	if err != nil {
-		parsedDate = civil.DateOf(time.Now().UTC())
+		return fmt.Errorf("%w: invalid calendar_date %q: %v", ErrPreconditionFailed, calendarDate, err)
 	}
 	_, err = r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		mut := spanner.InsertOrUpdateMap("MerchantDailyCashExposure", map[string]any{
@@ -870,7 +1050,7 @@ func (r *SpannerRepository) GetAMLExposure(ctx context.Context, legalEntityTIN, 
 			"date":       date,
 		},
 	}
-	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
+	iter := r.client.Single().Query(ctx, stmt)
 	defer iter.Stop()
 
 	row, err := iter.Next()
@@ -994,62 +1174,129 @@ func (r *SpannerRepository) GetReturnableContainerBalance(ctx context.Context, a
 	return &entry, nil
 }
 
+func (r *SpannerRepository) buildOfflineLeaseMuts(ctx context.Context, lease *OfflineQuotaLease) ([]*spanner.Mutation, error) {
+	mut := spanner.InsertOrUpdateMap("OfflineQuotaLeases", map[string]any{
+		"LeaseId":               lease.LeaseID,
+		"OrderId":               lease.OrderID,
+		"DriverId":              lease.DriverID,
+		"SupplierId":            lease.SupplierID,
+		"LegalEntityTIN":        lease.LegalEntityTIN,
+		"MaxCashAllowedMinor":   lease.MaxCashAllowedMinor,
+		"MaxCreditAllowedMinor": lease.MaxCreditAllowedMinor,
+		"ExpiresAt":             lease.ExpiresAt,
+		"Status":                lease.Status,
+		"CreatedAt":             spanner.CommitTimestamp,
+	})
+	buf := &spannerOutboxBuffer{}
+	if emitErr := outbox.EmitJSON(ctx, buf, events.AggregateControlTower, lease.LeaseID, events.TopicMain, map[string]any{
+		"type":                     events.EventOfflineQuotaLeaseUpdated,
+		"lease_id":                 lease.LeaseID,
+		"order_id":                 lease.OrderID,
+		"driver_id":                lease.DriverID,
+		"supplier_id":              lease.SupplierID,
+		"legal_entity_tin":         lease.LegalEntityTIN,
+		"max_cash_allowed_minor":   lease.MaxCashAllowedMinor,
+		"max_credit_allowed_minor": lease.MaxCreditAllowedMinor,
+		"status":                   lease.Status,
+	}); emitErr != nil {
+		return nil, emitErr
+	}
+	return append([]*spanner.Mutation{mut}, toOutboxMutations(buf.events)...), nil
+}
+
+// IssueOfflineQuotaLease atomically reserves daily AML headroom in MerchantDailyCashExposure
+// and persists the OfflineQuotaLeases record with OutboxEvents in one Spanner ReadWriteTransaction.
+func (r *SpannerRepository) IssueOfflineQuotaLease(
+	ctx context.Context,
+	calendarDate string,
+	lease *OfflineQuotaLease,
+	ceilingMinor int64,
+	enforced bool,
+) error {
+	if r == nil || r.client == nil {
+		return errors.New("foundry: spanner repository is nil")
+	}
+	if lease == nil {
+		return fmt.Errorf("%w: offline quota lease is nil", ErrPreconditionFailed)
+	}
+	parsedDate, err := civil.ParseDate(calendarDate)
+	if err != nil {
+		return fmt.Errorf("%w: invalid calendar_date %q: %v", ErrPreconditionFailed, calendarDate, err)
+	}
+
+	var (
+		current  int64
+		exceeded bool
+	)
+	_, err = r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		current = 0
+		exceeded = false
+
+		amlMuts, _, existing, overLimit, txErr := r.buildAMLExposureUpdateMuts(
+			ctx, txn, lease.LegalEntityTIN, lease.SupplierID, parsedDate, lease.MaxCashAllowedMinor, ceilingMinor, enforced,
+		)
+		if txErr != nil {
+			return txErr
+		}
+		if overLimit {
+			current = existing
+			exceeded = true
+			return nil
+		}
+		leaseMuts, leaseErr := r.buildOfflineLeaseMuts(ctx, lease)
+		if leaseErr != nil {
+			return leaseErr
+		}
+		muts := append(amlMuts, leaseMuts...)
+		return txn.BufferWrite(muts)
+	})
+	if err != nil {
+		return err
+	}
+	if exceeded {
+		return &AMLDailyCashLimitExceededError{
+			LegalEntityTIN:       lease.LegalEntityTIN,
+			CurrentExposureMinor: current,
+			AttemptedCashMinor:   lease.MaxCashAllowedMinor,
+			CeilingMinor:         ceilingMinor,
+			CalendarDate:         parsedDate.String(),
+			Advice:               "Please settle remaining balance via bank wire transfer or corporate card (Uzcard/Humo).",
+		}
+	}
+	return nil
+}
+
 // PersistOfflineQuotaLease stores an active or expired driver offline quota lease in Cloud Spanner with atomic OutboxEvent buffering.
 func (r *SpannerRepository) PersistOfflineQuotaLease(ctx context.Context, lease *OfflineQuotaLease) error {
 	if r == nil || r.client == nil || lease == nil {
 		return nil
 	}
 	_, err := r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-		mut := spanner.InsertOrUpdateMap("OfflineQuotaLeases", map[string]any{
-			"LeaseId":               lease.LeaseID,
-			"OrderId":               lease.OrderID,
-			"DriverId":              lease.DriverID,
-			"SupplierId":            lease.SupplierID,
-			"LegalEntityTIN":        lease.LegalEntityTIN,
-			"CalendarDate":          lease.CalendarDate,
-			"MaxCashAllowedMinor":   lease.MaxCashAllowedMinor,
-			"MaxCreditAllowedMinor": lease.MaxCreditAllowedMinor,
-			"ExpiresAt":             lease.ExpiresAt,
-			"Status":                lease.Status,
-			"CreatedAt":             spanner.CommitTimestamp,
-		})
-		buf := &spannerOutboxBuffer{}
-		if emitErr := outbox.EmitJSON(ctx, buf, events.AggregateControlTower, lease.LeaseID, events.TopicMain, map[string]any{
-			"type":                     events.EventOfflineQuotaLeaseUpdated,
-			"lease_id":                 lease.LeaseID,
-			"order_id":                 lease.OrderID,
-			"driver_id":                lease.DriverID,
-			"supplier_id":              lease.SupplierID,
-			"legal_entity_tin":         lease.LegalEntityTIN,
-			"max_cash_allowed_minor":   lease.MaxCashAllowedMinor,
-			"max_credit_allowed_minor": lease.MaxCreditAllowedMinor,
-			"status":                   lease.Status,
-		}); emitErr != nil {
-			return emitErr
+		muts, mutErr := r.buildOfflineLeaseMuts(ctx, lease)
+		if mutErr != nil {
+			return mutErr
 		}
-		muts := append([]*spanner.Mutation{mut}, toOutboxMutations(buf.events)...)
 		return txn.BufferWrite(muts)
 	})
 	return err
 }
 
-// GetOfflineQuotaLease reads an offline quota lease by lease ID from Cloud Spanner.
+// GetOfflineQuotaLease reads an offline quota lease by lease ID from Cloud Spanner using a strong read.
 func (r *SpannerRepository) GetOfflineQuotaLease(ctx context.Context, leaseID string) (*OfflineQuotaLease, error) {
 	if r == nil || r.client == nil {
-		return nil, nil
+		return nil, errors.New("foundry: spanner repository is nil")
 	}
-	stmt := spanner.Statement{
-		SQL: `SELECT LeaseId, OrderId, DriverId, SupplierId, LegalEntityTIN, CalendarDate,
-		             MaxCashAllowedMinor, MaxCreditAllowedMinor, ExpiresAt, Status, CreatedAt
-		      FROM OfflineQuotaLeases WHERE LeaseId = @leaseID`,
-		Params: map[string]any{"leaseID": leaseID},
-	}
-	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
-	defer iter.Stop()
-
-	row, err := iter.Next()
+	row, err := r.client.Single().ReadRow(
+		ctx,
+		"OfflineQuotaLeases",
+		spanner.Key{leaseID},
+		[]string{
+			"LeaseId", "OrderId", "DriverId", "SupplierId", "LegalEntityTIN",
+			"MaxCashAllowedMinor", "MaxCreditAllowedMinor", "ExpiresAt", "Status", "CreatedAt",
+		},
+	)
 	if err != nil {
-		if errors.Is(err, iterator.Done) {
+		if spanner.ErrCode(err) == codes.NotFound {
 			return nil, ErrObjectNotFound
 		}
 		return nil, err
@@ -1057,7 +1304,7 @@ func (r *SpannerRepository) GetOfflineQuotaLease(ctx context.Context, leaseID st
 
 	var lease OfflineQuotaLease
 	if err := row.Columns(
-		&lease.LeaseID, &lease.OrderID, &lease.DriverID, &lease.SupplierID, &lease.LegalEntityTIN, &lease.CalendarDate,
+		&lease.LeaseID, &lease.OrderID, &lease.DriverID, &lease.SupplierID, &lease.LegalEntityTIN,
 		&lease.MaxCashAllowedMinor, &lease.MaxCreditAllowedMinor, &lease.ExpiresAt, &lease.Status, &lease.CreatedAt,
 	); err != nil {
 		return nil, err

@@ -14,7 +14,9 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/ar"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/gl"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/packages/handoff"
 	"google.golang.org/api/iterator"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -323,14 +325,8 @@ func (s *Service) HandleCreditLeave(w http.ResponseWriter, r *http.Request) {
 		}
 		// B6: AR open same txn as credit leave — no post-commit fail-open.
 		if s.ar != nil && current.TotalMinor > 0 {
-			termsDays := int64(30)
-			if s.credit != nil {
-				if check, cerr := s.credit.CheckCreditPath(ctx, current.RetailerID, current.SupplierID, 0); cerr == nil && check.TermsDays > 0 {
-					termsDays = check.TermsDays
-				}
-			}
 			leaveAt := s.now()
-			dueTime := leaveAt.AddDate(0, 0, int(termsDays))
+			termsDays, graceDays, dueTime := s.resolveARTerms(ctx, current.RetailerID, current.SupplierID, leaveAt)
 			if err := s.ar.OpenFromCreditLeaveInTxn(ctx, txn, ar.OpenFromCreditLeaveRequest{
 				SupplierID:    current.SupplierID,
 				RetailerID:    current.RetailerID,
@@ -338,11 +334,15 @@ func (s *Service) HandleCreditLeave(w http.ResponseWriter, r *http.Request) {
 				AmountMinor:   current.TotalMinor,
 				Currency:      current.Currency,
 				TermsDays:     termsDays,
+				GraceDays:     graceDays,
 				CreditLeaveAt: leaveAt,
 				DueAt:         dueTime,
 			}); err != nil {
 				return fmt.Errorf("open AR invoice: %w", err)
 			}
+		}
+		if err := s.recordOrderDeliveredGLInTxn(ctx, txn, nil, &current, 0, 0, current.TotalMinor, nil, "CREDIT", current.UpdatedAt); err != nil {
+			return fmt.Errorf("order credit leave GL: %w", err)
 		}
 		return nil
 	}, func(txn outbox.TxnBuffer) error {
@@ -546,13 +546,8 @@ func (s *Service) HandleCreditDelivery(w http.ResponseWriter, r *http.Request) {
 			}
 			// B6: AR open in same txn as credit delivery (fail-closed).
 			if s.ar != nil && delivered > 0 {
-				termsDays := int64(30)
-				if s.credit != nil {
-					if check, cerr := s.credit.CheckCreditPath(txnCtx, leaveRetailerID, leaveSupplierID, 0); cerr == nil && check.TermsDays > 0 {
-						termsDays = check.TermsDays
-					}
-				}
 				leaveAt := s.now()
+				termsDays, graceDays, dueAt := s.resolveARTerms(txnCtx, leaveRetailerID, leaveSupplierID, leaveAt)
 				if err := s.ar.OpenFromCreditLeaveInTxn(txnCtx, txn, ar.OpenFromCreditLeaveRequest{
 					SupplierID:    leaveSupplierID,
 					RetailerID:    leaveRetailerID,
@@ -560,11 +555,15 @@ func (s *Service) HandleCreditDelivery(w http.ResponseWriter, r *http.Request) {
 					AmountMinor:   delivered,
 					Currency:      leaveCurrency,
 					TermsDays:     termsDays,
+					GraceDays:     graceDays,
 					CreditLeaveAt: leaveAt,
-					DueAt:         leaveAt.AddDate(0, 0, int(termsDays)),
+					DueAt:         dueAt,
 				}); err != nil {
 					return fmt.Errorf("open AR invoice: %w", err)
 				}
+			}
+			if err := s.recordOrderDeliveredGLInTxn(txnCtx, txn, nil, &creditOrder, 0, 0, delivered, nil, "CREDIT", s.now().UTC()); err != nil {
+				return fmt.Errorf("order shop-closed credit GL: %w", err)
 			}
 			return nil
 		},
@@ -734,9 +733,10 @@ func (s *Service) HandleExceptionReport(w http.ResponseWriter, r *http.Request) 
 
 	origQtyBySKU := make(map[string]int64, len(current.LineItems))
 	for _, line := range current.LineItems {
-		origQtyBySKU[strings.TrimSpace(line.SKU)] = line.Quantity
+		origQtyBySKU[strings.TrimSpace(line.SKU)] += line.Quantity
 	}
-	amendItems := make([]AmendItemRequest, 0, len(req.Items))
+	exceptBySKU := make(map[string]int64, len(req.Items))
+	exceptReasonBySKU := make(map[string]string, len(req.Items))
 	photoURIs := make([]string, 0, len(req.Items)+1)
 	if u := strings.TrimSpace(req.PhotoURL); u != "" {
 		photoURIs = append(photoURIs, u)
@@ -772,15 +772,28 @@ func (s *Service) HandleExceptionReport(w http.ResponseWriter, r *http.Request) 
 		} else if u := strings.TrimSpace(item.PhotoURL); u != "" {
 			photoURIs = append(photoURIs, u)
 		}
+		exceptBySKU[sku] += item.Quantity
+		if _, set := exceptReasonBySKU[sku]; !set {
+			exceptReasonBySKU[sku] = reason
+		}
+	}
+
+	for sku, excQty := range exceptBySKU {
 		origQty, ok := origQtyBySKU[sku]
-		if !ok || item.Quantity > origQty {
+		if !ok || excQty > origQty {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("exception quantity exceeds item quantity for sku %s", sku)})
 			return
 		}
+	}
+
+	amendItems := make([]AmendItemRequest, 0, len(exceptBySKU))
+	for sku, excQty := range exceptBySKU {
+		origQty := origQtyBySKU[sku]
+		reason := exceptReasonBySKU[sku]
 		amendItems = append(amendItems, AmendItemRequest{
 			ProductID:   sku,
-			AcceptedQty: origQty - item.Quantity,
-			RejectedQty: item.Quantity,
+			AcceptedQty: origQty - excQty,
+			RejectedQty: excQty,
 			Reason:      reason,
 		})
 	}
@@ -1012,6 +1025,24 @@ func (s *Service) HandleSplitPayment(w http.ResponseWriter, r *http.Request) {
 		}); errOutbox != nil {
 			return errOutbox
 		}
+		var splitTenders []gl.TenderComponent
+		if req.CashMinor > 0 {
+			splitTenders = append(splitTenders, gl.TenderComponent{
+				Method:      "CASH",
+				AmountMinor: req.CashMinor,
+				ReferenceID: fmt.Sprintf("split-%s-cash", current.OrderID),
+			})
+		}
+		if req.CardMinor > 0 {
+			splitTenders = append(splitTenders, gl.TenderComponent{
+				Method:      "CARD",
+				AmountMinor: req.CardMinor,
+				ReferenceID: fmt.Sprintf("split-%s-card", current.OrderID),
+			})
+		}
+		if errGL := recordSplitTenderGLInTxn(ctx, txn, buf, current, splitTenders, now); errGL != nil {
+			return errGL
+		}
 		for _, m := range bufferedOutboxMutations(buf, now) {
 			if errMut := txn.BufferWrite([]*spanner.Mutation{m}); errMut != nil {
 				return errMut
@@ -1116,7 +1147,7 @@ func applyShopClosedBypassOffload(ctx context.Context, txn *spanner.ReadWriteTra
 	if err := arow.Columns(&attemptID, &stored); err != nil {
 		return err
 	}
-	if !stored.Valid || stored.StringVal != token {
+	if !stored.Valid || !handoff.ConstantTimeEqual(stored.StringVal, token) {
 		return fmt.Errorf("invalid bypass token")
 	}
 

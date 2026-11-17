@@ -105,8 +105,10 @@ fun CashCollectionScreen(
             CashFiscalPhase.FISCAL_FAILED -> {
                 com.pegasusx.driver.ui.screens.offload.components.FiscalFailedView(
                     error = state.error,
+                    statusNotice = state.statusNotice,
                     isCompleting = state.isCompleting,
-                    onRetryFiscal = { viewModel.retryFiscal() }
+                    onRetryFiscal = { viewModel.retryFiscal() },
+                    onContinueNextStop = { viewModel.continueNextStop() },
                 )
             }
             else -> {

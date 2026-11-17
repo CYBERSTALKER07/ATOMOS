@@ -7,6 +7,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/geolocation"
+	"github.com/pegasusx/pegasusx/apps/backend-go/innlookup"
 	"github.com/pegasusx/pegasusx/apps/backend-go/partner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/platform"
 	"github.com/pegasusx/pegasusx/apps/backend-go/tenantreg"
@@ -17,6 +18,7 @@ type Deps struct {
 	Handler        *platform.Handler
 	GeocodeHandler *geolocation.Handler
 	TenantRegister *tenantreg.Service
+	INNLookup      *innlookup.Service
 	JWTSecret      string
 	JWTIssuer      string
 }
@@ -48,6 +50,10 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	}
 	if d.TenantRegister != nil {
 		r.Post("/v1/platform/tenants/register", d.TenantRegister.HandleRegister)
+	}
+	if d.INNLookup != nil {
+		r.Post("/v1/platform/inn/lookup", d.INNLookup.HandleLookup)
+		r.Get("/v1/onboarding/tax-id/{inn}", d.INNLookup.HandleLookup)
 	}
 	r.Get("/v1/platform/cells", auth.HandleListCells)
 	r.Get("/v1/platform/market-packs", auth.HandleListMarketPacks)

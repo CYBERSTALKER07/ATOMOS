@@ -98,3 +98,12 @@ targets:
       - path: payload-app-iosTests
     dependencies:
       - target: payload-app-ios
+schemes:
+  payload-app-ios:
+    build:
+      targets:
+        payload-app-ios: all
+        payload-app-iosTests: [test]
+    test:
+      targets:
+        - name: payload-app-iosTests

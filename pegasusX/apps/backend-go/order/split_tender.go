@@ -8,6 +8,7 @@ import (
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/gl"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -49,7 +50,7 @@ func BuildSplitTenderLegs(orderID string, plan SplitTenderPlan, now time.Time) [
 			Method:         MethodWallet,
 			AmountMinor:    plan.WalletMinor,
 			Status:         PaymentStatusCaptured,
-			IdempotencyKey: fmt.Sprintf("split-%s-wallet-%d", orderID, now.UnixNano()),
+			IdempotencyKey: fmt.Sprintf("split-%s-wallet", orderID),
 			CreatedAt:      now,
 			CapturedAt:     spanner.NullTime{Time: now, Valid: true},
 		})
@@ -61,7 +62,7 @@ func BuildSplitTenderLegs(orderID string, plan SplitTenderPlan, now time.Time) [
 			Method:         MethodCredit,
 			AmountMinor:    plan.CreditMinor,
 			Status:         PaymentStatusAuthorized,
-			IdempotencyKey: fmt.Sprintf("split-%s-credit-%d", orderID, now.UnixNano()),
+			IdempotencyKey: fmt.Sprintf("split-%s-credit", orderID),
 			CreatedAt:      now,
 		})
 	}
@@ -77,7 +78,7 @@ func BuildSplitTenderLegs(orderID string, plan SplitTenderPlan, now time.Time) [
 			AmountMinor:    plan.CardMinor,
 			Status:         PaymentStatusAuthorized,
 			ProviderRef:    pRef,
-			IdempotencyKey: fmt.Sprintf("split-%s-card-%d", orderID, now.UnixNano()),
+			IdempotencyKey: fmt.Sprintf("split-%s-card", orderID),
 			CreatedAt:      now,
 		})
 	}
@@ -88,7 +89,7 @@ func BuildSplitTenderLegs(orderID string, plan SplitTenderPlan, now time.Time) [
 			Method:         MethodCash,
 			AmountMinor:    plan.CashMinor,
 			Status:         PaymentStatusPending,
-			IdempotencyKey: fmt.Sprintf("split-%s-cash-%d", orderID, now.UnixNano()),
+			IdempotencyKey: fmt.Sprintf("split-%s-cash", orderID),
 			CreatedAt:      now,
 		})
 	}
@@ -120,6 +121,21 @@ func (s *Service) RecordSplitTenderTxn(ctx context.Context, txn *spanner.ReadWri
 		"currency":     order.Currency,
 		"timestamp":    now.Format(time.RFC3339Nano),
 	}); err != nil {
+		return err
+	}
+
+	tenders := make([]gl.TenderComponent, 0, len(legs))
+	for _, leg := range legs {
+		if leg.AmountMinor <= 0 {
+			continue
+		}
+		tenders = append(tenders, gl.TenderComponent{
+			Method:      string(leg.Method),
+			AmountMinor: leg.AmountMinor,
+			ReferenceID: leg.IdempotencyKey,
+		})
+	}
+	if err := recordSplitTenderGLInTxn(ctx, txn, buf, order, tenders, now); err != nil {
 		return err
 	}
 

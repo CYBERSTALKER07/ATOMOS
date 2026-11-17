@@ -27,6 +27,7 @@ spec:
             workload-tier: batch-cron
             pricing-model: spot
         spec:
+          serviceAccountName: billing-cron-sa
           automountServiceAccountToken: false
           priorityClassName: pegasusx-batch-spot
           terminationGracePeriodSeconds: 30
@@ -63,8 +64,6 @@ spec:
                   drop:
                     - ALL
               envFrom:
-                - secretRef:
-                    name: backend-go-secrets
                 - configMapRef:
                     name: backend-go-config
               env:
@@ -73,7 +72,7 @@ spec:
                     secretKeyRef:
                       name: backend-go-secrets
                       key: PLATFORM_ADMIN_BILLING_TOKEN
-                      optional: true
+                      optional: false
               command:
                 - /bin/sh
                 - -c

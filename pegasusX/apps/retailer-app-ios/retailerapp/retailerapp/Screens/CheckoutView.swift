@@ -20,7 +20,11 @@ struct CheckoutView: View {
                 successView
                     .transition(.opacity.combined(with: .scale(scale: 0.9)))
             } else {
-                checkoutContent(deliveryDateBinding: $vm.deliveryDate, expressPriorityBinding: $vm.expressPriority)
+                checkoutContent(
+                    deliveryDateBinding: $vm.deliveryDate,
+                    expressPriorityBinding: $vm.expressPriority,
+                    autoConfirmBinding: $vm.autoConfirmOptIn
+                )
                     .transition(.opacity)
             }
         }
@@ -60,7 +64,7 @@ struct CheckoutView: View {
             .presentationDetents([.medium])
             .presentationDragIndicator(.visible)
         }
-        .alert("Order Failed", isPresented: $vm.showError) {
+        .alert(vm.pendingQueueNotice != nil ? "Saved to Sync Queue" : "Order Failed", isPresented: $vm.showError) {
             Button("OK", role: .cancel) {}
         } message: {
             Text(vm.errorMessage)
@@ -104,7 +108,8 @@ struct CheckoutView: View {
 
     private func checkoutContent(
         deliveryDateBinding: Binding<String>,
-        expressPriorityBinding: Binding<Bool>
+        expressPriorityBinding: Binding<Bool>,
+        autoConfirmBinding: Binding<Bool>
     ) -> some View {
         VStack(spacing: 0) {
             ScrollView {
@@ -118,6 +123,36 @@ struct CheckoutView: View {
                         }
                         .accessibilityElement(children: .combine)
                     }
+                    if !vm.packSuggestions.isEmpty {
+                        PackSuggestionBannerView(suggestions: vm.packSuggestions) { skuId, suggestedQty in
+                            vm.applyPackSuggestion(cart: cart, skuId: skuId, suggestedQuantity: suggestedQty)
+                        }
+                    }
+                    if let approval = vm.ownerApprovalRequired {
+                        OwnerApprovalBannerView(
+                            detail: approval,
+                            isSubmitting: vm.isSubmitting,
+                            onPayCash: {
+                                Task { await vm.retryWithFallbackMethod("CASH", cart: cart, modelContext: modelContext) }
+                            },
+                            onPayCard: {
+                                Task { await vm.retryWithFallbackMethod("CARD", cart: cart, modelContext: modelContext) }
+                            },
+                            onDismiss: { vm.ownerApprovalRequired = nil }
+                        )
+                    }
+                    if let notice = vm.pendingQueueNotice {
+                        LabCard {
+                            HStack(spacing: AppTheme.spacingSM) {
+                                Image(systemName: "clock.arrow.circlepath")
+                                    .foregroundStyle(AppTheme.warning)
+                                Text(notice.message)
+                                    .font(.caption)
+                                    .foregroundStyle(AppTheme.textPrimary)
+                            }
+                            .padding(AppTheme.spacingLG)
+                        }
+                    }
                     if !vm.stockWarnings.isEmpty {
                         stockWarningsSection
                     }
@@ -126,7 +161,8 @@ struct CheckoutView: View {
                     }
                     deliverySection(
                         deliveryDateBinding: deliveryDateBinding,
-                        expressPriorityBinding: expressPriorityBinding
+                        expressPriorityBinding: expressPriorityBinding,
+                        autoConfirmBinding: autoConfirmBinding
                     ).slideIn(delay: 0)
                     cartItemsSection.slideIn(delay: 0)
                     paymentSection.slideIn(delay: 0.05)
@@ -183,7 +219,8 @@ struct CheckoutView: View {
 
     private func deliverySection(
         deliveryDateBinding: Binding<String>,
-        expressPriorityBinding: Binding<Bool>
+        expressPriorityBinding: Binding<Bool>,
+        autoConfirmBinding: Binding<Bool>
     ) -> some View {
         LabCardWithHeader(title: "Delivery", icon: "truck.box.fill") {
             VStack(alignment: .leading, spacing: AppTheme.spacingMD) {
@@ -207,6 +244,8 @@ struct CheckoutView: View {
                         Haptics.selection()
                         Task { await vm.fetchPreview(cart: cart) }
                     }
+                Toggle("Auto-confirm preorder", isOn: autoConfirmBinding)
+                    .font(.system(.caption, design: .rounded))
                 if let deliveryFee = vm.preview?.deliveryFeeMinor, deliveryFee > 0 {
                     Text("Delivery fee: \(deliveryFee.formatted()) \(vm.packDisplayCurrency)\(vm.preview?.deliveryDistanceKm.map { " · \(String(format: "%.1f", $0)) km" } ?? "")")
                         .font(.caption)
@@ -280,6 +319,15 @@ struct CheckoutView: View {
                             onUpdateQuantity: { newQty in
                                 Haptics.selection()
                                 cart.updateQuantity(itemId: item.id, quantity: newQty)
+                            },
+                            onToggleMustHave: {
+                                cart.toggleMustHave(itemId: item.id)
+                            },
+                            onToggleAllowSubstitutes: {
+                                cart.toggleAllowSubstitutes(itemId: item.id)
+                            },
+                            onSnapPack: {
+                                vm.snapCartItem(cart: cart, itemId: item.id)
                             }
                         )
                     }
@@ -450,6 +498,9 @@ private struct CheckoutCartItemRowView: View {
     let isOos: Bool
     let maximumQuantity: Int
     let onUpdateQuantity: (Int) -> Void
+    let onToggleMustHave: () -> Void
+    let onToggleAllowSubstitutes: () -> Void
+    let onSnapPack: () -> Void
 
     @State private var quantity: Int
 
@@ -457,19 +508,26 @@ private struct CheckoutCartItemRowView: View {
         item: CartItem,
         isOos: Bool,
         maximumQuantity: Int,
-        onUpdateQuantity: @escaping (Int) -> Void
+        onUpdateQuantity: @escaping (Int) -> Void,
+        onToggleMustHave: @escaping () -> Void,
+        onToggleAllowSubstitutes: @escaping () -> Void,
+        onSnapPack: @escaping () -> Void
     ) {
         self.item = item
         self.isOos = isOos
         self.maximumQuantity = maximumQuantity
         self.onUpdateQuantity = onUpdateQuantity
+        self.onToggleMustHave = onToggleMustHave
+        self.onToggleAllowSubstitutes = onToggleAllowSubstitutes
+        self.onSnapPack = onSnapPack
         self._quantity = State(initialValue: item.quantity)
     }
 
     var body: some View {
+        let packSize = RetailerPackHelper.effectivePackSize(product: item.product, variant: item.variant)
         HStack(spacing: AppTheme.spacingMD) {
             ZStack {
-                RoundedRectangle(cornerRadius: AppTheme.radiusSM)
+                RoundedRectangle(cornerRadius: AppTheme.radiusSM, style: .continuous)
                     .fill(AppTheme.accentSoft.opacity(0.3))
                     .frame(width: 40, height: 40)
                 Image(systemName: "leaf.fill")
@@ -496,8 +554,17 @@ private struct CheckoutCartItemRowView: View {
                 Text(item.variant.size)
                     .font(.system(.caption2, design: .rounded))
                     .foregroundStyle(AppTheme.textTertiary)
+                OrderLineFlagPills(
+                    mustHave: item.mustHave,
+                    allowSubstitutes: item.allowSubstitutes,
+                    packSize: packSize,
+                    currentQuantity: item.quantity,
+                    onToggleMustHave: onToggleMustHave,
+                    onToggleAllowSubstitutes: onToggleAllowSubstitutes,
+                    onSnapPack: onSnapPack
+                )
             }
-            .accessibilityElement(children: .combine)
+            .accessibilityElement(children: .contain)
             .accessibilityLabel("\(item.product.name), \(item.variant.size)\(isOos ? ", out of stock" : "")")
 
             Spacer()

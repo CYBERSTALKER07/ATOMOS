@@ -11,9 +11,13 @@ import (
 
 // Default 1C-style chart of accounts when a tenant has no PartnerCoaMaps row.
 const (
-	DefaultCoaAR       = "62.01"
-	DefaultCoaRevenue  = "90.01"
-	DefaultCoaBankCash = "51.01"
+	DefaultCoaAR              = "62.01"
+	DefaultCoaRevenue         = "90.01"
+	DefaultCoaBankCash        = "51.01"
+	DefaultCoaARReversal      = "62.09"
+	DefaultCoaRevenueReversal = "90.09"
+	DefaultCoaBankVoid        = "51.09"
+	DefaultCoaReversal        = "76.09"
 )
 
 var coaAccountRe = regexp.MustCompile(`^[A-Za-z0-9._\-]{1,32}$`)
@@ -25,6 +29,10 @@ type CoaMap struct {
 	AccountAR        string // receivables (e.g. 62.01)
 	AccountRevenue   string // revenue (e.g. 90.01)
 	AccountBankCash  string // bank / cash (e.g. 51.01)
+	AccountARVoid    string // void/reversal contra-AR (e.g. 62.09)
+	AccountRevVoid   string // void/reversal storno revenue (e.g. 90.09)
+	AccountBankVoid  string // void/unsettled bank clearing (e.g. 51.09)
+	AccountReversal  string // payment/chargeback reversal clearing (e.g. 76.09)
 	UpdatedAt        time.Time
 	UpdatedBy        string
 	UsingDefaults    bool // true when no persisted row (or all fields fell back)
@@ -42,6 +50,10 @@ func DefaultCoa() CoaMap {
 		AccountAR:       firstNonEmpty(os.Getenv("PARTNER_COA_AR"), DefaultCoaAR),
 		AccountRevenue:  firstNonEmpty(os.Getenv("PARTNER_COA_REVENUE"), DefaultCoaRevenue),
 		AccountBankCash: firstNonEmpty(os.Getenv("PARTNER_COA_BANK"), DefaultCoaBankCash),
+		AccountARVoid:   firstNonEmpty(os.Getenv("PARTNER_COA_AR_VOID"), DefaultCoaARReversal),
+		AccountRevVoid:  firstNonEmpty(os.Getenv("PARTNER_COA_REVENUE_VOID"), DefaultCoaRevenueReversal),
+		AccountBankVoid: firstNonEmpty(os.Getenv("PARTNER_COA_BANK_VOID"), DefaultCoaBankVoid),
+		AccountReversal: firstNonEmpty(os.Getenv("PARTNER_COA_REVERSAL"), DefaultCoaReversal),
 		UsingDefaults:   true,
 	}
 }
@@ -72,6 +84,18 @@ func ResolveCoa(stored CoaMap, found bool) CoaMap {
 	if strings.TrimSpace(out.AccountBankCash) == "" {
 		out.AccountBankCash = def.AccountBankCash
 	}
+	if strings.TrimSpace(out.AccountARVoid) == "" {
+		out.AccountARVoid = def.AccountARVoid
+	}
+	if strings.TrimSpace(out.AccountRevVoid) == "" {
+		out.AccountRevVoid = def.AccountRevVoid
+	}
+	if strings.TrimSpace(out.AccountBankVoid) == "" {
+		out.AccountBankVoid = def.AccountBankVoid
+	}
+	if strings.TrimSpace(out.AccountReversal) == "" {
+		out.AccountReversal = def.AccountReversal
+	}
 	if out.AccountAR == def.AccountAR && out.AccountRevenue == def.AccountRevenue && out.AccountBankCash == def.AccountBankCash {
 		out.UsingDefaults = !found || (stored.AccountAR == "" && stored.AccountRevenue == "" && stored.AccountBankCash == "")
 	}
@@ -88,6 +112,10 @@ func NormalizeCoa(m *CoaMap) {
 	m.AccountAR = strings.TrimSpace(m.AccountAR)
 	m.AccountRevenue = strings.TrimSpace(m.AccountRevenue)
 	m.AccountBankCash = strings.TrimSpace(m.AccountBankCash)
+	m.AccountARVoid = strings.TrimSpace(m.AccountARVoid)
+	m.AccountRevVoid = strings.TrimSpace(m.AccountRevVoid)
+	m.AccountBankVoid = strings.TrimSpace(m.AccountBankVoid)
+	m.AccountReversal = strings.TrimSpace(m.AccountReversal)
 	m.UpdatedBy = strings.TrimSpace(m.UpdatedBy)
 }
 
@@ -99,6 +127,10 @@ func ValidateCoaAccounts(m CoaMap) error {
 		{"account_ar", m.AccountAR},
 		{"account_revenue", m.AccountRevenue},
 		{"account_bank_cash", m.AccountBankCash},
+		{"account_ar_void", m.AccountARVoid},
+		{"account_revenue_void", m.AccountRevVoid},
+		{"account_bank_void", m.AccountBankVoid},
+		{"account_reversal", m.AccountReversal},
 	} {
 		if pair.val == "" {
 			continue
@@ -111,13 +143,18 @@ func ValidateCoaAccounts(m CoaMap) error {
 }
 
 func coaDTO(m CoaMap) map[string]any {
+	r := ResolveCoa(m, !m.UsingDefaults)
 	return map[string]any{
-		"account_ar":         m.AccountAR,
-		"account_revenue":    m.AccountRevenue,
-		"account_bank_cash":  m.AccountBankCash,
-		"using_defaults":     m.UsingDefaults,
-		"updated_at":         formatCoaTime(m.UpdatedAt),
-		"updated_by":         m.UpdatedBy,
+		"account_ar":           r.AccountAR,
+		"account_revenue":      r.AccountRevenue,
+		"account_bank_cash":    r.AccountBankCash,
+		"account_ar_void":      r.AccountARVoid,
+		"account_revenue_void": r.AccountRevVoid,
+		"account_bank_void":    r.AccountBankVoid,
+		"account_reversal":     r.AccountReversal,
+		"using_defaults":       m.UsingDefaults,
+		"updated_at":           formatCoaTime(m.UpdatedAt),
+		"updated_by":           m.UpdatedBy,
 	}
 }
 

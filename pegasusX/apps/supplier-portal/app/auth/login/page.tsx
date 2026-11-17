@@ -37,7 +37,7 @@ export default function SupplierLoginPage() {
   async function handleVerifyOtp(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (!/^\d{6}$/.test(otpCode)) {
+    if (otpCode.trim().length < 6) {
       setError(t("supplier_portal.residual.text.enter_the_6_digit_code"));
       return;
     }

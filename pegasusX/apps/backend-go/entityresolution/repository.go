@@ -86,8 +86,7 @@ func (r *SpannerRepository) LoadLineage(ctx context.Context, supplierID, entityT
 		return r.queryLinks(ctx, `SELECT 'FACTORY', COALESCE(PrimaryFactoryId, ''), COALESCE(PrimaryFactoryId, ''), 'PRIMARY_FACTORY', 0.8
 			FROM Warehouses WHERE SupplierId = @sid AND WarehouseId = @eid LIMIT 1`, supplierID, entityID)
 	case EntityTypeRetailer:
-		return r.queryLinks(ctx, `SELECT 'ORDER', OrderId, OrderId, 'PLACED', 0.85
-			FROM Orders WHERE SupplierId = @sid AND RetailerId = @eid ORDER BY CreatedAt DESC LIMIT 8`, supplierID, entityID)
+		return r.loadRetailerLineage(ctx, supplierID, entityID)
 	case EntityTypeDriver:
 		return r.queryLinks(ctx, `SELECT 'VEHICLE', COALESCE(VehicleId, ''), COALESCE(VehicleId, ''), 'ASSIGNED_VEHICLE', 0.8
 			FROM Drivers WHERE SupplierId = @sid AND DriverId = @eid LIMIT 1`, supplierID, entityID)
@@ -136,14 +135,7 @@ func (r *SpannerRepository) findExactByType(ctx context.Context, supplierID, ent
 			Params: map[string]any{"sid": supplierID, "eid": entityID},
 		}, EntityTypeVehicle, "plate")
 	case EntityTypeRetailer:
-		return r.collect3(ctx, spanner.Statement{
-			SQL: `SELECT r.RetailerId, COALESCE(r.Name, r.RetailerId), COALESCE(r.Phone, '')
-			      FROM Retailers r
-			      WHERE r.RetailerId = @eid
-			        AND EXISTS (SELECT 1 FROM Orders o WHERE o.RetailerId = r.RetailerId AND o.SupplierId = @sid)
-			      LIMIT 1`,
-			Params: map[string]any{"sid": supplierID, "eid": entityID},
-		}, EntityTypeRetailer, "phone")
+		return r.findRetailersExact(ctx, supplierID, entityID)
 	case EntityTypeOrder:
 		return r.collect3(ctx, spanner.Statement{
 			SQL:    `SELECT OrderId, OrderId, Status FROM Orders WHERE SupplierId = @sid AND OrderId = @eid LIMIT 1`,
@@ -179,13 +171,7 @@ func (r *SpannerRepository) listByType(ctx context.Context, supplierID, entityTy
 			Params: map[string]any{"sid": supplierID, "lim": int64(limit)},
 		}, EntityTypeVehicle, "plate")
 	case EntityTypeRetailer:
-		return r.collect3(ctx, spanner.Statement{
-			SQL: `SELECT r.RetailerId, COALESCE(r.Name, r.RetailerId), COALESCE(r.Phone, '')
-			      FROM Retailers r
-			      WHERE EXISTS (SELECT 1 FROM Orders o WHERE o.RetailerId = r.RetailerId AND o.SupplierId = @sid)
-			      LIMIT @lim`,
-			Params: map[string]any{"sid": supplierID, "lim": int64(limit)},
-		}, EntityTypeRetailer, "phone")
+		return r.listRetailers(ctx, supplierID, limit)
 	case EntityTypeOrder:
 		return r.collect3(ctx, spanner.Statement{
 			SQL:    `SELECT OrderId, OrderId, Status FROM Orders WHERE SupplierId = @sid ORDER BY CreatedAt DESC LIMIT @lim`,
@@ -278,4 +264,179 @@ func (r *SpannerRepository) queryLinks(ctx context.Context, sql, supplierID, ent
 			Confidence:  conf,
 		})
 	}
+}
+
+func (r *SpannerRepository) findRetailersExact(ctx context.Context, supplierID, retailerID string) ([]EntityRecord, error) {
+	links, err := querySpannerRetailerLinks(ctx, r.client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)), spanner.Statement{
+		SQL: `SELECT ` + retailerLinkSelectCols + `
+			FROM SupplierRetailerLinks
+			WHERE SupplierId = @sid AND RetailerId = @eid
+			LIMIT 1`,
+		Params: map[string]any{"sid": supplierID, "eid": retailerID},
+	})
+	if err != nil {
+		return nil, err
+	}
+	fallback, err := r.collect3(ctx, spanner.Statement{
+		SQL: `SELECT r.RetailerId, COALESCE(r.Name, r.RetailerId), COALESCE(r.Phone, '')
+		      FROM Retailers r
+		      WHERE r.RetailerId = @eid
+		        AND EXISTS (SELECT 1 FROM Orders o WHERE o.RetailerId = r.RetailerId AND o.SupplierId = @sid)
+		      LIMIT 1`,
+		Params: map[string]any{"sid": supplierID, "eid": retailerID},
+	}, EntityTypeRetailer, "phone")
+	if err != nil {
+		return nil, err
+	}
+	return mergeRetailerRecords(links, fallback, 1), nil
+}
+
+func (r *SpannerRepository) listRetailers(ctx context.Context, supplierID string, limit int) ([]EntityRecord, error) {
+	links, err := querySpannerRetailerLinks(ctx, r.client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)), spanner.Statement{
+		SQL: `SELECT ` + retailerLinkSelectCols + `
+			FROM SupplierRetailerLinks
+			WHERE SupplierId = @sid
+			ORDER BY UpdatedAt DESC, RetailerId ASC
+			LIMIT @lim`,
+		Params: map[string]any{"sid": supplierID, "lim": int64(limit)},
+	})
+	if err != nil {
+		return nil, err
+	}
+	fallback, err := r.collect3(ctx, spanner.Statement{
+		SQL: `SELECT r.RetailerId, COALESCE(r.Name, r.RetailerId), COALESCE(r.Phone, '')
+		      FROM Retailers r
+		      WHERE EXISTS (SELECT 1 FROM Orders o WHERE o.RetailerId = r.RetailerId AND o.SupplierId = @sid)
+		      LIMIT @lim`,
+		Params: map[string]any{"sid": supplierID, "lim": int64(limit)},
+	}, EntityTypeRetailer, "phone")
+	if err != nil {
+		return nil, err
+	}
+	return mergeRetailerRecords(links, fallback, limit), nil
+}
+
+// FindRetailersByIdentifier queries SupplierRetailerLinks strictly within SupplierId
+// using the normalized exact TIN and UZ phone indexes.
+func (r *SpannerRepository) FindRetailersByIdentifier(ctx context.Context, supplierID, normalizedTIN, normalizedPhone string, limit int) ([]EntityRecord, error) {
+	if r == nil || r.client == nil {
+		return nil, nil
+	}
+	sid := strings.TrimSpace(supplierID)
+	tin := NormalizeTIN(normalizedTIN)
+	phone := NormalizeUZPhone(normalizedPhone)
+	if sid == "" || (tin == "" && phone == "") {
+		return nil, nil
+	}
+	if limit <= 0 {
+		limit = defaultPerTypeLimit
+	}
+	links, err := querySpannerRetailerLinks(ctx, r.client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)), spanner.Statement{
+		SQL: `SELECT ` + retailerLinkSelectCols + `
+			FROM SupplierRetailerLinks
+			WHERE SupplierId = @sid
+			  AND (
+			    (@tin != '' AND TaxIdTIN = @tin)
+			    OR (@phone != '' AND NormalizedPhone = @phone)
+			  )
+			ORDER BY UpdatedAt DESC, RetailerId ASC
+			LIMIT @lim`,
+		Params: map[string]any{
+			"sid":   sid,
+			"tin":   tin,
+			"phone": phone,
+			"lim":   int64(limit),
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	return mergeRetailerRecords(links, nil, limit), nil
+}
+
+func (r *SpannerRepository) loadRetailerLineage(ctx context.Context, supplierID, entityID string) ([]LineageLink, error) {
+	links, err := r.queryLinks(ctx, `SELECT 'ORDER', OrderId, OrderId, 'PLACED', 0.85
+		FROM Orders WHERE SupplierId = @sid AND RetailerId = @eid ORDER BY CreatedAt DESC LIMIT 8`, supplierID, entityID)
+	if err != nil {
+		return nil, err
+	}
+	mergedLinks, err := r.queryLinks(ctx, `SELECT 'RETAILER', COALESCE(MergedIntoId, ''), COALESCE(MergedIntoId, ''), 'MERGED_INTO', 0.99
+		FROM SupplierRetailerLinks WHERE SupplierId = @sid AND RetailerId = @eid AND MergedIntoId IS NOT NULL AND MergedIntoId != '' LIMIT 1`, supplierID, entityID)
+	if err != nil {
+		return nil, err
+	}
+	return append(links, mergedLinks...), nil
+}
+
+func retailerLinkToEntityRecord(link SupplierRetailerLink) EntityRecord {
+	label := strings.TrimSpace(link.LegalName)
+	if label == "" {
+		label = link.RetailerID
+	}
+	meta := make(map[string]string, 6)
+	if link.TaxIDTIN != "" {
+		meta["tax_id_tin"] = link.TaxIDTIN
+	}
+	if link.NormalizedPhone != "" {
+		meta["normalized_phone"] = link.NormalizedPhone
+		meta["phone"] = link.NormalizedPhone
+	}
+	if link.DedupStatus != "" {
+		meta["dedup_status"] = link.DedupStatus
+	}
+	if link.DedupClusterID != "" {
+		meta["dedup_cluster_id"] = link.DedupClusterID
+	}
+	if link.MergedIntoID != "" {
+		meta["merged_into_id"] = link.MergedIntoID
+	}
+	search := strings.TrimSpace(strings.Join([]string{
+		label,
+		link.TaxIDTIN,
+		link.NormalizedPhone,
+		link.RetailerID,
+	}, " "))
+	return rec(EntityTypeRetailer, link.RetailerID, label, search, meta)
+}
+
+func mergeRetailerRecords(links []SupplierRetailerLink, fallback []EntityRecord, limit int) []EntityRecord {
+	byID := make(map[string]EntityRecord, len(links)+len(fallback))
+	order := make([]string, 0, len(links)+len(fallback))
+	for _, link := range links {
+		record := retailerLinkToEntityRecord(link)
+		if _, exists := byID[record.EntityID]; !exists {
+			order = append(order, record.EntityID)
+		}
+		byID[record.EntityID] = record
+	}
+	for _, fb := range fallback {
+		existing, exists := byID[fb.EntityID]
+		if !exists {
+			if fb.Metadata != nil && fb.Metadata["phone"] != "" {
+				fb.Metadata["normalized_phone"] = NormalizeUZPhone(fb.Metadata["phone"])
+			}
+			byID[fb.EntityID] = fb
+			order = append(order, fb.EntityID)
+			continue
+		}
+		if (existing.Label == "" || existing.Label == existing.EntityID) && fb.Label != "" {
+			existing.Label = fb.Label
+		}
+		if existing.Metadata["phone"] == "" && fb.Metadata["phone"] != "" {
+			if existing.Metadata == nil {
+				existing.Metadata = map[string]string{}
+			}
+			existing.Metadata["phone"] = fb.Metadata["phone"]
+			existing.Metadata["normalized_phone"] = NormalizeUZPhone(fb.Metadata["phone"])
+		}
+		byID[fb.EntityID] = existing
+	}
+	out := make([]EntityRecord, 0, len(order))
+	for _, id := range order {
+		out = append(out, byID[id])
+		if limit > 0 && len(out) >= limit {
+			break
+		}
+	}
+	return out
 }

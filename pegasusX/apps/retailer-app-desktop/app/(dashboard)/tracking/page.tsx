@@ -2,6 +2,7 @@
 
 import { usePortalT } from "@/lib/i18n";
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import type * as maplibregl from "maplibre-gl";
 import { AlertTriangle, RefreshCw, WifiOff } from "lucide-react";
 import { motion } from "framer-motion";
 import { useRetailerSessionReconcile } from "../../../lib/use-retailer-session-reconcile";

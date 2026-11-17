@@ -1,11 +1,55 @@
+import hmac
 import math
+import os
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 from ortools.constraint_solver import routing_enums_pb2
 from ortools.constraint_solver import pywrapcp
 
 app = FastAPI(title="PegasusX Optimizer Sidecar")
+
+_INSECURE_DEFAULT_KEYS = {"", "dev-internal-key", "changeme", "secret"}
+
+
+def _expected_internal_api_key() -> str:
+    return (
+        os.environ.get("OPTIMIZER_INTERNAL_API_KEY")
+        or os.environ.get("INTERNAL_API_KEY")
+        or ""
+    ).strip()
+
+
+def _is_production_env() -> bool:
+    env = (os.environ.get("PEGASUSX_ENV") or os.environ.get("ENVIRONMENT") or "").strip().lower()
+    return env in {"production", "prod", "staging"}
+
+
+def verify_internal_api_key(provided_key: Optional[str]) -> Optional[tuple]:
+    """Returns None when authorized, else (status_code, error_detail)."""
+    expected = _expected_internal_api_key()
+    if _is_production_env() and expected in _INSECURE_DEFAULT_KEYS:
+        return (503, "internal_api_key_unconfigured")
+    if not expected:
+        return None
+    supplied = (provided_key or "").strip()
+    if not supplied or not hmac.compare_digest(supplied, expected):
+        return (401, "invalid_internal_api_key")
+    return None
+
+
+if hasattr(app, "middleware"):
+    from fastapi.responses import JSONResponse
+
+    @app.middleware("http")
+    async def internal_api_key_middleware(request, call_next):
+        if request.url.path == "/healthz":
+            return await call_next(request)
+        err = verify_internal_api_key(request.headers.get("X-Internal-Api-Key"))
+        if err is not None:
+            status_code, detail = err
+            return JSONResponse(status_code=status_code, content={"detail": detail})
+        return await call_next(request)
 
 @app.get("/healthz")
 def healthz():
@@ -75,10 +119,11 @@ def solve_tsp(locations: List[Location]) -> List[str]:
     # Define cost of each arc.
     routing.SetArcCostEvaluatorOfAllVehicles(transit_callback_index)
 
-    # Setting first solution heuristic.
+    # Setting first solution heuristic and solver deadline.
     search_parameters = pywrapcp.DefaultRoutingSearchParameters()
     search_parameters.first_solution_strategy = (
         routing_enums_pb2.FirstSolutionStrategy.PATH_CHEAPEST_ARC)
+    search_parameters.time_limit.FromSeconds(2)
 
     # Solve the problem.
     solution = routing.SolveWithParameters(search_parameters)
@@ -127,6 +172,7 @@ class FleetRouteRequest(BaseModel):
 
 class VehicleRoute(BaseModel):
     vehicle_id: str
+    wave_index: int = 1
     location_ids: List[str]
 
 class FleetRouteResponse(BaseModel):
@@ -147,6 +193,39 @@ def fleet_distance_metric(loc1: FleetLocation, loc2: FleetLocation) -> int:
         return haversine_distance_meters(loc1.x, loc1.y, loc2.x, loc2.y)
     return int(math.hypot(loc1.x - loc2.x, loc1.y - loc2.y) * 1000)
 
+def compute_ffd_waves(demands: List[int], vehicle_capacities: List[int]) -> int:
+    """Computes a First-Fit Decreasing (FFD) lower bound on the number of fleet waves needed."""
+    positive_demands = sorted([d for d in demands if d > 0], reverse=True)
+    positive_caps = [c for c in vehicle_capacities if c > 0]
+    if not positive_demands or not positive_caps:
+        return 1
+
+    max_cap = max(positive_caps)
+    bin_remainders: List[int] = []
+    for item in positive_demands:
+        if item > max_cap:
+            continue
+        placed = False
+        for i in range(len(bin_remainders)):
+            if bin_remainders[i] >= item:
+                bin_remainders[i] -= item
+                placed = True
+                break
+        while not placed:
+            wave_start_idx = len(bin_remainders)
+            bin_remainders.extend(positive_caps)
+            for i in range(wave_start_idx, len(bin_remainders)):
+                if bin_remainders[i] >= item:
+                    bin_remainders[i] -= item
+                    placed = True
+                    break
+
+    if not bin_remainders:
+        return 1
+    num_bins_used = len(bin_remainders)
+    num_veh = len(positive_caps)
+    return max(1, math.ceil(num_bins_used / num_veh))
+
 def create_cvrp_data_model(req: FleetRouteRequest):
     data = {}
     all_locations = [req.depot] + req.locations
@@ -165,8 +244,9 @@ def create_cvrp_data_model(req: FleetRouteRequest):
     data['demands'] = [loc.demand_vu for loc in all_locations]
     
     # MULTI-WAVE LOGIC:
-    # If total demand > total capacity, we create multiple virtual vehicles for each physical vehicle
-    # to allow multiple trips (waves).
+    # If total demand > total capacity, or if discrete stop demands cannot pack
+    # into math.ceil(total_demand / total_capacity) trips under FFD, we create
+    # multiple virtual vehicles for each physical vehicle to allow multiple trips (waves).
     total_demand = sum(data['demands'])
     total_capacity = sum(v.capacity_vu for v in req.vehicles)
     
@@ -174,16 +254,22 @@ def create_cvrp_data_model(req: FleetRouteRequest):
     if total_capacity > 0 and total_demand > total_capacity:
         multiplier = math.ceil(total_demand / total_capacity)
     
+    ffd_waves = compute_ffd_waves([loc.demand_vu for loc in req.locations], [v.capacity_vu for v in req.vehicles])
+    multiplier = max(multiplier, ffd_waves)
+    
     vehicle_capacities = []
     vehicle_ids = []
+    wave_indices = []
     
-    for _ in range(multiplier):
+    for wave_idx in range(1, multiplier + 1):
         for v in req.vehicles:
             vehicle_capacities.append(v.capacity_vu)
             vehicle_ids.append(v.id)
+            wave_indices.append(wave_idx)
             
     data['vehicle_capacities'] = vehicle_capacities
     data['vehicle_ids'] = vehicle_ids
+    data['wave_indices'] = wave_indices
     data['num_vehicles'] = len(vehicle_capacities)
     data['depot'] = 0
     return data
@@ -246,11 +332,10 @@ def get_fleet_route(req: FleetRouteRequest):
         if not solution:
             raise HTTPException(status_code=422, detail="No feasible solution found by OR-Tools")
 
-        routes_map = {}
+        final_routes = []
         for vehicle_idx in range(data['num_vehicles']):
             real_vehicle_id = data['vehicle_ids'][vehicle_idx]
-            if real_vehicle_id not in routes_map:
-                routes_map[real_vehicle_id] = []
+            wave_idx = data['wave_indices'][vehicle_idx]
                 
             index = routing.Start(vehicle_idx)
             wave_route = []
@@ -262,10 +347,11 @@ def get_fleet_route(req: FleetRouteRequest):
                 index = solution.Value(routing.NextVar(index))
                 
             if wave_route:
-                routes_map[real_vehicle_id].extend(wave_route)
-                
-        final_routes = [VehicleRoute(vehicle_id=vid, location_ids=lids) 
-                        for vid, lids in routes_map.items() if lids]
+                final_routes.append(VehicleRoute(
+                    vehicle_id=real_vehicle_id,
+                    wave_index=wave_idx,
+                    location_ids=wave_route
+                ))
         
         return FleetRouteResponse(routes=final_routes, solver_status="HEURISTIC")
     except HTTPException:
@@ -278,6 +364,9 @@ class DemandPredictionRequest(BaseModel):
     historical_daily_sales: List[int]
     current_stock: int
     lead_time_days: int
+    pipeline_stock: Optional[int] = 0
+    demand_variance: Optional[float] = None
+    service_level: Optional[float] = None
 
 class DemandPredictionResponse(BaseModel):
     sku: str
@@ -288,24 +377,44 @@ class DemandPredictionResponse(BaseModel):
 def predict_demand(req: DemandPredictionRequest):
     if req.current_stock < 0 or req.lead_time_days < 0:
         raise HTTPException(status_code=400, detail="current_stock and lead_time_days must be non-negative")
+    if req.pipeline_stock is not None and req.pipeline_stock < 0:
+        raise HTTPException(status_code=400, detail="pipeline_stock must be non-negative")
+    if req.demand_variance is not None and req.demand_variance < 0:
+        raise HTTPException(status_code=400, detail="demand_variance must be non-negative")
     if any(sale < 0 for sale in req.historical_daily_sales):
         raise HTTPException(status_code=400, detail="historical_daily_sales entries must be non-negative")
     try:
         if not req.historical_daily_sales:
             return DemandPredictionResponse(sku=req.sku, optimal_reorder_qty=0, predicted_daily_burn=0.0)
-            
+
         # Simple Moving Average (SMA) heuristic for burn rate
         avg_burn = sum(req.historical_daily_sales) / len(req.historical_daily_sales)
-        
+
         # Expected stock during lead time
         expected_burn = avg_burn * req.lead_time_days
-        
-        # We want to reorder enough to cover lead time + safety stock (e.g. 3 days extra)
-        safety_stock = avg_burn * 3
+
+        # Safety stock: analytical if demand_variance provided, otherwise 3 days of avg burn
+        if req.demand_variance is not None and req.demand_variance > 0:
+            sl = req.service_level if (req.service_level and 0.5 < req.service_level < 1.0) else 0.95
+            if sl >= 0.99:
+                z = 2.326
+            elif sl >= 0.98:
+                z = 2.054
+            elif sl >= 0.95:
+                z = 1.645
+            elif sl >= 0.90:
+                z = 1.282
+            else:
+                z = 1.0
+            safety_stock = z * math.sqrt(float(req.lead_time_days) * req.demand_variance)
+        else:
+            safety_stock = avg_burn * 3
+
         target_stock = expected_burn + safety_stock
-        
-        reorder_qty = max(0, int(target_stock - req.current_stock))
-        
+        effective_stock = req.current_stock + (req.pipeline_stock or 0)
+
+        reorder_qty = max(0, math.ceil(target_stock - effective_stock))
+
         return DemandPredictionResponse(
             sku=req.sku,
             optimal_reorder_qty=reorder_qty,

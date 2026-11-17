@@ -1,6 +1,7 @@
 package com.pegasusx.driver.data.remote
 
 import android.util.Log
+import com.pegasusx.driver.BuildConfig
 import com.pegasusx.driver.data.model.TelemetryPayload
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -66,7 +67,7 @@ class TelemetrySocket @Inject constructor(
         reconnectJob?.cancel()
         reconnectJob = null
         _connectionState.trySend(ConnectionState.RECONNECTING)
-        Log.d(TAG, "resetAndReconnect — network regained")
+        if (BuildConfig.DEBUG) Log.d(TAG, "resetAndReconnect — network regained")
         establishConnection(url, token)
     }
 
@@ -90,7 +91,7 @@ class TelemetrySocket @Inject constructor(
                 reconnectAttempt = 0
                 connected.set(true)
                 _connectionState.trySend(ConnectionState.CONNECTED)
-                Log.d(TAG, "Connected")
+                if (BuildConfig.DEBUG) Log.d(TAG, "Connected")
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
@@ -126,7 +127,7 @@ class TelemetrySocket @Inject constructor(
             pendingRetryAfterMs,
         )
         pendingRetryAfterMs = null
-        Log.d(TAG, "Reconnecting in ${delayMs}ms (attempt $reconnectAttempt)")
+        if (BuildConfig.DEBUG) Log.d(TAG, "Reconnecting in ${delayMs}ms (attempt $reconnectAttempt)")
 
         reconnectJob?.cancel()
         reconnectJob = scope.launch {

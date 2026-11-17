@@ -8,12 +8,13 @@
 import Foundation
 
 enum RetailerIdempotency {
-    static func orderCreate(items: [ProcurementOrderRequest.Item]) -> String {
+    static func orderCreate(items: [ProcurementOrderRequest.Item], autoConfirmOptIn: Bool = false) -> String {
         let fingerprint = items
-            .map { "\($0.productId):\($0.quantity)" }
+            .map { "\($0.productId):\($0.quantity):\($0.mustHave ? 1 : 0):\($0.allowSubstitutes ? 1 : 0)" }
             .sorted()
             .joined(separator: "|")
-        return "retailer-procurement:\(fingerprint)"
+        let suffix = autoConfirmOptIn ? ":auto" : ""
+        return "retailer-procurement:\(fingerprint)\(suffix)"
     }
 
     static func confirmCash(orderId: String) -> String {
@@ -62,6 +63,22 @@ enum RetailerIdempotency {
 
     static func setup(retailerId: String) -> String {
         "retailer-setup:\(retailerId)"
+    }
+
+    static func taxIdentity(retailerId: String, fingerprint: String) -> String {
+        "retailer-tax-identity:\(retailerId):\(stableHash(fingerprint))"
+    }
+
+    static func nasiyaAcknowledge(invoiceId: String) -> String {
+        "nasiya-opening-ack:\(invoiceId)"
+    }
+
+    static func nasiyaDispute(invoiceId: String, reason: String) -> String {
+        "nasiya-opening-dispute:\(invoiceId):\(stableHash(reason))"
+    }
+
+    static func joinRequestDecide(requestId: String, decision: String) -> String {
+        "retailer-join-decide:\(requestId):\(decision.lowercased())"
     }
 
     static func supplierAdd(supplierId: String) -> String {

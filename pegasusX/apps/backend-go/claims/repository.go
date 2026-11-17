@@ -2,8 +2,11 @@ package claims
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -11,6 +14,25 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"google.golang.org/api/iterator"
 )
+
+const (
+	claimsOrderPageSize       = 50
+	defaultSupplierClaimsPage = 50
+	maxSupplierClaimsPage     = 100
+)
+
+// ErrInvalidCursor reports a malformed pagination cursor.
+var ErrInvalidCursor = errors.New("claims: invalid cursor")
+
+// SupplierClaimsPager is an optional Repository extension supporting keyset pagination.
+type SupplierClaimsPager interface {
+	ListBySupplierPage(ctx context.Context, supplierID string, status Status, limit int, cursor string) ([]Claim, string, error)
+}
+
+// OrderClaimsPager is an optional Repository extension supporting keyset pagination.
+type OrderClaimsPager interface {
+	ListByOrderPage(ctx context.Context, orderID string, limit int, cursor string) ([]Claim, string, error)
+}
 
 // Repository persists claims + evidences.
 type Repository interface {
@@ -74,15 +96,29 @@ func (r *SpannerRepository) CreateClaim(ctx context.Context, c Claim, emit func(
 				"UpdatedAt":     spanner.CommitTimestamp,
 			}),
 		}
+		var escalationMeta []byte
+		if c.Escalation != nil {
+			b, err := json.Marshal(c.Escalation)
+			if err != nil {
+				return fmt.Errorf("marshal escalation metadata: %w", err)
+			}
+			escalationMeta = b
+		}
 		for _, e := range c.Evidences {
 			row := map[string]any{
-				"ClaimId":      c.ClaimID,
-				"EvidenceId":   e.EvidenceID,
-				"EvidenceType": string(e.EvidenceType),
-				"Uri":          e.URI,
-				"MimeType":     nullableStr(e.MimeType),
-				"CapturedBy":   nullableStr(e.CapturedBy),
-				"CreatedAt":    spanner.CommitTimestamp,
+				"ClaimId":          c.ClaimID,
+				"EvidenceId":       e.EvidenceID,
+				"EvidenceType":     string(e.EvidenceType),
+				"Uri":              e.URI,
+				"MimeType":         nullableStr(e.MimeType),
+				"CapturedBy":       nullableStr(e.CapturedBy),
+				"ContentSha256":    nullableStr(e.ContentSha256),
+				"UriSha256":        nullableStr(e.UriSha256),
+				"ObjectGeneration": nullableInt64(e.ObjectGeneration),
+				"CreatedAt":        spanner.CommitTimestamp,
+			}
+			if len(escalationMeta) > 0 {
+				row["MetaJSON"] = escalationMeta
 			}
 			if e.CapturedAt != nil {
 				row["CapturedAt"] = e.CapturedAt.UTC()
@@ -244,51 +280,132 @@ func (r *SpannerRepository) GetClaim(ctx context.Context, claimID string) (Claim
 	return c, true, nil
 }
 
-// ListByOrder returns claims for an order newest first.
+func normalizeClaimsPageLimit(limit, def int) int {
+	if limit <= 0 || limit > maxSupplierClaimsPage {
+		return def
+	}
+	return limit
+}
+
+func encodeClaimCursor(createdAt time.Time, claimID string) string {
+	return base64.RawURLEncoding.EncodeToString([]byte(createdAt.UTC().Format(time.RFC3339Nano) + "|" + claimID))
+}
+
+func decodeClaimCursor(cursor string) (time.Time, string, bool, error) {
+	cursor = strings.TrimSpace(cursor)
+	if cursor == "" {
+		return time.Time{}, "", false, nil
+	}
+	raw, err := base64.RawURLEncoding.DecodeString(cursor)
+	if err != nil {
+		return time.Time{}, "", false, ErrInvalidCursor
+	}
+	parts := strings.SplitN(string(raw), "|", 2)
+	if len(parts) != 2 || strings.TrimSpace(parts[1]) == "" {
+		return time.Time{}, "", false, ErrInvalidCursor
+	}
+	ts, err := time.Parse(time.RFC3339Nano, parts[0])
+	if err != nil {
+		return time.Time{}, "", false, ErrInvalidCursor
+	}
+	return ts.UTC(), parts[1], true, nil
+}
+
+// ListByOrder returns all claims for an order newest first by sweeping keyset pages.
 func (r *SpannerRepository) ListByOrder(ctx context.Context, orderID string) ([]Claim, error) {
-	return r.queryClaims(ctx, spanner.Statement{
-		SQL: `SELECT ClaimId, OrderId, SupplierId, RetailerId, FiledBy, FiledByRole,
+	var all []Claim
+	cursor := ""
+	for {
+		page, next, err := r.ListByOrderPage(ctx, orderID, claimsOrderPageSize, cursor)
+		if err != nil {
+			return nil, err
+		}
+		all = append(all, page...)
+		if next == "" {
+			return all, nil
+		}
+		cursor = next
+	}
+}
+
+// ListByOrderPage returns a keyset-paginated slice of claims for an order newest first.
+func (r *SpannerRepository) ListByOrderPage(ctx context.Context, orderID string, limit int, cursor string) ([]Claim, string, error) {
+	orderID = strings.TrimSpace(orderID)
+	if orderID == "" {
+		return nil, "", nil
+	}
+	limit = normalizeClaimsPageLimit(limit, claimsOrderPageSize)
+	cursorTs, cursorID, hasCursor, err := decodeClaimCursor(cursor)
+	if err != nil {
+		return nil, "", err
+	}
+	sql := `SELECT ClaimId, OrderId, SupplierId, RetailerId, FiledBy, FiledByRole,
 			ClaimType, Status, Description, AmountMinor, Currency, LineItemsJSON,
 			ResolutionNote, ResolvedBy, ResolvedAt, Source, TraceId, CreatedAt, UpdatedAt
 			FROM Claims@{FORCE_INDEX=Idx_Claims_ByOrderCreated}
-			WHERE OrderId = @oid
-			ORDER BY CreatedAt DESC
-			LIMIT 50`,
-		Params: map[string]any{"oid": strings.TrimSpace(orderID)},
-	})
+			WHERE OrderId = @oid`
+	params := map[string]any{"oid": orderID, "lim": int64(limit + 1)}
+	if hasCursor {
+		sql += ` AND (CreatedAt < @cursorTs OR (CreatedAt = @cursorTs AND ClaimId < @cursorId))`
+		params["cursorTs"] = cursorTs
+		params["cursorId"] = cursorID
+	}
+	sql += ` ORDER BY CreatedAt DESC, ClaimId DESC LIMIT @lim`
+	rows, err := r.queryClaims(ctx, spanner.Statement{SQL: sql, Params: params})
+	if err != nil {
+		return nil, "", err
+	}
+	if len(rows) > limit {
+		page := rows[:limit]
+		last := page[len(page)-1]
+		return page, encodeClaimCursor(last.CreatedAt, last.ClaimID), nil
+	}
+	return rows, "", nil
 }
 
 // ListBySupplier returns claims for a supplier, optional status filter.
 func (r *SpannerRepository) ListBySupplier(ctx context.Context, supplierID string, status Status, limit int) ([]Claim, error) {
-	if limit <= 0 || limit > 100 {
-		limit = 50
-	}
+	page, _, err := r.ListBySupplierPage(ctx, supplierID, status, limit, "")
+	return page, err
+}
+
+// ListBySupplierPage returns a keyset-paginated slice of claims for a supplier.
+func (r *SpannerRepository) ListBySupplierPage(ctx context.Context, supplierID string, status Status, limit int, cursor string) ([]Claim, string, error) {
+	limit = normalizeClaimsPageLimit(limit, defaultSupplierClaimsPage)
 	supplierID = strings.TrimSpace(supplierID)
 	if supplierID == "" {
-		return nil, nil
+		return nil, "", nil
 	}
-	if status != "" && status.Valid() {
-		return r.queryClaims(ctx, spanner.Statement{
-			SQL: `SELECT ClaimId, OrderId, SupplierId, RetailerId, FiledBy, FiledByRole,
-				ClaimType, Status, Description, AmountMinor, Currency, LineItemsJSON,
-				ResolutionNote, ResolvedBy, ResolvedAt, Source, TraceId, CreatedAt, UpdatedAt
-				FROM Claims@{FORCE_INDEX=Idx_Claims_BySupplierStatus}
-				WHERE SupplierId = @sid AND Status = @st
-				ORDER BY CreatedAt DESC
-				LIMIT @lim`,
-			Params: map[string]any{"sid": supplierID, "st": string(status), "lim": int64(limit)},
-		})
+	cursorTs, cursorID, hasCursor, err := decodeClaimCursor(cursor)
+	if err != nil {
+		return nil, "", err
 	}
-	return r.queryClaims(ctx, spanner.Statement{
-		SQL: `SELECT ClaimId, OrderId, SupplierId, RetailerId, FiledBy, FiledByRole,
+	sql := `SELECT ClaimId, OrderId, SupplierId, RetailerId, FiledBy, FiledByRole,
 			ClaimType, Status, Description, AmountMinor, Currency, LineItemsJSON,
 			ResolutionNote, ResolvedBy, ResolvedAt, Source, TraceId, CreatedAt, UpdatedAt
 			FROM Claims@{FORCE_INDEX=Idx_Claims_BySupplierStatus}
-			WHERE SupplierId = @sid
-			ORDER BY CreatedAt DESC
-			LIMIT @lim`,
-		Params: map[string]any{"sid": supplierID, "lim": int64(limit)},
-	})
+			WHERE SupplierId = @sid`
+	params := map[string]any{"sid": supplierID, "lim": int64(limit + 1)}
+	if status != "" && status.Valid() {
+		sql += ` AND Status = @st`
+		params["st"] = string(status)
+	}
+	if hasCursor {
+		sql += ` AND (CreatedAt < @cursorTs OR (CreatedAt = @cursorTs AND ClaimId < @cursorId))`
+		params["cursorTs"] = cursorTs
+		params["cursorId"] = cursorID
+	}
+	sql += ` ORDER BY CreatedAt DESC, ClaimId DESC LIMIT @lim`
+	rows, err := r.queryClaims(ctx, spanner.Statement{SQL: sql, Params: params})
+	if err != nil {
+		return nil, "", err
+	}
+	if len(rows) > limit {
+		page := rows[:limit]
+		last := page[len(page)-1]
+		return page, encodeClaimCursor(last.CreatedAt, last.ClaimID), nil
+	}
+	return rows, "", nil
 }
 
 func (r *SpannerRepository) queryClaims(ctx context.Context, stmt spanner.Statement) ([]Claim, error) {
@@ -318,36 +435,23 @@ func (r *SpannerRepository) queryClaims(ctx context.Context, stmt spanner.Statem
 	return out, nil
 }
 
-// IsEvidenceURIReused checks if the given evidence URI has already been submitted on any claim.
+// IsEvidenceURIReused checks if the given evidence URI (or its canonical URI hash) has already
+// been submitted on any claim. Fails closed on nil Spanner client or any query/table error.
 func (r *SpannerRepository) IsEvidenceURIReused(ctx context.Context, uri string) (bool, error) {
 	if r == nil || r.client == nil {
-		return false, nil
+		return false, fmt.Errorf("claims: nil spanner client")
 	}
 	target := strings.TrimSpace(uri)
 	if target == "" {
 		return false, nil
 	}
-	iter := r.client.Single().Query(ctx, spanner.Statement{
-		SQL:    `SELECT 1 FROM ClaimEvidences WHERE Uri = @uri LIMIT 1`,
-		Params: map[string]any{"uri": target},
-	})
-	defer iter.Stop()
-	_, err := iter.Next()
-	if err == iterator.Done {
-		return false, nil
-	}
-	if err != nil {
-		if strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "ClaimEvidences") {
-			return false, nil
-		}
-		return false, err
-	}
-	return true, nil
+	return checkEvidenceReuseQuery(ctx, r.client.Single(), target, "", "")
 }
 
 func (r *SpannerRepository) listEvidences(ctx context.Context, claimID string) ([]Evidence, error) {
 	stmt := spanner.Statement{
-		SQL: `SELECT ClaimId, EvidenceId, EvidenceType, Uri, MimeType, CapturedAt, CapturedBy, CreatedAt
+		SQL: `SELECT ClaimId, EvidenceId, EvidenceType, Uri, MimeType, CapturedAt, CapturedBy,
+			ContentSha256, UriSha256, ObjectGeneration, CreatedAt
 			FROM ClaimEvidences WHERE ClaimId = @cid`,
 		Params: map[string]any{"cid": claimID},
 	}
@@ -363,11 +467,12 @@ func (r *SpannerRepository) listEvidences(ctx context.Context, claimID string) (
 			return nil, err
 		}
 		var e Evidence
-		var mime, by spanner.NullString
+		var mime, by, cSha, uSha spanner.NullString
+		var gen spanner.NullInt64
 		var capAt spanner.NullTime
 		var created time.Time
 		var etype string
-		if err := row.Columns(&e.ClaimID, &e.EvidenceID, &etype, &e.URI, &mime, &capAt, &by, &created); err != nil {
+		if err := row.Columns(&e.ClaimID, &e.EvidenceID, &etype, &e.URI, &mime, &capAt, &by, &cSha, &uSha, &gen, &created); err != nil {
 			return nil, err
 		}
 		e.EvidenceType = EvidenceType(etype)
@@ -376,6 +481,15 @@ func (r *SpannerRepository) listEvidences(ctx context.Context, claimID string) (
 		}
 		if by.Valid {
 			e.CapturedBy = by.StringVal
+		}
+		if cSha.Valid {
+			e.ContentSha256 = cSha.StringVal
+		}
+		if uSha.Valid {
+			e.UriSha256 = uSha.StringVal
+		}
+		if gen.Valid {
+			e.ObjectGeneration = gen.Int64
 		}
 		if capAt.Valid {
 			t := capAt.Time.UTC()
@@ -474,6 +588,39 @@ func (m *MemoryRepository) GetClaim(_ context.Context, claimID string) (Claim, b
 	return c, ok, nil
 }
 
+func sortClaimsNewestFirst(claimsList []Claim) {
+	sort.Slice(claimsList, func(i, j int) bool {
+		if !claimsList[i].CreatedAt.Equal(claimsList[j].CreatedAt) {
+			return claimsList[i].CreatedAt.After(claimsList[j].CreatedAt)
+		}
+		return claimsList[i].ClaimID > claimsList[j].ClaimID
+	})
+}
+
+func paginateMemoryClaims(claimsList []Claim, limit int, cursor string) ([]Claim, string, error) {
+	sortClaimsNewestFirst(claimsList)
+	cursorTs, cursorID, hasCursor, err := decodeClaimCursor(cursor)
+	if err != nil {
+		return nil, "", err
+	}
+	filtered := claimsList
+	if hasCursor {
+		filtered = make([]Claim, 0, len(claimsList))
+		for _, c := range claimsList {
+			ts := c.CreatedAt.UTC()
+			if ts.Before(cursorTs) || (ts.Equal(cursorTs) && c.ClaimID < cursorID) {
+				filtered = append(filtered, c)
+			}
+		}
+	}
+	if len(filtered) > limit {
+		page := filtered[:limit]
+		last := page[len(page)-1]
+		return page, encodeClaimCursor(last.CreatedAt, last.ClaimID), nil
+	}
+	return filtered, "", nil
+}
+
 // ListByOrder lists by order id.
 func (m *MemoryRepository) ListByOrder(_ context.Context, orderID string) ([]Claim, error) {
 	var out []Claim
@@ -482,7 +629,18 @@ func (m *MemoryRepository) ListByOrder(_ context.Context, orderID string) ([]Cla
 			out = append(out, c)
 		}
 	}
+	sortClaimsNewestFirst(out)
 	return out, nil
+}
+
+// ListByOrderPage lists claims for an order with keyset cursor pagination.
+func (m *MemoryRepository) ListByOrderPage(ctx context.Context, orderID string, limit int, cursor string) ([]Claim, string, error) {
+	all, err := m.ListByOrder(ctx, orderID)
+	if err != nil {
+		return nil, "", err
+	}
+	limit = normalizeClaimsPageLimit(limit, claimsOrderPageSize)
+	return paginateMemoryClaims(all, limit, cursor)
 }
 
 // UpdateClaim updates an in-memory claim.
@@ -530,10 +688,14 @@ func (m *MemoryRepository) TransitionStatus(_ context.Context, claimID string, f
 }
 
 // ListBySupplier filters memory claims.
-func (m *MemoryRepository) ListBySupplier(_ context.Context, supplierID string, status Status, limit int) ([]Claim, error) {
-	if limit <= 0 {
-		limit = 50
-	}
+func (m *MemoryRepository) ListBySupplier(ctx context.Context, supplierID string, status Status, limit int) ([]Claim, error) {
+	page, _, err := m.ListBySupplierPage(ctx, supplierID, status, limit, "")
+	return page, err
+}
+
+// ListBySupplierPage filters memory claims with keyset cursor pagination.
+func (m *MemoryRepository) ListBySupplierPage(_ context.Context, supplierID string, status Status, limit int, cursor string) ([]Claim, string, error) {
+	limit = normalizeClaimsPageLimit(limit, defaultSupplierClaimsPage)
 	var out []Claim
 	for _, c := range m.byID {
 		if c.SupplierID != supplierID {
@@ -543,15 +705,13 @@ func (m *MemoryRepository) ListBySupplier(_ context.Context, supplierID string, 
 			continue
 		}
 		out = append(out, c)
-		if len(out) >= limit {
-			break
-		}
 	}
-	return out, nil
+	return paginateMemoryClaims(out, limit, cursor)
 }
 
-// IsEvidenceURIReused checks if the given URI is already associated with any in-memory claim.
-func (m *MemoryRepository) IsEvidenceURIReused(_ context.Context, uri string) (bool, error) {
+// IsEvidenceURIReused checks if the given URI (or canonical URI hash) is already associated
+// with any in-memory claim.
+func (m *MemoryRepository) IsEvidenceURIReused(ctx context.Context, uri string) (bool, error) {
 	if m == nil || m.byID == nil {
 		return false, nil
 	}
@@ -559,13 +719,6 @@ func (m *MemoryRepository) IsEvidenceURIReused(_ context.Context, uri string) (b
 	if target == "" {
 		return false, nil
 	}
-	for _, c := range m.byID {
-		for _, e := range c.Evidences {
-			if strings.TrimSpace(e.URI) == target {
-				return true, nil
-			}
-		}
-	}
-	return false, nil
+	return m.IsEvidenceReused(ctx, target, "", "")
 }
 

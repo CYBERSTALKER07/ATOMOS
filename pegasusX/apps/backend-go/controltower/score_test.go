@@ -8,15 +8,15 @@ import (
 func TestComputeExceptionScore_ordering(t *testing.T) {
 	now := time.Date(2026, 7, 31, 12, 0, 0, 0, time.UTC)
 	high := Exception{
-		Severity:     "HIGH",
-		AmountMinor:  5_000_000,
-		CreatedAt:    now.Add(-2 * time.Hour),
+		Severity:        "HIGH",
+		AmountMinor:     5_000_000,
+		CreatedAt:       now.Add(-2 * time.Hour),
 		RetailerSegment: "A",
 	}
 	low := Exception{
-		Severity:     "LOW",
-		AmountMinor:  100_000,
-		CreatedAt:    now.Add(-10 * time.Minute),
+		Severity:    "LOW",
+		AmountMinor: 100_000,
+		CreatedAt:   now.Add(-10 * time.Minute),
 	}
 	highScore, _, _ := ComputeExceptionScore(high, now)
 	lowScore, _, _ := ComputeExceptionScore(low, now)
@@ -34,6 +34,30 @@ func TestComputeExceptionScore_segmentBoost(t *testing.T) {
 	scoreA, _, _ := ComputeExceptionScore(segmentA, now)
 	if scoreA <= scoreBase {
 		t.Fatalf("segment A should boost score: base=%d a=%d", scoreBase, scoreA)
+	}
+}
+
+func TestComputeExceptionScore_freshCriticalOutscores48hLow(t *testing.T) {
+	now := time.Date(2026, 7, 31, 12, 0, 0, 0, time.UTC)
+	// Fresh CRITICAL exception (0 age, 0 amount, no segment boost)
+	freshCritical := Exception{
+		Severity:    "CRITICAL",
+		AmountMinor: 0,
+		CreatedAt:   now,
+	}
+	// 48-hour old LOW exception with max capped amount (10M tiyin) and Segment A boost
+	oldMaxLow := Exception{
+		Severity:        "LOW",
+		AmountMinor:     scoreAmountCapMinor,
+		CreatedAt:       now.Add(-48 * time.Hour),
+		RetailerSegment: "A",
+	}
+
+	criticalScore, _, _ := ComputeExceptionScore(freshCritical, now)
+	lowScore, _, _ := ComputeExceptionScore(oldMaxLow, now)
+
+	if criticalScore <= lowScore {
+		t.Fatalf("fresh CRITICAL exception (%d) must outscore 48h LOW exception with max amount and segment boost (%d)", criticalScore, lowScore)
 	}
 }
 

@@ -152,9 +152,10 @@ export default function RetailerRegisterPage() {
       const data = await loginRes.json();
       if (!data?.token) throw new Error("Login response is missing token");
 
-      document.cookie = `pegasus_retailer_jwt=${encodeURIComponent(data.token)}; path=/; max-age=86400; SameSite=Lax`;
+      const secureFlag = typeof window !== "undefined" && window.location.protocol === "https:" ? "; Secure" : "";
+      document.cookie = `pegasus_retailer_jwt=${encodeURIComponent(data.token)}; path=/; max-age=86400; SameSite=Strict${secureFlag}`;
       if (data.refresh_token) {
-        document.cookie = `pegasus_retailer_refresh=${encodeURIComponent(data.refresh_token)}; path=/; max-age=604800; SameSite=Lax`;
+        document.cookie = `pegasus_retailer_refresh=${encodeURIComponent(data.refresh_token)}; path=/; max-age=604800; SameSite=Strict${secureFlag}`;
       }
       await storeToken(data.token, data.refresh_token || "");
 

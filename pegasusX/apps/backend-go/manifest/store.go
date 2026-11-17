@@ -9,6 +9,7 @@ import (
 
 	"cloud.google.com/go/spanner"
 	"google.golang.org/api/iterator"
+	"google.golang.org/grpc/codes"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/routing"
@@ -631,7 +632,7 @@ func (s *Store) EnsureFactoryDemoTransfers(ctx context.Context, rows []FactoryTr
 			if err == nil {
 				return nil
 			}
-			if err != spanner.ErrRowNotFound {
+			if !errors.Is(err, spanner.ErrRowNotFound) && spanner.ErrCode(err) != codes.NotFound {
 				return err
 			}
 			batch := &FactoryWriteBatch{Transfers: []FactoryTransferRow{transfer}}
@@ -655,7 +656,7 @@ func (s *Store) EnsureFactoryDemoManifests(ctx context.Context, rows []FactoryTr
 			if err == nil {
 				return nil
 			}
-			if err != spanner.ErrRowNotFound {
+			if !errors.Is(err, spanner.ErrRowNotFound) && spanner.ErrCode(err) != codes.NotFound {
 				return err
 			}
 			batch := &FactoryWriteBatch{Manifests: []FactoryTruckRow{m}}
@@ -679,7 +680,7 @@ func (s *Store) EnsureSupplierDemoManifests(ctx context.Context, supplierID stri
 			if err == nil {
 				return nil
 			}
-			if err != spanner.ErrRowNotFound {
+			if !errors.Is(err, spanner.ErrRowNotFound) && spanner.ErrCode(err) != codes.NotFound {
 				return err
 			}
 

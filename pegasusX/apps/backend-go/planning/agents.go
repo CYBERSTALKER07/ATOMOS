@@ -6,9 +6,9 @@ import "strings"
 type GovernedAgentAction string
 
 const (
-	AgentApproveInsight     GovernedAgentAction = "approve_insight"
-	AgentOpenSupplyRequest  GovernedAgentAction = "open_supply_request"
-	AgentBroadcastTemplate  GovernedAgentAction = "broadcast_template"
+	AgentApproveInsight    GovernedAgentAction = "approve_insight"
+	AgentOpenSupplyRequest GovernedAgentAction = "open_supply_request"
+	AgentBroadcastTemplate GovernedAgentAction = "broadcast_template"
 )
 
 var governedAllowlist = map[GovernedAgentAction]bool{
@@ -41,11 +41,23 @@ func ValidateAgentInvocation(inv AgentInvocation) error {
 	return nil
 }
 
+// ValidateAgentGovernance enforces that autonomous agents may only propose actions
+// and never approve or self-execute governed proposals.
+func ValidateAgentGovernance(actorType string, isApprovalOrExecute bool) error {
+	if isApprovalOrExecute && strings.EqualFold(strings.TrimSpace(actorType), "agent") {
+		return ErrAgentSelfApproveDenied
+	}
+	return nil
+}
+
 // ErrAgentActionDenied is returned when an agent requests a non-allowlisted mutation.
 var ErrAgentActionDenied = errDenied("agent action not allowlisted")
 
 // ErrAgentInvocationInvalid is returned when required agent fields are missing.
 var ErrAgentInvocationInvalid = errDenied("agent invocation invalid")
+
+// ErrAgentSelfApproveDenied is returned when an agent attempts to approve or execute a proposal.
+var ErrAgentSelfApproveDenied = errDenied("agent actors may only propose, never approve or execute")
 
 type errDenied string
 

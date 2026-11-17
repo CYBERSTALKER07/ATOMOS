@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pegasusx.driver.data.model.CompleteOrderRequest
+import com.pegasusx.driver.data.model.OrderState
 import com.pegasusx.driver.data.remote.DriverApi
 import com.pegasusx.driver.data.remote.DriverWebSocket
 import com.pegasusx.driver.data.remote.DRIVER_RECONNECT_RECOVERY_HINT
@@ -28,6 +29,7 @@ data class PaymentWaitingUiState(
     val fiscalFailed: Boolean = false,
     val isCompleting: Boolean = false,
     val completed: Boolean = false,
+    val statusNotice: String? = null,
     val error: String? = null
 )
 
@@ -101,36 +103,14 @@ class PaymentWaitingViewModel @Inject constructor(
                             it.copy(paymentSettled = true, fiscalizing = true, fiscalFailed = false, isCompleting = false)
                         }
                     }
-                    "FISCAL_RECEIPT_FAILED" -> {
-                        _state.update {
-                            it.copy(
-                                paymentSettled = true,
-                                fiscalizing = false,
-                                fiscalFailed = true,
-                                isCompleting = false,
-                                error = "Fiscal receipt failed. Retry or call supervisor.",
-                            )
-                        }
+                    "FISCAL_RECEIPT_FAILED" -> _state.update {
+                        reducePaymentWaitingFiscalStatus(it, "FISCAL_RETRY_QUEUED")
                     }
                     "ORDER_STATUS_CHANGED", "PAYMENT_REQUIRED" -> {
                         val status = (msg.status ?: msg.state).orEmpty().uppercase()
                         when (status) {
                             "PENDING_CASH_COLLECTION" -> _cashCollectionRequired.emit(Unit)
-                            "FISCALIZING" -> _state.update {
-                                it.copy(paymentSettled = true, fiscalizing = true, fiscalFailed = false, isCompleting = false)
-                            }
-                            "FISCAL_FAILED" -> _state.update {
-                                it.copy(
-                                    paymentSettled = true,
-                                    fiscalizing = false,
-                                    fiscalFailed = true,
-                                    isCompleting = false,
-                                    error = "Fiscal receipt failed. Retry or call supervisor.",
-                                )
-                            }
-                            "COMPLETED" -> _state.update {
-                                it.copy(completed = true, fiscalizing = false, fiscalFailed = false)
-                            }
+                            else -> _state.update { reducePaymentWaitingFiscalStatus(it, status) }
                         }
                     }
                 }
@@ -143,18 +123,21 @@ class PaymentWaitingViewModel @Inject constructor(
         viewModelScope.launch {
             _state.update { it.copy(isCompleting = true, error = null) }
             try {
-                api.completeOrder(
+                val resp = api.completeOrder(
                     request = CompleteOrderRequest(orderId = orderId),
                     idempotencyKey = DriverIdempotencyKeys.complete(orderId),
                 )
-                // ADR-009: complete returns FISCALIZING — wait for fiscal WS.
-                _state.update {
-                    it.copy(
-                        isCompleting = false,
-                        paymentSettled = true,
-                        fiscalizing = true,
-                        fiscalFailed = false,
-                    )
+                val retryQueued = resp.state == OrderState.FISCAL_FAILED
+                when {
+                    resp.state == OrderState.COMPLETED -> _state.update {
+                        reducePaymentWaitingFiscalStatus(it, "COMPLETED")
+                    }
+                    retryQueued -> _state.update {
+                        reducePaymentWaitingFiscalStatus(it, "FISCAL_RETRY_QUEUED")
+                    }
+                    else -> _state.update {
+                        reducePaymentWaitingFiscalStatus(it, "FISCALIZING")
+                    }
                 }
             } catch (e: Exception) {
                 val message = e.message.orEmpty()
@@ -182,6 +165,11 @@ class PaymentWaitingViewModel @Inject constructor(
 
     fun completeOrder() {
         finalizeDelivery(autoTriggered = false)
+    }
+
+    /** Non-blocking fiscal: payment and PoD are captured, so the driver may continue to the next stop. */
+    fun continueNextStop() {
+        _state.update(::continuePaymentWaitingNextStop)
     }
 
     fun retryFiscal() {
@@ -216,3 +204,40 @@ class PaymentWaitingViewModel @Inject constructor(
         super.onCleared()
     }
 }
+
+internal fun reducePaymentWaitingFiscalStatus(
+    current: PaymentWaitingUiState,
+    statusRaw: String,
+): PaymentWaitingUiState = when (statusRaw.uppercase()) {
+    "FISCALIZING" -> current.copy(
+        paymentSettled = true,
+        fiscalizing = true,
+        fiscalFailed = false,
+        isCompleting = false,
+        statusNotice = null,
+        error = null,
+    )
+    "FISCAL_FAILED", "FISCAL_RETRY_QUEUED", "PENDING_FISCAL_ISSUE" -> current.copy(
+        paymentSettled = true,
+        fiscalizing = false,
+        fiscalFailed = true,
+        isCompleting = false,
+        statusNotice = FISCAL_RETRY_QUEUED_GUIDANCE,
+        error = null,
+    )
+    "COMPLETED" -> current.copy(
+        completed = true,
+        fiscalizing = false,
+        fiscalFailed = false,
+        statusNotice = null,
+        error = null,
+    )
+    else -> current
+}
+
+internal fun continuePaymentWaitingNextStop(current: PaymentWaitingUiState): PaymentWaitingUiState =
+    if (current.fiscalFailed || current.paymentSettled) {
+        current.copy(completed = true, fiscalizing = false, error = null)
+    } else {
+        current
+    }

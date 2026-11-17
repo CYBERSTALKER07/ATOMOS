@@ -152,6 +152,21 @@ export {
   claimFileKey,
   claimApproveKey,
   claimRejectKey,
+  migrationProjectCreateKey,
+  migrationBundleCreateKey,
+  migrationBundleUploadedKey,
+  migrationBundleSortKey,
+  migrationMappingConfirmKey,
+  migrationDryRunKey,
+  migrationSessionApproveKey,
+  migrationSessionApplyKey,
+  migrationSessionRollbackKey,
+  migrationOpenOrdersReleaseKey,
+  migrationCutoverKey,
+  joinRequestDecideKey,
+  retailerTaxIdentityKey,
+  retailerArAcknowledgeKey,
+  retailerArDisputeKey,
 } from "./idempotency";
 
 export {
@@ -193,6 +208,7 @@ export { ApiError } from "./src/client-base";
 export type { ApiClientConfig, RequestOptions } from "./src/client-base";
 export { ApiClient } from "./src/client-warehouse-partner";
 export * from "./src/foundry";
+export * from "./src/client-migration";
 
 import type {
   NegotiationPendingResponse,

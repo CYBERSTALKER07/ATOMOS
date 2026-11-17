@@ -47,6 +47,10 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	r.Post("/v1/auth/retailer/select-org", d.Service.HandleSelectOrg)
 
 	mountProtected := func(rr chi.Router) {
+		// Fast Mode consolidated BFF & Telegram OTP binding
+		rr.Get("/v1/retailer/fast-home", d.Service.HandleFastHome)
+		rr.Post("/v1/retailer/telegram/link-request", d.Service.HandleTelegramLinkRequest)
+		rr.Get("/v1/retailer/telegram/status", d.Service.HandleTelegramStatus)
 		// C1.2 switch-org requires full JWT (RequireRole rejects PendingOrgSelect).
 		rr.Post("/v1/auth/retailer/switch-org", d.Service.HandleSwitchOrg)
 		rr.Get("/v1/retailer/ws-session", auth.WSSessionHandler(d.JWTSecret, d.JWTIssuer, 0))
@@ -76,6 +80,9 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		rr.Delete("/v1/retailer/org/members/{userID}", d.Service.HandleOrgMemberByID)
 		rr.Put("/v1/retailer/org/members/{userID}/locations", d.Service.HandleMemberLocations)
 		rr.Post("/v1/retailer/org/members/{userID}/locations", d.Service.HandleMemberLocations)
+		rr.Get("/v1/retailer/org/members/{userID}/mandate", d.Service.HandleOrgMemberMandate)
+		rr.Patch("/v1/retailer/org/members/{userID}/mandate", d.Service.HandleOrgMemberMandate)
+		rr.Put("/v1/retailer/org/members/{userID}/mandate", d.Service.HandleOrgMemberMandate)
 
 		// Retail OS Phase 2 locations
 		rr.Get("/v1/retailer/locations", d.Service.HandleLocations)
@@ -84,6 +91,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		rr.Put("/v1/retailer/locations/{locationID}", d.Service.HandleLocationByID)
 		rr.Post("/v1/retailer/locations/{locationID}/set-primary", d.Service.HandleLocationSetPrimary)
 		rr.Post("/v1/auth/retailer/switch-location", d.Service.HandleSwitchLocation)
+		rr.Post("/v1/retailer/attach", d.Service.HandleAcceptTradingPartnerInvite)
 
 		// Retail OS Phase 3 store stock
 		rr.Get("/v1/retailer/stock", d.Service.HandleStockList)
@@ -169,12 +177,18 @@ func RegisterRoutes(r chi.Router, d Deps) {
 
 		rr.Post("/v1/retailer/kyc/documents", d.Service.HandleSubmitKyc)
 		rr.Get("/v1/retailer/kyc/documents", d.Service.HandleListKyc)
-		rr.Post("/v1/admin/retailer-kyc/{documentID}/review", d.Service.HandleReviewKyc)
 
 		rr.Post("/v1/retailer/returns", d.Service.HandleSubmitReturn)
 		rr.Get("/v1/retailer/returns", d.Service.HandleListReturns)
 
 		rr.Post("/v1/retailer/setup", d.Service.HandleRetailerSetup)
+		rr.Patch("/v1/retailer/tax-identity", d.Service.HandleTaxIdentity)
+		rr.Get("/v1/retailer/join-requests", d.Service.HandleListJoinRequests)
+		rr.Post("/v1/retailer/join-requests/{requestId}/approve", d.Service.HandleApproveJoinRequest)
+		rr.Post("/v1/retailer/join-requests/{requestId}/reject", d.Service.HandleRejectJoinRequest)
+		rr.Get("/v1/retailer/nasiya/opening-balances", d.Service.HandleListNasiyaOpeningBalances)
+		rr.Post("/v1/retailer/ar-invoices/{invoiceID}/acknowledge", d.Service.HandleAcknowledgeARInvoice)
+		rr.Post("/v1/retailer/ar-invoices/{invoiceID}/dispute", d.Service.HandleDisputeARInvoice)
 		rr.Get("/v1/retailer/profile", d.Service.HandleProfile)
 		rr.Put("/v1/retailer/profile", d.Service.HandleProfile)
 
@@ -283,5 +297,12 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	}, func(gr chi.Router) {
 		gr.Use(auth.RequireRole(auth.RoleRetailer))
 		mountProtected(gr)
+	})
+
+	auth.ProtectMutations(r, auth.MutationGuardConfig{
+		AllowBypass: d.AllowAuthBypass,
+	}, func(gr chi.Router) {
+		gr.Use(auth.RequireRole(auth.RoleAdmin, auth.RolePlatformAdmin))
+		gr.Post("/v1/admin/retailer-kyc/{documentID}/review", d.Service.HandleReviewKyc)
 	})
 }

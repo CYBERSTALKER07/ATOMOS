@@ -63,10 +63,19 @@ func (s *Service) HandleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := s.Create(r.Context(), retailerID, req)
+	reqCtx := WithClientOrderID(r.Context(), idempotencyKeyFromRequest(r, body))
+	resp, err := s.Create(reqCtx, retailerID, req)
 	if err != nil {
 		s.log.Warn("order create failed",
 			"retailer_id", retailerID, "err", err)
+		var approvalErr *OwnerApprovalRequiredError
+		if errors.As(err, &approvalErr) {
+			writeOwnerApprovalConflict(w, approvalErr)
+			return
+		}
+		if writePackValidationOrMetadataError(w, err) {
+			return
+		}
 		switch {
 		case errors.Is(err, ErrZoneMiss):
 			writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": ErrZoneMiss.Error()})
@@ -74,6 +83,8 @@ func (s *Service) HandleCreate(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": err.Error(), "code": ErrOrderAcceptanceClosed.Error()})
 		case errors.Is(err, ErrServiceabilityUnavailable):
 			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": ErrServiceabilityUnavailable.Error()})
+		case errors.Is(err, ErrLineQuantityOutOfRange):
+			writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": ErrLineQuantityOutOfRange.Error(), "code": ErrLineQuantityOutOfRange.Error(), "message": err.Error()})
 		case errors.Is(err, ErrCurrencyNotAllowed):
 			writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": ErrCurrencyNotAllowed.Error(), "code": ErrCurrencyNotAllowed.Error()})
 		case errors.Is(err, ErrCreditLimitBreached), errors.Is(err, credit.ErrLimitBreached):
@@ -599,6 +610,9 @@ func (s *Service) HandleCollectCash(w http.ResponseWriter, r *http.Request) {
 
 func (s *Service) writeOrderMutationError(w http.ResponseWriter, operation string, orderID string, err error) {
 	s.log.Warn(operation, "order_id", orderID, "err", err)
+	if writePackValidationOrMetadataError(w, err) {
+		return
+	}
 	switch {
 	case errors.Is(err, ErrOrderNotFound):
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": "order_not_found"})
@@ -636,6 +650,28 @@ func (s *Service) writeOrderMutationError(w http.ResponseWriter, operation strin
 	default:
 		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": err.Error()})
 	}
+}
+
+func writePackValidationOrMetadataError(w http.ResponseWriter, err error) bool {
+	var packErr *PackValidationError
+	if errors.As(err, &packErr) {
+		writeJSON(w, http.StatusUnprocessableEntity, map[string]any{
+			"error":       ErrPackMultipleRequired.Error(),
+			"code":        ErrPackMultipleRequired.Error(),
+			"message":     packErr.Message,
+			"line_errors": packErr.LineErrors,
+			"suggestions": packErr.Suggestions,
+		})
+		return true
+	}
+	if errors.Is(err, ErrPackMetadataUnavailable) {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{
+			"error": ErrPackMetadataUnavailable.Error(),
+			"code":  "PACK_METADATA_UNAVAILABLE",
+		})
+		return true
+	}
+	return false
 }
 
 // HandleFiscalRetry is POST /v1/order/{orderID}/fiscal/retry

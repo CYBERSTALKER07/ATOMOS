@@ -121,6 +121,18 @@ enum WarehouseService {
         )
     }
 
+    static func listBins() async throws -> WarehouseBinListResponse {
+        try await api.get("v1/warehouse/ops/bins")
+    }
+
+    static func listLots() async throws -> StockLotListResponse {
+        try await api.get("v1/warehouse/ops/lots")
+    }
+
+    static func manifestTemperature(manifestId: String) async throws -> ManifestTemperatureResponse {
+        try await api.get("v1/warehouse/ops/manifests/\(manifestId)/temperature")
+    }
+
     static func createBin(locationId: String?, zone: String, locationType: String = "STAGE") async throws -> WarehouseBinLocation {
         try await api.post(
             "v1/warehouse/ops/bins",
@@ -130,7 +142,7 @@ enum WarehouseService {
                 locationType: locationType,
                 pickSequence: 0
             ),
-            idempotencyKey: "warehouse-bin-\(zone)-\(Int(Date().timeIntervalSince1970))"
+            idempotencyKey: WarehouseIdempotency.createBin(zone: zone)
         )
     }
 
@@ -150,7 +162,7 @@ enum WarehouseService {
                 lotCode: lotCode,
                 expiryDate: expiryDate
             ),
-            idempotencyKey: "warehouse-putaway-\(productId)-\(locationId)-\(Int(Date().timeIntervalSince1970))"
+            idempotencyKey: WarehouseIdempotency.putawayLot(productId: productId, locationId: locationId)
         )
     }
 
@@ -166,7 +178,7 @@ enum WarehouseService {
         try await api.post(
             "v1/warehouse/ops/pick-waves",
             body: PickWaveCreateRequest(manifestId: manifestId),
-            idempotencyKey: "warehouse-pick-wave-\(manifestId)-\(Int(Date().timeIntervalSince1970))"
+            idempotencyKey: WarehouseIdempotency.createPickWave(manifestId: manifestId)
         )
     }
 
@@ -178,7 +190,14 @@ enum WarehouseService {
         try await api.post(
             "v1/warehouse/ops/pick-waves/\(waveId)/tasks/\(taskId)/confirm",
             body: PickTaskConfirmRequest(quantityPicked: quantityPicked),
-            idempotencyKey: "warehouse-pick-confirm-\(waveId)-\(taskId)-\(Int(Date().timeIntervalSince1970))"
+            idempotencyKey: WarehouseIdempotency.confirmPickTask(waveId: waveId, taskId: taskId)
+        )
+    }
+
+    static func waivePickShorts(waveId: String) async throws -> PickWave {
+        try await api.postEmpty(
+            "v1/warehouse/ops/pick-waves/\(waveId)/waive-shorts",
+            idempotencyKey: WarehouseIdempotency.waivePickShorts(waveId: waveId)
         )
     }
 
@@ -190,15 +209,37 @@ enum WarehouseService {
         try await api.post(
             "v1/warehouse/ops/cycle-counts",
             body: CycleCountCreateRequest(locationId: locationId, productId: productId, expectedQty: expectedQty),
-            idempotencyKey: "warehouse-cycle-\(locationId)-\(productId)-\(Int(Date().timeIntervalSince1970))"
+            idempotencyKey: WarehouseIdempotency.createCycleCount(locationId: locationId, productId: productId)
         )
     }
 
-    static func submitCycleCount(countId: String, countedQty: Int) async throws -> CycleCount {
-        try await api.post(
+    static func submitCycleCount(countId: String, countedQty: Int, reasonCode: String? = nil) async throws -> CycleCount {
+        let trimmedReason = reasonCode?.trimmingCharacters(in: .whitespacesAndNewlines)
+        return try await api.post(
             "v1/warehouse/ops/cycle-counts/\(countId)/submit",
-            body: CycleCountSubmitRequest(countedQty: countedQty),
-            idempotencyKey: "warehouse-cycle-submit-\(countId)-\(Int(Date().timeIntervalSince1970))"
+            body: CycleCountSubmitRequest(
+                countedQty: countedQty,
+                reasonCode: (trimmedReason?.isEmpty ?? true) ? nil : trimmedReason
+            ),
+            idempotencyKey: WarehouseIdempotency.submitCycleCount(countId: countId)
+        )
+    }
+
+    static func listInventoryAdjustments() async throws -> InventoryAdjustmentListResponse {
+        try await api.get("v1/warehouse/ops/inventory-adjustments")
+    }
+
+    static func approveInventoryAdjustment(adjustmentId: String) async throws -> InventoryAdjustmentMutationResponse {
+        try await api.postEmpty(
+            "v1/warehouse/ops/inventory-adjustments/\(adjustmentId)/approve",
+            idempotencyKey: WarehouseIdempotency.approveInventoryAdjustment(adjustmentId: adjustmentId)
+        )
+    }
+
+    static func rejectInventoryAdjustment(adjustmentId: String) async throws -> InventoryAdjustmentMutationResponse {
+        try await api.postEmpty(
+            "v1/warehouse/ops/inventory-adjustments/\(adjustmentId)/reject",
+            idempotencyKey: WarehouseIdempotency.rejectInventoryAdjustment(adjustmentId: adjustmentId)
         )
     }
 

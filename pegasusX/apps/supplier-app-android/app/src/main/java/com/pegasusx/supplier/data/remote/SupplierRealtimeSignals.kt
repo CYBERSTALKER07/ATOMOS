@@ -1,13 +1,18 @@
 package com.pegasusx.supplier.data.remote
 
+import com.pegasusx.supplier.data.model.MigrationApplyProgressEvent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicLong
 import javax.inject.Inject
@@ -26,6 +31,17 @@ class SupplierRealtimeSignals @Inject constructor() {
 
     private val _reconnectTick = MutableSharedFlow<Long>(extraBufferCapacity = 4)
     val reconnectTick: SharedFlow<Long> = _reconnectTick.asSharedFlow()
+
+    private val _migrationProgressBySession =
+        MutableStateFlow<Map<String, MigrationApplyProgressEvent>>(emptyMap())
+    val migrationProgressBySession: StateFlow<Map<String, MigrationApplyProgressEvent>> =
+        _migrationProgressBySession.asStateFlow()
+
+    fun updateMigrationProgress(event: MigrationApplyProgressEvent) {
+        _migrationProgressBySession.update { current ->
+            current + (event.sessionId to event)
+        }
+    }
 
     @Synchronized
     fun bump() {

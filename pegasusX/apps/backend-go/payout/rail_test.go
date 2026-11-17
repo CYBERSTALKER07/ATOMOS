@@ -63,6 +63,19 @@ func TestPayoutRail_DispatchThenSettlementConfirm(t *testing.T) {
 	rail := &fakeLiveRail{ref: "rail-ref-123"}
 	svc.SetRail(rail)
 
+	origHook := SettlementJournal
+	t.Cleanup(func() { SettlementJournal = origHook })
+	journalCalls := 0
+	var gotGross int64
+	SettlementJournal = func(_ *spanner.ReadWriteTransaction, batchID, sid, currency string, grossMinor, _ int64) error {
+		journalCalls++
+		gotGross = grossMinor
+		if batchID == "" || sid != supplierID || currency == "" {
+			t.Fatalf("unexpected journal hook args: batch=%q sid=%q currency=%q", batchID, sid, currency)
+		}
+		return nil
+	}
+
 	batches, err := svc.GenerateBatch(ctx, supplierID, legTime.Add(-time.Hour), legTime.Add(time.Hour), "admin", "")
 	if err != nil {
 		t.Fatalf("generate: %v", err)
@@ -84,6 +97,9 @@ func TestPayoutRail_DispatchThenSettlementConfirm(t *testing.T) {
 	// Settlement webhook flips SUBMITTED -> PAID; replay is a no-op.
 	if err := svc.ConfirmSettlement(ctx, b.BatchID, rail.ref); err != nil {
 		t.Fatalf("confirm: %v", err)
+	}
+	if journalCalls != 1 || gotGross != 100000 {
+		t.Fatalf("journalCalls=%d gotGross=%d, want 1 and 100000", journalCalls, gotGross)
 	}
 	got, found, err := svc.repo.Get(ctx, b.BatchID)
 	if err != nil || !found {

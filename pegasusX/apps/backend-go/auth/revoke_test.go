@@ -92,6 +92,12 @@ func (errRevocationStore) Revoke(context.Context, string, time.Duration) error {
 func (errRevocationStore) IsRevoked(context.Context, string) (bool, error) {
 	return false, errors.New("store down")
 }
+func (errRevocationStore) RevokeUser(context.Context, string, time.Duration) error {
+	return errors.New("store down")
+}
+func (errRevocationStore) IsUserRevoked(context.Context, string) (bool, error) {
+	return false, errors.New("store down")
+}
 
 func TestTokenRevoked_StoreErrorFailsClosed(t *testing.T) {
 	SetRevocationStore(errRevocationStore{})
@@ -177,5 +183,40 @@ func TestEntitySupplierAllowed(t *testing.T) {
 	plat := WithClaims(context.Background(), Claims{Role: RolePlatformAdmin})
 	if !EntitySupplierAllowed(plat, "sup-b") {
 		t.Fatal("platform admin bypass")
+	}
+}
+
+func TestMemoryRevocationStore_RevokeUserAndCheck(t *testing.T) {
+	store := NewMemoryRevocationStore()
+	SetRevocationStore(store)
+	t.Cleanup(func() { SetRevocationStore(NewMemoryRevocationStore()) })
+
+	ctx := context.Background()
+	userID := "staff-user-123"
+
+	// Initially not revoked
+	if IsUserRevoked(ctx, userID) {
+		t.Fatal("user should not be revoked initially")
+	}
+	if tokenRevoked(ctx, Claims{Subject: userID, JTI: "valid-jti"}) {
+		t.Fatal("token should not be revoked initially")
+	}
+
+	// Revoke user
+	if err := RevokeUser(ctx, userID, time.Hour); err != nil {
+		t.Fatalf("RevokeUser failed: %v", err)
+	}
+
+	// Now user and any token with Subject=userID must be revoked
+	if !IsUserRevoked(ctx, userID) {
+		t.Fatal("user should be revoked after RevokeUser")
+	}
+	if !tokenRevoked(ctx, Claims{Subject: userID, JTI: "valid-jti"}) {
+		t.Fatal("token with revoked subject should be revoked")
+	}
+
+	// Another user's token is not revoked
+	if tokenRevoked(ctx, Claims{Subject: "other-user", JTI: "other-jti"}) {
+		t.Fatal("other user token should not be revoked")
 	}
 }

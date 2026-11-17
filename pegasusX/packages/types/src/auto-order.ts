@@ -87,11 +87,23 @@ export interface StockLot {
   quantity_reserved: number;
   status: "AVAILABLE" | "QUARANTINE" | "EXPIRED" | "DEPLETED" | string;
   received_at?: string;
+  product_name?: string;
+  barcode?: string;
+  handling_class?: string;
+  requires_cold_chain?: boolean;
+  is_perishable?: boolean;
+  required_zone?: "CHILL" | "FREEZE" | string;
+  location_zone?: string;
+  location_type?: string;
+  migrated_staging?: boolean;
+  cold_lot_warning?: string;
 }
 
 export interface StockLotListResponse {
   lots: StockLot[];
   lots_enabled?: boolean;
+  cold_lot_warning_count?: number;
+  migration_staging_count?: number;
 }
 
 export interface StockLotPutawayRequest {
@@ -198,6 +210,9 @@ export interface PickWave {
   created_at?: string;
   ready_at?: string;
   tasks?: PickTask[];
+  cold_lot_migrated_without_live_baseline?: boolean;
+  cold_chain_baseline_missing?: boolean;
+  cold_lot_warnings?: string[];
 }
 
 export interface PickTask {

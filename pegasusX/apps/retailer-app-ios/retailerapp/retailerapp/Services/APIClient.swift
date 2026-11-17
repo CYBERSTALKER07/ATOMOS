@@ -182,17 +182,21 @@ final class APIClient {
         }
 
         guard (200...299).contains(http.statusCode) else {
-            // Check for RFC 7807 structured error response
-            let contentType = http.value(forHTTPHeaderField: "Content-Type") ?? ""
-            if contentType.contains("application/problem+json"),
-               let problem = try? decoder.decode(ProblemDetail.self, from: data) {
-                throw APIError.problemDetail(problem)
-            }
-            let message = String(data: data, encoding: .utf8) ?? "Unknown error"
-            throw APIError.serverError(statusCode: http.statusCode, message: message)
+            throw parseHttpFailure(http: http, data: data)
         }
 
         return try decoder.decode(T.self, from: data)
+    }
+
+    private func parseHttpFailure(http: HTTPURLResponse, data: Data) -> APIError {
+        let contentType = http.value(forHTTPHeaderField: "Content-Type") ?? ""
+        let rawBody = String(data: data, encoding: .utf8)
+        if contentType.contains("application/problem+json"),
+           let problem = try? decoder.decode(ProblemDetail.self, from: data) {
+            return APIError.problemDetail(problem.withRawBody(rawBody))
+        }
+        let message = rawBody ?? "Unknown error"
+        return APIError.serverError(statusCode: http.statusCode, message: message)
     }
 
     // MARK: - Token Refresh
@@ -319,13 +323,40 @@ final class APIClient {
             throw APIError.serverError(statusCode: 401, message: "Unauthorized")
         }
         guard (200...299).contains(http.statusCode) else {
-            let contentType = http.value(forHTTPHeaderField: "Content-Type") ?? ""
-            if contentType.contains("application/problem+json"),
-               let problem = try? decoder.decode(ProblemDetail.self, from: data) {
-                throw APIError.problemDetail(problem)
+            throw parseHttpFailure(http: http, data: data)
+        }
+        return data
+    }
+
+    func postRaw(path: String, rawBody: Data, headers: [String: String] = [:], isRetry: Bool = false) async throws -> Data {
+        guard let url = URL(string: "\(baseURL)\(path)") else {
+            throw APIError.invalidURL
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue(UUID().uuidString, forHTTPHeaderField: "X-Trace-Id")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let token = authToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        headers.forEach { key, value in
+            request.setValue(value, forHTTPHeaderField: key)
+        }
+        request.httpBody = rawBody
+        await coalescer.invalidateCache()
+
+        let (data, response) = try await performTransport(request, isRetry: isRetry)
+        guard let http = response as? HTTPURLResponse else {
+            throw APIError.invalidResponse
+        }
+        if http.statusCode == 401 && !isRetry {
+            if let _ = await attemptTokenRefresh() {
+                return try await postRaw(path: path, rawBody: rawBody, headers: headers, isRetry: true)
             }
-            let message = String(data: data, encoding: .utf8) ?? "Unknown error"
-            throw APIError.serverError(statusCode: http.statusCode, message: message)
+            throw APIError.serverError(statusCode: 401, message: "Unauthorized")
+        }
+        guard (200...299).contains(http.statusCode) else {
+            throw parseHttpFailure(http: http, data: data)
         }
         return data
     }
@@ -575,7 +606,7 @@ final class APIClient {
         if let idempotencyKey {
             headers["Idempotency-Key"] = idempotencyKey
         }
-        let _: APIResponse<String> = try await post(path: "/v1/retailer/setup", body: payload, headers: headers)
+        let _: AnyDecodable = try await post(path: "/v1/retailer/setup", body: payload, headers: headers)
     }
 
     func requestCancelOrder(orderId: String, retailerId: String, reason: String = "Retailer requested cancellation") async throws {
@@ -611,9 +642,54 @@ final class APIClient {
         return resp.relationships ?? []
     }
 
-    func getArInvoices(status: String = "OPEN") async throws -> [ArInvoiceWire] {
-        let resp: ArInvoicesResponse = try await get(path: "/v1/retailer/ar/invoices?status=\(status)")
+    func getArInvoices(status: String = "OPEN,PARTIAL", limit: Int = 50) async throws -> [ArInvoiceWire] {
+        let encoded = status.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? status
+        let resp: ArInvoicesResponse = try await get(path: "/v1/retailer/ar/invoices?status=\(encoded)&limit=\(limit)")
         return resp.invoices ?? []
+    }
+
+    func getArStatement(supplierId: String? = nil, limit: Int = 50) async throws -> ArStatementWire {
+        var path = "/v1/retailer/ar/statement?limit=\(limit)"
+        if let supplierId, !supplierId.isEmpty {
+            let encoded = supplierId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? supplierId
+            path += "&supplier_id=\(encoded)"
+        }
+        return try await get(path: path)
+    }
+
+    func payArFifo(request body: PayArFifoRequest, idempotencyKey: String = UUID().uuidString) async throws -> PayArFifoResponse {
+        try await post(
+            path: "/v1/retailer/ar/pay-fifo",
+            body: body,
+            headers: ["Idempotency-Key": idempotencyKey]
+        )
+    }
+
+    func payArInvoice(invoiceId: String, request body: PayArInvoiceRequest, idempotencyKey: String = UUID().uuidString) async throws {
+        let encodedId = invoiceId.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? invoiceId
+        _ = try await requestData(
+            method: "POST",
+            path: "/v1/retailer/ar/invoices/\(encodedId)/pay",
+            body: body,
+            headers: ["Idempotency-Key": idempotencyKey]
+        )
+    }
+
+    func getArPromises(supplierId: String? = nil) async throws -> ArPromisesResponse {
+        var path = "/v1/retailer/ar/promises"
+        if let supplierId, !supplierId.isEmpty {
+            let encoded = supplierId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? supplierId
+            path += "?supplier_id=\(encoded)"
+        }
+        return try await get(path: path)
+    }
+
+    func createArPromise(request body: CreateArPromiseRequest, idempotencyKey: String = UUID().uuidString) async throws -> ArPromiseWire {
+        try await post(
+            path: "/v1/retailer/ar/promises",
+            body: body,
+            headers: ["Idempotency-Key": idempotencyKey]
+        )
     }
 
     func getHqSummary(day: String) async throws -> HqSummaryWire {
@@ -636,6 +712,63 @@ final class APIClient {
     // Retail OS Phase 0
     func getRetailerMe() async throws -> RetailerMeResponse {
         try await get(path: "/v1/retailer/me")
+    }
+
+    // MARK: - W5 Fast Home & Telegram Quick-Bind
+
+    func getRetailerFastHome() async throws -> RetailerFastHomeResponse {
+        try await get(path: "/v1/retailer/fast-home")
+    }
+
+    func getTelegramLinkStatus() async throws -> TelegramLinkStatusResponse {
+        try await get(path: "/v1/retailer/telegram/status")
+    }
+
+    func requestTelegramLink(idempotencyKey: String = RetailerIdempotency.uuidV7()) async throws -> TelegramLinkRequestResponse {
+        try await post(
+            path: "/v1/retailer/telegram/link-request",
+            body: [String: String](),
+            headers: ["Idempotency-Key": idempotencyKey]
+        )
+    }
+
+    // MARK: - W2 Owner Approvals & Seller Mandates
+
+    func getRetailerApprovals(status: String = "PENDING_OWNER", limit: Int = 20, cursor: String? = nil) async throws -> RetailerApprovalsResponse {
+        var parts = [
+            "status=\(status.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? status)",
+            "limit=\(limit)",
+        ]
+        if let cursor, !cursor.isEmpty {
+            parts.append("cursor=\(cursor.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? cursor)")
+        }
+        return try await get(path: "/v1/retailer/approvals?\(parts.joined(separator: "&"))")
+    }
+
+    func approveRetailerRequest(requestId: String, reason: String? = nil) async throws -> ApprovalDecisionResponse {
+        let encoded = requestId.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? requestId
+        return try await post(
+            path: "/v1/retailer/approvals/\(encoded)/approve",
+            body: ApprovalDecisionRequest(reason: reason)
+        )
+    }
+
+    func rejectRetailerRequest(requestId: String, reason: String? = nil) async throws -> ApprovalDecisionResponse {
+        let encoded = requestId.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? requestId
+        return try await post(
+            path: "/v1/retailer/approvals/\(encoded)/reject",
+            body: ApprovalDecisionRequest(reason: reason)
+        )
+    }
+
+    func getSellerMandate(userId: String) async throws -> SellerMandateResponse {
+        let encoded = userId.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? userId
+        return try await get(path: "/v1/retailer/org/members/\(encoded)/mandate")
+    }
+
+    func updateSellerMandate(userId: String, body: SellerMandatePatchBody) async throws -> SellerMandateResponse {
+        let encoded = userId.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? userId
+        return try await patch(path: "/v1/retailer/org/members/\(encoded)/mandate", body: body)
     }
 
     func getCapabilities() async throws -> RetailerCapabilitiesResponse {
@@ -1314,14 +1447,133 @@ struct ProblemDetail: Codable {
     let traceId: String?
     let instance: String?
     let code: String?
+    let error: String?
     let messageKey: String?
     let retryable: Bool?
     let action: String?
+    let skuId: String?
+    let packSize: Int?
+    let requested: Int?
+    let suggestedFloor: Int?
+    let suggestedCeil: Int?
+    let suggestedNearest: Int?
+    let rawBody: String?
 
     enum CodingKeys: String, CodingKey {
-        case type, title, status, detail, instance, code, retryable, action
+        case type, title, status, detail, instance, code, error, retryable, action, requested
         case traceId = "trace_id"
         case messageKey = "message_key"
+        case skuId = "sku_id"
+        case packSize = "pack_size"
+        case suggestedFloor = "suggested_floor"
+        case suggestedCeil = "suggested_ceil"
+        case suggestedNearest = "suggested_nearest"
+    }
+
+    init(
+        type: String? = nil,
+        title: String? = nil,
+        status: Int,
+        detail: String? = nil,
+        traceId: String? = nil,
+        instance: String? = nil,
+        code: String? = nil,
+        error: String? = nil,
+        messageKey: String? = nil,
+        retryable: Bool? = nil,
+        action: String? = nil,
+        skuId: String? = nil,
+        packSize: Int? = nil,
+        requested: Int? = nil,
+        suggestedFloor: Int? = nil,
+        suggestedCeil: Int? = nil,
+        suggestedNearest: Int? = nil,
+        rawBody: String? = nil
+    ) {
+        self.type = type
+        self.title = title
+        self.status = status
+        self.detail = detail
+        self.traceId = traceId
+        self.instance = instance
+        self.code = code
+        self.error = error
+        self.messageKey = messageKey
+        self.retryable = retryable
+        self.action = action
+        self.skuId = skuId
+        self.packSize = packSize
+        self.requested = requested
+        self.suggestedFloor = suggestedFloor
+        self.suggestedCeil = suggestedCeil
+        self.suggestedNearest = suggestedNearest
+        self.rawBody = rawBody
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.type = try c.decodeIfPresent(String.self, forKey: .type)
+        self.title = try c.decodeIfPresent(String.self, forKey: .title)
+        self.status = try c.decodeIfPresent(Int.self, forKey: .status) ?? 500
+        self.detail = try c.decodeIfPresent(String.self, forKey: .detail)
+        self.traceId = try c.decodeIfPresent(String.self, forKey: .traceId)
+        self.instance = try c.decodeIfPresent(String.self, forKey: .instance)
+        self.code = try c.decodeIfPresent(String.self, forKey: .code)
+        self.error = try c.decodeIfPresent(String.self, forKey: .error)
+        self.messageKey = try c.decodeIfPresent(String.self, forKey: .messageKey)
+        self.retryable = try c.decodeIfPresent(Bool.self, forKey: .retryable)
+        self.action = try c.decodeIfPresent(String.self, forKey: .action)
+        self.skuId = try c.decodeIfPresent(String.self, forKey: .skuId)
+        self.packSize = try c.decodeIfPresent(Int.self, forKey: .packSize)
+        self.requested = try c.decodeIfPresent(Int.self, forKey: .requested)
+        self.suggestedFloor = try c.decodeIfPresent(Int.self, forKey: .suggestedFloor)
+        self.suggestedCeil = try c.decodeIfPresent(Int.self, forKey: .suggestedCeil)
+        self.suggestedNearest = try c.decodeIfPresent(Int.self, forKey: .suggestedNearest)
+        self.rawBody = nil
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encodeIfPresent(type, forKey: .type)
+        try c.encodeIfPresent(title, forKey: .title)
+        try c.encode(status, forKey: .status)
+        try c.encodeIfPresent(detail, forKey: .detail)
+        try c.encodeIfPresent(traceId, forKey: .traceId)
+        try c.encodeIfPresent(instance, forKey: .instance)
+        try c.encodeIfPresent(code, forKey: .code)
+        try c.encodeIfPresent(error, forKey: .error)
+        try c.encodeIfPresent(messageKey, forKey: .messageKey)
+        try c.encodeIfPresent(retryable, forKey: .retryable)
+        try c.encodeIfPresent(action, forKey: .action)
+        try c.encodeIfPresent(skuId, forKey: .skuId)
+        try c.encodeIfPresent(packSize, forKey: .packSize)
+        try c.encodeIfPresent(requested, forKey: .requested)
+        try c.encodeIfPresent(suggestedFloor, forKey: .suggestedFloor)
+        try c.encodeIfPresent(suggestedCeil, forKey: .suggestedCeil)
+        try c.encodeIfPresent(suggestedNearest, forKey: .suggestedNearest)
+    }
+
+    func withRawBody(_ rawBody: String?) -> ProblemDetail {
+        ProblemDetail(
+            type: type,
+            title: title,
+            status: status,
+            detail: detail,
+            traceId: traceId,
+            instance: instance,
+            code: code,
+            error: error,
+            messageKey: messageKey,
+            retryable: retryable,
+            action: action,
+            skuId: skuId,
+            packSize: packSize,
+            requested: requested,
+            suggestedFloor: suggestedFloor,
+            suggestedCeil: suggestedCeil,
+            suggestedNearest: suggestedNearest,
+            rawBody: rawBody
+        )
     }
 }
 
@@ -1777,6 +2029,102 @@ struct StoreStockBalanceWire: Codable {
     }
 }
 
+extension APIClient {
+    func lookupINN(inn: String) async throws -> RetailerINNLookupResponse {
+        try await post(
+            path: "/v1/platform/inn/lookup",
+            body: RetailerINNLookupRequest(inn: inn, tenantType: "RETAILER")
+        )
+    }
+
+    func updateTaxIdentity(
+        taxId: String,
+        informalShop: Bool,
+        legalName: String? = nil,
+        roleSought: String? = nil,
+        idempotencyKey: String
+    ) async throws -> RetailerTaxIdentityResponse {
+        try await patch(
+            path: "/v1/retailer/tax-identity",
+            body: RetailerTaxIdentityRequest(
+                taxId: taxId,
+                informalShop: informalShop,
+                legalName: legalName,
+                roleSought: roleSought
+            ),
+            headers: ["Idempotency-Key": idempotencyKey]
+        )
+    }
+
+    func listNasiyaOpeningBalances() async throws -> [MigrationOpeningInvoiceWire] {
+        let response: MigrationOpeningBalancesResponse = try await get(path: "/v1/retailer/nasiya/opening-balances")
+        return response.invoices
+    }
+
+    func acknowledgeOpeningBalance(invoiceId: String, idempotencyKey: String) async throws -> MigrationOpeningInvoiceWire {
+        let encodedId = invoiceId.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? invoiceId
+        let response: MigrationOpeningInvoiceMutationResponse = try await post(
+            path: "/v1/retailer/ar-invoices/\(encodedId)/acknowledge",
+            body: [String: String](),
+            headers: ["Idempotency-Key": idempotencyKey]
+        )
+        return response.invoice
+    }
+
+    func disputeOpeningBalance(
+        invoiceId: String,
+        reason: String,
+        idempotencyKey: String
+    ) async throws -> MigrationOpeningInvoiceWire {
+        let encodedId = invoiceId.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? invoiceId
+        let response: MigrationOpeningInvoiceMutationResponse = try await post(
+            path: "/v1/retailer/ar-invoices/\(encodedId)/dispute",
+            body: DisputeOpeningBalanceRequest(reason: reason),
+            headers: ["Idempotency-Key": idempotencyKey]
+        )
+        return response.invoice
+    }
+
+    static func parseJoinRequestConflict(from error: Error) -> RetailerJoinRequestConflict? {
+        RetailerW3ContractHelper.parseJoinRequestConflict(from: error)
+    }
+
+    func listJoinRequests(status: String = "PENDING") async throws -> [RetailerJoinRequestItem] {
+        let trimmed = status.trimmingCharacters(in: .whitespacesAndNewlines)
+        let suffix = trimmed.isEmpty ? "" : "?status=\(trimmed.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? trimmed)"
+        let response: RetailerJoinRequestsResponse = try await get(path: "/v1/retailer/join-requests\(suffix)")
+        return response.requests
+    }
+
+    func approveJoinRequest(
+        requestId: String,
+        reason: String? = nil,
+        idempotencyKey: String
+    ) async throws -> RetailerJoinRequestItem {
+        let encodedId = requestId.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? requestId
+        let response: RetailerJoinRequestDecisionResponse = try await post(
+            path: "/v1/retailer/join-requests/\(encodedId)/approve",
+            body: RetailerJoinRequestDecisionRequest(reason: reason),
+            headers: ["Idempotency-Key": idempotencyKey]
+        )
+        return response.request
+    }
+
+    func rejectJoinRequest(
+        requestId: String,
+        reason: String? = nil,
+        idempotencyKey: String
+    ) async throws -> RetailerJoinRequestItem {
+        let encodedId = requestId.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? requestId
+        let response: RetailerJoinRequestDecisionResponse = try await post(
+            path: "/v1/retailer/join-requests/\(encodedId)/reject",
+            body: RetailerJoinRequestDecisionRequest(reason: reason),
+            headers: ["Idempotency-Key": idempotencyKey]
+        )
+        return response.request
+    }
+}
+
 struct AnyDecodable: Decodable {
     let value: Any
 
@@ -1817,7 +2165,8 @@ enum KeychainHelper {
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrAccount as String: key,
             kSecAttrService as String: AuthNamespace.primaryService,
-            kSecValueData as String: data
+            kSecValueData as String: data,
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
         ]
         SecItemAdd(attributes as CFDictionary, nil)
     }

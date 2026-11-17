@@ -1,0 +1,168 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pegasusx.dev/contracts/ontology/nasiya_invoice.v1.schema.json",
+  "title": "NasiyaInvoiceOntologyObjectV1",
+  "description": "Open accounts-receivable Nasiya credit invoice with aging and dunning state.",
+  "x-ontology-version": "1.0.0",
+  "x-schema-version": "v1",
+  "x-object-type": "NasiyaInvoice",
+  "x-primary-key": [
+    "cell_id",
+    "object_type",
+    "object_id"
+  ],
+  "x-default-security-markings": [
+    "MARKING:FINANCE_ONLY"
+  ],
+  "x-allowed-link-types": [
+    "supplies",
+    "stocks",
+    "ordered",
+    "shipped_on",
+    "owes",
+    "substitutes",
+    "recalled_with"
+  ],
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "cell_id",
+    "object_type",
+    "object_id",
+    "supplier_id",
+    "version",
+    "properties",
+    "valid_from",
+    "updated_at"
+  ],
+  "properties": {
+    "cell_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Cell/region partition coordinate"
+    },
+    "object_type": {
+      "type": "string",
+      "const": "NasiyaInvoice"
+    },
+    "object_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Unique entity identifier within cell+type"
+    },
+    "supplier_id": {
+      "type": "string",
+      "description": "Tenant supplier identifier"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Monotonic optimistic-concurrency version"
+    },
+    "security_markings": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "MARKING:FINANCE_ONLY",
+          "MARKING:PII",
+          "MARKING:AML_INVESTIGATION",
+          "MARKING:DISCREPANT_QUARANTINE",
+          "MARKING:THERMAL_QUARANTINE_SPOILED",
+          "MARKING:MICRO_SKIMMING_SUSPECT",
+          "MARKING:LOT_RECALL_QUARANTINE"
+        ]
+      },
+      "uniqueItems": true,
+      "description": "Data governance & quarantine markings"
+    },
+    "valid_from": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "properties": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "invoice_id": {
+          "type": "string",
+          "description": "AR Invoice UUID"
+        },
+        "supplier_id": {
+          "type": "string",
+          "description": "Supplier ID"
+        },
+        "retailer_id": {
+          "type": "string",
+          "description": "Retailer ID"
+        },
+        "order_id": {
+          "type": "string",
+          "description": "Origin Order UUID"
+        },
+        "status": {
+          "type": "string",
+          "description": "OPEN | PARTIALLY_PAID | SETTLED | OVERDUE | WRITTEN_OFF"
+        },
+        "principal_minor": {
+          "type": "integer",
+          "description": "Original invoiced principal (int64 minor units; zero floats)"
+        },
+        "balance_minor": {
+          "type": "integer",
+          "description": "Outstanding unpaid balance (int64 minor units; zero floats)"
+        },
+        "paid_minor": {
+          "type": "integer",
+          "description": "Total settled amount (int64 minor units; zero floats)"
+        },
+        "amount_minor": {
+          "type": "integer",
+          "description": "Payment/settlement delta amount (int64 minor units; zero floats)"
+        },
+        "currency": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 8,
+          "description": "ISO 4217 currency code"
+        },
+        "terms_days": {
+          "type": "integer",
+          "description": "Contractual net terms days"
+        },
+        "grace_period_days": {
+          "type": "integer",
+          "description": "Grace period days"
+        },
+        "aging_bucket": {
+          "type": "string",
+          "description": "CURRENT | 1_30 | 31_60 | 61_90 | 90_PLUS"
+        },
+        "dunning_step": {
+          "type": "integer",
+          "description": "Current dunning escalation step"
+        },
+        "credit_leave_at": {
+          "type": "string",
+          "description": "RFC3339 timestamp credit-leave occurred"
+        },
+        "due_at": {
+          "type": "string",
+          "description": "RFC3339 invoice due timestamp"
+        },
+        "last_dunned_at": {
+          "type": "string",
+          "description": "RFC3339 last dunning timestamp"
+        },
+        "version": {
+          "type": "integer",
+          "description": "Invoice version"
+        }
+      }
+    }
+  }
+}

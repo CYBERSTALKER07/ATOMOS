@@ -30,12 +30,15 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/routing"
 )
 
-// DefaultTimeout is the HTTP soft timeout. Must stay strictly greater than the
-// solver default time_limit_ms (5s) so OR-Tools can finish before the wire cuts.
-const DefaultTimeout = 8 * time.Second
+// DefaultTimeout is the HTTP soft timeout per subproblem solve.
+// Must stay strictly greater than DefaultSolverTimeLimitMs and <= 60s.
+const DefaultTimeout = 20 * time.Second
 
 // DefaultSolverTimeLimitMs is embedded in SolveRequest.Tunables.
 const DefaultSolverTimeLimitMs = 5000
+
+// MaxSolverTimeLimitMs mirrors optimizer-core's 60s hard ceiling with wire headroom.
+const MaxSolverTimeLimitMs = 55000
 
 // Default per-stop service time when the caller does not specify.
 const defaultServiceMinutes = 5
@@ -82,15 +85,17 @@ func (c *Client) WithBreaker(b *circuit.Breaker) *Client {
 // SolveInput is the backend-domain request shape. Solve() converts it into
 // contract.SolveRequest under the hood so callers never touch the wire types.
 type SolveInput struct {
-	TraceID       string
-	SupplierID    string
-	HomeNodeID    string
-	DepotLat      float64
-	DepotLng      float64
-	DepartureTime time.Time
-	Orders        []dispatch.GeoOrder
-	Fleet         []dispatch.AvailableDriver
-	TetrisBuffer  float64
+	TraceID          string
+	SupplierID       string
+	HomeNodeID       string
+	DepotLat         float64
+	DepotLng         float64
+	DepartureTime    time.Time
+	Orders           []dispatch.GeoOrder
+	Fleet            []dispatch.AvailableDriver
+	TetrisBuffer     float64
+	MaxStopsPerRoute int
+	TimeLimitMs      int
 }
 
 // Solve calls the optimiser and returns an AssignmentResult mapped from the
@@ -113,6 +118,17 @@ func (c *Client) Solve(ctx context.Context, in SolveInput) (*dispatch.Assignment
 
 	vehicles := buildVehicles(in.Fleet, in.DepotLat, in.DepotLng)
 	stops := buildStops(in.Orders)
+	timeLimitMs := in.TimeLimitMs
+	if timeLimitMs <= 0 {
+		timeLimitMs = DefaultSolverTimeLimitMs
+	}
+	if timeLimitMs > MaxSolverTimeLimitMs {
+		timeLimitMs = MaxSolverTimeLimitMs
+	}
+	maxStopsPerRoute := in.MaxStopsPerRoute
+	if maxStopsPerRoute <= 0 {
+		maxStopsPerRoute = dispatch.EffectiveMaxStopsPerRoute(0, len(in.Orders), len(in.Fleet))
+	}
 	req := contract.SolveRequest{
 		V:               contract.V,
 		TraceID:         in.TraceID,
@@ -123,14 +139,18 @@ func (c *Client) Solve(ctx context.Context, in SolveInput) (*dispatch.Assignment
 		Vehicles:        vehicles,
 		DistanceMatrixM: buildDistanceMatrix(ctx, c.osrm, vehicles, stops),
 		Tunables: &contract.Tunables{
-			TimeLimitMs:  DefaultSolverTimeLimitMs,
-			TetrisBuffer: in.TetrisBuffer,
+			TimeLimitMs:      timeLimitMs,
+			TetrisBuffer:     in.TetrisBuffer,
+			MaxStopsPerRoute: maxStopsPerRoute,
 		},
 	}
 
 	body, err := json.Marshal(req)
 	if err != nil {
 		return nil, fmt.Errorf("optimizerclient: encode request: %w", err)
+	}
+	if len(body) >= (4 << 20) {
+		return nil, fmt.Errorf("optimizerclient: request payload %d bytes exceeds 4 MiB wire cap", len(body))
 	}
 
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost,

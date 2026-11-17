@@ -2,7 +2,6 @@ package ar
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"os"
 	"strings"
@@ -74,51 +73,95 @@ func (w *DunningWorker) RunOnce(ctx context.Context) error {
 	return nil
 }
 
-// AdvanceDunning applies DesiredDunningStep to open invoices (monotonic step increases only).
+// AdvanceDunning applies DesiredDunningStep to open invoices across all keyset pages (monotonic step increases only).
 func (w *DunningWorker) AdvanceDunning(ctx context.Context, limit int) (advanced, held, bumped int, err error) {
 	now := w.now()
 	if w.svc.now != nil {
 		now = w.svc.now()
 	}
-	invoices, err := w.svc.repo.ListOpenForDunning(ctx, limit)
-	if err != nil {
-		return 0, 0, 0, err
+	pageSize := limit
+	if pageSize <= 0 {
+		pageSize = 500
 	}
-	for _, inv := range invoices {
-		next := DesiredDunningStep(inv.DueAt, inv.GracePeriodDays, now)
-		if next <= inv.DunningStep {
-			continue
+	pager, hasPager := w.svc.repo.(InvoicePager)
+	cursor := ""
+	for {
+		var invoices []Invoice
+		var nextCursor string
+		if hasPager {
+			invoices, nextCursor, err = pager.ListOpenForDunningPage(ctx, pageSize, cursor)
+		} else {
+			invoices, err = w.svc.repo.ListOpenForDunning(ctx, pageSize)
 		}
-		prev := inv.DunningStep
-		bucket := AgingBucketFor(inv.DueAt, now)
-		if err := w.svc.repo.UpdateDunning(ctx, inv.InvoiceID, next, bucket, now, inv.Version); err != nil {
-			w.log.Warn("dunning update failed", "invoice_id", inv.InvoiceID, "err", err)
-			continue
+		if err != nil {
+			return advanced, held, bumped, err
 		}
-		advanced++
-		inv.DunningStep = next
-		inv.AgingBucket = bucket
-		inv.LastDunnedAt = now
+		if len(invoices) > 0 {
+			orderIDs := make([]string, 0, len(invoices))
+			for _, candidate := range invoices {
+				if candidate.OrderID != "" {
+					orderIDs = append(orderIDs, candidate.OrderID)
+				}
+			}
+			disputes, dErr := w.svc.lookupDisputes(ctx, orderIDs)
+			if dErr != nil {
+				return advanced, held, bumped, dErr
+			}
+			activePromises, pErr := w.svc.listActivePromisesForInvoices(ctx, invoices, now)
+			if pErr != nil {
+				return advanced, held, bumped, pErr
+			}
+			for _, inv := range invoices {
+				if inv.IsMigrationDunningFrozen() {
+					continue
+				}
+				_, undisputed := clampDisputed(inv.BalanceMinor, disputes[inv.OrderID])
+				if undisputed <= 0 {
+					continue
+				}
+				if _, ok := hasActiveUnexpiredPromise(activePromises, inv, now); ok {
+					continue
+				}
+				next := DesiredDunningStep(inv.DueAt, inv.GracePeriodDays, now)
+				if next <= inv.DunningStep {
+					continue
+				}
+				prev := inv.DunningStep
+				bucket := AgingBucketFor(inv.DueAt, now)
+				if err := w.svc.repo.UpdateDunning(ctx, inv.InvoiceID, next, bucket, now, inv.Version); err != nil {
+					w.log.Warn("dunning update failed", "invoice_id", inv.InvoiceID, "err", err)
+					continue
+				}
+				advanced++
+				inv.DunningStep = next
+				inv.AgingBucket = bucket
+				inv.LastDunnedAt = now
 
-		if ShouldBumpDelinquency(prev, next) && w.delinquency != nil {
-			if err := w.delinquency(ctx, inv.SupplierID, inv.RetailerID); err != nil {
-				w.log.Warn("delinquency bump failed", "retailer_id", inv.RetailerID, "err", err)
-			} else {
-				bumped++
+				if ShouldBumpDelinquency(prev, next) && w.delinquency != nil {
+					if err := w.delinquency(ctx, inv.SupplierID, inv.RetailerID); err != nil {
+						w.log.Warn("delinquency bump failed", "retailer_id", inv.RetailerID, "err", err)
+					} else {
+						bumped++
+					}
+				}
+				if ShouldAutoHold(prev, next) && w.hold != nil {
+					if err := w.hold(ctx, inv.SupplierID, inv.RetailerID); err != nil {
+						w.log.Warn("auto-hold failed", "retailer_id", inv.RetailerID, "err", err)
+					} else {
+						held++
+					}
+				}
+				if w.notify != nil {
+					if err := w.notify(ctx, inv, prev, next); err != nil {
+						w.log.Warn("dunning notify failed", "invoice_id", inv.InvoiceID, "err", err)
+					}
+				}
 			}
 		}
-		if ShouldAutoHold(prev, next) && w.hold != nil {
-			if err := w.hold(ctx, inv.SupplierID, inv.RetailerID); err != nil {
-				w.log.Warn("auto-hold failed", "retailer_id", inv.RetailerID, "err", err)
-			} else {
-				held++
-			}
+		if !hasPager || nextCursor == "" || nextCursor == cursor || len(invoices) == 0 {
+			break
 		}
-		if w.notify != nil {
-			if err := w.notify(ctx, inv, prev, next); err != nil {
-				w.log.Warn("dunning notify failed", "invoice_id", inv.InvoiceID, "err", err)
-			}
-		}
+		cursor = nextCursor
 	}
 	return advanced, held, bumped, nil
 }
@@ -142,12 +185,7 @@ func (w *DunningWorker) Start(ctx context.Context, interval time.Duration) {
 	}
 }
 
-// NotifyMessage builds inbox title/body for a step.
+// NotifyMessage builds localized inbox title/body (default "uz") with integer so'm amounts.
 func NotifyMessage(inv Invoice, nextStep int64) (eventType, title, body string) {
-	name := StepName(nextStep)
-	eventType = "AR_DUNNING_" + name
-	title = fmt.Sprintf("Invoice %s: %s", inv.InvoiceID, name)
-	body = fmt.Sprintf("Order %s balance %d %s — dunning step %s (due %s)",
-		inv.OrderID, inv.BalanceMinor, inv.Currency, name, inv.DueAt.Format("2006-01-02"))
-	return eventType, title, body
+	return LocalizedNotifyMessage(inv, nextStep, "uz")
 }

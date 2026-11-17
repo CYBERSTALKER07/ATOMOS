@@ -9,17 +9,24 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/payment"
 )
 
-func TestRegisterRoutes_PaymeAndClickUnmounted(t *testing.T) {
+func TestRegisterRoutes_MountsPaymentWebhooks(t *testing.T) {
 	t.Parallel()
 	r := chi.NewRouter()
 	RegisterRoutes(r, Deps{Service: &payment.Service{}})
 
-	for _, path := range []string{"/v1/webhooks/payme", "/v1/webhooks/click"} {
+	for _, path := range []string{
+		"/v1/webhooks/global-pay",
+		"/v1/webhooks/adyen",
+		"/v1/webhooks/stripe",
+		"/v1/webhooks/payme",
+		"/v1/webhooks/click",
+		"/v1/webhooks/uzum",
+	} {
 		req := httptest.NewRequest(http.MethodPost, path, nil)
 		res := httptest.NewRecorder()
 		r.ServeHTTP(res, req)
-		if res.Code != http.StatusNotFound {
-			t.Fatalf("%s status=%d want 404 (unwired)", path, res.Code)
+		if res.Code == http.StatusNotFound || res.Code == http.StatusMethodNotAllowed {
+			t.Fatalf("%s status=%d want mounted webhook handler", path, res.Code)
 		}
 	}
 

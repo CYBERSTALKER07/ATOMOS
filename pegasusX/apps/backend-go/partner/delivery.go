@@ -3,6 +3,7 @@ package partner
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"fmt"
 	"io"
 	"log/slog"
@@ -16,22 +17,34 @@ type DeliveryWorker struct {
 	client   *http.Client
 	log      *slog.Logger
 	now      func() time.Time
+	Policy   *WebhookURLPolicy
 }
 
 func NewDeliveryWorker(webhooks WebhookRepository, log *slog.Logger) *DeliveryWorker {
 	if log == nil {
 		log = slog.Default()
 	}
-	return &DeliveryWorker{
+	w := &DeliveryWorker{
 		webhooks: webhooks,
-		client:   &http.Client{Timeout: 15 * time.Second},
 		log:      log,
 		now:      func() time.Time { return time.Now().UTC() },
 	}
+	w.client = NewSSRFGuardedHTTPClient(w.effectivePolicy, &tls.Config{MinVersion: tls.VersionTLS12}, 15*time.Second)
+	return w
+}
+
+func (w *DeliveryWorker) effectivePolicy() WebhookURLPolicy {
+	if w != nil && w.Policy != nil {
+		return *w.Policy
+	}
+	return DefaultWebhookURLPolicy()
 }
 
 // DeliverHTTP posts one signed body to a subscription URL.
 func (w *DeliveryWorker) DeliverHTTP(ctx context.Context, sub WebhookSubscription, eventID, eventType string, body []byte) error {
+	if err := ValidateWebhookURL(sub.URL, w.effectivePolicy()); err != nil {
+		return err
+	}
 	ts := w.now().Unix()
 	sig := SignPayload(sub.SigningSecret, ts, body)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, sub.URL, bytes.NewReader(body))

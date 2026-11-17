@@ -2,16 +2,13 @@ package partner
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
+	"strconv"
 	"strings"
-	"sync"
+	"time"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/partner/adapters/onec"
-)
-
-var (
-	onecDocMu sync.Mutex
-	onecSeen  = map[string]bool{} // tenant|doc
 )
 
 // HandleOneCImport POST /partner/v1/adapters/onec/import
@@ -23,6 +20,10 @@ func (h *Handlers) HandleOneCImport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !requireDialect(w, r, p.TenantType, p.TenantID, DialectOneC) {
+		return
+	}
+	if h == nil || h.Svc == nil || h.Svc.OnecPostings() == nil {
+		writePartnerError(w, http.StatusServiceUnavailable, "onec_postings_unavailable")
 		return
 	}
 	body, err := readMasterDataBody(r)
@@ -48,17 +49,40 @@ func (h *Handlers) HandleOneCImport(w http.ResponseWriter, r *http.Request) {
 	if extDoc == "" {
 		extDoc = "onec-import"
 	}
-	key := p.TenantType + "|" + p.TenantID + "|" + extDoc
-	onecDocMu.Lock()
-	if onecSeen[key] {
-		onecDocMu.Unlock()
+
+	postings := h.Svc.OnecPostings()
+	now := time.Now().UTC()
+	payloadBytes, marshalErr := json.Marshal(map[string]any{
+		"external_doc_id": extDoc,
+		"product_count":   len(batch.Products),
+		"tenant_type":     p.TenantType,
+	})
+	if marshalErr != nil {
+		payloadBytes = []byte(`{}`)
+	}
+	docKey := "import:" + extDoc
+	posting, created, err := postings.CreateIfAbsent(r.Context(), OnecPosting{
+		SupplierID:   p.TenantID,
+		DocumentKey:  docKey,
+		DocumentType: OnecDocImportBatch,
+		PayloadJSON:  string(payloadBytes),
+		Status:       OnecStatusImported,
+		OnecRef:      extDoc,
+		AckedAt:      &now,
+	})
+	if err != nil {
+		writePartnerError(w, http.StatusInternalServerError, "onec_idempotency_failed")
+		return
+	}
+	if !created {
 		writeJSON(w, http.StatusOK, map[string]any{
-			"status": "duplicate", "external_doc_id": extDoc, "adapter": onec.AdapterName,
+			"status":          "duplicate",
+			"external_doc_id": extDoc,
+			"posting_id":      posting.PostingID,
+			"adapter":         onec.AdapterName,
 		})
 		return
 	}
-	onecSeen[key] = true
-	onecDocMu.Unlock()
 
 	market := marketCodeForPartner(r, p.TenantType, p.TenantID)
 	batch.Products = applyPackCurrency(batch.Products, market)
@@ -78,6 +102,9 @@ func (h *Handlers) HandleOneCImport(w http.ResponseWriter, r *http.Request) {
 	}
 	results, err := h.Svc.UpsertProducts(r.Context(), p, items)
 	if err != nil {
+		if delErr := postings.Delete(r.Context(), p.TenantID, posting.PostingID); delErr != nil && h.Svc.log != nil {
+			h.Svc.log.Warn("cleanup failed onec import posting", "posting_id", posting.PostingID, "err", delErr)
+		}
 		writePartnerError(w, http.StatusUnprocessableEntity, err.Error())
 		return
 	}
@@ -93,17 +120,192 @@ func (h *Handlers) HandleOneCImport(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	var priceResults []PriceUpsertResult
+	var priceErrMsg string
 	if len(prices) > 0 {
-		priceResults, _ = h.Svc.UpsertPrices(r.Context(), p, prices)
+		var priceErr error
+		priceResults, priceErr = h.Svc.UpsertPrices(r.Context(), p, prices)
+		if priceErr != nil {
+			priceErrMsg = priceErr.Error()
+			if h.Svc.log != nil {
+				h.Svc.log.Warn("1c import price pass failed", "supplier_id", p.TenantID, "err", priceErr)
+			}
+		}
 	}
-	writeJSON(w, http.StatusOK, map[string]any{
+	resp := map[string]any{
 		"status":          "accepted",
 		"adapter":         onec.AdapterName,
 		"external_doc_id": extDoc,
+		"posting_id":      posting.PostingID,
 		"products":        results,
 		"prices":          priceResults,
 		"journal_dialect": onec.JournalDialect,
 		"note":            "Journals export remains POST /partner/v1/exports resource=journals format=xml",
+	}
+	if priceErrMsg != "" {
+		resp["price_warning"] = priceErrMsg
+	}
+	writeJSON(w, http.StatusOK, resp)
+}
+
+// HandleOneCPending handles GET /partner/v1/adapters/onec/pending and GET /v1/supplier/partner-onec/pending.
+func (h *Handlers) HandleOneCPending(w http.ResponseWriter, r *http.Request) {
+	tt, tid, ok := h.tenantFromPartnerOrJWT(w, r)
+	if !ok {
+		return
+	}
+	if tt != TenantSupplier || strings.TrimSpace(tid) == "" {
+		writePartnerError(w, http.StatusForbidden, "supplier_tenant_required")
+		return
+	}
+	if h == nil || h.Svc == nil || h.Svc.OnecPostings() == nil {
+		writePartnerError(w, http.StatusServiceUnavailable, "onec_postings_unavailable")
+		return
+	}
+	status := strings.ToUpper(strings.TrimSpace(r.URL.Query().Get("status")))
+	if status == "" {
+		status = OnecStatusPending
+	}
+	switch status {
+	case OnecStatusPending, OnecStatusAcked, OnecStatusRejected, OnecStatusImported, "ALL":
+	default:
+		writePartnerError(w, http.StatusBadRequest, "invalid_status")
+		return
+	}
+	limit := defaultOnecListLim
+	if rawLim := strings.TrimSpace(r.URL.Query().Get("limit")); rawLim != "" {
+		parsed, err := strconv.Atoi(rawLim)
+		if err != nil || parsed <= 0 {
+			writePartnerError(w, http.StatusBadRequest, "invalid_limit")
+			return
+		}
+		if parsed > maxOnecListLim {
+			parsed = maxOnecListLim
+		}
+		limit = parsed
+	}
+	postings, err := h.Svc.OnecPostings().ListBySupplier(r.Context(), tid, status, limit)
+	if err != nil {
+		writePartnerError(w, http.StatusInternalServerError, "onec_postings_list_failed")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"postings": postings,
+		"count":    len(postings),
+	})
+}
+
+// HandleOneCAck handles POST /partner/v1/adapters/onec/ack and POST /v1/supplier/partner-onec/ack.
+func (h *Handlers) HandleOneCAck(w http.ResponseWriter, r *http.Request) {
+	if rejectPartnerAuditorOrAgent(w, r) {
+		return
+	}
+	tt, tid, ok := h.tenantFromPartnerOrJWT(w, r)
+	if !ok {
+		return
+	}
+	if tt != TenantSupplier || strings.TrimSpace(tid) == "" {
+		writePartnerError(w, http.StatusForbidden, "supplier_tenant_required")
+		return
+	}
+	if h == nil || h.Svc == nil || h.Svc.OnecPostings() == nil {
+		writePartnerError(w, http.StatusServiceUnavailable, "onec_postings_unavailable")
+		return
+	}
+	body, err := readBody(r)
+	if err != nil {
+		writePartnerError(w, http.StatusBadRequest, "read_body_error")
+		return
+	}
+	var req struct {
+		PostingID   string `json:"posting_id"`
+		DocumentKey string `json:"document_key"`
+		OnecRef     string `json:"onec_ref"`
+	}
+	if err := json.Unmarshal(body, &req); err != nil {
+		writePartnerError(w, http.StatusBadRequest, "invalid_json")
+		return
+	}
+	target := firstNonEmpty(req.PostingID, req.DocumentKey)
+	if target == "" {
+		writePartnerError(w, http.StatusBadRequest, "posting_id_or_document_key_required")
+		return
+	}
+	posting, err := h.Svc.OnecPostings().Ack(r.Context(), tid, target, req.OnecRef, time.Now().UTC())
+	if err != nil {
+		switch {
+		case errors.Is(err, ErrOnecPostingNotFound):
+			writePartnerError(w, http.StatusNotFound, err.Error())
+		case errors.Is(err, ErrInvalidOnecInput):
+			writePartnerError(w, http.StatusBadRequest, err.Error())
+		default:
+			writePartnerError(w, http.StatusInternalServerError, "onec_ack_failed")
+		}
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"status":  "acked",
+		"posting": posting,
+	})
+}
+
+// HandleOneCReject handles POST /partner/v1/adapters/onec/reject and POST /v1/supplier/partner-onec/reject.
+func (h *Handlers) HandleOneCReject(w http.ResponseWriter, r *http.Request) {
+	if rejectPartnerAuditorOrAgent(w, r) {
+		return
+	}
+	tt, tid, ok := h.tenantFromPartnerOrJWT(w, r)
+	if !ok {
+		return
+	}
+	if tt != TenantSupplier || strings.TrimSpace(tid) == "" {
+		writePartnerError(w, http.StatusForbidden, "supplier_tenant_required")
+		return
+	}
+	if h == nil || h.Svc == nil || h.Svc.OnecPostings() == nil {
+		writePartnerError(w, http.StatusServiceUnavailable, "onec_postings_unavailable")
+		return
+	}
+	body, err := readBody(r)
+	if err != nil {
+		writePartnerError(w, http.StatusBadRequest, "read_body_error")
+		return
+	}
+	var req struct {
+		PostingID     string `json:"posting_id"`
+		DocumentKey   string `json:"document_key"`
+		Reason        string `json:"reason"`
+		RejectReason  string `json:"reject_reason"`
+		ExposureMinor *int64 `json:"exposure_minor"`
+	}
+	if err := json.Unmarshal(body, &req); err != nil {
+		writePartnerError(w, http.StatusBadRequest, "invalid_json")
+		return
+	}
+	target := firstNonEmpty(req.PostingID, req.DocumentKey)
+	if target == "" {
+		writePartnerError(w, http.StatusBadRequest, "posting_id_or_document_key_required")
+		return
+	}
+	if req.ExposureMinor != nil && *req.ExposureMinor < 0 {
+		writePartnerError(w, http.StatusBadRequest, "invalid_exposure_minor")
+		return
+	}
+	reason := firstNonEmpty(req.RejectReason, req.Reason)
+	posting, err := h.Svc.OnecPostings().Reject(r.Context(), tid, target, reason, req.ExposureMinor, time.Now().UTC())
+	if err != nil {
+		switch {
+		case errors.Is(err, ErrOnecPostingNotFound):
+			writePartnerError(w, http.StatusNotFound, err.Error())
+		case errors.Is(err, ErrInvalidOnecInput):
+			writePartnerError(w, http.StatusBadRequest, err.Error())
+		default:
+			writePartnerError(w, http.StatusInternalServerError, "onec_reject_failed")
+		}
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"status":  "rejected",
+		"posting": posting,
 	})
 }
 

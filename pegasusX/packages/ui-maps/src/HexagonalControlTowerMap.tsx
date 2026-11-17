@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState } from "react";
 import MapGL from "react-map-gl/maplibre";
-import maplibregl from "maplibre-gl";
+import * as maplibregl from "maplibre-gl";
 import DeckGL from "@deck.gl/react";
 import { H3HexagonLayer } from "@deck.gl/geo-layers";
 import { Map3DViewToggle } from "./map-chrome";

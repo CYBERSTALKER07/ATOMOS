@@ -1,6 +1,13 @@
 "use client";
 
-import { usePortalT } from "@/lib/i18n";
+import { usePortalLocale, usePortalT } from "@/lib/i18n";
+import {
+  formatTrippedRuleLabel,
+  formatWholeSom,
+  parseOwnerApprovalRequired,
+  W2_COPY,
+  type OwnerApprovalRequiredDetail,
+} from "@/lib/retailer-w2";
 import { useState, useEffect, useRef } from "react";
 import {
   X,
@@ -53,10 +60,13 @@ export default function CheckoutModal({
   total,
 }: CheckoutModalProps) {
   const t = usePortalT();
+  const locale = usePortalLocale();
+  const w2 = W2_COPY[locale] ?? W2_COPY.en;
   const { items, clearCart, applyPreviewOrderableCaps, checkoutPolicyToken } = useCart();
   const [method, setMethod] = useState<"global_pay" | "cash">("cash");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [ownerApproval, setOwnerApproval] = useState<OwnerApprovalRequiredDetail | null>(null);
   const [degradedBanner, setDegradedBanner] = useState<{ gateway: string; reason: string } | null>(null);
   const [oosItems, setOosItems] = useState<string[]>([]);
   const [stockWarnings, setStockWarnings] = useState<StockWarning[]>([]);
@@ -81,6 +91,8 @@ export default function CheckoutModal({
 
   useEffect(() => {
     if (isOpen) {
+      setOwnerApproval(null);
+      setError("");
       checkoutSessionIdRef.current =
         typeof crypto !== "undefined" && crypto.randomUUID
           ? crypto.randomUUID()
@@ -223,10 +235,19 @@ export default function CheckoutModal({
     }
   }, [allowsCash, allowsGlobalPay, method]);
 
-  const handleCheckout = async () => {
+  const handleCheckout = async (overrideMethod?: "cash" | "global_pay") => {
     if (items.length === 0) return;
+    const activeMethod = overrideMethod ?? method;
+    if (overrideMethod) {
+      setMethod(overrideMethod);
+      checkoutSessionIdRef.current =
+        typeof crypto !== "undefined" && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `sess_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+    }
     setLoading(true);
     setError("");
+    setOwnerApproval(null);
     setOosItems([]);
     setStockWarnings([]);
 
@@ -300,13 +321,19 @@ export default function CheckoutModal({
         .sort()
         .join("|");
       const idempotencyKey = retailerUnifiedCheckoutKey(
-        method,
+        activeMethod,
         cartKey,
         checkoutSessionIdRef.current,
       );
 
+      const gateway =
+        overrideMethod === "cash"
+          ? "CASH"
+          : overrideMethod === "global_pay"
+            ? "GLOBAL_PAY"
+            : checkoutGatewayForMethod(activeMethod, gateways);
       const checkoutPayload: Record<string, unknown> = {
-        payment_gateway: checkoutGatewayForMethod(method, gateways),
+        payment_gateway: gateway,
         latitude: 0,
         longitude: 0,
         items: submitItems,
@@ -314,6 +341,11 @@ export default function CheckoutModal({
         delivery_priority: expressPriority ? "EXPRESS" : "STANDARD",
         checkout_policy_token: checkoutPolicyToken ?? preview.checkout_policy_token,
       };
+      if (overrideMethod === "cash") {
+        checkoutPayload.payment_method = "CASH";
+      } else if (overrideMethod === "global_pay") {
+        checkoutPayload.payment_method = "CARD";
+      }
       if (deliveryDate) {
         const iso = new Date(`${deliveryDate}T12:00:00+05:00`).toISOString();
         if (deliveryMode === "SCHEDULED") {
@@ -333,6 +365,11 @@ export default function CheckoutModal({
 
       if (!cartRes.ok) {
         const errBody = await cartRes.json().catch(() => null);
+        const approval = parseOwnerApprovalRequired(cartRes.status, errBody);
+        if (approval) {
+          setOwnerApproval(approval);
+          return;
+        }
         if (
           cartRes.status === 422 &&
           (errBody?.error === "inventory_exhausted" ||
@@ -363,8 +400,8 @@ export default function CheckoutModal({
         if (cartRes.status === 422 && errBody?.error === "payment_gateway_policy_violation") {
           // This happens when unified checkout policy triggers 3C Fallback.
           // We can read it here, although WS will arrive shortly.
-          setDegradedBanner({ gateway: checkoutGatewayForMethod(method, gateways), reason: errBody.message || "Gateway temporarily blocked." });
-          if (method !== "cash") {
+          setDegradedBanner({ gateway: checkoutGatewayForMethod(activeMethod, gateways), reason: errBody.message || "Gateway temporarily blocked." });
+          if (activeMethod !== "cash") {
              setMethod("cash");
           }
           throw new Error(errBody.message || "Payment gateway policy violation. Switched to cash fallback.");
@@ -688,6 +725,64 @@ export default function CheckoutModal({
                 </div>
               )}
 
+              {ownerApproval && (
+                <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl space-y-3 text-amber-950">
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle size={20} className="shrink-0 mt-0.5 text-amber-600" />
+                    <div className="space-y-1 flex-1">
+                      <h3 className="font-medium text-sm">{w2.sentToOwnerTitle}</h3>
+                      <p className="text-xs opacity-90">
+                        {formatTrippedRuleLabel(ownerApproval.tripped_rule)} ·{" "}
+                        {formatWholeSom(ownerApproval.amount_minor)}
+                      </p>
+                      {(ownerApproval.threshold_minor != null ||
+                        ownerApproval.remaining_cap_minor != null) && (
+                        <p className="text-xs opacity-80">
+                          {ownerApproval.threshold_minor != null
+                            ? `Limit: ${formatWholeSom(ownerApproval.threshold_minor)}`
+                            : ""}
+                          {ownerApproval.threshold_minor != null &&
+                          ownerApproval.remaining_cap_minor != null
+                            ? " · "
+                            : ""}
+                          {ownerApproval.remaining_cap_minor != null
+                            ? `Remaining: ${formatWholeSom(ownerApproval.remaining_cap_minor)}`
+                            : ""}
+                        </p>
+                      )}
+                      {ownerApproval.message && (
+                        <p className="text-xs opacity-80">{ownerApproval.message}</p>
+                      )}
+                    </div>
+                  </div>
+                  {(ownerApproval.fallback_payment_methods.includes("CASH") ||
+                    ownerApproval.fallback_payment_methods.includes("CARD")) && (
+                    <div className="flex flex-wrap gap-2 pl-8">
+                      {ownerApproval.fallback_payment_methods.includes("CASH") && (
+                        <button
+                          type="button"
+                          disabled={loading}
+                          onClick={() => void handleCheckout("cash")}
+                          className="rounded-xl bg-amber-700 px-3.5 py-2 text-xs font-medium text-white hover:bg-amber-800 disabled:opacity-50"
+                        >
+                          {w2.payCashInstead}
+                        </button>
+                      )}
+                      {ownerApproval.fallback_payment_methods.includes("CARD") && (
+                        <button
+                          type="button"
+                          disabled={loading}
+                          onClick={() => void handleCheckout("global_pay")}
+                          className="rounded-xl border border-amber-400 bg-white px-3.5 py-2 text-xs font-medium text-amber-900 hover:bg-amber-100 disabled:opacity-50"
+                        >
+                          {w2.payCardInstead}
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {error && (
                 <div className="p-4 bg-red-50 border border-red-100 text-red-600 text-xs font-light rounded-xl flex items-center gap-3">
                   <ShieldCheck size={16} className="shrink-0" />
@@ -719,7 +814,7 @@ export default function CheckoutModal({
               </div>
               <button
                 type="button"
-                onClick={handleCheckout}
+                onClick={() => void handleCheckout()}
                 disabled={loading || items.length === 0 || (method === "global_pay" && !hasCardConfigured)}
                 className="portal-btn portal-btn--primary h-12 px-8 font-light rounded-xl shadow-lg flex items-center gap-2 transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
               >

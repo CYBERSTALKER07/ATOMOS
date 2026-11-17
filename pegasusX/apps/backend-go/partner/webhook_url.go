@@ -1,11 +1,15 @@
 package partner
 
 import (
+	"context"
+	"crypto/tls"
 	"fmt"
 	"net"
+	"net/http"
 	"net/url"
 	"os"
 	"strings"
+	"time"
 )
 
 // WebhookURLPolicy controls outbound webhook URL SSRF checks (P2-14).
@@ -72,6 +76,14 @@ func ValidateWebhookURL(raw string, policy WebhookURLPolicy) error {
 		return fmt.Errorf("webhook_url_credentials_forbidden")
 	}
 	host := strings.ToLower(u.Hostname())
+	return ValidateHostNotPrivate(host, policy)
+}
+
+// ValidateHostNotPrivate rejects loopback, RFC1918/ULA private, link-local,
+// cloud metadata, and disallowed internal hostnames unless permitted by policy.
+func ValidateHostNotPrivate(host string, policy WebhookURLPolicy) error {
+	host = strings.ToLower(strings.TrimSpace(host))
+	host = strings.TrimSuffix(host, ".")
 	if host == "" {
 		return fmt.Errorf("invalid_url")
 	}
@@ -111,6 +123,58 @@ func ValidateWebhookURL(raw string, policy WebhookURLPolicy) error {
 		}
 	}
 	return nil
+}
+
+// NewSSRFGuardedHTTPClient returns an HTTP client whose dialer re-verifies resolved DNS
+// IPs against the active policy (preventing DNS rebinding) and validates redirects.
+func NewSSRFGuardedHTTPClient(policyFn func() WebhookURLPolicy, tlsCfg *tls.Config, timeout time.Duration) *http.Client {
+	if policyFn == nil {
+		policyFn = DefaultWebhookURLPolicy
+	}
+	dialer := &net.Dialer{Timeout: 10 * time.Second}
+	tr := &http.Transport{
+		TLSClientConfig: tlsCfg,
+		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			host, port, err := net.SplitHostPort(addr)
+			if err != nil {
+				return nil, fmt.Errorf("ssrf_invalid_addr: %w", err)
+			}
+			pol := policyFn()
+			hostLower := strings.ToLower(strings.TrimSuffix(strings.TrimSpace(host), "."))
+			if isBlockedHostname(hostLower) && !pol.AllowPrivateHosts && !hostAllowlisted(hostLower, pol.HostAllowlist) {
+				return nil, fmt.Errorf("webhook_url_host_forbidden")
+			}
+			if len(pol.HostAllowlist) > 0 && !hostAllowlisted(hostLower, pol.HostAllowlist) {
+				return nil, fmt.Errorf("webhook_url_host_not_allowlisted")
+			}
+			if ip := net.ParseIP(hostLower); ip != nil {
+				if !pol.AllowPrivateHosts && !hostAllowlisted(hostLower, pol.HostAllowlist) && isBlockedIP(ip) {
+					return nil, fmt.Errorf("webhook_url_private_ip_forbidden")
+				}
+				return dialer.DialContext(ctx, network, addr)
+			}
+			addrs, err := net.DefaultResolver.LookupIPAddr(ctx, hostLower)
+			if err != nil || len(addrs) == 0 {
+				return nil, fmt.Errorf("webhook_url_dns_failed")
+			}
+			for _, a := range addrs {
+				if !pol.AllowPrivateHosts && !hostAllowlisted(hostLower, pol.HostAllowlist) && isBlockedIP(a.IP) {
+					return nil, fmt.Errorf("webhook_url_private_ip_forbidden")
+				}
+			}
+			return dialer.DialContext(ctx, network, net.JoinHostPort(addrs[0].IP.String(), port))
+		},
+	}
+	return &http.Client{
+		Timeout:   timeout,
+		Transport: tr,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			if len(via) >= 10 {
+				return fmt.Errorf("stopped after 10 redirects")
+			}
+			return ValidateWebhookURL(req.URL.String(), policyFn())
+		},
+	}
 }
 
 func hostAllowlisted(host string, allow []string) bool {

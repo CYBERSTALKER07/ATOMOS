@@ -223,6 +223,11 @@ func resolveHomeCell(code, cell string) string {
 	if c := strings.ToLower(strings.TrimSpace(cell)); c != "" {
 		return c
 	}
+	envCell := strings.ToLower(strings.TrimSpace(os.Getenv("HOME_CELL")))
+	normCode := NormalizeMarketCode(code)
+	if envCell != "" && (normCode == "" || normCode == DefaultMarketCode || normCode == DefaultMarketCodeFromEnv()) {
+		return envCell
+	}
 	if p, ok := ResolveMarketPack(code); ok && strings.TrimSpace(p.HomeCell) != "" {
 		return strings.ToLower(strings.TrimSpace(p.HomeCell))
 	}
@@ -260,7 +265,7 @@ func ResolveMarketAssignment(c Claims) MarketAssignment {
 	}
 	return MarketAssignment{
 		MarketCode: envCode,
-		HomeCell:   resolveHomeCell(envCode, ""),
+		HomeCell:   resolveHomeCell(envCode, claimCell),
 		Source:     MarketSourceEnv,
 	}
 }
@@ -286,6 +291,11 @@ func EffectiveMarketCode(c Claims) string {
 func EffectiveHomeCell(c Claims) string {
 	if cell := strings.ToLower(strings.TrimSpace(c.HomeCell)); cell != "" {
 		return cell
+	}
+	envCell := strings.ToLower(strings.TrimSpace(os.Getenv("HOME_CELL")))
+	code := NormalizeMarketCode(c.MarketCode)
+	if envCell != "" && (code == "" || code == DefaultMarketCode || code == DefaultMarketCodeFromEnv()) {
+		return envCell
 	}
 	if p, ok := ResolveMarketPack(EffectiveMarketCode(c)); ok && p.HomeCell != "" {
 		return p.HomeCell

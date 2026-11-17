@@ -129,6 +129,46 @@ object SupplierIdempotencyKeys {
     fun controlTowerZoneOverride(scopeId: String, action: String, polygonFingerprint: String): String =
         "supplier-control-tower-override:$scopeId:${stableHash("$action:$polygonFingerprint")}"
 
+    fun migrationProjectCreate(scopeId: String, name: String): String =
+        "migration-project-create:$scopeId:${stableHash(name)}"
+
+    fun migrationBundleCreate(projectId: String, fingerprint: String): String =
+        "migration-bundle-create:$projectId:${stableHash(fingerprint)}"
+
+    fun migrationBundleUploaded(bundleId: String, fingerprint: String): String =
+        "migration-bundle-uploaded:$bundleId:${stableHash(fingerprint)}"
+
+    fun migrationBundleSort(bundleId: String, fingerprint: String): String =
+        "migration-bundle-sort:$bundleId:${stableHash(fingerprint)}"
+
+    fun migrationMappingConfirm(sessionId: String, fingerprint: String): String =
+        "migration-mapping-confirm:$sessionId:${stableHash(fingerprint)}"
+
+    fun migrationDryRun(scopeId: String, applyMode: String): String =
+        "migration-dry-run:$scopeId:$applyMode"
+
+    fun migrationSessionApprove(sessionId: String, reportId: String?): String =
+        "migration-session-approve:$sessionId:${reportId.orEmpty().ifBlank { "latest" }}"
+
+    fun migrationSessionApply(sessionId: String, fingerprint: String?): String =
+        "migration-session-apply:$sessionId:${fingerprint.orEmpty().ifBlank { "latest" }}"
+
+    fun migrationSessionRollback(sessionId: String): String =
+        "migration-session-rollback:$sessionId"
+
+    fun migrationOpenOrdersRelease(scopeId: String, orderIds: List<String>, targetStatus: String): String {
+        val sorted = orderIds.sorted().joinToString(",")
+        return "migration-open-orders-release:$scopeId:$targetStatus:${stableHash(sorted)}"
+    }
+
+    fun migrationCutover(projectId: String): String =
+        "migration-cutover:$projectId"
+
+    fun joinRequestDecide(requestId: String, decision: String): String =
+        "join-request-decide:$requestId:${decision.lowercase()}"
+
+    fun hashFingerprint(input: String): String = stableHash(input)
+
     /** FNV-1a 32-bit — matches api-client `stableHash`. */
     private fun stableHash(input: String): String {
         var hash = 2166136261L

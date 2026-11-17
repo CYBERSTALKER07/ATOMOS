@@ -7,9 +7,38 @@ enum SupplierRealtimeStatus: Equatable {
     case offline
 }
 
+struct SupplierLiveEventPayload: Decodable {
+    let session_id: String?
+    let project_id: String?
+    let processed_rows: Int64?
+    let total_rows: Int64?
+    let chunk_id: String?
+}
+
 struct SupplierLiveEvent: Decodable {
     let type: String
     let minimum_version: String?
+    let session_id: String?
+    let project_id: String?
+    let processed_rows: Int64?
+    let total_rows: Int64?
+    let chunk_id: String?
+    let payload: SupplierLiveEventPayload?
+
+    var effectiveMigrationProgress: MigrationApplyProgressEvent? {
+        let sid = session_id ?? payload?.session_id
+        let processed = processed_rows ?? payload?.processed_rows
+        let total = total_rows ?? payload?.total_rows
+        guard let sid, !sid.isEmpty, let processed, let total else {
+            return nil
+        }
+        return MigrationApplyProgressEvent(
+            sessionId: sid,
+            processedRows: processed,
+            totalRows: total,
+            chunkId: chunk_id ?? payload?.chunk_id
+        )
+    }
 }
 
 /// Supplier realtime via short-lived `/v1/supplier/ws-session` tokens (portal parity).

@@ -178,8 +178,20 @@ func (s *Service) SubmitForDispatch(ctx context.Context, supplierID, batchID str
 		// batch strands with an empty RailReference and no webhook to flip it PAID.
 		return Batch{}, ErrNoLiveRail
 	}
+	var prevStatus string
+	if live {
+		claimedPrev, claimedBatch, cerr := s.repo.ClaimDispatchInTxn(ctx, b.SupplierID, b.BatchID)
+		if cerr != nil {
+			return Batch{}, cerr
+		}
+		prevStatus = claimedPrev
+		b.Status = claimedBatch.Status
+	}
 	ref, err := rail.Submit(ctx, b, details, live)
 	if err != nil {
+		if live && prevStatus != "" {
+			_ = s.repo.RevertDispatchInTxn(ctx, b.BatchID, prevStatus)
+		}
 		return Batch{}, err
 	}
 	next := StatusExported

@@ -10,7 +10,9 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
+	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/order"
@@ -625,6 +627,168 @@ func (s *Service) HandleOpsStaff(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+}
+
+func (s *Service) checkWarehouseStaffAdmin(r *http.Request) bool {
+	claims, ok := auth.FromContext(r.Context())
+	if !ok || claims.Subject == "" {
+		return false
+	}
+	if claims.Role == auth.RoleAdmin || claims.Role == auth.RoleWarehouseAdmin || claims.Role == auth.RolePlatformAdmin {
+		return true
+	}
+	if strings.EqualFold(string(claims.SupplierRole), string(auth.RoleAdmin)) ||
+		strings.EqualFold(string(claims.SupplierRole), string(auth.RoleWarehouseAdmin)) {
+		return true
+	}
+	return false
+}
+
+// HandleDeleteOpsStaff handles DELETE /v1/warehouse/ops/staff/{staffID}
+func (s *Service) HandleDeleteOpsStaff(w http.ResponseWriter, r *http.Request) {
+	if !s.checkWarehouseStaffAdmin(r) {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
+		return
+	}
+	staffID := strings.TrimSpace(chi.URLParam(r, "staffID"))
+	if staffID == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "staff_id_required"})
+		return
+	}
+
+	found := false
+	s.mu.Lock()
+	for i := range s.staff {
+		if s.staff[i].StaffID == staffID {
+			s.staff = append(s.staff[:i], s.staff[i+1:]...)
+			found = true
+			break
+		}
+	}
+	s.mu.Unlock()
+
+	if s.spannerClient != nil {
+		now := s.now().UTC()
+		m := spanner.Update("SupplierUsers",
+			[]string{"UserId", "IsActive", "UpdatedAt"},
+			[]any{staffID, false, now},
+		)
+		if _, err := s.spannerClient.Apply(r.Context(), []*spanner.Mutation{m}); err == nil {
+			found = true
+		} else {
+			s.log.ErrorContext(r.Context(), "failed to deactivate warehouse staff", "staff_id", staffID, "err", err)
+		}
+	}
+
+	// Revoke user tokens
+	_ = auth.GetRevocationStore().RevokeUser(r.Context(), staffID, 24*time.Hour)
+
+	if !found && s.spannerClient == nil {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "staff_not_found"})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"status": "deactivated", "staff_id": staffID})
+}
+
+// HandleUpdateOpsStaff handles PATCH /v1/warehouse/ops/staff/{staffID}
+func (s *Service) HandleUpdateOpsStaff(w http.ResponseWriter, r *http.Request) {
+	if !s.checkWarehouseStaffAdmin(r) {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
+		return
+	}
+	staffID := strings.TrimSpace(chi.URLParam(r, "staffID"))
+	if staffID == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "staff_id_required"})
+		return
+	}
+
+	body, ok := readMutationBody(w, r, 64*1024)
+	if !ok {
+		return
+	}
+
+	var req struct {
+		Name     *string `json:"name"`
+		Role     *string `json:"role"`
+		Phone    *string `json:"phone"`
+		IsActive *bool   `json:"is_active"`
+		Active   *bool   `json:"active"`
+	}
+	if len(body) > 0 {
+		if err := json.Unmarshal(body, &req); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+			return
+		}
+	}
+
+	activeVal := req.IsActive
+	if activeVal == nil {
+		activeVal = req.Active
+	}
+
+	found := false
+	var updatedRow portalStaff
+	s.mu.Lock()
+	for i := range s.staff {
+		if s.staff[i].StaffID == staffID {
+			if req.Name != nil {
+				s.staff[i].Name = strings.TrimSpace(*req.Name)
+			}
+			if req.Role != nil {
+				s.staff[i].Role = strings.TrimSpace(*req.Role)
+			}
+			if req.Phone != nil {
+				s.staff[i].Phone = strings.TrimSpace(*req.Phone)
+			}
+			updatedRow = s.staff[i]
+			if activeVal != nil && !*activeVal {
+				s.staff = append(s.staff[:i], s.staff[i+1:]...)
+			}
+			found = true
+			break
+		}
+	}
+	s.mu.Unlock()
+
+	if s.spannerClient != nil {
+		now := s.now().UTC()
+		cols := []string{"UserId", "UpdatedAt"}
+		vals := []any{staffID, now}
+		if req.Name != nil {
+			cols = append(cols, "Name")
+			vals = append(vals, strings.TrimSpace(*req.Name))
+		}
+		if req.Role != nil {
+			cols = append(cols, "SupplierRole")
+			vals = append(vals, strings.TrimSpace(*req.Role))
+		}
+		if req.Phone != nil {
+			cols = append(cols, "Phone")
+			vals = append(vals, strings.TrimSpace(*req.Phone))
+		}
+		if activeVal != nil {
+			cols = append(cols, "IsActive")
+			vals = append(vals, *activeVal)
+		}
+		m := spanner.Update("SupplierUsers", cols, vals)
+		if _, err := s.spannerClient.Apply(r.Context(), []*spanner.Mutation{m}); err == nil {
+			found = true
+		}
+	}
+
+	if activeVal != nil && !*activeVal {
+		_ = auth.GetRevocationStore().RevokeUser(r.Context(), staffID, 24*time.Hour)
+	}
+
+	if !found && s.spannerClient == nil {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "staff_not_found"})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"status":   "updated",
+		"staff_id": staffID,
+		"staff":    updatedRow,
+	})
 }
 
 func (s *Service) HandleOpsProducts(w http.ResponseWriter, r *http.Request) {

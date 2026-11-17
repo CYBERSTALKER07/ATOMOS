@@ -87,6 +87,292 @@
       "title": "ARInvoicePayload",
       "type": "object"
     },
+    "AnomalyCasePayload": {
+      "additionalProperties": false,
+      "properties": {
+        "actor_id": {
+          "type": "string"
+        },
+        "assigned_to": {
+          "type": "string"
+        },
+        "base_event": {},
+        "case_id": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string"
+        },
+        "detected_at": {
+          "type": "string"
+        },
+        "exposure_minor": {
+          "type": "integer"
+        },
+        "object_id": {
+          "type": "string"
+        },
+        "object_type": {
+          "type": "string"
+        },
+        "occurred_at": {
+          "type": "string"
+        },
+        "playbook_action": {
+          "type": "string"
+        },
+        "proposal_id": {
+          "type": "string"
+        },
+        "resolution_note": {
+          "type": "string"
+        },
+        "resolved_at": {
+          "type": "string"
+        },
+        "resolved_by": {
+          "type": "string"
+        },
+        "rule_code": {
+          "type": "string"
+        },
+        "score_bps": {
+          "type": "integer"
+        },
+        "severity": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "tenant_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "case_id",
+        "category",
+        "exposure_minor",
+        "object_id",
+        "object_type",
+        "rule_code",
+        "score_bps",
+        "severity",
+        "status",
+        "tenant_id"
+      ],
+      "title": "AnomalyCasePayload",
+      "type": "object"
+    },
+    "ApprovalDecidedPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "approver_id": {
+          "type": "string"
+        },
+        "base_event": {},
+        "break_glass": {
+          "type": "boolean"
+        },
+        "comment": {
+          "type": "string"
+        },
+        "decision": {
+          "type": "string"
+        },
+        "decision_id": {
+          "type": "string"
+        },
+        "delegated_from": {
+          "type": "string"
+        },
+        "mfa_verified": {
+          "type": "boolean"
+        },
+        "request_id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "step_index": {
+          "type": "integer"
+        },
+        "tenant_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "approver_id",
+        "base_event",
+        "break_glass",
+        "decision",
+        "decision_id",
+        "mfa_verified",
+        "request_id",
+        "status",
+        "step_index",
+        "tenant_id"
+      ],
+      "title": "ApprovalDecidedPayload",
+      "type": "object"
+    },
+    "ApprovalRequestedPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "type": "string"
+        },
+        "actor_type": {
+          "type": "string"
+        },
+        "amount_minor": {
+          "type": "integer"
+        },
+        "base_event": {},
+        "break_glass": {
+          "type": "boolean"
+        },
+        "expires_at": {
+          "type": "string"
+        },
+        "object_id": {
+          "type": "string"
+        },
+        "object_type": {
+          "type": "string"
+        },
+        "payload_hash": {
+          "type": "string"
+        },
+        "policy_id": {
+          "type": "string"
+        },
+        "policy_version": {
+          "type": "integer"
+        },
+        "request_id": {
+          "type": "string"
+        },
+        "requested_by": {
+          "type": "string"
+        },
+        "required_approvers": {
+          "type": "integer"
+        },
+        "status": {
+          "type": "string"
+        },
+        "tenant_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "action",
+        "actor_type",
+        "amount_minor",
+        "base_event",
+        "break_glass",
+        "object_id",
+        "object_type",
+        "payload_hash",
+        "policy_version",
+        "request_id",
+        "requested_by",
+        "tenant_id"
+      ],
+      "title": "ApprovalRequestedPayload",
+      "type": "object"
+    },
+    "AuditAnchorWrittenPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "anchored_at": {
+          "type": "string"
+        },
+        "anchored_by": {
+          "type": "string"
+        },
+        "base_event": {},
+        "day_bucket": {
+          "type": "string"
+        },
+        "event_count": {
+          "type": "integer"
+        },
+        "head_event_id": {
+          "type": "string"
+        },
+        "root_hash": {
+          "type": "string"
+        },
+        "signer_key_id": {
+          "type": "string"
+        },
+        "tenant_id": {
+          "type": "string"
+        },
+        "worm_uri": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "anchored_at",
+        "anchored_by",
+        "base_event",
+        "day_bucket",
+        "event_count",
+        "head_event_id",
+        "root_hash",
+        "tenant_id"
+      ],
+      "title": "AuditAnchorWrittenPayload",
+      "type": "object"
+    },
+    "AuditorAccessGrantedPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "type": "string"
+        },
+        "base_event": {},
+        "expires_at": {
+          "type": "string"
+        },
+        "granted_by": {
+          "type": "string"
+        },
+        "occurred_at": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "role_name": {
+          "type": "string"
+        },
+        "tenant_id": {
+          "type": "string"
+        },
+        "trace_id": {
+          "type": "string"
+        },
+        "user_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "expires_at",
+        "granted_by",
+        "role_name",
+        "tenant_id",
+        "user_id"
+      ],
+      "title": "AuditorAccessGrantedPayload",
+      "type": "object"
+    },
     "BuyerAcceptancePayload": {
       "additionalProperties": false,
       "properties": {
@@ -315,6 +601,209 @@
       "title": "ConditionPayload",
       "type": "object"
     },
+    "ConnectorPushCompletedPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "account_label": {
+          "type": "string"
+        },
+        "approval_id": {
+          "type": "string"
+        },
+        "base_event": {},
+        "completed_at": {
+          "type": "string"
+        },
+        "direction": {
+          "type": "string"
+        },
+        "error_message": {
+          "type": "string"
+        },
+        "external_ref": {
+          "type": "string"
+        },
+        "occurred_at": {
+          "type": "string"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "records_processed": {
+          "type": "integer"
+        },
+        "run_id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "stream_name": {
+          "type": "string"
+        },
+        "tenant_id": {
+          "type": "string"
+        },
+        "triggered_by": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "approval_id",
+        "base_event",
+        "provider",
+        "records_processed",
+        "run_id",
+        "status",
+        "stream_name",
+        "tenant_id"
+      ],
+      "title": "ConnectorPushCompletedPayload",
+      "type": "object"
+    },
+    "ConnectorShadowMismatchPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "account_label": {
+          "type": "string"
+        },
+        "balance_delta_count": {
+          "type": "integer"
+        },
+        "balance_delta_minor": {
+          "type": "integer"
+        },
+        "base_event": {},
+        "direction": {
+          "type": "string"
+        },
+        "error_message": {
+          "type": "string"
+        },
+        "mismatch_count": {
+          "type": "integer"
+        },
+        "missing_external_count": {
+          "type": "integer"
+        },
+        "missing_internal_count": {
+          "type": "integer"
+        },
+        "object_type": {
+          "type": "string"
+        },
+        "occurred_at": {
+          "type": "string"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "records_processed": {
+          "type": "integer"
+        },
+        "run_id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "stock_delta_count": {
+          "type": "integer"
+        },
+        "stream_name": {
+          "type": "string"
+        },
+        "summary_json": {
+          "type": "string"
+        },
+        "tenant_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "mismatch_count",
+        "provider",
+        "run_id",
+        "stream_name",
+        "tenant_id"
+      ],
+      "title": "ConnectorShadowMismatchPayload",
+      "type": "object"
+    },
+    "ConnectorSyncPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "account_label": {
+          "type": "string"
+        },
+        "balance_delta_count": {
+          "type": "integer"
+        },
+        "base_event": {},
+        "completed_at": {
+          "type": "string"
+        },
+        "direction": {
+          "type": "string"
+        },
+        "error_message": {
+          "type": "string"
+        },
+        "mismatch_count": {
+          "type": "integer"
+        },
+        "missing_external_count": {
+          "type": "integer"
+        },
+        "missing_internal_count": {
+          "type": "integer"
+        },
+        "occurred_at": {
+          "type": "string"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "records_processed": {
+          "type": "integer"
+        },
+        "run_id": {
+          "type": "string"
+        },
+        "started_at": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "stock_delta_count": {
+          "type": "integer"
+        },
+        "stream_name": {
+          "type": "string"
+        },
+        "tenant_id": {
+          "type": "string"
+        },
+        "triggered_by": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "direction",
+        "mismatch_count",
+        "provider",
+        "records_processed",
+        "run_id",
+        "status",
+        "stream_name",
+        "tenant_id"
+      ],
+      "title": "ConnectorSyncPayload",
+      "type": "object"
+    },
     "CreditDeliveryPayload": {
       "additionalProperties": false,
       "properties": {
@@ -349,6 +838,95 @@
         "supplier_id"
       ],
       "title": "CreditDeliveryPayload",
+      "type": "object"
+    },
+    "CreditHoldPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "type": "string"
+        },
+        "actor_id": {
+          "type": "string"
+        },
+        "base_event": {},
+        "occurred_at": {
+          "type": "string"
+        },
+        "prepay_only_locked": {
+          "type": "boolean"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "risk_tier": {
+          "type": "string"
+        },
+        "score": {
+          "type": "integer"
+        },
+        "status": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "action",
+        "base_event",
+        "prepay_only_locked",
+        "retailer_id",
+        "status",
+        "supplier_id"
+      ],
+      "title": "CreditHoldPayload",
+      "type": "object"
+    },
+    "CreditLimitChangedPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "actor_id": {
+          "type": "string"
+        },
+        "approval_id": {
+          "type": "string"
+        },
+        "base_event": {},
+        "new_limit_minor": {
+          "type": "integer"
+        },
+        "occurred_at": {
+          "type": "string"
+        },
+        "previous_limit_minor": {
+          "type": "integer"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "reason_codes_json": {
+          "type": "string"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "actor_id",
+        "base_event",
+        "new_limit_minor",
+        "previous_limit_minor",
+        "retailer_id",
+        "supplier_id"
+      ],
+      "title": "CreditLimitChangedPayload",
       "type": "object"
     },
     "CreditLimitPayload": {
@@ -428,6 +1006,71 @@
       "title": "CreditProfilePayload",
       "type": "object"
     },
+    "CreditScoreComputedPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "base_event": {},
+        "computed_at": {
+          "type": "string"
+        },
+        "consent_verified": {
+          "type": "boolean"
+        },
+        "features_hash": {
+          "type": "string"
+        },
+        "model_version": {
+          "type": "string"
+        },
+        "pd_bps": {
+          "type": "integer"
+        },
+        "reason_codes_json": {
+          "type": "string"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "risk_tier": {
+          "type": "string"
+        },
+        "scope": {
+          "type": "string"
+        },
+        "score": {
+          "type": "integer"
+        },
+        "score_id": {
+          "type": "string"
+        },
+        "scorer_source": {
+          "type": "string"
+        },
+        "suggested_limit_minor": {
+          "type": "integer"
+        },
+        "supplier_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "computed_at",
+        "consent_verified",
+        "features_hash",
+        "model_version",
+        "pd_bps",
+        "retailer_id",
+        "risk_tier",
+        "scope",
+        "score",
+        "score_id",
+        "scorer_source",
+        "suggested_limit_minor"
+      ],
+      "title": "CreditScoreComputedPayload",
+      "type": "object"
+    },
     "DeliverySessionPayload": {
       "additionalProperties": false,
       "properties": {
@@ -485,6 +1128,206 @@
         "supplier_id"
       ],
       "title": "DriverPayload",
+      "type": "object"
+    },
+    "EntityIntercompanyPostedPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "amount_minor": {
+          "type": "integer"
+        },
+        "base_event": {},
+        "created_by": {
+          "type": "string"
+        },
+        "credit_journal_id": {
+          "type": "string"
+        },
+        "currency": {
+          "type": "string"
+        },
+        "debit_journal_id": {
+          "type": "string"
+        },
+        "from_entity_id": {
+          "type": "string"
+        },
+        "occurred_at": {
+          "type": "string"
+        },
+        "period_id": {
+          "type": "string"
+        },
+        "reference_id": {
+          "type": "string"
+        },
+        "reference_type": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "tenant_id": {
+          "type": "string"
+        },
+        "to_entity_id": {
+          "type": "string"
+        },
+        "transfer_id": {
+          "type": "string"
+        },
+        "transfer_type": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "amount_minor",
+        "base_event",
+        "currency",
+        "from_entity_id",
+        "period_id",
+        "status",
+        "tenant_id",
+        "to_entity_id",
+        "transfer_id",
+        "transfer_type"
+      ],
+      "title": "EntityIntercompanyPostedPayload",
+      "type": "object"
+    },
+    "EsfDocumentPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "actor_id": {
+          "type": "string"
+        },
+        "base_event": {},
+        "counterparty_tin": {
+          "type": "string"
+        },
+        "direction": {
+          "type": "string"
+        },
+        "entity_id": {
+          "type": "string"
+        },
+        "esf_id": {
+          "type": "string"
+        },
+        "occurred_at": {
+          "type": "string"
+        },
+        "operator": {
+          "type": "string"
+        },
+        "operator_ref": {
+          "type": "string"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "payload_hash": {
+          "type": "string"
+        },
+        "period_id": {
+          "type": "string"
+        },
+        "po_id": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "total_minor": {
+          "type": "integer"
+        },
+        "vat_minor": {
+          "type": "integer"
+        },
+        "vat_rate_bps": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "base_event",
+        "direction",
+        "entity_id",
+        "esf_id",
+        "operator",
+        "period_id",
+        "status",
+        "total_minor",
+        "vat_minor",
+        "vat_rate_bps"
+      ],
+      "title": "EsfDocumentPayload",
+      "type": "object"
+    },
+    "ExportPackCreatedPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "base_event": {},
+        "created_at": {
+          "type": "string"
+        },
+        "created_by": {
+          "type": "string"
+        },
+        "entity_id": {
+          "type": "string"
+        },
+        "expires_at": {
+          "type": "string"
+        },
+        "format": {
+          "type": "string"
+        },
+        "from_date": {
+          "type": "string"
+        },
+        "occurred_at": {
+          "type": "string"
+        },
+        "pack_id": {
+          "type": "string"
+        },
+        "pack_type": {
+          "type": "string"
+        },
+        "period_id": {
+          "type": "string"
+        },
+        "row_count": {
+          "type": "integer"
+        },
+        "sha256_hex": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "tenant_id": {
+          "type": "string"
+        },
+        "to_date": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "created_by",
+        "expires_at",
+        "format",
+        "pack_id",
+        "pack_type",
+        "row_count",
+        "status",
+        "tenant_id"
+      ],
+      "title": "ExportPackCreatedPayload",
       "type": "object"
     },
     "FactoryPayload": {
@@ -714,6 +1557,391 @@
       "title": "FiscalReceiptPayload",
       "type": "object"
     },
+    "ForecastRunCompletedPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "base_event": {},
+        "challenger_model": {
+          "type": "string"
+        },
+        "challenger_wape_bps": {
+          "type": "integer"
+        },
+        "champion_model": {
+          "type": "string"
+        },
+        "champion_wape_bps": {
+          "type": "integer"
+        },
+        "completed_at": {
+          "type": "string"
+        },
+        "entity_id": {
+          "type": "string"
+        },
+        "horizon_days": {
+          "type": "integer"
+        },
+        "location_count": {
+          "type": "integer"
+        },
+        "location_id": {
+          "type": "string"
+        },
+        "run_id": {
+          "type": "string"
+        },
+        "sku_count": {
+          "type": "integer"
+        },
+        "status": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "triggered_by": {
+          "type": "string"
+        },
+        "wape_improvement_bps": {
+          "type": "integer"
+        },
+        "winner_model": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "challenger_model",
+        "challenger_wape_bps",
+        "champion_model",
+        "champion_wape_bps",
+        "entity_id",
+        "horizon_days",
+        "location_count",
+        "run_id",
+        "sku_count",
+        "status",
+        "supplier_id",
+        "wape_improvement_bps",
+        "winner_model"
+      ],
+      "title": "ForecastRunCompletedPayload",
+      "type": "object"
+    },
+    "FxRevaluationPostedPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "base_currency": {
+          "type": "string"
+        },
+        "base_event": {},
+        "created_by": {
+          "type": "string"
+        },
+        "entity_id": {
+          "type": "string"
+        },
+        "journal_entry_id": {
+          "type": "string"
+        },
+        "occurred_at": {
+          "type": "string"
+        },
+        "period_id": {
+          "type": "string"
+        },
+        "rates_json": {
+          "type": "string"
+        },
+        "rounding_delta_minor": {
+          "type": "integer"
+        },
+        "run_id": {
+          "type": "string"
+        },
+        "tenant_id": {
+          "type": "string"
+        },
+        "unrealized_gain_loss_minor": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "base_currency",
+        "base_event",
+        "period_id",
+        "rounding_delta_minor",
+        "run_id",
+        "tenant_id",
+        "unrealized_gain_loss_minor"
+      ],
+      "title": "FxRevaluationPostedPayload",
+      "type": "object"
+    },
+    "GLEntryPostedPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "base_event": {},
+        "currency": {
+          "type": "string"
+        },
+        "entity_id": {
+          "type": "string"
+        },
+        "entry_id": {
+          "type": "string"
+        },
+        "hash": {
+          "type": "string"
+        },
+        "period_id": {
+          "type": "string"
+        },
+        "reverses_entry_id": {
+          "type": "string"
+        },
+        "source_id": {
+          "type": "string"
+        },
+        "source_type": {
+          "type": "string"
+        },
+        "total_credit_minor": {
+          "type": "integer"
+        },
+        "total_debit_minor": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "base_event",
+        "currency",
+        "entity_id",
+        "entry_id",
+        "hash",
+        "period_id",
+        "source_id",
+        "source_type",
+        "total_credit_minor",
+        "total_debit_minor"
+      ],
+      "title": "GLEntryPostedPayload",
+      "type": "object"
+    },
+    "GLEntryReversedPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "base_event": {},
+        "currency": {
+          "type": "string"
+        },
+        "entity_id": {
+          "type": "string"
+        },
+        "entry_id": {
+          "type": "string"
+        },
+        "hash": {
+          "type": "string"
+        },
+        "period_id": {
+          "type": "string"
+        },
+        "reverses_entry_id": {
+          "type": "string"
+        },
+        "source_id": {
+          "type": "string"
+        },
+        "source_type": {
+          "type": "string"
+        },
+        "total_credit_minor": {
+          "type": "integer"
+        },
+        "total_debit_minor": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "base_event",
+        "currency",
+        "entity_id",
+        "entry_id",
+        "hash",
+        "period_id",
+        "reverses_entry_id",
+        "source_id",
+        "source_type",
+        "total_credit_minor",
+        "total_debit_minor"
+      ],
+      "title": "GLEntryReversedPayload",
+      "type": "object"
+    },
+    "HaccpExcursionReportedPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "actor_id": {
+          "type": "string"
+        },
+        "affected_lot_ids": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "base_event": {},
+        "compliance_rate_bps": {
+          "type": "integer"
+        },
+        "excursion_count": {
+          "type": "integer"
+        },
+        "manifest_id": {
+          "type": "string"
+        },
+        "max_milli_c": {
+          "type": "integer"
+        },
+        "min_milli_c": {
+          "type": "integer"
+        },
+        "occurred_at": {
+          "type": "string"
+        },
+        "open_breaches": {
+          "type": "integer"
+        },
+        "reading_id": {
+          "type": "string"
+        },
+        "sensor_id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "temp_milli_c": {
+          "type": "integer"
+        },
+        "tenant_id": {
+          "type": "string"
+        },
+        "total_readings": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "base_event",
+        "compliance_rate_bps",
+        "excursion_count",
+        "open_breaches",
+        "status",
+        "tenant_id",
+        "total_readings"
+      ],
+      "title": "HaccpExcursionReportedPayload",
+      "type": "object"
+    },
+    "IAMRoleChangedPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "type": "string"
+        },
+        "assigned_by": {
+          "type": "string"
+        },
+        "base_event": {},
+        "role_name": {
+          "type": "string"
+        },
+        "tenant_id": {
+          "type": "string"
+        },
+        "trace_id": {
+          "type": "string"
+        },
+        "user_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "action",
+        "assigned_by",
+        "base_event",
+        "role_name",
+        "tenant_id",
+        "user_id"
+      ],
+      "title": "IAMRoleChangedPayload",
+      "type": "object"
+    },
+    "InventoryExpiryRiskPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "base_event": {},
+        "currency": {
+          "type": "string"
+        },
+        "days_remaining": {
+          "type": "integer"
+        },
+        "days_to_expiry": {
+          "type": "integer"
+        },
+        "entity_id": {
+          "type": "string"
+        },
+        "expiry_date": {
+          "type": "string"
+        },
+        "layer_id": {
+          "type": "string"
+        },
+        "lot_id": {
+          "type": "string"
+        },
+        "occurred_at": {
+          "type": "string"
+        },
+        "product_id": {
+          "type": "string"
+        },
+        "qty_remaining": {
+          "type": "integer"
+        },
+        "unit_cost_minor": {
+          "type": "integer"
+        },
+        "value_at_risk_minor": {
+          "type": "integer"
+        },
+        "warehouse_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "entity_id",
+        "expiry_date",
+        "layer_id",
+        "product_id",
+        "qty_remaining",
+        "warehouse_id"
+      ],
+      "title": "InventoryExpiryRiskPayload",
+      "type": "object"
+    },
     "InventoryImportPayload": {
       "additionalProperties": false,
       "properties": {
@@ -740,6 +1968,282 @@
         "supplier_id"
       ],
       "title": "InventoryImportPayload",
+      "type": "object"
+    },
+    "InventoryIssuedPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "base_event": {},
+        "currency": {
+          "type": "string"
+        },
+        "entity_id": {
+          "type": "string"
+        },
+        "gl_entry_id": {
+          "type": "string"
+        },
+        "layer_id": {
+          "type": "string"
+        },
+        "lot_id": {
+          "type": "string"
+        },
+        "movement_id": {
+          "type": "string"
+        },
+        "occurred_at": {
+          "type": "string"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "product_id": {
+          "type": "string"
+        },
+        "quantity": {
+          "type": "integer"
+        },
+        "reference_id": {
+          "type": "string"
+        },
+        "reference_type": {
+          "type": "string"
+        },
+        "total_cost_minor": {
+          "type": "integer"
+        },
+        "unit_cost_minor": {
+          "type": "integer"
+        },
+        "warehouse_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "currency",
+        "entity_id",
+        "product_id",
+        "quantity",
+        "reference_id",
+        "reference_type",
+        "total_cost_minor",
+        "warehouse_id"
+      ],
+      "title": "InventoryIssuedPayload",
+      "type": "object"
+    },
+    "InventoryLotReleasedPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "base_event": {},
+        "order_id": {
+          "type": "string"
+        },
+        "released_lots": {
+          "anyOf": [
+            {
+              "items": {},
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "warehouse_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "order_id",
+        "supplier_id",
+        "warehouse_id"
+      ],
+      "title": "InventoryLotReleasedPayload",
+      "type": "object"
+    },
+    "InventoryRebalanceProposedPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "action_mode": {
+          "type": "string"
+        },
+        "approval_request_id": {
+          "type": "string"
+        },
+        "base_event": {},
+        "confidence_bps": {
+          "type": "integer"
+        },
+        "currency": {
+          "type": "string"
+        },
+        "expiry_date": {
+          "type": "string"
+        },
+        "layer_id": {
+          "type": "string"
+        },
+        "lot_id": {
+          "type": "string"
+        },
+        "occurred_at": {
+          "type": "string"
+        },
+        "product_id": {
+          "type": "string"
+        },
+        "proposal_id": {
+          "type": "string"
+        },
+        "qty": {
+          "type": "integer"
+        },
+        "source_warehouse_id": {
+          "type": "string"
+        },
+        "target_warehouse_id": {
+          "type": "string"
+        },
+        "tenant_id": {
+          "type": "string"
+        },
+        "value_at_risk_minor": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "base_event",
+        "currency",
+        "product_id",
+        "proposal_id",
+        "qty",
+        "source_warehouse_id",
+        "tenant_id",
+        "value_at_risk_minor"
+      ],
+      "title": "InventoryRebalanceProposedPayload",
+      "type": "object"
+    },
+    "InventoryReceivedPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "base_event": {},
+        "currency": {
+          "type": "string"
+        },
+        "entity_id": {
+          "type": "string"
+        },
+        "expiry_date": {
+          "type": "string"
+        },
+        "gl_entry_id": {
+          "type": "string"
+        },
+        "layer_id": {
+          "type": "string"
+        },
+        "lot_id": {
+          "type": "string"
+        },
+        "movement_id": {
+          "type": "string"
+        },
+        "occurred_at": {
+          "type": "string"
+        },
+        "product_id": {
+          "type": "string"
+        },
+        "quantity": {
+          "type": "integer"
+        },
+        "reference_id": {
+          "type": "string"
+        },
+        "reference_type": {
+          "type": "string"
+        },
+        "total_cost_minor": {
+          "type": "integer"
+        },
+        "unit_cost_minor": {
+          "type": "integer"
+        },
+        "warehouse_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "currency",
+        "entity_id",
+        "layer_id",
+        "movement_id",
+        "product_id",
+        "quantity",
+        "total_cost_minor",
+        "unit_cost_minor",
+        "warehouse_id"
+      ],
+      "title": "InventoryReceivedPayload",
+      "type": "object"
+    },
+    "JoinRequestPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "base_event": {},
+        "decided_by": {
+          "type": "string"
+        },
+        "decision_reason": {
+          "type": "string"
+        },
+        "normalized_inn": {
+          "type": "string"
+        },
+        "request_id": {
+          "type": "string"
+        },
+        "requester_name": {
+          "type": "string"
+        },
+        "requester_phone": {
+          "type": "string"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "role_sought": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "target_tenant_id": {
+          "type": "string"
+        },
+        "target_tenant_type": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "request_id",
+        "target_tenant_id",
+        "target_tenant_type"
+      ],
+      "title": "JoinRequestPayload",
       "type": "object"
     },
     "LogisticsExceptionPayload": {
@@ -963,6 +2467,57 @@
       "title": "ManifestPayload",
       "type": "object"
     },
+    "MigrationPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "base_event": {},
+        "bundle_id": {
+          "type": "string"
+        },
+        "domain": {
+          "type": "string"
+        },
+        "error_code": {
+          "type": "string"
+        },
+        "error_message": {
+          "type": "string"
+        },
+        "imported_count": {
+          "type": "integer"
+        },
+        "processed_rows": {
+          "type": "integer"
+        },
+        "project_id": {
+          "type": "string"
+        },
+        "quarantine_count": {
+          "type": "integer"
+        },
+        "report_id": {
+          "type": "string"
+        },
+        "session_id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "total_rows": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "base_event",
+        "supplier_id"
+      ],
+      "title": "MigrationPayload",
+      "type": "object"
+    },
     "NegotiationPayload": {
       "additionalProperties": false,
       "properties": {
@@ -987,6 +2542,64 @@
         "retailer_id"
       ],
       "title": "NegotiationPayload",
+      "type": "object"
+    },
+    "OntologyObjectChangedPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "base_event": {},
+        "cell_id": {
+          "type": "string"
+        },
+        "change_kind": {
+          "type": "string"
+        },
+        "object_id": {
+          "type": "string"
+        },
+        "object_type": {
+          "type": "string"
+        },
+        "security_markings": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source_event_id": {
+          "type": "string"
+        },
+        "source_event_type": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "updated_at": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "base_event",
+        "cell_id",
+        "change_kind",
+        "object_id",
+        "object_type",
+        "supplier_id",
+        "updated_at",
+        "version"
+      ],
+      "title": "OntologyObjectChangedPayload",
       "type": "object"
     },
     "OrderConflictReconciledPayload": {
@@ -1211,6 +2824,90 @@
       "title": "OrderPayload",
       "type": "object"
     },
+    "P2PPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "actor_id": {
+          "type": "string"
+        },
+        "approval_request_id": {
+          "type": "string"
+        },
+        "base_event": {},
+        "currency": {
+          "type": "string"
+        },
+        "entity_id": {
+          "type": "string"
+        },
+        "esf_doc_id": {
+          "type": "string"
+        },
+        "journal_entry_id": {
+          "type": "string"
+        },
+        "line_count": {
+          "type": "integer"
+        },
+        "match_status": {
+          "type": "string"
+        },
+        "occurred_at": {
+          "type": "string"
+        },
+        "po_id": {
+          "type": "string"
+        },
+        "receipt_id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "subtotal_minor": {
+          "type": "integer"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "tenant_id": {
+          "type": "string"
+        },
+        "total_minor": {
+          "type": "integer"
+        },
+        "total_received_minor": {
+          "type": "integer"
+        },
+        "variance_minor": {
+          "type": "integer"
+        },
+        "variance_reason": {
+          "type": "string"
+        },
+        "vat_minor": {
+          "type": "integer"
+        },
+        "vendor_id": {
+          "type": "string"
+        },
+        "vendor_invoice_id": {
+          "type": "string"
+        },
+        "warehouse_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "currency",
+        "po_id",
+        "status",
+        "tenant_id"
+      ],
+      "title": "P2PPayload",
+      "type": "object"
+    },
     "PayoutBatchPayload": {
       "additionalProperties": false,
       "properties": {
@@ -1243,6 +2940,51 @@
         "supplier_id"
       ],
       "title": "PayoutBatchPayload",
+      "type": "object"
+    },
+    "PeriodPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "actor_id": {
+          "type": "string"
+        },
+        "approval_id": {
+          "type": "string"
+        },
+        "base_event": {},
+        "entity_id": {
+          "type": "string"
+        },
+        "occurred_at": {
+          "type": "string"
+        },
+        "period_id": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "snapshot_hash": {
+          "type": "string"
+        },
+        "snapshot_uri": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "timezone": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "actor_id",
+        "base_event",
+        "entity_id",
+        "period_id",
+        "status"
+      ],
+      "title": "PeriodPayload",
       "type": "object"
     },
     "PlanningPayload": {
@@ -1450,6 +3192,337 @@
       "title": "PromotionPayload",
       "type": "object"
     },
+    "ProposalL2AutoExecutedPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "actor_id": {
+          "type": "string"
+        },
+        "agent_id": {
+          "type": "string"
+        },
+        "autonomy_level": {
+          "type": "string"
+        },
+        "base_event": {},
+        "confidence_bps": {
+          "type": "integer"
+        },
+        "currency": {
+          "type": "string"
+        },
+        "estimated_impact_minor": {
+          "type": "integer"
+        },
+        "occurred_at": {
+          "type": "string"
+        },
+        "payload_hash": {
+          "type": "string"
+        },
+        "proposal_id": {
+          "type": "string"
+        },
+        "proposal_type": {
+          "type": "string"
+        },
+        "roi_event_id": {
+          "type": "string"
+        },
+        "rollback_rate_bps": {
+          "type": "integer"
+        },
+        "soak_days": {
+          "type": "integer"
+        },
+        "soak_executed_count": {
+          "type": "integer"
+        },
+        "status": {
+          "type": "string"
+        },
+        "target_object_id": {
+          "type": "string"
+        },
+        "target_object_type": {
+          "type": "string"
+        },
+        "tenant_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "agent_id",
+        "autonomy_level",
+        "base_event",
+        "confidence_bps",
+        "currency",
+        "estimated_impact_minor",
+        "payload_hash",
+        "proposal_id",
+        "proposal_type",
+        "rollback_rate_bps",
+        "soak_days",
+        "soak_executed_count",
+        "status",
+        "target_object_id",
+        "target_object_type",
+        "tenant_id"
+      ],
+      "title": "ProposalL2AutoExecutedPayload",
+      "type": "object"
+    },
+    "ProposalPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "actor_id": {
+          "type": "string"
+        },
+        "actor_type": {
+          "type": "string"
+        },
+        "agent_id": {
+          "type": "string"
+        },
+        "approval_request_id": {
+          "type": "string"
+        },
+        "base_event": {},
+        "confidence_bps": {
+          "type": "integer"
+        },
+        "currency": {
+          "type": "string"
+        },
+        "decision": {
+          "type": "string"
+        },
+        "expected_impact_minor": {
+          "type": "integer"
+        },
+        "occurred_at": {
+          "type": "string"
+        },
+        "payload_hash": {
+          "type": "string"
+        },
+        "proposal_id": {
+          "type": "string"
+        },
+        "proposal_type": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "roi_event_id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "target_object_id": {
+          "type": "string"
+        },
+        "target_object_type": {
+          "type": "string"
+        },
+        "tenant_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "agent_id",
+        "base_event",
+        "payload_hash",
+        "proposal_id",
+        "proposal_type",
+        "status",
+        "target_object_id",
+        "target_object_type",
+        "tenant_id"
+      ],
+      "title": "ProposalPayload",
+      "type": "object"
+    },
+    "ReconBreakOpenedPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "actual_minor": {
+          "type": "integer"
+        },
+        "base_event": {},
+        "break_id": {
+          "type": "string"
+        },
+        "control_tower_exception_id": {
+          "type": "string"
+        },
+        "currency": {
+          "type": "string"
+        },
+        "delta_minor": {
+          "type": "integer"
+        },
+        "dimension": {
+          "type": "string"
+        },
+        "entity_id": {
+          "type": "string"
+        },
+        "expected_minor": {
+          "type": "integer"
+        },
+        "object_id": {
+          "type": "string"
+        },
+        "object_type": {
+          "type": "string"
+        },
+        "owner_id": {
+          "type": "string"
+        },
+        "run_id": {
+          "type": "string"
+        },
+        "severity": {
+          "type": "string"
+        },
+        "sla_due_at": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "actual_minor",
+        "base_event",
+        "break_id",
+        "currency",
+        "delta_minor",
+        "dimension",
+        "entity_id",
+        "expected_minor",
+        "object_id",
+        "object_type",
+        "run_id",
+        "severity",
+        "status"
+      ],
+      "title": "ReconBreakOpenedPayload",
+      "type": "object"
+    },
+    "ReconBreakResolvedPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "base_event": {},
+        "break_id": {
+          "type": "string"
+        },
+        "control_tower_exception_id": {
+          "type": "string"
+        },
+        "currency": {
+          "type": "string"
+        },
+        "delta_minor": {
+          "type": "integer"
+        },
+        "dimension": {
+          "type": "string"
+        },
+        "entity_id": {
+          "type": "string"
+        },
+        "object_id": {
+          "type": "string"
+        },
+        "object_type": {
+          "type": "string"
+        },
+        "resolution_note": {
+          "type": "string"
+        },
+        "resolved_by": {
+          "type": "string"
+        },
+        "run_id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "break_id",
+        "currency",
+        "delta_minor",
+        "dimension",
+        "entity_id",
+        "object_id",
+        "object_type",
+        "resolved_by",
+        "run_id",
+        "status"
+      ],
+      "title": "ReconBreakResolvedPayload",
+      "type": "object"
+    },
+    "ReconRunCompletedPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "base_event": {},
+        "break_count": {
+          "type": "integer"
+        },
+        "completed_at": {
+          "type": "string"
+        },
+        "currency": {
+          "type": "string"
+        },
+        "entity_id": {
+          "type": "string"
+        },
+        "exposure_minor": {
+          "type": "integer"
+        },
+        "mode": {
+          "type": "string"
+        },
+        "period_id": {
+          "type": "string"
+        },
+        "run_id": {
+          "type": "string"
+        },
+        "started_at": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "triggered_by": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "break_count",
+        "entity_id",
+        "exposure_minor",
+        "mode",
+        "period_id",
+        "run_id",
+        "started_at",
+        "status",
+        "triggered_by"
+      ],
+      "title": "ReconRunCompletedPayload",
+      "type": "object"
+    },
     "RetailerPayload": {
       "additionalProperties": false,
       "properties": {
@@ -1593,6 +3666,64 @@
       "title": "ReturnPayload",
       "type": "object"
     },
+    "RoiEventRecordedPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "base_event": {},
+        "category": {
+          "type": "string"
+        },
+        "confidence_bps": {
+          "type": "integer"
+        },
+        "currency": {
+          "type": "string"
+        },
+        "event_id": {
+          "type": "string"
+        },
+        "evidence_ref_id": {
+          "type": "string"
+        },
+        "evidence_ref_type": {
+          "type": "string"
+        },
+        "holdout_control": {
+          "type": "boolean"
+        },
+        "is_estimate": {
+          "type": "boolean"
+        },
+        "methodology": {
+          "type": "string"
+        },
+        "occurred_at": {
+          "type": "string"
+        },
+        "proposal_id": {
+          "type": "string"
+        },
+        "savings_minor": {
+          "type": "integer"
+        },
+        "tenant_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "category",
+        "confidence_bps",
+        "currency",
+        "event_id",
+        "holdout_control",
+        "is_estimate",
+        "savings_minor",
+        "tenant_id"
+      ],
+      "title": "RoiEventRecordedPayload",
+      "type": "object"
+    },
     "RoutePayload": {
       "additionalProperties": false,
       "properties": {
@@ -1638,6 +3769,71 @@
         "supplier_id"
       ],
       "title": "RoutePayload",
+      "type": "object"
+    },
+    "ScimIdentitySyncedPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "type": "string"
+        },
+        "active": {
+          "type": "boolean"
+        },
+        "actor_id": {
+          "type": "string"
+        },
+        "base_event": {},
+        "display_name": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "external_id": {
+          "type": "string"
+        },
+        "occurred_at": {
+          "type": "string"
+        },
+        "resource_id": {
+          "type": "string"
+        },
+        "resource_type": {
+          "type": "string"
+        },
+        "roles_synced": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "tenant_id": {
+          "type": "string"
+        },
+        "trace_id": {
+          "type": "string"
+        },
+        "user_name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "action",
+        "active",
+        "base_event",
+        "resource_id",
+        "resource_type",
+        "tenant_id"
+      ],
+      "title": "ScimIdentitySyncedPayload",
       "type": "object"
     },
     "ShopClosedBypassOffloadPayload": {
@@ -1694,6 +3890,52 @@
         "retailer_id"
       ],
       "title": "ShopClosedPayload",
+      "type": "object"
+    },
+    "SodViolationDetectedPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "type": "string"
+        },
+        "actor_id": {
+          "type": "string"
+        },
+        "base_event": {},
+        "maker_id": {
+          "type": "string"
+        },
+        "object_id": {
+          "type": "string"
+        },
+        "object_type": {
+          "type": "string"
+        },
+        "route_path": {
+          "type": "string"
+        },
+        "rule_code": {
+          "type": "string"
+        },
+        "tenant_id": {
+          "type": "string"
+        },
+        "trace_id": {
+          "type": "string"
+        },
+        "violation_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "action",
+        "actor_id",
+        "base_event",
+        "rule_code",
+        "tenant_id",
+        "violation_id"
+      ],
+      "title": "SodViolationDetectedPayload",
       "type": "object"
     },
     "SplitShipmentPayload": {
@@ -2154,6 +4396,69 @@
       ],
       "title": "WarehouseTransferPayload",
       "type": "object"
+    },
+    "WhatIfSimulatedPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "base_event": {},
+        "created_by": {
+          "type": "string"
+        },
+        "credit_exposure_delta_minor": {
+          "type": "integer"
+        },
+        "dispatch_cost_delta_minor": {
+          "type": "integer"
+        },
+        "entity_id": {
+          "type": "string"
+        },
+        "forecast_delta_minor": {
+          "type": "integer"
+        },
+        "horizon_days": {
+          "type": "integer"
+        },
+        "name": {
+          "type": "string"
+        },
+        "net_pnl_delta_minor": {
+          "type": "integer"
+        },
+        "occurred_at": {
+          "type": "string"
+        },
+        "replenishment_cost_minor": {
+          "type": "integer"
+        },
+        "scenario_id": {
+          "type": "string"
+        },
+        "simulation_id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "tenant_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "credit_exposure_delta_minor",
+        "dispatch_cost_delta_minor",
+        "forecast_delta_minor",
+        "horizon_days",
+        "name",
+        "net_pnl_delta_minor",
+        "replenishment_cost_minor",
+        "simulation_id",
+        "status",
+        "tenant_id"
+      ],
+      "title": "WhatIfSimulatedPayload",
+      "type": "object"
     }
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -2347,6 +4652,44 @@
         }
       ],
       "title": "ArInvoiceSettledEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ARInvoicePayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "AR_MIGRATION_ACKNOWLEDGED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ArMigrationAcknowledgedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ARInvoicePayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "AR_MIGRATION_DISPUTED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ArMigrationDisputedEnvelope"
     },
     {
       "allOf": [
@@ -3377,6 +5720,44 @@
     {
       "allOf": [
         {
+          "$ref": "#/$defs/JoinRequestPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "JOIN_REQUEST_CREATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "JoinRequestCreatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/JoinRequestPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "JOIN_REQUEST_RESOLVED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "JoinRequestResolvedEnvelope"
+    },
+    {
+      "allOf": [
+        {
           "$ref": "#/$defs/LogisticsExceptionPayload"
         },
         {
@@ -3715,6 +6096,177 @@
         }
       ],
       "title": "ManifestSealedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/MigrationPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "MIGRATION_APPLIED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "MigrationAppliedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/MigrationPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "MIGRATION_APPLY_PROGRESS"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "MigrationApplyProgressEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/MigrationPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "MIGRATION_BUNDLE_UPLOADED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "MigrationBundleUploadedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/MigrationPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "MIGRATION_DRY_RUN_READY"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "MigrationDryRunReadyEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/MigrationPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "MIGRATION_FAILED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "MigrationFailedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/MigrationPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "MIGRATION_MAPPING_PROPOSED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "MigrationMappingProposedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/MigrationPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "MIGRATION_ROLLED_BACK"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "MigrationRolledBackEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/MigrationPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "MIGRATION_SESSION_STATUS_UPDATE"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "MigrationSessionStatusUpdateEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/MigrationPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "MIGRATION_SORTED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "MigrationSortedEnvelope"
     },
     {
       "allOf": [
@@ -6436,6 +8988,747 @@
     {
       "allOf": [
         {
+          "$ref": "#/$defs/AnomalyCasePayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "anomaly.case.detected"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "Anomaly.case.detectedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/AnomalyCasePayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "anomaly.case.resolved"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "Anomaly.case.resolvedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ApprovalDecidedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "approval.decided"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "Approval.decidedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ApprovalRequestedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "approval.requested"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "Approval.requestedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/AuditAnchorWrittenPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "audit.anchor.written"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "Audit.anchor.writtenEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/HaccpExcursionReportedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "coldchain.haccp.excursion"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "Coldchain.haccp.excursionEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ConnectorPushCompletedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "connector.push.completed"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "Connector.push.completedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ConnectorShadowMismatchPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "connector.shadow.mismatch"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "Connector.shadow.mismatchEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ConnectorSyncPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "connector.sync.completed"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "Connector.sync.completedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ConnectorSyncPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "connector.sync.failed"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "Connector.sync.failedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/CreditHoldPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "credit.hold.applied"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "Credit.hold.appliedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/CreditHoldPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "credit.hold.released"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "Credit.hold.releasedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/CreditLimitChangedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "credit.limit.changed"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "Credit.limit.changedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/CreditScoreComputedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "credit.score.computed"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "Credit.score.computedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/EntityIntercompanyPostedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "entity.intercompany.posted"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "Entity.intercompany.postedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/EsfDocumentPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "esf.accepted"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "Esf.acceptedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/EsfDocumentPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "esf.cancelled"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "Esf.cancelledEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/EsfDocumentPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "esf.rejected"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "Esf.rejectedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/EsfDocumentPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "esf.submitted"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "Esf.submittedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ExportPackCreatedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "export.pack.created"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "Export.pack.createdEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ForecastRunCompletedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "forecast.run.completed"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "Forecast.run.completedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/FxRevaluationPostedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "fx.revaluation.posted"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "Fx.revaluation.postedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/GLEntryPostedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "gl.entry.posted"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "Gl.entry.postedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/GLEntryReversedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "gl.entry.reversed"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "Gl.entry.reversedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/AuditorAccessGrantedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "iam.auditor_access.granted"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "Iam.auditorAccess.grantedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/IAMRoleChangedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "iam.role.changed"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "Iam.role.changedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ScimIdentitySyncedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "iam.scim.synced"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "Iam.scim.syncedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/InventoryExpiryRiskPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "inventory.expiry.risk"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "Inventory.expiry.riskEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/InventoryIssuedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "inventory.issued"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "Inventory.issuedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/InventoryLotReleasedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "inventory.lot.released"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "Inventory.lot.releasedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/InventoryRebalanceProposedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "inventory.rebalance.proposed"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "Inventory.rebalance.proposedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/InventoryReceivedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "inventory.received"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "Inventory.receivedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/OntologyObjectChangedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "ontology.object.changed"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "Ontology.object.changedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/P2PPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "p2p.po.created"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "P2p.po.createdEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/P2PPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "p2p.receipt.posted"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "P2p.receipt.postedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/P2PPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "p2p.three_way_match.completed"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "P2p.threeWayMatch.completedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/PeriodPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "period.closed"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "Period.closedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/PeriodPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "period.reopened"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "Period.reopenedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/PeriodPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "period.soft_closed"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "Period.softClosedEnvelope"
+    },
+    {
+      "allOf": [
+        {
           "$ref": "#/$defs/PlanningPayload"
         },
         {
@@ -6489,6 +9782,196 @@
         }
       ],
       "title": "Planning.signal.ingest.v1Envelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ProposalPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "proposal.created"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "Proposal.createdEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ProposalPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "proposal.decided"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "Proposal.decidedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ProposalPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "proposal.executed"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "Proposal.executedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ProposalL2AutoExecutedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "proposal.l2.auto_executed"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "Proposal.l2.autoExecutedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ReconBreakOpenedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "recon.break.opened"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "Recon.break.openedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ReconBreakResolvedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "recon.break.resolved"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "Recon.break.resolvedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ReconRunCompletedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "recon.run.completed"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "Recon.run.completedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/RoiEventRecordedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "roi.event.recorded"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "Roi.event.recordedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/SodViolationDetectedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "sod.violation.detected"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "Sod.violation.detectedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/WhatIfSimulatedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "whatif.simulation.completed"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "Whatif.simulation.completedEnvelope"
     }
   ],
   "properties": {
@@ -6504,6 +9987,8 @@
         "AR_INVOICE_OPENED",
         "AR_INVOICE_PAYMENT",
         "AR_INVOICE_SETTLED",
+        "AR_MIGRATION_ACKNOWLEDGED",
+        "AR_MIGRATION_DISPUTED",
         "BUYER_ACCEPTANCE_ACCEPTED",
         "BUYER_ACCEPTANCE_EXPIRED",
         "BUYER_ACCEPTANCE_PENDING",
@@ -6558,6 +10043,8 @@
         "INVENTORY_POLICY_UPDATED",
         "INVENTORY_QUANTITY_UPDATED",
         "INVENTORY_SYNC_COMPLETE",
+        "JOIN_REQUEST_CREATED",
+        "JOIN_REQUEST_RESOLVED",
         "LOGISTICS_EXCEPTION_REPORTED",
         "LOGISTICS_TELEMETRY",
         "LOOK_AHEAD_COMPLETED",
@@ -6576,6 +10063,15 @@
         "MANIFEST_ORDER_INJECTED",
         "MANIFEST_REBALANCED",
         "MANIFEST_SEALED",
+        "MIGRATION_APPLIED",
+        "MIGRATION_APPLY_PROGRESS",
+        "MIGRATION_BUNDLE_UPLOADED",
+        "MIGRATION_DRY_RUN_READY",
+        "MIGRATION_FAILED",
+        "MIGRATION_MAPPING_PROPOSED",
+        "MIGRATION_ROLLED_BACK",
+        "MIGRATION_SESSION_STATUS_UPDATE",
+        "MIGRATION_SORTED",
         "MISSING_ITEMS_REPORTED",
         "NEGOTIATION_PROPOSED",
         "NEGOTIATION_RESOLVED",
@@ -6719,9 +10215,58 @@
         "WMS_PUTAWAY",
         "WMS_TEMPERATURE_BREACH",
         "YARD_GATE_CHECK_RECORDED",
+        "anomaly.case.detected",
+        "anomaly.case.resolved",
+        "approval.decided",
+        "approval.requested",
+        "audit.anchor.written",
+        "coldchain.haccp.excursion",
+        "connector.push.completed",
+        "connector.shadow.mismatch",
+        "connector.sync.completed",
+        "connector.sync.failed",
+        "credit.hold.applied",
+        "credit.hold.released",
+        "credit.limit.changed",
+        "credit.score.computed",
+        "entity.intercompany.posted",
+        "esf.accepted",
+        "esf.cancelled",
+        "esf.rejected",
+        "esf.submitted",
+        "export.pack.created",
+        "forecast.run.completed",
+        "fx.revaluation.posted",
+        "gl.entry.posted",
+        "gl.entry.reversed",
+        "iam.auditor_access.granted",
+        "iam.role.changed",
+        "iam.scim.synced",
+        "inventory.expiry.risk",
+        "inventory.issued",
+        "inventory.lot.released",
+        "inventory.rebalance.proposed",
+        "inventory.received",
+        "ontology.object.changed",
+        "p2p.po.created",
+        "p2p.receipt.posted",
+        "p2p.three_way_match.completed",
+        "period.closed",
+        "period.reopened",
+        "period.soft_closed",
         "planning.meio.recommendation.v1",
         "planning.scenario.published.v1",
-        "planning.signal.ingest.v1"
+        "planning.signal.ingest.v1",
+        "proposal.created",
+        "proposal.decided",
+        "proposal.executed",
+        "proposal.l2.auto_executed",
+        "recon.break.opened",
+        "recon.break.resolved",
+        "recon.run.completed",
+        "roi.event.recorded",
+        "sod.violation.detected",
+        "whatif.simulation.completed"
       ],
       "type": "string"
     }
@@ -6742,6 +10287,8 @@
     "AR_INVOICE_OPENED": "ARInvoicePayload",
     "AR_INVOICE_PAYMENT": "ARInvoicePayload",
     "AR_INVOICE_SETTLED": "ARInvoicePayload",
+    "AR_MIGRATION_ACKNOWLEDGED": "ARInvoicePayload",
+    "AR_MIGRATION_DISPUTED": "ARInvoicePayload",
     "BUYER_ACCEPTANCE_ACCEPTED": "BuyerAcceptancePayload",
     "BUYER_ACCEPTANCE_EXPIRED": "BuyerAcceptancePayload",
     "BUYER_ACCEPTANCE_PENDING": "BuyerAcceptancePayload",
@@ -6796,6 +10343,8 @@
     "INVENTORY_POLICY_UPDATED": "WarehousePayload",
     "INVENTORY_QUANTITY_UPDATED": "WarehousePayload",
     "INVENTORY_SYNC_COMPLETE": "SyncPayload",
+    "JOIN_REQUEST_CREATED": "JoinRequestPayload",
+    "JOIN_REQUEST_RESOLVED": "JoinRequestPayload",
     "LOGISTICS_EXCEPTION_REPORTED": "LogisticsExceptionPayload",
     "LOGISTICS_TELEMETRY": "LogisticsExceptionPayload",
     "LOOK_AHEAD_COMPLETED": "SupplyRequestPayload",
@@ -6814,6 +10363,15 @@
     "MANIFEST_ORDER_INJECTED": "ManifestPayload",
     "MANIFEST_REBALANCED": "ManifestPayload",
     "MANIFEST_SEALED": "ManifestPayload",
+    "MIGRATION_APPLIED": "MigrationPayload",
+    "MIGRATION_APPLY_PROGRESS": "MigrationPayload",
+    "MIGRATION_BUNDLE_UPLOADED": "MigrationPayload",
+    "MIGRATION_DRY_RUN_READY": "MigrationPayload",
+    "MIGRATION_FAILED": "MigrationPayload",
+    "MIGRATION_MAPPING_PROPOSED": "MigrationPayload",
+    "MIGRATION_ROLLED_BACK": "MigrationPayload",
+    "MIGRATION_SESSION_STATUS_UPDATE": "MigrationPayload",
+    "MIGRATION_SORTED": "MigrationPayload",
     "MISSING_ITEMS_REPORTED": "OrderPayload",
     "NEGOTIATION_PROPOSED": "NegotiationPayload",
     "NEGOTIATION_RESOLVED": "NegotiationPayload",
@@ -6957,8 +10515,57 @@
     "WMS_PUTAWAY": "WarehousePayload",
     "WMS_TEMPERATURE_BREACH": "WarehousePayload",
     "YARD_GATE_CHECK_RECORDED": "PlanningPayload",
+    "anomaly.case.detected": "AnomalyCasePayload",
+    "anomaly.case.resolved": "AnomalyCasePayload",
+    "approval.decided": "ApprovalDecidedPayload",
+    "approval.requested": "ApprovalRequestedPayload",
+    "audit.anchor.written": "AuditAnchorWrittenPayload",
+    "coldchain.haccp.excursion": "HaccpExcursionReportedPayload",
+    "connector.push.completed": "ConnectorPushCompletedPayload",
+    "connector.shadow.mismatch": "ConnectorShadowMismatchPayload",
+    "connector.sync.completed": "ConnectorSyncPayload",
+    "connector.sync.failed": "ConnectorSyncPayload",
+    "credit.hold.applied": "CreditHoldPayload",
+    "credit.hold.released": "CreditHoldPayload",
+    "credit.limit.changed": "CreditLimitChangedPayload",
+    "credit.score.computed": "CreditScoreComputedPayload",
+    "entity.intercompany.posted": "EntityIntercompanyPostedPayload",
+    "esf.accepted": "EsfDocumentPayload",
+    "esf.cancelled": "EsfDocumentPayload",
+    "esf.rejected": "EsfDocumentPayload",
+    "esf.submitted": "EsfDocumentPayload",
+    "export.pack.created": "ExportPackCreatedPayload",
+    "forecast.run.completed": "ForecastRunCompletedPayload",
+    "fx.revaluation.posted": "FxRevaluationPostedPayload",
+    "gl.entry.posted": "GLEntryPostedPayload",
+    "gl.entry.reversed": "GLEntryReversedPayload",
+    "iam.auditor_access.granted": "AuditorAccessGrantedPayload",
+    "iam.role.changed": "IAMRoleChangedPayload",
+    "iam.scim.synced": "ScimIdentitySyncedPayload",
+    "inventory.expiry.risk": "InventoryExpiryRiskPayload",
+    "inventory.issued": "InventoryIssuedPayload",
+    "inventory.lot.released": "InventoryLotReleasedPayload",
+    "inventory.rebalance.proposed": "InventoryRebalanceProposedPayload",
+    "inventory.received": "InventoryReceivedPayload",
+    "ontology.object.changed": "OntologyObjectChangedPayload",
+    "p2p.po.created": "P2PPayload",
+    "p2p.receipt.posted": "P2PPayload",
+    "p2p.three_way_match.completed": "P2PPayload",
+    "period.closed": "PeriodPayload",
+    "period.reopened": "PeriodPayload",
+    "period.soft_closed": "PeriodPayload",
     "planning.meio.recommendation.v1": "PlanningPayload",
     "planning.scenario.published.v1": "PlanningPayload",
-    "planning.signal.ingest.v1": "PlanningPayload"
+    "planning.signal.ingest.v1": "PlanningPayload",
+    "proposal.created": "ProposalPayload",
+    "proposal.decided": "ProposalPayload",
+    "proposal.executed": "ProposalPayload",
+    "proposal.l2.auto_executed": "ProposalL2AutoExecutedPayload",
+    "recon.break.opened": "ReconBreakOpenedPayload",
+    "recon.break.resolved": "ReconBreakResolvedPayload",
+    "recon.run.completed": "ReconRunCompletedPayload",
+    "roi.event.recorded": "RoiEventRecordedPayload",
+    "sod.violation.detected": "SodViolationDetectedPayload",
+    "whatif.simulation.completed": "WhatIfSimulatedPayload"
   }
 }

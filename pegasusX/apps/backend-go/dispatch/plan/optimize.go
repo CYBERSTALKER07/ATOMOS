@@ -14,6 +14,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch"
@@ -37,11 +38,13 @@ const (
 	DenseBatchMinStops = 12
 
 	// fallbackTimeout bounds H3 cell resolution + binpack CPU during peak dispatch.
-	fallbackTimeout = 3 * time.Second
+	fallbackTimeout = 10 * time.Second
 
-	// solverBudget is aligned with optimizerclient.DefaultTimeout (8s HTTP soft
-	// timeout) plus wire overhead — strictly greater than solver time_limit_ms (5s).
-	solverBudget = optimizerclient.DefaultTimeout + 250*time.Millisecond
+	// solverBudget bounds parallel subproblem wave completion within the <= 60s budget.
+	solverBudget = 55 * time.Second
+
+	// defaultPartitionWorkers caps concurrent HTTP calls to optimizer-core across subproblems.
+	defaultPartitionWorkers = 8
 )
 
 // OptimizerClass maps raw optimizer_source to HEURISTIC|OPTIMAL product labels.
@@ -60,32 +63,45 @@ func OptimizerClass(source string) string {
 // Job is the backend-domain input. The orchestrator builds an
 // optimizerclient.SolveInput from it on the way out.
 type Job struct {
-	TraceID    string
-	SupplierID string
-	HomeNodeID string
-	DepotLat   float64
-	DepotLng   float64
-	Orders     []dispatch.DispatchableOrder
-	Fleet      []dispatch.AvailableDriver
-	CellLookup func(lat, lng float64) string
-	Score      dispatch.ScoreContext
+	TraceID              string
+	SupplierID           string
+	HomeNodeID           string
+	DepotLat             float64
+	DepotLng             float64
+	Orders               []dispatch.DispatchableOrder
+	Fleet                []dispatch.AvailableDriver
+	CellLookup           func(lat, lng float64) string
+	Score                dispatch.ScoreContext
+	MaxStopsPerRoute     int
+	MaxStopsPerPartition int
+	TimeLimitMs          int
 }
 
 // OptimizeAndValidate runs the VRP optimiser for dense batches, re-validates,
-// and degrades gracefully to H3 BinPack. Small batches skip the optimizer call.
+// and degrades gracefully to balanced spatial fallback. Small batches skip the optimizer call.
+// Batches larger than the partition target (default 200, max 250 stops) are split into
+// depot/capacity-balanced spatial subproblems solved concurrently by optimizerclient workers.
 func OptimizeAndValidate(ctx context.Context, client *optimizerclient.Client, job Job) (*dispatch.AssignmentResult, string, error) {
 	n := len(job.Orders)
 	threshold := denseBatchThreshold()
+	maxRouteStops := dispatch.EffectiveMaxStopsPerRoute(job.MaxStopsPerRoute, n, len(job.Fleet))
+	partitionLimit := resolvePartitionLimit(job.MaxStopsPerPartition)
+
 	if client != nil && n >= threshold {
+		if n > partitionLimit {
+			return solvePartitionedWave(ctx, client, job, maxRouteStops, partitionLimit)
+		}
 		in := optimizerclient.SolveInput{
-			TraceID:      job.TraceID,
-			SupplierID:   job.SupplierID,
-			HomeNodeID:   job.HomeNodeID,
-			DepotLat:     job.DepotLat,
-			DepotLng:     job.DepotLng,
-			Orders:       geoOrdersFromDispatchable(job.Orders),
-			Fleet:        job.Fleet,
-			TetrisBuffer: maxAcceptableUtilFraction,
+			TraceID:          job.TraceID,
+			SupplierID:       job.SupplierID,
+			HomeNodeID:       job.HomeNodeID,
+			DepotLat:         job.DepotLat,
+			DepotLng:         job.DepotLng,
+			Orders:           geoOrdersFromDispatchable(job.Orders),
+			Fleet:            job.Fleet,
+			TetrisBuffer:     maxAcceptableUtilFraction,
+			MaxStopsPerRoute: maxRouteStops,
+			TimeLimitMs:      job.TimeLimitMs,
 		}
 		solveCtx, cancel := context.WithTimeout(ctx, solverBudget)
 		defer cancel()
@@ -94,13 +110,13 @@ func OptimizeAndValidate(ctx context.Context, client *optimizerclient.Client, jo
 			if res == nil || (len(res.Routes) == 0 && len(job.Orders) > 0) {
 				out := runFallbackWithDeadline(ctx, job)
 				out.Warnings = append(out.Warnings,
-					"optimizer returned zero routes — engaged H3 BinPack fallback")
+					"optimizer returned zero routes — engaged spatial BinPack fallback")
 				return out, SourceFallbackValidation, nil
 			}
-			if rejected := validateAssignment(res, job.Fleet); rejected != "" {
+			if rejected := validateAssignmentWithCap(res, job.Fleet, maxRouteStops); rejected != "" {
 				out := runFallbackWithDeadline(ctx, job)
 				out.Warnings = append(out.Warnings,
-					fmt.Sprintf("validation rejected: %s — engaged H3 BinPack fallback", rejected))
+					fmt.Sprintf("validation rejected: %s — engaged spatial BinPack fallback", rejected))
 				return out, SourceFallbackValidation, nil
 			}
 			return res, SourceOptimizer, nil
@@ -117,6 +133,144 @@ func OptimizeAndValidate(ctx context.Context, client *optimizerclient.Client, jo
 	return out, SourceFallbackPhase1, nil
 }
 
+func resolvePartitionLimit(explicit int) int {
+	if explicit > 0 && explicit <= dispatch.MaxPartitionStops {
+		return explicit
+	}
+	return dispatch.DefaultPartitionTargetStops
+}
+
+func solvePartitionedWave(ctx context.Context, client *optimizerclient.Client, job Job, maxRouteStops, partitionLimit int) (*dispatch.AssignmentResult, string, error) {
+	partPlan := dispatch.BuildSpatialSubproblems(job.Orders, job.Fleet, dispatch.SpatialPartitionOptions{
+		DepotLat:             job.DepotLat,
+		DepotLng:             job.DepotLng,
+		MaxStopsPerPartition: partitionLimit,
+		MaxStopsPerRoute:     maxRouteStops,
+		TetrisBuffer:         maxAcceptableUtilFraction,
+	})
+	if len(partPlan.Subproblems) == 0 {
+		out := &dispatch.AssignmentResult{
+			Routes:           []dispatch.DispatchRoute{},
+			Splits:           []dispatch.SplitOrder{},
+			Orphans:          partPlan.DeferredOverflow,
+			OverflowWarnings: partPlan.OverflowWarnings,
+			Warnings:         append([]string(nil), partPlan.Warnings...),
+		}
+		return out, SourceFallbackPhase1, nil
+	}
+
+	cellLookup := job.CellLookup
+	if cellLookup == nil {
+		cellLookup = dispatch.H3CellLookup
+	}
+	score := job.Score
+	score.DepotLat = job.DepotLat
+	score.DepotLng = job.DepotLng
+	if score.CellLookup == nil {
+		score.CellLookup = cellLookup
+	}
+
+	waveCtx, cancel := context.WithTimeout(ctx, solverBudget)
+	defer cancel()
+
+	subResults := make([]*dispatch.AssignmentResult, len(partPlan.Subproblems))
+	type partOutcome struct {
+		err      error
+		rejected string
+	}
+	outcomes := make([]partOutcome, len(partPlan.Subproblems))
+
+	workers := defaultPartitionWorkers
+	if len(partPlan.Subproblems) < workers {
+		workers = len(partPlan.Subproblems)
+	}
+	jobs := make(chan int, len(partPlan.Subproblems))
+	for i := range partPlan.Subproblems {
+		jobs <- i
+	}
+	close(jobs)
+
+	var wg sync.WaitGroup
+	wg.Add(workers)
+	for w := 0; w < workers; w++ {
+		go func() {
+			defer wg.Done()
+			for idx := range jobs {
+				sub := partPlan.Subproblems[idx]
+				subCtx, subCancel := context.WithTimeout(waveCtx, optimizerclient.DefaultTimeout)
+				res, err := client.Solve(subCtx, optimizerclient.SolveInput{
+					TraceID:          fmt.Sprintf("%s-p%d", job.TraceID, idx),
+					SupplierID:       job.SupplierID,
+					HomeNodeID:       job.HomeNodeID,
+					DepotLat:         sub.DepotLat,
+					DepotLng:         sub.DepotLng,
+					Orders:           geoOrdersFromDispatchable(sub.Orders),
+					Fleet:            sub.Fleet,
+					TetrisBuffer:     maxAcceptableUtilFraction,
+					MaxStopsPerRoute: maxRouteStops,
+					TimeLimitMs:      job.TimeLimitMs,
+				})
+				subCancel()
+				if err != nil {
+					outcomes[idx] = partOutcome{err: err}
+					subResults[idx] = dispatch.BinPack(sub.Orders, sub.Fleet, cellLookup, dispatch.BinPackOptions{
+						Score:            score,
+						MaxStopsPerRoute: maxRouteStops,
+					})
+					continue
+				}
+				if res == nil || (len(res.Routes) == 0 && len(sub.Orders) > 0) {
+					outcomes[idx] = partOutcome{rejected: "empty routes"}
+					subResults[idx] = dispatch.BinPack(sub.Orders, sub.Fleet, cellLookup, dispatch.BinPackOptions{
+						Score:            score,
+						MaxStopsPerRoute: maxRouteStops,
+					})
+					continue
+				}
+				if reason := validateAssignmentWithCap(res, sub.Fleet, maxRouteStops); reason != "" {
+					outcomes[idx] = partOutcome{rejected: reason}
+					subResults[idx] = dispatch.BinPack(sub.Orders, sub.Fleet, cellLookup, dispatch.BinPackOptions{
+						Score:            score,
+						MaxStopsPerRoute: maxRouteStops,
+					})
+					continue
+				}
+				subResults[idx] = res
+			}
+		}()
+	}
+	wg.Wait()
+
+	merged := dispatch.MergePartitionResults(subResults, partPlan.DeferredOverflow)
+	merged.OverflowWarnings = append(merged.OverflowWarnings, partPlan.OverflowWarnings...)
+	merged.Warnings = append(merged.Warnings, partPlan.Warnings...)
+
+	anyErr := false
+	anyRejected := false
+	for i, o := range outcomes {
+		if o.err != nil {
+			anyErr = true
+			merged.Warnings = append(merged.Warnings, fmt.Sprintf("subproblem_%d_fallback_err: %v", i, o.err))
+		} else if o.rejected != "" {
+			anyRejected = true
+			merged.Warnings = append(merged.Warnings, fmt.Sprintf("subproblem_%d_fallback_validation: %s", i, o.rejected))
+		}
+	}
+
+	if finalReason := validateAssignmentWithCap(merged, job.Fleet, maxRouteStops); finalReason != "" {
+		out := runFallbackWithDeadline(ctx, job)
+		out.Warnings = append(out.Warnings, fmt.Sprintf("merged validation rejected: %s", finalReason))
+		return out, SourceFallbackValidation, nil
+	}
+	if anyRejected {
+		return merged, SourceFallbackValidation, nil
+	}
+	if anyErr {
+		return merged, SourceFallbackPhase1, nil
+	}
+	return merged, SourceOptimizer, nil
+}
+
 func denseBatchThreshold() int {
 	raw := strings.TrimSpace(os.Getenv("DISPATCH_AI_MIN_STOPS"))
 	if raw == "" {
@@ -129,9 +283,14 @@ func denseBatchThreshold() int {
 	return n
 }
 
-// validateAssignment returns "" when every route fits within the configured
-// capacity buffer. On violation it returns a single-line reason.
+// validateAssignment returns "" when every route fits within the configured capacity buffer.
 func validateAssignment(res *dispatch.AssignmentResult, fleet []dispatch.AvailableDriver) string {
+	return validateAssignmentWithCap(res, fleet, 0)
+}
+
+// validateAssignmentWithCap returns "" when every route fits within the configured
+// capacity buffer and explicit MaxStopsPerRoute cap. On violation it returns a single-line reason.
+func validateAssignmentWithCap(res *dispatch.AssignmentResult, fleet []dispatch.AvailableDriver, maxStopsPerRoute int) string {
 	if res == nil {
 		return "nil result"
 	}
@@ -140,6 +299,10 @@ func validateAssignment(res *dispatch.AssignmentResult, fleet []dispatch.Availab
 		capByDriver[d.DriverID] = d.MaxVolumeVU
 	}
 	for ri, r := range res.Routes {
+		if maxStopsPerRoute > 0 && len(r.Orders) > maxStopsPerRoute {
+			return fmt.Sprintf("route %d driver=%s stops=%d exceeds max_stops_per_route=%d",
+				ri, r.DriverID, len(r.Orders), maxStopsPerRoute)
+		}
 		var sum float64
 		for _, o := range r.Orders {
 			sum += o.Volume
@@ -159,7 +322,7 @@ func validateAssignment(res *dispatch.AssignmentResult, fleet []dispatch.Availab
 	return ""
 }
 
-// runFallback executes H3 cell grouping + scored BinPack (+ local search).
+// runFallback executes spatial balanced partitioning (for large batches) or H3 BinPack.
 func runFallback(job Job) *dispatch.AssignmentResult {
 	cellLookup := job.CellLookup
 	if cellLookup == nil {
@@ -171,17 +334,25 @@ func runFallback(job Job) *dispatch.AssignmentResult {
 	if score.CellLookup == nil {
 		score.CellLookup = cellLookup
 	}
+	maxRouteStops := dispatch.EffectiveMaxStopsPerRoute(job.MaxStopsPerRoute, len(job.Orders), len(job.Fleet))
 
-	// Hierarchical pre-cluster when order count exceeds threshold and flag on.
-	if dispatch.HierarchicalEnabled() && len(job.Orders) >= dispatch.HierarchicalOrderThreshold() {
-		res := dispatch.BinPackHierarchical(job.Orders, job.Fleet, cellLookup, dispatch.BinPackOptions{Score: score})
+	// Partition large batches across spatial subproblems when order count exceeds single-subproblem size.
+	if len(job.Orders) > resolvePartitionLimit(job.MaxStopsPerPartition) ||
+		(dispatch.HierarchicalEnabled() && len(job.Orders) >= dispatch.HierarchicalOrderThreshold()) {
+		res := dispatch.BinPackHierarchical(job.Orders, job.Fleet, cellLookup, dispatch.BinPackOptions{
+			Score:            score,
+			MaxStopsPerRoute: maxRouteStops,
+		})
 		if res == nil {
 			return &dispatch.AssignmentResult{}
 		}
 		return res
 	}
 
-	res := dispatch.BinPack(job.Orders, job.Fleet, cellLookup, dispatch.BinPackOptions{Score: score})
+	res := dispatch.BinPack(job.Orders, job.Fleet, cellLookup, dispatch.BinPackOptions{
+		Score:            score,
+		MaxStopsPerRoute: maxRouteStops,
+	})
 	if res == nil {
 		return &dispatch.AssignmentResult{}
 	}

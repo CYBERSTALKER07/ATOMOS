@@ -642,6 +642,9 @@ export interface SupplierKnowledgeGraph {
   supplier_id: SupplierId;
   nodes: KnowledgeGraphNode[];
   edges: KnowledgeGraphEdge[];
+  source?: string;
+  ontology_objects_count?: number;
+  ontology_edges_count?: number;
 }
 
 export interface GovernedAgentInvocation {

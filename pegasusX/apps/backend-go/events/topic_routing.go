@@ -21,6 +21,8 @@ var (
 	TopicExceptions = topicFromEnv("KAFKA_TOPIC_EXCEPTIONS", "logistics.exceptions.v1")
 	// TopicTelemetryLogistics carries temperature / seal / sensor exception telemetry.
 	TopicTelemetryLogistics = topicFromEnv("KAFKA_TOPIC_TELEMETRY_LOGISTICS", "logistics.telemetry.v1")
+	// TopicLedger carries append-only general ledger entry posted/reversed events.
+	TopicLedger = topicFromEnv("KAFKA_TOPIC_LEDGER", "pegasusx-ledger")
 )
 
 // DualWriteDomainTopics mirrors events onto domain topics while consumers migrate
@@ -121,7 +123,8 @@ func DomainTopicForEventType(eventType string) string {
 		EventRefundRequested, EventRefundSucceeded, EventRefundFailed, EventFiscalCorrectiveRequested,
 		EventOrderForceCompleted, EventCashShortfall, EventCashOverage,
 		EventCashierSessionStarted, EventCashierSessionTransition,
-		EventOfflineQuotaLeaseUpdated, EventAMLExposureUpdated:
+		EventOfflineQuotaLeaseUpdated, EventAMLExposureUpdated,
+		EventP2PPOCreated:
 		return TopicOrders
 	case EventWarehouseDispatchLockChanged, EventManifestDraftCreated,
 		EventManifestLoadingStarted, EventManifestOrderInjected, EventManifestOrderException,
@@ -130,22 +133,47 @@ func DomainTopicForEventType(eventType string) string {
 		EventRouteCreated, EventRouteReordered, EventRouteReplanned, EventDriverAvailabilityChanged,
 		EventVehicleAvailabilityChanged, EventFreezeLockAcquired, EventFreezeLockReleased,
 		EventFleetDVIRInspected, EventFleetDVIRRedTag, EventYardGateCheckRecorded,
-		EventOntologyObjectUpdated:
+		EventOntologyObjectUpdated,
+		EventInventoryReceived, EventInventoryIssued, EventInventoryExpiryRisk,
+		EventInventoryRebalanceProposed,
+		EventP2PReceiptPosted:
 		return TopicDispatch
 	case EventDriverLocationUpdated, EventDriverReturnApproaching,
 		EventSupplyTransferApproaching, EventCommandDispatched, EventCommandReceived,
 		EventCommandSettled:
 		return TopicRealtime
 	case EventClaimFiled, EventClaimUnderReview, EventClaimResolved, EventLogisticsExceptionReported,
-		EventReverseLogisticsRequired, EventContainerLedgerUpdated:
+		EventReverseLogisticsRequired, EventContainerLedgerUpdated,
+		EventAnomalyDetected, EventAnomalyResolved:
 		// MISSING_ITEMS_REPORTED stays on TopicOrders (above); dual-emit to exceptions
 		// is done explicitly in order handlers when needed.
 		return TopicExceptions
-	case EventLogisticsTelemetry:
-		return TopicTelemetryLogistics
 	case EventDemandSignal:
 		// STORE_POS flywheel → dedicated demand topic for supplier consumers.
 		return TopicDemand
+	case EventLogisticsTelemetry, EventHaccpExcursionReported:
+		return TopicTelemetryLogistics
+	case EventGLEntryPosted, EventGLEntryReversed,
+		EventReconRunCompleted, EventReconBreakOpened, EventReconBreakResolved,
+		EventAuditAnchorWritten, EventIAMRoleChanged, EventSodViolationDetected,
+		EventPeriodSoftClosed, EventPeriodClosed, EventPeriodReopened,
+		EventEsfSubmitted, EventEsfAccepted, EventEsfRejected, EventEsfCancelled,
+		EventExportPackCreated, EventAuditorAccessGranted,
+		EventEntityIntercompanyPosted, EventFxRevaluationPosted, EventP2PThreeWayMatchCompleted,
+		EventScimIdentitySynced:
+		return TopicLedger
+	case EventConnectorSyncCompleted, EventConnectorSyncFailed, EventConnectorShadowMismatch,
+		EventConnectorPushCompleted:
+		return TopicConnectors
+	case EventApprovalRequested, EventApprovalDecided,
+		EventCreditLimitChanged, EventCreditHoldApplied, EventCreditHoldReleased,
+		EventProposalL2AutoExecuted:
+		return TopicMain
+	case EventOntologyObjectChanged,
+		EventForecastRunCompleted, EventCreditScoreComputed,
+		EventProposalCreated, EventProposalDecided, EventProposalExecuted,
+		EventRoiEventRecorded, EventWhatIfSimulated:
+		return TopicIntel
 	default:
 		return ""
 	}
@@ -186,4 +214,3 @@ func ExtractEventTypeFromPayload(payload []byte) string {
 func extractEventTypeFromPayload(payload []byte) string {
 	return ExtractEventTypeFromPayload(payload)
 }
-

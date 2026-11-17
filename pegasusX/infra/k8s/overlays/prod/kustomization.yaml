@@ -44,7 +44,7 @@ images:
     newName: asia-south1-docker.pkg.dev/pegasusx-prod-uz/pegasusx-ssmr-images/ai-worker
     digest: sha256:9f05b7d8f2d2e4e50b59d84750f1025a94ecc93aa3ba005203dee06df344cb30
   # Real optimizer-core image path (never remap to backend-go — that crash-loops Python pods).
-  # Keep replicas 0 until this AR image is published; then bump replicas ≥ 1.
+  # Scaled >= 2-4 replicas with 2-4Gi RAM for production VRP HA.
   - name: pegasusx-optimizer-core
     newName: asia-south1-docker.pkg.dev/pegasusx-prod-uz/pegasusx-ssmr-images/optimizer-core
     newTag: ssmr
@@ -97,4 +97,4 @@ patches:
     patch: |-
       - op: replace
         path: /spec/replicas
-        value: 1
+        value: 2

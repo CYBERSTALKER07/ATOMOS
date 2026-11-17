@@ -3,6 +3,8 @@ import { withDatabase } from "./db";
 const LEGACY_STORAGE_KEY = "retailer_pending_pos_sales_v1";
 const PARKED_CART_KEY = "retailer_pos_parked_cart_v1";
 
+export const SYNCING_LEASE_MS = 60_000;
+
 export type PendingPosSaleStatus = "PENDING" | "SYNCING" | "SYNCED" | "FAILED";
 
 export interface PendingPosSale {
@@ -18,6 +20,7 @@ export interface PendingPosSale {
   lastError?: string;
   serverSaleId?: string;
   serverReceiptNumber?: string;
+  syncingStartedAt?: number;
 }
 
 export interface ParkedPosCart {
@@ -44,6 +47,7 @@ type PendingRow = {
   last_error: string | null;
   server_sale_id: string | null;
   server_receipt_number: string | null;
+  syncing_started_at?: number | null;
 };
 
 function rowToEntry(row: PendingRow): PendingPosSale {
@@ -60,6 +64,7 @@ function rowToEntry(row: PendingRow): PendingPosSale {
     lastError: row.last_error ?? undefined,
     serverSaleId: row.server_sale_id ?? undefined,
     serverReceiptNumber: row.server_receipt_number ?? undefined,
+    syncingStartedAt: typeof row.syncing_started_at === "number" ? row.syncing_started_at : undefined,
   };
 }
 
@@ -78,7 +83,10 @@ function readLegacyQueue(): PendingPosSale[] {
         typeof row.payloadJson === "string" &&
         typeof row.clientSaleId === "string"
       );
-    });
+    }).map((item) => ({
+      ...item,
+      syncingStartedAt: typeof item.syncingStartedAt === "number" ? item.syncingStartedAt : undefined,
+    }));
   } catch {
     return [];
   }
@@ -93,11 +101,21 @@ function writeLegacyQueue(queue: PendingPosSale[]) {
   }
 }
 
+async function ensureSyncingColumn(db: { execute: (sql: string, params?: unknown[]) => Promise<unknown> }) {
+  try {
+    await db.execute("ALTER TABLE pending_pos_sales ADD COLUMN syncing_started_at INTEGER");
+  } catch {
+    // column already exists
+  }
+}
+
 async function readQueueFromDb(): Promise<PendingPosSale[] | null> {
   return withDatabase(async (db) => {
+    await ensureSyncingColumn(db);
     const rows = await db.select<PendingRow[]>(
       `SELECT id, client_sale_id, client_receipt, session_id, payload_json, idempotency_key,
-              created_at, retry_count, status, last_error, server_sale_id, server_receipt_number
+              created_at, retry_count, status, last_error, server_sale_id, server_receipt_number,
+              syncing_started_at
        FROM pending_pos_sales ORDER BY created_at ASC`,
     );
     return rows.map(rowToEntry);
@@ -106,13 +124,15 @@ async function readQueueFromDb(): Promise<PendingPosSale[] | null> {
 
 async function writeQueueToDb(queue: PendingPosSale[]): Promise<boolean> {
   const result = await withDatabase(async (db) => {
+    await ensureSyncingColumn(db);
     await db.execute("DELETE FROM pending_pos_sales");
     for (const entry of queue) {
       await db.execute(
         `INSERT INTO pending_pos_sales (
            id, client_sale_id, client_receipt, session_id, payload_json, idempotency_key,
-           created_at, retry_count, status, last_error, server_sale_id, server_receipt_number
-         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)`,
+           created_at, retry_count, status, last_error, server_sale_id, server_receipt_number,
+           syncing_started_at
+         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)`,
         [
           entry.id,
           entry.clientSaleId,
@@ -126,6 +146,7 @@ async function writeQueueToDb(queue: PendingPosSale[]): Promise<boolean> {
           entry.lastError ?? null,
           entry.serverSaleId ?? null,
           entry.serverReceiptNumber ?? null,
+          entry.syncingStartedAt ?? null,
         ],
       );
     }
@@ -180,7 +201,12 @@ export async function updatePendingPosSale(
   patch: Partial<
     Pick<
       PendingPosSale,
-      "retryCount" | "lastError" | "status" | "serverSaleId" | "serverReceiptNumber"
+      | "retryCount"
+      | "lastError"
+      | "status"
+      | "serverSaleId"
+      | "serverReceiptNumber"
+      | "syncingStartedAt"
     >
   >,
 ): Promise<void> {

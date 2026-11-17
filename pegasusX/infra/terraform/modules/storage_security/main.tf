@@ -234,6 +234,78 @@ resource "google_storage_bucket" "tf_state" {
   ]
 }
 
+# 1.5 Dedicated WORM Audit Hash-Chain Anchors & Period-Close Snapshots Bucket
+resource "google_storage_bucket" "worm_audit" {
+  name                        = var.worm_audit_bucket_name
+  location                    = local.effective_bucket_location
+  project                     = var.project_id
+  storage_class               = "STANDARD"
+  uniform_bucket_level_access = true
+  public_access_prevention    = "enforced"
+
+  versioning {
+    enabled = true
+  }
+
+  lifecycle_rule {
+    condition {
+      age = 90
+    }
+    action {
+      type          = "SetStorageClass"
+      storage_class = "NEARLINE"
+    }
+  }
+
+  lifecycle_rule {
+    condition {
+      age = 365
+    }
+    action {
+      type          = "SetStorageClass"
+      storage_class = "COLDLINE"
+    }
+  }
+
+  lifecycle_rule {
+    condition {
+      age = 1095
+    }
+    action {
+      type          = "SetStorageClass"
+      storage_class = "ARCHIVE"
+    }
+  }
+
+  lifecycle_rule {
+    condition {
+      age = 7
+    }
+    action {
+      type = "AbortIncompleteMultipartUpload"
+    }
+  }
+
+  # Enterprise CMEK Encryption (Customer-Managed Encryption Key)
+  encryption {
+    default_kms_key_name = google_kms_crypto_key.storage_key.id
+  }
+
+  # WORM Retention Policy for Audit Hash-Chain Anchors & Period-Close Snapshots
+  retention_policy {
+    is_locked        = var.worm_retention_locked
+    retention_period = var.worm_retention_period_seconds
+  }
+
+  labels = merge(var.labels, {
+    purpose = "worm-audit-anchors"
+  })
+
+  depends_on = [
+    google_kms_crypto_key_iam_member.gcs_kms_user
+  ]
+}
+
 # 2. Cloud Armor Enterprise WAF Security Policy (OWASP Top 10 + Rate Limiting)
 resource "google_compute_security_policy" "edge_waf" {
   name        = "pegasusx-edge-waf-policy"
@@ -557,6 +629,18 @@ resource "google_storage_bucket_iam_member" "ai_worker_bucket_viewer" {
   bucket   = each.value
   role     = "roles/storage.objectViewer"
   member   = "serviceAccount:${google_service_account.workload_sa["ai-worker-sa"].email}"
+}
+
+resource "google_storage_bucket_iam_member" "backend_go_worm_creator" {
+  bucket = google_storage_bucket.worm_audit.name
+  role   = "roles/storage.objectCreator"
+  member = "serviceAccount:${google_service_account.workload_sa["backend-go-sa"].email}"
+}
+
+resource "google_storage_bucket_iam_member" "backend_go_worm_viewer" {
+  bucket = google_storage_bucket.worm_audit.name
+  role   = "roles/storage.objectViewer"
+  member = "serviceAccount:${google_service_account.workload_sa["backend-go-sa"].email}"
 }
 
 # 5. Customer-Managed Encryption Keys (CMEK) via Google Cloud KMS

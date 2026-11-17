@@ -7,16 +7,19 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
 	"unicode"
+
+	"github.com/pegasusx/pegasusx/apps/backend-go/migration/parser"
 )
 
 const (
 	importDiscoveryConfidenceThreshold = 0.80
-	importDiscoveryMaxRows             = 10000
+	importDiscoverySampleRows          = 500
 )
 
 type importFieldDefinition struct {
@@ -58,16 +61,88 @@ var pegasusXImportTargetFields = []importFieldDefinition{
 }
 
 func discoverImportDelimited(body []byte, delimiter rune) (importDiscoveryOutcome, []string, []map[string]any, error) {
-	headers, rows, err := readImportDelimitedSample(bytes.NewReader(body), delimiter, importDiscoveryMaxRows)
+	return discoverImportArtifact("", body, delimiter)
+}
+
+func discoverImportArtifact(fileName string, body []byte, delimiter rune) (importDiscoveryOutcome, []string, []map[string]any, error) {
+	sniff, err := parser.SniffArtifact(fileName, body)
 	if err != nil {
 		return importDiscoveryOutcome{}, nil, nil, err
+	}
+
+	var headers []string
+	headerSet := make(map[string]struct{})
+	rows := make([]map[string]any, 0, 256)
+
+	collectChunk := func(_ string, streamHeaders []string, chunk []parser.ParsedRow) error {
+		for _, h := range streamHeaders {
+			clean := strings.TrimSpace(h)
+			if clean == "" {
+				continue
+			}
+			if _, ok := headerSet[clean]; !ok {
+				headerSet[clean] = struct{}{}
+				headers = append(headers, clean)
+			}
+		}
+		for _, pr := range chunk {
+			rows = append(rows, pr.Fields)
+		}
+		return nil
+	}
+
+	baseStream := strings.TrimSuffix(filepath.Base(strings.TrimSpace(fileName)), filepath.Ext(strings.TrimSpace(fileName)))
+	var streams []parser.ParsedStream
+	switch sniff.Format {
+	case parser.FormatXLSX:
+		streams, err = parser.StreamXLSX(body, collectChunk)
+	case parser.FormatXLS:
+		streams, err = parser.StreamXLS(body, collectChunk)
+	case parser.FormatCommerceML:
+		streams, err = parser.StreamCommerceML(body, collectChunk)
+	case parser.FormatJSON:
+		streams, err = parser.StreamJSON(baseStream, body, collectChunk)
+	case parser.FormatCSV, parser.FormatTSV:
+		if delimiter != 0 && delimiter != ',' && delimiter != ';' && delimiter != '\t' && delimiter != '|' {
+			headers, rows, err = readImportDelimitedSample(bytes.NewReader(body), delimiter, 0)
+		} else {
+			var st parser.ParsedStream
+			st, err = parser.StreamDelimited(baseStream, body, "", collectChunk)
+			if err == nil {
+				streams = []parser.ParsedStream{st}
+			}
+		}
+	default:
+		return importDiscoveryOutcome{}, nil, nil, fmt.Errorf("%w: unsupported format %s", parser.ErrFileFormatMismatch, sniff.Format)
+	}
+	if err != nil {
+		return importDiscoveryOutcome{}, nil, nil, err
+	}
+
+	if len(headers) == 0 && len(streams) > 0 {
+		for _, st := range streams {
+			for _, h := range st.Headers {
+				clean := strings.TrimSpace(h)
+				if clean == "" {
+					continue
+				}
+				if _, ok := headerSet[clean]; !ok {
+					headerSet[clean] = struct{}{}
+					headers = append(headers, clean)
+				}
+			}
+		}
 	}
 	if len(headers) == 0 {
 		return importDiscoveryOutcome{}, nil, nil, fmt.Errorf("no headers found in uploaded file")
 	}
 
 	outcome := discoverImportMapping(headers)
-	outcome.Anomalies = append(outcome.Anomalies, detectImportAnomalies(rows, outcome.Mappings)...)
+	sample := rows
+	if len(sample) > importDiscoverySampleRows {
+		sample = sample[:importDiscoverySampleRows]
+	}
+	outcome.Anomalies = append(outcome.Anomalies, detectImportAnomalies(sample, outcome.Mappings)...)
 	if outcome.Model == "" {
 		outcome.Model = "deterministic"
 	}
@@ -122,9 +197,9 @@ func buildImportStagedRows(
 	warehouseIDs map[string]struct{},
 	productExists func(productID string) bool,
 ) ([]ImportStagedRowRecord, map[string]any) {
-	sourceByTarget := make(map[string]string, len(mappings))
+	sourcesByTarget := make(map[string][]string, len(mappings))
 	for _, mapping := range mappings {
-		sourceByTarget[mapping.TargetField] = mapping.SourceColumn
+		sourcesByTarget[mapping.TargetField] = append(sourcesByTarget[mapping.TargetField], mapping.SourceColumn)
 	}
 
 	staged := make([]ImportStagedRowRecord, 0, len(rows))
@@ -136,7 +211,7 @@ func buildImportStagedRows(
 
 	for idx, raw := range rows {
 		rawJSON, _ := json.Marshal(raw)
-		cleaned := applyImportMappings(raw, sourceByTarget)
+		cleaned := applyImportMappingsMulti(raw, sourcesByTarget)
 		cleaned["supplier_id"] = supplierID
 
 		var validationErrors []string
@@ -212,6 +287,24 @@ func applyImportMappings(raw map[string]any, sourceByTarget map[string]string) m
 	return out
 }
 
+func applyImportMappingsMulti(raw map[string]any, sourcesByTarget map[string][]string) map[string]any {
+	out := make(map[string]any, len(sourcesByTarget))
+	for target, sources := range sourcesByTarget {
+		for _, source := range sources {
+			if value, ok := raw[source]; ok {
+				s := strings.TrimSpace(fmt.Sprint(value))
+				if _, exists := out[target]; !exists || s != "" {
+					out[target] = s
+				}
+				if s != "" {
+					break
+				}
+			}
+		}
+	}
+	return out
+}
+
 func readImportDelimitedSample(reader io.Reader, delimiter rune, limit int) ([]string, []map[string]any, error) {
 	csvReader := csv.NewReader(reader)
 	csvReader.Comma = delimiter
@@ -219,7 +312,11 @@ func readImportDelimitedSample(reader io.Reader, delimiter rune, limit int) ([]s
 	csvReader.TrimLeadingSpace = true
 
 	headers := []string{}
-	rows := make([]map[string]any, 0, limit)
+	capHint := limit
+	if capHint <= 0 || capHint > 512 {
+		capHint = 512
+	}
+	rows := make([]map[string]any, 0, capHint)
 
 	for {
 		record, err := csvReader.Read()
@@ -237,7 +334,7 @@ func readImportDelimitedSample(reader io.Reader, delimiter rune, limit int) ([]s
 			continue
 		}
 		rows = append(rows, importRowToMap(headers, record))
-		if len(rows) >= limit {
+		if limit > 0 && len(rows) >= limit {
 			break
 		}
 	}

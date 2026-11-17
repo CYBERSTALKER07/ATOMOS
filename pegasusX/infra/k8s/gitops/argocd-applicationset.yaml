@@ -13,15 +13,47 @@ spec:
     - "https://github.com/CYBERSTALKER07/ATOMOS.git"
   destinations:
     - namespace: pegasusx
-      server: "https://*"
+      server: "https://kubernetes.default.svc"
+    - namespace: pegasusx-sandbox
+      server: "https://kubernetes.default.svc"
+    - namespace: pegasusx-ssmr
+      server: "https://kubernetes.default.svc"
   clusterResourceWhitelist:
     - group: ""
       kind: Namespace
     - group: scheduling.k8s.io
       kind: PriorityClass
   namespaceResourceWhitelist:
-    - group: "*"
-      kind: "*"
+    - group: "apps"
+      kind: Deployment
+    - group: "apps"
+      kind: StatefulSet
+    - group: "batch"
+      kind: Job
+    - group: "batch"
+      kind: CronJob
+    - group: "autoscaling"
+      kind: HorizontalPodAutoscaler
+    - group: "policy"
+      kind: PodDisruptionBudget
+    - group: "networking.k8s.io"
+      kind: NetworkPolicy
+    - group: "networking.k8s.io"
+      kind: Ingress
+    - group: ""
+      kind: Service
+    - group: ""
+      kind: ConfigMap
+    - group: ""
+      kind: ServiceAccount
+    - group: "external-secrets.io"
+      kind: ExternalSecret
+    - group: "cloud.google.com"
+      kind: BackendConfig
+    - group: "networking.gke.io"
+      kind: FrontendConfig
+    - group: "networking.gke.io"
+      kind: ManagedCertificate
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet

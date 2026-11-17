@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"cloud.google.com/go/civil"
 	"cloud.google.com/go/spanner"
 	"google.golang.org/api/iterator"
 )
@@ -44,7 +45,8 @@ func AggregateDemandConfidence(ctx context.Context, client *spanner.Client, supp
 		return FallbackDemandConfidence(q.FallbackQty, q.SourceHint, q.PredictionCount), nil
 	}
 
-	day := q.ForecastDate.UTC().Truncate(24 * time.Hour)
+	dayTime := q.ForecastDate.UTC().Truncate(24 * time.Hour)
+	day := civil.DateOf(dayTime)
 	sql := `SELECT
 		COALESCE(SUM(BaselineQty), 0),
 		COALESCE(SUM(COALESCE(LowUnits, BaselineQty)), 0),
@@ -91,7 +93,7 @@ func AggregateDemandConfidence(ctx context.Context, client *spanner.Client, supp
 	if q.Granularity == "regional" {
 		wh = strings.TrimSpace(q.WarehouseID)
 	}
-	if wape, sample, ok, werr := LoadLatestSeriesWape28(ctx, client, supplierID, wh, day); werr == nil && ok {
+	if wape, sample, ok, werr := LoadLatestSeriesWape28(ctx, client, supplierID, wh, dayTime); werr == nil && ok {
 		if pct, have := ConfidencePctFromWape(wape, sample); have {
 			confidencePct = pct
 		} else if confidencePct <= 0 {
@@ -194,11 +196,11 @@ func ProductForecastBreakdown(ctx context.Context, client *spanner.Client, suppl
 	if client == nil || supplierID == "" || productID == "" {
 		return nil
 	}
-	day = day.UTC().Truncate(24 * time.Hour)
+	cDay := civil.DateOf(day.UTC())
 	sql := `SELECT BaselineQty, LowUnits, HighUnits, ConfidencePct, Confidence, BaselineSource, Source, BlockedReason
 		FROM DemandForecastBaseline
 		WHERE SupplierId = @sid AND ForecastDate = @day AND ProductId = @pid`
-	params := map[string]any{"sid": supplierID, "day": day, "pid": productID}
+	params := map[string]any{"sid": supplierID, "day": cDay, "pid": productID}
 	if strings.TrimSpace(warehouseID) != "" {
 		sql += ` AND WarehouseId = @wh`
 		params["wh"] = strings.TrimSpace(warehouseID)

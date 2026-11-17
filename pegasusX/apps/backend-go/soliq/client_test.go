@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -331,5 +332,64 @@ func TestClient_Submit_CircuitBreaker_TripsAndRecovers(t *testing.T) {
 	}
 	if breaker.State() != circuit.StateClosed {
 		t.Fatalf("expected StateClosed, got %v", breaker.State())
+	}
+}
+
+func TestClient_HardeningTimeoutPathEscapeAndResponseLimit(t *testing.T) {
+	t.Parallel()
+
+	// 1. Default 30s timeout and trailing slash normalization.
+	cRaw := NewClient(SoliqConfig{BaseURL: "https://soliq.example/", Timeout: 0}).(*client)
+	if cRaw.httpClient.Timeout != 30*time.Second {
+		t.Fatalf("default timeout = %v want 30s", cRaw.httpClient.Timeout)
+	}
+	if cRaw.cfg.BaseURL != "https://soliq.example" {
+		t.Fatalf("trimmed BaseURL = %q", cRaw.cfg.BaseURL)
+	}
+	cNeg := NewClient(SoliqConfig{BaseURL: "https://soliq.example", Timeout: -5 * time.Second}).(*client)
+	if cNeg.httpClient.Timeout != 30*time.Second {
+		t.Fatalf("negative timeout fallback = %v want 30s", cNeg.httpClient.Timeout)
+	}
+
+	// 2. Dynamic ehfId must be path-escaped (no path traversal or query injection).
+	var gotRawURI string
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotRawURI = r.RequestURI
+		if r.URL.Path == "/v1/ehf/oversized/status" {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(strings.Repeat("a", maxSoliqResponseBytes+10)))
+			return
+		}
+		if r.URL.Path == "/v1/ehf/submit" {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(strings.Repeat("b", maxSoliqResponseBytes+10)))
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"data":{"status":"ACCEPTED"}}`))
+	}))
+	defer ts.Close()
+
+	c := NewClient(SoliqConfig{BaseURL: ts.URL, Operator: "soliq"})
+	if _, err := c.CheckStatus(context.Background(), ""); err == nil {
+		t.Fatal("expected error for empty ehfId")
+	}
+	st, err := c.CheckStatus(context.Background(), "ehf/1?evil=1")
+	if err != nil {
+		t.Fatalf("CheckStatus escaped ehfId: %v", err)
+	}
+	if st.Status != "ACCEPTED" {
+		t.Fatalf("status = %q want ACCEPTED", st.Status)
+	}
+	if gotRawURI != "/v1/ehf/ehf%2F1%3Fevil=1/status" {
+		t.Fatalf("request URI = %q, want escaped ehfId path", gotRawURI)
+	}
+
+	// 3. Oversized response bodies must be bounded by io.LimitReader.
+	if _, err := c.CheckStatus(context.Background(), "oversized"); err == nil || !strings.Contains(err.Error(), "exceeds") {
+		t.Fatalf("expected oversized CheckStatus error, got %v", err)
+	}
+	if _, err := c.Submit(context.Background(), []byte(`{}`), "idem-big"); err == nil || !strings.Contains(err.Error(), "exceeds") {
+		t.Fatalf("expected oversized Submit error, got %v", err)
 	}
 }

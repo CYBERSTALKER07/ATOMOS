@@ -8,9 +8,16 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/pkg/circuit"
+)
+
+const (
+	defaultSoliqTimeout   = 30 * time.Second
+	maxSoliqResponseBytes = 4 << 20 // 4 MiB bound on upstream response bodies
 )
 
 type SoliqClient interface {
@@ -52,9 +59,10 @@ type client struct {
 }
 
 func NewClient(cfg SoliqConfig) SoliqClient {
-	if cfg.Timeout == 0 {
-		cfg.Timeout = 30 * time.Second
+	if cfg.Timeout <= 0 {
+		cfg.Timeout = defaultSoliqTimeout
 	}
+	cfg.BaseURL = strings.TrimRight(strings.TrimSpace(cfg.BaseURL), "/")
 	return &client{
 		cfg: cfg,
 		httpClient: &http.Client{
@@ -119,13 +127,24 @@ func (c *client) Submit(ctx context.Context, signedPayload []byte, idempotencyKe
 	return c.doSubmit(ctx, signedPayload, idempotencyKey)
 }
 
+func readBoundedSoliqBody(r io.Reader) ([]byte, error) {
+	body, err := io.ReadAll(io.LimitReader(r, maxSoliqResponseBytes+1))
+	if err != nil {
+		return nil, fmt.Errorf("read body: %w", err)
+	}
+	if len(body) > maxSoliqResponseBytes {
+		return nil, fmt.Errorf("read body: response exceeds %d byte limit", maxSoliqResponseBytes)
+	}
+	return body, nil
+}
+
 func (c *client) doSubmit(ctx context.Context, signedPayload []byte, idempotencyKey string) (*SoliqResponse, error) {
-	url := fmt.Sprintf("%s/v1/ehf/submit", c.cfg.BaseURL)
+	endpoint := fmt.Sprintf("%s/v1/ehf/submit", c.cfg.BaseURL)
 	if c.cfg.Operator == "didox" {
-		url = fmt.Sprintf("%s/api/v1/documents", c.cfg.BaseURL)
+		endpoint = fmt.Sprintf("%s/api/v1/documents", c.cfg.BaseURL)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(signedPayload))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(signedPayload))
 	if err != nil {
 		return nil, fmt.Errorf("build request: %w", err)
 	}
@@ -144,14 +163,14 @@ func (c *client) doSubmit(ctx context.Context, signedPayload []byte, idempotency
 	}
 	defer res.Body.Close()
 
-	body, err := io.ReadAll(res.Body)
+	body, err := readBoundedSoliqBody(res.Body)
 	if err != nil {
 		return &SoliqResponse{
 			Success:    false,
 			StatusCode: res.StatusCode,
 			RawBody:    nil,
 			Permanent:  false,
-		}, fmt.Errorf("read body: %w", err)
+		}, err
 	}
 
 	out := &SoliqResponse{
@@ -209,12 +228,17 @@ func (c *client) CheckStatus(ctx context.Context, ehfId string) (*DocumentStatus
 }
 
 func (c *client) doCheckStatus(ctx context.Context, ehfId string) (*DocumentStatus, error) {
-	url := fmt.Sprintf("%s/v1/ehf/%s/status", c.cfg.BaseURL, ehfId)
+	ehfId = strings.TrimSpace(ehfId)
+	if ehfId == "" {
+		return nil, fmt.Errorf("ehfId is required")
+	}
+	escapedID := url.PathEscape(ehfId)
+	endpoint := fmt.Sprintf("%s/v1/ehf/%s/status", c.cfg.BaseURL, escapedID)
 	if c.cfg.Operator == "didox" {
-		url = fmt.Sprintf("%s/api/v1/documents/%s/status", c.cfg.BaseURL, ehfId)
+		endpoint = fmt.Sprintf("%s/api/v1/documents/%s/status", c.cfg.BaseURL, escapedID)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("build request: %w", err)
 	}
@@ -229,9 +253,9 @@ func (c *client) doCheckStatus(ctx context.Context, ehfId string) (*DocumentStat
 	}
 	defer res.Body.Close()
 
-	body, err := io.ReadAll(res.Body)
+	body, err := readBoundedSoliqBody(res.Body)
 	if err != nil {
-		return nil, fmt.Errorf("read body: %w", err)
+		return nil, err
 	}
 
 	if res.StatusCode < 200 || res.StatusCode >= 300 {

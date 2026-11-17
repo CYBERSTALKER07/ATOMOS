@@ -3,6 +3,7 @@
 import { useSyncExternalStore } from "react";
 import {
   createTranslator,
+  defaultLocale,
   LOCALE_CHANGE_EVENT,
   resolveActiveLocale,
   type Locale,
@@ -21,7 +22,7 @@ function getSnapshot(): Locale {
 }
 
 function getServerSnapshot(): Locale {
-  return "en";
+  return defaultLocale;
 }
 
 /** Portal chrome translator — reacts to LanguageSwitcher / LocaleBootstrap. */

@@ -14,6 +14,7 @@ import (
 	"cloud.google.com/go/spanner"
 	"github.com/go-chi/chi/v5"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"github.com/pegasusx/pegasusx/apps/backend-go/drivercmd"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 )
@@ -806,7 +807,8 @@ func (s *Service) broadcastShopClosed(ctx context.Context, supplierID, retailerI
 		s.retailerHub.Broadcast(ctx, "retailer:"+retailerID, raw)
 	}
 	if s.driverHub != nil && driverID != "" {
-		s.driverHub.Broadcast(ctx, "driver:"+driverID, raw)
+		driverRaw := drivercmd.PrepareAndRecordJSON(ctx, s.spannerClient, driverID, raw)
+		s.driverHub.Broadcast(ctx, "driver:"+driverID, driverRaw)
 	}
 }
 

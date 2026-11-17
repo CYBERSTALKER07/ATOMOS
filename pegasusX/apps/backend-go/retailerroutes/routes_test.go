@@ -83,3 +83,52 @@ func TestRetailerRoutes_RoleGuard(t *testing.T) {
 		t.Fatalf("driver accessing retailer routes returned %d, want 403 Forbidden", rr.Code)
 	}
 }
+
+func TestReviewKyc_Unauthenticated(t *testing.T) {
+	r := retailerRouter(&retailer.Service{})
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/admin/retailer-kyc/doc-123/review", strings.NewReader(`{"status":"APPROVED"}`))
+	rr := httptest.NewRecorder()
+	r.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401 for unauthenticated review KYC, got %d", rr.Code)
+	}
+}
+
+func TestReviewKyc_ForbiddenForRetailerAndDriver(t *testing.T) {
+	r := retailerRouter(&retailer.Service{})
+
+	for _, role := range []auth.Role{auth.RoleRetailer, auth.RoleDriver} {
+		tok := issueRetailerToken(t, role)
+		req := httptest.NewRequest(http.MethodPost, "/v1/admin/retailer-kyc/doc-123/review", strings.NewReader(`{"status":"APPROVED"}`))
+		req.Header.Set("Authorization", "Bearer "+tok)
+		rr := httptest.NewRecorder()
+		r.ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusForbidden {
+			t.Fatalf("expected 403 for role %s attempting KYC review, got %d", role, rr.Code)
+		}
+	}
+}
+
+func TestReviewKyc_AllowedForAdminRoles(t *testing.T) {
+	r := retailerRouter(&retailer.Service{})
+
+	for _, role := range []auth.Role{auth.RoleAdmin, auth.RolePlatformAdmin} {
+		tok := issueRetailerToken(t, role)
+		req := httptest.NewRequest(http.MethodPost, "/v1/admin/retailer-kyc/doc-123/review", strings.NewReader(`{"status":"APPROVED"}`))
+		req.Header.Set("Authorization", "Bearer "+tok)
+		rr := httptest.NewRecorder()
+		r.ServeHTTP(rr, req)
+
+		// Must pass the auth & role guard (not 401 or 403).
+		if rr.Code == http.StatusUnauthorized || rr.Code == http.StatusForbidden {
+			t.Fatalf("admin role %s blocked by auth guard: status=%d", role, rr.Code)
+		}
+		// Empty service returns 500 repo_not_supported from handler
+		if rr.Code != http.StatusInternalServerError {
+			t.Fatalf("expected handler 500 (repo_not_supported), got %d", rr.Code)
+		}
+	}
+}

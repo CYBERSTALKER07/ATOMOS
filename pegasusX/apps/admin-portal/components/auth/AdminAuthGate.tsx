@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, type ReactNode } from "react";
-import { useAdminToken } from "@/lib/session";
+import { ADMIN_COOKIE_SESSION, useAdminToken } from "@/lib/session";
 import { api } from "@/lib/api";
 
 type MfaGate =
@@ -169,11 +169,11 @@ export function AdminAuthGate({ children }: { children: ReactNode }) {
               try {
                 if (mfa.kind === "enroll") {
                   const res = await api.mfaConfirm(token, code.trim());
-                  if (res.token) setToken(res.token);
+                  if (res.token && token !== ADMIN_COOKIE_SESSION) setToken(res.token);
                   setMfa({ kind: "ok" });
                 } else {
                   const res = await api.mfaVerify(token, code.trim());
-                  if (res.token) setToken(res.token);
+                  if (res.token && token !== ADMIN_COOKIE_SESSION) setToken(res.token);
                   setMfa({ kind: "ok" });
                 }
               } catch (err) {
@@ -228,7 +228,8 @@ function LoginForm({
   const [busy, setBusy] = useState(false);
 
   const allowPaste =
-    process.env.NEXT_PUBLIC_ALLOW_TOKEN_PASTE === "true" || process.env.NODE_ENV === "development";
+    process.env.NODE_ENV !== "production" &&
+    (process.env.NEXT_PUBLIC_ALLOW_TOKEN_PASTE === "true" || process.env.NODE_ENV === "development");
 
   return (
     <div className="space-y-4 pt-2">

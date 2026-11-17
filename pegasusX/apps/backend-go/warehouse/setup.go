@@ -41,6 +41,13 @@ func (s *Service) HandleWarehouseSetup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	switch claims.Role {
+	case auth.RoleWarehouse, auth.RoleWarehouseAdmin, auth.RoleAdmin:
+	default:
+		web.JSONError(w, "forbidden", http.StatusForbidden)
+		return
+	}
+
 	var req warehouseSetupRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		web.JSONError(w, "invalid JSON", http.StatusBadRequest)

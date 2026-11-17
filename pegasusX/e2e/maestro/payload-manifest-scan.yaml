@@ -1,0 +1,14 @@
+appId: com.pegasus.payload
+---
+- launchApp:
+    clearState: true
+- assertVisible:
+    text: ".*Payloader.*|.*Manifests.*|.*Sign In.*"
+- tapOn:
+    text: "Scan|Inbound Returns"
+    optional: true
+- runFlow:
+    when:
+      visible: "Scan Barcode|Enter EAN"
+    commands:
+      - assertVisible: "Scan Barcode|Enter EAN"

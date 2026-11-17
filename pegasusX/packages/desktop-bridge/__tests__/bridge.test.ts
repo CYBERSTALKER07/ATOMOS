@@ -106,3 +106,31 @@ describe("desktop updater helpers on web", () => {
       .__PEGASUSX_DESKTOP_DISTRIBUTION__;
   });
 });
+
+describe("native file/dir import pickers on web vs tauri", () => {
+  afterEach(() => {
+    delete (window as { __TAURI__?: unknown }).__TAURI__;
+    delete (window as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__;
+  });
+
+  it("reports unavailable and returns [] outside tauri", async () => {
+    const {
+      isNativeImportPickerAvailable,
+      pickNativeImportFiles,
+      pickNativeImportDirectory,
+      fromBrowserFiles,
+    } = await import("../file-open");
+    expect(isNativeImportPickerAvailable()).toBe(false);
+    await expect(pickNativeImportFiles()).resolves.toEqual([]);
+    await expect(pickNativeImportDirectory()).resolves.toEqual([]);
+
+    const blob = new Blob(["sku,qty\nA1,10\n"], { type: "text/csv" });
+    const file = new File([blob], "stock.csv", { type: "text/csv" });
+    const picked = fromBrowserFiles([file]);
+    expect(picked).toHaveLength(1);
+    expect(picked[0]?.name).toBe("stock.csv");
+    expect(picked[0]?.mimeType).toBe("text/csv");
+    const bytes = await picked[0]!.readBytes();
+    expect(new TextDecoder().decode(bytes)).toContain("A1,10");
+  });
+});

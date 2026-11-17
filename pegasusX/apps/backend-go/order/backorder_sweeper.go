@@ -2,14 +2,18 @@ package order
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"time"
 
 	"cloud.google.com/go/spanner"
+	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
 )
 
 // StartDeferredPaymentSweeper runs periodically to find backordered orders that can now be fulfilled,
@@ -51,63 +55,191 @@ func (s *Service) sweepDeferredPayments(ctx context.Context) error {
 			continue
 		}
 
-		// Capture the deferred payment.
-		providerRef, err := s.paymentCapturer.CaptureCardPayment(ctx, o.OrderID, o.TotalMinor, o.Currency)
-		if err != nil {
-			s.log.Warn("failed to capture payment for backordered order", "order_id", o.OrderID, "err", err)
-			// Payment failed, we leave it in backorder for now.
+		// Step 1: Transactionally claim the backorder & reserve stock BEFORE charging the card
+		// so a concurrent checkout cannot steal stock after payment capture.
+		claimTag := fmt.Sprintf("CAPTURING:%d", s.now().Unix())
+		reservedOrder, claimed, claimErr := s.claimAndReserveBackorderInTxn(ctx, o, claimTag)
+		if claimErr != nil {
+			s.log.Warn("backorder pre-capture claim/reserve skipped", "order_id", o.OrderID, "err", claimErr)
+			continue
+		}
+		if !claimed {
 			continue
 		}
 
-		// Record the confirmed capture in the payment ledger. The stable
-		// idempotency key dedupes sweep retries; the unique index on
-		// OrderPaymentLegs.IdempotencyKey turns a duplicate into AlreadyExists.
+		// Step 2: Capture the deferred payment now that inventory is safely reserved.
+		providerRef, capErr := s.paymentCapturer.CaptureCardPayment(ctx, o.OrderID, reservedOrder.TotalMinor, reservedOrder.Currency)
+		if capErr != nil {
+			s.log.Warn("failed to capture payment for backordered order; releasing reserved stock", "order_id", o.OrderID, "err", capErr)
+			if rerr := s.releaseBackorderClaimInTxn(ctx, reservedOrder); rerr != nil {
+				s.log.ErrorContext(ctx, "failed to release backorder reservation after capture failure", "order_id", o.OrderID, "err", rerr)
+			}
+			continue
+		}
+
+		// Step 3: Commit payment capture leg + convert status BACKORDERED -> PENDING atomically.
 		now := s.now()
 		leg := PaymentLeg{
-			OrderID:        o.OrderID,
+			OrderID:        reservedOrder.OrderID,
 			LegID:          s.newID(),
 			Method:         MethodCard,
-			AmountMinor:    o.TotalMinor,
+			AmountMinor:    reservedOrder.TotalMinor,
 			Status:         PaymentStatusCaptured,
-			IdempotencyKey: "card-backorder-" + o.OrderID,
+			IdempotencyKey: "card-backorder-" + reservedOrder.OrderID,
 			ProviderRef:    spanner.NullString{StringVal: providerRef, Valid: providerRef != ""},
 			CreatedAt:      now,
 			CapturedAt:     spanner.NullTime{Time: now, Valid: true},
 		}
-		if legErr := s.recordPaymentLegStandalone(ctx, leg); legErr != nil && status.Code(legErr) != codes.AlreadyExists {
-			s.log.ErrorContext(ctx, "failed to record backorder capture leg", "order_id", o.OrderID, "err", legErr)
+		if ferr := s.finalizeBackorderCaptureInTxn(ctx, reservedOrder, leg); ferr != nil {
+			s.log.ErrorContext(ctx, "failed to finalize captured backorder", "order_id", reservedOrder.OrderID, "err", ferr)
 			continue
 		}
-
-		// Payment succeeded, convert backorder to active order.
-		stockOpts := StockReservationOpts{}
-		if s.allocationRequired {
-			stockOpts.Skip = true
-		}
-		if err := s.repo.ClearBackorder(ctx, o.OrderID, func(txn outbox.TxnBuffer) error {
-			return outbox.EmitJSON(ctx, txn, events.AggregateOrder, o.OrderID, events.TopicMain, events.OrderEvent{
-				BaseEvent:      events.BaseEvent{Type: events.EventOrderStatusChanged, Timestamp: s.now().UTC().Format(time.RFC3339Nano)},
-				OrderID:        o.OrderID,
-				SupplierID:     o.SupplierID,
-				RetailerID:     o.RetailerID,
-				WarehouseID:    o.WarehouseID,
-				PreviousStatus: string(StatusBackordered),
-				Status:         string(StatusPending),
-				Reason:         "backorder_fulfilled",
-				ActorRole:      "system",
-				OrderSource:    string(o.Source),
-			})
-		}, stockOpts); err != nil {
-			s.log.ErrorContext(ctx, "failed to clear backorder", "order_id", o.OrderID, "err", err)
-			continue
-		}
-		if s.allocationRequired {
-			if err := s.ConfirmAndAllocate(ctx, o.OrderID); err != nil {
-				s.log.ErrorContext(ctx, "failed to allocate cleared backorder", "order_id", o.OrderID, "err", err)
-				continue
-			}
-		}
-		s.log.Info("backordered order payment captured and activated", "order_id", o.OrderID)
+		s.log.Info("backordered order reserved, payment captured, and activated", "order_id", reservedOrder.OrderID)
 	}
 	return nil
+}
+
+func (s *Service) claimAndReserveBackorderInTxn(ctx context.Context, o Order, claimTag string) (Order, bool, error) {
+	if s.spannerClient == nil {
+		return o, true, nil
+	}
+	var out Order
+	var claimed bool
+	err := spannerutils.RunReadWriteTransaction(ctx, s.spannerClient, func(txCtx context.Context, txn *spanner.ReadWriteTransaction) error {
+		row, rerr := txn.ReadRow(txCtx, "Orders", spanner.Key{o.OrderID}, []string{"Status", "HoldReason", "WarehouseId", "UpdatedAt"})
+		if rerr != nil {
+			return rerr
+		}
+		var curStatus, curWH string
+		var holdReason spanner.NullString
+		var updatedAt spanner.NullTime
+		if err := row.Columns(&curStatus, &holdReason, &curWH, &updatedAt); err != nil {
+			return err
+		}
+		if curStatus != string(StatusBackordered) {
+			return nil
+		}
+		if holdReason.Valid && strings.HasPrefix(holdReason.StringVal, "CAPTURING:") && updatedAt.Valid && s.now().Sub(updatedAt.Time) < 60*time.Second {
+			return nil
+		}
+		out = o
+		if strings.TrimSpace(curWH) != "" {
+			out.WarehouseID = curWH
+		}
+		alreadyReserved := false
+		if _, merr := txn.ReadRow(txCtx, "OrderStockReservationMarkers", spanner.Key{o.OrderID}, []string{"OrderId"}); merr == nil {
+			alreadyReserved = true
+		}
+		if !alreadyReserved {
+			if s.allocationRequired {
+				if err := s.allocateAndReserveInTxn(txCtx, txn, &out); err != nil {
+					return err
+				}
+			} else {
+				expected := time.Time{}
+				if out.RequestedDeliveryDate != nil {
+					expected = out.RequestedDeliveryDate.UTC()
+				} else if out.DeliverBefore != nil {
+					expected = out.DeliverBefore.UTC()
+				}
+				if err := ReserveLineItemsForOrderInTxn(txCtx, txn, out.SupplierID, out.WarehouseID, out.OrderID, out.RetailerID, expected, out.LineItems); err != nil {
+					return err
+				}
+			}
+			if err := insertStockReservationMarkerInTxn(txn, out.OrderID); err != nil {
+				return err
+			}
+		}
+		if err := txn.BufferWrite([]*spanner.Mutation{
+			spanner.UpdateMap("Orders", map[string]any{
+				"OrderId":     out.OrderID,
+				"WarehouseId": out.WarehouseID,
+				"HoldReason":  spanner.NullString{StringVal: claimTag, Valid: true},
+				"UpdatedAt":   spanner.CommitTimestamp,
+			}),
+		}); err != nil {
+			return err
+		}
+		claimed = true
+		return nil
+	})
+	return out, claimed, err
+}
+
+func (s *Service) releaseBackorderClaimInTxn(ctx context.Context, o Order) error {
+	if s.spannerClient == nil {
+		return nil
+	}
+	return spannerutils.RunReadWriteTransaction(ctx, s.spannerClient, func(txCtx context.Context, txn *spanner.ReadWriteTransaction) error {
+		if err := releaseOrderReservationsInTxn(txCtx, txn, &o); err != nil {
+			return err
+		}
+		return txn.BufferWrite([]*spanner.Mutation{
+			spanner.Delete("OrderStockReservationMarkers", spanner.Key{o.OrderID}),
+			spanner.UpdateMap("Orders", map[string]any{
+				"OrderId":    o.OrderID,
+				"HoldReason": spanner.NullString{StringVal: "INSUFFICIENT_STOCK", Valid: true},
+				"UpdatedAt":  spanner.CommitTimestamp,
+			}),
+		})
+	})
+}
+
+func (s *Service) finalizeBackorderCaptureInTxn(ctx context.Context, o Order, leg PaymentLeg) error {
+	return spannerutils.RunReadWriteTransaction(ctx, s.spannerClient, func(txCtx context.Context, txn *spanner.ReadWriteTransaction) error {
+		row, rerr := txn.ReadRow(txCtx, "Orders", spanner.Key{o.OrderID}, []string{"Version", "Status"})
+		if rerr != nil {
+			return rerr
+		}
+		var ver int64
+		var st string
+		if err := row.Columns(&ver, &st); err != nil {
+			return err
+		}
+		if st != string(StatusBackordered) {
+			return nil
+		}
+		if legErr := s.RecordPaymentLeg(txCtx, txn, leg); legErr != nil && status.Code(legErr) != codes.AlreadyExists {
+			return legErr
+		}
+		buf := outbox.NewSpannerTxnBuffer(txn)
+		if err := outbox.EmitJSON(txCtx, buf, events.AggregateOrder, o.OrderID, events.TopicMain, events.OrderEvent{
+			BaseEvent:      events.BaseEvent{Type: events.EventOrderStatusChanged, Timestamp: s.now().UTC().Format(time.RFC3339Nano)},
+			OrderID:        o.OrderID,
+			SupplierID:     o.SupplierID,
+			RetailerID:     o.RetailerID,
+			WarehouseID:    o.WarehouseID,
+			PreviousStatus: string(StatusBackordered),
+			Status:         string(StatusPending),
+			Reason:         "backorder_fulfilled",
+			ActorRole:      "system",
+			OrderSource:    string(o.Source),
+		}); err != nil {
+			return err
+		}
+		if err := buf.Flush(txCtx); err != nil {
+			return err
+		}
+		return txn.BufferWrite([]*spanner.Mutation{
+			spanner.UpdateMap("Orders", map[string]any{
+				"OrderId":    o.OrderID,
+				"Status":     string(StatusPending),
+				"HoldReason": spanner.NullString{},
+				"Version":    ver + 1,
+				"UpdatedAt":  spanner.CommitTimestamp,
+			}),
+			spanner.InsertMap("OrderStatusTransitions", map[string]any{
+				"OrderId":        o.OrderID,
+				"TransitionId":   uuid.NewString(),
+				"PreviousStatus": string(StatusBackordered),
+				"NewStatus":      string(StatusPending),
+				"Reason":         "backorder_fulfilled",
+				"ActorRole":      "SYSTEM",
+				"ActorId":        "system:backorder_sweeper",
+				"EventKind":      DefaultTransitionEventKind(StatusPending),
+				"MetadataJson":   []byte("{}"),
+				"CreatedAt":      spanner.CommitTimestamp,
+			}),
+		})
+	})
 }

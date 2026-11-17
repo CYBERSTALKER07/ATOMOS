@@ -248,3 +248,49 @@ func TestClient_Solve_CircuitBreaker_TripsAndRecovers(t *testing.T) {
 		t.Fatalf("expected breaker to reset to StateClosed, got %v", breaker.State())
 	}
 }
+
+func TestClient_Solve_PassesMaxStopsPerRouteAndClampsTimeLimit(t *testing.T) {
+	t.Parallel()
+
+	var captured contract.SolveRequest
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := json.NewDecoder(r.Body).Decode(&captured); err != nil {
+			t.Fatalf("decode request: %v", err)
+		}
+		_ = json.NewEncoder(w).Encode(contract.SolveResponse{
+			V:      contract.V,
+			Source: "OR_TOOLS_VRP",
+			Routes: []contract.Route{{
+				VehicleID: "v1",
+				DriverID:  "d1",
+				TotalVU:   1.0,
+				UtilPct:   10.0,
+				Stops:     []contract.Stop{{OrderID: "o1"}},
+			}},
+		})
+	}))
+	defer srv.Close()
+
+	cli := New(srv.URL, "key")
+	res, err := cli.Solve(context.Background(), SolveInput{
+		TraceID:          "trace-tunables",
+		DepotLat:         41.31,
+		DepotLng:         69.24,
+		Orders:           []dispatch.GeoOrder{{OrderID: "o1", Lat: 41.32, Lng: 69.25, Volume: 1.0}},
+		Fleet:            []dispatch.AvailableDriver{{DriverID: "d1", VehicleID: "v1", MaxVolumeVU: 10.0}},
+		MaxStopsPerRoute: 60,
+		TimeLimitMs:      90_000, // exceeds <= 55s aligned cap
+	})
+	if err != nil {
+		t.Fatalf("Solve: %v", err)
+	}
+	if res == nil || len(res.Routes) != 1 {
+		t.Fatalf("unexpected res=%+v", res)
+	}
+	if captured.Tunables == nil || captured.Tunables.MaxStopsPerRoute != 60 {
+		t.Fatalf("expected MaxStopsPerRoute=60, got %+v", captured.Tunables)
+	}
+	if captured.Tunables.TimeLimitMs != MaxSolverTimeLimitMs {
+		t.Fatalf("expected clamped TimeLimitMs=%d, got %d", MaxSolverTimeLimitMs, captured.Tunables.TimeLimitMs)
+	}
+}

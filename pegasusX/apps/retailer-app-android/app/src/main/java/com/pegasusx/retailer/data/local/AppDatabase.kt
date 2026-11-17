@@ -12,7 +12,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         PredictionEntity::class,
         PendingPosSaleEntity::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -73,6 +73,14 @@ abstract class AppDatabase : RoomDatabase() {
                       PRIMARY KEY(`id`)
                     )
                     """.trimIndent(),
+                )
+            }
+        }
+
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE pending_orders ADD COLUMN status TEXT NOT NULL DEFAULT 'PENDING'",
                 )
             }
         }

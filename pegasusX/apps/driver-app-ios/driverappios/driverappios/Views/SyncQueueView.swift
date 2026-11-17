@@ -45,11 +45,12 @@ struct SyncQueueView: View {
                         Text("supplier_portal.settings.integrations.text.dead_letter")
                         Spacer()
                         if !vm.dead.isEmpty {
-                            Button("mobile_driver.ui.dismiss_all") {
-                                vm.dismissAllDead()
+                            Button(L10n.string("mobile_driver.ui.escalate_to_support_review")) {
+                                Task { await vm.escalateDeadToSupport() }
                             }
-                            .font(.caption)
+                            .font(.caption.weight(.semibold))
                             .frame(minHeight: 44)
+                            .disabled(vm.escalating)
                         }
                     }
                 }
@@ -86,6 +87,15 @@ struct SyncQueueView: View {
                 Text(row.lastError)
                     .font(.caption)
                     .foregroundStyle(dead ? .red : .secondary)
+            }
+            if dead {
+                Button(L10n.string("mobile_driver.ui.retry_now")) {
+                    Task { await vm.retryDeadItem(row) }
+                }
+                .font(.caption.weight(.semibold))
+                .buttonStyle(.bordered)
+                .frame(minHeight: 36)
+                .padding(.top, 4)
             }
         }
         .padding(.vertical, 2)

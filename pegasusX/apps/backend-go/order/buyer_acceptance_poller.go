@@ -19,6 +19,11 @@ type Logger interface {
 	Error(msg string, args ...any)
 }
 
+// ESFStatusSyncer keeps first-class EsfDocuments synchronized with Soliq buyer-acceptance outcomes.
+type ESFStatusSyncer interface {
+	SyncOrderAcceptanceStatus(ctx context.Context, orderID, ehfID, status, reason string, rawPayload []byte) error
+}
+
 // BuyerAcceptancePoller checks the Soliq system for buyer EHF acceptance status.
 // ADR-009 marks orders COMPLETED on OFD submit success; this poller is the
 // parallel EHF buyer-clearance track that gates reverse settlement (credit note
@@ -32,6 +37,7 @@ type BuyerAcceptancePoller struct {
 
 	creditnoteSvc               *creditnote.Service
 	autoCreditNoteOnBuyerReject bool
+	esfSyncer                   ESFStatusSyncer
 }
 
 func NewBuyerAcceptancePoller(sc soliq.SoliqClient, repo Repository, logger Logger, cnSvc *creditnote.Service) *BuyerAcceptancePoller {
@@ -55,6 +61,11 @@ func NewBuyerAcceptancePoller(sc soliq.SoliqClient, repo Repository, logger Logg
 
 func (p *BuyerAcceptancePoller) SetAutoCreditNoteOnBuyerReject(enabled bool) {
 	p.autoCreditNoteOnBuyerReject = enabled
+}
+
+// SetESFSyncer attaches an optional ESF lifecycle synchronizer (M1.4).
+func (p *BuyerAcceptancePoller) SetESFSyncer(syncer ESFStatusSyncer) {
+	p.esfSyncer = syncer
 }
 
 // Run executes the poller in an infinite loop until ctx is cancelled.
@@ -81,7 +92,7 @@ func (p *BuyerAcceptancePoller) poll(ctx context.Context) {
 	}
 
 	for _, o := range orders {
-		if o == nil {
+		if o == nil || isMigrationFiscalExcluded(*o) {
 			continue
 		}
 		if o.LatestFiscalReceiptID == "" {
@@ -103,6 +114,10 @@ func (p *BuyerAcceptancePoller) poll(ctx context.Context) {
 				return emitBuyerAcceptance(ctx, tx, *o, events.EventBuyerAcceptanceAccepted, BuyerAcceptanceAccepted)
 			}); err != nil {
 				p.logger.Error("failed to update order to ACCEPTED", "orderId", o.OrderID, "err", err)
+			} else if p.esfSyncer != nil {
+				if syncErr := p.esfSyncer.SyncOrderAcceptanceStatus(ctx, o.OrderID, o.LatestFiscalReceiptID, "ACCEPTED", "", docStatus.Raw); syncErr != nil {
+					p.logger.Error("failed to sync ESF document to ACCEPTED", "orderId", o.OrderID, "ehfId", o.LatestFiscalReceiptID, "err", syncErr)
+				}
 			}
 		case "REJECTED":
 			o.BuyerAcceptanceStatus = BuyerAcceptanceRejected
@@ -125,11 +140,18 @@ func (p *BuyerAcceptancePoller) poll(ctx context.Context) {
 				return emitBuyerAcceptance(ctx, tx, *o, events.EventBuyerAcceptanceRejected, BuyerAcceptanceRejected)
 			}); err != nil {
 				p.logger.Error("failed to update order to REJECTED and create exception ticket", "orderId", o.OrderID, "err", err)
-			} else if p.autoCreditNoteOnBuyerReject && p.creditnoteSvc != nil {
-				// Reverse settlement: rejected EHF must not leave COMPLETED money
-				// stranded without a credit note (P1-6).
-				if _, cnErr := p.creditnoteSvc.CreateFromBuyerReject(ctx, o.OrderID, "system:buyer-accept-poller"); cnErr != nil {
-					p.logger.Error("failed to create credit note on buyer reject", "orderId", o.OrderID, "err", cnErr)
+			} else {
+				if p.autoCreditNoteOnBuyerReject && p.creditnoteSvc != nil {
+					// Reverse settlement: rejected EHF must not leave COMPLETED money
+					// stranded without a credit note (P1-6).
+					if _, cnErr := p.creditnoteSvc.CreateFromBuyerReject(ctx, o.OrderID, "system:buyer-accept-poller"); cnErr != nil {
+						p.logger.Error("failed to create credit note on buyer reject", "orderId", o.OrderID, "err", cnErr)
+					}
+				}
+				if p.esfSyncer != nil {
+					if syncErr := p.esfSyncer.SyncOrderAcceptanceStatus(ctx, o.OrderID, o.LatestFiscalReceiptID, "REJECTED", "buyer rejected EHF at Soliq", docStatus.Raw); syncErr != nil {
+						p.logger.Error("failed to sync ESF document to REJECTED", "orderId", o.OrderID, "ehfId", o.LatestFiscalReceiptID, "err", syncErr)
+					}
 				}
 			}
 		default:
@@ -141,6 +163,10 @@ func (p *BuyerAcceptancePoller) poll(ctx context.Context) {
 					return emitBuyerAcceptance(ctx, tx, *o, events.EventBuyerAcceptanceExpired, BuyerAcceptanceExpired)
 				}); err != nil {
 					p.logger.Error("failed to update order to EXPIRED", "orderId", o.OrderID, "err", err)
+				} else if p.esfSyncer != nil {
+					if syncErr := p.esfSyncer.SyncOrderAcceptanceStatus(ctx, o.OrderID, o.LatestFiscalReceiptID, "EXPIRED", "buyer acceptance deadline expired", docStatus.Raw); syncErr != nil {
+						p.logger.Error("failed to sync ESF document on buyer acceptance expiry", "orderId", o.OrderID, "ehfId", o.LatestFiscalReceiptID, "err", syncErr)
+					}
 				}
 			}
 		}

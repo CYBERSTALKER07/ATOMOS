@@ -24,9 +24,17 @@ import { apiFetch } from "@/lib/auth";
 import { SessionPackChip } from "./SessionPackChip";
 import { OrgSwitcher } from "./OrgSwitcher";
 import LanguageSwitcher from "./LanguageSwitcher";
-import { usePortalT } from "@/lib/i18n";
+import { usePortalLocale, usePortalT } from "@/lib/i18n";
 import { NAV, navSectionIsActive, type NavSection } from "@/lib/nav";
 import { DesktopKeyboardCheatsheet } from "./ui/DesktopKeyboardCheatsheet";
+import {
+  FAST_HOME_COPY,
+  WORKSPACE_MODE_CHANGE_EVENT,
+  readStoredWorkspaceMode,
+  resolveEffectiveWorkspaceMode,
+  writeStoredWorkspaceMode,
+  type WorkspaceMode,
+} from "@/lib/fast-home";
 
 type RetailerIdentity = { name: string; company: string; initials: string };
 
@@ -215,7 +223,7 @@ const DrawerContent = memo(function DrawerContent({
                     fontWeight: 600,
                   }}
                 >
-                  V.O.I.D Hub
+                  PegasusX Hub
                 </h1>
               </div>
               {!isMobile && (
@@ -410,6 +418,8 @@ function RetailerShellInner({
   pathname: string;
 }) {
   const t = usePortalT();
+  const locale = usePortalLocale();
+  const workspaceCopy = FAST_HOME_COPY[locale] ?? FAST_HOME_COPY.uz;
   const router = useRouter();
   const { isConnected } = useWebSocket();
   const { unreadCount } = useRetailerNotifications();
@@ -419,7 +429,33 @@ function RetailerShellInner({
   const [identity, setIdentity] = useState<RetailerIdentity>(DEFAULT_IDENTITY);
   const [permissions, setPermissions] = useState<string[] | null>(null);
   const [capabilities, setCapabilities] = useState<string[] | null>(null);
+  const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>("fast");
   const reduceMotion = useReducedMotion();
+
+  useEffect(() => {
+    setWorkspaceMode(readStoredWorkspaceMode() ?? "fast");
+    const onWorkspaceChange = (evt: Event) => {
+      const detail = (evt as CustomEvent<WorkspaceMode>).detail;
+      if (detail === "fast" || detail === "full") {
+        setWorkspaceMode(detail);
+      } else {
+        setWorkspaceMode(readStoredWorkspaceMode() ?? "fast");
+      }
+    };
+    window.addEventListener(WORKSPACE_MODE_CHANGE_EVENT, onWorkspaceChange);
+    return () => window.removeEventListener(WORKSPACE_MODE_CHANGE_EVENT, onWorkspaceChange);
+  }, []);
+
+  const handleWorkspaceSwitch = useCallback(
+    (mode: WorkspaceMode) => {
+      setWorkspaceMode(mode);
+      writeStoredWorkspaceMode(mode);
+      if (mode === "fast" && pathname !== "/dashboard") {
+        router.push("/dashboard");
+      }
+    },
+    [pathname, router],
+  );
 
   const handleLogout = useCallback(async () => {
     document.cookie = "pegasus_retailer_jwt=; Max-Age=0; path=/";
@@ -491,6 +527,8 @@ function RetailerShellInner({
           permissions?: string[];
           capabilities?: string[];
           home_surface?: string;
+          retailer_role?: string;
+          is_owner?: boolean;
           name?: string;
         };
         if (!cancelled && Array.isArray(me.permissions)) {
@@ -498,6 +536,15 @@ function RetailerShellInner({
         }
         if (!cancelled && Array.isArray(me.capabilities)) {
           setCapabilities(me.capabilities);
+        }
+        if (!cancelled) {
+          setWorkspaceMode(
+            resolveEffectiveWorkspaceMode(
+              readStoredWorkspaceMode(),
+              me.retailer_role,
+              me.is_owner,
+            ),
+          );
         }
         // Optional role home redirect only when landing on root dashboard as cashier/receiver
         if (
@@ -690,6 +737,38 @@ function RetailerShellInner({
           </div>
 
           <div className="desk-topbar-right px-6 gap-3" data-tauri-no-drag>
+            <div
+              className="inline-flex items-center rounded-xl border border-[var(--desk-border)] bg-[var(--desk-surface-subtle)] p-0.5 text-[11px]"
+              role="group"
+              aria-label="Workspace mode"
+              data-testid="workspace-mode-switcher"
+            >
+              <button
+                type="button"
+                onClick={() => handleWorkspaceSwitch("fast")}
+                className={`rounded-lg px-2.5 py-1 font-medium transition-colors ${
+                  workspaceMode === "fast"
+                    ? "bg-[var(--desk-accent)] text-white"
+                    : "text-[var(--desk-text-secondary)] hover:text-[var(--desk-text-primary)]"
+                }`}
+                data-testid="workspace-switch-fast"
+              >
+                {workspaceCopy.fastModeLabel}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleWorkspaceSwitch("full")}
+                className={`rounded-lg px-2.5 py-1 font-medium transition-colors ${
+                  workspaceMode === "full"
+                    ? "bg-[var(--desk-accent)] text-white"
+                    : "text-[var(--desk-text-secondary)] hover:text-[var(--desk-text-primary)]"
+                }`}
+                data-testid="workspace-switch-full"
+              >
+                {workspaceCopy.fullErpLabel}
+              </button>
+            </div>
+
             {/* Native Desktop Telemetry Pill */}
             <div className="hidden xl:inline-flex items-center gap-2 px-2.5 py-1 rounded-full border border-neutral-800 bg-neutral-900/80 text-[11px] font-mono text-neutral-300">
               <span className="flex items-center gap-1 text-emerald-400">

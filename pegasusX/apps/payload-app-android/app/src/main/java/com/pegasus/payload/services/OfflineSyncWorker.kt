@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import com.pegasus.payload.BuildConfig
 import com.pegasus.payload.data.local.QueuedActionDao
 import com.pegasus.payload.data.remote.PayloadApi
 import com.pegasus.payload.offline.OfflineHttpSemantics
@@ -32,7 +33,7 @@ class OfflineSyncWorker @AssistedInject constructor(
         val pending = queuedActionDao.getAll()
         if (pending.isEmpty()) return Result.success()
 
-        Log.d(TAG, "Draining ${pending.size} queued action(s)")
+        if (BuildConfig.DEBUG) Log.d(TAG, "Draining ${pending.size} queued action(s)")
 
         var failures = 0
         for (action in pending) {
@@ -49,12 +50,12 @@ class OfflineSyncWorker @AssistedInject constructor(
                 }
 
                 queuedActionDao.deleteById(action.id)
-                Log.d(TAG, "Successfully synced action ${action.id}")
+                if (BuildConfig.DEBUG) Log.d(TAG, "Successfully synced action ${action.id}")
             } catch (e: HttpException) {
                 when (OfflineHttpSemantics.outcomeForHttp(e.code())) {
                     OfflineHttpSemantics.FlushOutcome.ACK -> {
                         queuedActionDao.deleteById(action.id)
-                        Log.d(TAG, "409/2xx idempotent for ${action.id}, purged")
+                        if (BuildConfig.DEBUG) Log.d(TAG, "409/2xx idempotent for ${action.id}, purged")
                     }
                     OfflineHttpSemantics.FlushOutcome.RETRY -> {
                         failures++

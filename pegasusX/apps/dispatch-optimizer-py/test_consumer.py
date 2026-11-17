@@ -53,6 +53,24 @@ class TestDispatchOptimizerConsumer(unittest.TestCase):
         self.assertEqual(len(res["routes"]), 2)
         total_orders = sum(len(r["order_ids"]) for r in res["routes"])
         self.assertEqual(total_orders, 4)
+        for r in res["routes"]:
+            self.assertIn("wave_index", r)
+            self.assertEqual(r["wave_index"], 1)
+
+    def test_solve_vrp_propagates_wave_index_from_fleet_route(self):
+        payload = {
+            "depot": {"lat": 41.2995, "lng": 69.2401},
+            "fleet": [{"vehicle_id": "v1", "capacity_vu": 100}],
+            "orders": [
+                {"order_id": "o1", "lat": 41.31, "lng": 69.27, "volume_vu": 30},
+                {"order_id": "o2", "lat": 41.32, "lng": 69.28, "volume_vu": 30},
+            ]
+        }
+        res = consumer.solve_vrp(payload)
+        self.assertIn("routes", res)
+        self.assertEqual(len(res["routes"]), 1)
+        self.assertIn("wave_index", res["routes"][0])
+        self.assertEqual(res["routes"][0]["wave_index"], 1)
 
     def test_extract_header_and_dlq_routing(self):
         class FakeMsg:
@@ -89,6 +107,38 @@ class TestDispatchOptimizerConsumer(unittest.TestCase):
         self.assertEqual(val, b"invalid-json")
         self.assertEqual(hdrs[b"original_topic" if b"original_topic" in hdrs else "original_topic"], b"orders.v1")
         self.assertEqual(hdrs[b"trace_id" if b"trace_id" in hdrs else "trace_id"], b"tr-123")
+
+    def test_solve_vrp_fallback_bin_packing_respects_capacity(self):
+        old_main = consumer.main
+        consumer.main = None
+        try:
+            payload = {
+                "fleet": [{"driver_id": "d1", "vehicle_id": "v1", "capacity_vu": 50}],
+                "orders": [
+                    {"order_id": "o1", "volume_vu": 40},
+                    {"order_id": "o2", "volume_vu": 40},
+                ],
+            }
+            res = consumer.solve_vrp(payload)
+            self.assertEqual(len(res["routes"]), 2)
+            self.assertEqual([r["wave_index"] for r in res["routes"]], [1, 2])
+        finally:
+            consumer.main = old_main
+
+    def test_solve_replan_respects_remaining_capacity(self):
+        res = consumer.solve_replan("MANIFEST_ORDER_INJECTED", {
+            "manifest_id": "m1",
+            "supplier_id": "s1",
+            "anchored_order_ids": ["a1"],
+            "remaining_capacity_vu": 30,
+            "orders": [
+                {"order_id": "a1", "lat": 41.31, "lng": 69.24, "volume_vu": 50},
+                {"order_id": "c1", "lat": 41.311, "lng": 69.241, "volume_vu": 25},
+                {"order_id": "c2", "lat": 41.312, "lng": 69.242, "volume_vu": 25},
+            ],
+        })
+        self.assertEqual(len(res["new_order_ids"]), 2)
+        self.assertEqual(res["new_order_ids"][0], "a1")
 
 if __name__ == "__main__":
     unittest.main()

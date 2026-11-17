@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
-	"github.com/redis/go-redis/v9"
 	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
@@ -29,6 +28,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/routing"
 	"github.com/pegasusx/pegasusx/apps/backend-go/telemetry"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
+	"github.com/redis/go-redis/v9"
 	"google.golang.org/api/iterator"
 )
 
@@ -124,6 +124,39 @@ type Service struct {
 	firebaseVerifier      auth.FirebaseVerifier
 	orderStock            OrderStockReader
 	resolveSupplyContext  func(ctx context.Context, warehouseID string) (warehouseSupplyContext, error)
+	valuationReceiptHook  ReceiptValuationHook
+}
+
+// ReceiptValuationArgs passes received transfer line items into the valuation layer hook.
+type ReceiptValuationArgs struct {
+	EntityID       string
+	WarehouseID    string
+	ProductID      string
+	LotID          string
+	ReceiptRefType string
+	ReceiptRefID   string
+	Quantity       int64
+	UnitCostMinor  int64
+	VatMinor       int64
+	CreditAccount  string
+	VendorID       string
+	Currency       string
+	ExpiryDate     string
+	IdempotencyKey string
+	ActorID        string
+}
+
+// ReceiptValuationHook records inventory cost layers and GL postings atomically inside receiveTransferWithItems.
+type ReceiptValuationHook func(ctx context.Context, txn *spanner.ReadWriteTransaction, items []ReceiptValuationArgs) error
+
+// SetValuationReceiptHook attaches an optional transactional inventory valuation hook.
+func (s *Service) SetValuationReceiptHook(fn ReceiptValuationHook) {
+	if s == nil {
+		return
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.valuationReceiptHook = fn
 }
 
 // ServiceConfig is the constructor input.
@@ -154,13 +187,14 @@ type ServiceConfig struct {
 	Currency   string
 	Now        func() time.Time
 
-	JWTSecret        string
-	JWTIssuer        string
-	OptimizerClient  *optimizerclient.Client
-	PlanCounters     *plan.SourceCounters
-	FallbackDepotLat float64
-	FallbackDepotLng float64
-	FirebaseVerifier auth.FirebaseVerifier
+	JWTSecret            string
+	JWTIssuer            string
+	OptimizerClient      *optimizerclient.Client
+	PlanCounters         *plan.SourceCounters
+	FallbackDepotLat     float64
+	FallbackDepotLng     float64
+	FirebaseVerifier     auth.FirebaseVerifier
+	ValuationReceiptHook ReceiptValuationHook
 }
 
 // InventoryRow represents one stock row.
@@ -254,6 +288,7 @@ func NewService(c ServiceConfig) *Service {
 		fallbackDepotLat:     c.FallbackDepotLat,
 		fallbackDepotLng:     c.FallbackDepotLng,
 		firebaseVerifier:     c.FirebaseVerifier,
+		valuationReceiptHook: c.ValuationReceiptHook,
 	}
 }
 

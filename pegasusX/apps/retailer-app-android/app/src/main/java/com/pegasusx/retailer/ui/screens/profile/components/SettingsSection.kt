@@ -22,6 +22,7 @@ import androidx.compose.material.icons.outlined.Assessment
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.People
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.VerifiedUser
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -46,6 +47,8 @@ fun SettingsSection(
     onFamilyMembersClick: () -> Unit,
     onCapabilitiesClick: () -> Unit = {},
     onTeamClick: () -> Unit = {},
+    isOwner: Boolean = false,
+    onOwnerApprovalsClick: () -> Unit = {},
     onLocationsClick: () -> Unit = {},
     onStoreStockClick: () -> Unit = {},
     onLocalSkusClick: () -> Unit = {},
@@ -55,6 +58,8 @@ fun SettingsSection(
     onPlanogramsClick: () -> Unit = {},
     onReportsClick: () -> Unit = {},
     onAssistClick: () -> Unit = {},
+    generalSettingsSubtitle: String = "Language, preferences",
+    onGeneralSettingsClick: () -> Unit = {},
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth()
@@ -63,7 +68,7 @@ fun SettingsSection(
         color = MaterialTheme.colorScheme.surface,
     ) {
         Column {
-            SettingsListItem(icon = Icons.Outlined.Settings, title = "General Settings", subtitle = "Language, preferences", onClick = { })
+            SettingsListItem(icon = Icons.Outlined.Settings, title = "General Settings", subtitle = generalSettingsSubtitle, onClick = onGeneralSettingsClick)
             HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f), modifier = Modifier.padding(horizontal = 16.dp))
             SettingsListItem(icon = Icons.Rounded.Person, title = "Account", subtitle = "Business details & receiving hours", onClick = onAccountClick)
             HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f), modifier = Modifier.padding(horizontal = 16.dp))
@@ -86,6 +91,15 @@ fun SettingsSection(
             HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f), modifier = Modifier.padding(horizontal = 16.dp))
             SettingsListItem(icon = Icons.Outlined.SupportAgent, title = "Floor assist", subtitle = "Section help tickets", onClick = onAssistClick)
             HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f), modifier = Modifier.padding(horizontal = 16.dp))
+            if (isOwner) {
+                SettingsListItem(
+                    icon = Icons.Outlined.VerifiedUser,
+                    title = "Owner Approval Inbox",
+                    subtitle = "Approve or reject over-mandate orders",
+                    onClick = onOwnerApprovalsClick,
+                )
+                HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f), modifier = Modifier.padding(horizontal = 16.dp))
+            }
             SettingsListItem(icon = Icons.Outlined.People, title = "Team", subtitle = "Staff roles and invites", onClick = onTeamClick)
             HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f), modifier = Modifier.padding(horizontal = 16.dp))
             SettingsListItem(icon = Icons.Outlined.CreditCard, title = "Saved Cards", subtitle = "Manage payment methods", onClick = onSavedCardsClick)

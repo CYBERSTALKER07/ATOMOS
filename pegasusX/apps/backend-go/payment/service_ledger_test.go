@@ -119,3 +119,29 @@ func TestHandleLedger_InvalidOccurredRangeBadRequest(t *testing.T) {
 		t.Fatalf("status = %d, want %d", res.Code, http.StatusBadRequest)
 	}
 }
+
+func TestReconciliationEntrySign(t *testing.T) {
+	tests := []struct {
+		entryType string
+		wantSign  int64
+	}{
+		{"CHARGEBACK_REVERSAL", 1},
+		{"PAYMENT_REVERSAL", -1},
+		{"ORDER_REVERSAL", -1},
+		{"CHARGEBACK", -1},
+		{"REFUND", -1},
+		{"PAYMENT_PAID", 1},
+		{"PAYMENT_CAPTURED", 1},
+		{"PAYMENT_FAILED", 0},
+		{"PAYMENT_CANCELLED", 0},
+		{"UNKNOWN_ENTRY", 0},
+		{"", 0},
+	}
+
+	for _, tt := range tests {
+		got := reconciliationEntrySign(tt.entryType)
+		if got != tt.wantSign {
+			t.Errorf("reconciliationEntrySign(%q) = %d, want %d", tt.entryType, got, tt.wantSign)
+		}
+	}
+}

@@ -28,6 +28,11 @@ class WarehouseOperationsRepository @Inject constructor(
 
     suspend fun listBins(): Response<WarehouseBinListResponse> = api.listBins()
 
+    suspend fun listLots(): Response<StockLotListResponse> = api.listLots()
+
+    suspend fun getManifestTemperature(manifestId: String): Response<ManifestTemperatureResponse> =
+        api.getManifestTemperature(manifestId)
+
     suspend fun createBin(body: WarehouseBinCreateRequest): Response<WarehouseBinLocation> =
         api.createBin(body, WarehouseIdempotencyKeys.createBin(body.zone.orEmpty()))
 
@@ -56,19 +61,47 @@ class WarehouseOperationsRepository @Inject constructor(
             WarehouseIdempotencyKeys.confirmPickTask(waveId, taskId),
         )
 
+    suspend fun waivePickShorts(waveId: String): Response<PickWave> =
+        api.waivePickShorts(
+            waveId,
+            WarehouseIdempotencyKeys.waivePickShorts(waveId),
+        )
+
     suspend fun listCycleCounts(): Response<CycleCountListResponse> = api.listCycleCounts()
 
     suspend fun createCycleCount(locationId: String, productId: String, expectedQty: Long? = null): Response<CycleCount> =
         api.createCycleCount(
             CycleCountCreateRequest(locationId = locationId, productId = productId, expectedQty = expectedQty),
-            "warehouse-cycle-count:${System.currentTimeMillis()}",
+            WarehouseIdempotencyKeys.createCycleCount(locationId, productId),
         )
 
-    suspend fun submitCycleCount(countId: String, countedQty: Long): Response<CycleCount> =
+    suspend fun submitCycleCount(
+        countId: String,
+        countedQty: Long,
+        reasonCode: String? = null,
+    ): Response<CycleCount> =
         api.submitCycleCount(
             countId,
-            CycleCountSubmitRequest(countedQty = countedQty),
-            "warehouse-cycle-submit:$countId:${System.currentTimeMillis()}",
+            CycleCountSubmitRequest(
+                countedQty = countedQty,
+                reasonCode = reasonCode?.trim()?.takeIf { it.isNotEmpty() },
+            ),
+            WarehouseIdempotencyKeys.submitCycleCount(countId),
+        )
+
+    suspend fun listInventoryAdjustments(): Response<InventoryAdjustmentListResponse> =
+        api.listInventoryAdjustments()
+
+    suspend fun approveInventoryAdjustment(adjustmentId: String): Response<InventoryAdjustment> =
+        api.approveInventoryAdjustment(
+            adjustmentId,
+            WarehouseIdempotencyKeys.approveInventoryAdjustment(adjustmentId),
+        )
+
+    suspend fun rejectInventoryAdjustment(adjustmentId: String): Response<InventoryAdjustment> =
+        api.rejectInventoryAdjustment(
+            adjustmentId,
+            WarehouseIdempotencyKeys.rejectInventoryAdjustment(adjustmentId),
         )
 
     suspend fun getReplenishmentInsights(): Response<ReplenishmentInsightsResponse> =

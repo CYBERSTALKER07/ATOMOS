@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { PageChrome } from "@/components/PageChrome";
 import { apiFetch } from "@/lib/auth";
+import { isTauri, storeToken } from "@/lib/bridge";
 
 type Location = {
   location_id: string;
@@ -127,11 +128,10 @@ export default function LocationsPage() {
       };
       if (!res.ok) throw new Error(json.error || `switch_failed_${res.status}`);
       if (json.token && typeof document !== "undefined") {
-        document.cookie = `pegasus_retailer_jwt=${json.token}; path=/; SameSite=Lax`;
-        try {
-          localStorage.setItem("pegasus_retailer_jwt", json.token);
-        } catch {
-          /* ignore */
+        const secureFlag = typeof location !== "undefined" && location.protocol === "https:" ? "; Secure" : "";
+        document.cookie = `pegasus_retailer_jwt=${encodeURIComponent(json.token)}; path=/; SameSite=Strict${secureFlag}`;
+        if (isTauri()) {
+          void storeToken(json.token).catch(() => {});
         }
       }
       setActiveId(id);

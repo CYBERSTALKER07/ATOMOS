@@ -130,3 +130,86 @@ func TestStampTaxRegimeTxn_LineItemSpecificVatAndHalfUpRounding(t *testing.T) {
 		t.Fatalf("line 4 mismatch: vatRate=%d net=%d vat=%d gross=%d", s4.VatRateBps, s4.NetMinor, s4.VatMinor, s4.GrossMinor)
 	}
 }
+
+func TestStampTaxRegimeTxn_DuplicateSKUAndVatTotalAlignment(t *testing.T) {
+	t.Setenv("DEFAULT_MARKET_CODE", "UZ")
+	repo := &mockTaxRepo{
+		regime: tax.TaxRegimeVersion{
+			Id:          "reg_uz_2026",
+			CountryCode: "UZ",
+			VatRatesBps: []int64{1200}, // standard 12%
+		},
+	}
+	svc := NewService(ServiceConfig{})
+	svc.SetTaxService(tax.NewService(repo, nil, slog.Default()))
+
+	orderRecord := &Order{
+		OrderID:    "ord_fiscal_dupe_sku_1",
+		SupplierID: "sup_1",
+		Currency:   "UZS",
+		LineItems: []LineItem{
+			// Line 0: first SKU-DUPE -> OrderLineId = "SKU-DUPE"
+			{SKU: "SKU-DUPE", Quantity: 2, UnitPrice: 1000},
+			// Line 1: second SKU-DUPE -> OrderLineId = "SKU-DUPE#1"
+			{SKU: "SKU-DUPE", Quantity: 3, UnitPrice: 1000},
+			// Line 2: SKU-OTHER -> OrderLineId = "SKU-OTHER"
+			{SKU: "SKU-OTHER", Quantity: 1, UnitPrice: 5000},
+			// Line 3: third SKU-DUPE -> OrderLineId = "SKU-DUPE#3"
+			{SKU: "SKU-DUPE", Quantity: 1, UnitPrice: 1000},
+		},
+	}
+
+	ctx := context.Background()
+	if err := svc.stampTaxRegimeTxn(ctx, nil, orderRecord); err != nil {
+		t.Fatalf("stampTaxRegimeTxn failed: %v", err)
+	}
+
+	if len(repo.snapshots) != 4 {
+		t.Fatalf("expected 4 snapshots, got %d", len(repo.snapshots))
+	}
+
+	expectedIDs := []string{
+		"SKU-DUPE",
+		"SKU-DUPE#1",
+		"SKU-OTHER",
+		"SKU-DUPE#3",
+	}
+
+	var sumVat int64
+	var sumGross int64
+	for i, expectedID := range expectedIDs {
+		snap := repo.snapshots[i]
+		if snap.OrderLineId != expectedID {
+			t.Errorf("line %d: expected OrderLineId=%q, got %q", i, expectedID, snap.OrderLineId)
+		}
+		if snap.OrderId != orderRecord.OrderID {
+			t.Errorf("line %d: expected OrderId=%q, got %q", i, orderRecord.OrderID, snap.OrderId)
+		}
+		sumVat += snap.VatMinor
+		sumGross += snap.GrossMinor
+	}
+
+	// Verify VAT calculations:
+	// Line 0: Net = 2000, Vat = (2000*1200 + 5000)/10000 = 240, Gross = 2240
+	// Line 1: Net = 3000, Vat = (3000*1200 + 5000)/10000 = 360, Gross = 3360
+	// Line 2: Net = 5000, Vat = (5000*1200 + 5000)/10000 = 600, Gross = 5600
+	// Line 3: Net = 1000, Vat = (1000*1200 + 5000)/10000 = 120, Gross = 1120
+	expectedTotalVat := int64(240 + 360 + 600 + 120)       // 1320
+	expectedTotalGross := int64(2240 + 3360 + 5600 + 1120) // 12320
+
+	if sumVat != expectedTotalVat {
+		t.Errorf("expected sumVat=%d, got %d", expectedTotalVat, sumVat)
+	}
+	if sumGross != expectedTotalGross {
+		t.Errorf("expected sumGross=%d, got %d", expectedTotalGross, sumGross)
+	}
+	if orderRecord.VatTotalMinor() != expectedTotalVat {
+		t.Errorf("expected orderRecord.VatTotalMinor()=%d, got %d", expectedTotalVat, orderRecord.VatTotalMinor())
+	}
+	if GetOrderVatTotalMinor(orderRecord.OrderID) != expectedTotalVat {
+		t.Errorf("expected GetOrderVatTotalMinor()=%d, got %d", expectedTotalVat, GetOrderVatTotalMinor(orderRecord.OrderID))
+	}
+	if len(orderRecord.PendingFiscalSnapshots) != 4 {
+		t.Errorf("expected 4 PendingFiscalSnapshots, got %d", len(orderRecord.PendingFiscalSnapshots))
+	}
+}

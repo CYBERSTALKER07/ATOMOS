@@ -5,7 +5,11 @@ import com.pegasusx.driver.data.remote.TokenHolder
 
 /** Deterministic idempotency keys — aligned with @pegasusx/api-client idempotency.ts */
 object DriverIdempotencyKeys {
-    private fun driverId(): String = TokenHolder.userId?.takeIf { it.isNotBlank() } ?: "driver"
+    private fun driverId(): String = try {
+        TokenHolder.userId?.takeIf { it.isNotBlank() }
+    } catch (_: UninitializedPropertyAccessException) {
+        null
+    } ?: "driver"
 
     fun deliver(orderId: String): String = "driver-deliver:${driverId()}:$orderId"
 
@@ -38,6 +42,11 @@ object DriverIdempotencyKeys {
     fun syncBatch(orderSignatures: List<String>): String {
         val sorted = orderSignatures.map { it.trim() }.filter { it.isNotEmpty() }.sorted()
         return "driver-sync-batch:${driverId()}:${stableHash(sorted.joinToString(","))}"
+    }
+
+    fun syncEscalation(itemIds: List<String>): String {
+        val sorted = itemIds.map { it.trim() }.filter { it.isNotEmpty() }.sorted()
+        return "driver-sync-escalation:${driverId()}:${stableHash(sorted.joinToString(","))}"
     }
 
     fun markArrived(orderId: String): String = "driver-mark-arrived-$orderId"

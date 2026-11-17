@@ -83,6 +83,15 @@ data class ProblemDetail(
     @SerialName("message_key") val messageKey: String? = null,
     val retryable: Boolean? = null,
     val action: String? = null,
+    val error: String? = null,
+    @SerialName("sku_id") val skuId: String? = null,
+    @SerialName("pack_size") val packSize: Int? = null,
+    val requested: Int? = null,
+    @SerialName("suggested_floor") val suggestedFloor: Int? = null,
+    @SerialName("suggested_ceil") val suggestedCeil: Int? = null,
+    @SerialName("suggested_nearest") val suggestedNearest: Int? = null,
+    @SerialName("oos_items") val oosItems: List<String> = emptyList(),
+    @kotlinx.serialization.Transient val rawBody: String? = null,
 )
 
 class ProblemDetailException(val problem: ProblemDetail) :
@@ -403,6 +412,14 @@ data class OrderLineItem(
     @SerialName("quantity") val quantity: Int,
     @SerialName("unit_price") val unitPrice: Long = 0L,
     @SerialName("total_price") val totalPrice: Long = 0L,
+    @SerialName("must_have") val mustHave: Boolean = false,
+    @SerialName("allow_substitutes") val allowSubstitutes: Boolean = false,
+    @SerialName("substitute_sku") val substituteSku: String? = null,
+    @SerialName("substitute_name") val substituteName: String? = null,
+    @SerialName("original_sku") val originalSku: String? = null,
+    @SerialName("price_gap_minor") val priceGapMinor: Long? = null,
+    @SerialName("shortage_action") val shortageAction: String? = null,
+    @SerialName("shortage_reason") val shortageReason: String? = null,
 )
 
 // ── Order ──
@@ -432,11 +449,13 @@ data class Order(
     @SerialName("preorder_badge") val preorderBadge: String? = null,
     @SerialName("proposed_delivery_date") val proposedDeliveryDate: String? = null,
     @SerialName("delivery_proposal_reason") val deliveryProposalReason: String? = null,
+    @SerialName("auto_confirm_opt_in") val autoConfirmOptIn: Boolean = false,
     @SerialName("version") val version: Long = 0,
 ) {
     val displayTotal: String get() = formatRetailerAmount(totalAmount, currency)
     val itemCount: Int get() = items.sumOf { it.quantity }
     val isAiGenerated: Boolean get() = orderSource == "AI_PREDICTED"
+    val isMigrationOrigin: Boolean get() = orderSource == "MIGRATION"
     val needsAiConfirmation: Boolean get() = status == OrderStatus.PENDING_REVIEW
     val needsPreorderAction: Boolean get() =
         orderSource == "MANUAL_PREORDER" && status == OrderStatus.SCHEDULED &&
@@ -470,12 +489,18 @@ data class ProcurementOrderResponse(
 data class ProcurementOrderRequest(
     @SerialName("retailer_id") val retailerId: String,
     @SerialName("items") val items: List<ProcurementOrderItem>,
+    @SerialName("auto_confirm_opt_in") val autoConfirmOptIn: Boolean = false,
+    @SerialName("payment_method") val paymentMethod: String? = null,
+    @SerialName("payment_gateway") val paymentGateway: String? = null,
+    @SerialName("client_order_id") val clientOrderId: String? = null,
 )
 
 @Serializable
 data class ProcurementOrderItem(
     @SerialName("product_id") val productId: String,
     @SerialName("quantity") val quantity: Int,
+    @SerialName("must_have") val mustHave: Boolean = false,
+    @SerialName("allow_substitutes") val allowSubstitutes: Boolean = false,
 )
 
 // ── AI Demand Forecast (legacy SKU-forecast shape; NOT returned by GET /v1/retailer/ai/predictions) ──
@@ -641,6 +666,8 @@ data class CartItem(
     val product: Product,
     val variant: Variant,
     var quantity: Int,
+    val mustHave: Boolean = false,
+    val allowSubstitutes: Boolean = false,
 ) {
     val totalPrice: Long get() = quantity.toLong() * variant.price
 }
@@ -1086,6 +1113,8 @@ data class CheckoutLineItem(
     @SerialName("sku_id") val skuId: String,
     @SerialName("quantity") val quantity: Int,
     @SerialName("unit_price") val unitPrice: Long,
+    @SerialName("must_have") val mustHave: Boolean = false,
+    @SerialName("allow_substitutes") val allowSubstitutes: Boolean = false,
 )
 
 @Serializable
@@ -1100,6 +1129,9 @@ data class UnifiedCheckoutRequest(
     @SerialName("delivery_priority") val deliveryPriority: String? = null,
     @SerialName("checkout_policy_token") val checkoutPolicyToken: String? = null,
     @SerialName("currency") val currency: String? = null,
+    @SerialName("auto_confirm_opt_in") val autoConfirmOptIn: Boolean = false,
+    @SerialName("payment_method") val paymentMethod: String? = null,
+    @SerialName("client_order_id") val clientOrderId: String? = null,
 )
 
 @Serializable
@@ -1325,4 +1357,467 @@ data class LoyaltyLedgerEntry(
 @Serializable
 data class LoyaltyLedgerResponse(
     val entries: List<LoyaltyLedgerEntry> = emptyList(),
+)
+
+// ── W2: Owner Approvals & Seller Mandates ──
+
+@Serializable
+data class RetailerApprovalItem(
+    @SerialName("request_id") val requestId: String = "",
+    @SerialName("retailer_id") val retailerId: String = "",
+    @SerialName("supplier_id") val supplierId: String = "",
+    @SerialName("requested_by_user") val requestedByUser: String = "",
+    @SerialName("requested_by_name") val requestedByName: String = "",
+    @SerialName("client_order_id") val clientOrderId: String? = null,
+    @SerialName("amount_minor") val amountMinor: Long = 0,
+    @SerialName("tripped_rule") val trippedRule: String = "",
+    val status: String = "PENDING_OWNER",
+    @SerialName("payload_kind") val payloadKind: String = "",
+    @SerialName("payment_method") val paymentMethod: String = "",
+    @SerialName("approved_by_user") val approvedByUser: String? = null,
+    @SerialName("decision_reason") val decisionReason: String? = null,
+    @SerialName("expires_at") val expiresAt: String? = null,
+    @SerialName("created_at") val createdAt: String = "",
+    @SerialName("updated_at") val updatedAt: String = "",
+)
+
+@Serializable
+data class RetailerApprovalsListResponse(
+    @SerialName("retailer_id") val retailerId: String = "",
+    val items: List<RetailerApprovalItem> = emptyList(),
+    @SerialName("next_cursor") val nextCursor: String? = null,
+)
+
+@Serializable
+data class ApprovalDecisionRequest(
+    val reason: String? = null,
+)
+
+@Serializable
+data class ApprovalDecisionResponse(
+    @SerialName("request_id") val requestId: String = "",
+    val status: String = "",
+    @SerialName("order_id") val orderId: String? = null,
+    @SerialName("parent_order_id") val parentOrderId: String? = null,
+    @SerialName("decision_reason") val decisionReason: String? = null,
+    val approval: RetailerApprovalItem? = null,
+)
+
+@Serializable
+data class SellerMandateDTO(
+    @SerialName("can_receive_goods") val canReceiveGoods: Boolean = true,
+    @SerialName("can_pay_cash") val canPayCash: Boolean = true,
+    @SerialName("can_use_credit") val canUseCredit: Boolean = true,
+    @SerialName("daily_credit_cap_minor") val dailyCreditCapMinor: Long = 0,
+    @SerialName("daily_cash_cap_minor") val dailyCashCapMinor: Long = 0,
+    @SerialName("max_single_order_minor") val maxSingleOrderMinor: Long = 0,
+    @SerialName("updated_at") val updatedAt: String? = null,
+    @SerialName("updated_by") val updatedBy: String? = null,
+)
+
+@Serializable
+data class SellerDailyUsageDTO(
+    @SerialName("usage_date") val usageDate: String = "",
+    @SerialName("spent_credit_minor") val spentCreditMinor: Long = 0,
+    @SerialName("spent_cash_minor") val spentCashMinor: Long = 0,
+    @SerialName("order_count") val orderCount: Int = 0,
+)
+
+@Serializable
+data class SellerMandateResponse(
+    @SerialName("user_id") val userId: String = "",
+    @SerialName("retailer_id") val retailerId: String = "",
+    @SerialName("retailer_role") val retailerRole: String = "",
+    @SerialName("is_owner") val isOwner: Boolean = false,
+    val mandate: SellerMandateDTO = SellerMandateDTO(),
+    @SerialName("daily_usage") val dailyUsage: SellerDailyUsageDTO = SellerDailyUsageDTO(),
+)
+
+@Serializable
+data class SellerMandateUpdateRequest(
+    @SerialName("can_receive_goods") val canReceiveGoods: Boolean? = null,
+    @SerialName("can_pay_cash") val canPayCash: Boolean? = null,
+    @SerialName("can_use_credit") val canUseCredit: Boolean? = null,
+    @SerialName("daily_credit_cap_minor") val dailyCreditCapMinor: Long? = null,
+    @SerialName("daily_cash_cap_minor") val dailyCashCapMinor: Long? = null,
+    @SerialName("max_single_order_minor") val maxSingleOrderMinor: Long? = null,
+)
+
+// ---------------------------------------------------------------------------
+// Workstream W3: Retailer Credit & AR Self-Service
+// ---------------------------------------------------------------------------
+
+@Serializable
+data class CreditRelationshipResolvedTermsDto(
+    @SerialName("terms_days") val termsDays: Int? = null,
+    @SerialName("grace_period_days") val gracePeriodDays: Int? = null,
+)
+
+@Serializable
+data class CreditRelationshipDto(
+    @SerialName("supplier_id") val supplierId: String = "",
+    @SerialName("supplier_name") val supplierName: String? = null,
+    @SerialName("credit_enabled") val creditEnabled: Boolean = false,
+    @SerialName("terms_days") val termsDays: Int = 0,
+    @SerialName("grace_period_days") val gracePeriodDays: Int = 0,
+    @SerialName("credit_limit_minor") val creditLimitMinor: Long = 0L,
+    @SerialName("available_credit_minor") val availableCreditMinor: Long = 0L,
+    @SerialName("current_balance_minor") val currentBalanceMinor: Long = 0L,
+    @SerialName("profile_status") val profileStatus: String? = null,
+    @SerialName("on_hold") val onHold: Boolean = false,
+    @SerialName("prepay_only_locked") val prepayOnlyLocked: Boolean = false,
+    @SerialName("resolved_terms") val resolvedTerms: CreditRelationshipResolvedTermsDto? = null,
+)
+
+@Serializable
+data class CreditRelationshipsResponse(
+    @SerialName("relationships") val relationships: List<CreditRelationshipDto> = emptyList(),
+)
+
+@Serializable
+data class ArInvoiceDto(
+    @SerialName("invoice_id") val invoiceId: String = "",
+    @SerialName("supplier_id") val supplierId: String = "",
+    @SerialName("order_id") val orderId: String? = null,
+    @SerialName("status") val status: String = "OPEN",
+    @SerialName("principal_minor") val principalMinor: Long? = null,
+    @SerialName("balance_minor") val balanceMinor: Long = 0L,
+    @SerialName("disputed_minor") val disputedMinor: Long = 0L,
+    @SerialName("undisputed_minor") val undisputedMinor: Long? = null,
+    @SerialName("currency") val currency: String = "UZS",
+    @SerialName("due_at") val dueAt: String? = null,
+    @SerialName("created_at") val createdAt: String? = null,
+    @SerialName("terms_days") val termsDays: Int? = null,
+    @SerialName("grace_period_days") val gracePeriodDays: Int? = null,
+    @SerialName("aging_bucket") val agingBucket: String? = null,
+    @SerialName("dunning_step") val dunningStep: Int? = null,
+)
+
+@Serializable
+data class ArInvoicesResponse(
+    @SerialName("invoices") val invoices: List<ArInvoiceDto> = emptyList(),
+)
+
+@Serializable
+data class ArPromiseDto(
+    @SerialName("promise_id") val promiseId: String = "",
+    @SerialName("supplier_id") val supplierId: String = "",
+    @SerialName("invoice_id") val invoiceId: String? = null,
+    @SerialName("quarter_key") val quarterKey: String = "",
+    @SerialName("due_at") val dueAt: String = "",
+    @SerialName("promised_minor") val promisedMinor: Long = 0L,
+    @SerialName("status") val status: String = "ACTIVE",
+    @SerialName("approved_by") val approvedBy: String? = null,
+    @SerialName("created_at") val createdAt: String? = null,
+)
+
+@Serializable
+data class ArPromisesResponse(
+    @SerialName("promises") val promises: List<ArPromiseDto> = emptyList(),
+    @SerialName("current_quarter_key") val currentQuarterKey: String? = null,
+    @SerialName("self_serve_promise_used") val selfServePromiseUsed: Boolean? = null,
+    @SerialName("max_extension_days") val maxExtensionDays: Int? = null,
+)
+
+@Serializable
+data class ArLedgerEntryDto(
+    @SerialName("entry_id") val entryId: String? = null,
+    @SerialName("id") val id: String? = null,
+    @SerialName("invoice_id") val invoiceId: String? = null,
+    @SerialName("supplier_id") val supplierId: String? = null,
+    @SerialName("entry_type") val entryType: String? = null,
+    @SerialName("type") val type: String? = null,
+    @SerialName("amount_minor") val amountMinor: Long = 0L,
+    @SerialName("balance_after_minor") val balanceAfterMinor: Long? = null,
+    @SerialName("reference") val reference: String? = null,
+    @SerialName("note") val note: String? = null,
+    @SerialName("created_at") val createdAt: String? = null,
+)
+
+@Serializable
+data class ArStatementResponse(
+    @SerialName("supplier_id") val supplierId: String = "",
+    @SerialName("currency") val currency: String = "UZS",
+    @SerialName("total_open_minor") val totalOpenMinor: Long = 0L,
+    @SerialName("total_disputed_minor") val totalDisputedMinor: Long = 0L,
+    @SerialName("total_undisputed_minor") val totalUndisputedMinor: Long = 0L,
+    @SerialName("advance_balance_minor") val advanceBalanceMinor: Long = 0L,
+    @SerialName("current_quarter_key") val currentQuarterKey: String = "",
+    @SerialName("self_serve_promise_used") val selfServePromiseUsed: Boolean = false,
+    @SerialName("max_extension_days") val maxExtensionDays: Int = 14,
+    @SerialName("invoices") val invoices: List<ArInvoiceDto> = emptyList(),
+    @SerialName("promises") val promises: List<ArPromiseDto> = emptyList(),
+    @SerialName("ledger_entries") val ledgerEntries: List<ArLedgerEntryDto> = emptyList(),
+)
+
+@Serializable
+data class PayArFifoRequest(
+    @SerialName("supplier_id") val supplierId: String,
+    @SerialName("amount_minor") val amountMinor: Long,
+    @SerialName("currency") val currency: String = "UZS",
+    @SerialName("payment_method") val paymentMethod: String,
+    @SerialName("payment_reference") val paymentReference: String? = null,
+    @SerialName("earmark_invoice_id") val earmarkInvoiceId: String? = null,
+)
+
+@Serializable
+data class PayArFifoAllocationDto(
+    @SerialName("invoice_id") val invoiceId: String = "",
+    @SerialName("order_id") val orderId: String? = null,
+    @SerialName("applied_minor") val appliedMinor: Long = 0L,
+    @SerialName("remaining_balance_minor") val remainingBalanceMinor: Long = 0L,
+    @SerialName("status") val status: String = "",
+)
+
+@Serializable
+data class PayArFifoResponse(
+    @SerialName("paid_minor") val paidMinor: Long = 0L,
+    @SerialName("advance_added_minor") val advanceAddedMinor: Long = 0L,
+    @SerialName("advance_balance_minor") val advanceBalanceMinor: Long = 0L,
+    @SerialName("allocations") val allocations: List<PayArFifoAllocationDto> = emptyList(),
+)
+
+@Serializable
+data class PayArInvoiceRequest(
+    @SerialName("amount_minor") val amountMinor: Long,
+    @SerialName("payment_method") val paymentMethod: String,
+    @SerialName("payment_reference") val paymentReference: String? = null,
+)
+
+@Serializable
+data class CreateArPromiseRequest(
+    @SerialName("supplier_id") val supplierId: String,
+    @SerialName("invoice_id") val invoiceId: String? = null,
+    @SerialName("extension_days") val extensionDays: Int,
+)
+
+// ── W5 Fast Home & Telegram OTP Binding ──
+
+@Serializable
+data class FastHomeTomorrowDelivery(
+    @SerialName("order_id") val orderId: String = "",
+    @SerialName("supplier_id") val supplierId: String = "",
+    @SerialName("supplier_name") val supplierName: String = "",
+    @SerialName("state") val state: String = "",
+    @SerialName("item_count") val itemCount: Int = 0,
+    @SerialName("amount_minor") val amountMinor: Long = 0L,
+    @SerialName("currency") val currency: String = "UZS",
+    @SerialName("delivery_date") val deliveryDate: String? = null,
+    @SerialName("window_label") val windowLabel: String? = null,
+)
+
+@Serializable
+data class FastHomeActivePromise(
+    @SerialName("promise_id") val promiseId: String = "",
+    @SerialName("promised_until") val promisedUntil: String? = null,
+    @SerialName("promised_minor") val promisedMinor: Long = 0L,
+    @SerialName("status") val status: String = "",
+)
+
+@Serializable
+data class FastHomeProposalItem(
+    @SerialName("product_id") val productId: String = "",
+    @SerialName("sku") val sku: String = "",
+    @SerialName("product_name") val productName: String = "",
+    @SerialName("quantity") val quantity: Int = 0,
+    @SerialName("unit_price_minor") val unitPriceMinor: Long = 0L,
+    @SerialName("line_total_minor") val lineTotalMinor: Long = 0L,
+    @SerialName("pack_size") val packSize: Int = 1,
+)
+
+@Serializable
+data class FastHomePendingProposal(
+    @SerialName("order_id") val orderId: String = "",
+    @SerialName("source") val source: String = "MANUAL_PREORDER",
+    @SerialName("supplier_id") val supplierId: String = "",
+    @SerialName("supplier_name") val supplierName: String = "",
+    @SerialName("state") val state: String = "",
+    @SerialName("confirmation_status") val confirmationStatus: String? = null,
+    @SerialName("proposed_delivery_date") val proposedDeliveryDate: String? = null,
+    @SerialName("auto_confirm_at") val autoConfirmAt: String? = null,
+    @SerialName("item_count") val itemCount: Int = 0,
+    @SerialName("amount_minor") val amountMinor: Long = 0L,
+    @SerialName("currency") val currency: String = "UZS",
+    @SerialName("items") val items: List<FastHomeProposalItem> = emptyList(),
+)
+
+@Serializable
+data class RetailerFastHomeResponse(
+    @SerialName("server_now") val serverNow: String = "",
+    @SerialName("cutoff_at") val cutoffAt: String? = null,
+    @SerialName("next_delivery_date") val nextDeliveryDate: String? = null,
+    @SerialName("tomorrow_delivery") val tomorrowDelivery: FastHomeTomorrowDelivery? = null,
+    @SerialName("balance_owed_minor") val balanceOwedMinor: Long = 0L,
+    @SerialName("overdue_minor") val overdueMinor: Long = 0L,
+    @SerialName("days_overdue") val daysOverdue: Int = 0,
+    @SerialName("active_promise") val activePromise: FastHomeActivePromise? = null,
+    @SerialName("credit_headroom_minor") val creditHeadroomMinor: Long = 0L,
+    @SerialName("pending_proposal") val pendingProposal: FastHomePendingProposal? = null,
+    @SerialName("pending_approvals_count") val pendingApprovalsCount: Int = 0,
+    @SerialName("locale") val locale: String = "uz",
+    @SerialName("currency") val currency: String = "UZS",
+    val degradedFallback: Boolean = false,
+)
+
+@Serializable
+data class TelegramLinkStatusResponse(
+    @SerialName("linked") val linked: Boolean = false,
+    @SerialName("telegram_chat_id") val telegramChatId: String? = null,
+    @SerialName("username") val username: String? = null,
+    @SerialName("bot_username") val botUsername: String? = null,
+    @SerialName("bot_deep_link") val botDeepLink: String? = null,
+    @SerialName("deep_link") val deepLink: String? = null,
+    @SerialName("linked_at") val linkedAt: String? = null,
+    @SerialName("locale") val locale: String? = null,
+)
+
+@Serializable
+data class TelegramLinkRequestResponse(
+    @SerialName("ok") val ok: Boolean = true,
+    @SerialName("otp_code") val otpCode: String = "",
+    @SerialName("expires_at") val expiresAt: String = "",
+    @SerialName("bot_deep_link") val botDeepLink: String? = null,
+    @SerialName("deep_link") val deepLink: String? = null,
+)
+
+// ── M10.4 Smart Ingestion / INN Dual-Mode / Opening Nasiya ──
+
+@Serializable
+data class RetailerInnLookupRequest(
+    @SerialName("inn") val inn: String,
+    @SerialName("tenant_type") val tenantType: String = "RETAILER",
+)
+
+@Serializable
+data class RetailerInnLookupResponse(
+    @SerialName("status") val status: String = "",
+    @SerialName("normalized_inn") val normalizedInn: String? = null,
+    @SerialName("entity_type") val entityType: String? = null,
+    @SerialName("legal_name") val legalName: String? = null,
+    @SerialName("address") val address: String? = null,
+    @SerialName("registry_state") val registryState: String? = null,
+    @SerialName("cached") val cached: Boolean? = null,
+    @SerialName("existing_tenant_id") val existingTenantId: String? = null,
+    @SerialName("existing_tenant_type") val existingTenantType: String? = null,
+    @SerialName("existing_legal_name") val existingLegalName: String? = null,
+    @SerialName("existing_join_eligible") val existingJoinEligible: Boolean? = null,
+) {
+    val isVerifiedFound: Boolean get() = status.uppercase() == "FOUND"
+    val isUnavailable: Boolean get() = status.uppercase() == "UNAVAILABLE"
+    val isInvalidOrMissing: Boolean
+        get() {
+            val upper = status.uppercase()
+            return upper == "INVALID" || upper == "NOT_FOUND"
+        }
+}
+
+@Serializable
+data class RetailerJoinRequestConflict(
+    @SerialName("error") val error: String? = null,
+    @SerialName("request_id") val requestId: String? = null,
+    @SerialName("target_tenant_id") val targetTenantId: String? = null,
+    @SerialName("legal_name") val legalName: String? = null,
+    @SerialName("normalized_inn") val normalizedInn: String? = null,
+    @SerialName("message") val message: String? = null,
+)
+
+@Serializable
+data class RetailerTaxIdentityRequest(
+    @SerialName("tax_id") val taxId: String,
+    @SerialName("informal_shop") val informalShop: Boolean,
+    @SerialName("legal_name") val legalName: String? = null,
+    @SerialName("role_sought") val roleSought: String? = null,
+)
+
+@Serializable
+data class RetailerTaxIdentityResponse(
+    @SerialName("id") val id: String? = null,
+    @SerialName("tax_id") val taxId: String? = null,
+    @SerialName("normalized_tax_id") val normalizedTaxId: String? = null,
+    @SerialName("legal_entity_status") val legalEntityStatus: String? = null,
+    @SerialName("inn_verified_at") val innVerifiedAt: String? = null,
+)
+
+@Serializable
+data class MigrationOpeningInvoiceDto(
+    @SerialName("invoice_id") val invoiceId: String = "",
+    @SerialName("supplier_id") val supplierId: String = "",
+    @SerialName("supplier_name") val supplierName: String? = null,
+    @SerialName("retailer_id") val retailerId: String? = null,
+    @SerialName("order_id") val orderId: String? = null,
+    @SerialName("external_id") val externalId: String? = null,
+    @SerialName("principal_minor") val principalMinor: Long = 0L,
+    @SerialName("balance_minor") val balanceMinor: Long = 0L,
+    @SerialName("currency") val currency: String = "UZS",
+    @SerialName("status") val status: String = "PENDING_ACK",
+    @SerialName("source") val source: String? = "MIGRATION",
+    @SerialName("dunning_frozen") val dunningFrozen: Boolean = true,
+    @SerialName("due_at") val dueAt: String? = null,
+    @SerialName("acknowledged_at") val acknowledgedAt: String? = null,
+    @SerialName("disputed_at") val disputedAt: String? = null,
+    @SerialName("dispute_reason") val disputeReason: String? = null,
+    @SerialName("updated_at") val updatedAt: String? = null,
+) {
+    val isPendingConfirmation: Boolean
+        get() {
+            val upper = status.uppercase()
+            return upper != "ACKNOWLEDGED" && upper != "ACCEPTED" && upper != "DISPUTED"
+        }
+
+    val isDisputed: Boolean get() = status.uppercase() == "DISPUTED"
+
+    val isAcknowledged: Boolean
+        get() {
+            val upper = status.uppercase()
+            return upper == "ACKNOWLEDGED" || upper == "ACCEPTED"
+        }
+}
+
+@Serializable
+data class MigrationOpeningBalancesResponse(
+    @SerialName("retailer_id") val retailerId: String? = null,
+    @SerialName("invoices") val invoices: List<MigrationOpeningInvoiceDto> = emptyList(),
+)
+
+@Serializable
+data class MigrationOpeningInvoiceMutationResponse(
+    @SerialName("retailer_id") val retailerId: String? = null,
+    @SerialName("invoice") val invoice: MigrationOpeningInvoiceDto = MigrationOpeningInvoiceDto(),
+)
+
+@Serializable
+data class DisputeOpeningBalanceRequest(
+    @SerialName("reason") val reason: String,
+)
+
+@Serializable
+data class RetailerJoinRequestDto(
+    @SerialName("request_id") val requestId: String = "",
+    @SerialName("home_cell") val homeCell: String? = null,
+    @SerialName("target_tenant_type") val targetTenantType: String? = null,
+    @SerialName("target_tenant_id") val targetTenantId: String? = null,
+    @SerialName("normalized_inn") val normalizedInn: String? = null,
+    @SerialName("requester_phone") val requesterPhone: String = "",
+    @SerialName("requester_name") val requesterName: String? = null,
+    @SerialName("role_sought") val roleSought: String = "",
+    @SerialName("status") val status: String = "PENDING",
+    @SerialName("decision_reason") val decisionReason: String? = null,
+    @SerialName("created_at") val createdAt: String? = null,
+)
+
+@Serializable
+data class RetailerJoinRequestsResponse(
+    @SerialName("retailer_id") val retailerId: String? = null,
+    @SerialName("requests") val requests: List<RetailerJoinRequestDto> = emptyList(),
+)
+
+@Serializable
+data class RetailerJoinRequestDecisionRequest(
+    @SerialName("reason") val reason: String? = null,
+)
+
+@Serializable
+data class RetailerJoinRequestDecisionResponse(
+    @SerialName("retailer_id") val retailerId: String? = null,
+    @SerialName("request") val request: RetailerJoinRequestDto = RetailerJoinRequestDto(),
 )

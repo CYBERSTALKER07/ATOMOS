@@ -367,7 +367,11 @@ func AssertLoadLedgerReady(ctx context.Context, client *spanner.Client, manifest
 	manifestID = strings.TrimSpace(manifestID)
 	supplierID, warehouseID := "", ""
 	if client != nil && manifestID != "" {
-		supplierID, warehouseID = manifestScope(ctx, client, manifestID)
+		var err error
+		supplierID, warehouseID, err = manifestScope(ctx, client, manifestID)
+		if err != nil {
+			return fmt.Errorf("%w: %v", ErrLoadLedgerIncomplete, err)
+		}
 	}
 	if !EffectiveLoadLedger(ctx, warehouseID, supplierID) {
 		return nil

@@ -135,6 +135,8 @@ object SupplierRoutes {
     const val CLAIM_CHARGEBACKS = "claim_chargebacks"
     const val RETAILER_OVERRIDES = "retailer_overrides"
     const val INVENTORY_IMPORT = "inventory_import"
+    const val MIGRATION_CENTER = "migration_center"
+    const val JOIN_REQUESTS = "join_requests"
     const val TREASURY_HUB = "treasury_hub"
     const val DEMAND_HISTORY = "demand_history"
     const val PLANNING_BRAIN = "planning_brain"
@@ -434,6 +436,8 @@ fun SupplierNavigation(
                     onClaimChargebacks = { navController.navigate(SupplierRoutes.CLAIM_CHARGEBACKS) },
                     onRetailerOverrides = { navController.navigate(SupplierRoutes.RETAILER_OVERRIDES) },
                     onInventoryImport = { navController.navigate(SupplierRoutes.INVENTORY_IMPORT) },
+                onMigrationCenter = { navController.navigate(SupplierRoutes.MIGRATION_CENTER) },
+                onJoinRequests = { navController.navigate(SupplierRoutes.JOIN_REQUESTS) },
                     onTreasuryHub = { navController.navigate(SupplierRoutes.TREASURY_HUB) },
                     onDemandHistory = { navController.navigate(SupplierRoutes.DEMAND_HISTORY) },
                     onFactories = { navController.navigate(SupplierRoutes.FACTORIES) },
@@ -658,7 +662,17 @@ fun SupplierNavigation(
                  RetailerOverridesScreen(ops) { navController.popBackStack() } 
             }
             composable(SupplierRoutes.INVENTORY_IMPORT) {
-                 InventoryImportScreen(ops) { navController.popBackStack() } 
+                InventoryImportScreen { navController.popBackStack() }
+            }
+            composable(SupplierRoutes.MIGRATION_CENTER) {
+                com.pegasusx.supplier.ui.screens.migration.MigrationCenterScreen(
+                    onBack = { navController.popBackStack() },
+                )
+            }
+            composable(SupplierRoutes.JOIN_REQUESTS) {
+                com.pegasusx.supplier.ui.screens.more.JoinRequestsScreen(
+                    onBack = { navController.popBackStack() },
+                )
             }
             composable(SupplierRoutes.DEMAND_HISTORY) {
                  DemandHistoryScreen(ops) { navController.popBackStack() } 

@@ -20,6 +20,7 @@ val localProps = Properties().also { props ->
 val devHost: String = localProps.getProperty("dev.host", "10.0.2.2")
 val mapsApiKey: String = localProps.getProperty("MAPS_API_KEY", "")
 val prodApiBaseUrl: String = localProps.getProperty("prod.api.base.url", "https://api.pegasusx.app")
+val prodApiSpkiPins: String = localProps.getProperty("prod.api.spki.pins", System.getenv("PEGASUSX_API_TLS_SPKI_PINS") ?: "")
 val prodWsBaseUrl: String = localProps.getProperty("prod.ws.base.url", "wss://api.pegasusx.app")
 val quicktypeBinary: String = localProps.getProperty("quicktype.path", "quicktype")
 
@@ -120,6 +121,7 @@ android {
 
         manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
         buildConfigField("String", "BASE_URL", "\"http://$devHost:8180/\"")
+        buildConfigField("String", "API_TLS_SPKI_PINS", "\"\"")
         buildConfigField("String", "WS_URL", "\"ws://$devHost:8180/\"")
         buildConfigField("boolean", "FIREBASE_AUTH_EMULATOR", firebaseAuthEmulator.toString())
         buildConfigField("String", "FIREBASE_AUTH_EMULATOR_HOST", "\"$firebaseAuthEmulatorHost\"")
@@ -154,6 +156,7 @@ android {
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             buildConfigField("String", "BASE_URL", "\"${prodApiBaseUrl.trimEnd('/')}/\"")
+            buildConfigField("String", "API_TLS_SPKI_PINS", "\"$prodApiSpkiPins\"")
             buildConfigField("String", "WS_URL", "\"${prodWsBaseUrl.trimEnd('/')}/\"")
         }
     }

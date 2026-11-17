@@ -9,12 +9,15 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
 
 	"cloud.google.com/go/spanner"
 	"cloud.google.com/go/storage"
 	pxstorage "github.com/pegasusx/pegasusx/apps/backend-go/storage"
+	"github.com/xuri/excelize/v2"
 	"google.golang.org/api/iterator"
 )
 
@@ -37,14 +40,19 @@ func partnerExportLocalRoot() string {
 	return strings.TrimSpace(os.Getenv("PARTNER_EXPORT_LOCAL_ROOT"))
 }
 
+const defaultExportBatchSize = 5000
+
 // ExportWorker processes PENDING PartnerExportJobs.
 type ExportWorker struct {
-	exports ExportRepository
-	sftp    SftpConfigRepository
-	coa     CoaRepository
-	spanner *spanner.Client
-	log     *slog.Logger
-	now     func() time.Time
+	exports      ExportRepository
+	sftp         SftpConfigRepository
+	coa          CoaRepository
+	onecPostings OnecPostingRepository
+	spanner      *spanner.Client
+	log          *slog.Logger
+	now          func() time.Time
+	batchSize    int
+	rowsFetcher  func(ctx context.Context, j ExportJob) ([]map[string]any, error)
 	// SecretLoader resolves SecretRef → password/private key material.
 	SecretLoader func(secretRef string) (string, error)
 	// Uploader optional; defaults to UploadSFTP.
@@ -55,14 +63,20 @@ func NewExportWorker(exports ExportRepository, sftp SftpConfigRepository, client
 	if log == nil {
 		log = slog.Default()
 	}
+	var onecRepo OnecPostingRepository
+	if client != nil {
+		onecRepo = NewSpannerOnecPostingRepository(client)
+	} else {
+		onecRepo = NewMemoryOnecPostingRepository()
+	}
 	return &ExportWorker{
 		exports:      exports,
 		sftp:         sftp,
+		onecPostings: onecRepo,
 		spanner:      client,
 		log:          log,
-		now:          func() time.Time { return time.Now().UTC() },
-		SecretLoader: LoadSecretRef,
-		Uploader:     UploadSFTP,
+		now:      func() time.Time { return time.Now().UTC() },
+		Uploader: UploadSFTP,
 	}
 }
 
@@ -72,6 +86,22 @@ func (w *ExportWorker) SetCoaRepository(coa CoaRepository) {
 		return
 	}
 	w.coa = coa
+}
+
+// SetOnecPostings wires the durable PartnerOnecPostings repository used when exporting 1C journals.
+func (w *ExportWorker) SetOnecPostings(repo OnecPostingRepository) {
+	if w == nil || repo == nil {
+		return
+	}
+	w.onecPostings = repo
+}
+
+// OnecPostings exposes the configured 1C postings repository on the worker.
+func (w *ExportWorker) OnecPostings() OnecPostingRepository {
+	if w == nil {
+		return nil
+	}
+	return w.onecPostings
 }
 
 // Start loops until cancel.
@@ -118,11 +148,16 @@ func (w *ExportWorker) RunOnce(ctx context.Context) (int, error) {
 
 func (w *ExportWorker) processJob(ctx context.Context, j ExportJob) error {
 	j.Status = ExportStatusRunning
-	_ = w.exports.UpdateJob(ctx, j)
+	if err := w.exports.UpdateJob(ctx, j); err != nil {
+		w.log.Warn("partner export status running update failed", "job_id", j.JobID, "err", err)
+	}
 
 	rows, err := w.buildRows(ctx, j)
 	if err != nil {
 		return w.failJob(ctx, j, err.Error())
+	}
+	if err := w.recordOnecJournalPostings(ctx, j, rows); err != nil {
+		return w.failJob(ctx, j, "onec_posting_failed:"+err.Error())
 	}
 	body, contentType, err := encodeExport(rows, j.Format)
 	if err != nil {
@@ -143,7 +178,7 @@ func (w *ExportWorker) processJob(ctx context.Context, j ExportJob) error {
 	if PartnerSFTPEnabled() && w.sftp != nil {
 		cfg, ok, err := w.sftp.Get(ctx, j.TenantType, j.TenantID)
 		if err == nil && ok && cfg.IsActive {
-			secret, err := w.SecretLoader(cfg.SecretRef)
+			secret, err := resolveWorkerSecret(w.SecretLoader, cfg.TenantType, cfg.TenantID, cfg.SecretRef)
 			if err != nil || secret == "" {
 				j.SftpStatus = SftpStatusFailed
 				j.Error = "sftp_secret_unavailable"
@@ -176,12 +211,72 @@ func (w *ExportWorker) processJob(ctx context.Context, j ExportJob) error {
 	return w.exports.UpdateJob(ctx, j)
 }
 
+func (w *ExportWorker) recordOnecJournalPostings(ctx context.Context, j ExportJob, rows []map[string]any) error {
+	if w == nil || w.onecPostings == nil {
+		return nil
+	}
+	if j.Resource != ExportResourceJournals || !strings.EqualFold(strings.TrimSpace(j.Format), ExportFormatXML) {
+		return nil
+	}
+	if strings.ToUpper(strings.TrimSpace(j.TenantType)) != TenantSupplier || strings.TrimSpace(j.TenantID) == "" {
+		return nil
+	}
+	for i, row := range rows {
+		payloadBytes, err := json.Marshal(row)
+		if err != nil {
+			return fmt.Errorf("marshal journal row: %w", err)
+		}
+		source := strings.TrimSpace(fmt.Sprint(row["source"]))
+		if source == "" || source == "<nil>" {
+			source = "journal"
+		}
+		entryID := strings.TrimSpace(fmt.Sprint(row["entry_id"]))
+		var docKey string
+		if entryID != "" && entryID != "<nil>" {
+			docKey = fmt.Sprintf("1c:%s:%s", source, entryID)
+		} else {
+			docKey = fmt.Sprintf("1c:job:%s:%d", j.JobID, i)
+		}
+		exposure := extractRowInt64(row["amount_minor"])
+		if _, _, err := w.onecPostings.CreateIfAbsent(ctx, OnecPosting{
+			SupplierID:    j.TenantID,
+			DocumentKey:   docKey,
+			DocumentType:  OnecDocJournalEntry,
+			ExportJobID:   j.JobID,
+			PayloadJSON:   string(payloadBytes),
+			ExposureMinor: exposure,
+			Status:        OnecStatusPending,
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func extractRowInt64(v any) int64 {
+	switch n := v.(type) {
+	case int64:
+		return n
+	case int:
+		return int64(n)
+	case int32:
+		return int64(n)
+	case json.Number:
+		if parsed, err := n.Int64(); err == nil {
+			return parsed
+		}
+	}
+	return 0
+}
+
 func (w *ExportWorker) failJob(ctx context.Context, j ExportJob, msg string) error {
 	now := w.now()
 	j.Status = ExportStatusFailed
 	j.Error = msg
 	j.FinishedAt = &now
-	_ = w.exports.UpdateJob(ctx, j)
+	if err := w.exports.UpdateJob(ctx, j); err != nil {
+		w.log.Warn("partner export status failed update failed", "job_id", j.JobID, "err", err)
+	}
 	return fmt.Errorf("%s", msg)
 }
 
@@ -254,6 +349,8 @@ func exportFileExt(format string) string {
 		return ExportFormatJSON
 	case ExportFormatXML:
 		return ExportFormatXML
+	case ExportFormatXLSX:
+		return ExportFormatXLSX
 	default:
 		return ExportFormatCSV
 	}
@@ -266,22 +363,105 @@ func encodeExport(rows []map[string]any, format string) ([]byte, string, error) 
 		return b, "application/json", err
 	case ExportFormatXML:
 		return encodeExportXML(rows)
+	case ExportFormatXLSX:
+		return encodeExportXLSX(rows)
 	default:
 		return encodeExportCSV(rows)
 	}
+}
+
+func safeSpreadsheetCell(s string) string {
+	if s == "" {
+		return ""
+	}
+	trimmed := strings.TrimLeft(s, " ")
+	target := s
+	if trimmed != "" {
+		target = trimmed
+	}
+	switch target[0] {
+	case '=', '+', '@', '\t', '\r':
+		return "'" + s
+	case '-':
+		if _, err := strconv.ParseInt(strings.TrimSpace(s), 10, 64); err == nil {
+			return s
+		}
+		if _, err := strconv.ParseFloat(strings.TrimSpace(s), 64); err == nil {
+			return s
+		}
+		return "'" + s
+	default:
+		return s
+	}
+}
+
+func encodeExportXLSX(rows []map[string]any) ([]byte, string, error) {
+	f := excelize.NewFile()
+	defer func() { _ = f.Close() }()
+	const sheet = "Export"
+	_ = f.SetSheetName("Sheet1", sheet)
+	sw, err := f.NewStreamWriter(sheet)
+	if err != nil {
+		return nil, "", fmt.Errorf("xlsx stream writer: %w", err)
+	}
+	headers := csvHeadersForRows(rows)
+	headerCells := make([]any, len(headers))
+	for i, h := range headers {
+		headerCells[i] = safeSpreadsheetCell(h)
+	}
+	if err := sw.SetRow("A1", headerCells); err != nil {
+		return nil, "", fmt.Errorf("xlsx write header: %w", err)
+	}
+	for idx, row := range rows {
+		cells := make([]any, len(headers))
+		for colIdx, h := range headers {
+			v, ok := row[h]
+			if !ok || v == nil {
+				cells[colIdx] = ""
+			} else if str, isStr := v.(string); isStr {
+				cells[colIdx] = safeSpreadsheetCell(str)
+			} else {
+				cells[colIdx] = v
+			}
+		}
+		cellRef, err := excelize.CoordinatesToCellName(1, idx+2)
+		if err != nil {
+			return nil, "", err
+		}
+		if err := sw.SetRow(cellRef, cells); err != nil {
+			return nil, "", fmt.Errorf("xlsx write row %d: %w", idx+2, err)
+		}
+	}
+	if err := sw.Flush(); err != nil {
+		return nil, "", fmt.Errorf("xlsx flush: %w", err)
+	}
+	buf, err := f.WriteToBuffer()
+	if err != nil {
+		return nil, "", fmt.Errorf("xlsx buffer: %w", err)
+	}
+	return buf.Bytes(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", nil
 }
 
 func encodeExportCSV(rows []map[string]any) ([]byte, string, error) {
 	var buf bytes.Buffer
 	w := csv.NewWriter(&buf)
 	headers := csvHeadersForRows(rows)
-	if err := w.Write(headers); err != nil {
+	safeHeaders := make([]string, len(headers))
+	for i, h := range headers {
+		safeHeaders[i] = safeSpreadsheetCell(h)
+	}
+	if err := w.Write(safeHeaders); err != nil {
 		return nil, "", err
 	}
 	for _, row := range rows {
 		rec := make([]string, len(headers))
 		for i, h := range headers {
-			rec[i] = fmt.Sprint(row[h])
+			v, ok := row[h]
+			if !ok || v == nil {
+				rec[i] = ""
+				continue
+			}
+			rec[i] = safeSpreadsheetCell(fmt.Sprint(v))
 		}
 		if err := w.Write(rec); err != nil {
 			return nil, "", err
@@ -312,6 +492,8 @@ func csvHeadersForRows(rows []map[string]any) []string {
 	}
 	if len(headers) == 0 {
 		headers = []string{"empty"}
+	} else {
+		sort.Strings(headers)
 	}
 	return headers
 }
@@ -362,228 +544,393 @@ func xmlAttrEscape(s string) string {
 }
 
 func (w *ExportWorker) buildRows(ctx context.Context, j ExportJob) ([]map[string]any, error) {
-	from, to := exportWindow(j)
+	if w.rowsFetcher != nil {
+		return w.rowsFetcher(ctx, j)
+	}
+	from, to, unlimited := w.exportWindow(j)
 	switch j.Resource {
 	case ExportResourceOrders:
-		return w.exportOrders(ctx, j.TenantType, j.TenantID, from, to)
+		return w.exportOrders(ctx, j.TenantType, j.TenantID, from, to, unlimited)
 	case ExportResourceInvoices:
-		return w.exportInvoices(ctx, j.TenantType, j.TenantID, from, to)
+		return w.exportInvoices(ctx, j.TenantType, j.TenantID, from, to, unlimited)
 	case ExportResourceInventory:
-		return w.exportInventory(ctx, j.TenantType, j.TenantID)
+		return w.exportInventory(ctx, j.TenantType, j.TenantID, unlimited)
 	case ExportResourceLedger:
-		return w.exportLedger(ctx, j.TenantType, j.TenantID, from, to)
+		return w.exportLedger(ctx, j.TenantType, j.TenantID, from, to, unlimited)
 	case ExportResourceJournals:
-		return w.exportJournals(ctx, j.TenantType, j.TenantID, from, to)
+		return w.exportJournals(ctx, j.TenantType, j.TenantID, from, to, unlimited)
 	default:
 		return nil, fmt.Errorf("invalid_resource")
 	}
 }
 
-func exportWindow(j ExportJob) (time.Time, time.Time) {
+func isUnlimitedExport(j ExportJob) bool {
+	return j.Unlimited || j.FromDate != nil || j.ToDate != nil
+}
+
+func (w *ExportWorker) pageLimit() int {
+	if w != nil && w.batchSize > 0 {
+		return w.batchSize
+	}
+	return defaultExportBatchSize
+}
+
+func nextBatchSize(collected, batchSize int, unlimited bool) int {
+	if unlimited {
+		return batchSize
+	}
+	rem := MaxExportRows - collected
+	if rem <= 0 {
+		return 0
+	}
+	if rem < batchSize {
+		return rem
+	}
+	return batchSize
+}
+
+func (w *ExportWorker) exportWindow(j ExportJob) (from, to time.Time, unlimited bool) {
 	now := time.Now().UTC()
-	to := now
-	from := now.AddDate(0, 0, -7)
+	if w != nil && w.now != nil {
+		now = w.now().UTC()
+	}
+	to = now
+	from = now.AddDate(0, 0, -7)
+	unlimited = isUnlimitedExport(j)
 	if j.ToDate != nil {
 		to = j.ToDate.UTC()
+		if to.Hour() == 0 && to.Minute() == 0 && to.Second() == 0 && to.Nanosecond() == 0 {
+			to = to.Add(24*time.Hour - time.Nanosecond)
+		}
 	}
 	if j.FromDate != nil {
 		from = j.FromDate.UTC()
+	} else if j.Unlimited {
+		from = time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC)
 	}
 	if to.Before(from) {
 		from, to = to, from
 	}
-	if to.Sub(from) > time.Duration(MaxExportWindowDays)*24*time.Hour {
+	if !unlimited && to.Sub(from) > time.Duration(MaxExportWindowDays)*24*time.Hour {
 		from = to.AddDate(0, 0, -MaxExportWindowDays)
 	}
-	return from, to
+	return from, to, unlimited
 }
 
-func (w *ExportWorker) exportOrders(ctx context.Context, tenantType, tenantID string, from, to time.Time) ([]map[string]any, error) {
+func (w *ExportWorker) exportOrders(ctx context.Context, tenantType, tenantID string, from, to time.Time, unlimited bool) ([]map[string]any, error) {
 	if w.spanner == nil {
 		return []map[string]any{}, nil
 	}
 	var sql string
-	params := map[string]any{"tid": tenantID, "from": from, "to": to, "lim": int64(MaxExportRows)}
 	switch tenantType {
 	case TenantSupplier:
 		sql = `SELECT OrderId, SupplierId, RetailerId, Status, COALESCE(OrderSource, ''), TotalMinor, Currency, CreatedAt
 			FROM Orders WHERE SupplierId = @tid AND CreatedAt >= @from AND CreatedAt <= @to
-			ORDER BY CreatedAt DESC LIMIT @lim`
+			AND (@cursor = '' OR OrderId > @cursor)
+			ORDER BY OrderId ASC LIMIT @lim`
 	case TenantRetailer:
 		sql = `SELECT OrderId, SupplierId, RetailerId, Status, COALESCE(OrderSource, ''), TotalMinor, Currency, CreatedAt
 			FROM Orders WHERE RetailerId = @tid AND CreatedAt >= @from AND CreatedAt <= @to
-			ORDER BY CreatedAt DESC LIMIT @lim`
+			AND (@cursor = '' OR OrderId > @cursor)
+			ORDER BY OrderId ASC LIMIT @lim`
 	default:
 		return nil, fmt.Errorf("invalid_tenant")
 	}
-	iter := w.spanner.Single().Query(ctx, spanner.Statement{SQL: sql, Params: params})
-	defer iter.Stop()
+
+	ro := w.spanner.ReadOnlyTransaction()
+	defer ro.Close()
+
+	batchSize := w.pageLimit()
+	cursor := ""
 	out := make([]map[string]any, 0)
 	for {
-		row, err := iter.Next()
-		if err == iterator.Done {
+		lim := nextBatchSize(len(out), batchSize, unlimited)
+		if lim <= 0 {
 			break
 		}
-		if err != nil {
-			return nil, err
-		}
-		var orderID, supplierID, retailerID, status, source, currency string
-		var total int64
-		var created time.Time
-		if err := row.Columns(&orderID, &supplierID, &retailerID, &status, &source, &total, &currency, &created); err != nil {
-			return nil, err
-		}
-		out = append(out, map[string]any{
-			"order_id": orderID, "supplier_id": supplierID, "retailer_id": retailerID,
-			"status": status, "order_source": source, "total_minor": total,
-			"currency": currency, "created_at": created.UTC().Format(time.RFC3339),
+		iter := ro.Query(ctx, spanner.Statement{
+			SQL:    sql,
+			Params: map[string]any{"tid": tenantID, "from": from, "to": to, "cursor": cursor, "lim": int64(lim)},
 		})
-	}
-	return out, nil
-}
-
-func (w *ExportWorker) exportInvoices(ctx context.Context, tenantType, tenantID string, from, to time.Time) ([]map[string]any, error) {
-	if w.spanner == nil {
-		return []map[string]any{}, nil
-	}
-	// Best-effort ArInvoices; empty on missing table/rows.
-	var sql string
-	params := map[string]any{"tid": tenantID, "from": from, "to": to, "lim": int64(MaxExportRows)}
-	switch tenantType {
-	case TenantSupplier:
-		sql = `SELECT InvoiceId, SupplierId, RetailerId, Status, PrincipalMinor, BalanceMinor, Currency, DueAt
-			FROM ArInvoices WHERE SupplierId = @tid AND DueAt >= @from AND DueAt <= @to
-			LIMIT @lim`
-	case TenantRetailer:
-		sql = `SELECT InvoiceId, SupplierId, RetailerId, Status, PrincipalMinor, BalanceMinor, Currency, DueAt
-			FROM ArInvoices WHERE RetailerId = @tid AND DueAt >= @from AND DueAt <= @to
-			LIMIT @lim`
-	default:
-		return nil, fmt.Errorf("invalid_tenant")
-	}
-	iter := w.spanner.Single().Query(ctx, spanner.Statement{SQL: sql, Params: params})
-	defer iter.Stop()
-	out := make([]map[string]any, 0)
-	for {
-		row, err := iter.Next()
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			// Table may not exist / schema drift — return headers-only empty.
-			return []map[string]any{}, nil
-		}
-		var invID, supplierID, retailerID, status, currency string
-		var principal, balance int64
-		var due time.Time
-		if err := row.Columns(&invID, &supplierID, &retailerID, &status, &principal, &balance, &currency, &due); err != nil {
-			return []map[string]any{}, nil
-		}
-		out = append(out, map[string]any{
-			"invoice_id": invID, "supplier_id": supplierID, "retailer_id": retailerID,
-			"status": status, "principal_minor": principal, "balance_minor": balance,
-			"currency": currency, "due_at": due.UTC().Format(time.RFC3339),
-		})
-	}
-	return out, nil
-}
-
-func (w *ExportWorker) exportInventory(ctx context.Context, tenantType, tenantID string) ([]map[string]any, error) {
-	if w.spanner == nil {
-		return []map[string]any{}, nil
-	}
-	if tenantType == TenantRetailer {
-		iter := w.spanner.Single().Query(ctx, spanner.Statement{
-			SQL: `SELECT Sku, COALESCE(SUM(OnHand), 0), COALESCE(SUM(Reserved), 0)
-				FROM RetailerStockBalances WHERE RetailerId = @tid
-				GROUP BY Sku LIMIT @lim`,
-			Params: map[string]any{"tid": tenantID, "lim": int64(MaxExportRows)},
-		})
-		defer iter.Stop()
-		out := make([]map[string]any, 0)
+		count := 0
 		for {
 			row, err := iter.Next()
 			if err == iterator.Done {
 				break
 			}
 			if err != nil {
+				iter.Stop()
 				return nil, err
 			}
-			var sku string
-			var onHand, reserved int64
-			if err := row.Columns(&sku, &onHand, &reserved); err != nil {
+			var orderID, supplierID, retailerID, status, source, currency string
+			var total int64
+			var created time.Time
+			if err := row.Columns(&orderID, &supplierID, &retailerID, &status, &source, &total, &currency, &created); err != nil {
+				iter.Stop()
 				return nil, err
 			}
-			out = append(out, map[string]any{"sku": sku, "on_hand": onHand, "reserved": reserved})
+			out = append(out, map[string]any{
+				"order_id": orderID, "supplier_id": supplierID, "retailer_id": retailerID,
+				"status": status, "order_source": source, "total_minor": total,
+				"currency": currency, "created_at": created.UTC().Format(time.RFC3339),
+			})
+			cursor = orderID
+			count++
 		}
-		return out, nil
-	}
-	// Supplier: product catalog stock snapshot
-	iter := w.spanner.Single().Query(ctx, spanner.Statement{
-		SQL: `SELECT ProductId, COALESCE(Barcode, ProductId), COALESCE(StockQuantity, 0)
-			FROM Products WHERE SupplierId = @tid AND IsActive = true LIMIT @lim`,
-		Params: map[string]any{"tid": tenantID, "lim": int64(MaxExportRows)},
-	})
-	defer iter.Stop()
-	out := make([]map[string]any, 0)
-	for {
-		row, err := iter.Next()
-		if err == iterator.Done {
+		iter.Stop()
+		if count < lim {
 			break
 		}
-		if err != nil {
-			return []map[string]any{}, nil
+	}
+	sort.Slice(out, func(i, j int) bool {
+		ci, _ := out[i]["created_at"].(string)
+		cj, _ := out[j]["created_at"].(string)
+		if ci != cj {
+			return ci > cj
 		}
-		var pid, sku string
-		var stock int64
-		if err := row.Columns(&pid, &sku, &stock); err != nil {
-			return []map[string]any{}, nil
+		oi, _ := out[i]["order_id"].(string)
+		oj, _ := out[j]["order_id"].(string)
+		return oi < oj
+	})
+	return out, nil
+}
+
+func (w *ExportWorker) exportInvoices(ctx context.Context, tenantType, tenantID string, from, to time.Time, unlimited bool) ([]map[string]any, error) {
+	if w.spanner == nil {
+		return []map[string]any{}, nil
+	}
+	// Best-effort ArInvoices; empty on missing table/rows.
+	var sql string
+	switch tenantType {
+	case TenantSupplier:
+		sql = `SELECT InvoiceId, SupplierId, RetailerId, Status, PrincipalMinor, BalanceMinor, Currency, DueAt
+			FROM ArInvoices WHERE SupplierId = @tid AND DueAt >= @from AND DueAt <= @to
+			AND (@cursor = '' OR InvoiceId > @cursor)
+			ORDER BY InvoiceId ASC LIMIT @lim`
+	case TenantRetailer:
+		sql = `SELECT InvoiceId, SupplierId, RetailerId, Status, PrincipalMinor, BalanceMinor, Currency, DueAt
+			FROM ArInvoices WHERE RetailerId = @tid AND DueAt >= @from AND DueAt <= @to
+			AND (@cursor = '' OR InvoiceId > @cursor)
+			ORDER BY InvoiceId ASC LIMIT @lim`
+	default:
+		return nil, fmt.Errorf("invalid_tenant")
+	}
+
+	ro := w.spanner.ReadOnlyTransaction()
+	defer ro.Close()
+
+	batchSize := w.pageLimit()
+	cursor := ""
+	out := make([]map[string]any, 0)
+	for {
+		lim := nextBatchSize(len(out), batchSize, unlimited)
+		if lim <= 0 {
+			break
 		}
-		out = append(out, map[string]any{"product_id": pid, "sku": sku, "stock_quantity": stock})
+		iter := ro.Query(ctx, spanner.Statement{
+			SQL:    sql,
+			Params: map[string]any{"tid": tenantID, "from": from, "to": to, "cursor": cursor, "lim": int64(lim)},
+		})
+		count := 0
+		for {
+			row, err := iter.Next()
+			if err == iterator.Done {
+				break
+			}
+			if err != nil {
+				iter.Stop()
+				// Table may not exist / schema drift — return collected rows or empty.
+				return out, nil
+			}
+			var invID, supplierID, retailerID, status, currency string
+			var principal, balance int64
+			var due time.Time
+			if err := row.Columns(&invID, &supplierID, &retailerID, &status, &principal, &balance, &currency, &due); err != nil {
+				iter.Stop()
+				return out, nil
+			}
+			out = append(out, map[string]any{
+				"invoice_id": invID, "supplier_id": supplierID, "retailer_id": retailerID,
+				"status": status, "principal_minor": principal, "balance_minor": balance,
+				"currency": currency, "due_at": due.UTC().Format(time.RFC3339),
+			})
+			cursor = invID
+			count++
+		}
+		iter.Stop()
+		if count < lim {
+			break
+		}
 	}
 	return out, nil
 }
 
-func (w *ExportWorker) exportLedger(ctx context.Context, tenantType, tenantID string, from, to time.Time) ([]map[string]any, error) {
+func (w *ExportWorker) exportInventory(ctx context.Context, tenantType, tenantID string, unlimited bool) ([]map[string]any, error) {
+	if w.spanner == nil {
+		return []map[string]any{}, nil
+	}
+	ro := w.spanner.ReadOnlyTransaction()
+	defer ro.Close()
+
+	batchSize := w.pageLimit()
+	cursor := ""
+	out := make([]map[string]any, 0)
+	if tenantType == TenantRetailer {
+		for {
+			lim := nextBatchSize(len(out), batchSize, unlimited)
+			if lim <= 0 {
+				break
+			}
+			iter := ro.Query(ctx, spanner.Statement{
+				SQL: `SELECT Sku, COALESCE(SUM(OnHand), 0), COALESCE(SUM(Reserved), 0)
+					FROM RetailerStockBalances WHERE RetailerId = @tid
+					AND (@cursor = '' OR Sku > @cursor)
+					GROUP BY Sku ORDER BY Sku ASC LIMIT @lim`,
+				Params: map[string]any{"tid": tenantID, "cursor": cursor, "lim": int64(lim)},
+			})
+			count := 0
+			for {
+				row, err := iter.Next()
+				if err == iterator.Done {
+					break
+				}
+				if err != nil {
+					iter.Stop()
+					return nil, err
+				}
+				var sku string
+				var onHand, reserved int64
+				if err := row.Columns(&sku, &onHand, &reserved); err != nil {
+					iter.Stop()
+					return nil, err
+				}
+				out = append(out, map[string]any{"sku": sku, "on_hand": onHand, "reserved": reserved})
+				cursor = sku
+				count++
+			}
+			iter.Stop()
+			if count < lim {
+				break
+			}
+		}
+		return out, nil
+	}
+
+	// Supplier: product catalog stock snapshot
+	for {
+		lim := nextBatchSize(len(out), batchSize, unlimited)
+		if lim <= 0 {
+			break
+		}
+		iter := ro.Query(ctx, spanner.Statement{
+			SQL: `SELECT ProductId, COALESCE(Barcode, ProductId), COALESCE(StockQuantity, 0)
+				FROM Products WHERE SupplierId = @tid AND IsActive = true
+				AND (@cursor = '' OR ProductId > @cursor)
+				ORDER BY ProductId ASC LIMIT @lim`,
+			Params: map[string]any{"tid": tenantID, "cursor": cursor, "lim": int64(lim)},
+		})
+		count := 0
+		for {
+			row, err := iter.Next()
+			if err == iterator.Done {
+				break
+			}
+			if err != nil {
+				iter.Stop()
+				return out, nil
+			}
+			var pid, sku string
+			var stock int64
+			if err := row.Columns(&pid, &sku, &stock); err != nil {
+				iter.Stop()
+				return out, nil
+			}
+			out = append(out, map[string]any{"product_id": pid, "sku": sku, "stock_quantity": stock})
+			cursor = pid
+			count++
+		}
+		iter.Stop()
+		if count < lim {
+			break
+		}
+	}
+	return out, nil
+}
+
+func (w *ExportWorker) exportLedger(ctx context.Context, tenantType, tenantID string, from, to time.Time, unlimited bool) ([]map[string]any, error) {
 	if w.spanner == nil {
 		return []map[string]any{}, nil
 	}
 	var sql string
-	params := map[string]any{"tid": tenantID, "from": from, "to": to, "lim": int64(MaxExportRows)}
 	switch tenantType {
 	case TenantSupplier:
 		sql = `SELECT EntryId, InvoiceId, SupplierId, RetailerId, EntryType, AmountMinor, CreatedAt
 			FROM ArLedgerEntries WHERE SupplierId = @tid AND CreatedAt >= @from AND CreatedAt <= @to
-			ORDER BY CreatedAt DESC LIMIT @lim`
+			AND (@cursor = '' OR EntryId > @cursor)
+			ORDER BY EntryId ASC LIMIT @lim`
 	case TenantRetailer:
 		sql = `SELECT EntryId, InvoiceId, SupplierId, RetailerId, EntryType, AmountMinor, CreatedAt
 			FROM ArLedgerEntries WHERE RetailerId = @tid AND CreatedAt >= @from AND CreatedAt <= @to
-			ORDER BY CreatedAt DESC LIMIT @lim`
+			AND (@cursor = '' OR EntryId > @cursor)
+			ORDER BY EntryId ASC LIMIT @lim`
 	default:
 		return nil, fmt.Errorf("invalid_tenant")
 	}
-	iter := w.spanner.Single().Query(ctx, spanner.Statement{SQL: sql, Params: params})
-	defer iter.Stop()
+
+	ro := w.spanner.ReadOnlyTransaction()
+	defer ro.Close()
+
+	batchSize := w.pageLimit()
+	cursor := ""
 	out := make([]map[string]any, 0)
 	for {
-		row, err := iter.Next()
-		if err == iterator.Done {
+		lim := nextBatchSize(len(out), batchSize, unlimited)
+		if lim <= 0 {
 			break
 		}
-		if err != nil {
-			return w.exportInvoices(ctx, tenantType, tenantID, from, to)
-		}
-		var entryID, invID, supplierID, retailerID, entryType string
-		var amount int64
-		var created time.Time
-		if err := row.Columns(&entryID, &invID, &supplierID, &retailerID, &entryType, &amount, &created); err != nil {
-			return w.exportInvoices(ctx, tenantType, tenantID, from, to)
-		}
-		out = append(out, map[string]any{
-			"entry_id": entryID, "invoice_id": invID, "supplier_id": supplierID,
-			"retailer_id": retailerID, "entry_type": entryType, "amount_minor": amount,
-			"created_at": created.UTC().Format(time.RFC3339),
+		iter := ro.Query(ctx, spanner.Statement{
+			SQL:    sql,
+			Params: map[string]any{"tid": tenantID, "from": from, "to": to, "cursor": cursor, "lim": int64(lim)},
 		})
+		count := 0
+		for {
+			row, err := iter.Next()
+			if err == iterator.Done {
+				break
+			}
+			if err != nil {
+				iter.Stop()
+				return w.exportInvoices(ctx, tenantType, tenantID, from, to, unlimited)
+			}
+			var entryID, invID, supplierID, retailerID, entryType string
+			var amount int64
+			var created time.Time
+			if err := row.Columns(&entryID, &invID, &supplierID, &retailerID, &entryType, &amount, &created); err != nil {
+				iter.Stop()
+				return w.exportInvoices(ctx, tenantType, tenantID, from, to, unlimited)
+			}
+			out = append(out, map[string]any{
+				"entry_id": entryID, "invoice_id": invID, "supplier_id": supplierID,
+				"retailer_id": retailerID, "entry_type": entryType, "amount_minor": amount,
+				"created_at": created.UTC().Format(time.RFC3339),
+			})
+			cursor = entryID
+			count++
+		}
+		iter.Stop()
+		if count < lim {
+			break
+		}
 	}
+	sort.Slice(out, func(i, j int) bool {
+		ci, _ := out[i]["created_at"].(string)
+		cj, _ := out[j]["created_at"].(string)
+		if ci != cj {
+			return ci > cj
+		}
+		ei, _ := out[i]["entry_id"].(string)
+		ej, _ := out[j]["entry_id"].(string)
+		return ei < ej
+	})
 	return out, nil
 }

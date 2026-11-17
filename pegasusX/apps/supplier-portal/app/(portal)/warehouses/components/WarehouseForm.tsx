@@ -2,7 +2,13 @@
 
 import { usePortalT } from "@/lib/i18n";
 import { useEffect, useState } from "react";
-import { LocationPicker, type LocationValue } from "@/components/LocationPicker";
+import dynamic from "next/dynamic";
+import { type LocationValue } from "@/components/LocationPicker";
+
+const LocationPicker = dynamic(
+  () => import("@/components/LocationPicker").then((m) => m.LocationPicker),
+  { ssr: false },
+);
 
 import { CoverageCityChips } from "@/components/CoverageCityChips";
 import { useSupplierPaymentCatalog } from "@/lib/use-payment-catalog";

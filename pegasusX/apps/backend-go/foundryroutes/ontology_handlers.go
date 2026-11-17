@@ -5,17 +5,39 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/foundry"
 )
 
 type ontologyHandler struct {
-	eng *foundry.Engine
+	eng                      *foundry.Engine
+	allowOntologyWriteBypass bool
 }
 
-func newOntologyHandler(eng *foundry.Engine) *ontologyHandler {
-	return &ontologyHandler{eng: eng}
+func newOntologyHandler(eng *foundry.Engine, allowWriteBypass bool) *ontologyHandler {
+	return &ontologyHandler{eng: eng, allowOntologyWriteBypass: allowWriteBypass}
+}
+
+func (h *ontologyHandler) requireOntologyWriteAuthority(w http.ResponseWriter, r *http.Request) bool {
+	if h != nil && h.allowOntologyWriteBypass {
+		return true
+	}
+	if auth.IsPlatformAdmin(r.Context()) {
+		return true
+	}
+	if claims, ok := auth.FromContext(r.Context()); ok &&
+		strings.EqualFold(strings.TrimSpace(claims.ActorType), auth.ActorTypeConnector) {
+		return true
+	}
+	writeJSON(w, http.StatusForbidden, map[string]any{
+		"error":   "ontology_write_forbidden",
+		"code":    "ONTOLOGY_DIRECT_WRITE_FORBIDDEN",
+		"message": "direct ontology object and link writes require PLATFORM_ADMIN or connector actor provenance",
+	})
+	return false
 }
 
 func (h *ontologyHandler) mountRoutes(r chi.Router) {
@@ -31,6 +53,9 @@ func (h *ontologyHandler) mountRoutes(r chi.Router) {
 }
 
 func (h *ontologyHandler) handleUpsertObject(w http.ResponseWriter, r *http.Request) {
+	if !h.requireOntologyWriteAuthority(w, r) {
+		return
+	}
 	var req foundry.OntologyObject
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "invalid JSON payload"})
@@ -66,6 +91,9 @@ func (h *ontologyHandler) handleGetObject(w http.ResponseWriter, r *http.Request
 }
 
 func (h *ontologyHandler) handleLinkObjects(w http.ResponseWriter, r *http.Request) {
+	if !h.requireOntologyWriteAuthority(w, r) {
+		return
+	}
 	var req foundry.OntologyGraphEdge
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "invalid JSON payload"})

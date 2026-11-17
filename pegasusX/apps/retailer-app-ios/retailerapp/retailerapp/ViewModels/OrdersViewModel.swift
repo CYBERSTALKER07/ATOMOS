@@ -107,22 +107,7 @@ final class OrdersViewModel {
     }
 
     func flushPendingOrders(modelContext: ModelContext) async {
-        let descriptor = FetchDescriptor<PendingOrder>(sortBy: [SortDescriptor(\.createdAt)])
-        guard let pending = try? modelContext.fetch(descriptor), !pending.isEmpty else { return }
-        for order in pending {
-            do {
-                if try await replayPendingOrder(order) {
-                    modelContext.delete(order)
-                }
-            } catch {
-                order.lastError = RetailerErrorSupport.retryQueuedMessage(
-                    for: error,
-                    fallback: "Pending order retry failed."
-                )
-                order.retryCount += 1
-            }
-        }
-        try? modelContext.save()
+        await PendingOrderReplayer.flush(modelContext: modelContext, api: api)
     }
 
     func cancelOrder(_ order: Order) async {
@@ -248,51 +233,5 @@ final class OrdersViewModel {
             Haptics.error()
             loadError = "Failed to edit preorder"
         }
-    }
-
-    private func replayPendingOrder(_ order: PendingOrder) async throws -> Bool {
-        guard order.method == "POST" else {
-            order.lastError = "Unsupported pending mutation \(order.method) \(order.endpoint)"
-            order.retryCount += 1
-            return false
-        }
-        guard let data = order.payloadJson.data(using: .utf8) else {
-            return true
-        }
-
-        switch order.endpoint {
-        case "/v1/checkout/unified":
-            guard let payload = try? JSONDecoder().decode(UnifiedCheckoutPayload.self, from: data) else {
-                return true
-            }
-            _ = try await RetailerCheckoutService.completeCheckout(
-                api: api,
-                payload: payload,
-                gateway: payload.paymentGateway,
-                idempotencyKey: pendingOrderIdempotencyKey(order)
-            )
-            return true
-        case "/v1/order/create":
-            guard let payload = try? JSONDecoder().decode(ProcurementOrderRequest.self, from: data) else {
-                return true
-            }
-            let _: ProcurementOrderResponse = try await api.post(
-                path: order.endpoint,
-                body: payload,
-                headers: ["Idempotency-Key": pendingOrderIdempotencyKey(order)]
-            )
-            return true
-        default:
-            order.lastError = "Unsupported pending mutation \(order.method) \(order.endpoint)"
-            order.retryCount += 1
-            return false
-        }
-    }
-
-    private func pendingOrderIdempotencyKey(_ order: PendingOrder) -> String {
-        if !order.idempotencyKey.isEmpty {
-            return order.idempotencyKey
-        }
-        return "retailer-checkout-pending:\(Int64(order.createdAt.timeIntervalSince1970 * 1000))"
     }
 }

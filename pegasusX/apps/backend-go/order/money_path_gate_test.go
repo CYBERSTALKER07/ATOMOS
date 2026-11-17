@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -443,5 +444,78 @@ func TestMoneyPathGate_ShopClosedCreditLeaveRejectedWhenAROff(t *testing.T) {
 	}
 	if balance != 0 {
 		t.Fatalf("credit balance = %d, want 0 (no debt booked while AR off)", balance)
+	}
+}
+
+func TestMoneyPathGate_CreditLeaveCannotBeForgivenByCompleteOrder(t *testing.T) {
+	ctx := context.Background()
+	client := newSpannerIntegrationClient(t, ctx)
+	defer client.Close()
+
+	suffix := time.Now().UnixNano()
+	orderID := fmt.Sprintf("ord_gate_noleak_%d", suffix)
+	retailerID := fmt.Sprintf("ret-gate-noleak-%d", suffix)
+	supplierID := fmt.Sprintf("sup-gate-noleak-%d", suffix)
+	now := time.Now().UTC().Add(-2 * time.Minute)
+	past := now.Add(-10 * time.Minute)
+	totalMinor := int64(50000000)
+
+	_, err := client.Apply(ctx, []*spanner.Mutation{
+		spanner.Insert("Orders",
+			[]string{"OrderId", "RetailerId", "SupplierId", "Status", "FiscalStatus", "OrderSource", "ConfirmationStatus", "LineItemsJson", "TotalMinor", "Currency", "Version", "CreatedAt", "UpdatedAt"},
+			[]any{orderID, retailerID, supplierID, string(StatusFiscalizing), string(FiscalStatusPending), string(OrderSourceManual), string(ConfirmationStatusConfirmed), []byte("[]"), totalMinor, "UZS", int64(1), past, past},
+		),
+		spanner.Insert("RetailerCreditProfiles",
+			[]string{"RetailerId", "SupplierId", "CreditLimitMinor", "CurrentBalanceMinor", "AvailableCreditMinor", "Status", "RiskScore", "DelinquencyCount", "Version", "CreatedAt", "UpdatedAt"},
+			[]any{retailerID, supplierID, int64(100000000), totalMinor, int64(50000000), string(credit.StatusActive), int64(800), int64(0), int64(1), past, past},
+		),
+		spanner.Insert("OrderPaymentLegs",
+			[]string{"OrderId", "LegId", "Method", "AmountMinor", "Status", "IdempotencyKey", "CreatedAt", "CapturedAt"},
+			[]any{orderID, fmt.Sprintf("leg-credit-%d", suffix), string(MethodCredit), totalMinor, string(PaymentStatusCaptured), "credit-leave-" + orderID, past, past},
+		),
+		spanner.Insert("OrderFiscalReceipts",
+			[]string{"OrderId", "AttemptId", "SupplierId", "RetailerId", "Provider", "Status", "AmountMinor", "Currency", "PaymentMethod", "CreatedAt", "UpdatedAt"},
+			[]any{orderID, fmt.Sprintf("att-fisc-%d", suffix), supplierID, retailerID, "PEGASUS", string(FiscalAttemptPending), totalMinor, "UZS", string(MethodCredit), past, past},
+		),
+	})
+	if err != nil {
+		t.Fatalf("insert fixture: %v", err)
+	}
+
+	s := newMoneyPathGateService(client, nil)
+	s.credit = credit.NewService(credit.NewSpannerRepository(client))
+	s.ar = ar.NewService(ar.NewSpannerRepository(client))
+	s.repo = NewSpannerRepository(client)
+
+	orderRec := gateOrderRecord(orderID, totalMinor)
+	orderRec.Status = StatusFiscalizing
+	orderRec.FiscalStatus = FiscalStatusPending
+	orderRec.LatestFiscalAttemptID = fmt.Sprintf("att-fisc-%d", suffix)
+
+	err = s.settleOutstandingCardPayment(ctx, orderRec)
+	if err == nil {
+		t.Fatal("expected settleOutstandingCardPayment to fail on zero-tender credit-leave order, got nil")
+	}
+	if !strings.Contains(err.Error(), "without verified payment receipt") {
+		t.Fatalf("unexpected error message: %v", err)
+	}
+
+	// Verify RetailerCreditProfiles.CurrentBalanceMinor was NOT cleared
+	prof, err := client.Single().ReadRow(ctx, "RetailerCreditProfiles", spanner.Key{retailerID, supplierID}, []string{"CurrentBalanceMinor"})
+	if err != nil {
+		t.Fatalf("read profile: %v", err)
+	}
+	var bal int64
+	if err := prof.Columns(&bal); err != nil {
+		t.Fatalf("parse profile: %v", err)
+	}
+	if bal != totalMinor {
+		t.Fatalf("EXPLOIT DETECTED: credit balance cleared to %d, want preserved %d", bal, totalMinor)
+	}
+
+	// Verify outbox has 0 PAYMENT_CLEARED events
+	clearedCount := countOutboxEventsContaining(t, ctx, client, orderID, "PAYMENT_CLEARED")
+	if clearedCount != 0 {
+		t.Fatalf("EXPLOIT DETECTED: PAYMENT_CLEARED event was emitted (%d times)", clearedCount)
 	}
 }

@@ -420,7 +420,7 @@ func (r *SpannerRepository) ReleaseReservation(ctx context.Context, inventoryID 
 		newReserved := reserved - releaseQty
 		m := spanner.UpdateMap("InventoryLevels", map[string]any{
 			"InventoryId":      inventoryID,
-			"QuantityOnHand":   onHand + releaseQty,
+			"QuantityOnHand":   onHand,
 			"QuantityReserved": newReserved,
 			"Version":          version + 1,
 			"UpdatedAt":        spanner.CommitTimestamp,
@@ -439,7 +439,7 @@ func (r *SpannerRepository) ReleaseReservation(ctx context.Context, inventoryID 
 			"warehouse_id":      warehouseID,
 			"supplier_id":       supplierID,
 			"product_id":        productID,
-			"quantity":          onHand + releaseQty,
+			"quantity":          onHand,
 			"quantity_reserved": newReserved,
 			"timestamp":         time.Now().UTC().Format(time.RFC3339Nano),
 		}); err != nil {

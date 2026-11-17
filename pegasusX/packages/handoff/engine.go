@@ -2,6 +2,7 @@ package handoff
 
 import (
 	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/hex"
 	"errors"
 	"os"
@@ -146,13 +147,18 @@ func (e *Engine) ExpectedToken(orderID, storedToken string) string {
 	return ""
 }
 
+// ConstantTimeEqual reports whether a and b match using constant-time byte comparison.
+func ConstantTimeEqual(a, b string) bool {
+	return subtle.ConstantTimeCompare([]byte(a), []byte(b)) == 1
+}
+
 // Validate checks a scanned token against the persisted order token.
 func (e *Engine) Validate(orderID, storedToken, presented string) error {
 	expected := e.ExpectedToken(orderID, storedToken)
 	if expected == "" {
 		return errors.New("delivery token not active")
 	}
-	if strings.TrimSpace(presented) != expected {
+	if !ConstantTimeEqual(strings.TrimSpace(presented), expected) {
 		return errors.New("invalid qr token")
 	}
 	return nil

@@ -198,12 +198,8 @@ func claimsFromRequest(req *http.Request, jwtSecret string) (auth.Claims, bool) 
 	if !auth.IsWSTicket(ident) {
 		return auth.Claims{}, false
 	}
-	jti := strings.TrimSpace(ident.JTI)
-	if jti != "" {
-		revoked, err := auth.GetRevocationStore().IsRevoked(req.Context(), jti)
-		if err != nil || revoked {
-			return auth.Claims{}, false
-		}
+	if auth.IsTokenRevoked(req.Context(), ident) {
+		return auth.Claims{}, false
 	}
 	return ident, true
 }

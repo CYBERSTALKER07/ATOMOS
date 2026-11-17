@@ -4,7 +4,8 @@
 import { useEffect, useMemo, useRef } from 'react';
 
 import MapGL, { Layer, NavigationControl, Source, type MapRef } from 'react-map-gl/maplibre';
-import maplibregl from 'maplibre-gl';
+import * as maplibregl from 'maplibre-gl';
+import type * as GeoJSON from 'geojson';
 import { useMapLibreTeardown } from './map-chrome';
 import { FLEET_ROUTE_COLORS, useAnimatedDriverMarkers } from './useAnimatedDriverMarkers';
 import { mapInitialViewState, readCachedAuthSession } from '@pegasusx/api-core';

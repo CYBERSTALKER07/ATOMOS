@@ -43,21 +43,29 @@ import type {
   ToteTakeoverRequest,
 } from "@pegasusx/types";
 
+const ADMIN_COOKIE_SESSION = "__cookie_session__";
+
 const base = () =>
   (process.env.NEXT_PUBLIC_BACKEND_BASE_URL || "http://localhost:8080").replace(/\/$/, "");
 
 async function req<T>(token: string, method: string, path: string, body?: unknown): Promise<T> {
+  const isCookieSession = token === ADMIN_COOKIE_SESSION;
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
   };
-  if (token) {
+  if (token && !isCookieSession) {
     headers.Authorization = `Bearer ${token}`;
   }
 
-  const res = await fetch(base() + path, {
+  const targetUrl = isCookieSession
+    ? `/api/proxy${path.startsWith("/") ? path : `/${path}`}`
+    : base() + path;
+
+  const res = await fetch(targetUrl, {
     method,
     headers,
     body: body === undefined ? undefined : JSON.stringify(body),
+    credentials: isCookieSession ? "include" : "same-origin",
     cache: "no-store",
   });
 

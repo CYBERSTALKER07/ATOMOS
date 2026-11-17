@@ -8,6 +8,7 @@ package auth
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"strings"
 	"time"
@@ -90,6 +91,13 @@ type Claims struct {
 	MarketCode string
 	// HomeCell is the regional cell id (cell-uz, cell-eu, …). Empty → pack default.
 	HomeCell string
+
+	// ActorType discriminates actor provenance ("human", "agent", "connector", "system").
+	ActorType string
+	// SupplierPerms carries explicit/cached supplier permission grants (optional).
+	SupplierPerms []string
+	// AuditorExpiresAt bounds time-boxed external AUDITOR portal access (UTC).
+	AuditorExpiresAt *time.Time
 }
 
 // IsPendingOrgSelect reports whether claims are intermediate multi-org tokens.
@@ -134,7 +142,40 @@ type ctxKey int
 const (
 	ctxKeyClaims ctxKey = iota
 	ctxKeyTraceID
+	ctxKeyAuditorExpired
 )
+
+// WithAuditorExpired marks the request context as having presented an expired AUDITOR JWT.
+func WithAuditorExpired(ctx context.Context) context.Context {
+	return context.WithValue(ctx, ctxKeyAuditorExpired, true)
+}
+
+// IsAuditorExpiredInContext reports whether middleware flagged an expired AUDITOR JWT.
+func IsAuditorExpiredInContext(ctx context.Context) bool {
+	v, _ := ctx.Value(ctxKeyAuditorExpired).(bool)
+	return v
+}
+
+// IsAuditorExpired reports whether time-boxed AUDITOR claims have passed their expiry instant.
+func IsAuditorExpired(c Claims, now time.Time) bool {
+	if !IsReadOnlyAuditor(c) || c.AuditorExpiresAt == nil || c.AuditorExpiresAt.IsZero() {
+		return false
+	}
+	if now.IsZero() {
+		now = time.Now().UTC()
+	}
+	return now.UTC().After(c.AuditorExpiresAt.UTC())
+}
+
+func writeAuditorExpiredJSON(w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusUnauthorized)
+	_ = json.NewEncoder(w).Encode(map[string]string{
+		"error":   "auditor_access_expired",
+		"code":    "auditor_access_expired",
+		"message": "auditor access window has expired",
+	})
+}
 
 // WithClaims attaches claims to the request context. Use only from middleware.
 func WithClaims(ctx context.Context, c Claims) context.Context {
@@ -171,7 +212,15 @@ func RequireRole(allowed ...Role) func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			c, ok := FromContext(r.Context())
 			if !ok {
+				if IsAuditorExpiredInContext(r.Context()) {
+					writeAuditorExpiredJSON(w)
+					return
+				}
 				http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+				return
+			}
+			if IsAuditorExpired(c, time.Now().UTC()) {
+				writeAuditorExpiredJSON(w)
 				return
 			}
 			if IsPendingOrgSelect(c) {
@@ -202,7 +251,15 @@ func RequireAnyAuthenticated() func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			c, ok := FromContext(r.Context())
 			if !ok || strings.TrimSpace(c.Subject) == "" {
+				if !ok && IsAuditorExpiredInContext(r.Context()) {
+					writeAuditorExpiredJSON(w)
+					return
+				}
 				http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+				return
+			}
+			if IsAuditorExpired(c, time.Now().UTC()) {
+				writeAuditorExpiredJSON(w)
 				return
 			}
 			if IsWSTicket(c) {
@@ -360,7 +417,15 @@ func RequireRetailerPerm(perm string) func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			c, ok := FromContext(r.Context())
 			if !ok {
+				if IsAuditorExpiredInContext(r.Context()) {
+					writeAuditorExpiredJSON(w)
+					return
+				}
 				http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+				return
+			}
+			if IsAuditorExpired(c, time.Now().UTC()) {
+				writeAuditorExpiredJSON(w)
 				return
 			}
 			if c.Role != RoleRetailer {

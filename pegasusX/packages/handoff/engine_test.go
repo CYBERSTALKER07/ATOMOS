@@ -82,3 +82,18 @@ func TestEngine_EnforceCryptographicTokenWhenFallbackDisabled(t *testing.T) {
 		t.Fatalf("unexpected validation error with valid token: %v", err)
 	}
 }
+
+func TestConstantTimeEqual(t *testing.T) {
+	if !ConstantTimeEqual("abc-123", "abc-123") {
+		t.Fatal("expected equal tokens to match")
+	}
+	if ConstantTimeEqual("abc-123", "abc-124") {
+		t.Fatal("expected mismatched tokens to fail")
+	}
+	if ConstantTimeEqual("abc-123", "abc-1234") {
+		t.Fatal("expected differing lengths to fail")
+	}
+	if !ConstantTimeEqual("", "") {
+		t.Fatal("expected empty strings to match")
+	}
+}

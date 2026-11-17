@@ -86,6 +86,7 @@ func (s *Service) resolveOneShopClosedTimeout(ctx context.Context, orderID strin
 	now := s.now().UTC()
 	var resolvedDecision TimeoutDecision
 	var resolvedOrder *Order
+	var openedARInTxn bool
 
 	_, err := s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		order, err := s.loadOrderForUpdate(ctx, txn, orderID)
@@ -107,10 +108,9 @@ func (s *Service) resolveOneShopClosedTimeout(ctx context.Context, orderID strin
 			return fmt.Errorf("load credit profile for shop-closed timeout %s: %w", order.OrderID, err)
 		}
 
-		// For now hardcode cfg, this could come from Supplier or global config
-		cfg := TimeoutConfig{
-			MaxAutoCreditMinor: 50000000,
-			AllowForceBypass:   false,
+		cfg := s.timeoutCfg
+		if cfg.MaxAutoCreditMinor == 0 {
+			cfg.MaxAutoCreditMinor = 50000000
 		}
 
 		decision := DecideShopClosedTimeout(order, profile, cfg)
@@ -178,6 +178,26 @@ func (s *Service) resolveOneShopClosedTimeout(ctx context.Context, orderID strin
 					}
 				}
 			}
+			if s.ar != nil && order.TotalMinor > 0 {
+				termsDays, graceDays, dueAt := s.resolveARTerms(ctx, order.RetailerID, order.SupplierID, now)
+				if err := s.ar.OpenFromCreditLeaveInTxn(ctx, txn, ar.OpenFromCreditLeaveRequest{
+					SupplierID:    order.SupplierID,
+					RetailerID:    order.RetailerID,
+					OrderID:       order.OrderID,
+					AmountMinor:   order.TotalMinor,
+					Currency:      order.Currency,
+					TermsDays:     termsDays,
+					GraceDays:     graceDays,
+					CreditLeaveAt: now,
+					DueAt:         dueAt,
+				}); err != nil {
+					return fmt.Errorf("open AR invoice on shop-closed timeout %s: %w", order.OrderID, err)
+				}
+				openedARInTxn = true
+			}
+			if err := s.recordOrderDeliveredGLInTxn(ctx, txn, buf, order, 0, 0, order.TotalMinor, nil, "CREDIT", now); err != nil {
+				return fmt.Errorf("order shop-closed timeout GL %s: %w", order.OrderID, err)
+			}
 			_ = outbox.EmitJSON(ctx, buf, events.AggregateOrder, order.OrderID, events.TopicMain, events.OrderEvent{
 				BaseEvent:  events.BaseEvent{Type: events.EventOrderStatusChanged, Timestamp: now.Format(time.RFC3339Nano)},
 				OrderID:    order.OrderID,
@@ -207,11 +227,21 @@ func (s *Service) resolveOneShopClosedTimeout(ctx context.Context, orderID strin
 
 		case DecisionForceBypass:
 			mutations = append(mutations, spanner.UpdateMap("Orders", map[string]any{
-				"OrderId":              order.OrderID,
-				"ShopClosedResolution": ShopClosedResolutionBypass,
-				"Version":              order.Version + 1,
-				"UpdatedAt":            now,
+				"OrderId":               order.OrderID,
+				"Status":                string(StatusArrived),
+				"ShopClosedResolution":  ShopClosedResolutionBypass,
+				"ShopClosedGraceEndsAt": nil,
+				"ProximityUnlockedAt":   now,
+				"Version":               order.Version + 1,
+				"UpdatedAt":             now,
 			}))
+			_ = outbox.EmitJSON(ctx, buf, events.AggregateOrder, order.OrderID, events.TopicMain, events.OrderEvent{
+				BaseEvent:  events.BaseEvent{Type: events.EventOrderStatusChanged, Timestamp: now.Format(time.RFC3339Nano)},
+				OrderID:    order.OrderID,
+				SupplierID: order.SupplierID,
+				Status:     string(StatusArrived),
+				Reason:     "shop_closed_force_bypass",
+			})
 		}
 
 		// Log entry (Payload column is JSON in Spanner)
@@ -237,14 +267,18 @@ func (s *Service) resolveOneShopClosedTimeout(ctx context.Context, orderID strin
 	// B6: AR open is performed inside the credit-leave txn when possible.
 	// Worker residual: if still missing after commit, fail-closed by returning error
 	// so the sweeper retries (OpenFromCreditLeave is idempotent per order).
-	if err == nil && s.ar != nil && resolvedDecision == DecisionCreditLeave && resolvedOrder != nil && resolvedOrder.TotalMinor > 0 {
+	if err == nil && !openedARInTxn && s.ar != nil && resolvedDecision == DecisionCreditLeave && resolvedOrder != nil && resolvedOrder.TotalMinor > 0 {
+		termsDays, graceDays, dueAt := s.resolveARTerms(ctx, resolvedOrder.RetailerID, resolvedOrder.SupplierID, now)
 		if _, aerr := s.ar.OpenFromCreditLeave(ctx, ar.OpenFromCreditLeaveRequest{
 			SupplierID:    resolvedOrder.SupplierID,
 			RetailerID:    resolvedOrder.RetailerID,
 			OrderID:       orderID,
 			AmountMinor:   resolvedOrder.TotalMinor,
 			Currency:      resolvedOrder.Currency,
+			TermsDays:     termsDays,
+			GraceDays:     graceDays,
 			CreditLeaveAt: now,
+			DueAt:         dueAt,
 		}); aerr != nil {
 			s.log.ErrorContext(ctx, "open AR invoice after shop-closed credit leave failed", "order_id", orderID, "err", aerr)
 			return aerr

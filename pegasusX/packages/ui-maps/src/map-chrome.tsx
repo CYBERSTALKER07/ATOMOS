@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type RefObject } from "react";
-import type maplibregl from "maplibre-gl";
+import type * as maplibregl from "maplibre-gl";
 
 /** Defer MapLibre mount until the container is near the viewport. */
 export function useLazyMapMount(rootMargin = "120px") {

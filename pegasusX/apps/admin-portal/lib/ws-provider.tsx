@@ -73,6 +73,7 @@ export function AdminWebSocketProvider({ children }: { children: ReactNode }) {
   const [refreshKey, setRefreshKey] = useState(0);
 
   const socketRef = useRef<WebSocket | null>(null);
+  const disposedRef = useRef(true);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const backoffRef = useRef(1000);
@@ -148,6 +149,9 @@ export function AdminWebSocketProvider({ children }: { children: ReactNode }) {
 
     try {
       const session = await api.wsSession(token);
+      if (disposedRef.current) {
+        return;
+      }
       const wsProto = window.location.protocol === "https:" ? "wss:" : "ws:";
       const host = (process.env.NEXT_PUBLIC_BACKEND_BASE_URL || "http://localhost:8080")
         .replace(/^https?:\/\//, "")
@@ -158,6 +162,10 @@ export function AdminWebSocketProvider({ children }: { children: ReactNode }) {
       const wsUrl = `${wsProto}//${host}/v1/ws?token=${encodeURIComponent(session.token)}${lastIdParam}`;
 
       const ws = new WebSocket(wsUrl);
+      if (disposedRef.current) {
+        ws.close();
+        return;
+      }
       socketRef.current = ws;
 
       ws.onopen = () => {
@@ -253,6 +261,10 @@ export function AdminWebSocketProvider({ children }: { children: ReactNode }) {
         socketRef.current = null;
         setStatus("disconnected");
 
+        if (disposedRef.current) {
+          return;
+        }
+
         // Exponential backoff with random jitter (base 1s, ceiling 30s) (CG-9)
         const jitter = Math.random() * 500;
         const delay = Math.min(backoffRef.current + jitter, 30000);
@@ -261,16 +273,22 @@ export function AdminWebSocketProvider({ children }: { children: ReactNode }) {
         if (token) {
           setStatus("reconnecting");
           reconnectTimeoutRef.current = setTimeout(() => {
-            void connect();
+            if (!disposedRef.current) {
+              void connect();
+            }
           }, delay);
         }
       };
     } catch {
       clearHeartbeat();
       setStatus("disconnected");
-      reconnectTimeoutRef.current = setTimeout(() => {
-        void connect();
-      }, 5000);
+      if (!disposedRef.current && token) {
+        reconnectTimeoutRef.current = setTimeout(() => {
+          if (!disposedRef.current) {
+            void connect();
+          }
+        }, 5000);
+      }
     }
   }, [token, clearHeartbeat]);
 
@@ -281,6 +299,7 @@ export function AdminWebSocketProvider({ children }: { children: ReactNode }) {
       reconnectTimeoutRef.current = null;
     }
     if (socketRef.current) {
+      socketRef.current.onclose = null;
       socketRef.current.close();
       socketRef.current = null;
     }
@@ -289,8 +308,10 @@ export function AdminWebSocketProvider({ children }: { children: ReactNode }) {
   }, [connect, clearHeartbeat]);
 
   useEffect(() => {
+    disposedRef.current = false;
     void connect();
     const onOnline = () => {
+      if (disposedRef.current) return;
       backoffRef.current = 1000;
       void connect();
     };
@@ -303,6 +324,7 @@ export function AdminWebSocketProvider({ children }: { children: ReactNode }) {
       window.addEventListener("offline", onOffline);
     }
     return () => {
+      disposedRef.current = true;
       clearHeartbeat();
       if (typeof window !== "undefined") {
         window.removeEventListener("online", onOnline);
@@ -310,8 +332,10 @@ export function AdminWebSocketProvider({ children }: { children: ReactNode }) {
       }
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
       }
       if (socketRef.current) {
+        socketRef.current.onclose = null;
         socketRef.current.close();
         socketRef.current = null;
       }

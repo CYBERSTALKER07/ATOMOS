@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { CreditCard, Loader2, AlertTriangle } from "lucide-react";
 import { apiFetch } from "../lib/auth";
 import { formatRatioPercentTenths } from "../lib/money";
+import { formatWholeSom } from "../lib/retailer-w2";
 
 type CreditProfile = {
   retailer_id: string;
@@ -121,7 +122,7 @@ export function CreditProfileCard({ className = "" }: { className?: string }) {
             Limit
           </div>
           <div className="font-mono font-medium tabular-nums">
-            {profile.credit_limit_minor.toLocaleString()}
+            {formatWholeSom(profile.credit_limit_minor)}
           </div>
         </div>
         <div>
@@ -129,7 +130,7 @@ export function CreditProfileCard({ className = "" }: { className?: string }) {
             Balance due
           </div>
           <div className="font-mono font-medium tabular-nums">
-            {profile.current_balance_minor.toLocaleString()}
+            {formatWholeSom(profile.current_balance_minor)}
           </div>
         </div>
         <div>
@@ -137,7 +138,7 @@ export function CreditProfileCard({ className = "" }: { className?: string }) {
             Available
           </div>
           <div className="font-mono font-medium tabular-nums">
-            {profile.available_credit_minor.toLocaleString()}
+            {formatWholeSom(profile.available_credit_minor)}
           </div>
         </div>
       </div>

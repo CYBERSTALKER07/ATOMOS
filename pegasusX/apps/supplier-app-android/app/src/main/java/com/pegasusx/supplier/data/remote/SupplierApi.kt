@@ -23,7 +23,153 @@ interface SupplierApi {
     suspend fun configureSupplier(@Body body: JsonElement): Response<JsonElement>
 
     @POST("v1/supplier/business/setup")
-    suspend fun setupBusiness(@Body body: JsonElement): Response<JsonElement>
+    suspend fun setupBusiness(
+        @Body body: JsonElement,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): Response<JsonElement>
+
+    @POST("v1/platform/inn/lookup")
+    suspend fun lookupINN(@Body body: INNLookupRequest): Response<INNLookupResponse>
+
+    @GET("v1/supplier/join-requests")
+    suspend fun listJoinRequests(
+        @Query("status") status: String = "PENDING",
+        @Query("limit") limit: Int = 100,
+    ): Response<JoinRequestsResponse>
+
+    @POST("v1/supplier/join-requests/{requestId}/approve")
+    suspend fun approveJoinRequest(
+        @Path("requestId") requestId: String,
+        @Header("Idempotency-Key") idempotencyKey: String,
+        @Body body: Map<String, String> = emptyMap(),
+    ): Response<JsonElement>
+
+    @POST("v1/supplier/join-requests/{requestId}/reject")
+    suspend fun rejectJoinRequest(
+        @Path("requestId") requestId: String,
+        @Header("Idempotency-Key") idempotencyKey: String,
+        @Body body: Map<String, String> = emptyMap(),
+    ): Response<JsonElement>
+
+    @GET("v1/supplier/ar/invoices")
+    suspend fun listSupplierARInvoices(
+        @Query("status") status: String? = null,
+        @Query("limit") limit: Int = 100,
+    ): Response<SupplierARInvoicesResponse>
+
+    // ── Universal Smart Migration Center ──
+
+    @GET("v1/supplier/migrations/projects")
+    suspend fun listMigrationProjects(): Response<MigrationProjectsResponse>
+
+    @POST("v1/supplier/migrations/projects")
+    suspend fun createMigrationProject(
+        @Header("Idempotency-Key") idempotencyKey: String,
+        @Body body: MigrationCreateProjectRequest,
+    ): Response<MigrationProject>
+
+    @GET("v1/supplier/migrations/projects/{projectId}")
+    suspend fun getMigrationProjectTree(
+        @Path("projectId") projectId: String,
+    ): Response<MigrationProjectTree>
+
+    @POST("v1/supplier/migrations/projects/{projectId}/bundles")
+    suspend fun createMigrationBundle(
+        @Path("projectId") projectId: String,
+        @Header("Idempotency-Key") idempotencyKey: String,
+        @Body body: MigrationCreateBundleRequest,
+    ): Response<MigrationCreateBundleResponse>
+
+    @POST("v1/supplier/migrations/projects/{projectId}/bundles/{bundleId}/uploaded")
+    suspend fun markMigrationBundleUploaded(
+        @Path("projectId") projectId: String,
+        @Path("bundleId") bundleId: String,
+        @Query("sync") sync: String = "1",
+        @Header("Idempotency-Key") idempotencyKey: String,
+        @Body body: MigrationBundleUploadedRequest,
+    ): Response<MigrationBundleUploadedResponse>
+
+    @PATCH("v1/supplier/migrations/projects/{projectId}/bundles/{bundleId}/sort")
+    suspend fun overrideMigrationBundleSort(
+        @Path("projectId") projectId: String,
+        @Path("bundleId") bundleId: String,
+        @Header("Idempotency-Key") idempotencyKey: String,
+        @Body body: MigrationBundleSortOverrideRequest,
+    ): Response<MigrationBundleSortOverrideResponse>
+
+    @GET("v1/supplier/migrations/sessions/{sessionId}")
+    suspend fun getMigrationSession(
+        @Path("sessionId") sessionId: String,
+    ): Response<MigrationSession>
+
+    @GET("v1/supplier/migrations/sessions/{sessionId}/rows")
+    suspend fun getMigrationSessionRows(
+        @Path("sessionId") sessionId: String,
+        @Query("limit") limit: Int = 20,
+        @Query("offset") offset: Int = 0,
+        @Query("invalid_only") invalidOnly: String? = null,
+    ): Response<MigrationSessionRowsResponse>
+
+    @GET("v1/supplier/migrations/sessions/{sessionId}/mapping")
+    suspend fun getMigrationSessionMapping(
+        @Path("sessionId") sessionId: String,
+    ): Response<MigrationGetSessionMappingResponse>
+
+    @POST("v1/supplier/migrations/sessions/{sessionId}/mapping")
+    suspend fun confirmMigrationSessionMapping(
+        @Path("sessionId") sessionId: String,
+        @Header("Idempotency-Key") idempotencyKey: String,
+        @Body body: MigrationConfirmMappingRequest,
+    ): Response<MigrationConfirmMappingResponse>
+
+    @POST("v1/supplier/migrations/projects/{projectId}/dry-run")
+    suspend fun runMigrationProjectDryRun(
+        @Path("projectId") projectId: String,
+        @Header("Idempotency-Key") idempotencyKey: String,
+        @Body body: MigrationDryRunRequest,
+    ): Response<MigrationDryRunResponse>
+
+    @POST("v1/supplier/migrations/sessions/{sessionId}/dry-run")
+    suspend fun runMigrationSessionDryRun(
+        @Path("sessionId") sessionId: String,
+        @Header("Idempotency-Key") idempotencyKey: String,
+        @Body body: MigrationDryRunRequest,
+    ): Response<MigrationDryRunResponse>
+
+    @POST("v1/supplier/migrations/sessions/{sessionId}/approve")
+    suspend fun approveMigrationSession(
+        @Path("sessionId") sessionId: String,
+        @Header("Idempotency-Key") idempotencyKey: String,
+        @Body body: MigrationApproveRequest,
+    ): Response<MigrationApproveResponse>
+
+    @POST("v1/supplier/migrations/sessions/{sessionId}/apply")
+    suspend fun applyMigrationSession(
+        @Path("sessionId") sessionId: String,
+        @Header("Idempotency-Key") idempotencyKey: String,
+        @Body body: MigrationApplyRequest,
+    ): Response<MigrationApplyResult>
+
+    @POST("v1/supplier/migrations/sessions/{sessionId}/rollback")
+    suspend fun rollbackMigrationSession(
+        @Path("sessionId") sessionId: String,
+        @Header("Idempotency-Key") idempotencyKey: String,
+        @Body body: Map<String, String> = emptyMap(),
+    ): Response<MigrationRollbackResult>
+
+    @POST("v1/supplier/migrations/projects/{projectId}/open-orders/release")
+    suspend fun releaseMigrationOpenOrders(
+        @Path("projectId") projectId: String,
+        @Header("Idempotency-Key") idempotencyKey: String,
+        @Body body: MigrationOpenOrderReleaseRequest,
+    ): Response<MigrationOpenOrderReleaseResponse>
+
+    @POST("v1/supplier/migrations/projects/{projectId}/cutover")
+    suspend fun cutoverMigrationProject(
+        @Path("projectId") projectId: String,
+        @Header("Idempotency-Key") idempotencyKey: String,
+        @Body body: Map<String, String> = emptyMap(),
+    ): Response<MigrationCutoverResult>
 
     @GET("v1/supplier/pulse")
     suspend fun getPulse(): Response<PulseResponse>

@@ -1,5 +1,6 @@
 package com.pegasusx.driver
 
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -12,6 +13,7 @@ import com.pegasusx.driver.data.remote.DriverWebSocket
 import com.pegasusx.driver.data.remote.TelemetrySocket
 import com.pegasusx.driver.ui.navigation.DriverNavigation
 import com.pegasusx.driver.ui.theme.PegasusDriverTheme
+import com.pegasusx.driver.util.DriverLocaleManager
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -22,8 +24,13 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var driverWebSocket: DriverWebSocket
     @Inject lateinit var telemetrySocket: TelemetrySocket
 
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(DriverLocaleManager.wrapContext(newBase))
+    }
+
     @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
+        DriverLocaleManager.applyProcessLocale(this)
         installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()

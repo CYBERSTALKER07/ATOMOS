@@ -86,3 +86,55 @@ func TestFactoryRoutes_RoleGuard(t *testing.T) {
 		t.Fatalf("retailer accessing factory manifests returned %d, want 403 Forbidden", rr.Code)
 	}
 }
+
+func TestFactorySetup_UnauthorizedWithoutToken(t *testing.T) {
+	svc := &factory.Service{}
+	r := factoryRouter(svc)
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/factory/setup", strings.NewReader(`{"address":"Factory 1","lat":41.3,"lng":69.2}`))
+	rr := httptest.NewRecorder()
+	r.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401 for unauthenticated factory setup, got %d", rr.Code)
+	}
+}
+
+func TestFactorySetup_ForbiddenForRetailerAndDriver(t *testing.T) {
+	svc := &factory.Service{}
+	r := factoryRouter(svc)
+
+	for _, role := range []auth.Role{auth.RoleRetailer, auth.RoleDriver} {
+		tok := issueFactoryToken(t, role)
+		req := httptest.NewRequest(http.MethodPost, "/v1/factory/setup", strings.NewReader(`{"address":"Factory 1","lat":41.3,"lng":69.2}`))
+		req.Header.Set("Authorization", "Bearer "+tok)
+		rr := httptest.NewRecorder()
+		r.ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusForbidden {
+			t.Fatalf("expected 403 for role %s attempting factory setup, got %d", role, rr.Code)
+		}
+	}
+}
+
+func TestFactorySetup_AllowedForAuthorizedRoles(t *testing.T) {
+	svc := &factory.Service{}
+	r := factoryRouter(svc)
+
+	for _, role := range []auth.Role{auth.RoleFactory, auth.RoleFactoryAdmin, auth.RoleAdmin} {
+		tok := issueFactoryToken(t, role)
+		req := httptest.NewRequest(http.MethodPost, "/v1/factory/setup", strings.NewReader(`{"address":"Factory 1","lat":41.3,"lng":69.2}`))
+		req.Header.Set("Authorization", "Bearer "+tok)
+		rr := httptest.NewRecorder()
+		r.ServeHTTP(rr, req)
+
+		// With an empty service (no Spanner), it should reach the handler and return 503 (Spanner not configured),
+		// proving the role guard allowed the request through (not 401 Unauthorized or 403 Forbidden).
+		if rr.Code == http.StatusUnauthorized || rr.Code == http.StatusForbidden {
+			t.Fatalf("role %s blocked by auth guard with status %d", role, rr.Code)
+		}
+		if rr.Code != http.StatusServiceUnavailable {
+			t.Fatalf("expected handler 503 (Spanner not configured), got %d", rr.Code)
+		}
+	}
+}

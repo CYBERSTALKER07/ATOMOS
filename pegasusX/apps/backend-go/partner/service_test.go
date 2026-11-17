@@ -15,6 +15,10 @@ func allowTestWebhooks(svc *Service) {
 	svc.WebhookURLPolicy = &WebhookURLPolicy{AllowHTTP: true, AllowPrivateHosts: true}
 }
 
+func allowTestDelivery(w *DeliveryWorker) {
+	w.Policy = &WebhookURLPolicy{AllowHTTP: true, AllowPrivateHosts: true}
+}
+
 func TestIssueKeyAndAuthMiddleware(t *testing.T) {
 	keys := NewMemoryKeyRepository()
 	hooks := NewMemoryWebhookRepository()
@@ -69,6 +73,7 @@ func TestWebhookEnqueueAndDeliver(t *testing.T) {
 	svc := NewService(keys, hooks, nil, nil, nil)
 	allowTestWebhooks(svc)
 	delivery := NewDeliveryWorker(hooks, nil)
+	allowTestDelivery(delivery)
 
 	var received map[string]any
 	var gotSig string
@@ -118,6 +123,7 @@ func TestPingWebhook(t *testing.T) {
 	svc := NewService(NewMemoryKeyRepository(), hooks, nil, nil, nil)
 	allowTestWebhooks(svc)
 	delivery := NewDeliveryWorker(hooks, nil)
+	allowTestDelivery(delivery)
 	hit := false
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		hit = true
@@ -143,6 +149,7 @@ func TestWebhookReplayAndDeactivate(t *testing.T) {
 	svc := NewService(NewMemoryKeyRepository(), hooks, nil, nil, nil)
 	allowTestWebhooks(svc)
 	delivery := NewDeliveryWorker(hooks, nil)
+	allowTestDelivery(delivery)
 
 	hits := 0
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

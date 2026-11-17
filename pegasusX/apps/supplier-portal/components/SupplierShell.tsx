@@ -12,10 +12,16 @@ import NotificationPanel from './NotificationPanel';
 import ClientPolicyBanner from './ClientPolicyBanner';
 import LanguageSwitcher from './LanguageSwitcher';
 import { useNotifications } from '@/lib/useNotifications';
-import { clearSession, readTokenFromCookie } from '@/lib/auth';
+import { clearSession, decodeJwtPayload, getSupplierToken, readTokenFromCookie } from '@/lib/auth';
 import { SessionPackChip } from './SessionPackChip';
 import { usePortalT } from '@/lib/i18n';
 import { ALL_NAV_ITEMS, NAV, navSectionIsActive } from '@/lib/nav';
+import {
+  buildNavForWorkspaceMode,
+  resolveDefaultWorkspaceMode,
+  WORKSPACE_MODE_STORAGE_KEY,
+  type SupplierWorkspaceMode,
+} from '@/lib/workspace-mode';
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { DesktopKeyboardCheatsheet } from './ui/DesktopKeyboardCheatsheet';
 
@@ -77,17 +83,24 @@ const DrawerContent = memo(function DrawerContent({
   isMobile,
   collapsed,
   pathname,
+  workspaceMode,
+  onWorkspaceModeChange,
   onToggle,
   onLogout,
 }: {
   isMobile: boolean;
   collapsed: boolean;
   pathname: string;
+  workspaceMode: SupplierWorkspaceMode;
+  onWorkspaceModeChange: (mode: SupplierWorkspaceMode) => void;
   onToggle: () => void;
   onLogout: () => void;
 }) {
   const isRail = collapsed && !isMobile;
-  const filteredNav = NAV;
+  const filteredNav = useMemo(
+    () => buildNavForWorkspaceMode(NAV, workspaceMode),
+    [workspaceMode],
+  );
   const t = usePortalT();
   return (
     <div className="flex flex-col h-full">
@@ -129,6 +142,42 @@ const DrawerContent = memo(function DrawerContent({
             </motion.div>
           )}
         </div>
+
+        {!isRail && (
+          <div className="px-3 pb-2">
+            <div
+              role="group"
+              aria-label="Workspace mode"
+              data-testid="sidebar-workspace-mode"
+              className="grid grid-cols-2 gap-1 rounded-lg border border-[var(--desk-border)] bg-[var(--desk-surface-subtle)] p-1 text-xs"
+            >
+              <button
+                type="button"
+                aria-pressed={workspaceMode === 'fast_desk'}
+                onClick={() => onWorkspaceModeChange('fast_desk')}
+                className={`rounded-md px-2 py-1 font-medium transition ${
+                  workspaceMode === 'fast_desk'
+                    ? 'bg-[var(--desk-surface)] text-[var(--desk-text-primary)] shadow-sm'
+                    : 'text-[var(--desk-text-secondary)]'
+                }`}
+              >
+                Fast Desk
+              </button>
+              <button
+                type="button"
+                aria-pressed={workspaceMode === 'full_erp'}
+                onClick={() => onWorkspaceModeChange('full_erp')}
+                className={`rounded-md px-2 py-1 font-medium transition ${
+                  workspaceMode === 'full_erp'
+                    ? 'bg-[var(--desk-surface)] text-[var(--desk-text-primary)] shadow-sm'
+                    : 'text-[var(--desk-text-secondary)]'
+                }`}
+              >
+                Full ERP
+              </button>
+            </div>
+          </div>
+        )}
 
         {!isRail && (
           <button
@@ -260,12 +309,34 @@ function SupplierAppChrome({ children }: { children: React.ReactNode }) {
   const [notifOpen, setNotifOpen] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
   const { items: notifItems, unreadCount, markRead, markAllRead } = useNotifications();
+  const [workspaceMode, setWorkspaceMode] = useState<SupplierWorkspaceMode>('full_erp');
   const t = usePortalT();
 
   useEffect(() => { setMobileOpen(false); }, [pathname]);
 
   useEffect(() => {
     setHasSession(Boolean(readTokenFromCookie()));
+    try {
+      const saved = window.localStorage.getItem(WORKSPACE_MODE_STORAGE_KEY);
+      if (saved === 'fast_desk' || saved === 'full_erp') {
+        setWorkspaceMode(saved);
+        return;
+      }
+    } catch {
+      // ignore storage errors
+    }
+    const token = getSupplierToken();
+    const claims = token ? decodeJwtPayload(token) : null;
+    setWorkspaceMode(resolveDefaultWorkspaceMode(claims));
+  }, []);
+
+  const handleWorkspaceModeChange = useCallback((mode: SupplierWorkspaceMode) => {
+    setWorkspaceMode(mode);
+    try {
+      window.localStorage.setItem(WORKSPACE_MODE_STORAGE_KEY, mode);
+    } catch {
+      // ignore storage errors
+    }
   }, []);
 
   useEffect(() => {
@@ -356,7 +427,15 @@ function SupplierAppChrome({ children }: { children: React.ReactNode }) {
           background: 'var(--desk-surface)',
         }}
       >
-        <DrawerContent isMobile={false} collapsed={collapsed} pathname={pathname} onToggle={toggleSidebar} onLogout={handleLogout} />
+        <DrawerContent
+          isMobile={false}
+          collapsed={collapsed}
+          pathname={pathname}
+          workspaceMode={workspaceMode}
+          onWorkspaceModeChange={handleWorkspaceModeChange}
+          onToggle={toggleSidebar}
+          onLogout={handleLogout}
+        />
       </motion.aside>
 
       <AnimatePresence>
@@ -383,7 +462,15 @@ function SupplierAppChrome({ children }: { children: React.ReactNode }) {
                 background: 'var(--desk-surface)',
               }}
             >
-              <DrawerContent isMobile={true} collapsed={collapsed} pathname={pathname} onToggle={toggleSidebar} onLogout={handleLogout} />
+              <DrawerContent
+                isMobile={true}
+                collapsed={collapsed}
+                pathname={pathname}
+                workspaceMode={workspaceMode}
+                onWorkspaceModeChange={handleWorkspaceModeChange}
+                onToggle={toggleSidebar}
+                onLogout={handleLogout}
+              />
             </motion.aside>
           </>
         )}
@@ -419,6 +506,37 @@ function SupplierAppChrome({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="desk-topbar-right" data-tauri-no-drag>
+            <div
+              role="group"
+              aria-label="Workspace mode"
+              data-testid="workspace-mode-switcher"
+              className="hidden sm:inline-flex items-center rounded-lg border border-[var(--desk-border)] bg-[var(--desk-surface-subtle)] p-0.5 text-xs"
+            >
+              <button
+                type="button"
+                aria-pressed={workspaceMode === 'fast_desk'}
+                onClick={() => handleWorkspaceModeChange('fast_desk')}
+                className={`rounded-md px-2 py-1 font-medium transition ${
+                  workspaceMode === 'fast_desk'
+                    ? 'bg-[var(--desk-surface)] text-[var(--desk-text-primary)] shadow-sm'
+                    : 'text-[var(--desk-text-secondary)]'
+                }`}
+              >
+                Fast Desk
+              </button>
+              <button
+                type="button"
+                aria-pressed={workspaceMode === 'full_erp'}
+                onClick={() => handleWorkspaceModeChange('full_erp')}
+                className={`rounded-md px-2 py-1 font-medium transition ${
+                  workspaceMode === 'full_erp'
+                    ? 'bg-[var(--desk-surface)] text-[var(--desk-text-primary)] shadow-sm'
+                    : 'text-[var(--desk-text-secondary)]'
+                }`}
+              >
+                Full ERP
+              </button>
+            </div>
             <SessionPackChip />
             <button
               className="desk-topbar-search hidden md:flex"

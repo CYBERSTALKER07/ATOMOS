@@ -24,16 +24,31 @@ object WarehouseIdempotencyKeys {
     fun receiveTransfer(transferId: String): String = "warehouse-receive-transfer:$transferId"
 
     fun putawayLot(productId: String, locationId: String): String =
-        "warehouse-putaway:${warehouseId()}:$productId:$locationId:${System.currentTimeMillis()}"
+        "warehouse-putaway:${warehouseId()}:$productId:$locationId:${java.util.UUID.randomUUID()}"
 
     fun createPickWave(manifestId: String): String =
-        "warehouse-pick-wave:${warehouseId()}:$manifestId:${System.currentTimeMillis()}"
+        "warehouse-pick-wave:${warehouseId()}:$manifestId:${java.util.UUID.randomUUID()}"
 
     fun confirmPickTask(waveId: String, taskId: String): String =
-        "warehouse-pick-confirm:$waveId:$taskId:${System.currentTimeMillis()}"
+        "warehouse-pick-confirm:$waveId:$taskId:${java.util.UUID.randomUUID()}"
+
+    fun waivePickShorts(waveId: String): String =
+        "warehouse-pick-waive:${warehouseId()}:$waveId:${java.util.UUID.randomUUID()}"
+
+    fun createCycleCount(locationId: String, productId: String): String =
+        "warehouse-cycle-count:${warehouseId()}:$locationId:$productId:${java.util.UUID.randomUUID()}"
+
+    fun submitCycleCount(countId: String): String =
+        "warehouse-cycle-submit:${warehouseId()}:$countId:${java.util.UUID.randomUUID()}"
+
+    fun approveInventoryAdjustment(adjustmentId: String): String =
+        "warehouse-adj-approve:${warehouseId()}:$adjustmentId:${java.util.UUID.randomUUID()}"
+
+    fun rejectInventoryAdjustment(adjustmentId: String): String =
+        "warehouse-adj-reject:${warehouseId()}:$adjustmentId:${java.util.UUID.randomUUID()}"
 
     fun createBin(zone: String): String =
-        "warehouse-bin-create:${warehouseId()}:${zone.trim()}:${System.currentTimeMillis()}"
+        "warehouse-bin-create:${warehouseId()}:${zone.trim()}:${java.util.UUID.randomUUID()}"
 
     fun dispatchLockAcquire(entityType: String = "WAREHOUSE", entityId: String? = null): String {
         val wh = entityId?.takeIf { it.isNotBlank() } ?: warehouseId()

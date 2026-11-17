@@ -123,6 +123,39 @@ final class DriverOfflineQueue {
         try? context?.save()
     }
 
+    func requeue(_ action: QueuedDriverAction) {
+        let targetId = action.id
+        let pendingStatus = DriverOfflineActionStatus.pending.rawValue
+        action.status = pendingStatus
+        action.attemptCount = 0
+        action.lastError = ""
+        if let context {
+            let predicate = #Predicate<QueuedDriverAction> { $0.id == targetId }
+            let descriptor = FetchDescriptor<QueuedDriverAction>(predicate: predicate)
+            if let matches = try? context.fetch(descriptor) {
+                for match in matches {
+                    match.status = pendingStatus
+                    match.attemptCount = 0
+                    match.lastError = ""
+                }
+            }
+            try? context.save()
+        }
+    }
+
+    func deleteActions(_ actions: [QueuedDriverAction]) {
+        guard let context, !actions.isEmpty else { return }
+        let targetIds = Set(actions.map(\.id))
+        let descriptor = FetchDescriptor<QueuedDriverAction>()
+        if let existing = try? context.fetch(descriptor) {
+            for row in existing where targetIds.contains(row.id) {
+                context.delete(row)
+            }
+        }
+        try? context.save()
+    }
+
+    @available(*, deprecated, message: "Unsafe silent drop; use deleteActions only after confirmed support escalation")
     func clearDead() {
         for item in dead() { delete(item) }
     }
@@ -161,13 +194,13 @@ final class DriverOfflineQueue {
                     recordAttempt(action, error: "pod_upload_pending")
                     continue
                 }
-                let (status, _) = try await api.rawRequest(
+                let (status, respData) = try await api.rawRequest(
                     endpoint: action.endpoint,
                     method: action.method,
                     body: body,
                     idempotencyKey: action.id
                 )
-                if DriverOfflineActionCatalog.isSuccessHTTP(status) {
+                if DriverOfflineActionCatalog.isSuccessHTTP(status) || DriverOfflineActionCatalog.isIdempotentReplay409(statusCode: status, responseBody: respData) {
                     delete(action)
                     sent += 1
                 } else if DriverOfflineActionCatalog.isRetryableHTTP(status) {
@@ -176,7 +209,9 @@ final class DriverOfflineQueue {
                         markDead(action, error: "http_\(status)_max_attempts")
                     }
                 } else {
-                    markDead(action, error: "http_\(status)")
+                    let respSnippet = String(data: respData, encoding: .utf8)?.prefix(128) ?? ""
+                    let errStr = respSnippet.isEmpty ? "http_\(status)" : "http_\(status): \(respSnippet)"
+                    markDead(action, error: String(errStr))
                 }
             } catch {
                 recordAttempt(action, error: error.localizedDescription)

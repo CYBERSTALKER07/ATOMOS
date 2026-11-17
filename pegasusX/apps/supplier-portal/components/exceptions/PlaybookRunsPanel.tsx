@@ -57,16 +57,16 @@ export function PlaybookRunsPanel() {
 
   if (error) {
     return (
-      <p className="text-sm text-[var(--color-md-error)]">
-        Playbooks unavailable ({error}). Enable CONTROL_TOWER_PLAYBOOKS_ENABLED to surface suggestions.
-      </p>
+      <div className="rounded-lg border border-[var(--desk-border)] bg-[var(--desk-surface-subtle)] p-3 text-sm text-[var(--desk-text-secondary)]">
+        Automated playbook suggestions are currently unavailable. Resolve open exceptions directly in the Exception Desk below.
+      </div>
     );
   }
 
   if (runs.length === 0) {
     return (
       <p className="text-sm text-[var(--color-md-outline)]">
-        No suggested playbooks. Open exceptions are evaluated every few minutes when playbooks are enabled.
+        No automated playbook suggestions queued right now. Open exceptions remain actionable below.
       </p>
     );
   }

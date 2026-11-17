@@ -57,6 +57,7 @@ type Config struct {
 	StripeWebhookSecret             string
 	PaymeWebhookSecret              string
 	ClickWebhookSecret              string
+	UzumWebhookSecret               string
 	AirwallexDirectExecutionEnabled bool
 
 	TestingMode bool // bypasses strict-mode checks for infra that cannot be mocked
@@ -95,10 +96,11 @@ type Config struct {
 	OptimizerBaseURL string
 	RoutingOSRMURL   string
 	// RoutingProvider selects geometry backends: auto|google|osrm (default auto).
-	RoutingProvider  string
-	InternalAPIKey   string
-	GCSBucketName    string
-	GoogleMapsAPIKey string
+	RoutingProvider         string
+	InternalAPIKey          string
+	GCSBucketName           string
+	GoogleMapsAPIKey        string
+	INNVerificationRequired bool
 
 	// UpdatesBaseURL is the public CDN/origin used by OTA manifests (no trailing slash).
 	// Env: UPDATES_BASE_URL. Required when PEGASUSX_ENV=production.
@@ -150,6 +152,7 @@ func LoadConfig() (*Config, error) {
 		StripeWebhookSecret:             envOr("STRIPE_WEBHOOK_SECRET", "dev-stripe-secret"),
 		PaymeWebhookSecret:              envOr("PAYME_WEBHOOK_SECRET", "dev-payme-secret"),
 		ClickWebhookSecret:              envOr("CLICK_WEBHOOK_SECRET", "dev-click-secret"),
+		UzumWebhookSecret:               envOr("UZUM_WEBHOOK_SECRET", ""),
 		AirwallexDirectExecutionEnabled: envBool("AIRWALLEX_DIRECT_EXECUTION_ENABLED", false),
 		SeedSupplierName:                envOr("SEED_SUPPLIER_NAME", "pegasusX Supplier"),
 		SeedSupplierCountry:             envOr("SEED_SUPPLIER_COUNTRY", "UZ"),
@@ -170,15 +173,16 @@ func LoadConfig() (*Config, error) {
 		MaxSuppliers:                    envInt("MAX_SUPPLIERS", 1),
 		AllowMultiSupplierRegister:      envBool("ALLOW_MULTI_SUPPLIER_REGISTER", false),
 		// Same rule as seed fail-closed: explicit TENANT_CONTEXT_ENFORCED, else sandbox|production.
-		TenantContextEnforced: auth.TenantContextEnforced(),
-		OptimizerBaseURL:      envOr("OPTIMIZER_BASE_URL", "http://localhost:8081"),
-		RoutingOSRMURL:        envOr("ROUTING_OSRM_URL", ""),
-		RoutingProvider:       envOr("ROUTING_PROVIDER", "auto"),
-		InternalAPIKey:        envOr("INTERNAL_API_KEY", "dev-internal-key"),
-		GCSBucketName:         envOr("GCS_BUCKET_NAME", ""),
-		GoogleMapsAPIKey:      envOr("GOOGLE_MAPS_API_KEY", envOr("GOOGLE_PLACES_API_KEY", "")),
-		UpdatesBaseURL:        strings.TrimRight(strings.TrimSpace(envOr("UPDATES_BASE_URL", "")), "/"),
-		UpdatesDefaultVersion: envOr("UPDATES_DEFAULT_VERSION", "1.0.0"),
+		TenantContextEnforced:   auth.TenantContextEnforced(),
+		OptimizerBaseURL:        envOr("OPTIMIZER_BASE_URL", "http://localhost:8081"),
+		RoutingOSRMURL:          envOr("ROUTING_OSRM_URL", ""),
+		RoutingProvider:         envOr("ROUTING_PROVIDER", "auto"),
+		InternalAPIKey:          envOr("INTERNAL_API_KEY", "dev-internal-key"),
+		GCSBucketName:           envOr("GCS_BUCKET_NAME", ""),
+		GoogleMapsAPIKey:        envOr("GOOGLE_MAPS_API_KEY", envOr("GOOGLE_PLACES_API_KEY", "")),
+		INNVerificationRequired: envBool("INN_VERIFICATION_REQUIRED", false),
+		UpdatesBaseURL:          strings.TrimRight(strings.TrimSpace(envOr("UPDATES_BASE_URL", "")), "/"),
+		UpdatesDefaultVersion:   envOr("UPDATES_DEFAULT_VERSION", "1.0.0"),
 	}
 	if cfg.JWTSecret == "" {
 		return nil, fmt.Errorf("JWT_SECRET required")

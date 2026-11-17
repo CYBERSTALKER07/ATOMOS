@@ -103,6 +103,19 @@ func TestDiscoveryAndExchange(t *testing.T) {
 	if refresh == "" {
 		t.Fatal("missing refresh")
 	}
+	// Replaying the same nonce/id_token must be rejected.
+	if _, _, err := svc.Exchange(context.Background(), "sup-1", tok, "n1"); !errors.Is(err, ErrNonceMismatch) {
+		t.Fatalf("expected nonce replay rejection, got %v", err)
+	}
+	// HTTP issuer must be rejected in production even on localhost.
+	t.Setenv("PEGASUSX_ENV", "production")
+	if _, err := svc.Attach(context.Background(), Config{
+		SupplierID: "sup-prod-http",
+		Issuer:     "http://localhost:8080/realms/org",
+		ClientID:   "c1",
+	}); !errors.Is(err, ErrInvalidIssuer) {
+		t.Fatalf("expected localhost HTTP issuer blocked in production, got %v", err)
+	}
 }
 
 func TestExchangeRejectsWrongIssuer(t *testing.T) {

@@ -209,7 +209,9 @@ func TestConfirmAndAllocate_Success(t *testing.T) {
 	seedActiveWarehouse(t, ctx, client, supplierID, warehouseID)
 	whDefault := "wh-def-" + suffix
 	seedActiveWarehouse(t, ctx, client, supplierID, whDefault)
-	defer func() { _, _ = client.Apply(ctx, []*spanner.Mutation{spanner.Delete("Warehouses", spanner.Key{whDefault})}) }()
+	defer func() {
+		_, _ = client.Apply(ctx, []*spanner.Mutation{spanner.Delete("Warehouses", spanner.Key{whDefault})})
+	}()
 	seedSupplierInventorySKU(t, ctx, client, supplierID, warehouseID, "sku-1", 100, 0)
 	seedSupplierInventorySKU(t, ctx, client, supplierID, warehouseID, "sku-2", 100, 0)
 	defer cleanupAllocationInventory(t, ctx, client, supplierID, warehouseID, "sku-1")

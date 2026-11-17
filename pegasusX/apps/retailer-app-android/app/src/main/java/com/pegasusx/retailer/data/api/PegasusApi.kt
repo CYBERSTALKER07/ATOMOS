@@ -22,6 +22,19 @@ import com.pegasusx.retailer.data.model.CreditProfile
 import com.pegasusx.retailer.data.model.LoyaltyLedgerResponse
 import com.pegasusx.retailer.data.model.LoyaltyTierView
 import com.pegasusx.retailer.data.model.RetailerAIPredictionsResponse
+import com.pegasusx.retailer.data.model.RetailerFastHomeResponse
+import com.pegasusx.retailer.data.model.TelegramLinkRequestResponse
+import com.pegasusx.retailer.data.model.TelegramLinkStatusResponse
+import com.pegasusx.retailer.data.model.DisputeOpeningBalanceRequest
+import com.pegasusx.retailer.data.model.MigrationOpeningBalancesResponse
+import com.pegasusx.retailer.data.model.MigrationOpeningInvoiceMutationResponse
+import com.pegasusx.retailer.data.model.RetailerInnLookupRequest
+import com.pegasusx.retailer.data.model.RetailerInnLookupResponse
+import com.pegasusx.retailer.data.model.RetailerJoinRequestDecisionRequest
+import com.pegasusx.retailer.data.model.RetailerJoinRequestDecisionResponse
+import com.pegasusx.retailer.data.model.RetailerJoinRequestsResponse
+import com.pegasusx.retailer.data.model.RetailerTaxIdentityRequest
+import com.pegasusx.retailer.data.model.RetailerTaxIdentityResponse
 import com.pegasusx.retailer.data.model.ClaimEligibility
 import com.pegasusx.retailer.data.model.FileClaimRequestBody
 import com.pegasusx.retailer.data.model.LoginRequest
@@ -42,6 +55,18 @@ import com.pegasusx.retailer.data.model.RetailerClaim
 import com.pegasusx.retailer.data.model.RetailerClaimsListResponse
 import com.pegasusx.retailer.data.model.RetailerDetailedAnalytics
 import com.pegasusx.retailer.data.model.Supplier
+import com.pegasusx.retailer.data.model.ApprovalDecisionRequest
+import com.pegasusx.retailer.data.model.ApprovalDecisionResponse
+import com.pegasusx.retailer.data.model.ArPromiseDto
+import com.pegasusx.retailer.data.model.ArPromisesResponse
+import com.pegasusx.retailer.data.model.ArStatementResponse
+import com.pegasusx.retailer.data.model.CreateArPromiseRequest
+import com.pegasusx.retailer.data.model.PayArFifoRequest
+import com.pegasusx.retailer.data.model.PayArFifoResponse
+import com.pegasusx.retailer.data.model.PayArInvoiceRequest
+import com.pegasusx.retailer.data.model.RetailerApprovalsListResponse
+import com.pegasusx.retailer.data.model.SellerMandateResponse
+import com.pegasusx.retailer.data.model.SellerMandateUpdateRequest
 import com.pegasusx.retailer.data.model.TrackingResponse
 import com.pegasusx.retailer.data.model.UnifiedCheckoutRequest
 import com.pegasusx.retailer.data.model.UnifiedCheckoutResponse
@@ -103,6 +128,20 @@ interface PegasusApi {
         @Body body: ProcurementOrderRequest,
         @Header("Idempotency-Key") idempotencyKey: String? = null,
     ): ProcurementOrderResponse
+
+    @POST
+    suspend fun createProcurementOrder(
+        @retrofit2.http.Url path: String,
+        @Body body: ProcurementOrderRequest,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): ProcurementOrderResponse
+
+    @POST
+    suspend fun postRawQueuedOrder(
+        @retrofit2.http.Url path: String,
+        @Body body: JsonElement,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): JsonElement
 
     @POST("/v1/order/cancel")
     suspend fun cancelOrder(
@@ -211,9 +250,39 @@ interface PegasusApi {
 
     @GET("/v1/retailer/ar/invoices")
     suspend fun getArInvoices(
-        @Query("status") status: String = "OPEN",
+        @Query("status") status: String = "OPEN,PARTIAL",
         @Query("limit") limit: Int = 50,
     ): JsonElement
+
+    @GET("/v1/retailer/ar/statement")
+    suspend fun getArStatement(
+        @Query("supplier_id") supplierId: String? = null,
+        @Query("limit") limit: Int = 50,
+    ): ArStatementResponse
+
+    @POST("/v1/retailer/ar/pay-fifo")
+    suspend fun payArFifo(
+        @Body body: PayArFifoRequest,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): PayArFifoResponse
+
+    @POST("/v1/retailer/ar/invoices/{id}/pay")
+    suspend fun payArInvoice(
+        @Path("id") invoiceId: String,
+        @Body body: PayArInvoiceRequest,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): JsonElement
+
+    @GET("/v1/retailer/ar/promises")
+    suspend fun getArPromises(
+        @Query("supplier_id") supplierId: String? = null,
+    ): ArPromisesResponse
+
+    @POST("/v1/retailer/ar/promises")
+    suspend fun createArPromise(
+        @Body body: CreateArPromiseRequest,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): ArPromiseDto
 
     @GET("/v1/retailer/hq/summary")
     suspend fun getHqSummary(@Query("day") day: String): JsonElement
@@ -293,6 +362,37 @@ interface PegasusApi {
         @Body body: Map<String, @JvmSuppressWildcards Any>,
         @Header("Idempotency-Key") idempotencyKey: String? = null,
     ): JsonElement
+
+    // W2 — Owner Approval Inbox & Seller Mandate Caps
+    @GET("/v1/retailer/approvals")
+    suspend fun getRetailerApprovals(
+        @Query("status") status: String? = "PENDING_OWNER",
+        @Query("limit") limit: Int = 20,
+        @Query("cursor") cursor: String? = null,
+    ): RetailerApprovalsListResponse
+
+    @POST("/v1/retailer/approvals/{requestID}/approve")
+    suspend fun approveRetailerRequest(
+        @Path("requestID") requestId: String,
+        @Body body: ApprovalDecisionRequest = ApprovalDecisionRequest(),
+    ): ApprovalDecisionResponse
+
+    @POST("/v1/retailer/approvals/{requestID}/reject")
+    suspend fun rejectRetailerRequest(
+        @Path("requestID") requestId: String,
+        @Body body: ApprovalDecisionRequest = ApprovalDecisionRequest(),
+    ): ApprovalDecisionResponse
+
+    @GET("/v1/retailer/org/members/{userID}/mandate")
+    suspend fun getSellerMandate(
+        @Path("userID") userId: String,
+    ): SellerMandateResponse
+
+    @PATCH("/v1/retailer/org/members/{userID}/mandate")
+    suspend fun updateSellerMandate(
+        @Path("userID") userId: String,
+        @Body body: SellerMandateUpdateRequest,
+    ): SellerMandateResponse
 
     // Retail OS Phase 2 — locations
     @GET("/v1/retailer/locations")
@@ -712,4 +812,64 @@ interface PegasusApi {
         @Query("version") version: String,
         @Query("channel") channel: String = "production",
     ): JsonElement
+
+    // ── W5 Fast Home & Telegram OTP Binding ──
+    @GET("/v1/retailer/fast-home")
+    suspend fun getRetailerFastHome(): RetailerFastHomeResponse
+
+    @GET("/v1/retailer/telegram/status")
+    suspend fun getTelegramLinkStatus(): TelegramLinkStatusResponse
+
+    @POST("/v1/retailer/telegram/link-request")
+    suspend fun requestTelegramLink(
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): TelegramLinkRequestResponse
+
+    // ── M10.4 INN Dual-Mode & Nasiya Opening Balances ──
+    @POST("/v1/platform/inn/lookup")
+    suspend fun lookupInn(
+        @Body body: RetailerInnLookupRequest,
+    ): RetailerInnLookupResponse
+
+    @PATCH("/v1/retailer/tax-identity")
+    suspend fun updateTaxIdentity(
+        @Body body: RetailerTaxIdentityRequest,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): RetailerTaxIdentityResponse
+
+    @GET("/v1/retailer/nasiya/opening-balances")
+    suspend fun listNasiyaOpeningBalances(): MigrationOpeningBalancesResponse
+
+    @POST("/v1/retailer/ar-invoices/{invoiceId}/acknowledge")
+    suspend fun acknowledgeOpeningBalance(
+        @Path("invoiceId") invoiceId: String,
+        @Body body: Map<String, String> = emptyMap(),
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): MigrationOpeningInvoiceMutationResponse
+
+    @POST("/v1/retailer/ar-invoices/{invoiceId}/dispute")
+    suspend fun disputeOpeningBalance(
+        @Path("invoiceId") invoiceId: String,
+        @Body body: DisputeOpeningBalanceRequest,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): MigrationOpeningInvoiceMutationResponse
+
+    @GET("/v1/retailer/join-requests")
+    suspend fun listRetailerJoinRequests(
+        @Query("status") status: String = "PENDING",
+    ): RetailerJoinRequestsResponse
+
+    @POST("/v1/retailer/join-requests/{requestId}/approve")
+    suspend fun approveRetailerJoinRequest(
+        @Path("requestId") requestId: String,
+        @Body body: RetailerJoinRequestDecisionRequest = RetailerJoinRequestDecisionRequest(),
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): RetailerJoinRequestDecisionResponse
+
+    @POST("/v1/retailer/join-requests/{requestId}/reject")
+    suspend fun rejectRetailerJoinRequest(
+        @Path("requestId") requestId: String,
+        @Body body: RetailerJoinRequestDecisionRequest = RetailerJoinRequestDecisionRequest(),
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): RetailerJoinRequestDecisionResponse
 }

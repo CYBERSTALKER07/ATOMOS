@@ -38,6 +38,21 @@ output "tf_state_bucket_name" {
   value       = google_storage_bucket.tf_state.name
 }
 
+output "worm_audit_bucket_name" {
+  description = "The name of the dedicated WORM GCS bucket for audit hash-chain anchors and period-close snapshots."
+  value       = google_storage_bucket.worm_audit.name
+}
+
+output "worm_audit_bucket_url" {
+  description = "The GCS URL (gs://...) of the WORM audit bucket."
+  value       = google_storage_bucket.worm_audit.url
+}
+
+output "storage_kms_key_id" {
+  description = "The resource ID of the regional Cloud KMS storage encryption key."
+  value       = google_kms_crypto_key.storage_key.id
+}
+
 output "cloud_armor_policy_id" {
   description = "The ID of the Cloud Armor security policy."
   value       = google_compute_security_policy.edge_waf.id

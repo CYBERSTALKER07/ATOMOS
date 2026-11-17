@@ -5,8 +5,18 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/foundry"
 )
+
+func isAllowedFleetRole(role auth.Role) bool {
+	switch role {
+	case auth.RoleWarehouse, auth.RoleWarehouseAdmin, auth.RoleAdmin, auth.RolePayload, auth.RoleDriver, auth.RolePlatformAdmin:
+		return true
+	default:
+		return false
+	}
+}
 
 type fleetHandler struct {
 	eng *foundry.Engine
@@ -16,11 +26,22 @@ func newFleetHandler(eng *foundry.Engine) *fleetHandler {
 	return &fleetHandler{eng: eng}
 }
 
+func (h *fleetHandler) requireFleetRole(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		claims, ok := auth.FromContext(r.Context())
+		if !ok || !isAllowedFleetRole(claims.Role) {
+			writeJSON(w, http.StatusForbidden, map[string]any{"error": "forbidden: insufficient fleet role"})
+			return
+		}
+		next(w, r)
+	}
+}
+
 func (h *fleetHandler) mountRoutes(r chi.Router) {
-	r.Post("/v1/foundry/fleet/dvir", h.handleSubmitDVIR)
-	r.Post("/v1/foundry/fleet/gate-events", h.handleGateEvent)
-	r.Post("/v1/foundry/fleet/mid-route-rescue", h.handleMidRouteRescue)
-	r.Get("/v1/foundry/fleet/vehicles/{vehicleID}/dispatch-check", h.handleDispatchCheck)
+	r.Post("/v1/foundry/fleet/dvir", h.requireFleetRole(h.handleSubmitDVIR))
+	r.Post("/v1/foundry/fleet/gate-events", h.requireFleetRole(h.handleGateEvent))
+	r.Post("/v1/foundry/fleet/mid-route-rescue", h.requireFleetRole(h.handleMidRouteRescue))
+	r.Get("/v1/foundry/fleet/vehicles/{vehicleID}/dispatch-check", h.requireFleetRole(h.handleDispatchCheck))
 }
 
 func (h *fleetHandler) handleSubmitDVIR(w http.ResponseWriter, r *http.Request) {

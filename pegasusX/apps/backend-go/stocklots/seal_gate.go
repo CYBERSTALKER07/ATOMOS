@@ -16,6 +16,8 @@ var (
 	ErrPickWaveIncomplete = errors.New("pick_wave_incomplete")
 	// ErrLoadLedgerIncomplete is returned when durable load scan is short (G2.B).
 	ErrLoadLedgerIncomplete = errors.New("load_ledger_incomplete")
+	// ErrColdChainBaselineRequired is returned when chilled SKUs lack a bay reading (G2.C).
+	ErrColdChainBaselineRequired = errors.New("cold_chain_baseline_required")
 	// ErrLaborCapacityExceeded is returned when zone labor is overloaded (G2.C).
 	ErrLaborCapacityExceeded = errors.New("labor_capacity_exceeded")
 )
@@ -27,7 +29,11 @@ func AssertManifestPickReady(ctx context.Context, client *spanner.Client, manife
 	manifestID = strings.TrimSpace(manifestID)
 	supplierID, warehouseID := "", ""
 	if client != nil && manifestID != "" {
-		supplierID, warehouseID = manifestScope(ctx, client, manifestID)
+		var err error
+		supplierID, warehouseID, err = manifestScope(ctx, client, manifestID)
+		if err != nil {
+			return "", fmt.Errorf("seal gate manifest lookup: %w", err)
+		}
 	}
 	if !EffectivePickWaves(ctx, warehouseID, supplierID) {
 		return "", nil
@@ -81,20 +87,23 @@ func AssertManifestPickReady(ctx context.Context, client *spanner.Client, manife
 	return "", nil
 }
 
-func manifestScope(ctx context.Context, client *spanner.Client, manifestID string) (supplierID, warehouseID string) {
+func manifestScope(ctx context.Context, client *spanner.Client, manifestID string) (supplierID, warehouseID string, err error) {
 	row, err := client.Single().ReadRow(ctx, "SupplierTruckManifests", spanner.Key{manifestID},
 		[]string{"SupplierId", "WarehouseId"})
 	if err != nil {
-		return "", ""
+		if spanner.ErrCode(err) == 5 {
+			return "", "", nil
+		}
+		return "", "", err
 	}
 	var supplier string
 	var warehouse spanner.NullString
 	if err := row.Columns(&supplier, &warehouse); err != nil {
-		return "", ""
+		return "", "", err
 	}
 	supplierID = strings.TrimSpace(supplier)
 	if warehouse.Valid {
 		warehouseID = strings.TrimSpace(warehouse.StringVal)
 	}
-	return supplierID, warehouseID
+	return supplierID, warehouseID, nil
 }

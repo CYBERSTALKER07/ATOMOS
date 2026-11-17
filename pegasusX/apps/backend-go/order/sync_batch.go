@@ -110,10 +110,15 @@ func (s *Service) processBatchDelivery(ctx context.Context, claims auth.Claims, 
 		return "", errors.New("order_id and signature required")
 	}
 
+	batchCtx := ctx
+	if _, ok := auth.FromContext(batchCtx); !ok && (claims.Subject != "" || claims.RetailerOrgID != "" || claims.SupplierID != "") {
+		batchCtx = auth.WithClaims(ctx, claims)
+	}
+	batchIdemKey := idempotency.ScopeKey(idempotency.ScopePrincipal(batchCtx), "sync-batch", orderID+":"+signature)
+	batchHash := sha256HexBytes([]byte("sync-batch:" + orderID + ":" + signature))
+
 	if s.idem != nil {
-		key := "sync-batch:" + orderID + ":" + signature
-		hash := sha256HexBytes([]byte(key))
-		rec, hit, guardErr := idempotency.Guard(ctx, s.idem, key, hash)
+		rec, hit, guardErr := idempotency.Guard(ctx, s.idem, batchIdemKey, batchHash)
 		if guardErr != nil && !errors.Is(guardErr, idempotency.ErrConflict) {
 			return "", guardErr
 		}
@@ -144,7 +149,7 @@ func (s *Service) processBatchDelivery(ctx context.Context, claims auth.Claims, 
 	if s.handoff == nil {
 		s.handoff = handoff.FromEnv()
 	}
-	if s.handoff.HashToken(publicToken) != signature {
+	if !handoff.ConstantTimeEqual(s.handoff.HashToken(publicToken), signature) {
 		return "", errors.New("invalid offline signature")
 	}
 
@@ -160,14 +165,14 @@ func (s *Service) processBatchDelivery(ctx context.Context, claims auth.Claims, 
 
 	_, err = s.SubmitDelivery(ctx, claims, subReq)
 	if err == nil && s.idem != nil {
-		key := "sync-batch:" + orderID + ":" + signature
-		hash := sha256HexBytes([]byte(key))
-		_ = s.idem.Save(ctx, key, idempotency.Record{
-			BodyHash:   hash,
+		if saveErr := s.idem.Save(ctx, batchIdemKey, idempotency.Record{
+			BodyHash:   batchHash,
 			StatusCode: http.StatusOK,
 			Response:   []byte(`{"status":"OK","order_id":"` + orderID + `"}`),
 			StoredAt:   time.Now().UTC(),
-		}, 24*time.Hour)
+		}, 24*time.Hour); saveErr != nil && s.log != nil {
+			s.log.Warn("sync batch idempotency save failed", "order_id", orderID, "err", saveErr)
+		}
 	}
 	return orderID, err
 }

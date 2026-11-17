@@ -162,3 +162,130 @@ func TestCreditNotesJournalQuery_EmptyCurrencyNoInvent(t *testing.T) {
 		t.Fatal("expected invalid_tenant")
 	}
 }
+
+func TestMapARJournalAccounts_VoidAndReversalDistinct(t *testing.T) {
+	coa := DefaultCoa()
+	for _, et := range []string{"VOID", "AR_VOID", "INVOICE_VOID"} {
+		d, c := mapARJournalAccounts(coa, et)
+		if d == DefaultCoaAR || d == DefaultCoaRevenue || d == DefaultCoaBankCash ||
+			c == DefaultCoaAR || c == DefaultCoaRevenue || c == DefaultCoaBankCash {
+			t.Fatalf("%s leaked into normal accounts: debit=%s credit=%s", et, d, c)
+		}
+		if d != DefaultCoaRevenueReversal || c != DefaultCoaARReversal {
+			t.Fatalf("%s: got %s/%s want %s/%s", et, d, c, DefaultCoaRevenueReversal, DefaultCoaARReversal)
+		}
+	}
+	for _, et := range []string{"REVERSAL", "VOID_REVERSAL"} {
+		d, c := mapARJournalAccounts(coa, et)
+		if d == DefaultCoaAR || d == DefaultCoaRevenue || c == DefaultCoaAR || c == DefaultCoaRevenue {
+			t.Fatalf("%s leaked into normal accounts: debit=%s credit=%s", et, d, c)
+		}
+	}
+}
+
+func TestMapPaymentJournalAccounts_VoidAndReversalDistinct(t *testing.T) {
+	coa := DefaultCoa()
+	for _, et := range []string{"VOID", "SESSION_VOID", "PAYMENT_VOIDED"} {
+		d, c := mapPaymentJournalAccounts(coa, et)
+		if d == DefaultCoaBankCash || c == DefaultCoaBankCash || d == DefaultCoaAR || c == DefaultCoaAR ||
+			d == DefaultCoaRevenue || c == DefaultCoaRevenue {
+			t.Fatalf("%s leaked into normal payment/AR/rev accounts: debit=%s credit=%s", et, d, c)
+		}
+	}
+	for _, et := range []string{"CHARGEBACK_REVERSAL_RECORDED", "PAYMENT_REVERSAL", "VOID_REVERSAL"} {
+		d, c := mapPaymentJournalAccounts(coa, et)
+		if d == DefaultCoaBankCash && c == DefaultCoaAR {
+			t.Fatalf("%s must remain strictly distinct from captured payment (%s/%s)", et, d, c)
+		}
+		if d == DefaultCoaAR || c == DefaultCoaAR || d == DefaultCoaBankCash || c == DefaultCoaBankCash {
+			t.Fatalf("%s should not use normal AR/Bank cash accounts: debit=%s credit=%s", et, d, c)
+		}
+	}
+}
+
+func TestComputeLineItemsVATAndProportionalVAT(t *testing.T) {
+	raw := []byte(`[
+		{"sku":"A","quantity":2,"unit_price_minor":50000,"vat_rate_bps":1200},
+		{"sku":"B","quantity":1,"unit_price_minor":20000,"tax_category":"EXEMPT"}
+	]`)
+	vat, gross, err := computeLineItemsVAT(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if vat != 12000 || gross != 132000 {
+		t.Fatalf("got vat=%d gross=%d want vat=12000 gross=132000", vat, gross)
+	}
+	if part := proportionalVATMinor(66000, gross, vat); part != 6000 {
+		t.Fatalf("proportional half VAT got %d want 6000", part)
+	}
+	if full := proportionalVATMinor(132000, gross, vat); full != 12000 {
+		t.Fatalf("full VAT got %d want 12000", full)
+	}
+	explicit := []byte(`[{"sku":"C","quantity":1,"unit_price_minor":10000,"vat_minor":1200}]`)
+	vat2, gross2, err := computeLineItemsVAT(explicit)
+	if err != nil || vat2 != 1200 || gross2 != 11200 {
+		t.Fatalf("explicit vat got vat=%d gross=%d err=%v", vat2, gross2, err)
+	}
+}
+
+func TestDeduplicateJournalItems(t *testing.T) {
+	now := time.Date(2026, 11, 13, 8, 0, 0, 0, time.UTC)
+	mkRow := func(src, id, et, inv, ord string, amt, vat int64) map[string]any {
+		return journalRow(map[string]any{
+			"entry_date":     now.Format(time.RFC3339),
+			"source":         src,
+			"entry_id":       id,
+			"entry_type":     et,
+			"debit_account":  DefaultCoaBankCash,
+			"credit_account": DefaultCoaAR,
+			"amount_minor":   amt,
+			"vat_minor":      vat,
+			"currency":       "UZS",
+			"supplier_id":    "sup-1",
+			"retailer_id":    "ret-1",
+			"invoice_id":     inv,
+			"credit_note_id": "",
+			"order_id":       ord,
+		})
+	}
+	arItems := []journalExportItem{
+		// Exact ref match with pay-1 -> must be suppressed, carrying vat_minor=6000 to pay-1.
+		{Row: mkRow("ar", "ar-pay-1", "PAYMENT", "inv-1", "ord-1", 56000, 6000), Source: "ar", EntryID: "ar-pay-1", EntryType: "PAYMENT", SupplierID: "sup-1", RetailerID: "ret-1", OrderID: "ord-1", InvoiceID: "inv-1", IdempotencyKey: "gw-ref-1:inv-1", AmountMinor: 56000, VATMinor: 6000, EntryDate: now},
+		// Order+amount match with pay-2 (both ord-2 payments of 25000 must stay count=2, not 4 and not 1).
+		{Row: mkRow("ar", "ar-pay-2a", "PAYMENT", "inv-2", "ord-2", 25000, 0), Source: "ar", EntryID: "ar-pay-2a", EntryType: "PAYMENT", SupplierID: "sup-1", RetailerID: "ret-1", OrderID: "ord-2", InvoiceID: "inv-2", IdempotencyKey: "k2a", AmountMinor: 25000, EntryDate: now},
+		{Row: mkRow("ar", "ar-pay-2b", "PAYMENT", "inv-2", "ord-2", 25000, 0), Source: "ar", EntryID: "ar-pay-2b", EntryType: "PAYMENT", SupplierID: "sup-1", RetailerID: "ret-1", OrderID: "ord-2", InvoiceID: "inv-2", IdempotencyKey: "k2b", AmountMinor: 25000, EntryDate: now},
+		// Manual AR-only cash settlement with no PaymentLedgerEntries row -> must stay!
+		{Row: mkRow("ar", "ar-pay-manual", "PAYMENT", "inv-3", "ord-3", 10000, 0), Source: "ar", EntryID: "ar-pay-manual", EntryType: "PAYMENT", SupplierID: "sup-1", RetailerID: "ret-1", OrderID: "ord-3", InvoiceID: "inv-3", IdempotencyKey: "manual-cash", AmountMinor: 10000, EntryDate: now},
+		// Invoice OPEN must never be suppressed.
+		{Row: mkRow("ar", "ar-open-1", "OPEN", "inv-1", "ord-1", 56000, 6000), Source: "ar", EntryID: "ar-open-1", EntryType: "OPEN", SupplierID: "sup-1", RetailerID: "ret-1", OrderID: "ord-1", InvoiceID: "inv-1", AmountMinor: 56000, VATMinor: 6000, EntryDate: now},
+	}
+	payItems := []journalExportItem{
+		{Row: mkRow("payment", "pay-1", "SESSION_CAPTURED", "", "ord-1", 56000, 0), Source: "payment", EntryID: "pay-1", EntryType: "SESSION_CAPTURED", SupplierID: "sup-1", RetailerID: "ret-1", OrderID: "ord-1", ReferenceID: "gw-ref-1", AmountMinor: 56000, EntryDate: now},
+		{Row: mkRow("payment", "pay-2a", "WEBHOOK_PAID", "", "ord-2", 25000, 0), Source: "payment", EntryID: "pay-2a", EntryType: "WEBHOOK_PAID", SupplierID: "sup-1", RetailerID: "ret-1", OrderID: "ord-2", ReferenceID: "gw-ref-2a", AmountMinor: 25000, EntryDate: now},
+		{Row: mkRow("payment", "pay-2b", "WEBHOOK_PAID", "", "ord-2", 25000, 0), Source: "payment", EntryID: "pay-2b", EntryType: "WEBHOOK_PAID", SupplierID: "sup-1", RetailerID: "ret-1", OrderID: "ord-2", ReferenceID: "gw-ref-2b", AmountMinor: 25000, EntryDate: now},
+	}
+	rows := deduplicateJournalItems(arItems, nil, payItems)
+	// Expected surviving entries: pay-1, pay-2a, pay-2b, ar-pay-manual, ar-open-1 = 5 rows.
+	if len(rows) != 5 {
+		t.Fatalf("got %d rows want 5: %+v", len(rows), rows)
+	}
+	seen := map[string]map[string]any{}
+	for _, r := range rows {
+		seen[r["entry_id"].(string)] = r
+	}
+	if _, dup := seen["ar-pay-1"]; dup {
+		t.Fatal("duplicate AR payment ar-pay-1 should be suppressed")
+	}
+	if _, dup := seen["ar-pay-2a"]; dup {
+		t.Fatal("duplicate AR payment ar-pay-2a should be suppressed")
+	}
+	if _, dup := seen["ar-pay-2b"]; dup {
+		t.Fatal("duplicate AR payment ar-pay-2b should be suppressed")
+	}
+	if _, ok := seen["ar-pay-manual"]; !ok {
+		t.Fatal("unmatched AR payment ar-pay-manual must survive")
+	}
+	if seen["pay-1"]["vat_minor"] != int64(6000) || seen["pay-1"]["invoice_id"] != "inv-1" {
+		t.Fatalf("expected pay-1 to inherit vat/invoice from matched AR row, got %+v", seen["pay-1"])
+	}
+}

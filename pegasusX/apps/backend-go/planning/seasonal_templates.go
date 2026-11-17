@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"sort"
 	"strings"
 	"time"
 
@@ -61,34 +62,101 @@ func templateFromCore(tpl seasonalcore.Template) SeasonalTemplate {
 	}
 }
 
-// ActiveSeasonalTemplate returns the active template for a date (custom overrides win).
+// ComposeSeasonalOverrides deterministically orders and composes all active
+// overlapping seasonal override rows without dropping any window.
+func ComposeSeasonalOverrides(rows []SeasonalOverrideRow) *SeasonalTemplate {
+	if len(rows) == 0 {
+		return nil
+	}
+	ordered := make([]SeasonalOverrideRow, len(rows))
+	copy(ordered, rows)
+	sort.Slice(ordered, func(i, j int) bool {
+		if ordered[i].StartDate != ordered[j].StartDate {
+			return ordered[i].StartDate < ordered[j].StartDate
+		}
+		if ordered[i].EndDate != ordered[j].EndDate {
+			return ordered[i].EndDate < ordered[j].EndDate
+		}
+		return ordered[i].OverrideID < ordered[j].OverrideID
+	})
+	mults := make([]float64, 0, len(ordered))
+	ids := make([]string, 0, len(ordered))
+	names := make([]string, 0, len(ordered))
+	for _, r := range ordered {
+		m := r.Multiplier
+		if m <= 0 {
+			m = seasonalcore.ResolveOverrideMultiplier(nil, r.TemplateID)
+		} else {
+			m = seasonalcore.ClampMultiplier(m)
+		}
+		mults = append(mults, m)
+		ids = append(ids, r.OverrideID)
+		name := strings.TrimSpace(r.Name)
+		if name == "" {
+			name = strings.TrimSpace(r.TemplateID)
+		}
+		if name != "" {
+			names = append(names, name)
+		}
+	}
+	composedMult := seasonalcore.ClampMultiplier(seasonalcore.ComposeMultipliers(mults))
+	if len(ordered) == 1 {
+		return &SeasonalTemplate{
+			ID:              "custom:" + ordered[0].OverrideID,
+			Name:            strings.Join(names, " + "),
+			Multiplier:      composedMult,
+			ConfidenceFloor: 0.75,
+		}
+	}
+	return &SeasonalTemplate{
+		ID:              "custom:" + strings.Join(ids, "+"),
+		Name:            strings.Join(names, " + "),
+		Multiplier:      composedMult,
+		ConfidenceFloor: 0.75,
+	}
+}
+
+// ActiveSeasonalTemplate returns the composed active template for a date (custom overrides win).
 // Callers that need the multiplier for quantity math must apply tpl.Multiplier.
 func (s *Service) ActiveSeasonalTemplate(ctx context.Context, supplierID string, on time.Time) (*SeasonalTemplate, string, error) {
-	if custom, err := s.activeCustomOverride(ctx, supplierID, on); err != nil {
+	overrides, err := s.activeCustomOverrides(ctx, supplierID, on)
+	if err != nil {
 		return nil, "", err
-	} else if custom != nil {
-		mult := custom.Multiplier
-		if mult <= 0 {
-			mult = seasonalcore.ResolveOverrideMultiplier(nil, custom.TemplateID)
+	}
+	if composed := ComposeSeasonalOverrides(overrides); composed != nil {
+		return composed, "seasonal_template", nil
+	}
+	var activeBuiltins []seasonalcore.Template
+	for _, core := range seasonalcore.Builtins {
+		if seasonalcore.ActiveOn(core, on) {
+			activeBuiltins = append(activeBuiltins, core)
+		}
+	}
+	if len(activeBuiltins) == 1 {
+		tpl := templateFromCore(activeBuiltins[0])
+		return &tpl, "seasonal_template", nil
+	}
+	if len(activeBuiltins) > 1 {
+		mults := make([]float64, 0, len(activeBuiltins))
+		ids := make([]string, 0, len(activeBuiltins))
+		names := make([]string, 0, len(activeBuiltins))
+		for _, core := range activeBuiltins {
+			mults = append(mults, core.Multiplier)
+			ids = append(ids, core.ID)
+			names = append(names, core.Name)
 		}
 		tpl := SeasonalTemplate{
-			ID:              "custom:" + custom.OverrideID,
-			Name:            custom.Name,
-			Multiplier:      mult,
+			ID:              strings.Join(ids, "+"),
+			Name:            strings.Join(names, " + "),
+			Multiplier:      seasonalcore.ClampMultiplier(seasonalcore.ComposeMultipliers(mults)),
 			ConfidenceFloor: 0.75,
 		}
 		return &tpl, "seasonal_template", nil
 	}
-	for _, core := range seasonalcore.Builtins {
-		if seasonalcore.ActiveOn(core, on) {
-			tpl := templateFromCore(core)
-			return &tpl, "seasonal_template", nil
-		}
-	}
 	return nil, "", nil
 }
 
-func (s *Service) activeCustomOverride(ctx context.Context, supplierID string, on time.Time) (*SeasonalOverrideRow, error) {
+func (s *Service) activeCustomOverrides(ctx context.Context, supplierID string, on time.Time) ([]SeasonalOverrideRow, error) {
 	if s == nil || s.Spanner == nil {
 		return nil, nil
 	}
@@ -98,8 +166,8 @@ func (s *Service) activeCustomOverride(ctx context.Context, supplierID string, o
 		      FROM SeasonalTemplateOverrides
 		      WHERE SupplierId = @sid AND IsActive = true
 		        AND StartDate <= @on AND EndDate >= @on
-		      ORDER BY StartDate DESC LIMIT 1`,
-		Params: map[string]any{"sid": supplierID, "on": civil.DateOf(on)},
+		      ORDER BY StartDate ASC, OverrideId ASC`,
+		Params: map[string]any{"sid": supplierID, "on": civil.DateOf(on.UTC())},
 	}
 	var iter *spanner.RowIterator
 	if txn := spannerutils.ReadOnlyTxnFromContext(ctx); txn != nil {
@@ -108,24 +176,45 @@ func (s *Service) activeCustomOverride(ctx context.Context, supplierID string, o
 		iter = s.Spanner.Single().Query(ctx, stmt)
 	}
 	defer iter.Stop()
-	row, err := iter.Next()
-	if errors.Is(err, iterator.Done) {
-		return nil, nil
+	var rows []SeasonalOverrideRow
+	for {
+		row, err := iter.Next()
+		if errors.Is(err, iterator.Done) {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		var r SeasonalOverrideRow
+		var start, end civil.Date
+		if err := row.Columns(&r.OverrideID, &r.SupplierID, &r.TemplateID, &r.Name, &start, &end, &r.IsActive, &r.Multiplier); err != nil {
+			return nil, err
+		}
+		r.StartDate = start.String()
+		r.EndDate = end.String()
+		if r.Multiplier <= 0 {
+			r.Multiplier = seasonalcore.ResolveOverrideMultiplier(nil, r.TemplateID)
+		} else {
+			r.Multiplier = seasonalcore.ClampMultiplier(r.Multiplier)
+		}
+		rows = append(rows, r)
 	}
+	return rows, nil
+}
+
+// SeedUzbekistanHolidays idempotently seeds the 2025-2035 Uzbekistan holiday schedule for supplierID.
+func (s *Service) SeedUzbekistanHolidays(ctx context.Context, supplierID string) (int, error) {
+	if s == nil || s.Spanner == nil {
+		return 0, errors.New("planning unavailable")
+	}
+	n, err := seasonalcore.SeedUzbekistanHolidays(ctx, s.Spanner, supplierID)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
-	var r SeasonalOverrideRow
-	var start, end civil.Date
-	if err := row.Columns(&r.OverrideID, &r.SupplierID, &r.TemplateID, &r.Name, &start, &end, &r.IsActive, &r.Multiplier); err != nil {
-		return nil, err
+	for _, tid := range []string{"uz_ramadan", "uz_ramazon_hayit", "uz_qurbon_hayit", "uz_navruz", "uz_independence_day"} {
+		s.invalidateSeasonalCache(ctx, supplierID, tid)
 	}
-	r.StartDate = start.String()
-	r.EndDate = end.String()
-	if r.Multiplier <= 0 {
-		r.Multiplier = seasonalcore.ResolveOverrideMultiplier(nil, r.TemplateID)
-	}
-	return &r, nil
+	return n, nil
 }
 
 // CreateSeasonalOverride persists a custom seasonal window with a resolved Multiplier.
@@ -189,7 +278,7 @@ func (s *Service) ListSeasonalOverrides(ctx context.Context, supplierID string) 
 		             COALESCE(Multiplier, 0)
 		      FROM SeasonalTemplateOverrides
 		      WHERE SupplierId = @sid AND IsActive = true
-		      ORDER BY StartDate DESC LIMIT 50`,
+		      ORDER BY StartDate ASC, OverrideId ASC LIMIT 200`,
 		Params: map[string]any{"sid": supplierID},
 	}
 	var iter *spanner.RowIterator

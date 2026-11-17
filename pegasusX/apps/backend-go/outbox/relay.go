@@ -272,9 +272,10 @@ func (r *Relay) drainOnce(ctx context.Context) {
 	}
 	wg.Wait()
 
+	drainBaseCtx := context.WithoutCancel(ctx)
 	if len(skipped) > 0 {
 		if releaser, ok := r.store.(ClaimReleaser); ok {
-			unclaimCtx, cancelUnclaim := context.WithTimeout(ctx, r.cfg.StoreTimeout)
+			unclaimCtx, cancelUnclaim := context.WithTimeout(drainBaseCtx, r.cfg.StoreTimeout)
 			if err := releaser.Unclaim(unclaimCtx, skipped); err != nil {
 				r.log.Error("outbox unclaim skipped events failed", "count", len(skipped), "err", err)
 			}
@@ -283,7 +284,7 @@ func (r *Relay) drainOnce(ctx context.Context) {
 	}
 
 	if len(published) > 0 {
-		markCtx, cancelMark := context.WithTimeout(ctx, r.cfg.StoreTimeout)
+		markCtx, cancelMark := context.WithTimeout(drainBaseCtx, r.cfg.StoreTimeout)
 		err := r.store.MarkPublished(markCtx, published, time.Now().UTC())
 		cancelMark()
 		if err != nil {
@@ -303,7 +304,7 @@ func (r *Relay) drainOnce(ctx context.Context) {
 		if firstErr != nil {
 			errText = firstErr.Error()
 		}
-		recordCtx, cancelRecord := context.WithTimeout(ctx, r.cfg.StoreTimeout)
+		recordCtx, cancelRecord := context.WithTimeout(drainBaseCtx, r.cfg.StoreTimeout)
 		deadLettered, derr := r.store.RecordPublishFailures(recordCtx, ids, errText, r.cfg.MaxTotalAttempts)
 		cancelRecord()
 		if derr != nil {

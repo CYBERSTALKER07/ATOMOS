@@ -145,21 +145,23 @@ func InitiateRecallInTxn(
 			warehouseID: wid,
 			status:      status,
 			qoh:         qoh,
+			qr:          qr,
 		})
 	}
 
 	var impactedLotCount, impactedUnitsCount int64
 	warehouseRollups := map[string]struct{}{}
+	overridesByWarehouse := map[string]map[string]StockLotSnapshot{}
 
 	for _, lot := range lots {
 		impactedLotCount++
 		impactedUnitsCount += lot.qoh
 
 		if lot.status == "AVAILABLE" {
-			// Transition to QUARANTINE / RECALLED
+			// Transition to QUARANTINED / RECALLED
 			if err := txn.BufferWrite([]*spanner.Mutation{spanner.UpdateMap("StockLots", map[string]any{
 				"LotId":     lot.lotID,
-				"Status":    "QUARANTINE",
+				"Status":    "QUARANTINED",
 				"UpdatedAt": spanner.CommitTimestamp,
 			})}); err != nil {
 				return nil, err
@@ -174,7 +176,7 @@ func InitiateRecallInTxn(
 				"SupplierId":  req.SupplierID,
 				"ProductId":   req.ProductID,
 				"FromStatus":  lot.status,
-				"ToStatus":    "QUARANTINE",
+				"ToStatus":    "QUARANTINED",
 				"ReasonCode":  "RECALL_CAMPAIGN",
 				"Actor":       req.InitiatedBy,
 				"Notes":       fmt.Sprintf("Recall campaign %s: %s", campaignID, req.RecallReason),
@@ -184,12 +186,23 @@ func InitiateRecallInTxn(
 			}
 
 			warehouseRollups[lot.warehouseID] = struct{}{}
+			if _, ok := overridesByWarehouse[lot.warehouseID]; !ok {
+				overridesByWarehouse[lot.warehouseID] = make(map[string]StockLotSnapshot)
+			}
+			overridesByWarehouse[lot.warehouseID][lot.lotID] = StockLotSnapshot{
+				SupplierID:       req.SupplierID,
+				WarehouseID:      lot.warehouseID,
+				ProductID:        req.ProductID,
+				QuantityOnHand:   lot.qoh,
+				QuantityReserved: lot.qr,
+				Status:           "QUARANTINED",
+			}
 		}
 	}
 
 	// Re-rollup inventory for touched warehouses so ATP is updated in the same txn
 	for wid := range warehouseRollups {
-		if err := RollupInventoryV2InTxn(ctx, txn, req.SupplierID, wid, req.ProductID); err != nil {
+		if err := RollupInventoryV2WithLotOverridesInTxn(ctx, txn, req.SupplierID, wid, req.ProductID, overridesByWarehouse[wid]); err != nil {
 			return nil, err
 		}
 	}
@@ -273,6 +286,7 @@ type recallMatchedLot struct {
 	warehouseID string
 	status      string
 	qoh         int64
+	qr          int64
 }
 
 func traceImpactedRecallOrdersInTxn(
@@ -355,12 +369,14 @@ func traceImpactedRecallOrdersInTxn(
 			break
 		}
 		if err != nil {
-			// Match legacy resolveOrderDetails fallback when Orders lookup fails.
-			break
+			if spanner.ErrCode(err) == 5 {
+				break
+			}
+			return nil, err
 		}
 		var oid, retID, st string
 		if err := oRow.Columns(&oid, &retID, &st); err != nil {
-			continue
+			return nil, err
 		}
 		metaByOrder[oid] = orderMeta{retailerID: retID, status: st}
 	}
@@ -436,11 +452,11 @@ func QuarantineLotInTxn(
 	}
 
 	oldStatus := v.Status
-	v.Status = "QUARANTINE"
+	v.Status = "QUARANTINED"
 
 	if err := txn.BufferWrite([]*spanner.Mutation{spanner.UpdateMap("StockLots", map[string]any{
 		"LotId":     lotID,
-		"Status":    "QUARANTINE",
+		"Status":    "QUARANTINED",
 		"UpdatedAt": spanner.CommitTimestamp,
 	})}); err != nil {
 		return nil, err
@@ -454,7 +470,7 @@ func QuarantineLotInTxn(
 		"SupplierId":  v.SupplierID,
 		"ProductId":   v.ProductID,
 		"FromStatus":  oldStatus,
-		"ToStatus":    "QUARANTINE",
+		"ToStatus":    "QUARANTINED",
 		"ReasonCode":  reasonCode,
 		"Actor":       actor,
 		"Notes":       notes,
@@ -463,8 +479,18 @@ func QuarantineLotInTxn(
 		return nil, err
 	}
 
-	if oldStatus == "AVAILABLE" {
-		if err := RollupInventoryV2InTxn(ctx, txn, v.SupplierID, v.WarehouseID, v.ProductID); err != nil {
+	if NormalizeLotStatus(oldStatus) == "AVAILABLE" {
+		overrides := map[string]StockLotSnapshot{
+			lotID: {
+				SupplierID:       v.SupplierID,
+				WarehouseID:      v.WarehouseID,
+				ProductID:        v.ProductID,
+				QuantityOnHand:   v.QuantityOnHand,
+				QuantityReserved: v.QuantityReserved,
+				Status:           "QUARANTINED",
+			},
+		}
+		if err := RollupInventoryV2WithLotOverridesInTxn(ctx, txn, v.SupplierID, v.WarehouseID, v.ProductID, overrides); err != nil {
 			return nil, err
 		}
 	}
@@ -479,7 +505,7 @@ func QuarantineLotInTxn(
 			ProductID:    v.ProductID,
 			WarehouseID:  v.WarehouseID,
 			RecallReason: reasonCode,
-			Status:       "QUARANTINE",
+			Status:       "QUARANTINED",
 			Action:       "QUARANTINE_LOT",
 			Actor:        actor,
 		})
@@ -554,8 +580,18 @@ func ReleaseLotInTxn(
 		return nil, err
 	}
 
-	if newStatus == "AVAILABLE" || oldStatus == "QUARANTINE" {
-		if err := RollupInventoryV2InTxn(ctx, txn, v.SupplierID, v.WarehouseID, v.ProductID); err != nil {
+	if newStatus == "AVAILABLE" || NormalizeLotStatus(oldStatus) == "QUARANTINED" {
+		overrides := map[string]StockLotSnapshot{
+			lotID: {
+				SupplierID:       v.SupplierID,
+				WarehouseID:      v.WarehouseID,
+				ProductID:        v.ProductID,
+				QuantityOnHand:   v.QuantityOnHand,
+				QuantityReserved: v.QuantityReserved,
+				Status:           newStatus,
+			},
+		}
+		if err := RollupInventoryV2WithLotOverridesInTxn(ctx, txn, v.SupplierID, v.WarehouseID, v.ProductID, overrides); err != nil {
 			return nil, err
 		}
 	}

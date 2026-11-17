@@ -578,13 +578,15 @@ struct ExtractedDriverViewModelsTests {
         #expect(vm.isFiscalizing == true)
         #expect(vm.headerTitle == "Fiscalizing")
 
-        // Fiscal failure socket event -> retry fiscal
+        // Fiscal failure socket event -> non-blocking fiscal retry queued guidance
         vm.handleDriverSocketEvent(
             DriverSocketState.DriverEvent(type: "FISCAL_RECEIPT_FAILED", orderId: "ORD-888")
         )
         #expect(vm.isFiscalFailed == true)
         #expect(vm.isFiscalizing == false)
-        #expect(vm.headerTitle == "Fiscal Failed")
+        #expect(vm.errorMessage == nil)
+        #expect(vm.headerTitle == L10n.string("mobile_driver.ui.fiscal_retry_queued_title"))
+        #expect(!vm.subtitle.localizedCaseInsensitiveContains("call supervisor"))
 
         fleet.retryFiscalResult = .failure(DriverTestMockError.backendFailure("Fiscal module busy"))
         await vm.retryFiscal()

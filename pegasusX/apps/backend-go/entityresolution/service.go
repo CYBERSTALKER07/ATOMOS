@@ -136,6 +136,12 @@ type Repository interface {
 	LoadLineage(ctx context.Context, supplierID, entityType, entityID string) ([]LineageLink, error)
 }
 
+// ExactIdentifierFinder is an optional Repository extension for supplier-scoped
+// indexed normalized TIN and phone matching.
+type ExactIdentifierFinder interface {
+	FindRetailersByIdentifier(ctx context.Context, supplierID, normalizedTIN, normalizedPhone string, limit int) ([]EntityRecord, error)
+}
+
 // Service contains entity-resolution orchestration.
 type Service struct {
 	repo Repository
@@ -188,6 +194,22 @@ func (s *Service) Resolve(ctx context.Context, in ResolveInput) (ResolveResult, 
 		rows, err := s.repo.ListScopedRecords(ctx, in.SupplierID, entityType, maxCandidates)
 		if err != nil {
 			return ResolveResult{}, err
+		}
+		if (entityType == EntityTypeAny || entityType == EntityTypeRetailer) {
+			if finder, ok := s.repo.(ExactIdentifierFinder); ok {
+				normTIN := NormalizeTIN(query)
+				normPhone := ""
+				if len(digitsOnly(query)) >= 7 {
+					normPhone = NormalizeUZPhone(query)
+				}
+				if normTIN != "" || normPhone != "" {
+					idRows, idErr := finder.FindRetailersByIdentifier(ctx, in.SupplierID, normTIN, normPhone, maxCandidates)
+					if idErr != nil {
+						return ResolveResult{}, idErr
+					}
+					rows = append(rows, idRows...)
+				}
+			}
 		}
 		for _, row := range rows {
 			score, deterministic, reasons, ok := scoreRow(query, row)
@@ -374,12 +396,28 @@ func scoreRow(query string, row EntityRecord) (score float64, deterministic bool
 		return 0.99, true, []string{"exact_id_match"}, true
 	}
 
+	queryTIN := NormalizeTIN(query)
+	queryPhone := ""
+	if len(digitsOnly(query)) >= 7 {
+		queryPhone = NormalizeUZPhone(query)
+	}
 	for key, value := range row.Metadata {
 		if strings.TrimSpace(value) == "" {
 			continue
 		}
+		lowerKey := strings.ToLower(strings.TrimSpace(key))
+		switch lowerKey {
+		case "tax_id_tin", "tin", "taxid":
+			if queryTIN != "" && NormalizeTIN(value) == queryTIN {
+				return 0.98, true, []string{"exact_tin_match"}, true
+			}
+		case "normalized_phone", "phone":
+			if queryPhone != "" && NormalizeUZPhone(value) == queryPhone {
+				return 0.97, true, []string{"exact_phone_match"}, true
+			}
+		}
 		if normalizedQuery == normalizeFreeform(value) {
-			return 0.96, true, []string{"exact_" + strings.ToLower(key) + "_match"}, true
+			return 0.96, true, []string{"exact_" + lowerKey + "_match"}, true
 		}
 	}
 

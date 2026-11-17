@@ -77,9 +77,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.pegasusx.retailer.data.model.CartItem
+import com.pegasusx.retailer.services.PendingOrderStatusNotice
 import com.pegasusx.retailer.ui.components.CheckoutSheet
 import com.pegasusx.retailer.ui.components.DefaultCheckoutPaymentOptions
+import com.pegasusx.retailer.ui.components.LineOptionTogglePill
+import com.pegasusx.retailer.ui.components.PackSuggestionBanner
 import com.pegasusx.retailer.ui.components.checkoutPaymentLabel
+import com.pegasusx.retailer.util.OrderLineContractHelper
+import com.pegasusx.retailer.util.PackSnapMode
 import com.pegasusx.retailer.ui.theme.StatusGreen
 import com.pegasusx.retailer.ui.theme.StatusRed
 import com.pegasusx.retailer.R
@@ -131,6 +136,13 @@ fun CartScreen(
 
         if (uiState.isEmpty) {
             Column(modifier = Modifier.fillMaxSize()) {
+                uiState.pendingQueueNotice?.let { notice ->
+                    PendingQueueNoticeBanner(
+                        notice = notice,
+                        onRetry = viewModel::retryPendingOrderSync,
+                        onDismiss = viewModel::dismissPendingQueueNotice,
+                    )
+                }
                 if (syncMessage != null) {
                     CartSyncBanner(
                         message = syncMessage,
@@ -143,11 +155,36 @@ fun CartScreen(
             return@Box
         }
         Column(modifier = Modifier.fillMaxSize()) {
+            uiState.pendingQueueNotice?.let { notice ->
+                PendingQueueNoticeBanner(
+                    notice = notice,
+                    onRetry = viewModel::retryPendingOrderSync,
+                    onDismiss = viewModel::dismissPendingQueueNotice,
+                )
+            }
             if (syncMessage != null) {
                 CartSyncBanner(
                     message = syncMessage,
                     issue = uiState.loadIssue,
                     onRetry = viewModel::retrySync,
+                )
+            }
+            if (uiState.packSuggestions.isNotEmpty()) {
+                PackSuggestionBanner(
+                    suggestions = uiState.packSuggestions,
+                    onApply = viewModel::applyPackSuggestion,
+                    onDismiss = viewModel::dismissPackSuggestions,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                )
+            }
+            uiState.ownerApprovalRequired?.let { approval ->
+                com.pegasusx.retailer.ui.components.OwnerApprovalRequiredBanner(
+                    detail = approval,
+                    isSubmitting = uiState.checkoutPhase == com.pegasusx.retailer.ui.components.CheckoutPhase.PROCESSING,
+                    onPayCash = { viewModel.retryCheckoutWithFallbackMethod("CASH") },
+                    onPayCard = { viewModel.retryCheckoutWithFallbackMethod("CARD") },
+                    onDismiss = viewModel::dismissOwnerApprovalRequired,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
                 )
             }
 
@@ -176,6 +213,12 @@ fun CartScreen(
                 }
 
                 itemsIndexed(uiState.items, key = { _, item -> item.id }) { _, item ->
+                    val packSize = viewModel.effectivePackSizeFor(item)
+                    val snappedNearest = if (packSize > 1 && item.quantity % packSize != 0) {
+                        OrderLineContractHelper.snapToPackMultiple(item.quantity, packSize, PackSnapMode.NEAREST)
+                    } else {
+                        null
+                    }
                     CartItemCard(
                         item = item,
                         isOos = uiState.oosItems.contains(
@@ -185,6 +228,11 @@ fun CartScreen(
                         ] ?: 0L) > 0L,
                         maxQuantity = viewModel.effectiveMaxQuantityFor(item),
                         stockLeftHint = viewModel.stockLeftHintFor(item),
+                        packSize = packSize,
+                        snappedNearestQty = snappedNearest,
+                        onSnapNearest = { viewModel.snapItemToPackMultiple(item.id, PackSnapMode.NEAREST) },
+                        onToggleMustHave = { viewModel.toggleMustHave(item.id) },
+                        onToggleAllowSubstitutes = { viewModel.toggleAllowSubstitutes(item.id) },
                         onUpdateQuantity = viewModel::updateQuantity,
                         onRemove = viewModel::removeItem,
                     )
@@ -220,6 +268,8 @@ fun CartScreen(
                 paymentOptions = uiState.paymentOptions.ifEmpty { DefaultCheckoutPaymentOptions },
                 stockWarnings = uiState.stockWarnings,
                 oosItems = uiState.oosItems,
+                packSuggestions = uiState.packSuggestions,
+                ownerApprovalRequired = uiState.ownerApprovalRequired,
                 previewLoading = uiState.previewLoading,
                 deliveryMode = uiState.deliveryMode,
                 deliveryDate = uiState.deliveryDate,
@@ -228,6 +278,7 @@ fun CartScreen(
                 deliveryFeeLabel = uiState.displayDeliveryFee,
                 deliveryDistanceKm = uiState.deliveryDistanceKm,
                 expressPriority = uiState.expressPriority,
+                autoConfirmOptIn = uiState.autoConfirmOptIn,
                 currencyPickerEnabled = uiState.currencyPickerEnabled,
                 currencyAllowlist = uiState.currencyAllowlist,
                 operatingCurrency = uiState.operatingCurrency,
@@ -235,6 +286,11 @@ fun CartScreen(
                 onDeliveryModeChange = viewModel::setDeliveryMode,
                 onDeliveryDateChange = viewModel::setDeliveryDate,
                 onExpressPriorityChange = viewModel::setExpressPriority,
+                onAutoConfirmOptInChange = viewModel::setAutoConfirmOptIn,
+                onApplyPackSuggestion = viewModel::applyPackSuggestion,
+                onDismissPackSuggestions = viewModel::dismissPackSuggestions,
+                onRetryFallbackPaymentMethod = viewModel::retryCheckoutWithFallbackMethod,
+                onDismissOwnerApproval = viewModel::dismissOwnerApprovalRequired,
                 onOrderCurrencyChange = viewModel::setOrderCurrency,
                 onBuy = viewModel::processPayment,
                 onSelectPayment = viewModel::setSelectedPaymentGateway,
@@ -338,11 +394,57 @@ private fun CartSyncBanner(
 }
 
 @Composable
+private fun PendingQueueNoticeBanner(
+    notice: PendingOrderStatusNotice,
+    onRetry: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp),
+        shape = SoftSquircleShape,
+        color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.72f),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    notice.status.replace('_', ' '),
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onTertiaryContainer,
+                )
+                Text(
+                    notice.message,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.9f),
+                )
+            }
+            if (notice.keptInQueue) {
+                TextButton(onClick = onRetry) {
+                    Text("Retry", style = MaterialTheme.typography.labelSmall)
+                }
+            }
+            TextButton(onClick = onDismiss) {
+                Text("OK", style = MaterialTheme.typography.labelSmall)
+            }
+        }
+    }
+}
+
+@Composable
 private fun CartItemCard(
     item: CartItem,
     isOos: Boolean,
     maxQuantity: Int?,
     stockLeftHint: String? = null,
+    packSize: Int = 1,
+    snappedNearestQty: Int? = null,
+    onSnapNearest: () -> Unit = {},
+    onToggleMustHave: () -> Unit = {},
+    onToggleAllowSubstitutes: () -> Unit = {},
     onUpdateQuantity: (String, Int) -> Unit,
     onRemove: (String) -> Unit,
 ) {
@@ -383,6 +485,30 @@ private fun CartItemCard(
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     TagPill(item.variant.size)
                     TagPill(item.variant.pack)
+                    if (packSize > 1) {
+                        TagPill("Pack x$packSize")
+                    }
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    LineOptionTogglePill(
+                        label = if (item.mustHave) "Must-have ✓" else "Must-have",
+                        selected = item.mustHave,
+                        onClick = onToggleMustHave,
+                    )
+                    LineOptionTogglePill(
+                        label = if (item.allowSubstitutes) "Allow subs ✓" else "Allow subs",
+                        selected = item.allowSubstitutes,
+                        onClick = onToggleAllowSubstitutes,
+                    )
+                }
+                if (snappedNearestQty != null) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    LineOptionTogglePill(
+                        label = "Snap to $snappedNearestQty (pack x$packSize)",
+                        selected = true,
+                        onClick = onSnapNearest,
+                    )
                 }
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(

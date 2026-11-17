@@ -2,14 +2,53 @@ package stocklots
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
 	"google.golang.org/api/iterator"
 )
+
+// ErrSodViolation indicates a maker-checker Segregation of Duties violation.
+var ErrSodViolation = errors.New("sod_violation")
+
+// AdjustmentValuationArgs describes an approved inventory adjustment for optional valuation/GL posting.
+type AdjustmentValuationArgs struct {
+	EntityID       string
+	WarehouseID    string
+	ProductID      string
+	LotID          string
+	AdjustmentID   string
+	DeltaQty       int64
+	ReasonCode     string
+	ApprovedBy     string
+	IdempotencyKey string
+}
+
+// AdjustmentValuationHook posts inventory adjustment cost movements and GL EXP:SHRINK/INVENTORY entries in txn.
+type AdjustmentValuationHook func(ctx context.Context, txn *spanner.ReadWriteTransaction, args AdjustmentValuationArgs) error
+
+var (
+	adjustmentValuationHookMu sync.RWMutex
+	adjustmentValuationHook   AdjustmentValuationHook
+)
+
+// SetAdjustmentValuationHook registers an optional transactional valuation hook for approved adjustments.
+func SetAdjustmentValuationHook(fn AdjustmentValuationHook) {
+	adjustmentValuationHookMu.Lock()
+	defer adjustmentValuationHookMu.Unlock()
+	adjustmentValuationHook = fn
+}
+
+func getAdjustmentValuationHook() AdjustmentValuationHook {
+	adjustmentValuationHookMu.RLock()
+	defer adjustmentValuationHookMu.RUnlock()
+	return adjustmentValuationHook
+}
 
 // CycleCountView is the API DTO for a cycle count.
 type CycleCountView struct {
@@ -186,7 +225,25 @@ func SubmitCycleCountInTxn(ctx context.Context, txn *spanner.ReadWriteTransactio
 			return nil, err
 		}
 	}
-	return GetCycleCountInTxn(ctx, txn, countID)
+	cQty := countedQty
+	vQty := variance
+	view := &CycleCountView{
+		CountID:     countID,
+		WarehouseID: wid,
+		LocationID:  loc,
+		ProductID:   pid,
+		ExpectedQty: expected,
+		CountedQty:  &cQty,
+		VarianceQty: &vQty,
+		ReasonCode:  strings.TrimSpace(reasonCode),
+		Status:      "SUBMITTED",
+		CountedBy:   strings.TrimSpace(actorID),
+		CountedAt:   now.UTC().Format(time.RFC3339Nano),
+	}
+	if lot.Valid {
+		view.LotID = lot.StringVal
+	}
+	return view, nil
 }
 
 // ApproveAdjustmentInTxn marks PENDING → APPROVED and applies DeltaQty to StockLots + V2 roll-up.
@@ -206,11 +263,18 @@ func ApproveAdjustmentInTxn(ctx context.Context, txn *spanner.ReadWriteTransacti
 	if !strings.EqualFold(strings.TrimSpace(status), "PENDING") {
 		return nil, fmt.Errorf("adjustment_not_pending")
 	}
-	supplierID, err := applyAdjustmentDeltaInTxn(ctx, txn, wid, pid, lot, delta)
+	if ab, mk := strings.TrimSpace(approvedBy), strings.TrimSpace(actor.StringVal); ab != "" && actor.Valid && mk != "" && ab == mk {
+		return nil, fmt.Errorf("%w: maker %s cannot approve own inventory adjustment %s", ErrSodViolation, mk, adjustmentID)
+	}
+	supplierID, adjustedLotID, snapshot, lotMut, err := prepareAdjustmentDeltaInTxn(ctx, txn, wid, pid, lot, delta)
 	if err != nil {
 		return nil, err
 	}
-	if err := RollupInventoryV2InTxn(ctx, txn, supplierID, wid, pid); err != nil {
+	var overrides map[string]StockLotSnapshot
+	if adjustedLotID != "" && snapshot != nil {
+		overrides = map[string]StockLotSnapshot{adjustedLotID: *snapshot}
+	}
+	if err := RollupInventoryV2WithLotOverridesInTxn(ctx, txn, supplierID, wid, pid, overrides); err != nil {
 		return nil, err
 	}
 	cols := map[string]any{
@@ -221,8 +285,34 @@ func ApproveAdjustmentInTxn(ctx context.Context, txn *spanner.ReadWriteTransacti
 	if ab := strings.TrimSpace(approvedBy); ab != "" {
 		cols["ApprovedBy"] = ab
 	}
-	if err := txn.BufferWrite([]*spanner.Mutation{spanner.UpdateMap("InventoryAdjustments", cols)}); err != nil {
+	muts := make([]*spanner.Mutation, 0, 2)
+	if lotMut != nil {
+		muts = append(muts, lotMut)
+	}
+	muts = append(muts, spanner.UpdateMap("InventoryAdjustments", cols))
+	if err := txn.BufferWrite(muts); err != nil {
 		return nil, err
+	}
+	if delta != 0 && strings.TrimSpace(supplierID) != "" {
+		if hook := getAdjustmentValuationHook(); hook != nil {
+			effectiveLot := strings.TrimSpace(adjustedLotID)
+			if effectiveLot == "" && lot.Valid {
+				effectiveLot = strings.TrimSpace(lot.StringVal)
+			}
+			if hErr := hook(ctx, txn, AdjustmentValuationArgs{
+				EntityID:       supplierID,
+				WarehouseID:    wid,
+				ProductID:      pid,
+				LotID:          effectiveLot,
+				AdjustmentID:   adjustmentID,
+				DeltaQty:       delta,
+				ReasonCode:     strings.TrimSpace(reason.StringVal),
+				ApprovedBy:     strings.TrimSpace(approvedBy),
+				IdempotencyKey: "adj:" + adjustmentID,
+			}); hErr != nil {
+				return nil, hErr
+			}
+		}
 	}
 	view := &InventoryAdjustmentView{
 		AdjustmentID: adjustmentID, WarehouseID: wid, ProductID: pid,
@@ -230,6 +320,8 @@ func ApproveAdjustmentInTxn(ctx context.Context, txn *spanner.ReadWriteTransacti
 	}
 	if lot.Valid {
 		view.LotID = lot.StringVal
+	} else if adjustedLotID != "" {
+		view.LotID = adjustedLotID
 	}
 	if countID.Valid {
 		view.CountID = countID.StringVal
@@ -243,78 +335,122 @@ func ApproveAdjustmentInTxn(ctx context.Context, txn *spanner.ReadWriteTransacti
 	return view, nil
 }
 
-// applyAdjustmentDeltaInTxn credits/debits lot QoH by delta (counted − expected).
-func applyAdjustmentDeltaInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, warehouseID, productID string, lot spanner.NullString, delta int64) (supplierID string, err error) {
-	if delta == 0 {
-		if lot.Valid && strings.TrimSpace(lot.StringVal) != "" {
-			row, err := txn.ReadRow(ctx, "StockLots", spanner.Key{strings.TrimSpace(lot.StringVal)}, []string{"SupplierId"})
-			if err != nil {
-				return "", err
-			}
-			_ = row.Columns(&supplierID)
-			return supplierID, nil
-		}
-		return "", fmt.Errorf("zero_delta_no_lot")
+func computeCycleLotAdjustment(qoh, reserved, delta int64, currentStatus string) (nextQoH int64, nextStatus string, err error) {
+	nextQoH = qoh + delta
+	if nextQoH < 0 {
+		return 0, "", fmt.Errorf("adjustment_below_zero: qoh=%d delta=%d", qoh, delta)
 	}
-	lotID := ""
+	if nextQoH < reserved {
+		return 0, "", fmt.Errorf("adjustment_below_reserved: next_qoh=%d reserved=%d", nextQoH, reserved)
+	}
+	st := strings.ToUpper(strings.TrimSpace(currentStatus))
+	switch {
+	case nextQoH == 0:
+		nextStatus = "DEPLETED"
+	case NormalizeLotStatus(st) == "QUARANTINED" || st == "RECALLED":
+		nextStatus = NormalizeLotStatus(st)
+	default:
+		nextStatus = "AVAILABLE"
+	}
+	return nextQoH, nextStatus, nil
+}
+
+// prepareAdjustmentDeltaInTxn validates lot ownership/reserves and prepares post-delta StockLots
+// mutation + StockLotSnapshot override so SupplierInventoryV2 rollup runs before BufferWrite.
+func prepareAdjustmentDeltaInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, warehouseID, productID string, lot spanner.NullString, delta int64) (supplierID, lotID string, snapshot *StockLotSnapshot, lotMut *spanner.Mutation, err error) {
+	warehouseID = strings.TrimSpace(warehouseID)
+	productID = strings.TrimSpace(productID)
 	if lot.Valid {
 		lotID = strings.TrimSpace(lot.StringVal)
 	}
+
+	if delta == 0 {
+		if lotID == "" {
+			return "", "", nil, nil, fmt.Errorf("zero_delta_no_lot")
+		}
+		row, err := txn.ReadRow(ctx, "StockLots", spanner.Key{lotID}, []string{"SupplierId", "WarehouseId", "ProductId"})
+		if err != nil {
+			return "", "", nil, nil, err
+		}
+		var lotWID, lotPID string
+		if err := row.Columns(&supplierID, &lotWID, &lotPID); err != nil {
+			return "", "", nil, nil, err
+		}
+		if strings.TrimSpace(lotWID) != warehouseID {
+			return "", "", nil, nil, fmt.Errorf("lot_warehouse_mismatch: lot_warehouse=%s adjustment_warehouse=%s", lotWID, warehouseID)
+		}
+		if strings.TrimSpace(lotPID) != productID {
+			return "", "", nil, nil, fmt.Errorf("lot_product_mismatch: lot_product=%s adjustment_product=%s", lotPID, productID)
+		}
+		return supplierID, lotID, nil, nil, nil
+	}
+
+	var qoh, qr int64
+	var st string
 	if lotID == "" {
 		// Pick any AVAILABLE lot for the product in the warehouse.
 		iter := txn.Query(ctx, spanner.Statement{
-			SQL: `SELECT LotId, SupplierId, QuantityOnHand, Status FROM StockLots
+			SQL: `SELECT LotId, SupplierId, QuantityOnHand, QuantityReserved, Status FROM StockLots
 			      WHERE WarehouseId = @wid AND ProductId = @pid AND Status = 'AVAILABLE'
-			      ORDER BY ExpiryDate ASC NULLS LAST, ReceivedAt ASC LIMIT 1`,
+			      ORDER BY IF(ExpiryDate IS NULL, 1, 0) ASC, ExpiryDate ASC, ReceivedAt ASC LIMIT 1`,
 			Params: map[string]any{"wid": warehouseID, "pid": productID},
 		})
 		defer iter.Stop()
 		row, err := iter.Next()
 		if err == iterator.Done {
-			return "", fmt.Errorf("no_available_lot_for_adjustment")
+			return "", "", nil, nil, fmt.Errorf("no_available_lot_for_adjustment")
 		}
 		if err != nil {
-			return "", err
+			return "", "", nil, nil, err
 		}
-		var qoh int64
-		var st string
-		if err := row.Columns(&lotID, &supplierID, &qoh, &st); err != nil {
-			return "", err
+		if err := row.Columns(&lotID, &supplierID, &qoh, &qr, &st); err != nil {
+			return "", "", nil, nil, err
 		}
-		return applyLotDelta(ctx, txn, lotID, supplierID, qoh, delta)
+	} else {
+		row, err := txn.ReadRow(ctx, "StockLots", spanner.Key{lotID},
+			[]string{"SupplierId", "WarehouseId", "ProductId", "QuantityOnHand", "QuantityReserved", "Status"})
+		if err != nil {
+			return "", "", nil, nil, err
+		}
+		var lotWID, lotPID string
+		if err := row.Columns(&supplierID, &lotWID, &lotPID, &qoh, &qr, &st); err != nil {
+			return "", "", nil, nil, err
+		}
+		if strings.TrimSpace(lotWID) != warehouseID {
+			return "", "", nil, nil, fmt.Errorf("lot_warehouse_mismatch: lot_warehouse=%s adjustment_warehouse=%s", lotWID, warehouseID)
+		}
+		if strings.TrimSpace(lotPID) != productID {
+			return "", "", nil, nil, fmt.Errorf("lot_product_mismatch: lot_product=%s adjustment_product=%s", lotPID, productID)
+		}
 	}
-	row, err := txn.ReadRow(ctx, "StockLots", spanner.Key{lotID},
-		[]string{"SupplierId", "QuantityOnHand", "Status"})
+
+	snap, mut, err := buildLotDeltaMutation(lotID, supplierID, warehouseID, productID, qoh, qr, delta, st)
 	if err != nil {
-		return "", err
+		return "", "", nil, nil, err
 	}
-	var qoh int64
-	var st string
-	if err := row.Columns(&supplierID, &qoh, &st); err != nil {
-		return "", err
-	}
-	return applyLotDelta(ctx, txn, lotID, supplierID, qoh, delta)
+	return supplierID, lotID, &snap, mut, nil
 }
 
-func applyLotDelta(ctx context.Context, txn *spanner.ReadWriteTransaction, lotID, supplierID string, qoh, delta int64) (string, error) {
-	_ = ctx
-	next := qoh + delta
-	status := "AVAILABLE"
-	if next < 0 {
-		next = 0
+func buildLotDeltaMutation(lotID, supplierID, warehouseID, productID string, qoh, reserved, delta int64, currentStatus string) (StockLotSnapshot, *spanner.Mutation, error) {
+	next, status, err := computeCycleLotAdjustment(qoh, reserved, delta, currentStatus)
+	if err != nil {
+		return StockLotSnapshot{}, nil, err
 	}
-	if next == 0 {
-		status = "DEPLETED"
+	snap := StockLotSnapshot{
+		SupplierID:       supplierID,
+		WarehouseID:      warehouseID,
+		ProductID:        productID,
+		QuantityOnHand:   next,
+		QuantityReserved: reserved,
+		Status:           status,
 	}
-	if err := txn.BufferWrite([]*spanner.Mutation{spanner.UpdateMap("StockLots", map[string]any{
+	mut := spanner.UpdateMap("StockLots", map[string]any{
 		"LotId":          lotID,
 		"QuantityOnHand": next,
 		"Status":         status,
 		"UpdatedAt":      spanner.CommitTimestamp,
-	})}); err != nil {
-		return "", err
-	}
-	return supplierID, nil
+	})
+	return snap, mut, nil
 }
 
 // RejectAdjustmentInTxn marks PENDING → REJECTED without lot mutation.

@@ -10,6 +10,7 @@ import (
 	"time"
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
+	"github.com/pegasusx/pegasusx/apps/backend-go/drivercmd"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 )
@@ -226,6 +227,7 @@ func (s *Service) HandleOpsDispatchRescuePropose(w http.ResponseWriter, r *http.
 			"warehouse_id":     whID,
 			"supplier_id":      sid,
 		})
+		wsPayload = drivercmd.PrepareAndRecordJSON(r.Context(), s.spannerClient, req.RescueDriverID, wsPayload)
 		s.driverHub.Broadcast(r.Context(), "driver:"+req.RescueDriverID, wsPayload)
 	}
 

@@ -4,7 +4,15 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
+
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+)
+
+const (
+	maxTOTPFailedAttempts = 5
+	totpLockoutWindow     = 15 * time.Minute
 )
 
 // Auditor records MFA enroll/verify events into PlatformAdminAudit.
@@ -18,6 +26,17 @@ type ReplayCache interface {
 	IsUsed(ctx context.Context, subject string, step uint64) (bool, error)
 }
 
+type lockoutStore interface {
+	IncrFailedAttempt(ctx context.Context, subject string, window time.Duration) (int64, error)
+	ResetFailedAttempts(ctx context.Context, subject string) error
+	GetFailedAttempts(ctx context.Context, subject string) (int64, error)
+}
+
+type memFailEntry struct {
+	count   int64
+	resetAt time.Time
+}
+
 // Service manages PLATFORM_ADMIN TOTP enrollment and verification.
 type Service struct {
 	repo     Repository
@@ -25,13 +44,23 @@ type Service struct {
 	required bool
 	audit    Auditor
 	cache    ReplayCache
+
+	mu        sync.Mutex
+	failCount map[string]memFailEntry
 }
 
 func NewService(repo Repository, issuer string, required bool, audit Auditor, cache ReplayCache) *Service {
 	if issuer == "" {
 		issuer = "PegasusX"
 	}
-	return &Service{repo: repo, issuer: issuer, required: required, audit: audit, cache: cache}
+	return &Service{
+		repo:      repo,
+		issuer:    issuer,
+		required:  required,
+		audit:     audit,
+		cache:     cache,
+		failCount: make(map[string]memFailEntry),
+	}
 }
 
 // Required reports whether PLATFORM_ADMIN_MFA_REQUIRED is on.
@@ -127,17 +156,30 @@ func (s *Service) ConfirmEnroll(ctx context.Context, subject, code string) error
 	if !ok || strings.TrimSpace(rec.Secret) == "" {
 		return fmt.Errorf("enrollment_not_started")
 	}
+	if err := s.ensureNotLocked(ctx, subject); err != nil {
+		return err
+	}
+	if auth.IsProduction() && s.cache == nil {
+		return fmt.Errorf("mfa_replay_cache_required")
+	}
 	valid, step := ValidateCode(rec.Secret, code, time.Now().UTC())
 	if !valid {
+		s.recordFailure(ctx, subject)
 		return fmt.Errorf("invalid_totp")
 	}
 	if s.cache != nil {
-		used, _ := s.cache.IsUsed(ctx, subject, step)
+		used, err := s.cache.IsUsed(ctx, subject, step)
+		if err != nil {
+			return fmt.Errorf("mfa_replay_check_unavailable: %w", err)
+		}
 		if used {
 			return fmt.Errorf("totp_code_used")
 		}
-		_ = s.cache.MarkUsed(ctx, subject, step)
+		if err := s.cache.MarkUsed(ctx, subject, step); err != nil {
+			return fmt.Errorf("mfa_replay_mark_failed: %w", err)
+		}
 	}
+	s.resetFailures(ctx, subject)
 	rec.Enabled = true
 	rec.EnabledAt = time.Now().UTC()
 	if err := s.repo.Upsert(ctx, rec); err != nil {
@@ -162,19 +204,100 @@ func (s *Service) Verify(ctx context.Context, subject, code string) error {
 	if !ok || !rec.Enabled {
 		return fmt.Errorf("mfa_not_enrolled")
 	}
+	if err := s.ensureNotLocked(ctx, subject); err != nil {
+		return err
+	}
+	if auth.IsProduction() && s.cache == nil {
+		return fmt.Errorf("mfa_replay_cache_required")
+	}
 	valid, step := ValidateCode(rec.Secret, code, time.Now().UTC())
 	if !valid {
+		s.recordFailure(ctx, subject)
 		return fmt.Errorf("invalid_totp")
 	}
 	if s.cache != nil {
-		used, _ := s.cache.IsUsed(ctx, subject, step)
+		used, err := s.cache.IsUsed(ctx, subject, step)
+		if err != nil {
+			return fmt.Errorf("mfa_replay_check_unavailable: %w", err)
+		}
 		if used {
 			return fmt.Errorf("totp_code_used")
 		}
-		_ = s.cache.MarkUsed(ctx, subject, step)
+		if err := s.cache.MarkUsed(ctx, subject, step); err != nil {
+			return fmt.Errorf("mfa_replay_mark_failed: %w", err)
+		}
 	}
+	s.resetFailures(ctx, subject)
 	if s.audit != nil {
 		_ = s.audit.RecordFlagAudit(ctx, subject, "MFA_VERIFY", "PLATFORM", subject, `{"mfa":"totp"}`)
 	}
 	return nil
+}
+
+func (s *Service) ensureNotLocked(ctx context.Context, subject string) error {
+	if ls, ok := s.cache.(lockoutStore); ok && ls != nil {
+		n, err := ls.GetFailedAttempts(ctx, subject)
+		if err != nil {
+			return fmt.Errorf("mfa_lockout_check_unavailable: %w", err)
+		}
+		if n >= maxTOTPFailedAttempts {
+			return fmt.Errorf("mfa_temporarily_locked")
+		}
+		return nil
+	}
+	now := time.Now().UTC()
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.failCount == nil {
+		return nil
+	}
+	ent, ok := s.failCount[subject]
+	if !ok {
+		return nil
+	}
+	if now.After(ent.resetAt) {
+		delete(s.failCount, subject)
+		return nil
+	}
+	if ent.count >= maxTOTPFailedAttempts {
+		return fmt.Errorf("mfa_temporarily_locked")
+	}
+	return nil
+}
+
+func (s *Service) recordFailure(ctx context.Context, subject string) {
+	if ls, ok := s.cache.(lockoutStore); ok && ls != nil {
+		_, _ = ls.IncrFailedAttempt(ctx, subject, totpLockoutWindow)
+		return
+	}
+	now := time.Now().UTC()
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.failCount == nil {
+		s.failCount = make(map[string]memFailEntry)
+	}
+	if len(s.failCount) > 10000 {
+		for k, v := range s.failCount {
+			if now.After(v.resetAt) {
+				delete(s.failCount, k)
+			}
+		}
+	}
+	ent := s.failCount[subject]
+	if now.After(ent.resetAt) {
+		ent = memFailEntry{count: 0, resetAt: now.Add(totpLockoutWindow)}
+	}
+	ent.count++
+	ent.resetAt = now.Add(totpLockoutWindow)
+	s.failCount[subject] = ent
+}
+
+func (s *Service) resetFailures(ctx context.Context, subject string) {
+	if ls, ok := s.cache.(lockoutStore); ok && ls != nil {
+		_ = ls.ResetFailedAttempts(ctx, subject)
+		return
+	}
+	s.mu.Lock()
+	delete(s.failCount, subject)
+	s.mu.Unlock()
 }

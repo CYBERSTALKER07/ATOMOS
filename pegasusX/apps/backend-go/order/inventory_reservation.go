@@ -190,6 +190,204 @@ func reserveLotsForSKUsInTxn(
 	return nil
 }
 
+// ReplaceOrderReservationsInTxn atomically replaces bag & lot reservations when negotiation updates
+// order quantities in a single Spanner RW transaction without read-your-writes hazards.
+func ReplaceOrderReservationsInTxn(
+	ctx context.Context,
+	txn *spanner.ReadWriteTransaction,
+	supplierID, warehouseID, orderID, retailerID string,
+	source OrderSource,
+	oldItems, newItems []LineItem,
+) error {
+	if source == OrderSourceBackorder || source == OrderSourceMigration || strings.TrimSpace(warehouseID) == "" || txn == nil {
+		return nil
+	}
+	supplierID = strings.TrimSpace(supplierID)
+	warehouseID = strings.TrimSpace(warehouseID)
+	orderID = strings.TrimSpace(orderID)
+
+	oldBag := aggregateSKUQuantities(oldItems)
+	newBag := aggregateSKUQuantities(newItems)
+	unionMap := make(map[string]struct{}, len(oldBag)+len(newBag))
+	for sku := range oldBag {
+		unionMap[sku] = struct{}{}
+	}
+	for sku := range newBag {
+		unionMap[sku] = struct{}{}
+	}
+	if len(unionMap) > 0 {
+		skus := make([]string, 0, len(unionMap))
+		for sku := range unionMap {
+			skus = append(skus, sku)
+		}
+		sort.Strings(skus)
+		keySets := make([]spanner.KeySet, 0, len(skus))
+		for _, sku := range skus {
+			keySets = append(keySets, spanner.Key{supplierID, warehouseID, sku})
+		}
+		type invSnap struct{ qoh, qr int64 }
+		invBySKU := make(map[string]invSnap, len(skus))
+		invIter := txn.Read(ctx, "SupplierInventoryV2", spanner.KeySets(keySets...), []string{"ProductId", "QuantityOnHand", "QuantityReserved"})
+		defer invIter.Stop()
+		for {
+			row, err := invIter.Next()
+			if err == iterator.Done {
+				break
+			}
+			if err != nil {
+				return fmt.Errorf("read inventory batch: %w", err)
+			}
+			var sku string
+			var qoh, qr int64
+			if err := row.Columns(&sku, &qoh, &qr); err != nil {
+				return fmt.Errorf("decode inventory columns: %w", err)
+			}
+			invBySKU[sku] = invSnap{qoh: qoh, qr: qr}
+		}
+		var bagMuts []*spanner.Mutation
+		for _, sku := range skus {
+			oldQ := oldBag[sku]
+			newQ := newBag[sku]
+			snap, ok := invBySKU[sku]
+			if !ok {
+				if newQ > 0 {
+					return fmt.Errorf("%w: sku %s not found in warehouse %s", ErrInventoryExhausted, sku, warehouseID)
+				}
+				continue
+			}
+			effectiveQR := snap.qr - oldQ
+			if effectiveQR < 0 {
+				effectiveQR = 0
+			}
+			if newQ > 0 && snap.qoh-effectiveQR < newQ {
+				return fmt.Errorf("%w: sku %s has %d available, requested %d", ErrInventoryExhausted, sku, snap.qoh-effectiveQR, newQ)
+			}
+			bagMuts = append(bagMuts, spanner.UpdateMap("SupplierInventoryV2", map[string]any{
+				"SupplierId":       supplierID,
+				"WarehouseId":      warehouseID,
+				"ProductId":        sku,
+				"QuantityReserved": effectiveQR + newQ,
+				"UpdatedAt":        spanner.CommitTimestamp,
+			}))
+		}
+		if len(bagMuts) > 0 {
+			if err := txn.BufferWrite(bagMuts); err != nil {
+				return fmt.Errorf("buffer negotiation inventory update: %w", err)
+			}
+		}
+	}
+
+	if orderID == "" {
+		return nil
+	}
+	oldLots, err := loadOrderLotReservationsMapInTxn(ctx, txn, orderID)
+	if err != nil {
+		return err
+	}
+	if !stocklots.EffectiveLots(ctx, warehouseID, supplierID) && len(oldLots) == 0 {
+		return nil
+	}
+	lotReservedDelta := make(map[string]int64, len(oldLots))
+	var muts []*spanner.Mutation
+	if len(oldLots) > 0 {
+		oldLotIDs := sortedMapKeys(oldLots)
+		existingReserved, err := readStockLotsReservedInTxn(ctx, txn, oldLotIDs)
+		if err != nil {
+			return err
+		}
+		for _, lid := range oldLotIDs {
+			lotReservedDelta[lid] = existingReserved[lid] - oldLots[lid]
+			if lotReservedDelta[lid] < 0 {
+				lotReservedDelta[lid] = 0
+			}
+			muts = append(muts, spanner.Delete("OrderLotReservations", spanner.Key{orderID, lid}))
+		}
+	}
+	if stocklots.EffectiveLots(ctx, warehouseID, supplierID) && len(newBag) > 0 {
+		newSKUs := sortedMapKeys(newBag)
+		stmt := spanner.Statement{
+			SQL: `SELECT ProductId, LotId, QuantityOnHand, QuantityReserved
+			      FROM StockLots
+			      WHERE WarehouseId = @w AND ProductId IN UNNEST(@skus) AND Status = 'AVAILABLE'
+			      ORDER BY ProductId ASC, ExpiryDate ASC, ReceivedAt ASC`,
+			Params: map[string]any{"w": warehouseID, "skus": newSKUs},
+		}
+		iter := txn.Query(ctx, stmt)
+		defer iter.Stop()
+		remaining := make(map[string]int64, len(newBag))
+		for k, v := range newBag {
+			remaining[k] = v
+		}
+		for {
+			row, err := iter.Next()
+			if err == iterator.Done {
+				break
+			}
+			if err != nil {
+				return fmt.Errorf("read lots for negotiation FEFO: %w", err)
+			}
+			var sku, lotID string
+			var lqoh, lqr int64
+			if err := row.Columns(&sku, &lotID, &lqoh, &lqr); err != nil {
+				return fmt.Errorf("decode lot for negotiation FEFO: %w", err)
+			}
+			rem := remaining[sku]
+			if rem <= 0 {
+				continue
+			}
+			effectiveQR := lqr
+			if updatedQR, ok := lotReservedDelta[lotID]; ok {
+				effectiveQR = updatedQR
+			}
+			avail := lqoh - effectiveQR
+			if avail <= 0 {
+				continue
+			}
+			take := avail
+			if rem < take {
+				take = rem
+			}
+			remaining[sku] = rem - take
+			lotReservedDelta[lotID] = effectiveQR + take
+			muts = append(muts, spanner.InsertOrUpdateMap("OrderLotReservations", map[string]any{
+				"OrderId":  orderID,
+				"LotId":    lotID,
+				"Quantity": take,
+			}))
+		}
+		for _, sku := range newSKUs {
+			if rem := remaining[sku]; rem > 0 {
+				return fmt.Errorf("%w: sku %s short by %d on lots", ErrInventoryExhausted, sku, rem)
+			}
+		}
+	}
+	for _, lid := range sortedMapKeys(lotReservedDelta) {
+		muts = append(muts, spanner.UpdateMap("StockLots", map[string]any{
+			"LotId":            lid,
+			"QuantityReserved": lotReservedDelta[lid],
+			"UpdatedAt":        spanner.CommitTimestamp,
+		}))
+	}
+	if len(muts) > 0 {
+		if err := txn.BufferWrite(muts); err != nil {
+			return fmt.Errorf("buffer negotiation lot mutations: %w", err)
+		}
+	}
+	if len(oldLots) > 0 {
+		ev := buildInventoryLotReleasedEvent(orderID, supplierID, warehouseID, oldLots, time.Now().UTC())
+		if len(ev.ReleasedLots) > 0 {
+			buf := outbox.NewSpannerTxnBuffer(txn)
+			if err := outbox.EmitJSON(ctx, buf, events.AggregateOrder, orderID, events.TopicMain, ev); err != nil {
+				return fmt.Errorf("emit inventory lot released event: %w", err)
+			}
+			if err := buf.Flush(ctx); err != nil {
+				return fmt.Errorf("flush inventory lot released outbox: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
 func stockReservationMarkerMutation(orderID string) *spanner.Mutation {
 	orderID = strings.TrimSpace(orderID)
 	if orderID == "" {

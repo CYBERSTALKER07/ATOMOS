@@ -38,6 +38,13 @@ func (s FeeSchedule) MonthlyFee(orderCount, gmvMinor int64) int64 {
 	return s.PerOrderMinor*orderCount + gmvMinor*s.GmvBps/10000 + s.MonthlySubscriptionMinor
 }
 
+// MonthlyPlatformFee computes the monthly platform fee excluding GMV commission
+// (per-order fee + monthly subscription), used when GMV bps is already collected
+// via settlement commission.
+func (s FeeSchedule) MonthlyPlatformFee(orderCount int64) int64 {
+	return s.PerOrderMinor*orderCount + s.MonthlySubscriptionMinor
+}
+
 // FeeScheduleResolver loads schedules from Spanner.
 type FeeScheduleResolver struct {
 	client *spanner.Client

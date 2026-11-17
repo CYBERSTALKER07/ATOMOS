@@ -11,6 +11,7 @@ var lotsEnabled atomic.Bool
 var pickWavesEnabled atomic.Bool
 var cycleCountsEnabled atomic.Bool
 var pickSShapeEnabled atomic.Bool
+var coldChainEnabled atomic.Bool
 var sealSoftWarnEnabled atomic.Bool
 var loadLedgerEnabled atomic.Bool
 var laborCapacityEnforce atomic.Bool
@@ -96,6 +97,17 @@ func EffectiveCycleCounts(ctx context.Context, warehouseID, supplierID string) b
 	return effectiveFlag(ctx, "WMS_CYCLE_COUNTS_ENABLED", false, "SUPPLIER", supplierID)
 }
 
+// EffectiveColdChain reports cold-chain telemetry & seal gate (WMS_COLD_CHAIN_ENABLED).
+func EffectiveColdChain(ctx context.Context, warehouseID, supplierID string) bool {
+	if ColdChainEnabled() {
+		return true
+	}
+	if warehouseID != "" && effectiveFlag(ctx, "WMS_COLD_CHAIN_ENABLED", false, "WAREHOUSE", warehouseID) {
+		return true
+	}
+	return effectiveFlag(ctx, "WMS_COLD_CHAIN_ENABLED", false, "SUPPLIER", supplierID)
+}
+
 // EffectiveLoadLedger reports durable payload load ledger (G2.B).
 func EffectiveLoadLedger(ctx context.Context, warehouseID, supplierID string) bool {
 	if LoadLedgerEnabled() {
@@ -147,6 +159,12 @@ func SetSealSoftWarnEnabled(v bool) { sealSoftWarnEnabled.Store(v) }
 
 // SealSoftWarnEnabled reports soft-warn seal mode.
 func SealSoftWarnEnabled() bool { return sealSoftWarnEnabled.Load() }
+
+// SetColdChainEnabled toggles cold-chain temperature telemetry and baseline seal gate (WMS_COLD_CHAIN_ENABLED).
+func SetColdChainEnabled(v bool) { coldChainEnabled.Store(v) }
+
+// ColdChainEnabled reports process/env cold-chain enforcement.
+func ColdChainEnabled() bool { return coldChainEnabled.Load() }
 
 // SetLoadLedgerEnabled toggles durable load ledger seal gate (PAYLOAD_LOAD_LEDGER_ENABLED).
 func SetLoadLedgerEnabled(v bool) { loadLedgerEnabled.Store(v) }

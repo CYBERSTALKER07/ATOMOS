@@ -2,13 +2,18 @@
 
 import { usePortalT } from "@/lib/i18n";
 import React, { useState, useEffect, useMemo } from "react";
+import dynamic from "next/dynamic";
 import {
-  HexagonalControlTowerMap,
   LiveEKGNetworkGraph,
   type NetworkNode,
   type NetworkLink,
   GlassmorphismPanel,
 } from "@/components/ui";
+
+const HexagonalControlTowerMap = dynamic(
+  () => import("@/components/ui/HexagonalControlTowerMap").then((m) => m.HexagonalControlTowerMap),
+  { ssr: false },
+);
 import { useControlTowerTelemetry } from "./use-control-tower-telemetry";
 import {
   LineChart,

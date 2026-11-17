@@ -182,18 +182,19 @@ func PatchBinInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, wareh
 	// are excluded from available-to-promise calculations.
 	if locType == "QUARANTINE" || !active {
 		lotStmt := spanner.Statement{
-			SQL: `SELECT LotId, SupplierId, ProductId FROM StockLots
+			SQL: `SELECT LotId, SupplierId, ProductId, QuantityOnHand, QuantityReserved FROM StockLots
 			      WHERE WarehouseId = @wid AND LocationId = @lid AND Status = 'AVAILABLE'`,
 			Params: map[string]any{"wid": warehouseID, "lid": locationID},
 		}
 		lotIter := txn.Query(ctx, lotStmt)
 		type lotRef struct {
 			LotID, SupplierID, ProductID string
+			QoH, QR                      int64
 		}
 		var affected []lotRef
 		if err := lotIter.Do(func(row *spanner.Row) error {
 			var lr lotRef
-			if err := row.Columns(&lr.LotID, &lr.SupplierID, &lr.ProductID); err != nil {
+			if err := row.Columns(&lr.LotID, &lr.SupplierID, &lr.ProductID, &lr.QoH, &lr.QR); err != nil {
 				return err
 			}
 			affected = append(affected, lr)
@@ -201,7 +202,7 @@ func PatchBinInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, wareh
 		}); err != nil {
 			return nil, fmt.Errorf("query child lots for quarantine: %w", err)
 		}
-		rollupKeys := map[string]lotRef{}
+		overridesByKey := map[string]map[string]StockLotSnapshot{}
 		for _, lr := range affected {
 			if err := txn.BufferWrite([]*spanner.Mutation{spanner.UpdateMap("StockLots", map[string]any{
 				"LotId":     lr.LotID,
@@ -211,10 +212,21 @@ func PatchBinInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, wareh
 				return nil, err
 			}
 			key := lr.SupplierID + "|" + lr.ProductID
-			rollupKeys[key] = lr
+			if _, ok := overridesByKey[key]; !ok {
+				overridesByKey[key] = make(map[string]StockLotSnapshot)
+			}
+			overridesByKey[key][lr.LotID] = StockLotSnapshot{
+				SupplierID:       lr.SupplierID,
+				WarehouseID:      warehouseID,
+				ProductID:        lr.ProductID,
+				QuantityOnHand:   lr.QoH,
+				QuantityReserved: lr.QR,
+				Status:           "QUARANTINED",
+			}
 		}
-		for _, lr := range rollupKeys {
-			if err := RollupInventoryV2InTxn(ctx, txn, lr.SupplierID, warehouseID, lr.ProductID); err != nil {
+		for key, ovs := range overridesByKey {
+			parts := strings.Split(key, "|")
+			if err := RollupInventoryV2WithLotOverridesInTxn(ctx, txn, parts[0], warehouseID, parts[1], ovs); err != nil {
 				return nil, fmt.Errorf("rollup after quarantine: %w", err)
 			}
 		}

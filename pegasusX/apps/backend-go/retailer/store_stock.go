@@ -219,6 +219,9 @@ func (s *Service) HandleStockReceiveSession(w http.ResponseWriter, r *http.Reque
 		writeRetailerIdentityError(w, err)
 		return
 	}
+	if !s.enforceMandateReceive(w, r, orgID, claims) {
+		return
+	}
 	body, okBody := readLimitedBody(w, r, 64*1024)
 	if !okBody {
 		return
@@ -366,6 +369,9 @@ func (s *Service) HandleStockReceiveConfirm(w http.ResponseWriter, r *http.Reque
 	orgID, err := retailerIDFromRequest(r)
 	if err != nil {
 		writeRetailerIdentityError(w, err)
+		return
+	}
+	if !s.enforceMandateReceive(w, r, orgID, claims) {
 		return
 	}
 	sessionID := strings.TrimSpace(chi.URLParam(r, "sessionID"))

@@ -81,15 +81,24 @@ data class ShopClosedAlert(
     val options: List<String>,
 )
 
+interface CartRealtimeEventSource {
+    val events: SharedFlow<RetailerWSMessage>
+    fun connect()
+}
+
 @Singleton
 class RetailerWebSocket @Inject constructor(
     private val tokenManager: TokenManager,
     private val json: Json,
-) {
+) : CartRealtimeEventSource {
     private var socket: WebSocket? = null
     private val sharedClient: OkHttpClient = OkHttpClient.Builder()
         .pingInterval(25, TimeUnit.SECONDS)
         .readTimeout(0, TimeUnit.MILLISECONDS)
+        .apply {
+            configuredCertificatePinner(BuildConfig.BASE_URL, BuildConfig.API_TLS_SPKI_PINS)
+                ?.let { certificatePinner(it) }
+        }
         .build()
     private val reconnectExecutor = Executors.newSingleThreadScheduledExecutor()
     private var reconnectTask: ScheduledFuture<*>? = null
@@ -98,7 +107,7 @@ class RetailerWebSocket @Inject constructor(
     @Volatile private var lastEventId: String? = null
 
     private val _events = MutableSharedFlow<RetailerWSMessage>(extraBufferCapacity = 32)
-    val events: SharedFlow<RetailerWSMessage> = _events.asSharedFlow()
+    override val events: SharedFlow<RetailerWSMessage> = _events.asSharedFlow()
 
     private val _reconnects = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val reconnects: SharedFlow<Unit> = _reconnects.asSharedFlow()
@@ -108,7 +117,7 @@ class RetailerWebSocket @Inject constructor(
         private const val MAX_DELAY_MS = 60_000L
     }
 
-    fun connect() {
+    override fun connect() {
         if (socket != null) return
         reconnectTask?.cancel(false)
         reconnectTask = null

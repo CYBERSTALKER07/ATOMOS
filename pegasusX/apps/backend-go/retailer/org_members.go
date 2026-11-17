@@ -376,6 +376,7 @@ func (s *Service) handleOrgMemberDeactivate(w http.ResponseWriter, r *http.Reque
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "deactivate_failed"})
 		return
 	}
+	_ = auth.GetRevocationStore().RevokeUser(r.Context(), target.UserID, 24*time.Hour)
 	resp, err := s.loadOrgMembersResponse(r.Context(), orgID)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "load_retailer_org_members_failed"})

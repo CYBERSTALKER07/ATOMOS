@@ -64,7 +64,7 @@ sequenceDiagram
     %% Phase 1: Morning Cash Desk Initialization
     Note over Cashier,Spanner: Phase 1: Morning Till Float Setup & Station Binding
     Cashier->>Station: Login (MFA Step-Up + Station HW Fingerprint)
-    Station->>Foundry: POST /v1/cashrecon/shift/open (OpeningFloatMinor)
+    Station->>Foundry: POST /v1/foundry/cashier/sessions (OpeningFloatMinor)
     Foundry->>Spanner: Insert DepotVaultLedgerEntries (TILL_FLOAT_OPEN)
     Spanner-->>Station: Shift Initialized (Session ID: CASH-SESS-901)
 

@@ -37,7 +37,7 @@ func (r *SpannerRepository) ListActivePlaybooks(ctx context.Context, supplierID 
 		      ORDER BY Priority DESC`,
 		Params: map[string]any{"sid": supplierID},
 	}
-	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
+	iter := r.client.Single().WithTimestampBound(spanner.MaxStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	return scanPlaybooks(iter)
 }
@@ -204,10 +204,10 @@ func (r *SpannerRepository) ListOpenExceptions(ctx context.Context, supplierID s
 	if err != nil {
 		return nil, err
 	}
-	out := append(exceptions, settlement...)
-	out = append(out, fiscal...)
+	out := make([]Exception, 0, len(exceptions)+len(settlement)+len(fiscal)+len(shopClosed))
+	out = append(append(append(out, exceptions...), settlement...), fiscal...)
 	out = append(out, shopClosed...)
-	return out, nil
+	return r.appendReconciliationBreakExceptions(ctx, supplierID, out)
 }
 
 func (r *SpannerRepository) listTicketExceptions(ctx context.Context, supplierID string) ([]Exception, error) {
@@ -217,10 +217,10 @@ func (r *SpannerRepository) listTicketExceptions(ctx context.Context, supplierID
 		      FROM ExceptionTickets et
 		      INNER JOIN Orders o ON et.OrderId = o.OrderId
 		      WHERE o.SupplierId = @sid
-		        AND et.Status IN ('OPEN', 'ACKNOWLEDGED', 'IN_PROGRESS')`,
+		        AND et.Status IN ('OPEN', 'ACKNOWLEDGED', 'IN_PROGRESS') AND NOT STARTS_WITH(et.Type, 'RECON_')`,
 		Params: map[string]any{"sid": supplierID},
 	}
-	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
+	iter := r.client.Single().WithTimestampBound(spanner.MaxStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	var out []Exception
 	for {
@@ -269,7 +269,7 @@ func (r *SpannerRepository) listSettlementExceptions(ctx context.Context, suppli
 		      WHERE o.SupplierId = @sid AND e.Status = 'OPEN'`,
 		Params: map[string]any{"sid": supplierID},
 	}
-	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
+	iter := r.client.Single().WithTimestampBound(spanner.MaxStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	var out []Exception
 	for {
@@ -309,7 +309,7 @@ func (r *SpannerRepository) listFiscalFailedExceptions(ctx context.Context, supp
 		        AND o.Status NOT IN ('CANCELLED', 'COMPLETED')`,
 		Params: map[string]any{"sid": supplierID},
 	}
-	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
+	iter := r.client.Single().WithTimestampBound(spanner.MaxStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	var out []Exception
 	for {
@@ -351,7 +351,7 @@ func (r *SpannerRepository) listShopClosedResolvedExceptions(ctx context.Context
 		        AND o.ShopClosedResolution = 'RETURNED'`,
 		Params: map[string]any{"sid": supplierID},
 	}
-	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
+	iter := r.client.Single().WithTimestampBound(spanner.MaxStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	var out []Exception
 	for {
@@ -390,15 +390,15 @@ func (r *SpannerRepository) ListSupplierIDsWithOpenExceptions(ctx context.Contex
 		SQL: `SELECT DISTINCT o.SupplierId FROM ExceptionTickets et
 		      INNER JOIN Orders o ON et.OrderId = o.OrderId
 		      WHERE et.Status IN ('OPEN', 'ACKNOWLEDGED', 'IN_PROGRESS')
-		      UNION
+		      UNION DISTINCT
 		      SELECT DISTINCT o.SupplierId FROM OrderSettlementExceptions e
 		      INNER JOIN Orders o ON e.OrderId = o.OrderId WHERE e.Status = 'OPEN'
-		      UNION
+		      UNION DISTINCT
 		      SELECT DISTINCT SupplierId FROM Orders WHERE FiscalStatus = 'FISCAL_FAILED' AND Status NOT IN ('CANCELLED', 'COMPLETED')
-		      UNION
-		      SELECT DISTINCT SupplierId FROM Orders WHERE ShopClosedResolution = 'RETURNED'`,
+		      UNION DISTINCT
+		      SELECT DISTINCT SupplierId FROM Orders WHERE ShopClosedResolution = 'RETURNED' UNION DISTINCT SELECT DISTINCT EntityId FROM ReconciliationBreaks WHERE Status IN ('OPEN', 'ACKNOWLEDGED')`,
 	}
-	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
+	iter := r.client.Single().WithTimestampBound(spanner.MaxStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	var ids []string
 	for {
@@ -445,13 +445,13 @@ func (r *SpannerRepository) CreateRun(ctx context.Context, run PlaybookRun) erro
 		resultsRaw, _ = json.Marshal(run.ActionsResult)
 	}
 	row := map[string]any{
-		"RunId":        run.RunID,
-		"PlaybookId":   run.PlaybookID,
-		"ExceptionId":  run.ExceptionID,
-		"SupplierId":   run.SupplierID,
-		"Mode":         run.Mode,
-		"Status":       run.Status,
-		"CreatedAt":    spanner.CommitTimestamp,
+		"RunId":       run.RunID,
+		"PlaybookId":  run.PlaybookID,
+		"ExceptionId": run.ExceptionID,
+		"SupplierId":  run.SupplierID,
+		"Mode":        run.Mode,
+		"Status":      run.Status,
+		"CreatedAt":   spanner.CommitTimestamp,
 	}
 	if len(resultsRaw) > 0 {
 		row["ActionsResultJson"] = spanner.NullJSON{Value: jsonRawValue(resultsRaw), Valid: true}
@@ -610,7 +610,7 @@ func (r *SpannerRepository) ListRuns(ctx context.Context, supplierID, status str
 		params["status"] = status
 	}
 	sql += " ORDER BY r.CreatedAt DESC LIMIT @limit"
-	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{SQL: sql, Params: params})
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, spanner.Statement{SQL: sql, Params: params})
 	defer iter.Stop()
 	var runs []PlaybookRun
 	for {
@@ -649,17 +649,17 @@ func (r *SpannerRepository) ListRuns(ctx context.Context, supplierID, status str
 	return runs, nil
 }
 
-func (r *SpannerRepository) ListRunsForException(ctx context.Context, exceptionID string) ([]PlaybookRun, error) {
+func (r *SpannerRepository) ListRunsForException(ctx context.Context, supplierID, exceptionID string) ([]PlaybookRun, error) {
 	stmt := spanner.Statement{
 		SQL: `SELECT r.RunId, r.PlaybookId, r.ExceptionId, r.SupplierId, r.Mode, r.Status,
 		             r.ActionsResultJson, r.CreatedAt, r.ExecutedAt, r.ExecutedBy, p.Name
 		      FROM ControlTowerPlaybookRuns r
 		      LEFT JOIN ControlTowerPlaybooks p ON r.PlaybookId = p.PlaybookId
-		      WHERE r.ExceptionId = @eid
+		      WHERE r.ExceptionId = @eid AND r.SupplierId = @sid
 		      ORDER BY r.CreatedAt DESC`,
-		Params: map[string]any{"eid": exceptionID},
+		Params: map[string]any{"eid": exceptionID, "sid": supplierID},
 	}
-	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
+	iter := r.client.Single().WithTimestampBound(spanner.MaxStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	var runs []PlaybookRun
 	for {
@@ -846,7 +846,7 @@ func (r *SpannerRepository) RecordIntervention(ctx context.Context, manifestID, 
 			"Status":         "APPLIED",
 			"CreatedAt":      spanner.CommitTimestamp,
 		})
-		
+
 		// TODO: Phase 4 Financial Draft Compensations could be hooked here.
 		// For now, we also emit an OutboxEvent so the driver gets the WebSocket broadcast.
 		outboxMut := spanner.InsertOrUpdateMap("OutboxEvents", outbox.EventRowMap(outbox.Event{
@@ -857,7 +857,7 @@ func (r *SpannerRepository) RecordIntervention(ctx context.Context, manifestID, 
 			Payload:       []byte(`{"manifest_id":"` + manifestID + `","reason":"` + reasonCode + `"}`),
 			SupplierID:    supplierID,
 		}))
-		
+
 		return txn.BufferWrite([]*spanner.Mutation{mut, outboxMut})
 	})
 	return err

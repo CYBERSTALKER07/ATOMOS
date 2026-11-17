@@ -7,6 +7,7 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
+import com.pegasusx.retailer.BuildConfig
 import com.pegasusx.retailer.R
 import com.pegasusx.retailer.data.api.PegasusApi
 import com.pegasusx.retailer.data.model.moneyCurrency
@@ -28,7 +29,9 @@ class PegasusFirebaseMessagingService : FirebaseMessagingService() {
 
     override fun onNewToken(token: String) {
         super.onNewToken(token)
-        Log.d("FCM", "New token: $token")
+        if (BuildConfig.DEBUG) {
+            Log.d("FCM", "Refreshed device push token (length=${token.length})")
+        }
         scope.launch {
             try {
                 api.registerDeviceToken(mapOf("token" to token, "platform" to "android"))
@@ -41,7 +44,9 @@ class PegasusFirebaseMessagingService : FirebaseMessagingService() {
     override fun onMessageReceived(message: RemoteMessage) {
         super.onMessageReceived(message)
         val data = message.data
-        Log.d("FCM", "Data message: $data")
+        if (BuildConfig.DEBUG) {
+            Log.d("FCM", "Data message keys=${data.keys}")
+        }
 
         val type = data["type"] ?: return
         val title = data["title"] ?: typeTitle(type)

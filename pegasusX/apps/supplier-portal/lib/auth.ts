@@ -71,11 +71,6 @@ export function persistSession(token: string, refreshToken?: string) {
     if (refreshToken) {
       document.cookie = `${SUPPLIER_REFRESH_COOKIE}=${encodeURIComponent(refreshToken)}; path=/; max-age=604800; SameSite=Strict${secureFlag}`;
     }
-    try {
-      localStorage.setItem(SUPPLIER_JWT_STORAGE, token);
-    } catch {
-      // ignore quota errors on constrained devices
-    }
   }
   if (isTauri()) {
     void storeToken(token);
@@ -99,17 +94,7 @@ export function clearSession() {
 }
 
 export function getSupplierToken(): string {
-  const cookie = readTokenFromCookie();
-  if (cookie) return cookie;
-  if (typeof window !== "undefined") {
-    try {
-      const stored = localStorage.getItem(SUPPLIER_JWT_STORAGE);
-      if (stored) return stored;
-    } catch {
-      // ignore
-    }
-  }
-  return "";
+  return readTokenFromCookie();
 }
 
 export async function resolveSupplierToken(): Promise<string> {
@@ -161,21 +146,38 @@ export async function supplierFetch(path: string, init?: RequestInit): Promise<R
   const token = await resolveSupplierToken();
   const base = supplierApiBaseUrl();
   const url = path.startsWith("http") ? path : `${base}${path.startsWith("/") ? path : `/${path}`}`;
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    ...(init?.headers as Record<string, string>),
-  };
+  const hdrs = new Headers(init?.headers);
+  const isFormData = typeof FormData !== "undefined" && init?.body instanceof FormData;
+  if (!hdrs.has("Content-Type") && !isFormData) {
+    hdrs.set("Content-Type", "application/json");
+  }
   const method = (init?.method || "GET").toUpperCase();
   if (["POST", "PUT", "PATCH", "DELETE"].includes(method)) {
-    if (!headers["Idempotency-Key"] && !headers["idempotency-key"] && !headers["X-Idempotency-Key"] && !headers["x-idempotency-key"]) {
-      headers["Idempotency-Key"] = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2);
+    if (!hdrs.has("Idempotency-Key") && !hdrs.has("X-Idempotency-Key")) {
+      hdrs.set(
+        "Idempotency-Key",
+        typeof crypto !== "undefined" && crypto.randomUUID
+          ? crypto.randomUUID()
+          : Math.random().toString(36).substring(2),
+      );
     }
   }
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
+  if (token && !hdrs.has("Authorization")) {
+    hdrs.set("Authorization", `Bearer ${token}`);
   }
+  const headers = Object.fromEntries(hdrs.entries());
   const controller = new AbortController();
-  const timeout = window.setTimeout(() => controller.abort(), 30_000);
+  const externalSignal = init?.signal;
+  const onExternalAbort = () => controller.abort();
+  if (externalSignal) {
+    if (externalSignal.aborted) {
+      controller.abort();
+    } else {
+      externalSignal.addEventListener("abort", onExternalAbort, { once: true });
+    }
+  }
+  const timeoutMs = /\/(?:migrations|imports)\//.test(url) ? 300_000 : 30_000;
+  const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
   let res: Response;
   try {
     res = await fetch(url, {
@@ -185,13 +187,13 @@ export async function supplierFetch(path: string, init?: RequestInit): Promise<R
       signal: controller.signal,
     });
   } catch (err) {
-    window.clearTimeout(timeout);
     if (err instanceof DOMException && err.name === "AbortError") {
       throw new Error(`Request timed out contacting ${base}`);
     }
     throw new Error(`Cannot reach API at ${base}. Is the backend running on port 8180?`);
   } finally {
     window.clearTimeout(timeout);
+    externalSignal?.removeEventListener("abort", onExternalAbort);
   }
 
   if (res.status === 401) {
@@ -237,6 +239,9 @@ function toApiPath(input: RequestInfo | URL): string {
   const base = supplierApiBaseUrl();
   if (raw.startsWith(base)) {
     return raw.slice(base.length);
+  }
+  if (raw.startsWith("/api/")) {
+    return raw.slice("/api".length);
   }
   try {
     const url = new URL(raw, base);

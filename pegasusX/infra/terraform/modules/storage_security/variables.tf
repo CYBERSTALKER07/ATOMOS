@@ -50,6 +50,28 @@ variable "tf_state_bucket_name" {
   default     = "pegasusx-terraform-state"
 }
 
+variable "worm_audit_bucket_name" {
+  description = "The name of the dedicated WORM GCS bucket for audit hash-chain anchors and period-close snapshots."
+  type        = string
+  default     = "pegasusx-prod-worm-audit"
+}
+
+variable "worm_retention_period_seconds" {
+  description = "Retention period in seconds for the WORM audit & period-close bucket (minimum 30 days = 2592000s; default 7 years = 220752000s)."
+  type        = number
+  default     = 220752000
+  validation {
+    condition     = var.worm_retention_period_seconds >= 2592000
+    error_message = "worm_retention_period_seconds must be at least 2592000 (30 days) for WORM audit compliance."
+  }
+}
+
+variable "worm_retention_locked" {
+  description = "Whether the WORM bucket retention policy is irreversibly locked. Enable true only after production bucket verification."
+  type        = bool
+  default     = false
+}
+
 variable "cors_origins" {
   description = "List of allowed CORS origins for media direct client uploads."
   type        = list(string)

@@ -20,7 +20,7 @@ type Repository interface {
 	GetRun(ctx context.Context, runID string) (PlaybookRun, error)
 	UpdateRun(ctx context.Context, run PlaybookRun) error
 	ListRuns(ctx context.Context, supplierID, status string, limit int) ([]PlaybookRun, error)
-	ListRunsForException(ctx context.Context, exceptionID string) ([]PlaybookRun, error)
+	ListRunsForException(ctx context.Context, supplierID, exceptionID string) ([]PlaybookRun, error)
 
 	UpdateExceptionStatus(ctx context.Context, exceptionID, status string) error
 	UpdateExceptionAssignee(ctx context.Context, exceptionID, role string) error

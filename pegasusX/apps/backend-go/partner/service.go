@@ -24,6 +24,7 @@ type Service struct {
 	sftp           SftpConfigRepository
 	as2            As2ConfigRepository
 	coa            CoaRepository
+	onecPostings   OnecPostingRepository
 	ediDocs        EdiDocumentRepository
 	ediProfiles    EdiProfileRepository
 	ediOut         *EdiOutboundWorker
@@ -48,9 +49,26 @@ func NewService(keys KeyRepository, webhooks WebhookRepository, orders *order.Se
 	}
 	return &Service{
 		keys: keys, webhooks: webhooks, orders: orders, catalog: cat, log: log,
-		ediProfiles: NewMemoryEdiProfiles(),
-		now:         func() time.Time { return time.Now().UTC() },
+		ediProfiles:  NewMemoryEdiProfiles(),
+		onecPostings: NewMemoryOnecPostingRepository(),
+		now:          func() time.Time { return time.Now().UTC() },
 	}
+}
+
+// SetOnecPostings wires the durable PartnerOnecPostings repository.
+func (s *Service) SetOnecPostings(repo OnecPostingRepository) {
+	if s == nil || repo == nil {
+		return
+	}
+	s.onecPostings = repo
+}
+
+// OnecPostings returns the configured PartnerOnecPostings repository.
+func (s *Service) OnecPostings() OnecPostingRepository {
+	if s == nil {
+		return nil
+	}
+	return s.onecPostings
 }
 
 // SetEdiProfiles wires G5.A tenant EDI profile repository.
@@ -483,6 +501,11 @@ func (s *Service) ReplayDeadLetter(ctx context.Context, p Principal, attemptID s
 
 // CreateExportJob enqueues an async partner export.
 func (s *Service) CreateExportJob(ctx context.Context, p Principal, resource, format string, from, to *time.Time) (ExportJob, error) {
+	return s.CreateExportJobWithOptions(ctx, p, resource, format, from, to, false)
+}
+
+// CreateExportJobWithOptions enqueues an async partner export with optional unlimited window/row pagination.
+func (s *Service) CreateExportJobWithOptions(ctx context.Context, p Principal, resource, format string, from, to *time.Time, unlimited bool) (ExportJob, error) {
 	if !PartnerExportsEnabled() {
 		return ExportJob{}, fmt.Errorf("exports_disabled")
 	}
@@ -499,8 +522,18 @@ func (s *Service) CreateExportJob(ctx context.Context, p Principal, resource, fo
 	if format == "" {
 		format = ExportFormatCSV
 	}
-	if format != ExportFormatCSV && format != ExportFormatJSON && format != ExportFormatXML {
+	if format != ExportFormatCSV && format != ExportFormatJSON && format != ExportFormatXML && format != ExportFormatXLSX {
 		return ExportJob{}, fmt.Errorf("invalid_format")
+	}
+	if unlimited {
+		if from == nil {
+			t0 := time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC)
+			from = &t0
+		}
+		if to == nil {
+			now := s.now().UTC()
+			to = &now
+		}
 	}
 	j := ExportJob{
 		JobID:      uuid.NewString(),
@@ -509,6 +542,7 @@ func (s *Service) CreateExportJob(ctx context.Context, p Principal, resource, fo
 		Resource:   resource,
 		Format:     format,
 		Status:     ExportStatusPending,
+		Unlimited:  unlimited,
 		FromDate:   from,
 		ToDate:     to,
 		CreatedAt:  s.now(),
@@ -550,6 +584,10 @@ func (s *Service) UpsertSftpConfig(ctx context.Context, tenantType, tenantID str
 	}
 	cfg.TenantType = tenantType
 	cfg.TenantID = tenantID
+	cfg.Host = strings.TrimSpace(cfg.Host)
+	cfg.Username = strings.TrimSpace(cfg.Username)
+	cfg.SecretRef = strings.TrimSpace(cfg.SecretRef)
+	cfg.HostKeySHA256 = strings.TrimSpace(cfg.HostKeySHA256)
 	if cfg.Port <= 0 {
 		cfg.Port = 22
 	}
@@ -557,12 +595,23 @@ func (s *Service) UpsertSftpConfig(ctx context.Context, tenantType, tenantID str
 		cfg.RemoteDir = "/"
 	}
 	// Local EDI-only configs may omit host when PARTNER_EDI_LOCAL_ROOT is set.
-	if strings.TrimSpace(cfg.Host) == "" && partnerEDILocalRoot() == "" {
+	if cfg.Host == "" && partnerEDILocalRoot() == "" {
 		return fmt.Errorf("invalid_sftp_config")
 	}
-	if strings.TrimSpace(cfg.Host) != "" {
-		if strings.TrimSpace(cfg.Username) == "" || strings.TrimSpace(cfg.SecretRef) == "" {
+	if cfg.Host != "" {
+		if cfg.Username == "" || cfg.SecretRef == "" {
 			return fmt.Errorf("invalid_sftp_config")
+		}
+		if err := ValidatePartnerSecretRef(cfg.SecretRef); err != nil {
+			return err
+		}
+		if !strings.EqualFold(cfg.Host, "local") || partnerEDILocalRoot() == "" {
+			if err := ValidateHostNotPrivate(cfg.Host, s.effectiveWebhookURLPolicy()); err != nil {
+				return fmt.Errorf("sftp_host_forbidden: %w", err)
+			}
+			if PartnerSFTPStrictHostKey() && cfg.HostKeySHA256 == "" {
+				return fmt.Errorf("sftp_host_key_required")
+			}
 		}
 	} else {
 		// Placeholder for local-root EDI
@@ -571,12 +620,24 @@ func (s *Service) UpsertSftpConfig(ctx context.Context, tenantType, tenantID str
 		}
 		if cfg.SecretRef == "" {
 			cfg.SecretRef = "local"
+		} else if err := ValidatePartnerSecretRef(cfg.SecretRef); err != nil {
+			return err
 		}
 		cfg.Host = "local"
 	}
 	normalizeSftpDirs(&cfg)
+	if err := ValidateSftpConfigPaths(cfg); err != nil {
+		return err
+	}
 	cfg.IsActive = true
 	return s.sftp.Upsert(ctx, cfg)
+}
+
+func (s *Service) effectiveWebhookURLPolicy() WebhookURLPolicy {
+	if s != nil && s.WebhookURLPolicy != nil {
+		return *s.WebhookURLPolicy
+	}
+	return DefaultWebhookURLPolicy()
 }
 
 // GetSftpConfig returns config without secret material.
@@ -597,11 +658,32 @@ func (s *Service) UpsertAs2Config(ctx context.Context, tenantType, tenantID stri
 	cfg.OurAs2Id = strings.TrimSpace(cfg.OurAs2Id)
 	cfg.PartnerAs2Id = strings.TrimSpace(cfg.PartnerAs2Id)
 	cfg.PartnerURL = strings.TrimSpace(cfg.PartnerURL)
+	cfg.OurCertSecretRef = strings.TrimSpace(cfg.OurCertSecretRef)
+	cfg.OurKeySecretRef = strings.TrimSpace(cfg.OurKeySecretRef)
+	cfg.PartnerCertSecretRef = strings.TrimSpace(cfg.PartnerCertSecretRef)
 	if cfg.OurAs2Id == "" || cfg.PartnerAs2Id == "" {
 		return fmt.Errorf("invalid_as2_config")
 	}
 	if cfg.As2Enabled && cfg.PartnerURL == "" && !PartnerAS2InsecurePlain() {
 		return fmt.Errorf("partner_url_required")
+	}
+	if cfg.PartnerURL != "" {
+		pol := s.effectiveWebhookURLPolicy()
+		if PartnerAS2InsecurePlain() {
+			pol.AllowHTTP = true
+		}
+		if err := ValidateWebhookURL(cfg.PartnerURL, pol); err != nil {
+			return fmt.Errorf("as2_partner_url_forbidden: %w", err)
+		}
+	}
+	for _, ref := range []string{cfg.OurCertSecretRef, cfg.OurKeySecretRef, cfg.PartnerCertSecretRef} {
+		if ref != "" {
+			if err := ValidatePartnerSecretRef(ref); err != nil {
+				return err
+			}
+		} else if cfg.As2Enabled && !PartnerAS2InsecurePlain() {
+			return fmt.Errorf("as2_secret_ref_required")
+		}
 	}
 	return s.as2.Upsert(ctx, cfg)
 }

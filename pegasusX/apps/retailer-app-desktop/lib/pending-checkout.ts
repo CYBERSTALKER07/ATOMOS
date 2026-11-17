@@ -48,7 +48,9 @@ export async function flushPendingCheckouts(): Promise<{ flushed: number; failed
         const code = typeof body?.code === "string" ? body.code : "";
         if (
           res.status === 409 &&
-          (code === "ALL_ITEMS_OUT_OF_STOCK" || code === "PARTIAL_OUT_OF_STOCK_REJECTED")
+          (code === "ALL_ITEMS_OUT_OF_STOCK" ||
+            code === "PARTIAL_OUT_OF_STOCK_REJECTED" ||
+            code === "owner_approval_required")
         ) {
           await removePendingCheckout(entry.id);
           failed += 1;

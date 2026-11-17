@@ -173,6 +173,18 @@ function OrdersPageContent() {
     "PRE_ORDER_EDITED",
     useCallback(() => mutateOrders(), [mutateOrders]),
   );
+  useWsEvent(
+    "MIGRATION_APPLIED",
+    useCallback(() => mutateOrders(), [mutateOrders]),
+  );
+  useWsEvent(
+    "MIGRATION_ROLLED_BACK",
+    useCallback(() => mutateOrders(), [mutateOrders]),
+  );
+  useWsEvent(
+    "ORDER_CREATED",
+    useCallback(() => mutateOrders(), [mutateOrders]),
+  );
 
   const { data: trackingData, mutate: mutateTracking } = useLiveData<TrackingResponse>(
     selectedId ? "/v1/retailer/tracking" : "",
@@ -795,6 +807,11 @@ function OrdersPageContent() {
                     <span className="md-typescale-label-small font-light uppercase tracking-[0.2em]">
                       {detail.state.replace("_", " ")}
                     </span>
+                    {detail.order_source === "MIGRATION" ? (
+                      <span className="rounded-md bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-700">
+                        {t("retailer_desktop.nasiya_opening.migration_badge")}
+                      </span>
+                    ) : null}
                     <span className="w-1.5 h-1.5 rounded-full bg-[var(--desk-border-strong)]" />
                     <span className="md-typescale-label-small font-mono">
                       {detail.order_id}

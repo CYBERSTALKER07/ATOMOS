@@ -2,7 +2,8 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { UZS_BANKNOTE_DENOMINATIONS, type UZSBanknoteDenomination } from '@pegasusx/types';
-import { formatGroupedInteger, majorIntToMinor, majorIntToMinorBigInt } from '@/lib/money';
+import { majorIntToMinor } from '@/lib/money';
+import { calculateDenominationTotals, formatWholeSomInteger } from '@/lib/cashier-helpers';
 import { Lock, RotateCcw, CheckCircle2, AlertCircle, ShieldAlert } from 'lucide-react';
 
 interface BlindCountDenominationGridProps {
@@ -23,22 +24,11 @@ export function BlindCountDenominationGrid({
     }
     return initial;
   });
-  const [toleranceUZS, setToleranceUZS] = useState<number>(0);
+  const [toleranceSom, setToleranceSom] = useState<number>(0);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const totalCalculated = useMemo(() => {
-    let totalUZS = 0;
-    let totalNotes = 0;
-    for (const [denomStr, count] of Object.entries(counts)) {
-      const denom = Number(denomStr);
-      const safeCount = Math.max(0, count || 0);
-      totalUZS += denom * safeCount;
-      totalNotes += safeCount;
-    }
-    const totalMinor = majorIntToMinor(totalUZS);
-    return { totalUZS, totalMinor, totalNotes };
-  }, [counts]);
+  const totalCalculated = useMemo(() => calculateDenominationTotals(counts), [counts]);
 
   const handleCountChange = (denom: UZSBanknoteDenomination, valStr: string) => {
     const sanitized = valStr.replace(/\D/g, '');
@@ -60,12 +50,12 @@ export function BlindCountDenominationGrid({
     if (e) e.preventDefault();
     setError(null);
     if (totalCalculated.totalMinor <= 0) {
-      setError('Total counted cash must be greater than 0 tiyin');
+      setError("Total counted cash must be greater than 0 so'm");
       return;
     }
     setSubmitting(true);
     try {
-      const toleranceMinor = majorIntToMinor(Math.max(0, Math.floor(toleranceUZS)));
+      const toleranceMinor = majorIntToMinor(Math.max(0, Math.floor(toleranceSom)));
       await onSubmitCount(counts, totalCalculated.totalMinor, toleranceMinor);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Blind count submission failed');
@@ -94,7 +84,7 @@ export function BlindCountDenominationGrid({
       resetMap[note] = 0;
     }
     setCounts(resetMap);
-    setToleranceUZS(0);
+    setToleranceSom(0);
     setError(null);
   };
 
@@ -139,7 +129,7 @@ export function BlindCountDenominationGrid({
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {UZS_BANKNOTE_DENOMINATIONS.map((denom) => {
             const count = counts[denom] || 0;
-            const subtotalUZS = denom * count;
+            const subtotalSom = denom * count;
 
             return (
               <div
@@ -148,10 +138,7 @@ export function BlindCountDenominationGrid({
               >
                 <div className="flex items-center justify-between mb-2">
                   <span className="font-mono text-sm font-bold text-emerald-400">
-                    {denom.toLocaleString()} UZS
-                  </span>
-                  <span className="text-[11px] font-mono text-neutral-500">
-                    {formatGroupedInteger(majorIntToMinorBigInt(denom))} Tiyin
+                    {formatWholeSomInteger(denom)}
                   </span>
                 </div>
 
@@ -162,7 +149,7 @@ export function BlindCountDenominationGrid({
                     disabled={disabled || submitting || count <= 0}
                     className="w-8 h-8 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-neutral-200 disabled:opacity-30 font-bold text-sm flex items-center justify-center transition-colors border border-neutral-800"
                     title="Minus 1 note"
-                    aria-label={`Decrease ${denom} UZS count by 1`}
+                    aria-label={`Decrease ${denom} so'm count by 1`}
                   >
                     -
                   </button>
@@ -174,7 +161,7 @@ export function BlindCountDenominationGrid({
                     placeholder="0"
                     disabled={disabled || submitting}
                     onChange={(e) => handleCountChange(denom, e.target.value)}
-                    aria-label={`${denom} UZS banknote count`}
+                    aria-label={`${denom} so'm banknote count`}
                     className="w-full text-center font-mono text-base font-bold bg-neutral-900 border border-neutral-750 rounded-lg py-1 px-2 text-neutral-100 focus:outline-none focus:border-emerald-500 transition-colors"
                   />
                   <button
@@ -183,7 +170,7 @@ export function BlindCountDenominationGrid({
                     disabled={disabled || submitting}
                     className="w-8 h-8 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-neutral-200 disabled:opacity-30 font-bold text-sm flex items-center justify-center transition-colors border border-neutral-800"
                     title="Plus 1 note"
-                    aria-label={`Increase ${denom} UZS count by 1`}
+                    aria-label={`Increase ${denom} so'm count by 1`}
                   >
                     +
                   </button>
@@ -197,7 +184,7 @@ export function BlindCountDenominationGrid({
                     disabled={disabled || submitting}
                     className="px-2 py-0.5 text-[10px] font-mono font-medium rounded bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-neutral-200 border border-neutral-800 transition-colors"
                     title="Add 1 strap (10 notes)"
-                    aria-label={`Add 10 notes of ${denom} UZS`}
+                    aria-label={`Add 10 notes of ${denom} so'm`}
                   >
                     +10
                   </button>
@@ -207,7 +194,7 @@ export function BlindCountDenominationGrid({
                     disabled={disabled || submitting}
                     className="px-2 py-0.5 text-[10px] font-mono font-medium rounded bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-neutral-200 border border-neutral-800 transition-colors"
                     title="Add half-bundle (50 notes)"
-                    aria-label={`Add 50 notes of ${denom} UZS`}
+                    aria-label={`Add 50 notes of ${denom} so'm`}
                   >
                     +50
                   </button>
@@ -217,7 +204,7 @@ export function BlindCountDenominationGrid({
                     disabled={disabled || submitting}
                     className="px-2 py-0.5 text-[10px] font-mono font-medium rounded bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-neutral-200 border border-neutral-800 transition-colors"
                     title="Add full strap bundle (100 notes)"
-                    aria-label={`Add 100 notes of ${denom} UZS`}
+                    aria-label={`Add 100 notes of ${denom} so'm`}
                   >
                     +100
                   </button>
@@ -226,7 +213,7 @@ export function BlindCountDenominationGrid({
                 <div className="flex items-center justify-between text-[11px] font-mono text-neutral-400 mt-2 pt-2 border-t border-neutral-800/80">
                   <span>{count.toLocaleString()} notes</span>
                   <span className="text-neutral-300 font-medium">
-                    = {subtotalUZS.toLocaleString()} UZS
+                    = {formatWholeSomInteger(subtotalSom)}
                   </span>
                 </div>
               </div>
@@ -238,36 +225,33 @@ export function BlindCountDenominationGrid({
         <div className="mt-5 pt-4 border-t border-neutral-800 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3 w-full md:w-auto">
             <label className="text-xs font-medium text-neutral-400 whitespace-nowrap">
-              Acceptable Tolerance (UZS):
+              Acceptable Tolerance (so&apos;m):
             </label>
             <input
               type="text"
               inputMode="numeric"
               pattern="[0-9]*"
-              value={toleranceUZS === 0 ? '' : toleranceUZS}
+              value={toleranceSom === 0 ? '' : toleranceSom}
               placeholder="0"
               disabled={disabled || submitting}
               onChange={(e) => {
                 const s = e.target.value.replace(/\D/g, '');
-                setToleranceUZS(Math.max(0, parseInt(s || '0', 10) || 0));
+                setToleranceSom(Math.max(0, parseInt(s || '0', 10) || 0));
               }}
               className="w-32 text-right font-mono text-xs bg-neutral-950 border border-neutral-750 rounded-lg py-1.5 px-2.5 text-neutral-200 focus:outline-none focus:border-emerald-500"
             />
             <span className="text-[11px] font-mono text-neutral-500">
-              = {formatGroupedInteger(majorIntToMinorBigInt(Math.max(0, toleranceUZS)))} Tiyin
+              {formatWholeSomInteger(Math.max(0, toleranceSom))}
             </span>
           </div>
 
-          <div className="flex items-center justify-between md:justify-end gap-5 w-full md:w-auto">
+          <div className="flex items-center gap-5 w-full md:w-auto justify-between md:justify-end">
             <div className="text-right">
               <div className="text-[10px] uppercase font-mono tracking-wider text-neutral-500 font-semibold">
                 Total Counted ({totalCalculated.totalNotes.toLocaleString()} notes)
               </div>
               <div className="text-xl font-bold font-mono text-emerald-400 leading-tight">
-                {totalCalculated.totalUZS.toLocaleString()} UZS
-              </div>
-              <div className="text-xs font-mono text-neutral-400">
-                {totalCalculated.totalMinor.toLocaleString()} Tiyin
+                {formatWholeSomInteger(totalCalculated.totalSom)}
               </div>
             </div>
 

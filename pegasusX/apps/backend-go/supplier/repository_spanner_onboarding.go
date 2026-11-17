@@ -12,6 +12,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
 	"google.golang.org/api/iterator"
+	"google.golang.org/grpc/codes"
 )
 
 func (r *SpannerRepository) ListOrgMembers(ctx context.Context, supplierID string) ([]SupplierOrgMember, error) {
@@ -450,7 +451,7 @@ func ensureVehiclePlateAvailable(ctx context.Context, txn *spanner.ReadWriteTran
 func ensureFleetVehicleAssignment(ctx context.Context, txn *spanner.ReadWriteTransaction, supplierID string, vehicleID string, homeNodeType auth.HomeNodeType, homeNodeID string) error {
 	row, err := txn.ReadRow(ctx, "Vehicles", spanner.Key{vehicleID}, []string{"SupplierId", "HomeNodeType", "HomeNodeId"})
 	if err != nil {
-		if err == spanner.ErrRowNotFound {
+		if errors.Is(err, spanner.ErrRowNotFound) || spanner.ErrCode(err) == codes.NotFound {
 			return errFleetVehicleMismatch
 		}
 		return fmt.Errorf("read supplier fleet vehicle assignment: %w", err)

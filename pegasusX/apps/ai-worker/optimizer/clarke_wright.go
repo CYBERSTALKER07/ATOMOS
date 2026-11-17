@@ -1,6 +1,7 @@
 package optimizer
 
 import (
+	"math"
 	"sort"
 	"strconv"
 	"strings"
@@ -72,35 +73,62 @@ func planRoutes(stops []contract.Stop, vehicles []contract.Vehicle, t resolvedTu
 	vehicleOf := make([]int, 0)
 	routeVU := make([]float64, 0)
 
-	tryAssignVehicle := func(routeIdx int, addVU float64) bool {
-		// Smallest-fit vehicle whose effective capacity covers the new total.
-		need := routeVU[routeIdx] + addVU
-		// If the route already has a vehicle, just check capacity.
-		if vehicleOf[routeIdx] >= 0 {
-			cap := vehicles[vehicleOf[routeIdx]].MaxVolumeVU * t.tetrisBuffer
-			return need <= cap
-		}
-		for vi, v := range vehicles {
-			if v.MaxVolumeVU*t.tetrisBuffer >= need {
-				vehicleOf[routeIdx] = vi
+	isVehicleInUse := func(vi int, excludeRoute int) bool {
+		for r, vIdx := range vehicleOf {
+			if r != excludeRoute && vIdx == vi && len(routes[r]) > 0 {
 				return true
 			}
 		}
 		return false
 	}
 
-	newRoute := func(stopIdx int) bool {
-		// New route, no vehicle yet — assign smallest-fit at creation.
+	findBestVehicle := func(needVU float64, seq []int, excludeRoute int) int {
+		// Pass 1: Try unused vehicles first (satisfying volume, constraints, duration, cold chain)
+		bestUnused := -1
+		bestUnusedCap := math.MaxFloat64
 		for vi, v := range vehicles {
-			if v.MaxVolumeVU*t.tetrisBuffer >= stops[stopIdx].VolumeVU {
-				routes = append(routes, []int{stopIdx})
-				vehicleOf = append(vehicleOf, vi)
-				routeVU = append(routeVU, stops[stopIdx].VolumeVU)
-				routeOf[stopIdx] = len(routes) - 1
-				return true
+			if isVehicleInUse(vi, excludeRoute) {
+				continue
+			}
+			cap := v.MaxVolumeVU * t.tetrisBuffer
+			if cap >= needVU && routeRespectsConstraints(seq, stops, v, vehicles) {
+				if cap < bestUnusedCap {
+					bestUnused = vi
+					bestUnusedCap = cap
+				}
 			}
 		}
-		return false
+		if bestUnused != -1 {
+			return bestUnused
+		}
+
+		// Pass 2: If no unused vehicle fits, fall back to best-fit across all vehicles
+		bestAny := -1
+		bestAnyCap := math.MaxFloat64
+		for vi, v := range vehicles {
+			cap := v.MaxVolumeVU * t.tetrisBuffer
+			if cap >= needVU && routeRespectsConstraints(seq, stops, v, vehicles) {
+				if cap < bestAnyCap {
+					bestAny = vi
+					bestAnyCap = cap
+				}
+			}
+		}
+		return bestAny
+	}
+
+	newRoute := func(stopIdx int) bool {
+		seq := []int{stopIdx}
+		need := stops[stopIdx].VolumeVU
+		vi := findBestVehicle(need, seq, -1)
+		if vi == -1 {
+			return false
+		}
+		routes = append(routes, seq)
+		vehicleOf = append(vehicleOf, vi)
+		routeVU = append(routeVU, need)
+		routeOf[stopIdx] = len(routes) - 1
+		return true
 	}
 
 	// 3. Process savings descending: try to merge i and j into a single route.
@@ -111,19 +139,15 @@ func planRoutes(stops []contract.Stop, vehicles []contract.Vehicle, t resolvedTu
 		// Both unassigned: seed a brand-new route with [i, j] if it fits.
 		if ri == -1 && rj == -1 {
 			combinedVU := stops[i].VolumeVU + stops[j].VolumeVU
-			placed := false
-			for vi, v := range vehicles {
-				if v.MaxVolumeVU*t.tetrisBuffer >= combinedVU {
-					routes = append(routes, []int{i, j})
-					vehicleOf = append(vehicleOf, vi)
-					routeVU = append(routeVU, combinedVU)
-					routeOf[i] = len(routes) - 1
-					routeOf[j] = len(routes) - 1
-					placed = true
-					break
-				}
-			}
-			if !placed {
+			seq := []int{i, j}
+			vi := findBestVehicle(combinedVU, seq, -1)
+			if vi != -1 {
+				routes = append(routes, seq)
+				vehicleOf = append(vehicleOf, vi)
+				routeVU = append(routeVU, combinedVU)
+				routeOf[i] = len(routes) - 1
+				routeOf[j] = len(routes) - 1
+			} else {
 				// Fall through — try as two separate routes below.
 				newRoute(i)
 				newRoute(j)
@@ -143,14 +167,26 @@ func planRoutes(stops []contract.Stop, vehicles []contract.Vehicle, t resolvedTu
 			if len(routes[routeIdx]) >= t.maxStopsPerRoute {
 				continue
 			}
-			if !tryAssignVehicle(routeIdx, stops[addIdx].VolumeVU) {
+			candSeq := append(append([]int{}, routes[routeIdx]...), addIdx)
+			need := routeVU[routeIdx] + stops[addIdx].VolumeVU
+
+			// Check if current assigned vehicle still fits and satisfies constraints
+			currVi := vehicleOf[routeIdx]
+			if currVi >= 0 && vehicles[currVi].MaxVolumeVU*t.tetrisBuffer >= need && routeRespectsConstraints(candSeq, stops, vehicles[currVi], vehicles) {
+				routes[routeIdx] = candSeq
+				routeVU[routeIdx] = need
+				routeOf[addIdx] = routeIdx
 				continue
 			}
-			if !routeRespectsWindows(append(append([]int{}, routes[routeIdx]...), addIdx), stops, vehicles[vehicleOf[routeIdx]]) {
+
+			// Otherwise, try finding another vehicle (preferring unused)
+			newVi := findBestVehicle(need, candSeq, routeIdx)
+			if newVi == -1 {
 				continue
 			}
-			routes[routeIdx] = append(routes[routeIdx], addIdx)
-			routeVU[routeIdx] += stops[addIdx].VolumeVU
+			vehicleOf[routeIdx] = newVi
+			routes[routeIdx] = candSeq
+			routeVU[routeIdx] = need
 			routeOf[addIdx] = routeIdx
 			continue
 		}
@@ -165,19 +201,8 @@ func planRoutes(stops []contract.Stop, vehicles []contract.Vehicle, t resolvedTu
 			continue
 		}
 		mergedVU := routeVU[ri] + routeVU[rj]
-		// Pick the smaller-of-the-two vehicle slots; let smallest-fit re-search.
-		// Reset vehicleOf and re-resolve.
-		var targetVehicle int = -1
-		for vi, v := range vehicles {
-			if v.MaxVolumeVU*t.tetrisBuffer >= mergedVU {
-				targetVehicle = vi
-				break
-			}
-		}
+		targetVehicle := findBestVehicle(mergedVU, merged, ri)
 		if targetVehicle == -1 {
-			continue
-		}
-		if !routeRespectsWindows(merged, stops, vehicles[targetVehicle]) {
 			continue
 		}
 		routes[ri] = merged
@@ -219,40 +244,108 @@ func planRoutes(stops []contract.Stop, vehicles []contract.Vehicle, t resolvedTu
 	return out, orphans
 }
 
-// routeRespectsWindows checks the proposed stop sequence honours every
-// retailer's HH:MM receiving window given the vehicle's average speed.
-// A window with empty open OR empty close is treated as "no constraint" on
-// that boundary (matches Spanner-NULL semantics).
-func routeRespectsWindows(seq []int, stops []contract.Stop, v contract.Vehicle) bool {
+func isColdStop(s contract.Stop) bool {
+	h := strings.ToUpper(strings.TrimSpace(s.HandlingClass))
+	return h == "COLD_CHAIN" || h == "CHILLED" || h == "FROZEN" || h == "PERISHABLE"
+}
+
+func vehicleSupportsColdChain(v contract.Vehicle, allVehicles []contract.Vehicle) bool {
+	vid := strings.ToLower(v.VehicleID)
+	if strings.Contains(vid, "cold") || strings.Contains(vid, "reefer") || strings.Contains(vid, "chilled") || strings.Contains(vid, "frozen") || strings.Contains(vid, "fridge") {
+		return true
+	}
+	if strings.Contains(vid, "ambient") || strings.Contains(vid, "dry") {
+		return false
+	}
+	// If fleet contains dedicated cold vehicles, non-cold-tagged vehicles are disqualified for cold stops
+	anyColdInFleet := false
+	for _, other := range allVehicles {
+		ovid := strings.ToLower(other.VehicleID)
+		if strings.Contains(ovid, "cold") || strings.Contains(ovid, "reefer") || strings.Contains(ovid, "chilled") || strings.Contains(ovid, "frozen") || strings.Contains(ovid, "fridge") {
+			anyColdInFleet = true
+			break
+		}
+	}
+	return !anyColdInFleet
+}
+
+// routeRespectsConstraints enforces time windows, vehicle shift/route duration bounds,
+// hazmat certification, and cold-chain compatibility.
+func routeRespectsConstraints(seq []int, stops []contract.Stop, v contract.Vehicle, allVehicles []contract.Vehicle) bool {
+	// 1. Hazmat check
+	for _, idx := range seq {
+		if stops[idx].IsHazardous && !v.HazmatCertified {
+			return false
+		}
+	}
+
+	// 2. Cold-chain check
+	for _, idx := range seq {
+		if isColdStop(stops[idx]) && !vehicleSupportsColdChain(v, allVehicles) {
+			return false
+		}
+	}
+
+	// 3. Time windows and shift / duration bounds
 	speed := v.AvgSpeedKmph
 	if speed <= 0 {
 		speed = defaultAvgSpeedKmph
 	}
-	// Cursor in minutes-since-midnight starting at 00:00 of the dispatch day.
-	// We model arrival relative to t=0; absolute clock time is irrelevant —
-	// only window minutes matter.
+
 	cursorMin := 0.0
+	startMin := 0.0
+	if sMin, ok := parseHHMM(v.ShiftStart); ok {
+		startMin = float64(sMin)
+		cursorMin = startMin
+	}
+
 	prevLat, prevLng := v.StartLat, v.StartLng
 	for _, idx := range seq {
 		s := stops[idx]
 		distKm := haversineKm(prevLat, prevLng, s.Lat, s.Lng)
 		travelMin := (distKm / speed) * 60.0
 		cursorMin += travelMin
+
 		openMin, openOK := parseHHMM(s.WindowOpen)
 		closeMin, closeOK := parseHHMM(s.WindowClose)
-		// Wait until window opens (driver idles outside the shop).
 		if openOK && cursorMin < float64(openMin) {
 			cursorMin = float64(openMin)
 		}
-		// Late arrival → infeasible.
 		if closeOK && cursorMin > float64(closeMin) {
 			return false
 		}
-		// Service the stop.
 		cursorMin += float64(s.ServiceMinutes)
 		prevLat, prevLng = s.Lat, s.Lng
 	}
+
+	// Return to depot
+	endLat, endLng := v.EndLat, v.EndLng
+	if endLat == 0 && endLng == 0 {
+		endLat, endLng = v.StartLat, v.StartLng
+	}
+	distEndKm := haversineKm(prevLat, prevLng, endLat, endLng)
+	cursorMin += (distEndKm / speed) * 60.0
+
+	// Check MaxRouteMinutes
+	routeDuration := cursorMin - startMin
+	if v.MaxRouteMinutes > 0 && routeDuration > float64(v.MaxRouteMinutes) {
+		return false
+	}
+
+	// Check ShiftEnd
+	if eMin, ok := parseHHMM(v.ShiftEnd); ok && cursorMin > float64(eMin) {
+		return false
+	}
+
 	return true
+}
+
+// routeRespectsWindows checks the proposed stop sequence honours every
+// retailer's HH:MM receiving window given the vehicle's average speed.
+// A window with empty open OR empty close is treated as "no constraint" on
+// that boundary (matches Spanner-NULL semantics).
+func routeRespectsWindows(seq []int, stops []contract.Stop, v contract.Vehicle) bool {
+	return routeRespectsConstraints(seq, stops, v, nil)
 }
 
 // parseHHMM returns minutes-since-midnight and ok=true on a valid "HH:MM",

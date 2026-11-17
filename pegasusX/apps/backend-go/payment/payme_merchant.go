@@ -1,16 +1,24 @@
 package payment
 
 import (
+	"context"
 	"sync"
 	"time"
 )
 
+const (
+	paymeTargetTypeOrder        = "ORDER"
+	paymeTargetTypeARAllocation = "AR_ALLOCATION"
+)
+
 // paymeMerchantTx is the Merchant API transaction record Payme requires for
-// Create/Perform/Cancel/Check/GetStatement. Replica-local until this adapter
-// is wired to Spanner; routes are unmounted so production never hits it.
+// Create/Perform/Cancel/Check/GetStatement. Persisted in Spanner
+// (PaymeMerchantTransactions) when a Spanner client is attached, with an
+// in-memory store retained strictly for nil-DB unit tests.
 type paymeMerchantTx struct {
 	PaymeID     string
 	OrderID     string
+	TargetType  string
 	AmountMinor int64
 	State       int
 	CreateTime  int64
@@ -18,6 +26,24 @@ type paymeMerchantTx struct {
 	CancelTime  int64
 	Reason      *int
 	MerchantTx  string
+}
+
+type paymeMerchantStore interface {
+	snapshot(ctx context.Context, id string) (paymeMerchantTx, bool, error)
+	snapshotByOrder(ctx context.Context, orderID string) (paymeMerchantTx, bool, error)
+	put(ctx context.Context, tx paymeMerchantTx) error
+	statement(ctx context.Context, from, to int64) ([]paymeMerchantTx, error)
+}
+
+func normalizePaymeTargetType(raw string) string {
+	switch raw {
+	case paymeTargetTypeARAllocation:
+		return paymeTargetTypeARAllocation
+	case "", paymeTargetTypeOrder:
+		return paymeTargetTypeOrder
+	default:
+		return raw
+	}
 }
 
 type paymeMerchantMemory struct {
@@ -33,52 +59,54 @@ func newPaymeMerchantMemory() *paymeMerchantMemory {
 	}
 }
 
-func (m *paymeMerchantMemory) snapshot(id string) (paymeMerchantTx, bool) {
+func (m *paymeMerchantMemory) snapshot(_ context.Context, id string) (paymeMerchantTx, bool, error) {
 	if m == nil {
-		return paymeMerchantTx{}, false
+		return paymeMerchantTx{}, false, nil
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	tx, ok := m.byID[id]
 	if !ok || tx == nil {
-		return paymeMerchantTx{}, false
+		return paymeMerchantTx{}, false, nil
 	}
-	return *tx, true
+	return *tx, true, nil
 }
 
-func (m *paymeMerchantMemory) snapshotByOrder(orderID string) (paymeMerchantTx, bool) {
+func (m *paymeMerchantMemory) snapshotByOrder(_ context.Context, orderID string) (paymeMerchantTx, bool, error) {
 	if m == nil {
-		return paymeMerchantTx{}, false
+		return paymeMerchantTx{}, false, nil
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	id, ok := m.byOrder[orderID]
 	if !ok {
-		return paymeMerchantTx{}, false
+		return paymeMerchantTx{}, false, nil
 	}
 	tx, ok := m.byID[id]
 	if !ok || tx == nil {
-		return paymeMerchantTx{}, false
+		return paymeMerchantTx{}, false, nil
 	}
-	return *tx, true
+	return *tx, true, nil
 }
 
-func (m *paymeMerchantMemory) put(tx paymeMerchantTx) {
+func (m *paymeMerchantMemory) put(_ context.Context, tx paymeMerchantTx) error {
 	if m == nil {
-		return
+		return nil
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	cp := tx
+	cp.TargetType = normalizePaymeTargetType(cp.TargetType)
 	m.byID[tx.PaymeID] = &cp
 	if tx.OrderID != "" {
 		m.byOrder[tx.OrderID] = tx.PaymeID
 	}
+	return nil
 }
 
-func (m *paymeMerchantMemory) statement(from, to int64) []paymeMerchantTx {
+func (m *paymeMerchantMemory) statement(_ context.Context, from, to int64) ([]paymeMerchantTx, error) {
 	if m == nil {
-		return []paymeMerchantTx{}
+		return []paymeMerchantTx{}, nil
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -95,7 +123,7 @@ func (m *paymeMerchantMemory) statement(from, to int64) []paymeMerchantTx {
 		}
 		out = append(out, *tx)
 	}
-	return out
+	return out, nil
 }
 
 func (s *Service) paymeNowMilli() int64 {
@@ -105,12 +133,18 @@ func (s *Service) paymeNowMilli() int64 {
 	return time.Now().UTC().UnixMilli()
 }
 
-func (s *Service) ensurePaymeTx() *paymeMerchantMemory {
+func (s *Service) ensurePaymeTx() paymeMerchantStore {
 	if s == nil {
 		return newPaymeMerchantMemory()
 	}
+	s.paymeTxMu.Lock()
+	defer s.paymeTxMu.Unlock()
 	if s.paymeTx == nil {
-		s.paymeTx = newPaymeMerchantMemory()
+		if s.spannerClient != nil {
+			s.paymeTx = newPaymeMerchantSpanner(s.spannerClient)
+		} else {
+			s.paymeTx = newPaymeMerchantMemory()
+		}
 	}
 	return s.paymeTx
 }

@@ -151,3 +151,69 @@ func TestPayoutExport_FailClosedBankDetails(t *testing.T) {
 		t.Fatalf("foreign dispatch: %v", err)
 	}
 }
+
+func TestPayoutBatch_PriorNegativeSliceCarryForward(t *testing.T) {
+	ctx := context.Background()
+	client := newEmulatorClient(t, ctx)
+	defer client.Close()
+
+	suffix := time.Now().UnixNano()
+	supplierID := fmt.Sprintf("sup-clawback-%d", suffix)
+	now := time.Now().UTC()
+
+	// Prior period was 2 days ago to 1 day ago.
+	// Current period is 1 day ago to now + 1 hour.
+	priorSliceTime := now.Add(-36 * time.Hour)
+	currentSliceTime := now.Add(-2 * time.Minute)
+	start := now.Add(-24 * time.Hour)
+	end := now.Add(time.Hour)
+
+	// Seed 1 prior-period negative clawback slice (status UNSETTLED, created 36h ago, before start)
+	// and 1 current-period positive slice (status UNSETTLED, created 2m ago).
+	muts := []*spanner.Mutation{
+		BuildSettlementSliceMutation(InvoiceSettlementSlice{
+			SliceID:         fmt.Sprintf("slice-neg-%d", suffix),
+			OrderID:         fmt.Sprintf("ord-prior-%d", suffix),
+			SupplierID:      supplierID,
+			CapturedLegID:   "leg-neg-1",
+			GrossMinor:      -30000,
+			CommissionMinor: 0,
+			NetPayoutMinor:  -30000,
+			Currency:        "UZS",
+			Status:          SliceStatusUnsettled,
+			CreatedAt:       priorSliceTime,
+		}),
+		BuildSettlementSliceMutation(InvoiceSettlementSlice{
+			SliceID:         fmt.Sprintf("slice-pos-%d", suffix),
+			OrderID:         fmt.Sprintf("ord-curr-%d", suffix),
+			SupplierID:      supplierID,
+			CapturedLegID:   "leg-pos-1",
+			GrossMinor:      100000,
+			CommissionMinor: 10000,
+			NetPayoutMinor:  90000,
+			Currency:        "UZS",
+			Status:          SliceStatusUnsettled,
+			CreatedAt:       currentSliceTime,
+		}),
+	}
+	if _, err := client.Apply(ctx, muts); err != nil {
+		t.Fatalf("seed settlement slices: %v", err)
+	}
+
+	svc := NewService(NewRepository(client))
+	batches, err := svc.GenerateBatch(ctx, supplierID, start, end, "admin-clawback", "")
+	if err != nil {
+		t.Fatalf("GenerateBatch with prior negative slice: %v", err)
+	}
+	if len(batches) != 1 {
+		t.Fatalf("expected 1 batch, got %d", len(batches))
+	}
+	b := batches[0]
+	// NetPayout should be: 90,000 - 30,000 = 60,000
+	if b.NetPayoutMinor != 60000 {
+		t.Fatalf("expected netted payout 60,000, got %d", b.NetPayoutMinor)
+	}
+	if b.RefundedMinor != 30000 {
+		t.Fatalf("expected refunded 30,000, got %d", b.RefundedMinor)
+	}
+}

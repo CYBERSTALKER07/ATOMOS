@@ -1,3 +1,5 @@
+import type { OntologyObject, OntologyGraphEdge } from "./ontology";
+
 /**
  * PegasusX Palantir Foundry Semantic-Kinetic-Dynamic Triad,
  * Role 7 (Depot Cashier & AML Vault), Role 9 (Fleet Yard & DVIR Red-Tag),
@@ -31,31 +33,7 @@ export const UNCAPPED_AML_CEILING_MINOR = 0;
 
 // --- Semantic Layer (Ontology Graph) ---
 
-export interface OntologyObject {
-  cell_id: string;
-  object_type: string;
-  object_id: string;
-  supplier_id: string;
-  version: number;
-  properties: Record<string, unknown>;
-  security_markings?: string[];
-  valid_from: string;
-  updated_at: string;
-}
-
-export interface OntologyGraphEdge {
-  cell_id: string;
-  source_object_type: string;
-  source_object_id: string;
-  link_type: string;
-  target_object_type: string;
-  target_object_id: string;
-  supplier_id: string;
-  created_by_action_id: string;
-  metadata?: Record<string, string>;
-  valid_from: string;
-  valid_to?: string;
-}
+export type { OntologyObject, OntologyGraphEdge };
 
 export interface SearchAroundRequest {
   cell_id: string;

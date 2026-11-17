@@ -1,6 +1,7 @@
 package com.pegasus.payload.data.remote
 
 import com.pegasus.payload.BuildConfig
+import com.pegasus.payload.di.configuredCertificatePinner
 import com.pegasus.payload.data.local.SecureStore
 import com.pegasus.payload.data.model.RefreshTokenRequest
 import com.pegasus.payload.data.model.RefreshTokenResponse
@@ -24,6 +25,10 @@ class TokenRefreshAuthenticator @Inject constructor(
     private val refreshClient = OkHttpClient.Builder()
         .connectTimeout(10, TimeUnit.SECONDS)
         .readTimeout(10, TimeUnit.SECONDS)
+        .apply {
+            configuredCertificatePinner(BuildConfig.API_BASE_URL, BuildConfig.API_TLS_SPKI_PINS)
+                ?.let { certificatePinner(it) }
+        }
         .build()
 
     @Synchronized

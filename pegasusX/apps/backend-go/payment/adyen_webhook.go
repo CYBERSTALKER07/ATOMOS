@@ -84,12 +84,21 @@ func (s *Service) HandleAdyenWebhook(w http.ResponseWriter, r *http.Request) {
 			} else {
 				status = "FAILED"
 			}
-		default:
+		case "CHARGEBACK", "NOTIFICATION_OF_CHARGEBACK", "SECOND_CHARGEBACK":
 			if success {
-				status = "PAID"
+				status = "CHARGEBACK"
 			} else {
 				status = "FAILED"
 			}
+		case "CHARGEBACK_REVERSED":
+			if success {
+				status = "CHARGEBACK_REVERSED"
+			} else {
+				status = "FAILED"
+			}
+		default:
+			s.log.Warn("unhandled adyen webhook event code", "event", eventCode, "success", success)
+			status = "UNHANDLED"
 		}
 
 		transactionID := strings.TrimSpace(item.PspReference)
@@ -103,6 +112,8 @@ func (s *Service) HandleAdyenWebhook(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			s.log.Warn("webhook idempotency guard failed", "key", webhookKey, "err", err)
+			writeJSONError(w, http.StatusServiceUnavailable, "idempotency_unavailable", "idempotency verification unavailable", endpoint, true, "")
+			return
 		}
 		if replayed {
 			continue
@@ -129,10 +140,14 @@ func (s *Service) HandleAdyenWebhook(w http.ResponseWriter, r *http.Request) {
 		switch eventCode {
 		case "CAPTURE", "CAPTURE_FAILED":
 			executionAction = string(ExecutionActionCheckoutCapture)
-		case "CANCELLATION":
+		case "CANCELLATION", "CANCEL_OR_REFUND", "VOID_PENDING_REFUND", "CANCELLED":
 			executionAction = "CANCELLATION"
-		case "REFUND", "REFUND_FAILED":
-			executionAction = "REFUND"
+		case "REFUND", "REFUND_FAILED", "REFUNDED_REVERSED":
+			executionAction = string(ExecutionActionRefund)
+		case "CHARGEBACK", "NOTIFICATION_OF_CHARGEBACK", "SECOND_CHARGEBACK":
+			executionAction = string(ExecutionActionChargebackRecord)
+		case "CHARGEBACK_REVERSED":
+			executionAction = string(ExecutionActionChargebackReversal)
 		}
 
 		if executionAction != "" {

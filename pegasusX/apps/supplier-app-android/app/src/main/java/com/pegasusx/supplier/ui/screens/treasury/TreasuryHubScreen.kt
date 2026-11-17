@@ -122,6 +122,53 @@ fun TreasuryHubScreen(
                         icon = Icons.Default.Warning,
                     )
                 }
+                if (state.migratedOpeningInvoices.isNotEmpty()) {
+                    item {
+                        val acked = state.migratedOpeningInvoices.count { it.ackState == "ACKNOWLEDGED" }
+                        val pending = state.migratedOpeningInvoices.count { it.ackState == "PENDING_ACK" }
+                        val disputed = state.migratedOpeningInvoices.count { it.ackState == "DISPUTED" }
+                        OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+                            Column(
+                                modifier = Modifier.padding(PegasusSpacing.md),
+                                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.supplier_portal_migrations_pack_nasiya),
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                                )
+                                Text(
+                                    text = "Ack: $acked · Pending: $pending · Disputed: $disputed",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                state.migratedOpeningInvoices.take(8).forEach { inv ->
+                                    HorizontalDivider()
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                                    ) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = inv.externalId?.takeIf { it.isNotBlank() } ?: inv.orderId.ifBlank { inv.invoiceId.take(12) },
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                                            )
+                                            Text(
+                                                text = "${inv.retailerId.take(12)} · ${com.pegasusx.supplier.ui.components.formatMinorAmount(inv.principalMinor, inv.currency)}",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            )
+                                        }
+                                        com.pegasusx.supplier.ui.components.SupplierStatusChip(status = inv.ackState)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
                 item {
                     Text(
                         "Treasury modules",

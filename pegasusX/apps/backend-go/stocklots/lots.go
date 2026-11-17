@@ -79,7 +79,7 @@ func PutawayInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, req Pu
 
 	status := "AVAILABLE"
 	if strings.EqualFold(locType, "QUARANTINE") {
-		status = "QUARANTINE"
+		status = "QUARANTINED"
 	}
 
 	lotID := strings.TrimSpace(req.LotID)
@@ -114,10 +114,10 @@ func PutawayInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, req Pu
 		if existingStatus == "DEPLETED" {
 			status = "AVAILABLE"
 			if strings.EqualFold(locType, "QUARANTINE") {
-				status = "QUARANTINE"
+				status = "QUARANTINED"
 			}
 		} else {
-			status = existingStatus
+			status = NormalizeLotStatus(existingStatus)
 		}
 		if err := txn.BufferWrite([]*spanner.Mutation{spanner.UpdateMap("StockLots", map[string]any{
 			"LotId":          lotID,
@@ -156,7 +156,17 @@ func PutawayInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, req Pu
 	}
 
 	if status == "AVAILABLE" {
-		if err := RollupInventoryV2InTxn(ctx, txn, req.SupplierID, req.WarehouseID, req.ProductID); err != nil {
+		overrides := map[string]StockLotSnapshot{
+			lotID: {
+				SupplierID:       req.SupplierID,
+				WarehouseID:      req.WarehouseID,
+				ProductID:        req.ProductID,
+				QuantityOnHand:   qoh,
+				QuantityReserved: qr,
+				Status:           status,
+			},
+		}
+		if err := RollupInventoryV2WithLotOverridesInTxn(ctx, txn, req.SupplierID, req.WarehouseID, req.ProductID, overrides); err != nil {
 			return nil, err
 		}
 	}
@@ -219,7 +229,7 @@ func ListLots(ctx context.Context, client *spanner.Client, warehouseID, productI
 	}
 	if s := strings.TrimSpace(status); s != "" {
 		sql += ` AND Status = @st`
-		params["st"] = strings.ToUpper(s)
+		params["st"] = NormalizeLotStatus(s)
 	}
 	sql += ` ORDER BY ExpiryDate ASC, ReceivedAt ASC LIMIT @lim`
 	params["lim"] = int64(limit)
@@ -283,7 +293,19 @@ func scanLot(row *spanner.Row) (StockLotView, error) {
 		v.ManufacturedDate = mfg.Date.String()
 	}
 	v.ReceivedAt = received.UTC().Format(time.RFC3339)
+	v.Status = NormalizeLotStatus(v.Status)
 	return v, nil
+}
+
+// NormalizeLotStatus canonicalizes status strings, mapping "QUARANTINE" to "QUARANTINED".
+func NormalizeLotStatus(st string) string {
+	upper := strings.ToUpper(strings.TrimSpace(st))
+	switch upper {
+	case "QUARANTINE", "QUARANTINED":
+		return "QUARANTINED"
+	default:
+		return upper
+	}
 }
 
 // LineQty is a SKU quantity for reserve/release.

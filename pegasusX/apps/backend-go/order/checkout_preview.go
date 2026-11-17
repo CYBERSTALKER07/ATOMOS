@@ -17,33 +17,34 @@ import (
 
 // CheckoutPreviewResponse is POST /v1/checkout/preview (dry-run inventory planning).
 type CheckoutPreviewResponse struct {
-	OK                         bool              `json:"ok"`
-	Blocked                    bool              `json:"blocked,omitempty"`
-	Code                       string            `json:"code,omitempty"`
-	Message                    string            `json:"message,omitempty"`
-	RejectedSKUs               []string          `json:"rejected_skus,omitempty"`
-	OOSItems                   []string          `json:"oos_items,omitempty"`
-	Shortfall                  map[string]int64  `json:"shortfall,omitempty"`
-	StockWarnings              []StockWarning    `json:"stock_warnings,omitempty"`
-	MaxQuantities              map[string]int64  `json:"max_quantities,omitempty"`
-	OrderableQuantities        map[string]int64  `json:"orderable_quantities,omitempty"`
-	LineErrors                 map[string]string `json:"line_errors,omitempty"`
-	BackorderItemCount         int               `json:"backordered_item_count,omitempty"`
-	ShowStockCounts            bool              `json:"show_stock_counts,omitempty"`
-	DefaultOutOfStockPolicy    string            `json:"default_out_of_stock_policy,omitempty"`
-	CheckoutPolicyToken        string            `json:"checkout_policy_token,omitempty"`
-	CheckoutPolicyExpiresAt    string            `json:"checkout_policy_expires_at,omitempty"`
-	OrderAcceptanceOpen        bool              `json:"order_acceptance_open,omitempty"`
-	OrderAcceptanceWindowLabel string            `json:"order_acceptance_window_label,omitempty"`
-	NextOrderAcceptanceAt      *string           `json:"next_order_acceptance_at,omitempty"`
-	PreorderMinLeadDays        int64             `json:"preorder_min_lead_days,omitempty"`
-	PreorderMaxLeadDays        int64             `json:"preorder_max_lead_days,omitempty"`
-	OrderLineMinQuantity       *int64            `json:"order_line_min_quantity,omitempty"`
-	OrderLineMaxQuantity       *int64            `json:"order_line_max_quantity,omitempty"`
-	DeliveryFeeMinor           int64             `json:"delivery_fee_minor,omitempty"`
-	DeliveryDistanceKm         float64           `json:"delivery_distance_km,omitempty"`
-	Currency                   string            `json:"currency,omitempty"`
-	MarketCode                 string            `json:"market_code,omitempty"`
+	OK                         bool                 `json:"ok"`
+	Blocked                    bool                 `json:"blocked,omitempty"`
+	Code                       string               `json:"code,omitempty"`
+	Message                    string               `json:"message,omitempty"`
+	RejectedSKUs               []string             `json:"rejected_skus,omitempty"`
+	OOSItems                   []string             `json:"oos_items,omitempty"`
+	Shortfall                  map[string]int64     `json:"shortfall,omitempty"`
+	StockWarnings              []StockWarning       `json:"stock_warnings,omitempty"`
+	MaxQuantities              map[string]int64     `json:"max_quantities,omitempty"`
+	OrderableQuantities        map[string]int64     `json:"orderable_quantities,omitempty"`
+	LineErrors                 map[string]string    `json:"line_errors,omitempty"`
+	Suggestions                []PackLineSuggestion `json:"suggestions,omitempty"`
+	BackorderItemCount         int                  `json:"backordered_item_count,omitempty"`
+	ShowStockCounts            bool                 `json:"show_stock_counts,omitempty"`
+	DefaultOutOfStockPolicy    string               `json:"default_out_of_stock_policy,omitempty"`
+	CheckoutPolicyToken        string               `json:"checkout_policy_token,omitempty"`
+	CheckoutPolicyExpiresAt    string               `json:"checkout_policy_expires_at,omitempty"`
+	OrderAcceptanceOpen        bool                 `json:"order_acceptance_open,omitempty"`
+	OrderAcceptanceWindowLabel string               `json:"order_acceptance_window_label,omitempty"`
+	NextOrderAcceptanceAt      *string              `json:"next_order_acceptance_at,omitempty"`
+	PreorderMinLeadDays        int64                `json:"preorder_min_lead_days,omitempty"`
+	PreorderMaxLeadDays        int64                `json:"preorder_max_lead_days,omitempty"`
+	OrderLineMinQuantity       *int64               `json:"order_line_min_quantity,omitempty"`
+	OrderLineMaxQuantity       *int64               `json:"order_line_max_quantity,omitempty"`
+	DeliveryFeeMinor           int64                `json:"delivery_fee_minor,omitempty"`
+	DeliveryDistanceKm         float64              `json:"delivery_distance_km,omitempty"`
+	Currency                   string               `json:"currency,omitempty"`
+	MarketCode                 string               `json:"market_code,omitempty"`
 }
 
 // HandleCheckoutPreview serves POST /v1/checkout/preview.
@@ -88,6 +89,9 @@ func (s *Service) HandleCheckoutPreview(w http.ResponseWriter, r *http.Request) 
 
 	resp, err := s.PreviewCheckout(r.Context(), retailerID, req)
 	if err != nil {
+		if writePackValidationOrMetadataError(w, err) {
+			return
+		}
 		switch {
 		case errors.Is(err, ErrZoneMiss):
 			writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": ErrZoneMiss.Error()})
@@ -197,6 +201,7 @@ func (s *Service) previewAtWarehouse(
 		Currency:   pack.CurrencyCode,
 		MarketCode: pack.Code,
 	})
+	var lineErrs map[string]string
 	whPolicy, policyErr := LoadWarehouseOpsPolicy(ctx, s.spannerClient, warehouseID)
 	if policyErr == nil {
 		resp.ShowStockCounts = whPolicy.ShowStockCountsToRetailers
@@ -217,6 +222,8 @@ func (s *Service) previewAtWarehouse(
 				Blocked:                    true,
 				Code:                       ErrOrderAcceptanceClosed.Error(),
 				Message:                    closedMsg,
+				Currency:                   resp.Currency,
+				MarketCode:                 resp.MarketCode,
 				ShowStockCounts:            resp.ShowStockCounts,
 				DefaultOutOfStockPolicy:    resp.DefaultOutOfStockPolicy,
 				OrderAcceptanceOpen:        false,
@@ -231,35 +238,58 @@ func (s *Service) previewAtWarehouse(
 			}), nil
 		}
 
-		lineErrs := ValidateLineQuantities(lineItems, whPolicy)
-		if packErrs := validatePackMultiples(ctx, s.spannerClient, lineItems); len(packErrs) > 0 {
-			lineErrs = mergeLineErrors(lineErrs, packErrs)
-		}
-		if len(lineErrs) > 0 {
-			return basePreviewResponse(CheckoutPreviewResponse{
-				OK:                      false,
-				Blocked:                 true,
-				Code:                    ErrLineQuantityOutOfRange.Error(),
-				Message:                 "line quantity policy violated",
-				LineErrors:              lineErrs,
-				ShowStockCounts:         resp.ShowStockCounts,
-				DefaultOutOfStockPolicy: resp.DefaultOutOfStockPolicy,
-				OrderAcceptanceOpen:     true,
-				PreorderMinLeadDays:     resp.PreorderMinLeadDays,
-				PreorderMaxLeadDays:     resp.PreorderMaxLeadDays,
-				OrderLineMinQuantity:    resp.OrderLineMinQuantity,
-				OrderLineMaxQuantity:    resp.OrderLineMaxQuantity,
-				DeliveryFeeMinor:        resp.DeliveryFeeMinor,
-				DeliveryDistanceKm:      resp.DeliveryDistanceKm,
-			}), nil
-		}
+		lineErrs = ValidateLineQuantities(lineItems, whPolicy)
+	} else if s.spannerClient != nil {
+		resp.ShowStockCounts = loadWarehouseShowStockCounts(ctx, s.spannerClient, warehouseID)
+	}
 
+	var packSuggestions []PackLineSuggestion
+	var packCode string
+	if packErr := s.validateOrderPackMultiples(ctx, lineItems); packErr != nil {
+		if errors.Is(packErr, ErrPackMetadataUnavailable) {
+			return CheckoutPreviewResponse{}, packErr
+		}
+		var pv *PackValidationError
+		if errors.As(packErr, &pv) {
+			lineErrs = mergeLineErrors(lineErrs, pv.LineErrors)
+			packSuggestions = pv.Suggestions
+			packCode = ErrPackMultipleRequired.Error()
+		} else {
+			return CheckoutPreviewResponse{}, packErr
+		}
+	}
+	if len(lineErrs) > 0 {
+		code := ErrLineQuantityOutOfRange.Error()
+		msg := "line quantity policy violated"
+		if packCode != "" {
+			code = packCode
+			msg = "one or more lines require integer pack multiples"
+		}
+		return basePreviewResponse(CheckoutPreviewResponse{
+			OK:                      false,
+			Blocked:                 true,
+			Code:                    code,
+			Message:                 msg,
+			Currency:                resp.Currency,
+			MarketCode:              resp.MarketCode,
+			LineErrors:              lineErrs,
+			Suggestions:             packSuggestions,
+			ShowStockCounts:         resp.ShowStockCounts,
+			DefaultOutOfStockPolicy: resp.DefaultOutOfStockPolicy,
+			OrderAcceptanceOpen:     true,
+			PreorderMinLeadDays:     resp.PreorderMinLeadDays,
+			PreorderMaxLeadDays:     resp.PreorderMaxLeadDays,
+			OrderLineMinQuantity:    resp.OrderLineMinQuantity,
+			OrderLineMaxQuantity:    resp.OrderLineMaxQuantity,
+			DeliveryFeeMinor:        resp.DeliveryFeeMinor,
+			DeliveryDistanceKm:      resp.DeliveryDistanceKm,
+		}), nil
+	}
+	if policyErr == nil {
 		if token, exp, err := IssueCheckoutPolicyToken(s.jwtSecret, snapshotFromWarehousePolicy(whPolicy, whPolicy.OperatingSchedule), s.now()); err == nil {
 			resp.CheckoutPolicyToken = token
 			resp.CheckoutPolicyExpiresAt = exp.Format(time.RFC3339)
 		}
-	} else if s.spannerClient != nil {
-		resp.ShowStockCounts = loadWarehouseShowStockCounts(ctx, s.spannerClient, warehouseID)
 	}
 
 	if s.spannerClient != nil {

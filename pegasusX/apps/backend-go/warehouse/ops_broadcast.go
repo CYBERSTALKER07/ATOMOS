@@ -12,6 +12,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"github.com/pegasusx/pegasusx/apps/backend-go/drivercmd"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"google.golang.org/api/iterator"
@@ -531,7 +532,8 @@ func (s *Service) fanDepotDrivers(ctx context.Context, warehouseID string, paylo
 				continue
 			}
 			seen[driverID] = struct{}{}
-			s.driverHub.Broadcast(ctx, "driver:"+driverID, payload)
+			prepared := drivercmd.PrepareAndRecordJSON(ctx, s.spannerClient, driverID, payload)
+			s.driverHub.Broadcast(ctx, "driver:"+driverID, prepared)
 		}
 	}
 	if s.opsDrivers != nil {
@@ -546,7 +548,8 @@ func (s *Service) fanDepotDrivers(ctx context.Context, warehouseID string, paylo
 					continue
 				}
 				seen[driverID] = struct{}{}
-				s.driverHub.Broadcast(ctx, "driver:"+driverID, payload)
+				prepared := drivercmd.PrepareAndRecordJSON(ctx, s.spannerClient, driverID, payload)
+				s.driverHub.Broadcast(ctx, "driver:"+driverID, prepared)
 			}
 		}
 	}

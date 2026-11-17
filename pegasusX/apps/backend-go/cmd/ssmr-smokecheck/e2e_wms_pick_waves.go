@@ -252,7 +252,8 @@ func confirmPickWaveTasks(ctx context.Context, client *http.Client, base, cookie
 			lastStatus = st
 			continue
 		}
-		confirmBody, _ := json.Marshal(map[string]any{"quantity_picked": 0})
+		// Omit quantity_picked to confirm full requested quantity (0 now explicitly records SHORT).
+		confirmBody, _ := json.Marshal(map[string]any{})
 		status, respBody, _, err = clientPost(ctx, client,
 			base+"/v1/warehouse/ops/pick-waves/"+waveID+"/tasks/"+task.TaskID+"/confirm"+warehouseQuery,
 			confirmBody, cookie, fmt.Sprintf("ssmr-pick-confirm-%s-%d", waveID, i))

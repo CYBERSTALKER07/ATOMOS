@@ -1,3 +1,11 @@
+import {
+  JOIN_REQUEST_REFRESH_EVENTS,
+  MIGRATION_REFRESH_EVENTS,
+} from "@pegasusx/ws-refresh-contract";
+
+export const SUPPLIER_MIGRATION_REFRESH_EVENTS = MIGRATION_REFRESH_EVENTS;
+export const SUPPLIER_JOIN_REQUEST_REFRESH_EVENTS = JOIN_REQUEST_REFRESH_EVENTS;
+
 /** Supplier hub events that should refresh the live fleet map surface. */
 export const SUPPLIER_FLEET_LIVE_REFRESH_EVENTS = new Set([
   "MANIFEST_SEALED",

@@ -1075,6 +1075,51 @@ data class WarehouseBinListResponse(
     @SerialName("lots_enabled") val lotsEnabled: Boolean = false,
 )
 
+@Serializable
+data class StockLot(
+    @SerialName("lot_id") val lotId: String = "",
+    @SerialName("supplier_id") val supplierId: String = "",
+    @SerialName("warehouse_id") val warehouseId: String = "",
+    @SerialName("product_id") val productId: String = "",
+    @SerialName("location_id") val locationId: String = "",
+    @SerialName("lot_code") val lotCode: String? = null,
+    @SerialName("expiry_date") val expiryDate: String? = null,
+    @SerialName("quantity_on_hand") val quantityOnHand: Long = 0,
+    @SerialName("quantity_reserved") val quantityReserved: Long = 0,
+    val status: String = "AVAILABLE",
+    @SerialName("product_name") val productName: String? = null,
+    @SerialName("handling_class") val handlingClass: String? = null,
+    @SerialName("requires_cold_chain") val requiresColdChain: Boolean = false,
+    @SerialName("is_perishable") val isPerishable: Boolean = false,
+    @SerialName("required_zone") val requiredZone: String? = null,
+    @SerialName("location_zone") val locationZone: String? = null,
+    @SerialName("location_type") val locationType: String? = null,
+    @SerialName("migrated_staging") val migratedStaging: Boolean = false,
+    @SerialName("cold_lot_warning") val coldLotWarning: String? = null,
+)
+
+@Serializable
+data class StockLotListResponse(
+    val lots: List<StockLot> = emptyList(),
+    @SerialName("lots_enabled") val lotsEnabled: Boolean = false,
+    @SerialName("cold_lot_warning_count") val coldLotWarningCount: Long = 0,
+    @SerialName("migration_staging_count") val migrationStagingCount: Long = 0,
+)
+
+@Serializable
+data class TemperatureReadingItem(
+    @SerialName("reading_id") val readingId: String = "",
+    @SerialName("manifest_id") val manifestId: String = "",
+    @SerialName("sensor_id") val sensorId: String? = null,
+    @SerialName("temp_c") val tempC: Double = 0.0,
+)
+
+@Serializable
+data class ManifestTemperatureResponse(
+    @SerialName("manifest_id") val manifestId: String = "",
+    val readings: List<TemperatureReadingItem> = emptyList(),
+)
+
 /** §8.7 Wave 1B pick waves. */
 @Serializable
 data class PickTask(
@@ -1096,6 +1141,9 @@ data class PickWave(
     @SerialName("manifest_id") val manifestId: String = "",
     val status: String = "",
     val tasks: List<PickTask> = emptyList(),
+    @SerialName("cold_lot_migrated_without_live_baseline") val coldLotMigratedWithoutLiveBaseline: Boolean = false,
+    @SerialName("cold_chain_baseline_missing") val coldChainBaselineMissing: Boolean = false,
+    @SerialName("cold_lot_warnings") val coldLotWarnings: List<String> = emptyList(),
 )
 
 @Serializable
@@ -1121,12 +1169,15 @@ data class CycleCount(
     @SerialName("product_id") val productId: String = "",
     @SerialName("expected_qty") val expectedQty: Long = 0,
     @SerialName("counted_qty") val countedQty: Long? = null,
+    @SerialName("variance_qty") val varianceQty: Long? = null,
+    @SerialName("reason_code") val reasonCode: String? = null,
     val status: String = "OPEN",
 )
 
 @Serializable
 data class CycleCountListResponse(
     val counts: List<CycleCount> = emptyList(),
+    @SerialName("cycle_counts_enabled") val cycleCountsEnabled: Boolean = false,
 )
 
 @Serializable
@@ -1139,6 +1190,25 @@ data class CycleCountCreateRequest(
 @Serializable
 data class CycleCountSubmitRequest(
     @SerialName("counted_qty") val countedQty: Long,
+    @SerialName("reason_code") val reasonCode: String? = null,
+)
+
+@Serializable
+data class InventoryAdjustment(
+    @SerialName("adjustment_id") val adjustmentId: String = "",
+    @SerialName("warehouse_id") val warehouseId: String = "",
+    @SerialName("product_id") val productId: String = "",
+    @SerialName("lot_id") val lotId: String? = null,
+    @SerialName("count_id") val countId: String? = null,
+    @SerialName("delta_qty") val deltaQty: Long = 0,
+    @SerialName("reason_code") val reasonCode: String? = null,
+    val status: String = "PENDING",
+)
+
+@Serializable
+data class InventoryAdjustmentListResponse(
+    val adjustments: List<InventoryAdjustment> = emptyList(),
+    @SerialName("cycle_counts_enabled") val cycleCountsEnabled: Boolean = false,
 )
 
 // ── Labor capacity (camelCase API) ──

@@ -60,6 +60,8 @@ enum SupplierSection: String, CaseIterable, Identifiable {
         case creditAdminDisable = "Credit admin disable"
         case flywheel = "POS flywheel"
         case paydayCalendar = "Payday calendar"
+        case migrations = "Migration Center"
+        case joinRequests = "Company Join Requests"
 
     var id: String { rawValue }
 
@@ -124,6 +126,8 @@ enum SupplierSection: String, CaseIterable, Identifiable {
         case .creditAdminDisable: "exclamationmark.octagon"
         case .flywheel: "arrow.triangle.2.circlepath"
         case .paydayCalendar: "calendar"
+        case .migrations: "arrow.triangle.2.circlepath.doc.on.clipboard"
+        case .joinRequests: "person.badge.plus"
         }
     }
 
@@ -157,7 +161,8 @@ enum SupplierSection: String, CaseIterable, Identifiable {
 
     static var accountSections: [SupplierSection] {
         [
-            .catalog, .inventory, .inventoryImport, .promotions, .pricing, .retailerOverrides,
+            .catalog, .inventory, .inventoryImport, .migrations, .joinRequests,
+            .promotions, .pricing, .retailerOverrides,
             .returns, .notifications, .earnings, .businessSetup, .profile,
         ]
     }

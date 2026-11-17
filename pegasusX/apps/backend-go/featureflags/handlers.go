@@ -28,10 +28,36 @@ type FlagAuditor interface {
 	RecordFlagAudit(ctx context.Context, actor, action, tenantType, tenantID, detailJSON string) error
 }
 
+// FlagApprovalDecision reports whether a CEL approval request was created/linked for a money flag override.
+type FlagApprovalDecision struct {
+	Required          bool
+	Approved          bool
+	ApprovalRequestID string
+	PayloadHash       string
+}
+
+// FlagApprovalBridge connects money-affecting feature flag changes to the M1.2 CEL Approval Engine.
+type FlagApprovalBridge interface {
+	EnsureMoneyFlagRequest(
+		ctx context.Context,
+		tenantType, tenantID, flagKey string,
+		enabled bool,
+		reason, actorID, actorType, actorRole string,
+	) (FlagApprovalDecision, error)
+	ApproveMoneyFlagRequest(
+		ctx context.Context,
+		tenantType, tenantID, flagKey, actorID, actorType, actorRole string,
+		approvalID, comment, totpCode string,
+		mfaVerified, breakGlass bool,
+		breakGlassReason string,
+	) (FlagApprovalDecision, error)
+}
+
 // Handlers expose flag evaluate/override APIs.
 type Handlers struct {
-	Svc   *Service
-	Audit FlagAuditor
+	Svc            *Service
+	Audit          FlagAuditor
+	ApprovalBridge FlagApprovalBridge
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
@@ -91,25 +117,43 @@ func (h *Handlers) HandleSetOverride(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	status := StatusActive
+	var approvalRequestID string
 	if MoneyAffectingFlags[strings.ToUpper(flag)] {
 		status = StatusPending
+		if h.ApprovalBridge != nil {
+			claims, _ := auth.FromContext(r.Context())
+			dec, bErr := h.ApprovalBridge.EnsureMoneyFlagRequest(
+				r.Context(), req.TenantType, req.TenantID, strings.ToUpper(flag), req.Enabled, req.Reason,
+				actor, auth.EffectiveActorType(claims), auth.EffectiveSupplierRole(claims),
+			)
+			if bErr != nil {
+				writeErr(w, http.StatusForbidden, bErr.Error())
+				return
+			}
+			approvalRequestID = dec.ApprovalRequestID
+		}
 	}
 	if h.Audit != nil {
 		detail, _ := json.Marshal(map[string]any{
-			"flag_key":    strings.ToUpper(flag),
-			"tenant_type": req.TenantType,
-			"tenant_id":   req.TenantID,
-			"enabled":     req.Enabled,
-			"reason":      req.Reason,
-			"status":      status,
-			"actor":       actor,
+			"flag_key":            strings.ToUpper(flag),
+			"tenant_type":         req.TenantType,
+			"tenant_id":           req.TenantID,
+			"enabled":             req.Enabled,
+			"reason":              req.Reason,
+			"status":              status,
+			"actor":               actor,
+			"approval_request_id": approvalRequestID,
 		})
 		if err := h.Audit.RecordFlagAudit(r.Context(), actor, auditActionOverrideSet, req.TenantType, req.TenantID, string(detail)); err != nil {
 			writeErr(w, http.StatusInternalServerError, "audit_failed")
 			return
 		}
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "status": status})
+	resp := map[string]any{"ok": true, "status": status}
+	if approvalRequestID != "" {
+		resp["approval_request_id"] = approvalRequestID
+	}
+	writeJSON(w, http.StatusOK, resp)
 }
 
 // HandleApproveOverride POST /v1/platform-admin/flags/{flagKey}/approve
@@ -117,8 +161,13 @@ func (h *Handlers) HandleSetOverride(w http.ResponseWriter, r *http.Request) {
 func (h *Handlers) HandleApproveOverride(w http.ResponseWriter, r *http.Request) {
 	flag := chi.URLParam(r, "flagKey")
 	var req struct {
-		TenantType string `json:"tenant_type"`
-		TenantID   string `json:"tenant_id"`
+		TenantType       string `json:"tenant_type"`
+		TenantID         string `json:"tenant_id"`
+		ApprovalID       string `json:"approval_id,omitempty"`
+		Comment          string `json:"comment,omitempty"`
+		TOTPCode         string `json:"totp_code,omitempty"`
+		BreakGlass       bool   `json:"break_glass,omitempty"`
+		BreakGlassReason string `json:"break_glass_reason,omitempty"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeErr(w, http.StatusBadRequest, "invalid_json")
@@ -136,6 +185,37 @@ func (h *Handlers) HandleApproveOverride(w http.ResponseWriter, r *http.Request)
 		writeErr(w, status, err.Error())
 		return
 	}
+	var approvalRequestID string
+	if h.ApprovalBridge != nil {
+		claims, _ := auth.FromContext(r.Context())
+		dec, bErr := h.ApprovalBridge.ApproveMoneyFlagRequest(
+			r.Context(), req.TenantType, req.TenantID, strings.ToUpper(flag), approver,
+			auth.EffectiveActorType(claims), auth.EffectiveSupplierRole(claims),
+			strings.TrimSpace(req.ApprovalID), req.Comment, req.TOTPCode,
+			claims.MFAVerified, req.BreakGlass, req.BreakGlassReason,
+		)
+		if bErr != nil {
+			_ = h.Svc.RevertApproveToPending(r.Context(), flag, req.TenantType, req.TenantID)
+			code := http.StatusForbidden
+			if strings.Contains(strings.ToLower(bErr.Error()), "hash") {
+				code = http.StatusConflict
+			}
+			writeErr(w, code, bErr.Error())
+			return
+		}
+		approvalRequestID = dec.ApprovalRequestID
+		if dec.Required && !dec.Approved {
+			_ = h.Svc.RevertApproveToPending(r.Context(), flag, req.TenantType, req.TenantID)
+			writeJSON(w, http.StatusAccepted, map[string]any{
+				"ok":                  false,
+				"status":              StatusPending,
+				"code":                "approval_required",
+				"approval_request_id": dec.ApprovalRequestID,
+				"payload_hash":        dec.PayloadHash,
+			})
+			return
+		}
+	}
 	// B5 M-P0-11: money-flag ACTIVE without durable audit is fail-closed —
 	// compensate back to PENDING when audit cannot be recorded.
 	if h.Audit != nil {
@@ -146,10 +226,11 @@ func (h *Handlers) HandleApproveOverride(w http.ResponseWriter, r *http.Request)
 			action = AuditActionAutoOrderSoakGate
 		}
 		detail, _ := json.Marshal(map[string]any{
-			"flag_key":    strings.ToUpper(flag),
-			"tenant_type": req.TenantType,
-			"tenant_id":   req.TenantID,
-			"approver":    approver,
+			"flag_key":            strings.ToUpper(flag),
+			"tenant_type":         req.TenantType,
+			"tenant_id":           req.TenantID,
+			"approver":            approver,
+			"approval_request_id": approvalRequestID,
 		})
 		if err := h.Audit.RecordFlagAudit(r.Context(), approver, action, req.TenantType, req.TenantID, string(detail)); err != nil {
 			_ = h.Svc.RevertApproveToPending(r.Context(), flag, req.TenantType, req.TenantID)
@@ -157,7 +238,11 @@ func (h *Handlers) HandleApproveOverride(w http.ResponseWriter, r *http.Request)
 			return
 		}
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "status": StatusActive})
+	resp := map[string]any{"ok": true, "status": StatusActive}
+	if approvalRequestID != "" {
+		resp["approval_request_id"] = approvalRequestID
+	}
+	writeJSON(w, http.StatusOK, resp)
 }
 
 // RegisterRoutes mounts flag routes under an already PLATFORM_ADMIN-gated router group

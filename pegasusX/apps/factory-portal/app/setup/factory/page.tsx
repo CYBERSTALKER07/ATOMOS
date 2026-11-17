@@ -7,7 +7,13 @@ import { PortalField, PortalInput, PortalSelect, PortalSection, FormAlert } from
 import { factoryOpsLocationKey } from "@pegasusx/api-core";
 import { apiFetch, decodeJwtPayload, persistSession, readTokenFromCookie, refreshFactorySession } from "@/lib/auth";
 import { factoryOperatorId } from "@/lib/factory-scope";
-import { LocationPicker, resolveLocationValue, type LocationValue } from "@/components/LocationPicker";
+import dynamic from "next/dynamic";
+import { resolveLocationValue, type LocationValue } from "@/components/LocationPicker";
+
+const LocationPicker = dynamic(
+  () => import("@/components/LocationPicker").then((m) => m.LocationPicker),
+  { ssr: false },
+);
 import { hasValidCoordinates } from "@/lib/geocode";
 
 interface FactorySetupState {

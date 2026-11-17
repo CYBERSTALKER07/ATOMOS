@@ -81,3 +81,74 @@ func (fakeAddr) String() string  { return "127.0.0.1:22" }
 
 var _ net.Addr = fakeAddr{}
 var _ ssh.PublicKey = (*fakeHostKey)(nil)
+
+func TestPartnerSecurityHardening(t *testing.T) {
+	// 1. LoadSecretRef blocks arbitrary env vars and filesystem paths.
+	t.Setenv("ARBITRARY_JWT_SECRET", "top-secret-jwt")
+	if _, err := LoadSecretRef("ARBITRARY_JWT_SECRET"); err == nil {
+		t.Fatal("LoadSecretRef must reject unprefixed OS env var")
+	}
+	if _, err := LoadSecretRef("/etc/passwd"); err == nil {
+		t.Fatal("LoadSecretRef must reject filesystem paths")
+	}
+	if _, err := LoadSecretRef("./local.key"); err == nil {
+		t.Fatal("LoadSecretRef must reject relative paths")
+	}
+	t.Setenv("PARTNER_SFTP_SECRET_SUPPLIER_SUP_1_SFTP1", "tenant-secret-val")
+	t.Setenv("PARTNER_SFTP_SECRET_SFTP1", "shared-secret-val")
+	if got, err := LoadTenantSecretRef("SUPPLIER", "sup-1", "sftp1"); err != nil || got != "tenant-secret-val" {
+		t.Fatalf("expected tenant-scoped secret, got=%q err=%v", got, err)
+	}
+	t.Setenv("PEGASUSX_ENV", "production")
+	if _, err := LoadTenantSecretRef("SUPPLIER", "sup-2", "sftp1"); err == nil {
+		t.Fatal("expected fail-closed in production when tenant sup-2 attempts cross-tenant sftp1 ref")
+	}
+	t.Setenv("PEGASUSX_ENV", "")
+
+	// 2. Host-key pinning mandatory by default even without env var set.
+	t.Setenv("PARTNER_SFTP_STRICT_HOSTKEY", "")
+	t.Setenv("PARTNER_SFTP_ALLOW_INSECURE_HOSTKEY", "")
+	if _, err := sftpHostKeyCallback(SftpConfig{}); err == nil {
+		t.Fatal("expected sftpHostKeyCallback to require host key by default")
+	}
+
+	// 3. SFTP directory traversal rejected.
+	if err := ValidateSftpConfigPaths(SftpConfig{RemoteDir: "/edi", InboundDir: "../etc", OutboundDir: "out", ArchiveDir: "arch"}); err == nil {
+		t.Fatal("expected traversal rejection on InboundDir")
+	}
+
+	// 4. DeliveryWorker blocks SSRF by default.
+	dw := NewDeliveryWorker(NewMemoryWebhookRepository(), nil)
+	if err := dw.DeliverHTTP(context.Background(), WebhookSubscription{URL: "https://169.254.169.254/latest/meta-data/", SigningSecret: "s"}, "e1", "ORDER_CREATED", []byte(`{}`)); err == nil {
+		t.Fatal("expected DeliveryWorker SSRF block")
+	}
+
+	// 5. CSV and XLSX formula injection neutralization (preserving negative numbers).
+	rows := []map[string]any{
+		{"sku": "=CMD|'/C calc'!A0", "delta": -42, "note": "  +SUM(A1:A2)"},
+	}
+	csvBytes, _, err := encodeExportCSV(rows)
+	if err != nil {
+		t.Fatal(err)
+	}
+	csvStr := string(csvBytes)
+	if !containsAll(csvStr, "'=CMD|", "-42,", "'  +SUM(A1:A2)") {
+		t.Fatalf("CSV formula sanitization unexpected: %s", csvStr)
+	}
+}
+
+func containsAll(hay string, needles ...string) bool {
+	for _, n := range needles {
+		found := false
+		for i := 0; i+len(n) <= len(hay); i++ {
+			if hay[i:i+len(n)] == n {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+	return true
+}

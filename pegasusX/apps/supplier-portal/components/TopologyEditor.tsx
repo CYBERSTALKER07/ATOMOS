@@ -16,8 +16,13 @@ import { AUTH_COUNTRIES } from "@/components/ui";
 import { sessionMapCenter } from "@pegasusx/api-core";
 import { CoverageCityChips } from "@/components/CoverageCityChips";
 import { createSupplierApi } from "@/lib/api";
-import { LocationPicker } from "@/components/LocationPicker";
+import dynamic from "next/dynamic";
 import { useToast } from "@/components/Toast";
+
+const LocationPicker = dynamic(
+  () => import("@/components/LocationPicker").then((m) => m.LocationPicker),
+  { ssr: false },
+);
 
 const api = createSupplierApi();
 

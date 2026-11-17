@@ -139,6 +139,9 @@ func (e *Engine) ExecuteKineticAction(
 				e.actionHistory = e.actionHistory[len(e.actionHistory)-1000:]
 			}
 			e.mu.Unlock()
+			if hook := e.currentAuditHook(); hook != nil {
+				_ = hook(ctx, rejected)
+			}
 			return rejected, fmt.Errorf("%w: [%s] %s", ErrPreconditionFailed, res.RuleName, res.Reason)
 		}
 	}
@@ -178,6 +181,11 @@ func (e *Engine) ExecuteKineticAction(
 	repo := e.spannerRepo
 	if repo != nil {
 		if err := repo.PersistKineticActionExecution(ctx, record); err != nil {
+			return nil, err
+		}
+	}
+	if hook := e.currentAuditHook(); hook != nil {
+		if err := hook(ctx, record); err != nil {
 			return nil, err
 		}
 	}

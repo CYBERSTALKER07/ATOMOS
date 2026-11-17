@@ -57,14 +57,17 @@ const (
 
 // RetailerCreditScore represents the overall credit score and risk tier.
 type RetailerCreditScore struct {
-	RetailerID          string    `json:"retailer_id"`
-	Score               int64     `json:"score"`
-	RiskTier            RiskTier  `json:"risk_tier"`
-	SuggestedLimitMinor int64     `json:"suggested_limit_minor"`
-	FactorsJSON         string    `json:"factors_json"`
-	WindowStart         time.Time `json:"window_start"`
-	WindowEnd           time.Time `json:"window_end"`
-	ComputedAt          time.Time `json:"computed_at"`
+	RetailerID          string       `json:"retailer_id"`
+	Score               int64        `json:"score"`
+	PdBps               int64        `json:"pd_bps,omitempty"`
+	RiskTier            RiskTier     `json:"risk_tier"`
+	SuggestedLimitMinor int64        `json:"suggested_limit_minor"`
+	FactorsJSON         string       `json:"factors_json"`
+	ReasonCodes         []ReasonCode `json:"reason_codes,omitempty"`
+	ReasonCodesJSON     string       `json:"reason_codes_json,omitempty"`
+	WindowStart         time.Time    `json:"window_start"`
+	WindowEnd           time.Time    `json:"window_end"`
+	ComputedAt          time.Time    `json:"computed_at"`
 }
 
 // Profile is the retailer credit profile aggregate per supplier.
@@ -78,6 +81,7 @@ type Profile struct {
 	RiskScore            int64     `json:"risk_score"`
 	RiskTier             RiskTier  `json:"risk_tier"`
 	DelinquencyCount     int64     `json:"delinquency_count"`
+	PrepayOnlyLocked     bool      `json:"prepay_only_locked"`
 	Status               Status    `json:"status"`
 	LastEvaluatedAt      time.Time `json:"last_evaluated_at,omitempty"`
 	Version              int64     `json:"version"`
@@ -96,15 +100,18 @@ func (p Profile) Available() int64 {
 
 // CheckResult is the outcome of an order credit check.
 type CheckResult struct {
-	Allowed          bool   `json:"allowed"`
-	CreditLimitMinor int64  `json:"credit_limit_minor"`
-	CurrentBalance   int64  `json:"current_balance"`
-	ReservedMinor    int64  `json:"reserved_minor,omitempty"`
-	RequestedAmount  int64  `json:"requested_amount"`
-	Shortfall        int64  `json:"shortfall,omitempty"`
-	Reason           string `json:"reason,omitempty"`
-	DueAt            string `json:"due_at,omitempty"`
-	TermsDays        int64  `json:"terms_days,omitempty"`
+	Allowed          bool     `json:"allowed"`
+	CreditLimitMinor int64    `json:"credit_limit_minor"`
+	CurrentBalance   int64    `json:"current_balance"`
+	ReservedMinor    int64    `json:"reserved_minor,omitempty"`
+	RequestedAmount  int64    `json:"requested_amount"`
+	Shortfall        int64    `json:"shortfall,omitempty"`
+	Reason           string   `json:"reason,omitempty"`
+	RiskTier         RiskTier `json:"risk_tier,omitempty"`
+	RiskScore        int64    `json:"risk_score,omitempty"`
+	PrepayOnlyLocked bool     `json:"prepay_only_locked,omitempty"`
+	DueAt            string   `json:"due_at,omitempty"`
+	TermsDays        int64    `json:"terms_days,omitempty"`
 }
 
 // OrderReservation is a per-order credit hold.
@@ -120,14 +127,14 @@ type OrderReservation struct {
 
 // Common errors.
 var (
-	ErrProfileNotFound    = errors.New("credit_profile_not_found")
-	ErrProfileFrozen      = errors.New("credit_profile_frozen")
-	ErrProfileBlacklisted = errors.New("credit_profile_blacklisted")
-	ErrLimitBreached      = errors.New("credit_limit_breached")
-	ErrReservationExists  = errors.New("credit_reservation_exists")
-	ErrNoReservation      = errors.New("credit_reservation_not_found")
-	ErrWarningAckRequired = errors.New("warning_ack_required")
+	ErrProfileNotFound        = errors.New("credit_profile_not_found")
+	ErrProfileFrozen          = errors.New("credit_profile_frozen")
+	ErrProfileBlacklisted     = errors.New("credit_profile_blacklisted")
+	ErrLimitBreached          = errors.New("credit_limit_breached")
+	ErrReservationExists      = errors.New("credit_reservation_exists")
+	ErrNoReservation          = errors.New("credit_reservation_not_found")
+	ErrWarningAckRequired     = errors.New("warning_ack_required")
 	ErrDisableRequiresSupport = errors.New("credit_disable_requires_support")
-	ErrCreditNotEnabled   = errors.New("credit_relationship_not_enabled")
-	ErrProgramDisabled    = errors.New("credit_program_not_enabled")
+	ErrCreditNotEnabled       = errors.New("credit_relationship_not_enabled")
+	ErrProgramDisabled        = errors.New("credit_program_not_enabled")
 )

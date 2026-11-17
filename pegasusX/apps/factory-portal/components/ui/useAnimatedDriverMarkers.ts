@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import type * as GeoJSON from 'geojson';
 import type { GenericRouteType } from './GenericFleetLiveMap';
 
 export const FLEET_ROUTE_COLORS = [

@@ -183,11 +183,16 @@ func (e *globalpayProviderExecutor) executeRefund(ctx context.Context, req Execu
 			return MarkRetryable(fmt.Errorf("globalpay refund request failed: %w", err))
 		}
 		defer resp.Body.Close()
-		respBody, _ := io.ReadAll(resp.Body)
+		respBody, rerr := io.ReadAll(io.LimitReader(resp.Body, 2<<20))
+		if rerr != nil {
+			return MarkRetryable(fmt.Errorf("read globalpay refund response: %w", rerr))
+		}
 		if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
 			return fmt.Errorf("globalpay refund failed with status %d: %s", resp.StatusCode, string(respBody))
 		}
-		_ = json.Unmarshal(respBody, &performResp)
+		if uerr := json.Unmarshal(respBody, &performResp); uerr != nil {
+			return fmt.Errorf("decode globalpay refund response: %w", uerr)
+		}
 		return nil
 	})
 	if err != nil {

@@ -24,6 +24,9 @@ type ControlTowerPulse struct {
 	LowStockSkuBins    int                          `json:"low_stock_sku_bins"`
 	ShiftVariances7d   int                          `json:"shift_variances_7d"`
 	SalesMinor7d       int64                        `json:"sales_minor_7d"`
+	PosAnomalyReview   bool                         `json:"pos_anomaly_review"`
+	PosAnomalyCount    int                          `json:"pos_anomaly_count"`
+	PosAnomalies       []PosAnomalyReview           `json:"pos_anomalies,omitempty"`
 	Capabilities       []string                     `json:"capabilities"`
 	Empty              bool                         `json:"empty"`
 	Source             string                       `json:"source"`
@@ -145,6 +148,11 @@ func (s *Service) buildControlTowerPulse(ctx context.Context, orgID string) (Con
 		openOrders = rollupOpen
 	}
 
+	posAnomalies, err := s.collectControlTowerPosAnomalies(ctx, orgID, from7, now)
+	if err != nil {
+		return ControlTowerPulse{}, fmt.Errorf("control tower pos anomalies: %w", err)
+	}
+
 	pulse := ControlTowerPulse{
 		RetailerID:         orgID,
 		GeneratedAt:        now.Format(time.RFC3339Nano),
@@ -157,6 +165,9 @@ func (s *Service) buildControlTowerPulse(ctx context.Context, orgID string) (Con
 		LowStockSkuBins:    lowStock,
 		ShiftVariances7d:   variances,
 		SalesMinor7d:       salesMinor,
+		PosAnomalyReview:   len(posAnomalies) > 0,
+		PosAnomalyCount:    len(posAnomalies),
+		PosAnomalies:       posAnomalies,
 		Capabilities:       capList,
 		Source:             orderSource,
 		OrdersByStatus:     ordersByStatus,
@@ -172,6 +183,7 @@ func (s *Service) buildControlTowerPulse(ctx context.Context, orgID string) (Con
 		pulse.LowStockSkuBins == 0 &&
 		pulse.ShiftVariances7d == 0 &&
 		pulse.SalesMinor7d == 0 &&
+		len(pulse.PosAnomalies) == 0 &&
 		rollupOpen == 0
 	return pulse, nil
 }

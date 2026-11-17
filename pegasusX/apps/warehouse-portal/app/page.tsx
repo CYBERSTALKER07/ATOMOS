@@ -23,7 +23,9 @@ import Icon from '@/components/Icon';
 import EmptyState from '@/components/EmptyState';
 import { motion } from 'framer-motion';
 import PageTransition from '@/components/PageTransition';
-import FleetLiveMapPanel from '@/components/FleetLiveMapPanel';
+import dynamic from 'next/dynamic';
+
+const FleetLiveMapPanel = dynamic(() => import('@/components/FleetLiveMapPanel'), { ssr: false });
 import NetworkPulsePanel from '@/components/NetworkPulsePanel';
 import { PageSection } from '@/components/PageSection';
 import { PageChrome } from '@/components/PageChrome';

@@ -8,6 +8,7 @@ import (
 )
 
 func TestCheckOrder_RiskTierBlocked(t *testing.T) {
+	// RiskTierBlock is purely informational telemetry and never rejects CheckOrder.
 	repo := &testCreditRepo{
 		found: true,
 		profile: Profile{
@@ -25,14 +26,11 @@ func TestCheckOrder_RiskTierBlocked(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if res.Allowed {
-		t.Fatal("expected order to be blocked for RiskTierBlock")
+	if !res.Allowed || res.Reason != "" {
+		t.Fatalf("expected order to be allowed (RiskTierBlock is telemetry only), got allowed=%v reason=%s", res.Allowed, res.Reason)
 	}
-	if res.Reason != "risk_tier_blocked" {
-		t.Fatalf("expected reason risk_tier_blocked, got %s", res.Reason)
-	}
-	if res.Shortfall != 15000 {
-		t.Fatalf("expected shortfall 15000, got %d", res.Shortfall)
+	if res.RiskTier != RiskTierBlock {
+		t.Fatalf("expected RiskTierBlock preserved as telemetry, got %q", res.RiskTier)
 	}
 }
 
@@ -63,6 +61,7 @@ func TestCheckOrder_DelinquentAccountHold(t *testing.T) {
 }
 
 func TestCheckOrder_RiskScoreCritical(t *testing.T) {
+	// Even with legacy auto-hold env set, critical risk scores remain informational telemetry only.
 	t.Setenv("CREDIT_SCORE_AUTO_HOLD_ENABLED", "true")
 	t.Setenv("CREDIT_SCORE_AUTO_HOLD_MAX", "25")
 
@@ -83,11 +82,11 @@ func TestCheckOrder_RiskScoreCritical(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if res.Allowed {
-		t.Fatal("expected order to be blocked for critical risk score")
+	if !res.Allowed || res.Reason != "" {
+		t.Fatalf("expected order to be allowed (risk score is telemetry only), got allowed=%v reason=%s", res.Allowed, res.Reason)
 	}
-	if res.Reason != "risk_score_critical" {
-		t.Fatalf("expected reason risk_score_critical, got %s", res.Reason)
+	if res.RiskScore != 20 {
+		t.Fatalf("expected RiskScore=20 preserved as telemetry, got %d", res.RiskScore)
 	}
 }
 
@@ -197,5 +196,37 @@ func TestOverdueCreditSweeper_ConfigOverrides(t *testing.T) {
 	batch := overdueBatchSize()
 	if batch != 50 {
 		t.Fatalf("expected batch size 50, got %d", batch)
+	}
+}
+
+func TestOverdueCreditSweeper_NeverFreezesOnRiskTierOrScore(t *testing.T) {
+	t.Setenv("CREDIT_SCORE_AUTO_HOLD_ENABLED", "true")
+	t.Setenv("CREDIT_SCORE_AUTO_HOLD_MAX", "25")
+	t.Setenv("CREDIT_SCORING_ENABLED", "true")
+
+	repo := &testCreditRepo{
+		found: true,
+		profile: Profile{
+			RetailerID:          "ret-score-only",
+			SupplierID:          "sup-1",
+			CreditLimitMinor:    100000,
+			CurrentBalanceMinor: 95000,
+			DelinquencyCount:    1, // strictly below default tolerance (2)
+			RiskScore:           5,
+			RiskTier:            RiskTierBlock,
+			Status:              StatusActive,
+		},
+	}
+	svc := newTestService(repo)
+
+	frozen, err := svc.RunOverdueCreditSweeperOnce(context.Background())
+	if err != nil {
+		t.Fatalf("RunOverdueCreditSweeperOnce failed: %v", err)
+	}
+	if frozen != 0 {
+		t.Fatalf("expected 0 frozen profiles when below delinquency tolerance, got %d", frozen)
+	}
+	if repo.stored != nil {
+		t.Fatalf("expected profile not to be mutated/frozen, got %+v", repo.stored)
 	}
 }

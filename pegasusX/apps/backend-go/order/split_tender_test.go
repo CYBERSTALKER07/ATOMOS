@@ -53,21 +53,34 @@ func TestBuildSplitTenderLegs(t *testing.T) {
 		}
 		switch leg.Method {
 		case MethodWallet:
-			if leg.AmountMinor != 25_000 || leg.Status != PaymentStatusCaptured {
+			if leg.AmountMinor != 25_000 || leg.Status != PaymentStatusCaptured || leg.IdempotencyKey != "split-ord-split-1-wallet" {
 				t.Errorf("wallet leg invalid %+v", leg)
 			}
 		case MethodCredit:
-			if leg.AmountMinor != 25_000 || leg.Status != PaymentStatusAuthorized {
+			if leg.AmountMinor != 25_000 || leg.Status != PaymentStatusAuthorized || leg.IdempotencyKey != "split-ord-split-1-credit" {
 				t.Errorf("credit leg invalid %+v", leg)
 			}
 		case MethodCard:
-			if leg.AmountMinor != 25_000 || leg.Status != PaymentStatusAuthorized || !leg.ProviderRef.Valid || leg.ProviderRef.StringVal != "tok_psp_123" {
+			if leg.AmountMinor != 25_000 || leg.Status != PaymentStatusAuthorized || !leg.ProviderRef.Valid || leg.ProviderRef.StringVal != "tok_psp_123" || leg.IdempotencyKey != "split-ord-split-1-card" {
 				t.Errorf("card leg invalid %+v", leg)
 			}
 		case MethodCash:
-			if leg.AmountMinor != 25_000 || leg.Status != PaymentStatusPending {
+			if leg.AmountMinor != 25_000 || leg.Status != PaymentStatusPending || leg.IdempotencyKey != "split-ord-split-1-cash" {
 				t.Errorf("cash leg invalid %+v", leg)
 			}
 		}
+	}
+
+	retryLegs := BuildSplitTenderLegs("ord-split-1", plan, now.Add(5*time.Second))
+	for i := range legs {
+		if legs[i].IdempotencyKey != retryLegs[i].IdempotencyKey {
+			t.Fatalf("expected deterministic idempotency key across retry timestamps: %q vs %q", legs[i].IdempotencyKey, retryLegs[i].IdempotencyKey)
+		}
+	}
+}
+
+func TestFiscalOFDTimeoutAlignedWithSoliq(t *testing.T) {
+	if FiscalOFDTimeout != 30*time.Second {
+		t.Fatalf("expected FiscalOFDTimeout == 30s, got %s", FiscalOFDTimeout)
 	}
 }

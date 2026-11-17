@@ -22,6 +22,15 @@ func RegisterPartnerRoutesOpts(r chi.Router, authOpts AuthOptions, h *Handlers) 
 
 		pr.Group(func(ar chi.Router) {
 			ar.Use(AuthMiddlewareOpts(authOpts))
+			ar.Use(auth.RequireAuditorActive)
+			ar.Use(func(next http.Handler) http.Handler {
+				return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					if rejectPartnerAuditorOrAgent(w, r) {
+						return
+					}
+					next.ServeHTTP(w, r)
+				})
+			})
 			ar.With(RequirePartner(ScopeOrdersWrite)).Post("/orders", h.HandleCreateOrder)
 			ar.With(RequirePartner(ScopeOrdersRead)).Get("/orders/{orderID}", h.HandleGetOrder)
 			ar.With(RequirePartner(ScopeOrdersWrite)).Post("/orders/{orderID}/cancel", h.HandleCancelOrder)
@@ -52,6 +61,9 @@ func RegisterPartnerRoutesOpts(r chi.Router, authOpts AuthOptions, h *Handlers) 
 			ar.With(RequirePartner(ScopeCatalogRead)).Get("/masterdata/dlq", h.HandleListMasterDataDLQ)
 			ar.With(RequirePartner(ScopeInventoryWrite)).Post("/wms/asn", h.HandleInboundASN)
 			ar.With(RequirePartner(ScopeCatalogWrite)).Post("/adapters/onec/import", h.HandleOneCImport)
+			ar.With(RequirePartner(ScopeExportsRead)).Get("/adapters/onec/pending", h.HandleOneCPending)
+			ar.With(RequirePartner(ScopeExportsRead)).Post("/adapters/onec/ack", h.HandleOneCAck)
+			ar.With(RequirePartner(ScopeExportsRead)).Post("/adapters/onec/reject", h.HandleOneCReject)
 			ar.With(RequirePartner(ScopeExportsRead)).Get("/coa", h.HandleGetCoa)
 			ar.With(RequirePartner(ScopeExportsRead)).Put("/coa", h.HandlePutCoa)
 			ar.With(RequirePartner(ScopeExportsRead)).Get("/as2/config", h.HandleGetAs2)
@@ -63,53 +75,68 @@ func RegisterPartnerRoutesOpts(r chi.Router, authOpts AuthOptions, h *Handlers) 
 // RegisterAdminKeyRoutes mounts JWT-gated key issuance for humans.
 // Optional stepUp middleware (e.g. mfa.RequireStepUp) enforces TOTP for PLATFORM_ADMIN only.
 func RegisterAdminKeyRoutes(r chi.Router, h *Handlers, stepUp ...func(http.Handler) http.Handler) {
-	adminKeys := r.With(auth.RequireRole(auth.RoleAdmin, auth.RoleRetailer, auth.RolePlatformAdmin))
+	auditorActive := auth.RequireAuditorActive
+	noAuditorWrite := auth.RejectAuditorOrAgentMutation(false)
+
+	adminKeys := r.With(auditorActive, auth.RequireRole(auth.RoleAdmin, auth.RoleRetailer, auth.RolePlatformAdmin))
 	for _, mw := range stepUp {
 		if mw != nil {
 			adminKeys = adminKeys.With(mw)
 		}
 	}
-	adminKeys.Post("/v1/admin/partner-keys", h.HandleIssueKey)
+	adminKeys.With(noAuditorWrite).Post("/v1/admin/partner-keys", h.HandleIssueKey)
 	adminKeys.Get("/v1/admin/partner-keys", h.HandleListKeys)
-	adminKeys.Post("/v1/admin/partner-keys/{keyID}/revoke", h.HandleRevokeKey)
+	adminKeys.With(noAuditorWrite).Post("/v1/admin/partner-keys/{keyID}/revoke", h.HandleRevokeKey)
+
+	supRead := r.With(auditorActive, auth.RequireRole(auth.RoleAdmin))
+	supWrite := r.With(auditorActive, auth.RequireRole(auth.RoleAdmin), noAuditorWrite)
+
 	// Supplier portal convenience alias (ADMIN role is supplier portal session).
-	r.With(auth.RequireRole(auth.RoleAdmin)).Post("/v1/supplier/partner-keys", h.HandleIssueKey)
-	r.With(auth.RequireRole(auth.RoleAdmin)).Get("/v1/supplier/partner-keys", h.HandleListKeys)
-	r.With(auth.RequireRole(auth.RoleAdmin)).Post("/v1/supplier/partner-keys/{keyID}/revoke", h.HandleRevokeKey)
+	supWrite.Post("/v1/supplier/partner-keys", h.HandleIssueKey)
+	supRead.Get("/v1/supplier/partner-keys", h.HandleListKeys)
+	supWrite.Post("/v1/supplier/partner-keys/{keyID}/revoke", h.HandleRevokeKey)
+
+	retRead := r.With(auditorActive, auth.RequireRole(auth.RoleRetailer))
+	retWrite := r.With(auditorActive, auth.RequireRole(auth.RoleRetailer), noAuditorWrite)
 	// Retailer self-serve partner keys (incl. environment=SANDBOX).
-	r.With(auth.RequireRole(auth.RoleRetailer)).Post("/v1/retailer/partner-keys", h.HandleIssueKey)
-	r.With(auth.RequireRole(auth.RoleRetailer)).Get("/v1/retailer/partner-keys", h.HandleListKeys)
-	r.With(auth.RequireRole(auth.RoleRetailer)).Post("/v1/retailer/partner-keys/{keyID}/revoke", h.HandleRevokeKey)
+	retWrite.Post("/v1/retailer/partner-keys", h.HandleIssueKey)
+	retRead.Get("/v1/retailer/partner-keys", h.HandleListKeys)
+	retWrite.Post("/v1/retailer/partner-keys/{keyID}/revoke", h.HandleRevokeKey)
 
 	// Wave 2A: webhook ops + SFTP + exports via supplier JWT
-	r.With(auth.RequireRole(auth.RoleAdmin)).Get("/v1/supplier/partner-webhooks", h.HandleListWebhooks)
-	r.With(auth.RequireRole(auth.RoleAdmin)).Post("/v1/supplier/partner-webhooks", h.HandleCreateWebhook)
-	r.With(auth.RequireRole(auth.RoleAdmin)).Delete("/v1/supplier/partner-webhooks/{subscriptionID}", h.HandleDeactivateWebhook)
-	r.With(auth.RequireRole(auth.RoleAdmin)).Post("/v1/supplier/partner-webhooks/{subscriptionID}/ping", h.HandlePingWebhook)
-	r.With(auth.RequireRole(auth.RoleAdmin)).Post("/v1/supplier/partner-webhooks/{subscriptionID}/rotate-secret", h.HandleRotateWebhookSecret)
-	r.With(auth.RequireRole(auth.RoleAdmin)).Get("/v1/supplier/partner-webhooks/dead-letter", h.HandleListDeadLetter)
-	r.With(auth.RequireRole(auth.RoleAdmin)).Post("/v1/supplier/partner-webhooks/dead-letter/{attemptID}/replay", h.HandleReplayDeadLetter)
-	r.With(auth.RequireRole(auth.RoleAdmin)).Get("/v1/supplier/partner-sftp", h.HandleGetSftp)
-	r.With(auth.RequireRole(auth.RoleAdmin)).Put("/v1/supplier/partner-sftp", h.HandlePutSftp)
-	r.With(auth.RequireRole(auth.RoleAdmin)).Post("/v1/supplier/partner-exports", h.HandleCreateExport)
-	r.With(auth.RequireRole(auth.RoleAdmin)).Get("/v1/supplier/partner-exports", h.HandleListExports)
-	r.With(auth.RequireRole(auth.RoleAdmin)).Get("/v1/supplier/partner-exports/{jobID}", h.HandleGetExport)
-	r.With(auth.RequireRole(auth.RoleAdmin)).Get("/v1/supplier/partner-edi/documents", h.HandleListEdiDocuments)
-	r.With(auth.RequireRole(auth.RoleAdmin)).Get("/v1/supplier/partner-edi/documents/{documentID}", h.HandleGetEdiDocument)
-	r.With(auth.RequireRole(auth.RoleAdmin)).Post("/v1/supplier/partner-edi/documents/{documentID}/replay", h.HandleReplayEdiDocument)
-	r.With(auth.RequireRole(auth.RoleAdmin)).Get("/v1/supplier/partner-edi/profile", h.HandleGetEdiProfile)
-	r.With(auth.RequireRole(auth.RoleAdmin)).Put("/v1/supplier/partner-edi/profile", h.HandlePutEdiProfile)
-	r.With(auth.RequireRole(auth.RoleAdmin)).Get("/v1/supplier/partner-coa", h.HandleGetCoa)
-	r.With(auth.RequireRole(auth.RoleAdmin)).Put("/v1/supplier/partner-coa", h.HandlePutCoa)
-	r.With(auth.RequireRole(auth.RoleAdmin)).Get("/v1/supplier/partner-as2", h.HandleGetAs2)
-	r.With(auth.RequireRole(auth.RoleAdmin)).Put("/v1/supplier/partner-as2", h.HandlePutAs2)
+	supRead.Get("/v1/supplier/partner-webhooks", h.HandleListWebhooks)
+	supWrite.Post("/v1/supplier/partner-webhooks", h.HandleCreateWebhook)
+	supWrite.Delete("/v1/supplier/partner-webhooks/{subscriptionID}", h.HandleDeactivateWebhook)
+	supWrite.Post("/v1/supplier/partner-webhooks/{subscriptionID}/ping", h.HandlePingWebhook)
+	supWrite.Post("/v1/supplier/partner-webhooks/{subscriptionID}/rotate-secret", h.HandleRotateWebhookSecret)
+	supRead.Get("/v1/supplier/partner-webhooks/dead-letter", h.HandleListDeadLetter)
+	supWrite.Post("/v1/supplier/partner-webhooks/dead-letter/{attemptID}/replay", h.HandleReplayDeadLetter)
+	supRead.Get("/v1/supplier/partner-sftp", h.HandleGetSftp)
+	supWrite.Put("/v1/supplier/partner-sftp", h.HandlePutSftp)
+	supWrite.Post("/v1/supplier/partner-exports", h.HandleCreateExport)
+	supRead.Get("/v1/supplier/partner-exports", h.HandleListExports)
+	supRead.Get("/v1/supplier/partner-exports/{jobID}", h.HandleGetExport)
+	supRead.Get("/v1/supplier/partner-edi/documents", h.HandleListEdiDocuments)
+	supRead.Get("/v1/supplier/partner-edi/documents/{documentID}", h.HandleGetEdiDocument)
+	supWrite.Post("/v1/supplier/partner-edi/documents/{documentID}/replay", h.HandleReplayEdiDocument)
+	supRead.Get("/v1/supplier/partner-edi/profile", h.HandleGetEdiProfile)
+	supWrite.Put("/v1/supplier/partner-edi/profile", h.HandlePutEdiProfile)
+	supRead.Get("/v1/supplier/partner-coa", h.HandleGetCoa)
+	supWrite.Put("/v1/supplier/partner-coa", h.HandlePutCoa)
+	supRead.Get("/v1/supplier/partner-as2", h.HandleGetAs2)
+	supWrite.Put("/v1/supplier/partner-as2", h.HandlePutAs2)
+	supRead.Get("/v1/supplier/partner-onec/pending", h.HandleOneCPending)
+	supWrite.Post("/v1/supplier/partner-onec/ack", h.HandleOneCAck)
+	supWrite.Post("/v1/supplier/partner-onec/reject", h.HandleOneCReject)
 
-	r.With(auth.RequireRole(auth.RoleAdmin, auth.RoleRetailer, auth.RolePlatformAdmin)).Get("/v1/admin/partner-sftp", h.HandleGetSftp)
-	r.With(auth.RequireRole(auth.RoleAdmin, auth.RoleRetailer, auth.RolePlatformAdmin)).Put("/v1/admin/partner-sftp", h.HandlePutSftp)
-	r.With(auth.RequireRole(auth.RoleAdmin, auth.RoleRetailer, auth.RolePlatformAdmin)).Get("/v1/admin/partner-coa", h.HandleGetCoa)
-	r.With(auth.RequireRole(auth.RoleAdmin, auth.RoleRetailer, auth.RolePlatformAdmin)).Put("/v1/admin/partner-coa", h.HandlePutCoa)
-	r.With(auth.RequireRole(auth.RoleAdmin, auth.RoleRetailer, auth.RolePlatformAdmin)).Get("/v1/admin/partner-as2", h.HandleGetAs2)
-	r.With(auth.RequireRole(auth.RoleAdmin, auth.RoleRetailer, auth.RolePlatformAdmin)).Put("/v1/admin/partner-as2", h.HandlePutAs2)
+	admRead := r.With(auditorActive, auth.RequireRole(auth.RoleAdmin, auth.RoleRetailer, auth.RolePlatformAdmin))
+	admWrite := r.With(auditorActive, auth.RequireRole(auth.RoleAdmin, auth.RoleRetailer, auth.RolePlatformAdmin), noAuditorWrite)
+	admRead.Get("/v1/admin/partner-sftp", h.HandleGetSftp)
+	admWrite.Put("/v1/admin/partner-sftp", h.HandlePutSftp)
+	admRead.Get("/v1/admin/partner-coa", h.HandleGetCoa)
+	admWrite.Put("/v1/admin/partner-coa", h.HandlePutCoa)
+	admRead.Get("/v1/admin/partner-as2", h.HandleGetAs2)
+	admWrite.Put("/v1/admin/partner-as2", h.HandlePutAs2)
 }
 
 // PartnerRateLimitKey returns a limiter key for reliability middleware (KeyId).

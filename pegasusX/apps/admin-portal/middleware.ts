@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { verifyAdminJwt } from "@/lib/jwt-verify";
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
 
-  // Allow static files, api routes, and root
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api") ||
@@ -15,12 +15,16 @@ export function middleware(request: NextRequest) {
   }
 
   const token = request.cookies.get("pegasusx_admin_token")?.value;
+  const verified = token ? await verifyAdminJwt(token) : null;
 
-  // If visiting protected route without cookie, redirect to /?return_to=...
-  if (!token) {
+  if (!verified) {
     const returnTo = encodeURIComponent(`${pathname}${search}`);
     const loginUrl = new URL(`/?return_to=${returnTo}`, request.url);
-    return NextResponse.redirect(loginUrl);
+    const res = NextResponse.redirect(loginUrl);
+    if (token) {
+      res.cookies.delete("pegasusx_admin_token");
+    }
+    return res;
   }
 
   return NextResponse.next();

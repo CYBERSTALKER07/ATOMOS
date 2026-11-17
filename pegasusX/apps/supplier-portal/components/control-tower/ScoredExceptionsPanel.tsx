@@ -34,8 +34,8 @@ export function ScoredExceptionsPanel({ limit = 10 }: { limit?: number }) {
 
   if (error) {
     return (
-      <p className="text-sm text-red-400">
-        Scored exceptions unavailable ({error}). Enable CONTROL_TOWER_PLAYBOOKS_ENABLED.
+      <p className="text-sm text-[var(--color-md-outline)]">
+        Priority scoring is currently unavailable. Review open items directly in the Exception Desk.
       </p>
     );
   }

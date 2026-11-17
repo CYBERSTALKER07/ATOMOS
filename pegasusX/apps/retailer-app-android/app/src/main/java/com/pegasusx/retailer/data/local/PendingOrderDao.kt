@@ -17,4 +17,12 @@ interface PendingOrderDao {
 
     @Query("UPDATE pending_orders SET retryCount = retryCount + 1, lastError = :lastError WHERE id = :id")
     suspend fun incrementRetry(id: Long, lastError: String): Int
+
+    @Query(
+        "UPDATE pending_orders SET retryCount = retryCount + 1, status = :status, lastError = :lastError WHERE id = :id",
+    )
+    suspend fun updateStatusAndRetry(id: Long, status: String, lastError: String): Int
+
+    @Query("UPDATE pending_orders SET status = :status, lastError = :lastError WHERE id = :id")
+    suspend fun updateStatus(id: Long, status: String, lastError: String?): Int
 }

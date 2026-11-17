@@ -52,7 +52,7 @@ class OfflineSyncWorker @AssistedInject constructor(
         val pending = pendingDao.getPending()
         if (pending.isEmpty()) return Result.success()
 
-        Log.d(TAG, "Draining ${pending.size} queued mutation(s)")
+        if (BuildConfig.DEBUG) Log.d(TAG, "Draining ${pending.size} queued mutation(s)")
 
         val ordered = pending.sortedWith(
             compareBy<PendingMutationEntity> { it.priority }.thenBy { it.createdAt },
@@ -129,7 +129,7 @@ class OfflineSyncWorker @AssistedInject constructor(
             for ((mutation, payload) in parsed) {
                 if (payload.orderId in processed) {
                     pendingDao.deleteById(mutation.id)
-                    Log.d(TAG, "Batch synced ${payload.orderId}")
+                    if (BuildConfig.DEBUG) Log.d(TAG, "Batch synced ${payload.orderId}")
                 }
             }
         }.onFailure { err ->
@@ -153,10 +153,12 @@ class OfflineSyncWorker @AssistedInject constructor(
                 },
             )
             pendingDao.deleteById(mutation.id)
-            Log.d(TAG, "Direct synced ${payload.orderId}")
+            if (BuildConfig.DEBUG) Log.d(TAG, "Direct synced ${payload.orderId}")
             FlushOutcome.ACK
         } catch (e: retrofit2.HttpException) {
-            handleHttp(mutation, e.code(), e.message())
+            val errBody = runCatching { e.response()?.errorBody()?.string() }.getOrNull().orEmpty()
+            val detail = if (errBody.isNotBlank()) errBody else e.message()
+            handleHttp(mutation, e.code(), detail)
         } catch (e: Exception) {
             pendingDao.recordAttempt(mutation.id, e.message ?: "network_error")
             maybeDead(mutation, e.message ?: "network_error")
@@ -267,9 +269,9 @@ class OfflineSyncWorker @AssistedInject constructor(
 
     private suspend fun handleHttp(mutation: PendingMutationEntity, code: Int, detail: String): FlushOutcome {
         return when {
-            DriverOfflineActionCatalog.isSuccessHttp(code) -> {
+            DriverOfflineActionCatalog.isSuccessHttp(code) || DriverOfflineActionCatalog.isIdempotentReplay409(code, detail) -> {
                 pendingDao.deleteById(mutation.id)
-                Log.d(TAG, "Ack ${mutation.endpoint} ${mutation.orderId} code=$code")
+                if (BuildConfig.DEBUG) Log.d(TAG, "Ack ${mutation.endpoint} ${mutation.orderId} code=$code")
                 FlushOutcome.ACK
             }
             DriverOfflineActionCatalog.isRetryableHttp(code) -> {

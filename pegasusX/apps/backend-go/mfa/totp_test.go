@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base32"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -124,5 +125,43 @@ func TestNeedsStepUpOptionalWhenNotRequired(t *testing.T) {
 	need, err := svc.NeedsStepUp(context.Background(), "anyone")
 	if err != nil || need {
 		t.Fatalf("need=%v err=%v", need, err)
+	}
+}
+
+type failingReplayCache struct{}
+
+func (failingReplayCache) IsUsed(context.Context, string, uint64) (bool, error) {
+	return false, errors.New("redis connection refused")
+}
+func (failingReplayCache) MarkUsed(context.Context, string, uint64) error {
+	return errors.New("redis connection refused")
+}
+
+func TestMFAReplayFailClosedAndLockout(t *testing.T) {
+	repo := NewMemoryRepository()
+	svcNoCache := NewService(repo, "Test", true, nil, nil)
+	sec, _, err := svcNoCache.BeginEnroll(context.Background(), "adm-lock")
+	if err != nil {
+		t.Fatal(err)
+	}
+	validCode := hotpMust(t, sec, time.Now().UTC())
+	if err := svcNoCache.ConfirmEnroll(context.Background(), "adm-lock", validCode); err != nil {
+		t.Fatal(err)
+	}
+
+	// 1. Failing Redis cache fails closed instead of silently accepting replay.
+	svcBadCache := NewService(repo, "Test", true, nil, failingReplayCache{})
+	if err := svcBadCache.Verify(context.Background(), "adm-lock", validCode); err == nil || !strings.Contains(err.Error(), "mfa_replay_check_unavailable") {
+		t.Fatalf("expected fail-closed replay error, got %v", err)
+	}
+
+	// 2. Five invalid TOTP attempts trigger temporary lockout even for a valid code.
+	for i := 0; i < 5; i++ {
+		if err := svcNoCache.Verify(context.Background(), "adm-lock", "000000"); err == nil {
+			t.Fatal("expected invalid_totp")
+		}
+	}
+	if err := svcNoCache.Verify(context.Background(), "adm-lock", validCode); err == nil || !strings.Contains(err.Error(), "mfa_temporarily_locked") {
+		t.Fatalf("expected mfa_temporarily_locked after 5 bad codes, got %v", err)
 	}
 }

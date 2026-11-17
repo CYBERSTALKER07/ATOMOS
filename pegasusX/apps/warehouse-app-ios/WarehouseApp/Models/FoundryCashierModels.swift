@@ -17,7 +17,7 @@ public struct StartCashierSessionRequest: Codable, Sendable {
     public let expectedCashMinor: Int64
 
     public init(
-        cellId: String = "cell-uz",
+        cellId: String = "",
         supplierId: String,
         depotId: String,
         driverId: String,
@@ -148,8 +148,8 @@ public struct RRNTenderReclassificationRequest: Codable, Sendable {
         orderId: String,
         disputedCashMinor: Int64,
         gatewayRrn: String,
-        terminalId: String = "POS-TASH-01",
-        cardLastFour: String = "8821",
+        terminalId: String = "",
+        cardLastFour: String = "",
         authCode: String,
         paymentNetwork: String = "HUMO",
         rrnCapturedAt: String,

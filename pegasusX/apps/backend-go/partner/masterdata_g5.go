@@ -128,6 +128,25 @@ func (s *Service) UpsertParties(ctx context.Context, p Principal, items []PartyU
 	return out, nil
 }
 
+// UpsertPlantMappingMemory stores an external plant -> internal WarehouseId mapping for fast resolution
+// across both Partner EDI/1C APIs and Universal Migration warehouse appliers.
+func UpsertPlantMappingMemory(tenantType, tenantID, externalPlantID, warehouseID string) (action string, err error) {
+	ext := strings.TrimSpace(externalPlantID)
+	wh := strings.TrimSpace(warehouseID)
+	if ext == "" || wh == "" {
+		return "error", fmt.Errorf("plant_and_warehouse_required")
+	}
+	k := plantKey{strings.ToUpper(strings.TrimSpace(tenantType)), strings.TrimSpace(tenantID), ext}
+	mdMu.Lock()
+	_, exists := mdPlants[k]
+	mdPlants[k] = PlantUpsertItem{ExternalPlantID: ext, WarehouseID: wh}
+	mdMu.Unlock()
+	if exists {
+		return "updated", nil
+	}
+	return "created", nil
+}
+
 // UpsertPlants maps external plants to warehouse ids.
 func (s *Service) UpsertPlants(ctx context.Context, p Principal, items []PlantUpsertItem) ([]PlantUpsertResult, error) {
 	if err := s.requireSupplierPrincipal(p); err != nil {
@@ -139,25 +158,16 @@ func (s *Service) UpsertPlants(ctx context.Context, p Principal, items []PlantUp
 	out := make([]PlantUpsertResult, 0, len(items))
 	for _, it := range items {
 		ext := strings.TrimSpace(it.ExternalPlantID)
-		wh := strings.TrimSpace(it.WarehouseID)
 		res := PlantUpsertResult{ExternalPlantID: ext}
-		if ext == "" || wh == "" {
+		action, err := UpsertPlantMappingMemory(p.TenantType, p.TenantID, ext, it.WarehouseID)
+		if err != nil {
 			res.Action = "error"
 			res.Error = "plant_and_warehouse_required"
 			out = append(out, res)
 			_ = s.pushMasterDLQ(p, "plant", ext, res.Error, it)
 			continue
 		}
-		k := plantKey{p.TenantType, p.TenantID, ext}
-		mdMu.Lock()
-		_, exists := mdPlants[k]
-		mdPlants[k] = PlantUpsertItem{ExternalPlantID: ext, WarehouseID: wh}
-		mdMu.Unlock()
-		if exists {
-			res.Action = "updated"
-		} else {
-			res.Action = "created"
-		}
+		res.Action = action
 		out = append(out, res)
 	}
 	return out, nil

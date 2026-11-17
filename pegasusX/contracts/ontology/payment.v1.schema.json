@@ -1,0 +1,164 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pegasusx.dev/contracts/ontology/payment.v1.schema.json",
+  "title": "PaymentOntologyObjectV1",
+  "description": "Order or invoice payment settlement record (Payme, Click, Cash, Bank).",
+  "x-ontology-version": "1.0.0",
+  "x-schema-version": "v1",
+  "x-object-type": "Payment",
+  "x-primary-key": [
+    "cell_id",
+    "object_type",
+    "object_id"
+  ],
+  "x-default-security-markings": [
+    "MARKING:FINANCE_ONLY"
+  ],
+  "x-allowed-link-types": [
+    "supplies",
+    "stocks",
+    "ordered",
+    "shipped_on",
+    "owes",
+    "substitutes",
+    "recalled_with"
+  ],
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "cell_id",
+    "object_type",
+    "object_id",
+    "supplier_id",
+    "version",
+    "properties",
+    "valid_from",
+    "updated_at"
+  ],
+  "properties": {
+    "cell_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Cell/region partition coordinate"
+    },
+    "object_type": {
+      "type": "string",
+      "const": "Payment"
+    },
+    "object_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Unique entity identifier within cell+type"
+    },
+    "supplier_id": {
+      "type": "string",
+      "description": "Tenant supplier identifier"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Monotonic optimistic-concurrency version"
+    },
+    "security_markings": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "MARKING:FINANCE_ONLY",
+          "MARKING:PII",
+          "MARKING:AML_INVESTIGATION",
+          "MARKING:DISCREPANT_QUARANTINE",
+          "MARKING:THERMAL_QUARANTINE_SPOILED",
+          "MARKING:MICRO_SKIMMING_SUSPECT",
+          "MARKING:LOT_RECALL_QUARANTINE"
+        ]
+      },
+      "uniqueItems": true,
+      "description": "Data governance & quarantine markings"
+    },
+    "valid_from": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "properties": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "payment_id": {
+          "type": "string",
+          "description": "Payment or session ID"
+        },
+        "session_id": {
+          "type": "string",
+          "description": "Payment session UUID"
+        },
+        "order_id": {
+          "type": "string",
+          "description": "Order UUID"
+        },
+        "invoice_id": {
+          "type": "string",
+          "description": "AR Invoice UUID if AR payment"
+        },
+        "supplier_id": {
+          "type": "string",
+          "description": "Supplier ID"
+        },
+        "retailer_id": {
+          "type": "string",
+          "description": "Retailer ID"
+        },
+        "gateway": {
+          "type": "string",
+          "description": "PAYME | CLICK | CASH | BANK | UZUM"
+        },
+        "mode": {
+          "type": "string",
+          "description": "ONLINE | OFFLINE | SPLIT"
+        },
+        "status": {
+          "type": "string",
+          "description": "PENDING | CLEARED | FAILED | REFUNDED"
+        },
+        "amount_minor": {
+          "type": "integer",
+          "description": "Total payment amount (int64 minor units; zero floats)"
+        },
+        "cash_minor": {
+          "type": "integer",
+          "description": "Cash tender leg (int64 minor units; zero floats)"
+        },
+        "card_minor": {
+          "type": "integer",
+          "description": "Card/digital tender leg (int64 minor units; zero floats)"
+        },
+        "refunded_minor": {
+          "type": "integer",
+          "description": "Refunded amount (int64 minor units; zero floats)"
+        },
+        "currency": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 8,
+          "description": "ISO 4217 currency code"
+        },
+        "provider_reference": {
+          "type": "string",
+          "description": "Gateway/bank settlement reference"
+        },
+        "rrn": {
+          "type": "string",
+          "description": "Card retrieval reference number"
+        },
+        "settled_at": {
+          "type": "string",
+          "description": "RFC3339 settlement timestamp"
+        }
+      }
+    }
+  }
+}

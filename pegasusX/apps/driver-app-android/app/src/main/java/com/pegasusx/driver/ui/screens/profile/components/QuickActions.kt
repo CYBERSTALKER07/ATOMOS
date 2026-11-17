@@ -41,6 +41,8 @@ fun QuickActions(
     onFleetDvir: () -> Unit = {},
     onMidRouteRescue: () -> Unit = {},
     onYardGate: () -> Unit = {},
+    onSettings: () -> Unit = {},
+    currentLanguageLabel: String = "O'zbekcha",
     pendingCount: Int = 0,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -77,8 +79,8 @@ fun QuickActions(
         ActionRow(
             icon = Icons.Default.Settings,
             title = stringResource(R.string.portal_nav_settings),
-            subtitle = "App configuration",
-            onClick = {}
+            subtitle = currentLanguageLabel,
+            onClick = onSettings
         )
         ActionRow(
             icon = Icons.AutoMirrored.Filled.ExitToApp,

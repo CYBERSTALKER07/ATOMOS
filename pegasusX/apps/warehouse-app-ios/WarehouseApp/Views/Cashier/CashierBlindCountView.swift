@@ -2,6 +2,7 @@
 //  CashierBlindCountView.swift
 //  WarehouseAppIOS
 //
+//
 
 import SwiftUI
 
@@ -14,7 +15,17 @@ struct CashierBlindCountView: View {
         self.onBack = onBack
     }
 
-    private let banknoteDenominations: [Int64] = [200000, 100000, 50000, 20000, 10000, 5000, 2000, 1000]
+    private let banknoteDenominations: [Int64] = CashierViewModel.supportedDenominations
+
+    private static func parseWholeSomToMinor(_ raw: String) -> Int64 {
+        let cleaned = raw
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: " ", with: "")
+            .replacingOccurrences(of: ",", with: "")
+        guard let som = Int64(cleaned), som > 0 else { return 0 }
+        let (minor, overflow) = som.multipliedReportingOverflow(by: 100)
+        return overflow ? 0 : minor
+    }
 
     var body: some View {
         @Bindable var vm = vm
@@ -24,7 +35,7 @@ struct CashierBlindCountView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Cashier Blind Count & Vault")
                             .font(.system(.title2, weight: .bold))
-                        Text("Dual-Blind Reconciliation with UZS Integer Tiyin Arithmetic")
+                        Text("Dual-Blind Cash Reconciliation (so'm)")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     }
@@ -84,17 +95,131 @@ struct CashierBlindCountView: View {
                         .background(PegasusMonochromeTheme.success.opacity(0.12))
                         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                         .accessibilityElement(children: .combine)
+                    } else if let status = vm.statusMessage, !vm.isRecountRequired {
+                        Text(status)
+                            .font(.system(.caption, weight: .medium))
+                            .foregroundStyle(PegasusMonochromeTheme.secondaryLabel)
+                            .padding(12)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Color(.secondarySystemGroupedBackground))
+                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                     }
 
                     // Session Setup Card
                     VStack(alignment: .leading, spacing: 10) {
-                        Text("Route Deposit Bag Verification")
-                            .font(.system(.subheadline, weight: .semibold))
+                        HStack {
+                            Text("Route Deposit Bag Verification")
+                                .font(.system(.subheadline, weight: .semibold))
+                            Spacer()
+                            Button {
+                                vm.manualEntryMode.toggle()
+                            } label: {
+                                Text(vm.manualEntryMode ? "Use Pickers" : "Manual IDs")
+                                    .font(.system(.caption, weight: .semibold))
+                                    .foregroundStyle(PegasusMonochromeTheme.accentBronze)
+                            }
+                            .pegasusMinimumHitTarget(44)
+                        }
+
+                        HStack {
+                            Text("Depot ID:")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                                .frame(width: 84, alignment: .leading)
+                            TextField("Warehouse Depot ID", text: $vm.depotId)
+                                .textFieldStyle(.roundedBorder)
+                                .font(.system(.footnote, design: .monospaced))
+                                .autocorrectionDisabled()
+                                .textInputAutocapitalization(.never)
+                        }
+
+                        HStack {
+                            Text("Supplier ID:")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                                .frame(width: 84, alignment: .leading)
+                            TextField("Supplier Scope ID", text: $vm.supplierId)
+                                .textFieldStyle(.roundedBorder)
+                                .font(.system(.footnote, design: .monospaced))
+                                .autocorrectionDisabled()
+                                .textInputAutocapitalization(.never)
+                        }
+
+                        if !vm.manualEntryMode && !vm.driverOptions.isEmpty {
+                            HStack {
+                                Text("Driver:")
+                                    .font(.footnote)
+                                    .foregroundStyle(.secondary)
+                                    .frame(width: 84, alignment: .leading)
+                                Picker(
+                                    "Driver",
+                                    selection: Binding(
+                                        get: { vm.driverId },
+                                        set: { vm.selectDriver($0) }
+                                    )
+                                ) {
+                                    Text("Select driver...").tag("")
+                                    ForEach(vm.driverOptions) { option in
+                                        Text(option.label).tag(option.driverId)
+                                    }
+                                }
+                                .pickerStyle(.menu)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                        } else {
+                            HStack {
+                                Text("Driver ID:")
+                                    .font(.footnote)
+                                    .foregroundStyle(.secondary)
+                                    .frame(width: 84, alignment: .leading)
+                                TextField("Driver ID", text: $vm.driverId)
+                                    .textFieldStyle(.roundedBorder)
+                                    .font(.footnote)
+                                    .autocorrectionDisabled()
+                                    .textInputAutocapitalization(.never)
+                            }
+                        }
+
+                        if !vm.manualEntryMode && !vm.routeOptions.isEmpty {
+                            HStack {
+                                Text("Route:")
+                                    .font(.footnote)
+                                    .foregroundStyle(.secondary)
+                                    .frame(width: 84, alignment: .leading)
+                                Picker(
+                                    "Route",
+                                    selection: Binding(
+                                        get: { vm.routeId },
+                                        set: { vm.selectRoute($0) }
+                                    )
+                                ) {
+                                    Text("Select route / manifest...").tag("")
+                                    ForEach(vm.routeOptions) { option in
+                                        Text(option.label).tag(option.routeId)
+                                    }
+                                }
+                                .pickerStyle(.menu)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                        } else {
+                            HStack {
+                                Text("Route ID:")
+                                    .font(.footnote)
+                                    .foregroundStyle(.secondary)
+                                    .frame(width: 84, alignment: .leading)
+                                TextField("Route or Manifest ID", text: $vm.routeId)
+                                    .textFieldStyle(.roundedBorder)
+                                    .font(.footnote)
+                                    .autocorrectionDisabled()
+                                    .textInputAutocapitalization(.never)
+                            }
+                        }
 
                         HStack {
                             Text("Bag Seal:")
                                 .font(.footnote)
                                 .foregroundStyle(.secondary)
+                                .frame(width: 84, alignment: .leading)
                             TextField("Bag Seal Barcode", text: $vm.bagSealBarcode)
                                 .textFieldStyle(.roundedBorder)
                                 .font(.system(.footnote, design: .monospaced))
@@ -102,15 +227,14 @@ struct CashierBlindCountView: View {
                                 .textInputAutocapitalization(.characters)
                         }
 
-                        HStack {
-                            Text("Driver ID:")
-                                .font(.footnote)
-                                .foregroundStyle(.secondary)
-                            TextField("Driver ID", text: $vm.driverId)
-                                .textFieldStyle(.roundedBorder)
-                                .font(.footnote)
-                                .autocorrectionDisabled()
-                                .textInputAutocapitalization(.characters)
+                        if vm.isLoadingSelectors {
+                            HStack(spacing: 8) {
+                                ProgressView()
+                                    .scaleEffect(0.8)
+                                Text("Loading drivers and route manifests...")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
                         }
 
                         if vm.session == nil {
@@ -142,7 +266,7 @@ struct CashierBlindCountView: View {
                             Text("Physical Counted Cash:")
                                 .font(.footnote)
                             Spacer()
-                            Text(CashierViewModel.formatUzs(amount: vm.countedCashMinor / 100))
+                            Text(CashierViewModel.formatWholeSom(minor: vm.countedCashMinor))
                                 .font(.system(.subheadline, design: .monospaced, weight: .bold))
                                 .foregroundStyle(Color.primary)
                         }
@@ -157,12 +281,12 @@ struct CashierBlindCountView: View {
                                     Image(systemName: "lock.fill")
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
-                                    Text("•••••••• UZS [MASKED]")
+                                    Text("•••••••• so'm [MASKED]")
                                         .font(.system(.subheadline, design: .monospaced, weight: .bold))
                                         .foregroundStyle(.secondary)
                                 }
                             } else {
-                                Text(CashierViewModel.formatUzs(amount: (vm.session?.expectedCashMinor ?? 0) / 100))
+                                Text(CashierViewModel.formatWholeSom(minor: vm.session?.expectedCashMinor ?? 0))
                                     .font(.system(.subheadline, design: .monospaced, weight: .bold))
                             }
                         }
@@ -182,7 +306,7 @@ struct CashierBlindCountView: View {
                     VStack(alignment: .leading, spacing: 12) {
                         HStack {
                             VStack(alignment: .leading, spacing: 2) {
-                                Text("UZS Banknote Physical Counter")
+                                Text("Banknote Physical Counter (so'm)")
                                     .font(.system(.subheadline, weight: .semibold))
                                     .foregroundStyle(PegasusMonochromeTheme.label)
                                 Text("Total Notes: \(vm.totalBanknotesCount)")
@@ -190,26 +314,6 @@ struct CashierBlindCountView: View {
                                     .foregroundStyle(PegasusMonochromeTheme.secondaryLabel)
                             }
                             Spacer()
-                            Menu {
-                                Button("Preset: Balanced Count (1,425,000 UZS)") {
-                                    PegasusHaptics.medium()
-                                    vm.quickFillSampleBalanced()
-                                }
-                                Button("Preset: Discrepant Count (Trigger Recount)") {
-                                    PegasusHaptics.warning()
-                                    vm.quickFillSampleDiscrepant()
-                                }
-                            } label: {
-                                Label("Presets", systemImage: "sparkles")
-                                    .font(.system(.caption, weight: .semibold))
-                                    .foregroundStyle(PegasusMonochromeTheme.accentBronze)
-                                    .padding(.horizontal, 10)
-                                    .padding(.vertical, 6)
-                                    .frame(minHeight: 44)
-                                    .contentShape(Rectangle())
-                                    .background(PegasusMonochromeTheme.tertiaryBackground)
-                                    .clipShape(Capsule())
-                            }
 
                             Button {
                                 PegasusHaptics.medium()
@@ -228,11 +332,11 @@ struct CashierBlindCountView: View {
                             let subtotal = denom * count
                             VStack(alignment: .leading, spacing: 6) {
                                 HStack {
-                                    Text(CashierViewModel.formatUzs(amount: denom))
+                                    Text(CashierViewModel.formatSom(amount: denom))
                                         .font(.system(.subheadline, design: .monospaced, weight: .bold))
                                         .foregroundStyle(PegasusMonochromeTheme.label)
                                     Spacer()
-                                    Text(CashierViewModel.formatUzs(amount: subtotal))
+                                    Text(CashierViewModel.formatSom(amount: subtotal))
                                         .font(.system(.footnote, design: .monospaced, weight: .bold))
                                         .monospacedDigit()
                                         .foregroundStyle(count > 0 ? PegasusMonochromeTheme.label : PegasusMonochromeTheme.secondaryLabel)
@@ -243,7 +347,7 @@ struct CashierBlindCountView: View {
                                         ForEach([10, 50, 100], id: \.self) { bundle in
                                             Button {
                                                 PegasusHaptics.light()
-                                                vm.addStrap(noteUzs: denom, strapCount: Int64(bundle))
+                                                vm.addStrap(noteSom: denom, strapCount: Int64(bundle))
                                             } label: {
                                                 Text("+\(bundle)")
                                                     .font(.system(.caption2, design: .monospaced, weight: .bold))
@@ -256,7 +360,7 @@ struct CashierBlindCountView: View {
                                                     .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                                             }
                                             .buttonStyle(.plain)
-                                            .accessibilityLabel("Add strap of \(bundle) notes (\(CashierViewModel.formatUzs(amount: denom * Int64(bundle))))")
+                                            .accessibilityLabel("Add strap of \(bundle) notes (\(CashierViewModel.formatSom(amount: denom * Int64(bundle))))")
                                         }
                                     }
 
@@ -265,7 +369,7 @@ struct CashierBlindCountView: View {
                                     HStack(spacing: 6) {
                                         Button {
                                             PegasusHaptics.light()
-                                            vm.adjustCount(noteUzs: denom, delta: -1)
+                                            vm.adjustCount(noteSom: denom, delta: -1)
                                         } label: {
                                             Image(systemName: "minus.circle.fill")
                                                 .font(.title2)
@@ -274,17 +378,17 @@ struct CashierBlindCountView: View {
                                                 .contentShape(Rectangle())
                                         }
                                         .disabled(count <= 0)
-                                        .accessibilityLabel("Decrease \(denom) UZS note count")
+                                        .accessibilityLabel("Decrease \(denom) so'm note count")
 
                                         Text("\(count)")
                                             .font(.system(.subheadline, design: .monospaced, weight: .bold))
                                             .monospacedDigit()
                                             .frame(minWidth: 36, alignment: .center)
-                                            .accessibilityLabel("\(count) notes of \(denom) UZS")
+                                            .accessibilityLabel("\(count) notes of \(denom) so'm")
 
                                         Button {
                                             PegasusHaptics.light()
-                                            vm.adjustCount(noteUzs: denom, delta: 1)
+                                            vm.adjustCount(noteSom: denom, delta: 1)
                                         } label: {
                                             Image(systemName: "plus.circle.fill")
                                                 .font(.title2)
@@ -292,7 +396,7 @@ struct CashierBlindCountView: View {
                                                 .frame(minWidth: 44, minHeight: 44)
                                                 .contentShape(Rectangle())
                                         }
-                                        .accessibilityLabel("Increase \(denom) UZS note count")
+                                        .accessibilityLabel("Increase \(denom) so'm note count")
                                     }
                                 }
                             }
@@ -389,6 +493,9 @@ struct CashierBlindCountView: View {
         .animation(.snappy, value: vm.isBalanced)
         .navigationTitle("Cashier Vault")
         .navigationBarTitleDisplayMode(.inline)
+        .task {
+            await vm.loadSelectors()
+        }
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 Button {
@@ -412,22 +519,44 @@ struct CashierBlindCountView: View {
             NavigationStack {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 14) {
-                        Text("Reclassify card or online gateway transaction to cash ledger.")
+                        Text("Reclassify card or online gateway transaction to cash ledger (so'm).")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                         TextField("Order ID", text: $vm.rrnOrderId)
                             .textFieldStyle(.roundedBorder)
+                            .autocorrectionDisabled()
                         TextField("POS Terminal Gateway RRN", text: $vm.rrnGateway)
                             .textFieldStyle(.roundedBorder)
-                        TextField("Disputed Cash Amount (UZS)", text: $vm.rrnDisputedText)
+                            .autocorrectionDisabled()
+                        TextField("Disputed Cash Amount (so'm)", text: $vm.rrnDisputedText)
                             .textFieldStyle(.roundedBorder)
                             .keyboardType(.numberPad)
+                        TextField("Terminal ID (optional)", text: $vm.rrnTerminalId)
+                            .textFieldStyle(.roundedBorder)
+                            .autocorrectionDisabled()
+                        TextField("Card Last 4 (optional)", text: $vm.rrnCardLastFour)
+                            .textFieldStyle(.roundedBorder)
+                            .keyboardType(.numberPad)
+                        TextField("Authorization Code (optional)", text: $vm.rrnAuthCode)
+                            .textFieldStyle(.roundedBorder)
+                            .autocorrectionDisabled()
+                        if let err = vm.errorMessage {
+                            Text(err)
+                                .font(.caption)
+                                .foregroundStyle(PegasusMonochromeTheme.destructive)
+                        }
                         Button("Apply Compensating Ledger") {
                             PegasusHaptics.medium()
-                            let minor = (Int64(vm.rrnDisputedText) ?? 0) * 100
+                            let minor = Self.parseWholeSomToMinor(vm.rrnDisputedText)
                             Task {
-                                await vm.reclassifyTender(orderId: vm.rrnOrderId, gatewayRrn: vm.rrnGateway, disputedCashMinor: minor)
-                                vm.showRRNSheet = false
+                                let ok = await vm.reclassifyTender(
+                                    orderId: vm.rrnOrderId,
+                                    gatewayRrn: vm.rrnGateway,
+                                    disputedCashMinor: minor
+                                )
+                                if ok {
+                                    vm.showRRNSheet = false
+                                }
                             }
                         }
                         .frame(maxWidth: .infinity, minHeight: 44)
@@ -455,22 +584,35 @@ struct CashierBlindCountView: View {
             NavigationStack {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 14) {
-                        Text("Log physical cash handoff to authorized CIT armored courier.")
+                        Text("Log physical cash handoff to authorized CIT armored courier (so'm).")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                         TextField("Courier Badge ID", text: $vm.citBadgeId)
                             .textFieldStyle(.roundedBorder)
+                            .autocorrectionDisabled()
                         TextField("CIT Security Bag Seal Barcode", text: $vm.citSealBarcode)
                             .textFieldStyle(.roundedBorder)
-                        TextField("Cash Handover (UZS)", text: $vm.citHandoverText)
+                            .autocorrectionDisabled()
+                        TextField("Cash Handover (so'm)", text: $vm.citHandoverText)
                             .textFieldStyle(.roundedBorder)
                             .keyboardType(.numberPad)
+                        if let err = vm.errorMessage {
+                            Text(err)
+                                .font(.caption)
+                                .foregroundStyle(PegasusMonochromeTheme.destructive)
+                        }
                         Button("Confirm Armored Handover") {
                             PegasusHaptics.medium()
-                            let minor = (Int64(vm.citHandoverText) ?? 0) * 100
+                            let minor = Self.parseWholeSomToMinor(vm.citHandoverText)
                             Task {
-                                await vm.executeCITHandover(courierBadgeId: vm.citBadgeId, citSealBarcode: vm.citSealBarcode, amountMinor: minor)
-                                vm.showCITSheet = false
+                                let ok = await vm.executeCITHandover(
+                                    courierBadgeId: vm.citBadgeId,
+                                    citSealBarcode: vm.citSealBarcode,
+                                    amountMinor: minor
+                                )
+                                if ok {
+                                    vm.showCITSheet = false
+                                }
                             }
                         }
                         .frame(maxWidth: .infinity, minHeight: 44)
@@ -498,21 +640,28 @@ struct CashierBlindCountView: View {
             NavigationStack {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 14) {
-                        Text("Audit legal entity multi-tender cash exposure.")
+                        Text("Audit legal entity multi-tender cash exposure (so'm).")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                         TextField("Legal Entity TIN", text: $vm.amlTin)
                             .textFieldStyle(.roundedBorder)
                             .keyboardType(.numberPad)
-                        TextField("Amount (UZS)", text: $vm.amlExposureText)
+                        TextField("Amount (so'm)", text: $vm.amlExposureText)
                             .textFieldStyle(.roundedBorder)
                             .keyboardType(.numberPad)
+                        if let err = vm.errorMessage {
+                            Text(err)
+                                .font(.caption)
+                                .foregroundStyle(PegasusMonochromeTheme.destructive)
+                        }
                         Button("Audit Cash Exposure") {
                             PegasusHaptics.medium()
-                            let minor = (Int64(vm.amlExposureText) ?? 0) * 100
+                            let minor = Self.parseWholeSomToMinor(vm.amlExposureText)
                             Task {
-                                await vm.checkAMLExposure(tin: vm.amlTin, cashMinor: minor)
-                                vm.showAMLSheet = false
+                                let ok = await vm.checkAMLExposure(tin: vm.amlTin, cashMinor: minor)
+                                if ok {
+                                    vm.showAMLSheet = false
+                                }
                             }
                         }
                         .frame(maxWidth: .infinity, minHeight: 44)

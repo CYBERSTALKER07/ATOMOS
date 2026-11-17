@@ -408,3 +408,89 @@ func TestHandleUnifiedCheckout_StrictIdempotency(t *testing.T) {
 		}
 	}
 }
+
+func TestUnifiedCheckout_RecordSagaChildCreatedFailureCompensates(t *testing.T) {
+	t.Setenv("MULTI_SUPPLIER_CHECKOUT_ENABLED", "true")
+
+	repo := &testRepo{}
+	warehouse := &testWarehouseResolver{warehouseID: "wh-1"}
+	svc := NewService(ServiceConfig{
+		Repo:         repo,
+		Warehouse:    warehouse,
+		SupplierID:   "sup-seed",
+		SupplierName: "Test Supplier",
+		Currency:     "UZS",
+		Log:          slog.Default(),
+	})
+
+	testRecordSagaChildCreatedHook = func(ctx context.Context, parentID, childID string) error {
+		return errors.New("simulated lease persistence failure")
+	}
+	defer func() { testRecordSagaChildCreatedHook = nil }()
+
+	_, err := svc.UnifiedCheckout(context.Background(), "ret-1", UnifiedCheckoutRequest{
+		Latitude:  41.31,
+		Longitude: 69.24,
+		Items: []UnifiedCheckoutLineItem{
+			{SkuID: "sku-a", Quantity: 1, UnitPrice: 1000, SupplierID: "sup-a"},
+			{SkuID: "sku-b", Quantity: 2, UnitPrice: 2000, SupplierID: "sup-b"},
+		},
+	})
+	if err == nil {
+		t.Fatal("expected error when RecordSagaChildCreated fails, got nil")
+	}
+	var multiErr *MultiSupplierCheckoutError
+	if !errors.As(err, &multiErr) && !strings.Contains(err.Error(), "record saga child failed") {
+		t.Fatalf("expected multi supplier checkout error about record saga child, got: %v", err)
+	}
+
+	// Verify child order was compensated
+	if repo.captured.Status != StatusCancelled {
+		t.Errorf("expected child order to be cancelled on compensation, got %s", repo.captured.Status)
+	}
+}
+
+func TestUnifiedCheckout_CompleteSagaRetryAndFailureCompensates(t *testing.T) {
+	t.Setenv("MULTI_SUPPLIER_CHECKOUT_ENABLED", "true")
+
+	repo := &testRepo{}
+	warehouse := &testWarehouseResolver{warehouseID: "wh-1"}
+	svc := NewService(ServiceConfig{
+		Repo:         repo,
+		Warehouse:    warehouse,
+		SupplierID:   "sup-seed",
+		SupplierName: "Test Supplier",
+		Currency:     "UZS",
+		Log:          slog.Default(),
+	})
+
+	completeCalls := 0
+	testCompleteSagaHook = func(ctx context.Context, parentID, currency string, totalMinor int64, childCount int) error {
+		completeCalls++
+		return errors.New("simulated spanner commit conflict on CompleteSaga")
+	}
+	defer func() { testCompleteSagaHook = nil }()
+
+	_, err := svc.UnifiedCheckout(context.Background(), "ret-1", UnifiedCheckoutRequest{
+		Latitude:  41.31,
+		Longitude: 69.24,
+		Items: []UnifiedCheckoutLineItem{
+			{SkuID: "sku-a", Quantity: 1, UnitPrice: 1000, SupplierID: "sup-a"},
+			{SkuID: "sku-b", Quantity: 2, UnitPrice: 2000, SupplierID: "sup-b"},
+		},
+	})
+	if err == nil {
+		t.Fatal("expected error when CompleteSaga fails after retry, got nil")
+	}
+	if completeCalls != 2 {
+		t.Fatalf("expected CompleteSaga to be called twice (1 initial + 1 retry), got %d", completeCalls)
+	}
+	if !strings.Contains(err.Error(), "complete saga failed") {
+		t.Fatalf("expected complete saga failed error, got: %v", err)
+	}
+
+	// Verify compensation ran and cancelled orders
+	if repo.captured.Status != StatusCancelled {
+		t.Errorf("expected child order to be cancelled on complete saga compensation, got %s", repo.captured.Status)
+	}
+}

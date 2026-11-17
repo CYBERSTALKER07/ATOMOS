@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -22,9 +23,13 @@ const (
 
 	VaultEntryDriverDropInflow = "DRIVER_DROP_INFLOW"
 	VaultEntryCITOutflow       = "CIT_ARMORED_OUTFLOW"
+
+	MaxCashierToleranceMinor     int64 = 500_000 // 5,000 UZS in tiyin
+	DefaultCashierToleranceMinor int64 = 500_000 // 5,000 UZS in tiyin
+	MaxAllowedToleranceMinor     int64 = 500_000 // Server policy cap (5,000 UZS in tiyin)
 )
 
-// Valid Uzbek Som (UZS) physical banknote denominations.
+// Valid physical banknote denominations across supported market packs (UZS and common major-currency notes).
 var validUZSDenominations = map[int64]bool{
 	200000: true,
 	100000: true,
@@ -34,6 +39,15 @@ var validUZSDenominations = map[int64]bool{
 	5000:   true,
 	2000:   true,
 	1000:   true,
+	500:    true,
+	200:    true,
+	100:    true,
+	50:     true,
+	20:     true,
+	10:     true,
+	5:      true,
+	2:      true,
+	1:      true,
 }
 
 // RecountRequiredError is returned when Attempt #1 blind count fails variance check (UA-1).
@@ -65,6 +79,8 @@ type CashierBlindCountSession struct {
 	VarianceMinor             int64           `json:"-" spanner:"VarianceMinor"`
 	Status                    string          `json:"status" spanner:"Status"`
 	ClearanceTokenHash        *string         `json:"clearance_token_hash,omitempty" spanner:"ClearanceTokenHash"`
+	VaultInflowRecorded       bool            `json:"vault_inflow_recorded,omitempty" spanner:"VaultInflowRecorded"`
+	VaultInflowAmountMinor    int64           `json:"vault_inflow_amount_minor,omitempty" spanner:"VaultInflowAmountMinor"`
 	CreatedAt                 time.Time       `json:"created_at" spanner:"CreatedAt"`
 	ResolvedAt                *time.Time      `json:"resolved_at,omitempty" spanner:"ResolvedAt"`
 	CellID                    string          `json:"cell_id" spanner:"-"`
@@ -245,6 +261,45 @@ func (e *Engine) StartBlindCountSession(ctx context.Context, req StartCashierSes
 	return view, nil
 }
 
+func (e *Engine) getCashierSessionLocked(ctx context.Context, sessionID string) (*CashierBlindCountSession, error) {
+	sessionID = strings.TrimSpace(sessionID)
+	if sessionID == "" {
+		return nil, fmt.Errorf("%w: empty session id", ErrObjectNotFound)
+	}
+	sess, ok := e.cashierSessions[sessionID]
+	if !ok && e.spannerRepo != nil {
+		dbSess, err := e.spannerRepo.GetCashierSession(ctx, sessionID)
+		if err != nil {
+			if errors.Is(err, ErrObjectNotFound) {
+				return nil, fmt.Errorf("%w: cashier session %s", ErrObjectNotFound, sessionID)
+			}
+			return nil, err
+		}
+		if dbSess != nil {
+			sess = dbSess
+			if sess.CellID == "" {
+				sess.CellID = "cell-uz"
+			}
+			e.cashierSessions[sess.SessionID] = sess
+			if sess.BagSealBarcode != "" {
+				e.bagSeals[sess.BagSealBarcode] = sess.SessionID
+			}
+			ok = true
+		}
+	}
+	if !ok || sess == nil {
+		return nil, fmt.Errorf("%w: cashier session %s", ErrObjectNotFound, sessionID)
+	}
+	return sess, nil
+}
+
+// GetCashierSession retrieves a cashier session from memory or Cloud Spanner.
+func (e *Engine) GetCashierSession(ctx context.Context, sessionID string) (*CashierBlindCountSession, error) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return e.getCashierSessionLocked(ctx, sessionID)
+}
+
 // SubmitBlindDenominationCount executes the Blind Denomination Counting Ritual and Dual-Blind Recount Ratchet (Guard #11).
 func (e *Engine) SubmitBlindDenominationCount(
 	ctx context.Context,
@@ -258,12 +313,18 @@ func (e *Engine) SubmitBlindDenominationCount(
 	if len(denominationsUZS) == 0 {
 		return nil, fmt.Errorf("%w: denomination counts required", ErrPreconditionFailed)
 	}
+	if toleranceThresholdMinor < 0 || toleranceThresholdMinor > MaxCashierToleranceMinor {
+		return nil, fmt.Errorf("%w: tolerance threshold must be between 0 and %d minor units", ErrPreconditionFailed, MaxCashierToleranceMinor)
+	}
+	if toleranceThresholdMinor > MaxAllowedToleranceMinor {
+		toleranceThresholdMinor = MaxAllowedToleranceMinor
+	}
 
 	var countedMinor int64
 	cleanDenoms := make(map[int64]int64, len(denominationsUZS))
 	for noteUZS, count := range denominationsUZS {
-		if !validUZSDenominations[noteUZS] {
-			return nil, fmt.Errorf("%w: invalid UZS banknote denomination %d", ErrPreconditionFailed, noteUZS)
+		if !validUZSDenominations[noteUZS] || noteUZS <= 0 {
+			return nil, fmt.Errorf("%w: invalid banknote denomination %d", ErrPreconditionFailed, noteUZS)
 		}
 		if count < 0 {
 			return nil, fmt.Errorf("%w: negative banknote count for denomination %d", ErrPreconditionFailed, noteUZS)
@@ -276,9 +337,9 @@ func (e *Engine) SubmitBlindDenominationCount(
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
-	sess, ok := e.cashierSessions[strings.TrimSpace(sessionID)]
-	if !ok {
-		return nil, fmt.Errorf("%w: cashier session %s", ErrObjectNotFound, sessionID)
+	sess, err := e.getCashierSessionLocked(ctx, sessionID)
+	if err != nil {
+		return nil, err
 	}
 	if sess.Status != CashierStatusAwaitingBlindCount1 && sess.Status != CashierStatusBlindRecountReq {
 		return nil, fmt.Errorf("%w: session %s is already finalized in status %s", ErrPreconditionFailed, sessionID, sess.Status)
@@ -298,14 +359,19 @@ func (e *Engine) SubmitBlindDenominationCount(
 		now := e.now()
 		sess.Status = CashierStatusBalanced
 		sess.ResolvedAt = &now
-		hash := sha256.Sum256([]byte(fmt.Sprintf("%s:%s:%d:%d", sess.SessionID, sess.DriverID, countedMinor, now.UnixNano())))
+		hash := sha256.Sum256([]byte(fmt.Sprintf("%s:%s:%d:%s", sess.SessionID, sess.DriverID, countedMinor, uuid.NewString())))
 		token := hex.EncodeToString(hash[:])
 		sess.ClearanceTokenHash = &token
 		e.driverShiftVariances[sess.DriverID] = append(e.driverShiftVariances[sess.DriverID], 0)
 		if len(e.driverShiftVariances[sess.DriverID]) > 5 {
 			e.driverShiftVariances[sess.DriverID] = e.driverShiftVariances[sess.DriverID][len(e.driverShiftVariances[sess.DriverID])-5:]
 		}
-		e.recordVaultInflowLocked(sess)
+		vaultEntry := e.recordVaultInflowLocked(sess)
+		if e.spannerRepo != nil {
+			if err := e.spannerRepo.PersistCashierSessionTransition(ctx, sess, vaultEntry, nil); err != nil {
+				return nil, err
+			}
+		}
 		return toCashierView(sess, true, false), nil
 	}
 
@@ -317,17 +383,30 @@ func (e *Engine) SubmitBlindDenominationCount(
 		}
 		if sess.VarianceMinor < 0 && e.isDriverMicroSkimmingLocked(sess.DriverID) {
 			sess.Status = CashierStatusDiscrepantQuarantine
-			e.upsertObjectLocked(sess.CellID, "Driver", sess.DriverID, sess.SupplierID, map[string]any{
+			driverObj := e.upsertObjectLocked(sess.CellID, "Driver", sess.DriverID, sess.SupplierID, map[string]any{
 				"dispatch_locked": true,
 				"lock_reason":     "SYSTEMATIC_TOLERANCE_MICRO_SKIMMING",
 			}, []string{MarkingMicroSkimmingSuspect, MarkingDiscrepantQuarantine})
+			if e.spannerRepo != nil {
+				if err := e.spannerRepo.PersistCashierSessionTransition(ctx, sess, nil, nil); err != nil {
+					return nil, err
+				}
+				if err := e.spannerRepo.PersistOntologyObject(ctx, driverObj); err != nil {
+					return nil, err
+				}
+			}
 			return toCashierView(sess, true, true), nil
 		}
 
 		now := e.now()
 		sess.Status = CashierStatusToleranceVariance
 		sess.ResolvedAt = &now
-		e.recordVaultInflowLocked(sess)
+		vaultEntry := e.recordVaultInflowLocked(sess)
+		if e.spannerRepo != nil {
+			if err := e.spannerRepo.PersistCashierSessionTransition(ctx, sess, vaultEntry, nil); err != nil {
+				return nil, err
+			}
+		}
 		return toCashierView(sess, true, false), nil
 	}
 
@@ -335,6 +414,11 @@ func (e *Engine) SubmitBlindDenominationCount(
 	// ExpectedCashMinor MUST remain hidden so the cashier cannot fudge Attempt #2.
 	if sess.AttemptNumber == 1 {
 		sess.Status = CashierStatusBlindRecountReq
+		if e.spannerRepo != nil {
+			if err := e.spannerRepo.PersistCashierSessionTransition(ctx, sess, nil, nil); err != nil {
+				return nil, err
+			}
+		}
 		v := toCashierView(sess, false, false)
 		v.ErrorCode = "RECOUNT_REQUIRED"
 		v.ErrorMessage = "variance exceeds tolerance; blind recount #2 required"
@@ -347,11 +431,20 @@ func (e *Engine) SubmitBlindDenominationCount(
 	if len(e.driverShiftVariances[sess.DriverID]) > 5 {
 		e.driverShiftVariances[sess.DriverID] = e.driverShiftVariances[sess.DriverID][len(e.driverShiftVariances[sess.DriverID])-5:]
 	}
-	e.upsertObjectLocked(sess.CellID, "Driver", sess.DriverID, sess.SupplierID, map[string]any{
+	driverObj := e.upsertObjectLocked(sess.CellID, "Driver", sess.DriverID, sess.SupplierID, map[string]any{
 		"dispatch_locked": true,
 		"lock_reason":     "CASH_SHORTAGE_QUARANTINE",
 		"variance_minor":  sess.VarianceMinor,
 	}, []string{MarkingDiscrepantQuarantine})
+
+	if e.spannerRepo != nil {
+		if err := e.spannerRepo.PersistCashierSessionTransition(ctx, sess, nil, nil); err != nil {
+			return nil, err
+		}
+		if err := e.spannerRepo.PersistOntologyObject(ctx, driverObj); err != nil {
+			return nil, err
+		}
+	}
 
 	return toCashierView(sess, true, false), nil
 }
@@ -375,9 +468,44 @@ func (e *Engine) isDriverMicroSkimmingLocked(driverID string) bool {
 	return negCount*100/len(recent) >= 80
 }
 
-func (e *Engine) recordVaultInflowLocked(sess *CashierBlindCountSession) {
+func (e *Engine) recordVaultInflowLocked(sess *CashierBlindCountSession) *DepotVaultLedgerEntry {
+	if sess.VaultInflowRecorded {
+		delta := sess.CountedCashMinor - sess.VaultInflowAmountMinor
+		if delta == 0 {
+			// Idempotent: inflow already recorded for this session, no double-counting.
+			return nil
+		}
+		newBal := e.vaultBalances[sess.DepotID] + delta
+		e.vaultBalances[sess.DepotID] = newBal
+		sess.VaultInflowAmountMinor = sess.CountedCashMinor
+		sessID := sess.SessionID
+		seal := sess.BagSealBarcode
+		entryType := VaultEntryDriverDropInflow
+		if delta < 0 {
+			entryType = "VAULT_ADJUSTMENT"
+		}
+		entry := &DepotVaultLedgerEntry{
+			VaultEntryID:        uuid.NewString(),
+			DepotID:             sess.DepotID,
+			SupplierID:          sess.SupplierID,
+			SessionID:           &sessID,
+			EntryType:           entryType,
+			AmountMinor:         delta,
+			RunningBalanceMinor: newBal,
+			SealBarcode:         &seal,
+			CreatedAt:           e.now(),
+		}
+		e.vaultLedger[sess.DepotID] = append(e.vaultLedger[sess.DepotID], entry)
+		if len(e.vaultLedger[sess.DepotID]) > 1000 {
+			e.vaultLedger[sess.DepotID] = e.vaultLedger[sess.DepotID][len(e.vaultLedger[sess.DepotID])-1000:]
+		}
+		return entry
+	}
+
 	newBal := e.vaultBalances[sess.DepotID] + sess.CountedCashMinor
 	e.vaultBalances[sess.DepotID] = newBal
+	sess.VaultInflowRecorded = true
+	sess.VaultInflowAmountMinor = sess.CountedCashMinor
 	sessID := sess.SessionID
 	seal := sess.BagSealBarcode
 	entry := &DepotVaultLedgerEntry{
@@ -395,6 +523,7 @@ func (e *Engine) recordVaultInflowLocked(sess *CashierBlindCountSession) {
 	if len(e.vaultLedger[sess.DepotID]) > 1000 {
 		e.vaultLedger[sess.DepotID] = e.vaultLedger[sess.DepotID][len(e.vaultLedger[sess.DepotID])-1000:]
 	}
+	return entry
 }
 
 // ReclassifyCashToCardByRRN resolves a cash shortage without destructive edits when a driver
@@ -423,22 +552,29 @@ func (e *Engine) ReclassifyCashToCardByRRN(
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
-	sess, ok := e.cashierSessions[strings.TrimSpace(req.SessionID)]
-	if !ok {
-		return nil, fmt.Errorf("%w: cashier session %s", ErrObjectNotFound, req.SessionID)
+	sess, err := e.getCashierSessionLocked(ctx, req.SessionID)
+	if err != nil {
+		return nil, err
 	}
 
 	// Adjust expected cash via compensating ledger adjustment rather than mutating historical payment leg.
 	sess.ExpectedCashMinor -= req.DisputedCashMinor
 	sess.VarianceMinor = sess.CountedCashMinor - sess.ExpectedCashMinor
+	var vaultEntry *DepotVaultLedgerEntry
 	if sess.VarianceMinor == 0 {
 		now := e.now()
 		sess.Status = CashierStatusBalanced
 		sess.ResolvedAt = &now
-		hash := sha256.Sum256([]byte(fmt.Sprintf("%s:RRN:%s:%d", sess.SessionID, req.GatewayRRN, now.UnixNano())))
+		hash := sha256.Sum256([]byte(fmt.Sprintf("%s:RRN:%s:%s", sess.SessionID, req.GatewayRRN, uuid.NewString())))
 		token := hex.EncodeToString(hash[:])
 		sess.ClearanceTokenHash = &token
-		e.recordVaultInflowLocked(sess)
+		vaultEntry = e.recordVaultInflowLocked(sess)
+	}
+
+	if e.spannerRepo != nil {
+		if err := e.spannerRepo.PersistCashierSessionTransition(ctx, sess, vaultEntry, nil); err != nil {
+			return nil, err
+		}
 	}
 
 	return toCashierView(sess, true, false), nil
@@ -483,5 +619,27 @@ func (e *Engine) ExecuteCITArmoredHandover(ctx context.Context, req CITHandoverR
 	if len(e.vaultLedger[depotID]) > 1000 {
 		e.vaultLedger[depotID] = e.vaultLedger[depotID][len(e.vaultLedger[depotID])-1000:]
 	}
+	if e.spannerRepo != nil {
+		if err := e.spannerRepo.PersistDepotVaultLedgerEntry(ctx, entry); err != nil {
+			return nil, err
+		}
+	}
 	return entry, nil
+}
+
+// GetDepotVaultBalance returns the physical cash balance for the specified depot.
+func (e *Engine) GetDepotVaultBalance(depotID string) int64 {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return e.vaultBalances[strings.TrimSpace(depotID)]
+}
+
+// GetDepotVaultLedger returns the vault entries for the specified depot.
+func (e *Engine) GetDepotVaultLedger(depotID string) []*DepotVaultLedgerEntry {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	entries := e.vaultLedger[strings.TrimSpace(depotID)]
+	out := make([]*DepotVaultLedgerEntry, len(entries))
+	copy(out, entries)
+	return out
 }

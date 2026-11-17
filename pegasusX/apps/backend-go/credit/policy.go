@@ -5,11 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 	"sync"
 	"time"
 
 	"cloud.google.com/go/spanner"
+	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
@@ -54,6 +56,7 @@ type RetailerPaymentTerms struct {
 	GracePeriodDays   int64      `json:"grace_period_days"`
 	CreditLimitMinor  int64      `json:"credit_limit_minor"`
 	UseGlobalDefaults bool       `json:"use_global_defaults"`
+	ConsentVerified   bool       `json:"consent_verified"`
 	Version           int64      `json:"version"`
 	UpdatedAt         time.Time  `json:"updated_at"`
 }
@@ -137,40 +140,86 @@ func (r *MemoryPolicyRepository) GetTerms(_ context.Context, retailerID, supplie
 	return t, ok, nil
 }
 
-func (r *MemoryPolicyRepository) ListTermsBySupplier(_ context.Context, supplierID string, limit int) ([]RetailerPaymentTerms, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
+func (r *MemoryPolicyRepository) ListTermsBySupplier(ctx context.Context, supplierID string, limit int) ([]RetailerPaymentTerms, error) {
+	page, _, err := r.ListTermsBySupplierPage(ctx, supplierID, limit, "")
+	return page, err
+}
+
+func (r *MemoryPolicyRepository) ListTermsBySupplierPage(_ context.Context, supplierID string, limit int, cursor string) ([]RetailerPaymentTerms, string, error) {
 	if limit <= 0 {
 		limit = 100
 	}
+	cursorTs, cursorRid, cursorSid, hasCursor, err := decodeProfileCursor(cursor)
+	if err != nil {
+		return nil, "", err
+	}
+	r.mu.RLock()
+	defer r.mu.RUnlock()
 	out := make([]RetailerPaymentTerms, 0)
 	for _, t := range r.terms {
 		if t.SupplierID == supplierID {
 			out = append(out, t)
-			if len(out) >= limit {
-				break
-			}
 		}
 	}
-	return out, nil
+	return paginateMemoryTerms(out, limit, cursorTs, cursorRid, cursorSid, hasCursor)
 }
 
-func (r *MemoryPolicyRepository) ListTermsByRetailer(_ context.Context, retailerID string, limit int) ([]RetailerPaymentTerms, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
+func (r *MemoryPolicyRepository) ListTermsByRetailer(ctx context.Context, retailerID string, limit int) ([]RetailerPaymentTerms, error) {
+	page, _, err := r.ListTermsByRetailerPage(ctx, retailerID, limit, "")
+	return page, err
+}
+
+func (r *MemoryPolicyRepository) ListTermsByRetailerPage(_ context.Context, retailerID string, limit int, cursor string) ([]RetailerPaymentTerms, string, error) {
 	if limit <= 0 {
 		limit = 100
 	}
+	cursorTs, cursorRid, cursorSid, hasCursor, err := decodeProfileCursor(cursor)
+	if err != nil {
+		return nil, "", err
+	}
+	r.mu.RLock()
+	defer r.mu.RUnlock()
 	out := make([]RetailerPaymentTerms, 0)
 	for _, t := range r.terms {
 		if t.RetailerID == retailerID {
 			out = append(out, t)
-			if len(out) >= limit {
-				break
+		}
+	}
+	return paginateMemoryTerms(out, limit, cursorTs, cursorRid, cursorSid, hasCursor)
+}
+
+func paginateMemoryTerms(
+	items []RetailerPaymentTerms,
+	limit int,
+	cursorTs time.Time,
+	cursorRid, cursorSid string,
+	hasCursor bool,
+) ([]RetailerPaymentTerms, string, error) {
+	sort.Slice(items, func(i, j int) bool {
+		if !items[i].UpdatedAt.Equal(items[j].UpdatedAt) {
+			return items[i].UpdatedAt.After(items[j].UpdatedAt)
+		}
+		if items[i].RetailerID != items[j].RetailerID {
+			return items[i].RetailerID > items[j].RetailerID
+		}
+		return items[i].SupplierID > items[j].SupplierID
+	})
+	filtered := items
+	if hasCursor {
+		filtered = make([]RetailerPaymentTerms, 0, len(items))
+		for _, t := range items {
+			ts := t.UpdatedAt.UTC()
+			if ts.Before(cursorTs) || (ts.Equal(cursorTs) && (t.RetailerID < cursorRid || (t.RetailerID == cursorRid && t.SupplierID < cursorSid))) {
+				filtered = append(filtered, t)
 			}
 		}
 	}
-	return out, nil
+	if len(filtered) > limit {
+		page := filtered[:limit]
+		last := page[len(page)-1]
+		return page, encodeProfileCursor(last.UpdatedAt, last.RetailerID, last.SupplierID), nil
+	}
+	return filtered, "", nil
 }
 
 func (r *MemoryPolicyRepository) UpsertTerms(_ context.Context, t RetailerPaymentTerms, emit func(outbox.TxnBuffer) error) error {
@@ -298,9 +347,9 @@ func (r *SpannerPolicyRepository) UpsertProgram(ctx context.Context, p SupplierC
 }
 
 func (r *SpannerPolicyRepository) GetTerms(ctx context.Context, retailerID, supplierID string) (RetailerPaymentTerms, bool, error) {
-	row, err := r.client.Single().ReadRow(ctx, "RetailerPaymentTerms", spanner.Key{retailerID, supplierID},
+	row, err := r.client.Single().WithTimestampBound(spanner.StrongRead()).ReadRow(ctx, "RetailerPaymentTerms", spanner.Key{retailerID, supplierID},
 		[]string{"RetailerId", "SupplierId", "CreditEnabled", "EnabledAt", "EnabledByUserId", "DisabledAt", "DisabledByActor",
-			"TermsDays", "GracePeriodDays", "CreditLimitMinor", "UseGlobalDefaults", "Version", "UpdatedAt"})
+			"TermsDays", "GracePeriodDays", "CreditLimitMinor", "UseGlobalDefaults", "ConsentVerified", "Version", "UpdatedAt"})
 	if err != nil {
 		if spanner.ErrCode(err) == codes.NotFound {
 			return RetailerPaymentTerms{}, false, nil
@@ -315,8 +364,9 @@ func scanTerms(row *spanner.Row) (RetailerPaymentTerms, error) {
 	var t RetailerPaymentTerms
 	var enabledAt, disabledAt spanner.NullTime
 	var enabledBy, disabledBy spanner.NullString
+	var consentVerified spanner.NullBool
 	if err := row.Columns(&t.RetailerID, &t.SupplierID, &t.CreditEnabled, &enabledAt, &enabledBy, &disabledAt, &disabledBy,
-		&t.TermsDays, &t.GracePeriodDays, &t.CreditLimitMinor, &t.UseGlobalDefaults, &t.Version, &t.UpdatedAt); err != nil {
+		&t.TermsDays, &t.GracePeriodDays, &t.CreditLimitMinor, &t.UseGlobalDefaults, &consentVerified, &t.Version, &t.UpdatedAt); err != nil {
 		return t, err
 	}
 	if enabledAt.Valid {
@@ -329,21 +379,41 @@ func scanTerms(row *spanner.Row) (RetailerPaymentTerms, error) {
 	}
 	t.EnabledByUserID = enabledBy.StringVal
 	t.DisabledByActor = disabledBy.StringVal
+	if consentVerified.Valid {
+		t.ConsentVerified = consentVerified.Bool
+	}
 	return t, nil
 }
 
 func (r *SpannerPolicyRepository) ListTermsBySupplier(ctx context.Context, supplierID string, limit int) ([]RetailerPaymentTerms, error) {
+	page, _, err := r.ListTermsBySupplierPage(ctx, supplierID, limit, "")
+	return page, err
+}
+
+func (r *SpannerPolicyRepository) ListTermsBySupplierPage(ctx context.Context, supplierID string, limit int, cursor string) ([]RetailerPaymentTerms, string, error) {
 	if limit <= 0 {
 		limit = 100
 	}
-	stmt := spanner.Statement{
-		SQL: `SELECT RetailerId, SupplierId, CreditEnabled, EnabledAt, EnabledByUserId, DisabledAt, DisabledByActor, TermsDays, GracePeriodDays, CreditLimitMinor, UseGlobalDefaults, Version, UpdatedAt FROM RetailerPaymentTerms WHERE SupplierId = @sid ORDER BY UpdatedAt DESC LIMIT @limit`,
-		Params: map[string]any{
-			"sid":   supplierID,
-			"limit": int64(limit),
-		},
+	if limit > 200 {
+		limit = 200
 	}
-	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
+	cursorTs, cursorRid, cursorSid, hasCursor, err := decodeProfileCursor(cursor)
+	if err != nil {
+		return nil, "", err
+	}
+	sql := `SELECT RetailerId, SupplierId, CreditEnabled, EnabledAt, EnabledByUserId, DisabledAt, DisabledByActor, TermsDays, GracePeriodDays, CreditLimitMinor, UseGlobalDefaults, ConsentVerified, Version, UpdatedAt FROM RetailerPaymentTerms WHERE SupplierId = @sid`
+	params := map[string]any{
+		"sid":   supplierID,
+		"limit": int64(limit + 1),
+	}
+	if hasCursor {
+		sql += ` AND (UpdatedAt < @cursorTs OR (UpdatedAt = @cursorTs AND (RetailerId < @cursorRid OR (RetailerId = @cursorRid AND SupplierId < @cursorSid))))`
+		params["cursorTs"] = cursorTs
+		params["cursorRid"] = cursorRid
+		params["cursorSid"] = cursorSid
+	}
+	sql += ` ORDER BY UpdatedAt DESC, RetailerId DESC, SupplierId DESC LIMIT @limit`
+	iter := r.client.Single().WithTimestampBound(spanner.StrongRead()).Query(ctx, spanner.Statement{SQL: sql, Params: params})
 	defer iter.Stop()
 	out := make([]RetailerPaymentTerms, 0)
 	for {
@@ -352,29 +422,51 @@ func (r *SpannerPolicyRepository) ListTermsBySupplier(ctx context.Context, suppl
 			break
 		}
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
 		t, err := scanTerms(row)
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
 		out = append(out, t)
 	}
-	return out, nil
+	if len(out) > limit {
+		page := out[:limit]
+		last := page[len(page)-1]
+		return page, encodeProfileCursor(last.UpdatedAt, last.RetailerID, last.SupplierID), nil
+	}
+	return out, "", nil
 }
 
 func (r *SpannerPolicyRepository) ListTermsByRetailer(ctx context.Context, retailerID string, limit int) ([]RetailerPaymentTerms, error) {
+	page, _, err := r.ListTermsByRetailerPage(ctx, retailerID, limit, "")
+	return page, err
+}
+
+func (r *SpannerPolicyRepository) ListTermsByRetailerPage(ctx context.Context, retailerID string, limit int, cursor string) ([]RetailerPaymentTerms, string, error) {
 	if limit <= 0 {
 		limit = 100
 	}
-	stmt := spanner.Statement{
-		SQL: `SELECT RetailerId, SupplierId, CreditEnabled, EnabledAt, EnabledByUserId, DisabledAt, DisabledByActor, TermsDays, GracePeriodDays, CreditLimitMinor, UseGlobalDefaults, Version, UpdatedAt FROM RetailerPaymentTerms WHERE RetailerId = @rid ORDER BY UpdatedAt DESC LIMIT @limit`,
-		Params: map[string]any{
-			"rid":   retailerID,
-			"limit": int64(limit),
-		},
+	if limit > 200 {
+		limit = 200
 	}
-	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
+	cursorTs, cursorRid, cursorSid, hasCursor, err := decodeProfileCursor(cursor)
+	if err != nil {
+		return nil, "", err
+	}
+	sql := `SELECT RetailerId, SupplierId, CreditEnabled, EnabledAt, EnabledByUserId, DisabledAt, DisabledByActor, TermsDays, GracePeriodDays, CreditLimitMinor, UseGlobalDefaults, ConsentVerified, Version, UpdatedAt FROM RetailerPaymentTerms WHERE RetailerId = @rid`
+	params := map[string]any{
+		"rid":   retailerID,
+		"limit": int64(limit + 1),
+	}
+	if hasCursor {
+		sql += ` AND (UpdatedAt < @cursorTs OR (UpdatedAt = @cursorTs AND (RetailerId < @cursorRid OR (RetailerId = @cursorRid AND SupplierId < @cursorSid))))`
+		params["cursorTs"] = cursorTs
+		params["cursorRid"] = cursorRid
+		params["cursorSid"] = cursorSid
+	}
+	sql += ` ORDER BY UpdatedAt DESC, RetailerId DESC, SupplierId DESC LIMIT @limit`
+	iter := r.client.Single().WithTimestampBound(spanner.StrongRead()).Query(ctx, spanner.Statement{SQL: sql, Params: params})
 	defer iter.Stop()
 	out := make([]RetailerPaymentTerms, 0)
 	for {
@@ -383,15 +475,20 @@ func (r *SpannerPolicyRepository) ListTermsByRetailer(ctx context.Context, retai
 			break
 		}
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
 		t, err := scanTerms(row)
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
 		out = append(out, t)
 	}
-	return out, nil
+	if len(out) > limit {
+		page := out[:limit]
+		last := page[len(page)-1]
+		return page, encodeProfileCursor(last.UpdatedAt, last.RetailerID, last.SupplierID), nil
+	}
+	return out, "", nil
 }
 
 func termsMutationMap(t RetailerPaymentTerms) map[string]any {
@@ -405,6 +502,7 @@ func termsMutationMap(t RetailerPaymentTerms) map[string]any {
 		"GracePeriodDays":   t.GracePeriodDays,
 		"CreditLimitMinor":  t.CreditLimitMinor,
 		"UseGlobalDefaults": t.UseGlobalDefaults,
+		"ConsentVerified":   t.ConsentVerified,
 		"Version":           t.Version,
 		"UpdatedAt":         spanner.CommitTimestamp,
 	}
@@ -463,7 +561,7 @@ func (r *SpannerPolicyRepository) UpsertTermsAndProfile(ctx context.Context, t R
 				p.ReservedMinor = reserved
 			}
 			if p.CurrentBalanceMinor == 0 && balance > 0 && p.CreditLimitMinor > 0 {
-				// keep existing balance unless caller set it
+				p.CurrentBalanceMinor = balance
 			}
 		} else {
 			p.Version = 1
@@ -484,6 +582,7 @@ func (r *SpannerPolicyRepository) UpsertTermsAndProfile(ctx context.Context, t R
 				"AvailableCreditMinor": p.AvailableCreditMinor,
 				"RiskScore":            p.RiskScore,
 				"DelinquencyCount":     p.DelinquencyCount,
+				"PrepayOnlyLocked":     p.PrepayOnlyLocked,
 				"Status":               string(p.Status),
 				"LastEvaluatedAt":      p.LastEvaluatedAt,
 				"Version":              p.Version,
@@ -533,7 +632,7 @@ func (r *SpannerPolicyRepository) AppendAudit(ctx context.Context, a CreditPolic
 		m["WarningAckAt"] = *a.WarningAckAt
 	}
 	return spannerutils.RunReadWriteTransaction(ctx, r.client, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-		return txn.BufferWrite([]*spanner.Mutation{spanner.InsertOrUpdateMap("CreditPolicyAudit", m)})
+		return txn.BufferWrite([]*spanner.Mutation{spanner.InsertMap("CreditPolicyAudit", m)})
 	})
 }
 
@@ -557,7 +656,7 @@ func NewPolicyService(repo PolicyRepository, credit *Service) *PolicyService {
 		repo:   repo,
 		credit: credit,
 		now:    func() time.Time { return time.Now().UTC() },
-		newID:  func() string { return fmt.Sprintf("cpa_%d", time.Now().UnixNano()) },
+		newID:  func() string { return "cpa_" + strings.ReplaceAll(uuid.NewString(), "-", "") },
 	}
 }
 
@@ -867,10 +966,17 @@ func (s *PolicyService) EnableRelationship(ctx context.Context, supplierID, reta
 			limit = t.CreditLimitMinor
 		}
 	}
+	var prepayOnlyLocked bool
+	if s.credit != nil {
+		if existing, found, getErr := s.credit.GetProfile(ctx, retailerID, supplierID); getErr == nil && found {
+			prepayOnlyLocked = existing.PrepayOnlyLocked
+		}
+	}
 	profile := &Profile{
 		RetailerID:       retailerID,
 		SupplierID:       supplierID,
 		CreditLimitMinor: limit,
+		PrepayOnlyLocked: prepayOnlyLocked,
 		Status:           StatusActive,
 		UpdatedAt:        now,
 		CreatedAt:        now,
@@ -1082,22 +1188,61 @@ func (s *PolicyService) GetProgram(ctx context.Context, supplierID string) (Supp
 	return withPackTimezone(ctx, p), true, nil
 }
 
+// PolicyTermsPager is an optional PolicyRepository extension supporting keyset pagination.
+type PolicyTermsPager interface {
+	ListTermsBySupplierPage(ctx context.Context, supplierID string, limit int, cursor string) ([]RetailerPaymentTerms, string, error)
+	ListTermsByRetailerPage(ctx context.Context, retailerID string, limit int, cursor string) ([]RetailerPaymentTerms, string, error)
+}
+
 func (s *PolicyService) ListRelationships(ctx context.Context, supplierID string, limit int) ([]RetailerPaymentTerms, error) {
 	return s.repo.ListTermsBySupplier(ctx, supplierID, limit)
+}
+
+func (s *PolicyService) ListRelationshipsPage(ctx context.Context, supplierID string, limit int, cursor string) ([]RetailerPaymentTerms, string, error) {
+	if pager, ok := s.repo.(PolicyTermsPager); ok {
+		return pager.ListTermsBySupplierPage(ctx, supplierID, limit, cursor)
+	}
+	if strings.TrimSpace(cursor) != "" {
+		return nil, "", ErrInvalidCursor
+	}
+	list, err := s.repo.ListTermsBySupplier(ctx, supplierID, limit)
+	return list, "", err
 }
 
 func (s *PolicyService) ListRetailerRelationships(ctx context.Context, retailerID string, limit int) ([]RetailerPaymentTerms, error) {
 	return s.repo.ListTermsByRetailer(ctx, retailerID, limit)
 }
 
+func (s *PolicyService) ListRetailerRelationshipsPage(ctx context.Context, retailerID string, limit int, cursor string) ([]RetailerPaymentTerms, string, error) {
+	if pager, ok := s.repo.(PolicyTermsPager); ok {
+		return pager.ListTermsByRetailerPage(ctx, retailerID, limit, cursor)
+	}
+	if strings.TrimSpace(cursor) != "" {
+		return nil, "", ErrInvalidCursor
+	}
+	list, err := s.repo.ListTermsByRetailer(ctx, retailerID, limit)
+	return list, "", err
+}
+
 func (s *PolicyService) ResolveTermsFor(ctx context.Context, retailerID, supplierID string) (ResolvedTerms, error) {
-	prog, _, err := s.repo.GetProgram(ctx, supplierID)
+	prog, found, err := s.repo.GetProgram(ctx, supplierID)
 	if err != nil {
 		return ResolvedTerms{}, err
+	}
+	if !found {
+		prog.SupplierID = supplierID
 	}
 	terms, _, err := s.repo.GetTerms(ctx, retailerID, supplierID)
 	if err != nil {
 		return ResolvedTerms{}, err
 	}
 	return s.resolveTerms(prog, terms), nil
+}
+
+// ResolveTermsForOrder returns effective TermsDays, GracePeriodDays, CreditLimitMinor, and Timezone for order/invoice flows.
+func (s *PolicyService) ResolveTermsForOrder(ctx context.Context, retailerID, supplierID string) (ResolvedTerms, error) {
+	if s == nil || s.repo == nil {
+		return ResolvedTerms{TermsDays: 30, Timezone: "Asia/Tashkent"}, nil
+	}
+	return s.ResolveTermsFor(ctx, retailerID, supplierID)
 }

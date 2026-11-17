@@ -109,6 +109,14 @@ interface WarehouseApi {
     @GET("v1/warehouse/ops/bins")
     suspend fun listBins(): Response<WarehouseBinListResponse>
 
+    @GET("v1/warehouse/ops/lots")
+    suspend fun listLots(): Response<StockLotListResponse>
+
+    @GET("v1/warehouse/ops/manifests/{manifestId}/temperature")
+    suspend fun getManifestTemperature(
+        @Path("manifestId") manifestId: String,
+    ): Response<ManifestTemperatureResponse>
+
     @POST("v1/warehouse/ops/bins")
     suspend fun createBin(
         @Body body: WarehouseBinCreateRequest,
@@ -146,6 +154,12 @@ interface WarehouseApi {
         @Header("Idempotency-Key") idempotencyKey: String,
     ): Response<PickWave>
 
+    @POST("v1/warehouse/ops/pick-waves/{waveId}/waive-shorts")
+    suspend fun waivePickShorts(
+        @Path("waveId") waveId: String,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): Response<PickWave>
+
     @GET("v1/warehouse/ops/cycle-counts")
     suspend fun listCycleCounts(
         @Query("status") status: String? = null,
@@ -163,6 +177,21 @@ interface WarehouseApi {
         @Body body: CycleCountSubmitRequest,
         @Header("Idempotency-Key") idempotencyKey: String,
     ): Response<CycleCount>
+
+    @GET("v1/warehouse/ops/inventory-adjustments")
+    suspend fun listInventoryAdjustments(): Response<InventoryAdjustmentListResponse>
+
+    @POST("v1/warehouse/ops/inventory-adjustments/{adjustmentId}/approve")
+    suspend fun approveInventoryAdjustment(
+        @Path("adjustmentId") adjustmentId: String,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): Response<InventoryAdjustment>
+
+    @POST("v1/warehouse/ops/inventory-adjustments/{adjustmentId}/reject")
+    suspend fun rejectInventoryAdjustment(
+        @Path("adjustmentId") adjustmentId: String,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): Response<InventoryAdjustment>
 
     @GET("v1/warehouse/ops/settings")
     suspend fun getOpsSettings(): Response<WarehouseOpsSettingsResponse>

@@ -30,6 +30,7 @@ data:
   ROUTING_OSRM_URL: "http://osrm.pegasusx.svc.cluster.local:5000"
   OPTIMIZER_BASE_URL: "http://optimizer-core.pegasusx.svc.cluster.local:8082"
   GLOBAL_PAY_ENV: "production"
+  PLAYMOBILE_ORIGINATOR: "3700"
   WS_ALLOWED_ORIGINS: "https://supplier.pegasusx.app,https://warehouse.pegasusx.app,https://factory.pegasusx.app,https://retailer.pegasusx.app"
   PUBLIC_BASE_URL: "https://api.pegasusx.app"
   UPDATES_BASE_URL: "https://storage.googleapis.com/pegasusx-prod-app-updates"
@@ -42,6 +43,8 @@ data:
   FIREBASE_AUTH_ENABLED: "true"
   # Cryptographic proof-of-delivery handoff: enforce strict SHA-256 tokens in cloud (no order_id UUID fallback)
   HANDOFF_LEGACY_ORDER_ID_FALLBACK: "false"
+  # D-10 non-blocking doorstep fiscalization: queue OFD retries when payment+PoD are captured
+  FISCAL_STRICT_IMMEDIATE_BLOCK: "false"
   # G19 / G3 claim window defaults (supplier/WH policies override at COMPLETED snapshot)
   CLAIM_WINDOW_HOURS: "48"
   CLAIM_AUTO_APPROVE_MAX_MINOR: "0"

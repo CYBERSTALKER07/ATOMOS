@@ -12,48 +12,111 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
 )
 
-// LoadSecretRef resolves a SecretRef to credential material.
-// Order: env named by SecretRef, then PARTNER_SFTP_SECRET_<SecretRef>, then file path if SecretRef is absolute.
-func LoadSecretRef(secretRef string) (string, error) {
-	secretRef = strings.TrimSpace(secretRef)
-	if secretRef == "" {
-		return "", fmt.Errorf("empty_secret_ref")
+// ValidatePartnerSecretRef verifies that a partner SecretRef is a safe logical key name
+// rather than an arbitrary filesystem path, OS env var name, or URL scheme.
+func ValidatePartnerSecretRef(secretRef string) error {
+	ref := strings.TrimSpace(secretRef)
+	if ref == "" {
+		return fmt.Errorf("empty_secret_ref")
 	}
-	if v := strings.TrimSpace(os.Getenv(secretRef)); v != "" {
-		return v, nil
+	if len(ref) > 128 || ref[0] == '.' || ref[0] == '-' {
+		return fmt.Errorf("invalid_secret_ref")
 	}
-	envKey := "PARTNER_SFTP_SECRET_" + strings.ToUpper(strings.ReplaceAll(secretRef, "-", "_"))
-	if v := strings.TrimSpace(os.Getenv(envKey)); v != "" {
-		return v, nil
+	if strings.Contains(ref, "..") {
+		return fmt.Errorf("invalid_secret_ref")
 	}
-	if v := strings.TrimSpace(os.Getenv("PARTNER_SFTP_SECRET_" + secretRef)); v != "" {
-		return v, nil
+	for _, r := range ref {
+		isOK := (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_' || r == '-' || r == '.'
+		if !isOK {
+			return fmt.Errorf("invalid_secret_ref")
+		}
 	}
-	as2Key := "PARTNER_AS2_SECRET_" + strings.ToUpper(strings.ReplaceAll(secretRef, "-", "_"))
-	if v := strings.TrimSpace(os.Getenv(as2Key)); v != "" {
-		return v, nil
+	return nil
+}
+
+func sanitizePartnerEnvSegment(raw string) string {
+	var b strings.Builder
+	for _, r := range strings.ToUpper(strings.TrimSpace(raw)) {
+		if (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') {
+			b.WriteRune(r)
+			continue
+		}
+		b.WriteByte('_')
 	}
-	if v := strings.TrimSpace(os.Getenv("PARTNER_AS2_SECRET_" + secretRef)); v != "" {
-		return v, nil
+	return strings.Trim(b.String(), "_")
+}
+
+// LoadTenantSecretRef resolves a validated SecretRef using tenant-scoped PARTNER_{SFTP,AS2}_SECRET_<TENANT>_<KEY>
+// environment variables first, failing closed in production when only cross-tenant keys exist.
+func LoadTenantSecretRef(tenantType, tenantID, secretRef string) (string, error) {
+	if err := ValidatePartnerSecretRef(secretRef); err != nil {
+		return "", err
 	}
-	if strings.HasPrefix(secretRef, "/") || strings.HasPrefix(secretRef, "./") {
-		b, err := os.ReadFile(secretRef)
-		if err != nil {
+	ref := strings.TrimSpace(secretRef)
+	upperRef := strings.ReplaceAll(strings.ToUpper(ref), "-", "_")
+	tenantPrefix := sanitizePartnerEnvSegment(tenantType) + "_" + sanitizePartnerEnvSegment(tenantID)
+	tenantPrefix = strings.Trim(tenantPrefix, "_")
+	if tenantPrefix != "" {
+		for _, pfx := range []string{"PARTNER_SFTP_SECRET_", "PARTNER_AS2_SECRET_"} {
+			for _, candidate := range []string{pfx + tenantPrefix + "_" + upperRef, pfx + tenantPrefix + "_" + ref} {
+				if v := strings.TrimSpace(os.Getenv(candidate)); v != "" {
+					return v, nil
+				}
+			}
+		}
+	}
+	if auth.IsProduction() || envTruthy("PARTNER_STRICT_TENANT_SECRETS") {
+		return "", fmt.Errorf("secret_not_found")
+	}
+	return LoadSecretRef(ref)
+}
+
+func resolveWorkerSecret(customLoader func(string) (string, error), tenantType, tenantID, secretRef string) (string, error) {
+	if customLoader != nil {
+		if err := ValidatePartnerSecretRef(secretRef); err != nil {
 			return "", err
 		}
-		return strings.TrimSpace(string(b)), nil
+		return customLoader(secretRef)
+	}
+	return LoadTenantSecretRef(tenantType, tenantID, secretRef)
+}
+
+// LoadSecretRef resolves a validated SecretRef to credential material strictly under
+// PARTNER_SFTP_SECRET_<KEY> or PARTNER_AS2_SECRET_<KEY> (never arbitrary OS env or filesystem paths).
+func LoadSecretRef(secretRef string) (string, error) {
+	if err := ValidatePartnerSecretRef(secretRef); err != nil {
+		return "", err
+	}
+	secretRef = strings.TrimSpace(secretRef)
+	upperKey := strings.ReplaceAll(strings.ToUpper(secretRef), "-", "_")
+	for _, k := range []string{
+		"PARTNER_SFTP_SECRET_" + upperKey,
+		"PARTNER_SFTP_SECRET_" + secretRef,
+		"PARTNER_AS2_SECRET_" + upperKey,
+		"PARTNER_AS2_SECRET_" + secretRef,
+	} {
+		if v := strings.TrimSpace(os.Getenv(k)); v != "" {
+			return v, nil
+		}
 	}
 	return "", fmt.Errorf("secret_not_found")
 }
 
-// PartnerSFTPStrictHostKey returns true when host-key pinning is mandatory.
+// PartnerSFTPStrictHostKey returns true when SSH host-key pinning is mandatory (default true;
+// can only be disabled in non-production via PARTNER_SFTP_ALLOW_INSECURE_HOSTKEY=true).
 func PartnerSFTPStrictHostKey() bool {
-	v := strings.ToLower(strings.TrimSpace(os.Getenv("PARTNER_SFTP_STRICT_HOSTKEY")))
-	return v == "1" || v == "true" || v == "yes" || v == "on"
+	if envTruthy("PARTNER_SFTP_STRICT_HOSTKEY") {
+		return true
+	}
+	if !auth.IsProduction() && envTruthy("PARTNER_SFTP_ALLOW_INSECURE_HOSTKEY") {
+		return false
+	}
+	return true
 }
 
 func sftpHostKeyCallback(cfg SftpConfig) (ssh.HostKeyCallback, error) {
@@ -88,47 +151,55 @@ func subtleConstEq(a, b string) bool {
 	return v == 0
 }
 
+// ValidateSftpConfigPaths validates RemoteDir and relative subdirectory names against path traversal.
+func ValidateSftpConfigPaths(cfg SftpConfig) error {
+	for _, field := range []string{cfg.RemoteDir, cfg.InboundDir, cfg.OutboundDir, cfg.ArchiveDir} {
+		if strings.ContainsRune(field, 0) || strings.Contains(field, "\\") {
+			return fmt.Errorf("sftp_invalid_path")
+		}
+		for _, seg := range strings.Split(field, "/") {
+			if seg == ".." {
+				return fmt.Errorf("sftp_path_traversal_forbidden")
+			}
+		}
+	}
+	for _, sub := range []string{cfg.InboundDir, cfg.OutboundDir, cfg.ArchiveDir} {
+		t := strings.TrimSpace(sub)
+		if t == "" {
+			continue
+		}
+		if strings.HasPrefix(t, "/") || strings.Contains(t, "..") {
+			return fmt.Errorf("sftp_subdir_must_be_relative")
+		}
+	}
+	return nil
+}
+
+func validateSafeRemoteFilename(name string) error {
+	name = strings.TrimSpace(name)
+	if name == "" || name == "." || name == ".." || strings.ContainsAny(name, `/\`) || strings.ContainsRune(name, 0) || strings.Contains(name, "..") {
+		return fmt.Errorf("sftp_invalid_filename")
+	}
+	return nil
+}
+
 // UploadSFTP pushes a local file to the configured remote directory.
 func UploadSFTP(ctx context.Context, cfg SftpConfig, secret, localPath, remoteName string) error {
-	if strings.TrimSpace(cfg.Host) == "" || strings.TrimSpace(cfg.Username) == "" {
-		return fmt.Errorf("sftp_config_incomplete")
-	}
-	port := cfg.Port
-	if port <= 0 {
-		port = 22
-	}
-	auth, err := sftpAuthMethods(secret)
-	if err != nil {
+	if err := validateSafeRemoteFilename(remoteName); err != nil {
 		return err
 	}
-	hk, err := sftpHostKeyCallback(cfg)
+	conn, client, err := dialSFTP(cfg, secret)
 	if err != nil {
 		return err
-	}
-	sshCfg := &ssh.ClientConfig{
-		User:            cfg.Username,
-		Auth:            auth,
-		HostKeyCallback: hk,
-		Timeout:         20 * time.Second,
-	}
-	addr := net.JoinHostPort(cfg.Host, fmt.Sprintf("%d", port))
-	conn, err := ssh.Dial("tcp", addr, sshCfg)
-	if err != nil {
-		return fmt.Errorf("ssh_dial: %w", err)
 	}
 	defer conn.Close()
-
-	client, err := sftp.NewClient(conn)
-	if err != nil {
-		return fmt.Errorf("sftp_client: %w", err)
-	}
 	defer client.Close()
 
 	remoteDir := strings.TrimSpace(cfg.RemoteDir)
 	if remoteDir == "" {
 		remoteDir = "/"
 	}
-	remotePath := path.Join(remoteDir, remoteName)
+	remotePath := joinRemote(remoteDir, remoteName)
 
 	src, err := os.Open(localPath)
 	if err != nil {
@@ -166,6 +237,12 @@ func dialSFTP(cfg SftpConfig, secret string) (*ssh.Client, *sftp.Client, error) 
 	if strings.TrimSpace(cfg.Host) == "" || strings.TrimSpace(cfg.Username) == "" {
 		return nil, nil, fmt.Errorf("sftp_config_incomplete")
 	}
+	if err := ValidateHostNotPrivate(cfg.Host, DefaultWebhookURLPolicy()); err != nil {
+		return nil, nil, fmt.Errorf("sftp_host_forbidden: %w", err)
+	}
+	if err := ValidateSftpConfigPaths(cfg); err != nil {
+		return nil, nil, err
+	}
 	port := cfg.Port
 	if port <= 0 {
 		port = 22
@@ -202,11 +279,35 @@ func joinRemote(base, name string) string {
 	if base == "" {
 		base = "/"
 	}
-	return path.Join(base, name)
+	cleanBase := path.Clean(base)
+	cleanChild := strings.TrimPrefix(path.Clean("/"+strings.TrimSpace(name)), "/")
+	if cleanChild == "" || cleanChild == "." {
+		return cleanBase
+	}
+	return path.Join(cleanBase, cleanChild)
+}
+
+func validateExistingRemotePath(p string) error {
+	if strings.ContainsRune(p, 0) || strings.Contains(p, "\\") {
+		return fmt.Errorf("sftp_invalid_path")
+	}
+	for _, seg := range strings.Split(p, "/") {
+		if seg == ".." {
+			return fmt.Errorf("sftp_path_traversal_forbidden")
+		}
+	}
+	return nil
 }
 
 // ListSFTP lists non-directory files under remoteDir (absolute or under RemoteDir).
 func ListSFTP(ctx context.Context, cfg SftpConfig, secret, remoteDir string) ([]SftpFileInfo, error) {
+	dir := strings.TrimSpace(remoteDir)
+	if dir == "" {
+		dir = joinRemote(cfg.RemoteDir, cfg.InboundDir)
+	}
+	if err := validateExistingRemotePath(dir); err != nil {
+		return nil, err
+	}
 	conn, client, err := dialSFTP(cfg, secret)
 	if err != nil {
 		return nil, err
@@ -214,10 +315,6 @@ func ListSFTP(ctx context.Context, cfg SftpConfig, secret, remoteDir string) ([]
 	defer conn.Close()
 	defer client.Close()
 
-	dir := strings.TrimSpace(remoteDir)
-	if dir == "" {
-		dir = joinRemote(cfg.RemoteDir, cfg.InboundDir)
-	}
 	entries, err := client.ReadDir(dir)
 	if err != nil {
 		return nil, fmt.Errorf("sftp_readdir: %w", err)
@@ -239,6 +336,9 @@ func ListSFTP(ctx context.Context, cfg SftpConfig, secret, remoteDir string) ([]
 
 // DownloadSFTP reads a remote file into memory.
 func DownloadSFTP(ctx context.Context, cfg SftpConfig, secret, remotePath string) ([]byte, error) {
+	if err := validateExistingRemotePath(remotePath); err != nil {
+		return nil, err
+	}
 	conn, client, err := dialSFTP(cfg, secret)
 	if err != nil {
 		return nil, err
@@ -268,6 +368,12 @@ func DownloadSFTP(ctx context.Context, cfg SftpConfig, secret, remotePath string
 
 // RenameSFTP moves a remote file (archive after ingest).
 func RenameSFTP(ctx context.Context, cfg SftpConfig, secret, fromPath, toPath string) error {
+	if err := validateExistingRemotePath(fromPath); err != nil {
+		return err
+	}
+	if err := validateExistingRemotePath(toPath); err != nil {
+		return err
+	}
 	conn, client, err := dialSFTP(cfg, secret)
 	if err != nil {
 		return err

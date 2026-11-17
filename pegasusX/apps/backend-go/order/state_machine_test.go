@@ -98,3 +98,89 @@ func TestValidateStatusTransition_preorderStatuses(t *testing.T) {
 		t.Fatalf("AUTO_ACCEPTED -> IN_TRANSIT must be blocked, got %v", err)
 	}
 }
+
+func TestValidateStatusTransition_AwaitingPaymentAndPendingCashTransitions(t *testing.T) {
+	// StatusAwaitingPayment: allow Fiscalizing, PendingCashCollection, DeliveredOnCredit, CancelRequested, ShopClosedPending
+	allowedAwaiting := []Status{
+		StatusFiscalizing,
+		StatusPendingCashCollection,
+		StatusDeliveredOnCredit,
+		StatusCancelRequested,
+		StatusShopClosedPending,
+	}
+	for _, next := range allowedAwaiting {
+		if err := ValidateStatusTransition(string(StatusAwaitingPayment), string(next), TransitionOpts{}); err != nil {
+			t.Errorf("AWAITING_PAYMENT -> %s should be allowed, got: %v", next, err)
+		}
+		if !CanTransition(StatusAwaitingPayment, next) {
+			t.Errorf("CanTransition(AWAITING_PAYMENT, %s) should be true", next)
+		}
+	}
+	// Invalid transitions from AwaitingPayment
+	invalidAwaiting := []Status{StatusCompleted, StatusLoaded, StatusInTransit, StatusScheduled}
+	for _, next := range invalidAwaiting {
+		if err := ValidateStatusTransition(string(StatusAwaitingPayment), string(next), TransitionOpts{}); !errors.Is(err, ErrInvalidStatusTransition) {
+			t.Errorf("AWAITING_PAYMENT -> %s must be blocked, got: %v", next, err)
+		}
+		if CanTransition(StatusAwaitingPayment, next) {
+			t.Errorf("CanTransition(AWAITING_PAYMENT, %s) should be false", next)
+		}
+	}
+
+	// StatusPendingCashCollection: allow Fiscalizing, AwaitingPayment, DeliveredOnCredit, CancelRequested
+	allowedCash := []Status{
+		StatusFiscalizing,
+		StatusAwaitingPayment,
+		StatusDeliveredOnCredit,
+		StatusCancelRequested,
+	}
+	for _, next := range allowedCash {
+		if err := ValidateStatusTransition(string(StatusPendingCashCollection), string(next), TransitionOpts{}); err != nil {
+			t.Errorf("PENDING_CASH_COLLECTION -> %s should be allowed, got: %v", next, err)
+		}
+		if !CanTransition(StatusPendingCashCollection, next) {
+			t.Errorf("CanTransition(PENDING_CASH_COLLECTION, %s) should be true", next)
+		}
+	}
+	// Invalid transitions from PendingCashCollection
+	invalidCash := []Status{StatusCompleted, StatusLoaded, StatusInTransit, StatusScheduled}
+	for _, next := range invalidCash {
+		if err := ValidateStatusTransition(string(StatusPendingCashCollection), string(next), TransitionOpts{}); !errors.Is(err, ErrInvalidStatusTransition) {
+			t.Errorf("PENDING_CASH_COLLECTION -> %s must be blocked, got: %v", next, err)
+		}
+		if CanTransition(StatusPendingCashCollection, next) {
+			t.Errorf("CanTransition(PENDING_CASH_COLLECTION, %s) should be false", next)
+		}
+	}
+}
+
+func TestValidateStatusTransition_CancelRequestedExtendedExits(t *testing.T) {
+	// StatusCancelRequested: allow Cancelled, Loaded, InTransit, Arrived, Scheduled, AutoAccepted, ShopClosedPending
+	allowed := []Status{
+		StatusCancelled,
+		StatusLoaded,
+		StatusInTransit,
+		StatusArrived,
+		StatusScheduled,
+		StatusAutoAccepted,
+		StatusShopClosedPending,
+	}
+	for _, next := range allowed {
+		if err := ValidateStatusTransition(string(StatusCancelRequested), string(next), TransitionOpts{}); err != nil {
+			t.Errorf("CANCEL_REQUESTED -> %s should be allowed, got: %v", next, err)
+		}
+		if !CanTransition(StatusCancelRequested, next) {
+			t.Errorf("CanTransition(CANCEL_REQUESTED, %s) should be true", next)
+		}
+	}
+	// Invalid transitions from CancelRequested
+	invalid := []Status{StatusCompleted, StatusFiscalizing, StatusFiscalFailed, StatusDeliveredOnCredit}
+	for _, next := range invalid {
+		if err := ValidateStatusTransition(string(StatusCancelRequested), string(next), TransitionOpts{}); !errors.Is(err, ErrInvalidStatusTransition) {
+			t.Errorf("CANCEL_REQUESTED -> %s must be blocked, got: %v", next, err)
+		}
+		if CanTransition(StatusCancelRequested, next) {
+			t.Errorf("CanTransition(CANCEL_REQUESTED, %s) should be false", next)
+		}
+	}
+}

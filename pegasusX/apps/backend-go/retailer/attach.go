@@ -5,6 +5,7 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -13,7 +14,9 @@ import (
 	"strings"
 	"time"
 
+	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"github.com/pegasusx/pegasusx/apps/backend-go/entityresolution"
 )
 
 var (
@@ -247,4 +250,142 @@ func writeAttachError(w http.ResponseWriter, err error) {
 	default:
 		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": err.Error()})
 	}
+}
+
+// RetailerLinkInput holds identity fields recorded into SupplierRetailerLinks upon attach/invite redemption.
+type RetailerLinkInput struct {
+	SupplierID string
+	RetailerID string
+	TaxIDTIN   string
+	Phone      string
+	LegalName  string
+}
+
+// NormalizeTIN normalizes a tax identifier (INN/STIR/PINFL) using the canonical entityresolution rules.
+func NormalizeTIN(raw string) string {
+	return entityresolution.NormalizeTIN(raw)
+}
+
+// NormalizeUZPhone normalizes a Uzbekistan phone number (+998...) using the canonical entityresolution rules.
+func NormalizeUZPhone(raw string) string {
+	return entityresolution.NormalizeUZPhone(raw)
+}
+
+// UpsertSupplierRetailerLink writes a tenant-scoped SupplierRetailerLinks row and flags exact TIN/phone duplicates within SupplierId.
+func UpsertSupplierRetailerLink(ctx context.Context, client *spanner.Client, in RetailerLinkInput, now time.Time) (entityresolution.SupplierRetailerLink, []entityresolution.SupplierRetailerLink, error) {
+	return entityresolution.UpsertSupplierRetailerLink(ctx, client, entityresolution.SupplierRetailerLink{
+		SupplierID:      strings.TrimSpace(in.SupplierID),
+		RetailerID:      strings.TrimSpace(in.RetailerID),
+		TaxIDTIN:        in.TaxIDTIN,
+		NormalizedPhone: in.Phone,
+		LegalName:       in.LegalName,
+	}, now)
+}
+
+// SyncSupplierRetailerLink normalizes and persists a retailer attach link into SupplierRetailerLinks when Spanner is configured.
+func (s *Service) SyncSupplierRetailerLink(ctx context.Context, in RetailerLinkInput) (entityresolution.SupplierRetailerLink, []entityresolution.SupplierRetailerLink, error) {
+	sid := strings.TrimSpace(in.SupplierID)
+	rid := strings.TrimSpace(in.RetailerID)
+	if sid == "" || rid == "" {
+		return entityresolution.SupplierRetailerLink{}, nil, entityresolution.ErrInvalidRetailerLinkInput
+	}
+	now := time.Now().UTC()
+	if s != nil && s.now != nil {
+		now = s.now().UTC()
+	}
+	link := entityresolution.SupplierRetailerLink{
+		SupplierID:      sid,
+		RetailerID:      rid,
+		TaxIDTIN:        in.TaxIDTIN,
+		NormalizedPhone: in.Phone,
+		LegalName:       in.LegalName,
+	}
+	if s != nil && s.spannerClient != nil {
+		return entityresolution.UpsertSupplierRetailerLink(ctx, s.spannerClient, link, now)
+	}
+	saved, peers := entityresolution.ApplyRetailerLinkUpsert(now, link, nil, nil, nil)
+	return saved, peers, nil
+}
+
+// HandleAcceptTradingPartnerInvite binds the calling retailer to a supplier using an invite token or explicit supplier_id
+// and records normalized TIN/phone identity into SupplierRetailerLinks.
+func (s *Service) HandleAcceptTradingPartnerInvite(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	claims, ok := auth.FromContext(r.Context())
+	if !ok || claims.Role != auth.RoleRetailer {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+		return
+	}
+	retailerID := strings.TrimSpace(claims.Subject)
+	if retailerID == "" {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "retailer_id_required"})
+		return
+	}
+	var body struct {
+		SupplierID  string `json:"supplier_id"`
+		InviteToken string `json:"invite_token"`
+		TaxIDTIN    string `json:"tax_id_tin"`
+		TIN         string `json:"tin"`
+		Phone       string `json:"phone"`
+		LegalName   string `json:"legal_name"`
+		CountryCode string `json:"country_code"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json_body"})
+		return
+	}
+	partnerID, inviteMarket, err := s.resolveTradingPartnerPack(r.Context(), body.SupplierID, body.InviteToken)
+	if err != nil {
+		writeAttachError(w, err)
+		return
+	}
+	pack, err := auth.FiscalPackForSupplier(partnerID)
+	if err != nil {
+		writeAttachError(w, err)
+		return
+	}
+	if err := assertAttachMarket(pack, body.CountryCode, inviteMarket); err != nil {
+		writeAttachError(w, err)
+		return
+	}
+	tin := strings.TrimSpace(body.TaxIDTIN)
+	if tin == "" {
+		tin = strings.TrimSpace(body.TIN)
+	}
+	phone := strings.TrimSpace(body.Phone)
+	legalName := strings.TrimSpace(body.LegalName)
+	if phone == "" {
+		phone = strings.TrimSpace(claims.PhoneNumber)
+	}
+	if (phone == "" || legalName == "") && s.repo != nil {
+		if ret, found, lookupErr := s.repo.GetRetailer(r.Context(), retailerID); lookupErr == nil && found {
+			if phone == "" {
+				phone = ret.Phone
+			}
+			if legalName == "" {
+				legalName = ret.Name
+			}
+		}
+	}
+	saved, peers, err := s.SyncSupplierRetailerLink(r.Context(), RetailerLinkInput{
+		SupplierID: partnerID,
+		RetailerID: retailerID,
+		TaxIDTIN:   tin,
+		Phone:      phone,
+		LegalName:  legalName,
+	})
+	if err != nil {
+		writeAttachError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"status":          "attached",
+		"supplier_id":     partnerID,
+		"retailer_id":     retailerID,
+		"link":            saved,
+		"duplicate_peers": peers,
+	})
 }

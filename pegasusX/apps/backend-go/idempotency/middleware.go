@@ -11,11 +11,8 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"path"
 	"strings"
 	"time"
-
-	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 )
 
 const (
@@ -139,32 +136,7 @@ func Middleware(store Store) func(http.Handler) http.Handler {
 				r.Body = http.NoBody
 			}
 
-			principal := ""
-			if claims, ok := auth.FromContext(r.Context()); ok && strings.TrimSpace(claims.Subject) != "" {
-				principal = "user:" + strings.TrimSpace(claims.Subject)
-			} else if t, ok := auth.PartnerIdentityFromContext(r.Context()); ok && (t.KeyID != "" || t.TenantID != "" || t.SupplierID != "") {
-				partnerID := strings.TrimSpace(t.TenantID)
-				if partnerID == "" {
-					partnerID = strings.TrimSpace(t.SupplierID)
-				}
-				keyID := strings.TrimSpace(t.KeyID)
-				if partnerID != "" && keyID != "" {
-					principal = "partner:" + partnerID + ":" + keyID
-				} else if keyID != "" {
-					principal = "partner:" + keyID
-				} else {
-					principal = "tenant:" + partnerID
-				}
-			} else if t, ok := auth.TenantFromContext(r.Context()); ok && strings.TrimSpace(t.SupplierID) != "" {
-				principal = "tenant:" + strings.TrimSpace(t.SupplierID)
-			}
-
-			cleanPath := path.Clean(strings.TrimSpace(r.URL.Path))
-			if !strings.HasPrefix(cleanPath, "/") {
-				cleanPath = "/" + cleanPath
-			}
-			routePattern := r.Method + " " + cleanPath
-			key := ScopeKey(principal, routePattern, rawKey)
+			key := ScopeRequest(r, rawKey)
 
 			hash := sha256.Sum256(bodyBytes)
 			hashHex := hex.EncodeToString(hash[:])

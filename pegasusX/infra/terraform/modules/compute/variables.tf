@@ -69,17 +69,24 @@ variable "release_channel" {
 }
 
 variable "authorized_ipv4_cidr_blocks" {
-  description = "List of CIDR blocks authorized to access the GKE control plane endpoint."
+  description = "List of CIDR blocks authorized to access the GKE control plane endpoint (must not allow 0.0.0.0/0)."
   type = list(object({
     cidr_block   = string
     display_name = string
   }))
   default = [
     {
-      cidr_block   = "0.0.0.0/0"
-      display_name = "Global Authorized (Override with Bastion/VPN in strict environments)"
+      cidr_block   = "10.10.0.0/20"
+      display_name = "Primary VPC Node & Bastion Subnet"
     }
   ]
+  validation {
+    condition = alltrue([
+      for b in var.authorized_ipv4_cidr_blocks :
+      b.cidr_block != "0.0.0.0/0" && can(cidrhost(b.cidr_block, 0))
+    ])
+    error_message = "authorized_ipv4_cidr_blocks cannot include 0.0.0.0/0 and every entry must be a valid IPv4 CIDR."
+  }
 }
 
 variable "standard_node_machine_type" {

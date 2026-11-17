@@ -2,6 +2,7 @@ package claims
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -9,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
@@ -91,34 +93,36 @@ func creditNoteAutoFromClaimEnabled() bool {
 
 // Service is the claims domain application service.
 type Service struct {
-	repo        Repository
-	orders      OrderLookup
-	settler     ChargebackSettler
-	rl          ReverseLogisticsOpener
-	storeCr     StoreCreditApplier
-	creditNotes CreditNoteCreator
-	storeStock  StoreStockClaimPort
-	idem        idempotency.Store
-	now         func() time.Time
-	newID       func() string
-	log         *slog.Logger
-	window      time.Duration
+	repo            Repository
+	orders          OrderLookup
+	settler         ChargebackSettler
+	rl              ReverseLogisticsOpener
+	storeCr         StoreCreditApplier
+	creditNotes     CreditNoteCreator
+	storeStock      StoreStockClaimPort
+	inspectEvidence storage.EvidenceInspector
+	idem            idempotency.Store
+	now             func() time.Time
+	newID           func() string
+	log             *slog.Logger
+	window          time.Duration
 }
 
 // Config wires claims Service dependencies.
 type Config struct {
-	Repo        Repository
-	Orders      OrderLookup
-	Settler     ChargebackSettler
-	RL          ReverseLogisticsOpener
-	StoreCr     StoreCreditApplier
-	CreditNotes CreditNoteCreator
-	StoreStock  StoreStockClaimPort
-	Idem        idempotency.Store
-	Now         func() time.Time
-	NewID       func() string
-	Log         *slog.Logger
-	Window      time.Duration
+	Repo              Repository
+	Orders            OrderLookup
+	Settler           ChargebackSettler
+	RL                ReverseLogisticsOpener
+	StoreCr           StoreCreditApplier
+	CreditNotes       CreditNoteCreator
+	StoreStock        StoreStockClaimPort
+	EvidenceInspector storage.EvidenceInspector
+	Idem              idempotency.Store
+	Now               func() time.Time
+	NewID             func() string
+	Log               *slog.Logger
+	Window            time.Duration
 }
 
 // NewService builds a claims service.
@@ -130,7 +134,7 @@ func NewService(cfg Config) *Service {
 	newID := cfg.NewID
 	if newID == nil {
 		newID = func() string {
-			return fmt.Sprintf("clm_%d", time.Now().UnixNano())
+			return strings.ReplaceAll(uuid.NewString(), "-", "")
 		}
 	}
 	log := cfg.Log
@@ -144,7 +148,15 @@ func NewService(cfg Config) *Service {
 	return &Service{
 		repo: cfg.Repo, orders: cfg.Orders, settler: cfg.Settler, rl: cfg.RL,
 		storeCr: cfg.StoreCr, creditNotes: cfg.CreditNotes, storeStock: cfg.StoreStock,
-		idem: cfg.Idem, now: now, newID: newID, log: log, window: window,
+		inspectEvidence: cfg.EvidenceInspector,
+		idem:            cfg.Idem, now: now, newID: newID, log: log, window: window,
+	}
+}
+
+// SetEvidenceInspector overrides bounded GCS streaming evidence inspection (used in tests).
+func (s *Service) SetEvidenceInspector(fn storage.EvidenceInspector) {
+	if s != nil {
+		s.inspectEvidence = fn
 	}
 }
 
@@ -217,7 +229,8 @@ func (s *Service) ListOrderClaims(ctx context.Context, actor auth.Claims, orderI
 		if !ok {
 			return nil, ErrOrderNotFound
 		}
-		if strings.TrimSpace(o.RetailerID) != strings.TrimSpace(actor.Subject) {
+		retailerOrgID := auth.ResolveRetailerOrgID(actor)
+		if retailerOrgID == "" || strings.TrimSpace(o.RetailerID) != retailerOrgID {
 			return nil, ErrForbidden
 		}
 	} else if actor.Role == auth.RoleAdmin {
@@ -241,13 +254,75 @@ func (s *Service) ListOrderClaims(ctx context.Context, actor auth.Claims, orderI
 	return s.repo.ListByOrder(ctx, orderID)
 }
 
+// ListOrderClaimsPage returns a keyset-paginated slice of claims for an order.
+func (s *Service) ListOrderClaimsPage(ctx context.Context, actor auth.Claims, orderID string, limit int, cursor string) ([]Claim, string, error) {
+	if s == nil || s.repo == nil {
+		return nil, "", fmt.Errorf("claims service unavailable")
+	}
+	orderID = strings.TrimSpace(orderID)
+	if orderID == "" {
+		return nil, "", ErrOrderNotFound
+	}
+	if actor.Role == auth.RoleRetailer {
+		if s.orders == nil {
+			return nil, "", fmt.Errorf("claims service unavailable")
+		}
+		o, ok, err := s.orders.GetOrder(ctx, orderID)
+		if err != nil {
+			return nil, "", err
+		}
+		if !ok {
+			return nil, "", ErrOrderNotFound
+		}
+		retailerOrgID := auth.ResolveRetailerOrgID(actor)
+		if retailerOrgID == "" || strings.TrimSpace(o.RetailerID) != retailerOrgID {
+			return nil, "", ErrForbidden
+		}
+	} else if actor.Role != auth.RoleAdmin && actor.Role != auth.RoleWarehouseAdmin {
+		return nil, "", ErrForbidden
+	}
+
+	var list []Claim
+	var nextCursor string
+	var err error
+	if pager, ok := s.repo.(OrderClaimsPager); ok {
+		list, nextCursor, err = pager.ListByOrderPage(ctx, orderID, limit, cursor)
+	} else {
+		if strings.TrimSpace(cursor) != "" {
+			return nil, "", ErrInvalidCursor
+		}
+		list, err = s.repo.ListByOrder(ctx, orderID)
+	}
+	if err != nil {
+		return nil, "", err
+	}
+	if actor.Role == auth.RoleAdmin {
+		if sid := strings.TrimSpace(actor.SupplierID); sid != "" {
+			filtered := make([]Claim, 0, len(list))
+			for _, c := range list {
+				if c.SupplierID == sid {
+					filtered = append(filtered, c)
+				}
+			}
+			return filtered, nextCursor, nil
+		}
+	}
+	return list, nextCursor, nil
+}
+
 // ListSupplierClaims is the supplier HQ adjudication queue.
 func (s *Service) ListSupplierClaims(ctx context.Context, actor auth.Claims, status Status, limit int) ([]Claim, error) {
+	list, _, err := s.ListSupplierClaimsPage(ctx, actor, status, limit, "")
+	return list, err
+}
+
+// ListSupplierClaimsPage returns keyset-paginated supplier claims.
+func (s *Service) ListSupplierClaimsPage(ctx context.Context, actor auth.Claims, status Status, limit int, cursor string) ([]Claim, string, error) {
 	if s == nil || s.repo == nil {
-		return nil, fmt.Errorf("claims service unavailable")
+		return nil, "", fmt.Errorf("claims service unavailable")
 	}
 	if actor.Role != auth.RoleAdmin && actor.Role != auth.RoleWarehouseAdmin {
-		return nil, ErrForbidden
+		return nil, "", ErrForbidden
 	}
 	supplierID := strings.TrimSpace(actor.SupplierID)
 	if supplierID == "" {
@@ -256,9 +331,16 @@ func (s *Service) ListSupplierClaims(ctx context.Context, actor auth.Claims, sta
 		}
 	}
 	if supplierID == "" {
-		return nil, ErrForbidden
+		return nil, "", ErrForbidden
 	}
-	return s.repo.ListBySupplier(ctx, supplierID, status, limit)
+	if pager, ok := s.repo.(SupplierClaimsPager); ok {
+		return pager.ListBySupplierPage(ctx, supplierID, status, limit, cursor)
+	}
+	if strings.TrimSpace(cursor) != "" {
+		return nil, "", ErrInvalidCursor
+	}
+	list, err := s.repo.ListBySupplier(ctx, supplierID, status, limit)
+	return list, "", err
 }
 
 func actorMaySettleClaim(actor auth.Claims, c Claim) bool {
@@ -288,8 +370,8 @@ func claimWindowFromEnv() time.Duration {
 	return time.Duration(n) * time.Hour
 }
 
-// CLAIM_AUTO_APPROVE_MAX_MINOR: 0/empty = disabled. When set, OPEN claims with
-// AmountMinor ≤ threshold auto-settle as LEDGER_ONLY (skip GP) after create.
+// CLAIM_AUTO_APPROVE_MAX_MINOR: 0/empty = disabled. When set, non-escalated claims with
+// AmountMinor <= threshold auto-approve inside the single atomic filing txn (and settle LEDGER_ONLY).
 func autoApproveMaxMinor() int64 {
 	raw := strings.TrimSpace(os.Getenv("CLAIM_AUTO_APPROVE_MAX_MINOR"))
 	if raw == "" {
@@ -298,6 +380,39 @@ func autoApproveMaxMinor() int64 {
 	n, err := strconv.ParseInt(raw, 10, 64)
 	if err != nil || n <= 0 {
 		return 0
+	}
+	return n
+}
+
+// EvidenceDHashEnabled keeps perceptual dHash strictly disabled ("off") while
+// CLAIM_AUTO_APPROVE_MAX_MINOR == 0 per Arbiter YAGNI ruling.
+func EvidenceDHashEnabled() bool {
+	if autoApproveMaxMinor() <= 0 {
+		return false
+	}
+	return strings.EqualFold(strings.TrimSpace(os.Getenv("CLAIM_EVIDENCE_DHASH_ENABLED")), "true")
+}
+
+func claimEscalationThresholdMinor() int64 {
+	raw := strings.TrimSpace(os.Getenv("CLAIM_ESCALATION_THRESHOLD_MINOR"))
+	if raw == "" {
+		return 0
+	}
+	n, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil || n <= 0 {
+		return 0
+	}
+	return n
+}
+
+func claimRepeatEscalationCount() int {
+	raw := strings.TrimSpace(os.Getenv("CLAIM_REPEAT_ESCALATION_COUNT"))
+	if raw == "" {
+		return 3
+	}
+	n, err := strconv.Atoi(raw)
+	if err != nil || n <= 0 {
+		return 3
 	}
 	return n
 }
@@ -316,32 +431,348 @@ func resolveSettlementFlags(req ApproveClaimRequest) (skipGateway bool, storeCre
 	}
 }
 
-func (s *Service) maybeAutoApprove(ctx context.Context, c Claim) {
-	if s == nil {
-		return
+// EvidenceInput is a normalized evidence attachment passed to bounded pre-txn verification.
+type EvidenceInput struct {
+	EvidenceType EvidenceType
+	URI          string
+	MimeType     string
+}
+
+func (s *Service) inspectEvidenceURI(ctx context.Context, uri string) (storage.EvidenceInspection, error) {
+	if s != nil && s.inspectEvidence != nil {
+		return s.inspectEvidence(ctx, uri)
 	}
-	max := autoApproveMaxMinor()
-	if max <= 0 || c.AmountMinor <= 0 || c.AmountMinor > max {
-		return
+	return storage.InspectEvidenceObject(ctx, uri)
+}
+
+func (s *Service) checkEvidenceNotReused(ctx context.Context, uri, uriSha256, contentSha256 string) error {
+	if s == nil || s.repo == nil {
+		return fmt.Errorf("claims repository unavailable")
 	}
-	if c.Status != StatusOpen {
-		return
+	if deduper, ok := s.repo.(EvidenceDedupeRepository); ok {
+		reused, err := deduper.IsEvidenceReused(ctx, uri, uriSha256, contentSha256)
+		if err != nil {
+			return err
+		}
+		if reused {
+			return ErrReusedPhotoEvidence
+		}
+		return nil
 	}
-	actor := auth.Claims{
-		Subject:    "system_auto_approve",
-		Role:       auth.RoleAdmin,
-		SupplierID: c.SupplierID,
-	}
-	_, _, err := s.ApproveClaim(ctx, actor, c.ClaimID, ApproveClaimRequest{
-		ResolutionNote:    "auto_approve_under_threshold",
-		SkipGatewayRefund: true,
-		SettlementMode:    "LEDGER_ONLY",
-	})
+	reused, err := s.repo.IsEvidenceURIReused(ctx, uri)
 	if err != nil {
-		s.log.WarnContext(ctx, "claim auto-approve failed", "err", err, "claim_id", c.ClaimID, "amount_minor", c.AmountMinor)
+		return err
+	}
+	if reused {
+		return ErrReusedPhotoEvidence
+	}
+	return nil
+}
+
+// inspectAndPrepareEvidences performs bounded streaming GCS SHA-256 verification and
+// fail-closed dedupe verification BEFORE opening any Spanner read-write transaction.
+func (s *Service) inspectAndPrepareEvidences(
+	ctx context.Context,
+	claimID string,
+	inputs []EvidenceInput,
+	capturedBy string,
+	now time.Time,
+	requirePhoto bool,
+) ([]Evidence, bool, error) {
+	hasPhoto := false
+	evs := make([]Evidence, 0, len(inputs))
+	seenURIs := make(map[string]struct{}, len(inputs))
+	seenContentHashes := make(map[string]struct{}, len(inputs))
+
+	for _, in := range inputs {
+		uri := strings.TrimSpace(in.URI)
+		if uri == "" {
+			continue
+		}
+		if err := storage.ValidateEvidenceURI(uri); err != nil {
+			return nil, false, ErrInvalidEvidenceURI
+		}
+		et := in.EvidenceType
+		if et == "" {
+			et = EvidencePhoto
+		}
+		if et == EvidencePhoto {
+			hasPhoto = true
+		}
+
+		insp, err := s.inspectEvidenceURI(ctx, uri)
+		if err != nil {
+			if errors.Is(err, storage.ErrInvalidEvidenceURI) {
+				return nil, false, ErrInvalidEvidenceURI
+			}
+			if errors.Is(err, storage.ErrMediaStorageUnavailable) && !storage.EvidenceFailClosed() {
+				uriSha, _, uerr := storage.ComputeEvidenceURISha256(uri)
+				if uerr != nil {
+					return nil, false, ErrInvalidEvidenceURI
+				}
+				insp = storage.EvidenceInspection{
+					URI:       uri,
+					UriSha256: uriSha,
+				}
+			} else {
+				return nil, false, err
+			}
+		} else {
+			if strings.TrimSpace(insp.UriSha256) == "" {
+				uriSha, _, uerr := storage.ComputeEvidenceURISha256(uri)
+				if uerr != nil {
+					return nil, false, ErrInvalidEvidenceURI
+				}
+				insp.UriSha256 = uriSha
+			}
+			if strings.TrimSpace(insp.ContentSha256) == "" {
+				return nil, false, storage.ErrMediaStorageUnavailable
+			}
+		}
+
+		uriKey := insp.UriSha256
+		if uriKey == "" {
+			uriKey = uri
+		}
+		if _, dup := seenURIs[uriKey]; dup {
+			return nil, false, ErrReusedPhotoEvidence
+		}
+		seenURIs[uriKey] = struct{}{}
+		if insp.ContentSha256 != "" {
+			if _, dup := seenContentHashes[insp.ContentSha256]; dup {
+				return nil, false, ErrReusedPhotoEvidence
+			}
+			seenContentHashes[insp.ContentSha256] = struct{}{}
+		}
+
+		evs = append(evs, Evidence{
+			EvidenceID:       s.newID(),
+			ClaimID:          claimID,
+			EvidenceType:     et,
+			URI:              uri,
+			MimeType:         strings.TrimSpace(in.MimeType),
+			ContentSha256:    insp.ContentSha256,
+			UriSha256:        insp.UriSha256,
+			ObjectGeneration: insp.ObjectGeneration,
+			CapturedBy:       capturedBy,
+			CreatedAt:        now,
+		})
+	}
+	if requirePhoto && !hasPhoto {
+		return nil, false, ErrEvidenceRequired
+	}
+	for _, ev := range evs {
+		if err := s.checkEvidenceNotReused(ctx, ev.URI, ev.UriSha256, ev.ContentSha256); err != nil {
+			return nil, false, err
+		}
+	}
+	return evs, hasPhoto, nil
+}
+
+func (s *Service) buildEscalationMetadata(
+	ctx context.Context,
+	retailerID string,
+	amountMinor int64,
+	prior []Claim,
+	now time.Time,
+) (*EscalationMetadata, error) {
+	dhashStatus := "off"
+	if EvidenceDHashEnabled() {
+		dhashStatus = "enabled"
+	}
+	priorOrderClaims := 0
+	for _, p := range prior {
+		if p.Status != StatusRejected {
+			priorOrderClaims++
+		}
+	}
+	recentCount := 0
+	if counter, ok := s.repo.(RetailerClaimCounter); ok && strings.TrimSpace(retailerID) != "" {
+		cnt, err := counter.CountRecentClaimsByRetailer(ctx, retailerID, now.Add(-30*24*time.Hour))
+		if err != nil {
+			return nil, err
+		}
+		recentCount = cnt
+	}
+
+	threshold := claimEscalationThresholdMinor()
+	repeatLimit := claimRepeatEscalationCount()
+	var reasons []string
+	if threshold > 0 && amountMinor >= threshold {
+		reasons = append(reasons, "amount_threshold_exceeded")
+	}
+	if priorOrderClaims >= 1 {
+		reasons = append(reasons, "multiple_claims_same_order")
+	}
+	if recentCount >= repeatLimit {
+		reasons = append(reasons, "repeat_retailer_claim_pattern")
+	}
+	return &EscalationMetadata{
+		EscalationRequired: len(reasons) > 0,
+		Reasons:            reasons,
+		DHashStatus:        dhashStatus,
+		RecentClaimCount:   recentCount,
+		PriorOrderClaims:   priorOrderClaims,
+		ThresholdMinor:     threshold,
+	}, nil
+}
+
+func emitClaimLifecycleOutbox(
+	ctx context.Context,
+	txn outbox.TxnBuffer,
+	c Claim,
+	warehouseID, driverID string,
+	needsReverseLogistics bool,
+	now time.Time,
+) error {
+	payload := map[string]any{
+		"type":         events.EventClaimFiled,
+		"claim_id":     c.ClaimID,
+		"order_id":     c.OrderID,
+		"supplier_id":  c.SupplierID,
+		"retailer_id":  c.RetailerID,
+		"warehouse_id": warehouseID,
+		"claim_type":   string(c.ClaimType),
+		"status":       string(StatusOpen),
+		"source":       string(c.Source),
+		"amount_minor": c.AmountMinor,
+		"currency":     c.Currency,
+		"line_items":   c.LineItems,
+		"photo_count":  len(c.Evidences),
+		"escalation":   c.Escalation,
+		"timestamp":    now.Format(time.RFC3339Nano),
+	}
+	if driverID != "" {
+		payload["driver_id"] = driverID
+	}
+	if err := outbox.EmitJSON(ctx, txn, events.AggregateClaim, c.ClaimID, events.TopicExceptions, payload); err != nil {
+		return err
+	}
+	if err := outbox.EmitJSON(ctx, txn, events.AggregateClaim, c.ClaimID, events.TopicMain, payload); err != nil {
+		return err
+	}
+	if needsReverseLogistics {
+		rlPayload := map[string]any{
+			"type":         events.EventReverseLogisticsRequired,
+			"claim_id":     c.ClaimID,
+			"order_id":     c.OrderID,
+			"warehouse_id": warehouseID,
+			"supplier_id":  c.SupplierID,
+			"retailer_id":  c.RetailerID,
+			"claim_type":   string(c.ClaimType),
+			"source":       string(c.Source),
+			"line_items":   c.LineItems,
+			"timestamp":    now.Format(time.RFC3339Nano),
+		}
+		if driverID != "" {
+			rlPayload["driver_id"] = driverID
+		}
+		if err := outbox.EmitJSON(ctx, txn, events.AggregateOrder, c.OrderID, events.TopicExceptions, rlPayload); err != nil {
+			return err
+		}
+	}
+	if c.Status == StatusApproved {
+		resPayload := map[string]any{
+			"type":            events.EventClaimResolved,
+			"claim_id":        c.ClaimID,
+			"order_id":        c.OrderID,
+			"supplier_id":     c.SupplierID,
+			"retailer_id":     c.RetailerID,
+			"status":          string(c.Status),
+			"amount_minor":    c.AmountMinor,
+			"currency":        c.Currency,
+			"settlement_mode": "LEDGER_ONLY",
+			"line_items":      c.LineItems,
+			"resolution_note": c.ResolutionNote,
+			"resolved_by":     c.ResolvedBy,
+			"timestamp":       now.Format(time.RFC3339Nano),
+		}
+		if err := outbox.EmitJSON(ctx, txn, events.AggregateClaim, c.ClaimID, events.TopicExceptions, resPayload); err != nil {
+			return err
+		}
+		if err := outbox.EmitJSON(ctx, txn, events.AggregateClaim, c.ClaimID, events.TopicMain, resPayload); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *Service) commitClaimSingleTxn(
+	ctx context.Context,
+	c Claim,
+	holdStoreStock bool,
+	holdActor string,
+	warehouseID, driverID string,
+	needsReverseLogistics bool,
+	now time.Time,
+) (Claim, error) {
+	maxApprove := autoApproveMaxMinor()
+	autoApprove := maxApprove > 0 &&
+		c.AmountMinor > 0 &&
+		c.AmountMinor <= maxApprove &&
+		(c.Escalation == nil || !c.Escalation.EscalationRequired)
+
+	if atomicRepo, ok := s.repo.(AtomicClaimRepository); ok {
+		return atomicRepo.CreateClaimAtomic(ctx, c, AtomicClaimOptions{
+			HoldStoreStock:      holdStoreStock,
+			HoldActor:           holdActor,
+			AutoApprove:         autoApprove,
+			AutoApproveMaxMinor: maxApprove,
+			Now:                 now,
+		}, s.storeStock, func(txn outbox.TxnBuffer, committed Claim) error {
+			return emitClaimLifecycleOutbox(ctx, txn, committed, warehouseID, driverID, needsReverseLogistics, now)
+		})
+	}
+
+	// Custom non-AtomicClaimRepository test double fallback.
+	if holdStoreStock {
+		if err := s.holdStoreStockForClaim(ctx, c, holdActor); err != nil {
+			return Claim{}, fmt.Errorf("%w: %v", ErrClaimStockHoldFailed, err)
+		}
+	}
+	if autoApprove {
+		c.Status = StatusApproved
+		c.ResolvedBy = "system:auto_approve"
+		c.ResolutionNote = fmt.Sprintf("auto_approved_below_%d", maxApprove)
+		resolvedAt := now
+		c.ResolvedAt = &resolvedAt
+		c.UpdatedAt = now
+	}
+	if err := s.repo.CreateClaim(ctx, c, func(txn outbox.TxnBuffer) error {
+		return emitClaimLifecycleOutbox(ctx, txn, c, warehouseID, driverID, needsReverseLogistics, now)
+	}); err != nil {
+		return Claim{}, err
+	}
+	return c, nil
+}
+
+func (s *Service) settleAutoApprovedClaim(ctx context.Context, c Claim) {
+	if s == nil || c.Status != StatusApproved || c.AmountMinor <= 0 {
 		return
 	}
-	s.log.InfoContext(ctx, "claim auto-approved", "claim_id", c.ClaimID, "amount_minor", c.AmountMinor, "max_minor", max)
+	if s.settler != nil {
+		if _, err := s.settler.SettleClaimChargeback(ctx, ClaimSettlement{
+			ClaimID:           c.ClaimID,
+			OrderID:           c.OrderID,
+			SupplierID:        c.SupplierID,
+			RetailerID:        c.RetailerID,
+			AmountMinor:       c.AmountMinor,
+			Currency:          c.Currency,
+			SkipGatewayRefund: true,
+		}); err != nil {
+			s.log.WarnContext(ctx, "auto-approved claim post-commit settler failed", "err", err, "claim_id", c.ClaimID)
+		}
+	}
+	if s.creditNotes != nil && creditNoteAutoFromClaimEnabled() {
+		if err := s.creditNotes.CreateFromClaim(ctx, c.ClaimID, c.ResolvedBy); err != nil {
+			s.log.WarnContext(ctx, "auto credit note from claim failed", "err", err, "claim_id", c.ClaimID)
+		}
+	}
+	disposition := "RETURN"
+	if c.ClaimType == ClaimTypeDamaged || c.ClaimType == ClaimTypeConcealedDamage {
+		disposition = "WASTE"
+	}
+	s.resolveStoreStockForClaim(ctx, c, disposition, c.ResolvedBy)
 }
 
 // FileRetailerClaim creates an OPEN claim for a completed order within the window.
@@ -371,42 +802,25 @@ func (s *Service) FileRetailerClaim(ctx context.Context, claims auth.Claims, ord
 	// Post-delivery claims require photo evidence for damage types.
 	needsPhoto := req.ClaimType == ClaimTypeDamaged || req.ClaimType == ClaimTypeConcealedDamage ||
 		req.ClaimType == ClaimTypeTemperature || req.ClaimType == ClaimTypeTamper
-	hasPhoto := false
-	for _, e := range req.Evidences {
-		uri := strings.TrimSpace(e.URI)
-		if uri == "" {
-			continue
-		}
-		if err := storage.ValidateEvidenceURI(uri); err != nil {
-			return Claim{}, ErrInvalidEvidenceURI
-		}
-		et := e.EvidenceType
-		if et == "" {
-			et = EvidencePhoto
-		}
-		if et == EvidencePhoto {
-			hasPhoto = true
-		}
+	now := s.now().UTC()
+	claimID := s.newID()
+	if !strings.HasPrefix(claimID, "clm_") {
+		claimID = "clm_" + claimID
 	}
-	if needsPhoto && !hasPhoto {
-		return Claim{}, ErrEvidenceRequired
-	}
+	capturedBy := auth.ResolveRetailerUserID(claims)
 
-	// B2B Operating Model Invariant: "A reused photo is refused."
+	evInputs := make([]EvidenceInput, 0, len(req.Evidences))
 	for _, e := range req.Evidences {
-		uri := strings.TrimSpace(e.URI)
-		if uri == "" {
-			continue
-		}
-		if s.repo != nil {
-			reused, err := s.repo.IsEvidenceURIReused(ctx, uri)
-			if err != nil {
-				return Claim{}, err
-			}
-			if reused {
-				return Claim{}, ErrReusedPhotoEvidence
-			}
-		}
+		evInputs = append(evInputs, EvidenceInput{
+			EvidenceType: e.EvidenceType,
+			URI:          e.URI,
+			MimeType:     e.MimeType,
+		})
+	}
+	// Bounded streaming GCS SHA-256 verification + fail-closed dedupe BEFORE Spanner RW txn.
+	evs, _, err := s.inspectAndPrepareEvidences(ctx, claimID, evInputs, capturedBy, now, needsPhoto)
+	if err != nil {
+		return Claim{}, err
 	}
 
 	o, ok, err := s.orders.GetOrder(ctx, orderID)
@@ -425,7 +839,6 @@ func (s *Service) FileRetailerClaim(ctx context.Context, claims auth.Claims, ord
 			return Claim{}, ErrForbidden
 		}
 	}
-	now := s.now().UTC()
 	elig := EvaluateClaimEligibility(o, now, s.window)
 	if !elig.Eligible {
 		switch elig.Reason {
@@ -474,29 +887,9 @@ func (s *Service) FileRetailerClaim(ctx context.Context, claims auth.Claims, ord
 		return Claim{}, err
 	}
 
-	claimID := s.newID()
-	if !strings.HasPrefix(claimID, "clm_") {
-		claimID = "clm_" + claimID
-	}
-	evs := make([]Evidence, 0, len(req.Evidences))
-	for _, e := range req.Evidences {
-		uri := strings.TrimSpace(e.URI)
-		if uri == "" {
-			continue
-		}
-		et := e.EvidenceType
-		if et == "" {
-			et = EvidencePhoto
-		}
-		evs = append(evs, Evidence{
-			EvidenceID:   s.newID(),
-			ClaimID:      claimID,
-			EvidenceType: et,
-			URI:          uri,
-			MimeType:     strings.TrimSpace(e.MimeType),
-			CapturedBy:   auth.ResolveRetailerUserID(claims),
-			CreatedAt:    now,
-		})
+	escalation, err := s.buildEscalationMetadata(ctx, o.RetailerID, amountMinor, prior, now)
+	if err != nil {
+		return Claim{}, err
 	}
 
 	c := Claim{
@@ -504,7 +897,7 @@ func (s *Service) FileRetailerClaim(ctx context.Context, claims auth.Claims, ord
 		OrderID:     o.OrderID,
 		SupplierID:  o.SupplierID,
 		RetailerID:  o.RetailerID,
-		FiledBy:     auth.ResolveRetailerUserID(claims),
+		FiledBy:     capturedBy,
 		FiledByRole: string(claims.Role),
 		ClaimType:   req.ClaimType,
 		Status:      StatusOpen,
@@ -513,76 +906,30 @@ func (s *Service) FileRetailerClaim(ctx context.Context, claims auth.Claims, ord
 		Currency:    currency,
 		LineItems:   pricedLines,
 		Evidences:   evs,
+		Escalation:  escalation,
 		Source:      SourceRetailerClaim,
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
 
-	err = s.repo.CreateClaim(ctx, c, func(txn outbox.TxnBuffer) error {
-		payload := map[string]any{
-			"type":         events.EventClaimFiled,
-			"claim_id":     c.ClaimID,
-			"order_id":     c.OrderID,
-			"supplier_id":  c.SupplierID,
-			"retailer_id":  c.RetailerID,
-			"warehouse_id": o.WarehouseID,
-			"claim_type":   string(c.ClaimType),
-			"status":       string(c.Status),
-			"source":       string(c.Source),
-			"amount_minor": c.AmountMinor,
-			"currency":     c.Currency,
-			"line_items":   c.LineItems,
-			"timestamp":    now.Format(time.RFC3339Nano),
-		}
-		// Exceptions topic (new) + main (existing consumers).
-		if err := outbox.EmitJSON(ctx, txn, events.AggregateClaim, c.ClaimID, events.TopicExceptions, payload); err != nil {
-			return err
-		}
-		if err := outbox.EmitJSON(ctx, txn, events.AggregateClaim, c.ClaimID, events.TopicMain, payload); err != nil {
-			return err
-		}
-		// Physical reverse: outbox retry path for dock tickets (G12).
-		if claimNeedsStoreHold(c.ClaimType) || needsPhoto {
-			return outbox.EmitJSON(ctx, txn, events.AggregateOrder, c.OrderID, events.TopicExceptions, map[string]any{
-				"type":         events.EventReverseLogisticsRequired,
-				"claim_id":     c.ClaimID,
-				"order_id":     c.OrderID,
-				"warehouse_id": o.WarehouseID,
-				"supplier_id":  c.SupplierID,
-				"retailer_id":  c.RetailerID,
-				"claim_type":   string(c.ClaimType),
-				"source":       string(c.Source),
-				"line_items":   c.LineItems,
-				"timestamp":    now.Format(time.RFC3339Nano),
-			})
-		}
-		return nil
-	})
+	needsRL := claimNeedsStoreHold(c.ClaimType) || needsPhoto
+	committed, err := s.commitClaimSingleTxn(ctx, c, true, capturedBy, o.WarehouseID, "", needsRL, now)
 	if err != nil {
 		return Claim{}, err
 	}
-	// Fail-closed QUARANTINE hold for physical claim types (G8).
-	if err := s.holdStoreStockForClaim(ctx, c, auth.ResolveRetailerUserID(claims)); err != nil {
-		s.compensateClaimAfterHoldFailure(ctx, c, err)
-		return Claim{}, fmt.Errorf("%w: %v", ErrClaimStockHoldFailed, err)
-	}
 	// Best-effort dock tickets for physical reverse logistics (damage types).
 	s.openReverseLogistics(ctx, ReverseLogisticsInput{
-		OrderID:     c.OrderID,
+		OrderID:     committed.OrderID,
 		WarehouseID: o.WarehouseID,
-		SupplierID:  c.SupplierID,
-		ClaimID:     c.ClaimID,
+		SupplierID:  committed.SupplierID,
+		ClaimID:     committed.ClaimID,
 		Source:      "RETAILER_CLAIM",
-		Note:        string(c.ClaimType),
+		Note:        string(committed.ClaimType),
 		Lines:       pricedLines,
 	})
-	s.maybeAutoApprove(ctx, c)
-	s.log.InfoContext(ctx, "claim filed", "claim_id", c.ClaimID, "order_id", c.OrderID, "type", c.ClaimType)
-	// Re-read if auto-approve mutated status.
-	if latest, ok, err := s.repo.GetClaim(ctx, c.ClaimID); err == nil && ok {
-		return latest, nil
-	}
-	return c, nil
+	s.settleAutoApprovedClaim(ctx, committed)
+	s.log.InfoContext(ctx, "claim filed", "claim_id", committed.ClaimID, "order_id", committed.OrderID, "type", committed.ClaimType, "status", committed.Status)
+	return committed, nil
 }
 
 // CreateFromDriverException opens a claim from a driver OS&D exception report.
@@ -593,11 +940,34 @@ func (s *Service) CreateFromDriverException(ctx context.Context, o OrderSnapshot
 	if !claimType.Valid() {
 		claimType = ClaimTypeMissing
 	}
+	now := s.now().UTC()
+	claimID := s.newID()
+	if !strings.HasPrefix(claimID, "clm_") {
+		claimID = "clm_" + claimID
+	}
+
+	evInputs := make([]EvidenceInput, 0, len(photoURIs))
+	for _, uri := range photoURIs {
+		evInputs = append(evInputs, EvidenceInput{
+			EvidenceType: EvidencePhoto,
+			URI:          uri,
+		})
+	}
+	// Bounded streaming GCS SHA-256 verification + fail-closed dedupe BEFORE Spanner RW txn.
+	evs, _, err := s.inspectAndPrepareEvidences(ctx, claimID, evInputs, driverID, now, false)
+	if err != nil {
+		return Claim{}, err
+	}
+
+	var prior []Claim
 	var priorClaimed map[string]int64
 	if s.repo != nil && o.OrderID != "" {
-		if prior, err := s.repo.ListByOrder(ctx, o.OrderID); err == nil {
-			priorClaimed = ClaimedQtyBySKU(prior, "")
+		listed, lerr := s.repo.ListByOrder(ctx, o.OrderID)
+		if lerr != nil {
+			return Claim{}, lerr
 		}
+		prior = listed
+		priorClaimed = ClaimedQtyBySKU(prior, "")
 	}
 	pricedLines := AggregateClaimLines(lines)
 	var amount int64
@@ -618,27 +988,11 @@ func (s *Service) CreateFromDriverException(ctx context.Context, o OrderSnapshot
 		}
 		amount = CapAmount(total, rem.RemainingClaimableMinor)
 	}
-	now := s.now().UTC()
-	claimID := "clm_" + s.newID()
-	evs := make([]Evidence, 0, len(photoURIs))
-	for _, uri := range photoURIs {
-		uri = strings.TrimSpace(uri)
-		if uri == "" {
-			continue
-		}
-		if err := storage.ValidateEvidenceURI(uri); err != nil {
-			return Claim{}, ErrInvalidEvidenceURI
-		}
-		evs = append(evs, Evidence{
-			EvidenceID:   s.newID(),
-			ClaimID:      claimID,
-			EvidenceType: EvidencePhoto,
-			URI:          uri,
-			CapturedBy:   driverID,
-			CreatedAt:    now,
-		})
-	}
 	currency, err := claimCurrency(ctx, o.SupplierID, o.Currency)
+	if err != nil {
+		return Claim{}, err
+	}
+	escalation, err := s.buildEscalationMetadata(ctx, o.RetailerID, amount, prior, now)
 	if err != nil {
 		return Claim{}, err
 	}
@@ -655,69 +1009,29 @@ func (s *Service) CreateFromDriverException(ctx context.Context, o OrderSnapshot
 		AmountMinor: amount,
 		LineItems:   pricedLines,
 		Evidences:   evs,
+		Escalation:  escalation,
 		Source:      SourceDriverException,
 		Currency:    currency,
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
-	err = s.repo.CreateClaim(ctx, c, func(txn outbox.TxnBuffer) error {
-		payload := map[string]any{
-			"type":         events.EventClaimFiled,
-			"claim_id":     c.ClaimID,
-			"order_id":     c.OrderID,
-			"supplier_id":  c.SupplierID,
-			"retailer_id":  c.RetailerID,
-			"warehouse_id": o.WarehouseID,
-			"source":       string(c.Source),
-			"claim_type":   string(c.ClaimType),
-			"driver_id":    driverID,
-			"amount_minor": c.AmountMinor,
-			"line_items":   pricedLines,
-			"photo_count":  len(evs),
-			"timestamp":    now.Format(time.RFC3339Nano),
-		}
-		if err := outbox.EmitJSON(ctx, txn, events.AggregateClaim, c.ClaimID, events.TopicExceptions, payload); err != nil {
-			return err
-		}
-		if err := outbox.EmitJSON(ctx, txn, events.AggregateClaim, c.ClaimID, events.TopicMain, payload); err != nil {
-			return err
-		}
-		if claimNeedsStoreHold(claimType) {
-			return outbox.EmitJSON(ctx, txn, events.AggregateOrder, c.OrderID, events.TopicExceptions, map[string]any{
-				"type":         events.EventReverseLogisticsRequired,
-				"claim_id":     c.ClaimID,
-				"order_id":     c.OrderID,
-				"warehouse_id": o.WarehouseID,
-				"supplier_id":  c.SupplierID,
-				"retailer_id":  c.RetailerID,
-				"driver_id":    driverID,
-				"claim_type":   string(c.ClaimType),
-				"source":       string(c.Source),
-				"line_items":   pricedLines,
-				"timestamp":    now.Format(time.RFC3339Nano),
-			})
-		}
-		return nil
-	})
+	committed, err := s.commitClaimSingleTxn(ctx, c, false, driverID, o.WarehouseID, driverID, claimNeedsStoreHold(claimType), now)
 	if err != nil {
 		return Claim{}, err
 	}
 	// Dedupe with amend-created returns when present; fill gaps for damage lines.
 	s.openReverseLogistics(ctx, ReverseLogisticsInput{
-		OrderID:     c.OrderID,
+		OrderID:     committed.OrderID,
 		WarehouseID: o.WarehouseID,
-		SupplierID:  c.SupplierID,
+		SupplierID:  committed.SupplierID,
 		DriverID:    driverID,
-		ClaimID:     c.ClaimID,
+		ClaimID:     committed.ClaimID,
 		Source:      "DRIVER_EXCEPTION",
 		Note:        strings.TrimSpace(note),
 		Lines:       pricedLines,
 	})
-	s.maybeAutoApprove(ctx, c)
-	if latest, ok, err := s.repo.GetClaim(ctx, c.ClaimID); err == nil && ok {
-		return latest, nil
-	}
-	return c, nil
+	s.settleAutoApprovedClaim(ctx, committed)
+	return committed, nil
 }
 
 // ApproveClaim adjudicates an OPEN/UNDER_REVIEW claim, debits supplier ledger,
@@ -766,7 +1080,7 @@ func (s *Service) ApproveClaim(ctx context.Context, actor auth.Claims, claimID s
 		amount = req.AmountMinor
 	}
 	
-	rem, err := s.GetRemainingClaimable(ctx, c.OrderID)
+	rem, err := s.GetRemainingClaimable(ctx, c.OrderID, c.ClaimID)
 	if err != nil {
 		return Claim{}, SettlementResult{}, err
 	}
@@ -778,6 +1092,8 @@ func (s *Service) ApproveClaim(ctx context.Context, actor auth.Claims, claimID s
 		return Claim{}, SettlementResult{}, fmt.Errorf("%w: non-positive chargeback amount", ErrPricingFailed)
 	}
 
+	origStatus := c.Status
+	origAmount := c.AmountMinor
 	now := s.now().UTC()
 	// CAS OPEN → UNDER_REVIEW so concurrent approves fail closed.
 	// B1 M-P0-13: emit CLAIM_UNDER_REVIEW so consumers see the intermediate state
@@ -786,7 +1102,7 @@ func (s *Service) ApproveClaim(ctx context.Context, actor auth.Claims, claimID s
 	c.AmountMinor = amount
 	c.ResolutionNote = strings.TrimSpace(req.ResolutionNote)
 	c.UpdatedAt = now
-	if err := s.repo.TransitionStatus(ctx, c.ClaimID, []Status{StatusOpen}, c, func(txn outbox.TxnBuffer) error {
+	if err := s.repo.TransitionStatus(ctx, c.ClaimID, []Status{StatusOpen, StatusUnderReview}, c, func(txn outbox.TxnBuffer) error {
 		payload := map[string]any{
 			"type":            events.EventClaimUnderReview,
 			"claim_id":        c.ClaimID,
@@ -805,6 +1121,16 @@ func (s *Service) ApproveClaim(ctx context.Context, actor auth.Claims, claimID s
 		return outbox.EmitJSON(ctx, txn, events.AggregateClaim, c.ClaimID, events.TopicMain, payload)
 	}); err != nil {
 		return Claim{}, SettlementResult{}, err
+	}
+
+	// Verify post-transition residual so concurrent approvals cannot exceed 100% of delivered gross.
+	remPost, err := s.GetRemainingClaimable(ctx, c.OrderID, c.ClaimID)
+	if err == nil && amount > remPost.RemainingClaimableMinor {
+		rollbackClaim := c
+		rollbackClaim.Status = origStatus
+		rollbackClaim.AmountMinor = origAmount
+		_ = s.repo.TransitionStatus(ctx, c.ClaimID, []Status{StatusUnderReview}, rollbackClaim, nil)
+		return Claim{}, SettlementResult{}, fmt.Errorf("%w: approve amount %d exceeds remaining claimable %d (concurrent claim under review)", ErrPricingFailed, amount, remPost.RemainingClaimableMinor)
 	}
 
 	skipGP, wantStoreCredit := resolveSettlementFlags(req)
@@ -971,26 +1297,6 @@ func (s *Service) holdStoreStockForClaim(ctx context.Context, c Claim, actor str
 		return err
 	}
 	return nil
-}
-
-// compensateClaimAfterHoldFailure rejects a just-created OPEN claim so clients never
-// observe durable OPEN + sellable OnHand when quarantine could not be applied.
-func (s *Service) compensateClaimAfterHoldFailure(ctx context.Context, c Claim, holdErr error) {
-	if s == nil || s.repo == nil {
-		return
-	}
-	now := s.now().UTC()
-	c.Status = StatusRejected
-	c.ResolutionNote = "compensated: claim_stock_hold_failed"
-	if holdErr != nil {
-		c.ResolutionNote += ": " + holdErr.Error()
-	}
-	c.ResolvedBy = "system"
-	c.ResolvedAt = &now
-	c.UpdatedAt = now
-	if err := s.repo.TransitionStatus(ctx, c.ClaimID, []Status{StatusOpen, StatusUnderReview}, c, nil); err != nil {
-		s.log.ErrorContext(ctx, "claim hold compensation failed", "claim_id", c.ClaimID, "err", err)
-	}
 }
 
 func (s *Service) resolveStoreStockForClaim(ctx context.Context, c Claim, disposition, actor string) {

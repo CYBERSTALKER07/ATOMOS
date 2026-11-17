@@ -7,6 +7,11 @@ LABEL org.opencontainers.image.title="PegasusX Supplier Portal" \
 COPY deploy/nginx.conf /etc/nginx/conf.d/default.conf
 COPY out/ /usr/share/nginx/html/
 
+RUN mkdir -p /var/cache/nginx /var/run \
+    && chown -R 101:101 /var/cache/nginx /var/run /usr/share/nginx/html /etc/nginx/conf.d
+
+USER 101:101
+
 EXPOSE 8080
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \

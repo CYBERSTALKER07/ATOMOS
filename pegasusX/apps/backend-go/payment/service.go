@@ -10,7 +10,10 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
+
+	"cloud.google.com/go/spanner"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
@@ -228,7 +231,10 @@ type Service struct {
 	stripeWebhookSecret    string
 	paymeWebhookSecret     string
 	clickWebhookSecret     string
-	paymeTx                *paymeMerchantMemory
+	uzumWebhookSecret      string
+	spannerClient          *spanner.Client
+	paymeTxMu              sync.Mutex
+	paymeTx                paymeMerchantStore
 
 	webhookInbox *WebhookInboxStore
 
@@ -260,7 +266,9 @@ type ServiceConfig struct {
 	StripeWebhookSecret    string
 	PaymeWebhookSecret     string
 	ClickWebhookSecret     string
+	UzumWebhookSecret      string
 	WebhookInbox           *WebhookInboxStore
+	SpannerClient          *spanner.Client
 
 	Log   *slog.Logger
 	Now   func() time.Time
@@ -360,6 +368,7 @@ func NewService(c ServiceConfig) *Service {
 	c.StripeWebhookSecret = normalizeWebhookSecret(c.StripeWebhookSecret)
 	c.PaymeWebhookSecret = normalizeWebhookSecret(c.PaymeWebhookSecret)
 	c.ClickWebhookSecret = normalizeWebhookSecret(c.ClickWebhookSecret)
+	c.UzumWebhookSecret = normalizeWebhookSecret(c.UzumWebhookSecret)
 	if c.Execution == nil {
 		c.Execution = NewProviderExecutionRouter(ProviderExecutionRouterConfig{
 			AirwallexDirectExecutionEnabled: c.AirwallexDirectExecutionEnabled,
@@ -372,6 +381,12 @@ func NewService(c ServiceConfig) *Service {
 	seedID := strings.TrimSpace(c.SeedSupplierID)
 	if seedID == "" {
 		seedID = strings.TrimSpace(c.SupplierID)
+	}
+	var paymeStore paymeMerchantStore
+	if c.SpannerClient != nil {
+		paymeStore = newPaymeMerchantSpanner(c.SpannerClient)
+	} else {
+		paymeStore = newPaymeMerchantMemory()
 	}
 	return &Service{
 		repo:                   c.Repo,
@@ -388,7 +403,9 @@ func NewService(c ServiceConfig) *Service {
 		stripeWebhookSecret:    c.StripeWebhookSecret,
 		paymeWebhookSecret:     c.PaymeWebhookSecret,
 		clickWebhookSecret:     c.ClickWebhookSecret,
-		paymeTx:                newPaymeMerchantMemory(),
+		uzumWebhookSecret:      c.UzumWebhookSecret,
+		spannerClient:          c.SpannerClient,
+		paymeTx:                paymeStore,
 		webhookInbox:           c.WebhookInbox,
 		policy:                 c.Policy,
 		fx:                     c.Fx,
@@ -423,6 +440,31 @@ func (s *Service) SetFxRates(fx *fxrates.Service) {
 		return
 	}
 	s.fx = fx
+}
+
+// SetSpannerClient wires a Spanner client onto Service so Payme Merchant API
+// transactions persist in PaymeMerchantTransactions rather than replica-local
+// memory. Passing nil restores the in-memory store for nil-DB unit tests.
+func (s *Service) SetSpannerClient(client *spanner.Client) {
+	if s == nil {
+		return
+	}
+	s.paymeTxMu.Lock()
+	defer s.paymeTxMu.Unlock()
+	s.spannerClient = client
+	if client != nil {
+		s.paymeTx = newPaymeMerchantSpanner(client)
+	} else {
+		s.paymeTx = newPaymeMerchantMemory()
+	}
+}
+
+// SetUzumWebhookSecret configures the Uzum webhook HMAC verification secret.
+func (s *Service) SetUzumWebhookSecret(secret string) {
+	if s == nil {
+		return
+	}
+	s.uzumWebhookSecret = normalizeWebhookSecret(secret)
 }
 
 // HandleB2BCheckout serves POST /v1/checkout/b2b.

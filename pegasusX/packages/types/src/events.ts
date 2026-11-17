@@ -1,5 +1,5 @@
 import { WsEventEnvelope } from "./envelope";
-import { ARInvoiceEventPayload, BuyerAcceptanceEventPayload, CommandLifecycle, DeliverySessionUpdated, DriverAvailabilityChangedEvent, DriverCreated, DriverLocationUpdatedEvent, FactoryCreated, FactoryStaffCreated, FactoryTransferCreated, ManifestCancelled, ManifestExceptionResolved, ManifestOrderException, ManifestOrderInjected, ManifestRebalanced, ManifestSealed, OrderAssigned, OrderConflictReconciled, OrderCreated, OrderFinalized, OrderReassigned, OrderStatusChanged, OrderValidationFailed, PaymentCleared, PaymentRequired, PayoutBatchEventPayload, RetailerRegistered, SettlementRequired, SplitPaymentCreated, SupplierCreated, VehicleCreated, WarehouseCreated, WarehouseDispatchLockChanged, WarehouseSupplyRequestOpened } from "./event-payloads";
+import { ARInvoiceEventPayload, BuyerAcceptanceEventPayload, CommandLifecycle, DeliverySessionUpdated, DriverAvailabilityChangedEvent, DriverCreated, DriverLocationUpdatedEvent, FactoryCreated, FactoryStaffCreated, FactoryTransferCreated, JoinRequestEventPayload, ManifestCancelled, ManifestExceptionResolved, ManifestOrderException, ManifestOrderInjected, ManifestRebalanced, ManifestSealed, MigrationEventPayload, OrderAssigned, OrderConflictReconciled, OrderCreated, OrderFinalized, OrderReassigned, OrderStatusChanged, OrderValidationFailed, PaymentCleared, PaymentRequired, PayoutBatchEventPayload, RetailerRegistered, SettlementRequired, SplitPaymentCreated, SupplierCreated, VehicleCreated, WarehouseCreated, WarehouseDispatchLockChanged, WarehouseSupplyRequestOpened } from "./event-payloads";
 
 // ── Discriminated WS event union ────────────────────────────────────────────
 export type WsEvent =
@@ -49,5 +49,18 @@ export type WsEvent =
   | WsEventEnvelope<"COMMAND_DISPATCHED", CommandLifecycle>
   | WsEventEnvelope<"COMMAND_RECEIVED", CommandLifecycle>
   | WsEventEnvelope<"COMMAND_SETTLED", CommandLifecycle>
-  | WsEventEnvelope<"SYSTEM_APP_OUTDATED", { minimum_version: string }>;
+  | WsEventEnvelope<"SYSTEM_APP_OUTDATED", { minimum_version: string }>
+  | WsEventEnvelope<"MIGRATION_BUNDLE_UPLOADED", MigrationEventPayload>
+  | WsEventEnvelope<"MIGRATION_SORTED", MigrationEventPayload>
+  | WsEventEnvelope<"MIGRATION_SESSION_STATUS_UPDATE", MigrationEventPayload>
+  | WsEventEnvelope<"MIGRATION_MAPPING_PROPOSED", MigrationEventPayload>
+  | WsEventEnvelope<"MIGRATION_DRY_RUN_READY", MigrationEventPayload>
+  | WsEventEnvelope<"MIGRATION_APPLY_PROGRESS", MigrationEventPayload>
+  | WsEventEnvelope<"MIGRATION_APPLIED", MigrationEventPayload>
+  | WsEventEnvelope<"MIGRATION_FAILED", MigrationEventPayload>
+  | WsEventEnvelope<"MIGRATION_ROLLED_BACK", MigrationEventPayload>
+  | WsEventEnvelope<"JOIN_REQUEST_CREATED", JoinRequestEventPayload>
+  | WsEventEnvelope<"JOIN_REQUEST_RESOLVED", JoinRequestEventPayload>
+  | WsEventEnvelope<"AR_MIGRATION_ACKNOWLEDGED", ARInvoiceEventPayload>
+  | WsEventEnvelope<"AR_MIGRATION_DISPUTED", ARInvoiceEventPayload>;
 

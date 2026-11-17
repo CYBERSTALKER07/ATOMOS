@@ -4,7 +4,7 @@ import { usePortalT } from "@/lib/i18n";
 import { useEffect, useMemo, useRef } from 'react';
 import type { DispatchProposedRoute, RouteGeometryWire } from '@pegasusx/types';
 import MapGL, { Layer, NavigationControl, Source } from 'react-map-gl/maplibre';
-import maplibregl from 'maplibre-gl';
+import * as maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { mapInitialViewState, readCachedAuthSession } from '@pegasusx/api-core';
 const ROUTE_COLORS = [

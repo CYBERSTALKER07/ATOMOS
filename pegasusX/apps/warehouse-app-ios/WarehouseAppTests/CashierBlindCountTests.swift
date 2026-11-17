@@ -4,20 +4,51 @@ import XCTest
 @MainActor
 final class CashierBlindCountTests: XCTestCase {
 
-    func testDenominationTiyinArithmeticAndBlindMasking() {
-        let vm = CashierViewModel()
+    func testCleanEmptyDefaultsWithoutDemoPresets() {
+        let vm = CashierViewModel(
+            initialCellId: "",
+            initialDepotId: "",
+            initialSupplierId: ""
+        )
+
+        XCTAssertEqual(vm.depotId, "")
+        XCTAssertEqual(vm.supplierId, "")
+        XCTAssertEqual(vm.driverId, "")
+        XCTAssertEqual(vm.routeId, "")
+        XCTAssertEqual(vm.bagSealBarcode, "")
+        XCTAssertEqual(vm.rrnOrderId, "")
+        XCTAssertEqual(vm.rrnGateway, "")
+        XCTAssertEqual(vm.rrnDisputedText, "")
+        XCTAssertEqual(vm.citBadgeId, "")
+        XCTAssertEqual(vm.citSealBarcode, "")
+        XCTAssertEqual(vm.citHandoverText, "")
+        XCTAssertEqual(vm.amlTin, "")
+        XCTAssertEqual(vm.amlExposureText, "")
+    }
+
+    func testDenominationMinorArithmeticAndBlindMasking() {
+        let vm = CashierViewModel(
+            initialCellId: "cell-test",
+            initialDepotId: "depot-01",
+            initialSupplierId: "sup-01"
+        )
         XCTAssertTrue(vm.isBlindCountMasked)
         XCTAssertEqual(vm.countedCashMinor, 0)
-        XCTAssertEqual(vm.amlCeilingMinor, 0) // Default uncapped
+        XCTAssertEqual(vm.countedCashSom, 0)
+        XCTAssertEqual(vm.amlCeilingMinor, 0)
 
-        // 5 notes of 200,000 UZS = 1,000,000 UZS = 100,000,000 Tiyin
-        // 3 notes of 100,000 UZS = 300,000 UZS = 30,000,000 Tiyin
-        vm.setDenominationCount(noteUzs: 200000, count: 5)
-        vm.setDenominationCount(noteUzs: 100000, count: 3)
+        // 5 notes of 200,000 so'm + 3 notes of 100,000 so'm = 1,300,000 so'm (130,000,000 minor)
+        vm.setDenominationCount(noteSom: 200000, count: 5)
+        vm.setDenominationCount(noteSom: 100000, count: 3)
+        XCTAssertEqual(vm.countedCashSom, 1_300_000)
         XCTAssertEqual(vm.countedCashMinor, 130_000_000)
 
+        let row = DenominationRowItem(noteSom: 100000, count: 3)
+        XCTAssertEqual(row.totalSom, 300_000)
+        XCTAssertEqual(row.totalMinor, 30_000_000)
+
         // Negative counts clamp to zero
-        vm.setDenominationCount(noteUzs: 50000, count: -4)
+        vm.setDenominationCount(noteSom: 50000, count: -4)
         XCTAssertEqual(vm.denominations[50000], 0)
     }
 
@@ -47,32 +78,92 @@ final class CashierBlindCountTests: XCTestCase {
     }
 
     func testStrapBundlesAndTotalBanknoteCount() {
-        let vm = CashierViewModel()
+        let vm = CashierViewModel(initialCellId: "", initialDepotId: "", initialSupplierId: "")
         XCTAssertEqual(vm.totalBanknotesCount, 0)
 
-        // 10-strap bundle of 200k + 50-strap bundle of 100k
-        vm.addStrap(noteUzs: 200000, strapCount: 10)
-        vm.addStrap(noteUzs: 100000, strapCount: 50)
+        // 10-strap bundle of 200k + 50-strap bundle of 100k = 7,000,000 so'm (700,000,000 minor)
+        vm.addStrap(noteSom: 200000, strapCount: 10)
+        vm.addStrap(noteSom: 100000, strapCount: 50)
 
         XCTAssertEqual(vm.totalBanknotesCount, 60)
-        // 10 * 200,000 = 2,000,000 UZS + 50 * 100,000 = 5,000,000 UZS = 7,000,000 UZS = 700,000,000 Tiyin
+        XCTAssertEqual(vm.countedCashSom, 7_000_000)
         XCTAssertEqual(vm.countedCashMinor, 700_000_000)
     }
 
-    func testFormatUzsThousandsGrouping() {
-        let formatted = CashierViewModel.formatUzs(amount: 1425000)
-        XCTAssertTrue(formatted.contains("1 425 000") || formatted.contains("1,425,000"), "Currency must format with thousands grouping")
-        XCTAssertTrue(formatted.hasSuffix("UZS"))
+    func testWholeSomFormattingUsesSpaceGroupingAndNeverShowsTiyin() {
+        XCTAssertEqual(CashierViewModel.formatSom(amount: 1425000), "1 425 000 so'm")
+        XCTAssertEqual(CashierViewModel.formatWholeSom(minor: 142_500_099), "1 425 000 so'm")
+        XCTAssertEqual(CashierViewModel.formatWholeSom(minor: 0), "0 so'm")
+        XCTAssertEqual(CashierViewModel.formatWholeSom(minor: -50), "0 so'm")
+        XCTAssertFalse(CashierViewModel.formatWholeSom(minor: 142_500_000).localizedCaseInsensitiveContains("tiyin"))
+        XCTAssertFalse(CashierViewModel.formatWholeSom(minor: 142_500_000).localizedCaseInsensitiveContains("uzs"))
     }
 
-    func testQuickSamplePresets() {
-        let vm = CashierViewModel()
-        vm.quickFillSampleBalanced()
-        XCTAssertEqual(vm.totalBanknotesCount, 9)
-        XCTAssertEqual(vm.countedCashMinor, 142_500_000) // 1,425,000 UZS
+    func testSelectorLoadingAutoLinkingAndManualFallback() async {
+        let vm = CashierViewModel(
+            initialCellId: "cell-uz",
+            initialDepotId: "depot-01",
+            initialSupplierId: "sup-01",
+            loadDriversHandler: {
+                [CashierDriverOption(driverId: "drv-live-1", label: "Sardor Karimov (drv-live-1)")]
+            },
+            loadManifestsHandler: {
+                [CashierRouteOption(routeId: "mnf-77", label: "mnf-77 · Sardor Karimov (ISUZU 01A)", driverNameHint: "Sardor Karimov")]
+            },
+            loadFleetLiveMapHandler: { _ in
+                (
+                    [CashierDriverOption(driverId: "drv-live-2", label: "Dilshod Alimov (drv-live-2)")],
+                    [CashierRouteOption(routeId: "route-live-2", label: "route-live-2 · Dilshod Alimov [DISPATCHED]", linkedDriverId: "drv-live-2")]
+                )
+            }
+        )
 
-        vm.quickFillSampleDiscrepant()
-        XCTAssertEqual(vm.totalBanknotesCount, 6)
-        XCTAssertEqual(vm.countedCashMinor, 120_000_000) // 1,200,000 UZS
+        await vm.loadSelectors()
+        XCTAssertTrue(vm.selectorsLoaded)
+        XCTAssertFalse(vm.manualEntryMode)
+        XCTAssertEqual(vm.driverOptions.map(\.driverId), ["drv-live-1", "drv-live-2"])
+        XCTAssertEqual(vm.routeOptions.map(\.routeId), ["route-live-2", "mnf-77"])
+
+        vm.selectRoute("mnf-77")
+        XCTAssertEqual(vm.routeId, "mnf-77")
+        XCTAssertEqual(vm.driverId, "drv-live-1")
+
+        let offlineVm = CashierViewModel(
+            initialCellId: "",
+            initialDepotId: "depot-01",
+            initialSupplierId: "sup-01",
+            loadDriversHandler: { [] },
+            loadManifestsHandler: { [] },
+            loadFleetLiveMapHandler: { _ in ([], []) }
+        )
+        await offlineVm.loadSelectors()
+        XCTAssertTrue(offlineVm.manualEntryMode)
+    }
+
+    func testValidationRejectsMissingSessionOrHandoverFieldsAndFormatsAMLInSom() async {
+        var sessionRequests = 0
+        let vm = CashierViewModel(
+            initialCellId: "cell-01",
+            initialDepotId: "",
+            initialSupplierId: "",
+            startSessionHandler: { _ in
+                sessionRequests += 1
+                throw APIError.httpError(500)
+            },
+            checkAMLHandler: { req in
+                AMLCheckResponse(legalEntityTin: req.legalEntityTin, accumulatedCashMinor: 500_000_000, ceilingMinor: 1_000_000_000)
+            }
+        )
+
+        await vm.startSession()
+        XCTAssertEqual(sessionRequests, 0)
+        XCTAssertNotNil(vm.errorMessage)
+
+        vm.supplierId = "sup-01"
+        let ok = await vm.checkAMLExposure(tin: "305678901", cashMinor: 500_000_000)
+        XCTAssertTrue(ok)
+        XCTAssertEqual(vm.statusMessage, "AML Exposure OK: 5 000 000 so'm / 10 000 000 so'm")
+        XCTAssertFalse(vm.statusMessage?.contains("UZS") ?? true)
+        XCTAssertFalse(vm.statusMessage?.localizedCaseInsensitiveContains("tiyin") ?? true)
     }
 }

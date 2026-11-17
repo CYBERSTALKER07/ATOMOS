@@ -76,7 +76,9 @@ export function useControlTowerTelemetry(supplierId: string): ControlTowerData {
           method: "GET",
           cache: "no-store",
         });
+        if (cancelled) return;
         const payload = await response.json().catch(() => null);
+        if (cancelled) return;
         if (!response.ok || !payload || typeof payload.token !== "string") {
           pendingRetryAfterSeconds = retryAfterSecondsFromResponse(response);
           throw new Error("ws_session_failed");
@@ -85,7 +87,12 @@ export function useControlTowerTelemetry(supplierId: string): ControlTowerData {
         const wsBase = warehouseApiBaseUrl().replace(/^http/, "ws");
         const wsURL = payload.websocket_url || `${wsBase}/v1/ws`;
         const connector = wsURL.includes("?") ? "&" : "?";
-        socket = new WebSocket(`${wsURL}${connector}token=${encodeURIComponent(payload.token)}`);
+        const candidateSocket = new WebSocket(`${wsURL}${connector}token=${encodeURIComponent(payload.token)}`);
+        if (cancelled) {
+          candidateSocket.close();
+          return;
+        }
+        socket = candidateSocket;
 
         socket.onopen = () => {
           attempts = 0;

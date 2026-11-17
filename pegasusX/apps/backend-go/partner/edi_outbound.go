@@ -39,11 +39,10 @@ func NewEdiOutboundWorker(docs EdiDocumentRepository, sftp SftpConfigRepository,
 	cli := as2.NewClient()
 	return &EdiOutboundWorker{
 		ediDocs: docs, sftp: sftp, orders: orders, spanner: client, log: log,
-		profiles:     NewMemoryEdiProfiles(),
-		now:          func() time.Time { return time.Now().UTC() },
-		SecretLoader: LoadSecretRef,
-		Uploader:     UploadSFTPToDir,
-		AS2Sender:    cli.Send,
+		profiles:  NewMemoryEdiProfiles(),
+		now:       func() time.Time { return time.Now().UTC() },
+		Uploader:  UploadSFTPToDir,
+		AS2Sender: cli.Send,
 	}
 }
 
@@ -238,11 +237,7 @@ func (w *EdiOutboundWorker) emit(ctx context.Context, d EdiDocument) error {
 
 	// Always write under local EDI root / temp; optionally SFTP push.
 	if PartnerSFTPEnabled() && strings.TrimSpace(cfg.Host) != "" {
-		loader := w.SecretLoader
-		if loader == nil {
-			loader = LoadSecretRef
-		}
-		secret, err := loader(cfg.SecretRef)
+		secret, err := resolveWorkerSecret(w.SecretLoader, cfg.TenantType, cfg.TenantID, cfg.SecretRef)
 		if err != nil || secret == "" {
 			return w.fail(ctx, d, "sftp_secret_unavailable")
 		}
@@ -288,10 +283,6 @@ func (w *EdiOutboundWorker) pushAS2(ctx context.Context, d EdiDocument, body []b
 	if !ok || !cfg.As2Enabled || strings.TrimSpace(cfg.PartnerURL) == "" {
 		return "", nil
 	}
-	loader := w.SecretLoader
-	if loader == nil {
-		loader = LoadSecretRef
-	}
 	plain := PartnerAS2InsecurePlain()
 	req := as2.SendRequest{
 		URL:        cfg.PartnerURL,
@@ -303,9 +294,9 @@ func (w *EdiOutboundWorker) pushAS2(ctx context.Context, d EdiDocument, body []b
 		RequestMDN: true,
 	}
 	if !plain {
-		certPEM, err1 := loader(cfg.OurCertSecretRef)
-		keyPEM, err2 := loader(cfg.OurKeySecretRef)
-		partnerPEM, err3 := loader(cfg.PartnerCertSecretRef)
+		certPEM, err1 := resolveWorkerSecret(w.SecretLoader, cfg.TenantType, cfg.TenantID, cfg.OurCertSecretRef)
+		keyPEM, err2 := resolveWorkerSecret(w.SecretLoader, cfg.TenantType, cfg.TenantID, cfg.OurKeySecretRef)
+		partnerPEM, err3 := resolveWorkerSecret(w.SecretLoader, cfg.TenantType, cfg.TenantID, cfg.PartnerCertSecretRef)
 		if err1 != nil || err2 != nil || err3 != nil {
 			return "", fmt.Errorf("as2_secret_unavailable")
 		}

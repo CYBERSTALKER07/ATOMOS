@@ -269,8 +269,34 @@ data class DepartRequest(
 @Serializable
 data class OpenFiscalResponse(
     @SerialName("open_fiscal_count") val openFiscalCount: Long = 0,
+    @SerialName("retry_queued_count") val retryQueuedCount: Long = 0,
+    @SerialName("fiscal_issue_count") val fiscalIssueCount: Long = 0,
     @SerialName("order_ids") val orderIds: List<String> = emptyList(),
+    @SerialName("retry_order_ids") val retryOrderIds: List<String> = emptyList(),
     @SerialName("cash_bag_frozen") val cashBagFrozen: Boolean = false,
+)
+
+@Serializable
+data class SyncEscalationItem(
+    val id: String,
+    val endpoint: String,
+    @SerialName("order_id") val orderId: String? = null,
+    @SerialName("payload_json") val payloadJson: String? = null,
+    @SerialName("last_error") val lastError: String? = null,
+    @SerialName("attempt_count") val attemptCount: Int = 0,
+    @SerialName("client_timestamp_iso") val clientTimestampIso: String? = null,
+)
+
+@Serializable
+data class SyncEscalationRequest(
+    val items: List<SyncEscalationItem>,
+)
+
+@Serializable
+data class SyncEscalationResponse(
+    val ok: Boolean = true,
+    val escalated: Int = 0,
+    @SerialName("escalation_id") val escalationId: String = "",
 )
 
 @Serializable

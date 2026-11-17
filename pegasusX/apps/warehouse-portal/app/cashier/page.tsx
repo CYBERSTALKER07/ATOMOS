@@ -1,39 +1,108 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import type { CashierSessionView as CashierSessionViewType } from '@pegasusx/types';
 import { foundryWarehouseApi } from '@/lib/foundry-api';
+import { apiFetch } from '@/lib/auth';
+import { warehouseApi } from '@/lib/warehouse-api';
+import {
+  buildCashierSelectorOptions,
+  resolveCashierScope,
+  type CashierDriverOption,
+  type CashierDriverRecord,
+  type CashierManifestRecord,
+  type CashierRouteOption,
+} from '@/lib/cashier-helpers';
 import { BlindCountDenominationGrid } from '@/components/cashier/BlindCountDenominationGrid';
 import { CashierSessionView } from '@/components/cashier/CashierSessionView';
 import { RRNReclassificationModal } from '@/components/cashier/RRNReclassificationModal';
 import { CITHandoverManifest } from '@/components/cashier/CITHandoverManifest';
 import { AMLExposureCheck } from '@/components/cashier/AMLExposureCheck';
-import { Coins, Shield, Building2, Barcode, PlusCircle } from 'lucide-react';
+import { AlertTriangle, Coins, Shield, Building2, Barcode, PlusCircle } from 'lucide-react';
+
+interface SupervisorOverrideBanner {
+  sessionId: string;
+  driverId: string;
+  requestedAt: string;
+}
 
 export default function CashierPage() {
   const [activeTab, setActiveTab] = useState<'count' | 'cit' | 'aml'>('count');
 
-  // Bag Scan / Session Start State
-  const [cellId, setCellId] = useState('cell-uz');
-  const [supplierId, setSupplierId] = useState('sup_samarkand_dairy');
-  const [depotId, setDepotId] = useState('depot_tashkent_central');
-  const [driverId, setDriverId] = useState('drv_anvar_01');
-  const [routeId, setRouteId] = useState('route_yashnobod_101');
+  // Scope & Session Start State (hydrated from warehouse auth/scope; zero fake presets)
+  const [cellId, setCellId] = useState('');
+  const [supplierId, setSupplierId] = useState('');
+  const [depotId, setDepotId] = useState('');
+  const [actorId, setActorId] = useState('');
+  const [driverId, setDriverId] = useState('');
+  const [routeId, setRouteId] = useState('');
   const [bagSealBarcode, setBagSealBarcode] = useState('');
+
+  const [driverOptions, setDriverOptions] = useState<CashierDriverOption[]>([]);
+  const [routeOptions, setRouteOptions] = useState<CashierRouteOption[]>([]);
+  const [selectorsLoading, setSelectorsLoading] = useState(true);
+  const [selectorsError, setSelectorsError] = useState<string | null>(null);
+  const [manualEntryMode, setManualEntryMode] = useState(false);
 
   const [session, setSession] = useState<CashierSessionViewType | null>(null);
   const [startingSession, setStartingSession] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
+  const [overrideBanner, setOverrideBanner] = useState<SupervisorOverrideBanner | null>(null);
 
   // RRN Modal State
   const [isRRNModalOpen, setIsRRNModalOpen] = useState(false);
 
-  // Quick preset bag seals for high-velocity cashier operations
-  const fillSampleSeal = (barcode: string, drv: string, route: string) => {
-    setBagSealBarcode(barcode);
-    setDriverId(drv);
-    setRouteId(route);
-  };
+  useEffect(() => {
+    const scope = resolveCashierScope();
+    setCellId(scope.cellId);
+    setDepotId(scope.depotId);
+    setSupplierId(scope.supplierId);
+    setActorId(scope.actorId);
+
+    let cancelled = false;
+    const loadSelectors = async () => {
+      setSelectorsLoading(true);
+      setSelectorsError(null);
+      const today = new Date().toISOString().slice(0, 10);
+      const [driversRes, manifestsRes, liveMapRes] = await Promise.allSettled([
+        apiFetch('/v1/warehouse/ops/drivers').then(async (res) => {
+          if (!res.ok) throw new Error(`drivers_${res.status}`);
+          return (await res.json()) as { drivers?: CashierDriverRecord[] };
+        }),
+        apiFetch(`/v1/warehouse/ops/manifests?date=${today}`).then(async (res) => {
+          if (!res.ok) throw new Error(`manifests_${res.status}`);
+          return (await res.json()) as { manifests?: CashierManifestRecord[] };
+        }),
+        warehouseApi.getWarehouseFleetLiveMap(scope.depotId ? { warehouse_id: scope.depotId } : {}),
+      ]);
+
+      if (cancelled) return;
+
+      const drivers = driversRes.status === 'fulfilled' ? driversRes.value.drivers ?? [] : [];
+      const manifests = manifestsRes.status === 'fulfilled' ? manifestsRes.value.manifests ?? [] : [];
+      const fleetRoutes = liveMapRes.status === 'fulfilled' ? liveMapRes.value.routes ?? [] : [];
+
+      const built = buildCashierSelectorOptions({ drivers, manifests, fleetRoutes });
+      setDriverOptions(built.driverOptions);
+      setRouteOptions(built.routeOptions);
+      if (built.driverOptions.length === 0 && built.routeOptions.length === 0) {
+        setManualEntryMode(true);
+      }
+      if (
+        driversRes.status === 'rejected' &&
+        manifestsRes.status === 'rejected' &&
+        liveMapRes.status === 'rejected'
+      ) {
+        setSelectorsError('Live driver and route lists are unavailable; manual ID entry is enabled.');
+      }
+      setSelectorsLoading(false);
+    };
+
+    void loadSelectors();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Start new bag blind count session
   const handleStartSession = async (e: React.FormEvent) => {
@@ -43,19 +112,32 @@ export default function CashierPage() {
       setStartError('Bag seal barcode is required');
       return;
     }
+    if (!driverId.trim()) {
+      setStartError('Driver selection or ID is required');
+      return;
+    }
+    if (!routeId.trim()) {
+      setStartError('Route selection or ID is required');
+      return;
+    }
+    if (!depotId.trim() || !supplierId.trim()) {
+      setStartError('Depot node and supplier scope are required');
+      return;
+    }
 
     setStartingSession(true);
     try {
       // Expected cash is resolved server-side from Spanner route orders and masked during blind count.
       const newSession = await foundryWarehouseApi.startCashierSession({
-        cell_id: cellId,
-        supplier_id: supplierId,
-        depot_id: depotId,
+        cell_id: cellId.trim(),
+        supplier_id: supplierId.trim(),
+        depot_id: depotId.trim(),
         driver_id: driverId.trim(),
         route_id: routeId.trim(),
         bag_seal_barcode: bagSealBarcode.trim(),
         expected_cash_minor: 0,
       });
+      setOverrideBanner(null);
       setSession(newSession);
     } catch (err) {
       setStartError(err instanceof Error ? err.message : 'Failed to start cashier session');
@@ -150,25 +232,28 @@ export default function CashierPage() {
                   </p>
                 </div>
 
-                {/* Quick Presets */}
+                {/* Driver / Route Entry Mode Toggle */}
                 <div className="flex items-center gap-2">
-                  <span className="text-[11px] font-mono text-neutral-500">Quick Presets:</span>
+                  <span className="text-[11px] font-mono text-neutral-500">
+                    {selectorsLoading
+                      ? 'Loading live fleet...'
+                      : `${driverOptions.length} drivers · ${routeOptions.length} routes`}
+                  </span>
                   <button
                     type="button"
-                    onClick={() => fillSampleSeal('SEAL-UZ-99214', 'drv_anvar_01', 'route_yashnobod_101')}
-                    className="px-2 py-0.5 rounded text-[11px] font-mono bg-neutral-800 hover:bg-neutral-750 text-neutral-300 border border-neutral-700"
+                    onClick={() => setManualEntryMode((prev) => !prev)}
+                    className="px-2.5 py-1 rounded text-[11px] font-mono bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border border-neutral-700"
                   >
-                    Anvar #99214
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => fillSampleSeal('SEAL-UZ-88123', 'drv_rustam_09', 'route_yunusobod_204')}
-                    className="px-2 py-0.5 rounded text-[11px] font-mono bg-neutral-800 hover:bg-neutral-750 text-neutral-300 border border-neutral-700"
-                  >
-                    Rustam #88123
+                    {manualEntryMode ? 'Use Live Selectors' : 'Manual ID Fallback'}
                   </button>
                 </div>
               </div>
+
+              {selectorsError && (
+                <div className="p-2.5 bg-amber-950/50 border border-amber-800/70 rounded-xl text-xs text-amber-200">
+                  {selectorsError}
+                </div>
+              )}
 
               <form onSubmit={handleStartSession} className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -182,7 +267,7 @@ export default function CashierPage() {
                         required
                         value={bagSealBarcode}
                         onChange={(e) => setBagSealBarcode(e.target.value)}
-                        placeholder="e.g. SEAL-UZ-99214"
+                        placeholder="Scan or enter tamper seal barcode"
                         className="w-full bg-neutral-950 border border-neutral-750 rounded-xl px-3 py-2 text-xs font-mono text-neutral-100 focus:outline-none focus:border-emerald-500 pr-9"
                       />
                       <Barcode size={16} className="absolute right-3 top-2.5 text-neutral-500" />
@@ -191,43 +276,93 @@ export default function CashierPage() {
 
                   <div>
                     <label className="block text-[11px] font-semibold text-neutral-400 uppercase tracking-wider mb-1">
-                      Driver ID
+                      Driver
                     </label>
-                    <input
-                      type="text"
-                      required
-                      value={driverId}
-                      onChange={(e) => setDriverId(e.target.value)}
-                      placeholder="e.g. drv_anvar_01"
-                      className="w-full bg-neutral-950 border border-neutral-750 rounded-xl px-3 py-2 text-xs font-mono text-neutral-100 focus:outline-none focus:border-emerald-500"
-                    />
+                    {!manualEntryMode && driverOptions.length > 0 ? (
+                      <select
+                        required
+                        aria-label="Driver"
+                        value={driverId}
+                        onChange={(e) => {
+                          const nextDriver = e.target.value;
+                          setDriverId(nextDriver);
+                          const match = driverOptions.find((d) => d.driverId === nextDriver);
+                          if (match?.routeId && !routeId) {
+                            setRouteId(match.routeId);
+                          }
+                        }}
+                        className="w-full bg-neutral-950 border border-neutral-750 rounded-xl px-3 py-2 text-xs font-mono text-neutral-100 focus:outline-none focus:border-emerald-500"
+                      >
+                        <option value="">Select active driver...</option>
+                        {driverOptions.map((d) => (
+                          <option key={d.driverId} value={d.driverId}>
+                            {d.label}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        type="text"
+                        required
+                        aria-label="Driver ID"
+                        value={driverId}
+                        onChange={(e) => setDriverId(e.target.value)}
+                        placeholder="Enter driver ID"
+                        className="w-full bg-neutral-950 border border-neutral-750 rounded-xl px-3 py-2 text-xs font-mono text-neutral-100 focus:outline-none focus:border-emerald-500"
+                      />
+                    )}
                   </div>
 
                   <div>
                     <label className="block text-[11px] font-semibold text-neutral-400 uppercase tracking-wider mb-1">
-                      Route ID
+                      Route / Manifest
                     </label>
-                    <input
-                      type="text"
-                      required
-                      value={routeId}
-                      onChange={(e) => setRouteId(e.target.value)}
-                      placeholder="e.g. route_101"
-                      className="w-full bg-neutral-950 border border-neutral-750 rounded-xl px-3 py-2 text-xs font-mono text-neutral-100 focus:outline-none focus:border-emerald-500"
-                    />
+                    {!manualEntryMode && routeOptions.length > 0 ? (
+                      <select
+                        required
+                        aria-label="Route"
+                        value={routeId}
+                        onChange={(e) => {
+                          const nextRoute = e.target.value;
+                          setRouteId(nextRoute);
+                          const match = routeOptions.find((r) => r.routeId === nextRoute);
+                          if (match?.driverId && !driverId) {
+                            setDriverId(match.driverId);
+                          }
+                        }}
+                        className="w-full bg-neutral-950 border border-neutral-750 rounded-xl px-3 py-2 text-xs font-mono text-neutral-100 focus:outline-none focus:border-emerald-500"
+                      >
+                        <option value="">Select active route...</option>
+                        {routeOptions.map((r) => (
+                          <option key={r.routeId} value={r.routeId}>
+                            {r.label}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        type="text"
+                        required
+                        aria-label="Route ID"
+                        value={routeId}
+                        onChange={(e) => setRouteId(e.target.value)}
+                        placeholder="Enter route or manifest ID"
+                        className="w-full bg-neutral-950 border border-neutral-750 rounded-xl px-3 py-2 text-xs font-mono text-neutral-100 focus:outline-none focus:border-emerald-500"
+                      />
+                    )}
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                   <div>
                     <label className="block text-[11px] font-semibold text-neutral-400 uppercase tracking-wider mb-1">
-                      System Expected Cash (UZS)
+                      System Expected Cash (so&apos;m)
                     </label>
                     <div className="w-full bg-neutral-950/70 border border-neutral-800 rounded-xl px-3 py-2 text-xs font-mono text-emerald-400">
                       🔒 Server-Derived (Masked for Blind Count)
                     </div>
                     <span className="text-[10px] text-neutral-500 mt-0.5 block">
-                      Authoritatively derived from Spanner route orders; masked until count submission.
+                      Authoritatively derived from Spanner route orders in so&apos;m; masked until count submission.
                     </span>
                   </div>
 
@@ -240,6 +375,7 @@ export default function CashierPage() {
                       required
                       value={depotId}
                       onChange={(e) => setDepotId(e.target.value)}
+                      placeholder="Resolved from warehouse scope"
                       className="w-full bg-neutral-950 border border-neutral-750 rounded-xl px-3 py-2 text-xs font-mono text-neutral-100 focus:outline-none focus:border-emerald-500"
                     />
                   </div>
@@ -253,6 +389,20 @@ export default function CashierPage() {
                       required
                       value={supplierId}
                       onChange={(e) => setSupplierId(e.target.value)}
+                      placeholder="Resolved from auth claims"
+                      className="w-full bg-neutral-950 border border-neutral-750 rounded-xl px-3 py-2 text-xs font-mono text-neutral-100 focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold text-neutral-400 uppercase tracking-wider mb-1">
+                      Routing Cell
+                    </label>
+                    <input
+                      type="text"
+                      value={cellId}
+                      onChange={(e) => setCellId(e.target.value)}
+                      placeholder="Resolved from home_cell"
                       className="w-full bg-neutral-950 border border-neutral-750 rounded-xl px-3 py-2 text-xs font-mono text-neutral-100 focus:outline-none focus:border-emerald-500"
                     />
                   </div>
@@ -283,20 +433,51 @@ export default function CashierPage() {
                 <span className="text-xs font-mono text-neutral-400">Active Turn-In Session: {session.session_id}</span>
                 <button
                   type="button"
-                  onClick={() => setSession(null)}
+                  onClick={() => {
+                    setSession(null);
+                    setOverrideBanner(null);
+                  }}
                   className="text-xs text-neutral-400 hover:text-neutral-200 underline"
                 >
                   Start another driver bag
                 </button>
               </div>
 
+              {overrideBanner && (
+                <div
+                  role="status"
+                  className="p-4 rounded-xl bg-amber-950/60 border border-amber-700/60 flex flex-wrap items-start justify-between gap-3 text-xs text-amber-100"
+                >
+                  <div className="flex items-start gap-2.5">
+                    <AlertTriangle size={16} className="text-amber-400 shrink-0 mt-0.5" />
+                    <div>
+                      <div className="font-bold text-amber-200">
+                        Supervisor Override Request Queued
+                      </div>
+                      <p className="text-amber-100/90 mt-0.5 font-mono">
+                        Session {overrideBanner.sessionId} · Driver {overrideBanner.driverId} remains locked under MARKING:DISCREPANT_QUARANTINE pending supervisor review ({overrideBanner.requestedAt}).
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setOverrideBanner(null)}
+                    className="px-2.5 py-1 rounded-lg bg-amber-900/60 hover:bg-amber-800/70 text-[11px] font-mono text-amber-100 border border-amber-700/50"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              )}
+
               <CashierSessionView
                 session={session}
                 onOpenReclassifyModal={() => setIsRRNModalOpen(true)}
                 onRequestSupervisorOverride={() => {
-                  alert(
-                    `Supervisor override requested for Session ${session.session_id}. Driver ${session.driver_id} remains locked under MARKING:DISCREPANT_QUARANTINE.`,
-                  );
+                  setOverrideBanner({
+                    sessionId: session.session_id,
+                    driverId: session.driver_id,
+                    requestedAt: new Date().toISOString(),
+                  });
                 }}
               />
 
@@ -315,6 +496,7 @@ export default function CashierPage() {
             <RRNReclassificationModal
               sessionId={session.session_id}
               isOpen={isRRNModalOpen}
+              defaultActorId={actorId}
               onClose={() => setIsRRNModalOpen(false)}
               onSuccess={(updated) => setSession(updated)}
             />
@@ -323,7 +505,11 @@ export default function CashierPage() {
       )}
 
       {activeTab === 'cit' && (
-        <CITHandoverManifest depotId={depotId} supplierId={supplierId} />
+        <CITHandoverManifest
+          depotId={depotId}
+          supplierId={supplierId}
+          defaultSessionId={session?.session_id ?? ''}
+        />
       )}
 
       {activeTab === 'aml' && (

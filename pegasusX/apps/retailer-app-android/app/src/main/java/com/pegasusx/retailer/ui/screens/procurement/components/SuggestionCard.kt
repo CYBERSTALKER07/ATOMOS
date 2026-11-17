@@ -17,8 +17,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pegasusx.retailer.data.model.DemandForecast
+import com.pegasusx.retailer.ui.components.LineOptionTogglePill
 import com.pegasusx.retailer.ui.screens.procurement.ProcurementUiState
 import com.pegasusx.retailer.ui.theme.SoftSquircleShape
+import com.pegasusx.retailer.util.OrderLineContractHelper
+import com.pegasusx.retailer.util.PackSnapMode
 import com.pegasusx.retailer.R
 
 @Composable
@@ -26,9 +29,15 @@ fun SuggestionCard(
     forecast: DemandForecast,
     isSelected: Boolean,
     quantity: Int,
+    packSize: Int = 1,
+    mustHave: Boolean = false,
+    allowSubstitutes: Boolean = false,
     onToggle: () -> Unit,
     onDecrement: () -> Unit,
     onIncrement: () -> Unit,
+    onSnapPackNearest: () -> Unit = {},
+    onToggleMustHave: () -> Unit = {},
+    onToggleAllowSubstitutes: () -> Unit = {},
 ) {
     val borderModifier = if (isSelected) {
         Modifier.border(2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f), SoftSquircleShape)
@@ -75,6 +84,33 @@ fun SuggestionCard(
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
                 maxLines = 2,
             )
+            if (isSelected) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    LineOptionTogglePill(
+                        label = if (mustHave) "Must-have ✓" else "Must-have",
+                        selected = mustHave,
+                        onClick = onToggleMustHave,
+                    )
+                    LineOptionTogglePill(
+                        label = if (allowSubstitutes) "Allow subs ✓" else "Allow subs",
+                        selected = allowSubstitutes,
+                        onClick = onToggleAllowSubstitutes,
+                    )
+                    if (packSize > 1 && quantity % packSize != 0) {
+                        val snapped = OrderLineContractHelper.snapToPackMultiple(
+                            quantity = quantity,
+                            packSize = packSize,
+                            mode = PackSnapMode.NEAREST,
+                        )
+                        LineOptionTogglePill(
+                            label = "Snap $snapped",
+                            selected = true,
+                            onClick = onSnapPackNearest,
+                        )
+                    }
+                }
+            }
         }
     }
 }

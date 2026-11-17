@@ -17,6 +17,7 @@ import (
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
+	"github.com/pegasusx/pegasusx/apps/backend-go/drivercmd"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/factory"
 	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
@@ -131,6 +132,7 @@ type Service struct {
 	availability       map[string]bool
 	earningsMinor      map[string]int64
 	pendingCollections map[string][]PendingCollection
+	syncEscalations    []SyncEscalationRecord
 	now                func() time.Time
 	firebaseVerifier   auth.FirebaseVerifier
 	loginLookup        DriverLoginLookup
@@ -219,11 +221,14 @@ type ReturnCompleteResult struct {
 // found (idempotent no-op for double-tap return).
 type ReturnCompleteFn func(ctx context.Context, driverID string) (ReturnCompleteResult, bool, error)
 
-// OpenFiscalSnapshot is the Phase 6 soft-freeze signal (cash bag / shift-end).
+// OpenFiscalSnapshot is the Phase 6 / D-10 shift-end signal (cash bag / shift-end).
 type OpenFiscalSnapshot struct {
-	Count    int64    `json:"open_fiscal_count"`
-	OrderIDs []string `json:"order_ids,omitempty"`
-	Frozen   bool     `json:"cash_bag_frozen"`
+	Count            int64    `json:"open_fiscal_count"`
+	OrderIDs         []string `json:"order_ids,omitempty"`
+	Frozen           bool     `json:"cash_bag_frozen"`
+	RetryQueuedCount int64    `json:"retry_queued_count"`
+	FiscalIssueCount int64    `json:"fiscal_issue_count"`
+	RetryOrderIDs    []string `json:"retry_order_ids,omitempty"`
 }
 
 // OpenFiscalLookup counts orders still in FISCALIZING / FISCAL_FAILED for a driver.
@@ -811,10 +816,6 @@ func (s *Service) HandleManifest(w http.ResponseWriter, r *http.Request) {
 	}
 	manifestID := strings.TrimSpace(r.URL.Query().Get("manifest_id"))
 	date := strings.TrimSpace(r.URL.Query().Get("date"))
-	if manifestID == "" {
-		writeJSON(w, http.StatusOK, iosRouteManifest(driverID, date))
-		return
-	}
 	detail, ok := s.manifest(driverID, manifestID, date)
 	if !ok {
 		writeJSON(w, http.StatusNotFound, map[string]any{
@@ -841,6 +842,7 @@ func (s *Service) HandleManifest(w http.ResponseWriter, r *http.Request) {
 		"hashes":                  hashes,
 		"legacy_hashes_available": len(hashes) > 0,
 		"offline_nonce":           s.GenerateOfflineNonce(detail.Manifest.ManifestID, driverID),
+		"expires_at":              s.now().UTC().Add(24 * time.Hour).Unix(),
 	})
 }
 
@@ -940,7 +942,8 @@ func (s *Service) broadcastDriverEvent(ctx context.Context, driverID string, pay
 		return
 	}
 	if s.driverHub != nil && driverID != "" {
-		s.driverHub.Broadcast(ctx, "driver:"+driverID, raw)
+		driverRaw := drivercmd.PrepareAndRecordJSON(ctx, s.spanner, driverID, raw)
+		s.driverHub.Broadcast(ctx, "driver:"+driverID, driverRaw)
 	}
 	if s.supplierHub != nil && s.resolveSupplierScope(ctx) != "" {
 		s.supplierHub.Broadcast(ctx, "supplier:"+s.resolveSupplierScope(ctx), raw)

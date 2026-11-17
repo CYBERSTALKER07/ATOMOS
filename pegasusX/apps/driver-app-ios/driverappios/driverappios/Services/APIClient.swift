@@ -445,18 +445,68 @@ final class APIClient: @unchecked Sendable {
 
     struct OpenFiscalResponse: Decodable {
         let openFiscalCount: Int64
+        let retryQueuedCount: Int64?
+        let fiscalIssueCount: Int64?
         let orderIds: [String]?
+        let retryOrderIds: [String]?
         let cashBagFrozen: Bool
 
         enum CodingKeys: String, CodingKey {
             case openFiscalCount = "open_fiscal_count"
+            case retryQueuedCount = "retry_queued_count"
+            case fiscalIssueCount = "fiscal_issue_count"
             case orderIds = "order_ids"
+            case retryOrderIds = "retry_order_ids"
             case cashBagFrozen = "cash_bag_frozen"
         }
     }
 
     func getOpenFiscal() async throws -> OpenFiscalResponse {
         try await get("v1/driver/open-fiscal")
+    }
+
+    struct SyncEscalationItemRequest: Codable, Equatable {
+        let id: String
+        let endpoint: String
+        let orderId: String?
+        let payloadJson: String?
+        let lastError: String?
+        let attemptCount: Int
+        let clientTimestampIso: String?
+
+        enum CodingKeys: String, CodingKey {
+            case id
+            case endpoint
+            case orderId = "order_id"
+            case payloadJson = "payload_json"
+            case lastError = "last_error"
+            case attemptCount = "attempt_count"
+            case clientTimestampIso = "client_timestamp_iso"
+        }
+    }
+
+    struct SyncEscalationRequest: Codable {
+        let items: [SyncEscalationItemRequest]
+    }
+
+    struct SyncEscalationResponse: Decodable {
+        let ok: Bool
+        let escalated: Int
+        let escalationId: String?
+
+        enum CodingKeys: String, CodingKey {
+            case ok
+            case escalated
+            case escalationId = "escalation_id"
+        }
+    }
+
+    func escalateSyncDeadLetters(items: [SyncEscalationItemRequest]) async throws -> SyncEscalationResponse {
+        try await post(
+            "v1/driver/sync-escalation",
+            body: SyncEscalationRequest(items: items),
+            headers: ["Idempotency-Key": DriverIdempotency.syncEscalation(itemIds: items.map(\.id))]
+        )
     }
 
     func returnComplete(truckId: String) async throws -> [String: String] {

@@ -49,10 +49,9 @@ func (h *Handlers) HandleAS2Receive(w http.ResponseWriter, r *http.Request) {
 	var our as2.Material
 	var partnerCertPEM []byte
 	if !insecure {
-		loader := LoadSecretRef
-		certPEM, err1 := loader(cfg.OurCertSecretRef)
-		keyPEM, err2 := loader(cfg.OurKeySecretRef)
-		partnerPEM, err3 := loader(cfg.PartnerCertSecretRef)
+		certPEM, err1 := LoadTenantSecretRef(cfg.TenantType, cfg.TenantID, cfg.OurCertSecretRef)
+		keyPEM, err2 := LoadTenantSecretRef(cfg.TenantType, cfg.TenantID, cfg.OurKeySecretRef)
+		partnerPEM, err3 := LoadTenantSecretRef(cfg.TenantType, cfg.TenantID, cfg.PartnerCertSecretRef)
 		if err1 != nil || err2 != nil || err3 != nil {
 			_ = as2.WriteSyncMDN(w, cfg.OurAs2Id, cfg.PartnerAs2Id, hdrs, "", as2.MDNFailed, "cert material unavailable")
 			return

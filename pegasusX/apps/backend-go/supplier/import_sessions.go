@@ -12,6 +12,7 @@ import (
 
 	"cloud.google.com/go/spanner"
 	"github.com/go-chi/chi/v5"
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
@@ -181,15 +182,17 @@ func RegisterImportRoutes(r chi.Router, d ImportRoutesDeps) {
 	repo := NewImportRepository(d.Spanner)
 
 	r.Route(supplierImportRoutePrefix, func(imports chi.Router) {
-		imports.Post("/", handleCreateImportSession(repo, d.Service))
+		imports.Use(auth.RequireAuditorActive)
+		writeGuard := auth.RejectAuditorOrAgentMutation(true)
+		imports.With(writeGuard).Post("/", handleCreateImportSession(repo, d.Service))
 		imports.Get("/{id}", handleGetImportSession(repo))
-		imports.Post("/{id}/uploaded", handlePostImportUploaded(repo, d.Service))
-		imports.Post("/{id}/ingest", handlePostImportIngest(repo, d.Service))
+		imports.With(writeGuard).Post("/{id}/uploaded", handlePostImportUploaded(repo, d.Service))
+		imports.With(writeGuard).Post("/{id}/ingest", handlePostImportIngest(repo, d.Service))
 		imports.Get("/{id}/rows", handleGetImportRows(repo))
 		imports.Get("/{id}/mapping", handleGetImportMapping(repo))
-		imports.Post("/{id}/mapping", handlePostImportMapping(repo))
-		imports.Post("/{id}/approve", handlePostImportApprove(repo, d.Service))
-		imports.Post("/{id}/apply", handlePostImportApply(repo, d.Service, d.SupplierHub, d.WarehouseHub))
+		imports.With(writeGuard).Post("/{id}/mapping", handlePostImportMapping(repo))
+		imports.With(writeGuard).Post("/{id}/approve", handlePostImportApprove(repo, d.Service))
+		imports.With(writeGuard).Post("/{id}/apply", handlePostImportApply(repo, d.Service, d.SupplierHub, d.WarehouseHub))
 	})
 }
 
@@ -576,7 +579,7 @@ func (r *ImportRepository) ListRows(ctx context.Context, supplierID, sessionID s
 		},
 	}
 
-	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 
 	rows := make([]ImportStagedRowRecord, 0, limit+1)

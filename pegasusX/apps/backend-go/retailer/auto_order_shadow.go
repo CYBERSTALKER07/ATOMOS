@@ -56,6 +56,7 @@ func (s *Service) runAutoOrderShadow(ctx context.Context, orgID, bucket string, 
 			continue
 		}
 		s.markBucket(key, run.RunID)
+		s.persistAutoOrderBucket(ctx, orgID, bucket, AutoOrderModeShadow, c.SKU, run.RunID, proposalID)
 		st := s.aoWorker()
 		st.mu.Lock()
 		st.bucketDone[key] = true

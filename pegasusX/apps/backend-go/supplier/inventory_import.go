@@ -1,27 +1,25 @@
 package supplier
 
 import (
-	"bytes"
 	"context"
-	"encoding/csv"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
+	"github.com/pegasusx/pegasusx/apps/backend-go/migration/parser"
 	"google.golang.org/api/iterator"
 	"google.golang.org/grpc/codes"
 )
 
 const (
-	inventoryImportMaxBytes = 2 * 1024 * 1024
-	inventoryImportMaxRows  = 1000
+	inventoryImportMaxBytes = supplierImportMaxUploadSize
 )
 
 var errInventoryImportInvalidCSV = errors.New("inventory_import_invalid_csv")
@@ -47,6 +45,9 @@ func (s *Service) HandleInventoryImport(w http.ResponseWriter, r *http.Request) 
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
+	if !enforceImportMutationAuth(w, r) {
+		return
+	}
 	body, ok := readMutationBody(w, r, inventoryImportMaxBytes)
 	if !ok {
 		return
@@ -56,17 +57,25 @@ func (s *Service) HandleInventoryImport(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	rows, err := parseInventoryImportCSV(body)
+	fileName := strings.TrimSpace(r.Header.Get("X-File-Name"))
+	if fileName == "" {
+		fileName = strings.TrimSpace(r.URL.Query().Get("file_name"))
+	}
+
+	rows, err := parseInventoryImportArtifact(fileName, body)
 	if err != nil {
+		if errors.Is(err, parser.ErrPasswordProtectedWorkbook) {
+			writeJSON(w, http.StatusUnprocessableEntity, map[string]string{
+				"error":   "password_protected_workbook",
+				"message": err.Error(),
+			})
+			return
+		}
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 		return
 	}
 	if len(rows) == 0 {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "inventory_import_empty"})
-		return
-	}
-	if len(rows) > inventoryImportMaxRows {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "inventory_import_too_many_rows"})
 		return
 	}
 	if s.inventorySvc == nil {
@@ -84,6 +93,7 @@ func (s *Service) HandleInventoryImport(w http.ResponseWriter, r *http.Request) 
 
 	result := inventoryImportResult{UpdatedAt: s.now().UTC().Format(time.RFC3339Nano)}
 	staging := make([]inventoryImportStagingEntry, 0, len(rows))
+	productValidationCache := make(map[string]error)
 	for i, row := range rows {
 		raw := inventoryImportStagingRaw(row)
 		entry := inventoryImportStagingEntry{
@@ -97,10 +107,15 @@ func (s *Service) HandleInventoryImport(w http.ResponseWriter, r *http.Request) 
 			staging = append(staging, entry)
 			continue
 		}
-		if err := s.validateImportedProduct(r.Context(), sid, row.ProductID); err != nil {
-			entry.ValidationErrors = []string{err.Error()}
+		valErr, cached := productValidationCache[row.ProductID]
+		if !cached {
+			valErr = s.validateImportedProduct(r.Context(), sid, row.ProductID)
+			productValidationCache[row.ProductID] = valErr
+		}
+		if valErr != nil {
+			entry.ValidationErrors = []string{valErr.Error()}
 			result.Skipped++
-			result.Errors = append(result.Errors, fmt.Sprintf("row %d: %s", i+2, err.Error()))
+			result.Errors = append(result.Errors, fmt.Sprintf("row %d: %s", i+2, valErr.Error()))
 			staging = append(staging, entry)
 			continue
 		}
@@ -115,7 +130,7 @@ func (s *Service) HandleInventoryImport(w http.ResponseWriter, r *http.Request) 
 		result.Applied++
 		staging = append(staging, entry)
 	}
-	if sessionID, err := s.persistInventoryImportStaging(r.Context(), sid, staging, result.Applied, result.Skipped); err != nil {
+	if sessionID, err := s.persistInventoryImportStagingChunked(r.Context(), sid, staging, result.Applied, result.Skipped); err != nil {
 		s.log.WarnContext(r.Context(), "inventory import staging persist failed", "err", err, "supplier_id", sid)
 	} else if sessionID != "" {
 		result.SessionID = sessionID
@@ -190,7 +205,7 @@ func (s *Service) validateImportedProductInventoryFallback(ctx context.Context, 
 			"productId":  productID,
 		},
 	}
-	iter := s.portalSpanner.Single().Query(ctx, stmt)
+	iter := s.portalSpanner.Single().WithTimestampBound(spanner.StrongRead()).Query(ctx, stmt)
 	defer iter.Stop()
 	_, err := iter.Next()
 	if err == iterator.Done {
@@ -214,38 +229,190 @@ func warehouseIDSet(topology SupplierTopology) map[string]struct{} {
 }
 
 func parseInventoryImportCSV(body []byte) ([]inventoryImportRow, error) {
-	reader := csv.NewReader(bytes.NewReader(body))
-	reader.TrimLeadingSpace = true
-	header, err := reader.Read()
+	return parseInventoryImportArtifact("", body)
+}
+
+func parseInventoryImportArtifact(fileName string, body []byte) ([]inventoryImportRow, error) {
+	if len(body) == 0 {
+		return nil, fmt.Errorf("%w: empty import body", errInventoryImportInvalidCSV)
+	}
+	sniff, err := parser.SniffArtifact(fileName, body)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", errInventoryImportInvalidCSV, err)
+		return nil, err
 	}
-	index := mapInventoryImportHeader(header)
-	required := []string{"product_id", "warehouse_id", "quantity_on_hand"}
-	for _, col := range required {
-		if _, ok := index[col]; !ok {
-			return nil, fmt.Errorf("%w: missing column %s", errInventoryImportInvalidCSV, col)
+
+	rows := make([]inventoryImportRow, 0, 256)
+	var headerChecked bool
+	collectChunk := func(_ string, streamHeaders []string, chunk []parser.ParsedRow) error {
+		index := mapInventoryImportHeader(streamHeaders)
+		for _, col := range []string{"product_id", "warehouse_id", "quantity_on_hand"} {
+			if _, ok := index[col]; !ok {
+				return fmt.Errorf("%w: missing column %s", errInventoryImportInvalidCSV, col)
+			}
 		}
+		headerChecked = true
+		for _, pr := range chunk {
+			row, rowErr := parseInventoryImportParsedRow(pr.Fields, streamHeaders, index)
+			if rowErr != nil {
+				return rowErr
+			}
+			if row.ProductID == "" && row.WarehouseID == "" {
+				continue
+			}
+			rows = append(rows, row)
+		}
+		return nil
 	}
-	rows := make([]inventoryImportRow, 0)
-	for {
-		record, err := reader.Read()
-		if errors.Is(err, io.EOF) {
-			break
+
+	baseStream := strings.TrimSuffix(filepath.Base(strings.TrimSpace(fileName)), filepath.Ext(strings.TrimSpace(fileName)))
+	var streams []parser.ParsedStream
+	switch sniff.Format {
+	case parser.FormatXLSX:
+		streams, err = parser.StreamXLSX(body, collectChunk)
+	case parser.FormatXLS:
+		streams, err = parser.StreamXLS(body, collectChunk)
+	case parser.FormatCSV, parser.FormatTSV:
+		var st parser.ParsedStream
+		st, err = parser.StreamDelimited(baseStream, body, "", collectChunk)
+		if err == nil {
+			streams = []parser.ParsedStream{st}
 		}
-		if err != nil {
-			return nil, fmt.Errorf("%w: %v", errInventoryImportInvalidCSV, err)
-		}
-		row, err := parseInventoryImportRecord(record, index)
-		if err != nil {
+	case parser.FormatCommerceML:
+		streams, err = parser.StreamCommerceML(body, collectChunk)
+	case parser.FormatJSON:
+		streams, err = parser.StreamJSON(baseStream, body, collectChunk)
+	default:
+		return nil, fmt.Errorf("%w: unsupported format %s", parser.ErrFileFormatMismatch, sniff.Format)
+	}
+	if err != nil {
+		if errors.Is(err, parser.ErrPasswordProtectedWorkbook) ||
+			errors.Is(err, parser.ErrFileFormatMismatch) ||
+			errors.Is(err, parser.ErrMalformedArtifact) ||
+			errors.Is(err, errInventoryImportInvalidCSV) {
 			return nil, err
 		}
-		if row.ProductID == "" && row.WarehouseID == "" {
-			continue
+		return nil, fmt.Errorf("%w: %v", errInventoryImportInvalidCSV, err)
+	}
+	if !headerChecked && len(streams) > 0 {
+		index := mapInventoryImportHeader(streams[0].Headers)
+		for _, col := range []string{"product_id", "warehouse_id", "quantity_on_hand"} {
+			if _, ok := index[col]; !ok {
+				return nil, fmt.Errorf("%w: missing column %s", errInventoryImportInvalidCSV, col)
+			}
 		}
-		rows = append(rows, row)
 	}
 	return rows, nil
+}
+
+func parseInventoryImportParsedRow(fields map[string]any, headers []string, index map[string]int) (inventoryImportRow, error) {
+	read := func(key string) string {
+		pos, ok := index[key]
+		if !ok || pos < 0 || pos >= len(headers) {
+			return ""
+		}
+		val, exists := fields[headers[pos]]
+		if !exists || val == nil {
+			return ""
+		}
+		return strings.TrimSpace(fmt.Sprint(val))
+	}
+	productID := read("product_id")
+	warehouseID := read("warehouse_id")
+	if productID == "" || warehouseID == "" {
+		return inventoryImportRow{}, fmt.Errorf("%w: product_id and warehouse_id required", errInventoryImportInvalidCSV)
+	}
+	qtyRaw := strings.ReplaceAll(read("quantity_on_hand"), ",", "")
+	qty, err := strconv.ParseInt(qtyRaw, 10, 64)
+	if err != nil || qty < 0 {
+		return inventoryImportRow{}, fmt.Errorf("%w: invalid quantity_on_hand", errInventoryImportInvalidCSV)
+	}
+	threshold := int64(0)
+	if raw := strings.ReplaceAll(read("reorder_threshold"), ",", ""); raw != "" {
+		threshold, err = strconv.ParseInt(raw, 10, 64)
+		if err != nil || threshold < 0 {
+			return inventoryImportRow{}, fmt.Errorf("%w: invalid reorder_threshold", errInventoryImportInvalidCSV)
+		}
+	}
+	return inventoryImportRow{
+		ProductID:        productID,
+		WarehouseID:      warehouseID,
+		QuantityOnHand:   qty,
+		ReorderThreshold: threshold,
+	}, nil
+}
+
+func (s *Service) persistInventoryImportStagingChunked(
+	ctx context.Context,
+	supplierID string,
+	entries []inventoryImportStagingEntry,
+	applied, skipped int,
+) (string, error) {
+	const stageBatchSize = 2500
+	if len(entries) <= stageBatchSize {
+		return s.persistInventoryImportStaging(ctx, supplierID, entries, applied, skipped)
+	}
+	if s.portalSpanner == nil {
+		return "", nil
+	}
+	sessionID := uuid.NewString()
+	summaryJSON, err := json.Marshal(inventoryImportStagingSummary{
+		Applied: applied,
+		Skipped: skipped,
+	})
+	if err != nil {
+		return "", fmt.Errorf("marshal import staging summary: %w", err)
+	}
+	if _, err := s.portalSpanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return txn.BufferWrite([]*spanner.Mutation{
+			spanner.InsertOrUpdate(
+				"SupplierImportSessions",
+				[]string{"supplier_id", "session_id", "status", "file_name", "total_rows", "error_summary", "created_at", "updated_at"},
+				[]any{
+					supplierID, sessionID, "APPLIED", inventoryImportStagingFileName, int64(len(entries)),
+					spanner.NullJSON{Value: json.RawMessage(summaryJSON), Valid: true},
+					spanner.CommitTimestamp, spanner.CommitTimestamp,
+				},
+			),
+		})
+	}); err != nil {
+		return "", fmt.Errorf("persist inventory import session header: %w", err)
+	}
+
+	for start := 0; start < len(entries); start += stageBatchSize {
+		end := start + stageBatchSize
+		if end > len(entries) {
+			end = len(entries)
+		}
+		batch := entries[start:end]
+		if _, err := s.portalSpanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+			mutations := make([]*spanner.Mutation, 0, len(batch))
+			for _, entry := range batch {
+				rawJSON, rErr := inventoryImportToNullJSON(entry.RawData)
+				if rErr != nil {
+					return fmt.Errorf("raw_data row %d: %w", entry.RowIndex, rErr)
+				}
+				cleanedJSON, cErr := inventoryImportToNullJSON(entry.CleanedData)
+				if cErr != nil {
+					return fmt.Errorf("cleaned_data row %d: %w", entry.RowIndex, cErr)
+				}
+				mutations = append(mutations, spanner.InsertOrUpdate(
+					"SupplierImportStagedRows",
+					[]string{
+						"supplier_id", "session_id", "row_index", "raw_data", "cleaned_data",
+						"validation_errors", "is_new_product", "created_at", "updated_at",
+					},
+					[]any{
+						supplierID, sessionID, entry.RowIndex, rawJSON, cleanedJSON,
+						entry.ValidationErrors, false, spanner.CommitTimestamp, spanner.CommitTimestamp,
+					},
+				))
+			}
+			return txn.BufferWrite(mutations)
+		}); err != nil {
+			return "", fmt.Errorf("persist inventory import staged rows batch: %w", err)
+		}
+	}
+	return sessionID, nil
 }
 
 func mapInventoryImportHeader(header []string) map[string]int {
@@ -266,36 +433,4 @@ func mapInventoryImportHeader(header []string) map[string]int {
 		}
 	}
 	return index
-}
-
-func parseInventoryImportRecord(record []string, index map[string]int) (inventoryImportRow, error) {
-	read := func(key string) string {
-		pos, ok := index[key]
-		if !ok || pos >= len(record) {
-			return ""
-		}
-		return strings.TrimSpace(record[pos])
-	}
-	productID := read("product_id")
-	warehouseID := read("warehouse_id")
-	if productID == "" || warehouseID == "" {
-		return inventoryImportRow{}, fmt.Errorf("%w: product_id and warehouse_id required", errInventoryImportInvalidCSV)
-	}
-	qty, err := strconv.ParseInt(read("quantity_on_hand"), 10, 64)
-	if err != nil || qty < 0 {
-		return inventoryImportRow{}, fmt.Errorf("%w: invalid quantity_on_hand", errInventoryImportInvalidCSV)
-	}
-	threshold := int64(0)
-	if raw := read("reorder_threshold"); raw != "" {
-		threshold, err = strconv.ParseInt(raw, 10, 64)
-		if err != nil || threshold < 0 {
-			return inventoryImportRow{}, fmt.Errorf("%w: invalid reorder_threshold", errInventoryImportInvalidCSV)
-		}
-	}
-	return inventoryImportRow{
-		ProductID:        productID,
-		WarehouseID:      warehouseID,
-		QuantityOnHand:   qty,
-		ReorderThreshold: threshold,
-	}, nil
 }

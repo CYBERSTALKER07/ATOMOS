@@ -5,8 +5,8 @@
 #   (b) duplicate idempotency key never double-records (unique index)
 #   (c) empty Global Pay credentials produce hard errors (unit)
 #   (d) shop-closed credit debt is always recorded
-# plus repo hygiene gates (gitleaks, TODO:Inject, mock control tower,
-# Kafka HA contracts, tracked-secret/tfstate hygiene).
+# plus repo hygiene gates (gitleaks, TODO:Inject, immutable ledger lint,
+# mock control tower, Kafka HA contracts, tracked-secret/tfstate hygiene).
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
@@ -37,6 +37,7 @@ echo "[3/7] Money-path gate tests (order + payment) ..."
 
 echo "[4/7] Hygiene greps ..."
 bash scripts/ci_fail_todo_inject.sh
+bash scripts/ci_immutable_ledger_gate.sh
 bash scripts/ci_no_mock_control_tower.sh
 
 echo "[5/7] Secrets scan ..."

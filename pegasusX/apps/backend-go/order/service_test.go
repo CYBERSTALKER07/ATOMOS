@@ -44,7 +44,8 @@ type testRepo struct {
 	createConditionErr  error
 	listConditionErr    error
 	// fiscalAttempts mirrors OrderFiscalReceipts for worker idempotency tests.
-	fiscalAttempts map[string]FiscalReceiptRow
+	fiscalAttempts   map[string]FiscalReceiptRow
+	exceptionTickets []ExceptionTicket
 }
 
 func (r *testRepo) CreateOrder(ctx context.Context, o *Order, emit func(outbox.TxnBuffer) error, _ StockReservationOpts) error {
@@ -104,6 +105,9 @@ func (r *testRepo) UpdateOrder(ctx context.Context, o Order, proofs []DeliveryPr
 	if o.FiscalReceiptUpdate != nil {
 		u := *o.FiscalReceiptUpdate
 		r.fiscalAttempts[u.OrderID+":"+u.AttemptID] = u
+	}
+	if o.PendingExceptionTicket != nil {
+		r.exceptionTickets = append(r.exceptionTickets, *o.PendingExceptionTicket)
 	}
 	if emit != nil {
 		buf := &testTxnBuffer{}
@@ -1167,6 +1171,16 @@ func (r *testRepo) UpdateOrderWithTxn(_ context.Context, o Order, proofs []Deliv
 	r.captured = o
 	r.order = o // Update the mocked return value so subsequent GetOrder calls see the new state
 	r.lastProofs = append([]DeliveryProofArtifact(nil), proofs...)
+	if r.fiscalAttempts == nil {
+		r.fiscalAttempts = make(map[string]FiscalReceiptRow)
+	}
+	if o.FiscalReceiptUpdate != nil {
+		u := *o.FiscalReceiptUpdate
+		r.fiscalAttempts[u.OrderID+":"+u.AttemptID] = u
+	}
+	if o.PendingExceptionTicket != nil {
+		r.exceptionTickets = append(r.exceptionTickets, *o.PendingExceptionTicket)
+	}
 	if emit != nil {
 		buf := &testTxnBuffer{}
 		if err := emit(buf); err != nil {

@@ -2,12 +2,18 @@ package com.pegasusx.warehouse.ui.screens.transfers
 
 import androidx.compose.ui.res.stringResource
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -16,20 +22,26 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.dp
 import com.pegasus.barcode.DataWedgeBarcodeEffect
 import com.pegasus.barcode.EanBarcodeScannerPreview
 import com.pegasus.barcode.KeyboardWedgeBarcodeField
@@ -38,6 +50,7 @@ import com.pegasusx.warehouse.data.model.EmergencyTransferRequest
 import com.pegasusx.warehouse.data.model.ForceReceiveRequest
 import com.pegasusx.warehouse.data.model.PickTask
 import com.pegasusx.warehouse.data.model.PickWave
+import com.pegasusx.warehouse.data.model.StockLot
 import com.pegasusx.warehouse.data.model.StockLotPutawayRequest
 import com.pegasusx.warehouse.data.model.WarehouseBinCreateRequest
 import com.pegasusx.warehouse.data.remote.WarehouseOperationsRepository
@@ -65,10 +78,35 @@ fun TransferActionsScreen(
     var pickManifestId by remember { mutableStateOf("") }
     var pickScan by remember { mutableStateOf("") }
     var pickScannedQty by remember { mutableLongStateOf(0L) }
-    var activeWave by remember { mutableStateOf<PickWave?>(null) }
+    var cycleExpectedInput by remember { mutableStateOf("") }
+    var wmsState by remember { mutableStateOf(TransferWmsState()) }
+    val wmsController = remember(opsRepository) {
+        TransferActionsOperationsController(
+            opsRepository = opsRepository,
+            getStateOverride = { wmsState },
+            setStateOverride = { wmsState = it },
+        )
+    }
     var busy by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+
+    LaunchedEffect(wmsController) {
+        try {
+            wmsController.refreshBinsAndLots()
+            wmsController.refreshCycleCountsAndAdjustments()
+        } catch (e: Exception) {
+            snackbarHostState.showSnackbar(e.message ?: "Unable to refresh cycle counts")
+        }
+    }
+
+    LaunchedEffect(wmsState.activeWave?.manifestId) {
+        val mid = wmsState.activeWave?.manifestId.orEmpty()
+        val wave = wmsState.activeWave
+        if (mid.isNotEmpty() && (wave?.coldLotMigratedWithoutLiveBaseline == true || wave?.coldChainBaselineMissing == true || TransferWmsHelpers.coldWarningLots(wmsState.lots, wmsState.bins).isNotEmpty())) {
+            wmsController.refreshManifestTempReadiness(mid)
+        }
+    }
 
     WarehouseReconnectRecoveryEffect(
         realtimeSignals = realtimeSignals,
@@ -101,30 +139,60 @@ fun TransferActionsScreen(
     fun matchPending(code: String): PickTask? {
         val trimmed = code.trim()
         if (trimmed.isEmpty()) return null
-        return activeWave?.tasks?.firstOrNull { t ->
-            t.status == "PENDING" && (
+        return wmsState.activeWave?.tasks?.firstOrNull { t ->
+            (t.status == "PENDING" || t.status == "SHORT") && (
                 t.productId.equals(trimmed, ignoreCase = true) ||
                     t.lotId.equals(trimmed, ignoreCase = true)
                 )
         }
     }
 
-    fun confirmPick(task: PickTask, qty: Long) {
-        val wave = activeWave ?: return
+    fun confirmPickWithQty(task: PickTask, quantityPicked: Long) {
         busy = true
         scope.launch {
             try {
-                val res = opsRepository.confirmPickTask(wave.waveId, task.taskId, qty)
-                if (res.isSuccessful) {
-                    activeWave = res.body()
+                val res = wmsController.confirmPickExplicit(task, quantityPicked)
+                res.onSuccess { updated ->
                     pickScan = ""
                     pickScannedQty = 0L
-                    snackbarHostState.showSnackbar("Confirmed · ${activeWave?.status}")
-                } else {
-                    snackbarHostState.showSnackbar("Confirm failed (${res.code()})")
+                    snackbarHostState.showSnackbar("Confirmed · ${updated.status}")
+                }.onFailure { err ->
+                    snackbarHostState.showSnackbar(err.message ?: "Confirm failed")
                 }
-            } catch (e: Exception) {
-                snackbarHostState.showSnackbar(e.message ?: "Confirm failed")
+            } finally {
+                busy = false
+            }
+        }
+    }
+
+    fun confirmPickFromInput(task: PickTask) {
+        busy = true
+        scope.launch {
+            try {
+                val res = wmsController.confirmPickWithInput(task, wmsState.pickQtyText)
+                res.onSuccess { updated ->
+                    pickScan = ""
+                    pickScannedQty = 0L
+                    snackbarHostState.showSnackbar("Confirmed · ${updated.status}")
+                }.onFailure { err ->
+                    snackbarHostState.showSnackbar(err.message ?: "Confirm failed")
+                }
+            } finally {
+                busy = false
+            }
+        }
+    }
+
+    fun waiveActiveShorts() {
+        busy = true
+        scope.launch {
+            try {
+                val res = wmsController.waivePickShorts()
+                res.onSuccess { updated ->
+                    snackbarHostState.showSnackbar("Shorts waived · ${updated.status}")
+                }.onFailure { err ->
+                    snackbarHostState.showSnackbar(err.message ?: "Waive shorts failed")
+                }
             } finally {
                 busy = false
             }
@@ -141,8 +209,9 @@ fun TransferActionsScreen(
         val task = matchPending(trimmed) ?: return
         val next = pickScannedQty + 1L
         pickScannedQty = next
+        wmsController.updatePickQtyText(minOf(next, task.quantityRequested).toString())
         if (next >= task.quantityRequested) {
-            confirmPick(task, task.quantityRequested)
+            confirmPickWithQty(task, task.quantityRequested)
         } else {
             scope.launch {
                 snackbarHostState.showSnackbar("Scanned $next / ${task.quantityRequested}")
@@ -247,6 +316,83 @@ fun TransferActionsScreen(
             ) { Text("Receive transfer") }
 
             WarehouseSectionTitle("WMS putaway (lots)")
+            val coldAlerts: List<StockLot> = remember(wmsState.lots, wmsState.bins) {
+                val cw = TransferWmsHelpers.coldWarningLots(wmsState.lots, wmsState.bins)
+                cw.ifEmpty { TransferWmsHelpers.stagingPutawayLots(wmsState.lots, wmsState.bins) }
+            }
+            if (coldAlerts.isNotEmpty()) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(10.dp),
+                    color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.45f),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f)),
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Text(
+                            stringResource(R.string.mobile_warehouse_cold_lot_banner),
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                        )
+                        Text(
+                            "cold_lot_migrated_without_live_baseline",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                        )
+                        coldAlerts.take(5).forEach { lot ->
+                            OutlinedButton(
+                                onClick = {
+                                    putawayProduct = lot.productId
+                                    putawayQty = maxOf(1L, lot.quantityOnHand).toString()
+                                    putawayExpiry = lot.expiryDate.orEmpty()
+                                    TransferWmsHelpers.recommendedBinForLot(lot, wmsState.bins)?.let {
+                                        putawayLocation = it
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Column(modifier = Modifier.fillMaxWidth()) {
+                                    Text(
+                                        "${lot.productName ?: lot.productId} · ${lot.locationId} (${lot.quantityOnHand})",
+                                        style = MaterialTheme.typography.labelMedium,
+                                    )
+                                    Text(
+                                        buildString {
+                                            append(
+                                                stringResource(
+                                                    R.string.mobile_warehouse_cold_lot_lot_label,
+                                                    lot.lotCode ?: lot.lotId.take(8),
+                                                ),
+                                            )
+                                            lot.expiryDate?.takeIf { it.isNotBlank() }?.let { exp ->
+                                                append(" · ")
+                                                append(stringResource(R.string.mobile_warehouse_cold_lot_expiry_label, exp))
+                                            }
+                                            TransferWmsHelpers.requiredColdZone(lot)?.let { zone ->
+                                                append(" · ")
+                                                append(zone)
+                                            }
+                                        },
+                                        style = MaterialTheme.typography.labelSmall,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            val mismatchZone = remember(putawayProduct, putawayLocation, wmsState.lots, wmsState.bins) {
+                TransferWmsHelpers.putawayZoneMismatch(putawayProduct, putawayLocation, wmsState.lots, wmsState.bins)
+            }
+            if (mismatchZone != null) {
+                Text(
+                    stringResource(R.string.mobile_warehouse_cold_lot_zone_mismatch, mismatchZone),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
             OutlinedTextField(
                 value = putawayProduct,
                 onValueChange = { putawayProduct = it },
@@ -329,24 +475,16 @@ fun TransferActionsScreen(
             )
             Button(
                 onClick = {
-                    val mid = pickManifestId.trim()
-                    if (mid.isEmpty()) {
-                        scope.launch { snackbarHostState.showSnackbar("Manifest ID required") }
-                        return@Button
-                    }
                     busy = true
                     scope.launch {
                         try {
-                            val res = opsRepository.createPickWave(mid)
-                            if (res.isSuccessful) {
-                                activeWave = res.body()
+                            val res = wmsController.createPickWave(pickManifestId)
+                            res.onSuccess { created ->
                                 pickScannedQty = 0L
-                                snackbarHostState.showSnackbar("Pick wave ${activeWave?.status ?: "created"}")
-                            } else {
-                                snackbarHostState.showSnackbar("Create wave failed (${res.code()})")
+                                snackbarHostState.showSnackbar("Pick wave ${created.status.ifEmpty { "created" }}")
+                            }.onFailure { err ->
+                                snackbarHostState.showSnackbar(err.message ?: "Create wave failed")
                             }
-                        } catch (e: Exception) {
-                            snackbarHostState.showSnackbar(e.message ?: "Create wave failed")
                         } finally {
                             busy = false
                         }
@@ -360,18 +498,13 @@ fun TransferActionsScreen(
                     busy = true
                     scope.launch {
                         try {
-                            val res = opsRepository.listPickWaves(pickManifestId.trim().ifEmpty { null })
-                            val wave = res.body()?.waves?.firstOrNull()
-                            if (res.isSuccessful && wave != null) {
-                                val detail = opsRepository.getPickWave(wave.waveId)
-                                activeWave = detail.body() ?: wave
+                            val res = wmsController.loadPickWaves(pickManifestId)
+                            res.onSuccess { loaded ->
                                 pickScannedQty = 0L
-                                snackbarHostState.showSnackbar("Loaded ${activeWave?.tasks?.size ?: 0} tasks")
-                            } else {
-                                snackbarHostState.showSnackbar("No pick waves")
+                                snackbarHostState.showSnackbar("Loaded ${loaded.tasks.size} tasks")
+                            }.onFailure { err ->
+                                snackbarHostState.showSnackbar(err.message ?: "List failed")
                             }
-                        } catch (e: Exception) {
-                            snackbarHostState.showSnackbar(e.message ?: "List failed")
                         } finally {
                             busy = false
                         }
@@ -398,23 +531,89 @@ fun TransferActionsScreen(
                 enabled = !busy,
                 singleLine = true,
             )
-            val pending: PickTask? = activeWave?.tasks?.firstOrNull { t ->
-                t.status == "PENDING" && (
+            val activeWave = wmsState.activeWave
+            val editableTask: PickTask? = activeWave?.tasks?.firstOrNull { t ->
+                (t.status == "PENDING" || t.status == "SHORT") && (
                     pickScan.isBlank() ||
                         t.productId.equals(pickScan.trim(), ignoreCase = true) ||
                         t.lotId.equals(pickScan.trim(), ignoreCase = true)
                     )
             }
             if (activeWave != null) {
-                Text(
-                    stringResource(
-                        R.string.mobile_warehouse_ui_wave_take_status,
-                        activeWave?.waveId.orEmpty().take(8),
-                        activeWave?.status.orEmpty(),
-                    ),
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-                pending?.let { task ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        stringResource(
+                            R.string.mobile_warehouse_ui_wave_take_status,
+                            activeWave.waveId.take(8),
+                            activeWave.status,
+                        ),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    if (TransferWmsHelpers.hasShortTasks(activeWave)) {
+                        OutlinedButton(
+                            onClick = { waiveActiveShorts() },
+                            enabled = !busy,
+                        ) {
+                            Text("Waive shorts")
+                        }
+                    }
+                }
+                if (TransferWmsHelpers.isWavePreSealColdWarning(wmsState)) {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.4f),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f)),
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(10.dp),
+                            verticalArrangement = Arrangement.spacedBy(2.dp),
+                        ) {
+                            Text(
+                                stringResource(R.string.mobile_warehouse_cold_lot_banner),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                            )
+                            Text(
+                                "cold_lot_migrated_without_live_baseline · Pre-seal cold-chain check",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                            )
+                        }
+                    }
+                }
+                activeWave.tasks.forEach { task ->
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(8.dp),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    "${task.productId} · ${task.locationId.ifEmpty { "—" }}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
+                                Text(
+                                    "Picked ${task.quantityPicked}/${task.quantityRequested}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                )
+                            }
+                            PickStatusChip(status = task.status)
+                        }
+                    }
+                }
+                editableTask?.let { task ->
                     Text(
                         stringResource(
                             R.string.mobile_warehouse_ui_next_productid_locationid_qty_quantityrequested,
@@ -429,18 +628,30 @@ fun TransferActionsScreen(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.primary,
                     )
-                    Button(
-                        onClick = {
-                            val qty = if (pickScannedQty > 0L) {
-                                minOf(pickScannedQty, task.quantityRequested)
-                            } else {
-                                task.quantityRequested
-                            }
-                            confirmPick(task, qty)
-                        },
-                        enabled = !busy,
+                    OutlinedTextField(
+                        value = wmsState.pickQtyText,
+                        onValueChange = { wmsController.updatePickQtyText(it) },
+                        label = { Text("Picked quantity (0 = SHORT)") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.fillMaxWidth(),
-                    ) { Text("Confirm pick") }
+                        enabled = !busy,
+                        singleLine = true,
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Button(
+                            onClick = { confirmPickFromInput(task) },
+                            enabled = !busy,
+                            modifier = Modifier.weight(1f),
+                        ) { Text("Confirm pick") }
+                        OutlinedButton(
+                            onClick = { confirmPickWithQty(task, 0L) },
+                            enabled = !busy,
+                            modifier = Modifier.weight(1f),
+                        ) { Text("Report short (0)") }
+                    }
                 }
             }
 
@@ -461,60 +672,252 @@ fun TransferActionsScreen(
                 enabled = !busy,
                 singleLine = true,
             )
-            Button(
-                onClick = {
-                    val lid = putawayLocation.trim()
-                    val pid = putawayProduct.trim()
-                    if (lid.isEmpty() || pid.isEmpty()) {
-                        scope.launch { snackbarHostState.showSnackbar("Location + product required") }
-                        return@Button
-                    }
-                    busy = true
-                    scope.launch {
-                        try {
-                            val res = opsRepository.createCycleCount(lid, pid, null)
-                            if (res.isSuccessful) {
-                                snackbarHostState.showSnackbar("Count ${res.body()?.countId?.take(8)}…")
-                            } else {
-                                snackbarHostState.showSnackbar("Create count failed (${res.code()})")
-                            }
-                        } catch (e: Exception) {
-                            snackbarHostState.showSnackbar(e.message ?: "Create count failed")
-                        } finally {
-                            busy = false
-                        }
-                    }
-                },
-                enabled = !busy,
+            OutlinedTextField(
+                value = cycleExpectedInput,
+                onValueChange = { cycleExpectedInput = it },
+                label = { Text("Expected qty (optional)") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.fillMaxWidth(),
-            ) { Text("Create cycle count") }
-            Button(
-                onClick = {
-                    busy = true
-                    scope.launch {
-                        try {
-                            val res = opsRepository.listCycleCounts()
-                            val open = res.body()?.counts?.firstOrNull { it.status == "OPEN" }
-                            if (open != null) {
-                                val sub = opsRepository.submitCycleCount(open.countId, open.expectedQty)
-                                if (sub.isSuccessful) {
-                                    snackbarHostState.showSnackbar("Submitted ${sub.body()?.status}")
-                                } else {
-                                    snackbarHostState.showSnackbar("Submit failed (${sub.code()})")
+                enabled = !busy,
+                singleLine = true,
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Button(
+                    onClick = {
+                        busy = true
+                        scope.launch {
+                            try {
+                                val res = wmsController.createCycleCount(
+                                    locationId = putawayLocation,
+                                    productId = putawayProduct,
+                                    expectedQtyText = cycleExpectedInput,
+                                )
+                                res.onSuccess { created ->
+                                    cycleExpectedInput = ""
+                                    snackbarHostState.showSnackbar("Count ${created.countId.take(8)}…")
+                                }.onFailure { err ->
+                                    snackbarHostState.showSnackbar(err.message ?: "Create count failed")
                                 }
-                            } else {
-                                snackbarHostState.showSnackbar("No OPEN counts")
+                            } finally {
+                                busy = false
                             }
-                        } catch (e: Exception) {
-                            snackbarHostState.showSnackbar(e.message ?: "List/submit failed")
-                        } finally {
-                            busy = false
+                        }
+                    },
+                    enabled = !busy,
+                    modifier = Modifier.weight(1f),
+                ) { Text("Create cycle count") }
+                OutlinedButton(
+                    onClick = {
+                        busy = true
+                        scope.launch {
+                            try {
+                                val res = wmsController.refreshCycleCountsAndAdjustments()
+                                res.onSuccess {
+                                    snackbarHostState.showSnackbar("Refreshed ${wmsState.cycleCounts.size} counts")
+                                }.onFailure { err ->
+                                    snackbarHostState.showSnackbar(err.message ?: "Refresh failed")
+                                }
+                            } finally {
+                                busy = false
+                            }
+                        }
+                    },
+                    enabled = !busy,
+                    modifier = Modifier.weight(1f),
+                ) { Text("Refresh counts") }
+            }
+
+            wmsState.cycleCounts.forEach { count ->
+                val variance = TransferWmsHelpers.computeVariance(count)
+                val isSelected = count.countId == TransferWmsHelpers.selectedOpenCount(wmsState)?.countId
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp),
+                    border = BorderStroke(
+                        width = if (isSelected) 2.dp else 1.dp,
+                        color = if (isSelected) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.outlineVariant
+                        },
+                    ),
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                "${count.locationId} · ${count.productId} (${count.status})",
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                            val qtySummary = if (count.countedQty != null) {
+                                val deltaLabel = variance?.let { " · Δ${TransferWmsHelpers.formatSignedDelta(it)}" }.orEmpty()
+                                "Counted ${count.countedQty}/${count.expectedQty}$deltaLabel"
+                            } else {
+                                "Expected ${count.expectedQty}"
+                            }
+                            Text(qtySummary, style = MaterialTheme.typography.labelSmall)
+                        }
+                        if (count.status == "OPEN") {
+                            Spacer(modifier = Modifier.width(8.dp))
+                            OutlinedButton(
+                                onClick = { wmsController.selectOpenCount(count) },
+                                enabled = !busy,
+                            ) { Text(if (isSelected) "Selected" else "Select") }
                         }
                     }
-                },
-                enabled = !busy,
-                modifier = Modifier.fillMaxWidth(),
-            ) { Text("Submit first OPEN count @ expected") }
+                }
+            }
+
+            val selectedOpen = TransferWmsHelpers.selectedOpenCount(wmsState)
+            if (selectedOpen != null) {
+                Text(
+                    "Submit count ${selectedOpen.countId.take(8)}… (${selectedOpen.productId} @ ${selectedOpen.locationId})",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                OutlinedTextField(
+                    value = wmsState.countedQtyText,
+                    onValueChange = { wmsController.updateCountedQtyText(it) },
+                    label = { Text("Actual counted qty (0 allowed)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !busy,
+                    singleLine = true,
+                )
+                OutlinedTextField(
+                    value = wmsState.cycleReasonCode,
+                    onValueChange = { wmsController.updateCycleReasonCode(it) },
+                    label = { Text("Reason code (optional)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !busy,
+                    singleLine = true,
+                )
+                Button(
+                    onClick = {
+                        busy = true
+                        scope.launch {
+                            try {
+                                val res = wmsController.submitCycleCount(
+                                    countId = selectedOpen.countId,
+                                    countedQtyText = wmsState.countedQtyText,
+                                    reasonCode = wmsState.cycleReasonCode,
+                                )
+                                res.onSuccess { submitted ->
+                                    snackbarHostState.showSnackbar("Submitted · ${submitted.status}")
+                                }.onFailure { err ->
+                                    snackbarHostState.showSnackbar(err.message ?: "Submit failed")
+                                }
+                            } finally {
+                                busy = false
+                            }
+                        }
+                    },
+                    enabled = !busy,
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text("Submit cycle count") }
+            }
+
+            if (wmsState.adjustments.isNotEmpty()) {
+                WarehouseSectionTitle("Inventory adjustments")
+                wmsState.adjustments.forEach { adj ->
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(8.dp),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            Text(
+                                "${adj.adjustmentId.take(8)}… · ${adj.productId} · Δ${TransferWmsHelpers.formatSignedDelta(adj.deltaQty)} · ${adj.status}",
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                            if (adj.status == "PENDING") {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    Button(
+                                        onClick = {
+                                            busy = true
+                                            scope.launch {
+                                                try {
+                                                    val res = wmsController.approveAdjustment(adj.adjustmentId)
+                                                    res.onSuccess {
+                                                        snackbarHostState.showSnackbar("Adjustment approved")
+                                                    }.onFailure { err ->
+                                                        snackbarHostState.showSnackbar(err.message ?: "Approve failed")
+                                                    }
+                                                } finally {
+                                                    busy = false
+                                                }
+                                            }
+                                        },
+                                        enabled = !busy,
+                                        modifier = Modifier.weight(1f),
+                                    ) { Text("Approve") }
+                                    OutlinedButton(
+                                        onClick = {
+                                            busy = true
+                                            scope.launch {
+                                                try {
+                                                    val res = wmsController.rejectAdjustment(adj.adjustmentId)
+                                                    res.onSuccess {
+                                                        snackbarHostState.showSnackbar("Adjustment rejected")
+                                                    }.onFailure { err ->
+                                                        snackbarHostState.showSnackbar(err.message ?: "Reject failed")
+                                                    }
+                                                } finally {
+                                                    busy = false
+                                                }
+                                            }
+                                        },
+                                        enabled = !busy,
+                                        modifier = Modifier.weight(1f),
+                                    ) { Text("Reject") }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
+    }
+}
+
+@Composable
+private fun PickStatusChip(status: String) {
+    val containerColor = when (status) {
+        "CONFIRMED" -> MaterialTheme.colorScheme.primaryContainer
+        "SHORT" -> MaterialTheme.colorScheme.errorContainer
+        "SHORT_WAIVED" -> MaterialTheme.colorScheme.secondaryContainer
+        else -> MaterialTheme.colorScheme.surfaceVariant
+    }
+    val contentColor = when (status) {
+        "CONFIRMED" -> MaterialTheme.colorScheme.onPrimaryContainer
+        "SHORT" -> MaterialTheme.colorScheme.onErrorContainer
+        "SHORT_WAIVED" -> MaterialTheme.colorScheme.onSecondaryContainer
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    Surface(
+        shape = RoundedCornerShape(6.dp),
+        color = containerColor,
+    ) {
+        Text(
+            text = status,
+            color = contentColor,
+            style = MaterialTheme.typography.labelSmall,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+        )
     }
 }

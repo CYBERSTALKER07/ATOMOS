@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { usePortalT } from "@/lib/i18n";
 import { useEffect, useState } from "react";
 import { supplierFetch } from "@/lib/auth";
@@ -155,9 +156,9 @@ export default function PortalInventoryPage() {
         }
       />
       <p className="mb-4 md-typescale-body-medium">
-        <a href="/inventory/import" className="text-[var(--color-md-primary)] underline">
-          Import CSV
-        </a>
+        <Link href="/migrations?domain=stock" className="text-[var(--color-md-primary)] underline">
+          {t("supplier_portal.migrations.title")}
+        </Link>
       </p>
       <InventoryTable
         items={pagination.pageItems}

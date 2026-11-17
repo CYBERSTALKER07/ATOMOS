@@ -17,3 +17,5 @@ export * from "./admin";
 export * from "./order-lifecycle-graph";
 export * from "./order-lifecycle-facade";
 export * from "./foundry";
+export * from "./ontology";
+export * from "./migration";

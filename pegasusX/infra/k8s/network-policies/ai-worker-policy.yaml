@@ -45,22 +45,66 @@ spec:
       ports:
         - protocol: TCP
           port: 8082
-    # 3. Allow Redis in cluster or GCP Memorystore (6379 plaintext / 6378 TLS)
-    - ports:
+    # 3. Allow Redis in cluster or GCP Memorystore private RFC1918 VPC CIDRs (6379 plaintext / 6378 TLS)
+    - to:
+        - ipBlock:
+            cidr: 10.0.0.0/8
+        - ipBlock:
+            cidr: 172.16.0.0/12
+        - ipBlock:
+            cidr: 192.168.0.0/16
+      ports:
         - protocol: TCP
           port: 6379
         - protocol: TCP
           port: 6378
-    # 4. Allow Kafka in cluster or external
-    - ports:
+    # 4. Allow Kafka in cluster or Managed Kafka private VPC CIDRs
+    - to:
+        - podSelector:
+            matchLabels:
+              app: kafka
+        - ipBlock:
+            cidr: 10.0.0.0/8
+        - ipBlock:
+            cidr: 172.16.0.0/12
+        - ipBlock:
+            cidr: 192.168.0.0/16
+      ports:
         - protocol: TCP
           port: 9092
         - protocol: TCP
           port: 29092
-    # 5. Allow Google Cloud APIs (Cloud Spanner, GCS) via HTTPS
-    - ports:
+    # 5. Allow Google Cloud APIs (Cloud Spanner, GCS) via HTTPS without exposing metadata/RFC1918 targets
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 169.254.0.0/16
+              - 127.0.0.0/8
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+      ports:
         - protocol: TCP
           port: 443
+    # 6. Allow Private Google Access VIPs (restricted/private.googleapis.com) or internal gRPC
+    - to:
+        - ipBlock:
+            cidr: 199.36.153.4/30
+        - ipBlock:
+            cidr: 199.36.153.8/30
+      ports:
+        - protocol: TCP
+          port: 443
+    # 7. Allow internal cluster / emulator gRPC ports strictly on private VPC / pod CIDRs
+    - to:
+        - ipBlock:
+            cidr: 10.0.0.0/8
+        - ipBlock:
+            cidr: 172.16.0.0/12
+        - ipBlock:
+            cidr: 192.168.0.0/16
+      ports:
         - protocol: TCP
           port: 9010
         - protocol: TCP

@@ -35,7 +35,10 @@ export default function SectionsPage() {
 
   const load = useCallback(async () => {
     try {
-      const res = await apiFetch("/v1/retailer/sections");
+      const [res, un] = await Promise.all([
+        apiFetch("/v1/retailer/sections"),
+        apiFetch("/v1/retailer/sections/unassigned-skus"),
+      ]);
       if (!res.ok) {
         setSectionsError("load_sections_failed");
       } else {
@@ -43,7 +46,6 @@ export default function SectionsPage() {
         setItems(json.items ?? []);
         setSectionsError(null);
       }
-      const un = await apiFetch("/v1/retailer/sections/unassigned-skus");
       if (!un.ok) {
         setUnassignedError("unassigned_skus_failed");
       } else {

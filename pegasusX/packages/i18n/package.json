@@ -5,11 +5,16 @@
   "type": "module",
   "main": "./index.ts",
   "types": "./index.ts",
+  "scripts": {
+    "validate": "node ./scripts/validate.mjs",
+    "test": "../../packages/desktop-bridge/node_modules/.bin/vitest run"
+  },
   "exports": {
     ".": "./index.ts",
     "./catalog": "./catalog.ts",
     "./locales": "./locales.ts",
     "./browser": "./browser.ts",
-    "./messages": "./messages.ts"
+    "./messages": "./messages.ts",
+    "./money": "./money.ts"
   }
 }

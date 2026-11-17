@@ -318,3 +318,62 @@ variable "enable_cmek_iam_binding" {
   type        = bool
   default     = false
 }
+
+# WORM Audit & Period-Close Snapshots
+variable "worm_audit_bucket_name" {
+  description = "Optional GCS bucket name for immutable WORM audit hash-chain anchors and period-close snapshots. Defaults to <project_id>-<cell_id>-worm-audit."
+  type        = string
+  default     = ""
+}
+
+variable "worm_retention_period_seconds" {
+  description = "Retention duration in seconds for the WORM audit bucket (default 7 years = 220752000s)."
+  type        = number
+  default     = 220752000
+}
+
+variable "worm_retention_locked" {
+  description = "Whether to irreversibly lock the WORM audit bucket retention policy."
+  type        = bool
+  default     = false
+}
+
+# Analytics & Vertex AI Platform
+variable "bigquery_dataset_prefix" {
+  description = "Optional prefix for raw, curated, and features BigQuery dataset IDs."
+  type        = string
+  default     = ""
+}
+
+variable "enable_analytics_cmek" {
+  description = "Whether to attach CMEK KMS keys to BigQuery datasets/tables and Vertex AI staging bucket."
+  type        = bool
+  default     = false
+}
+
+variable "enable_analytics_iam_bindings" {
+  description = "Whether to provision BigQuery, Vertex AI, and row-access IAM bindings for workload service accounts."
+  type        = bool
+  default     = true
+}
+
+variable "vertex_staging_bucket_name" {
+  description = "Optional GCS bucket name for Vertex AI pipeline staging. Defaults to <project_id>-<cell_id>-vertex-staging."
+  type        = string
+  default     = ""
+}
+
+variable "bigquery_authorized_reader_email" {
+  description = "Optional BI/analyst group or user email granted authorized BigQuery tenant view access."
+  type        = string
+  default     = ""
+}
+
+variable "tenant_row_access_policies" {
+  description = "Optional per-tenant BigQuery row-access policies keyed by policy name."
+  type = map(object({
+    tenant_id = string
+    grantees  = list(string)
+  }))
+  default = {}
+}

@@ -46,13 +46,13 @@ struct FileClaimView: View {
                     }
                 }
 
-                Section("Claim type") {
-                    Picker("Type", selection: $vm.claimType) {
+                Section("mobile_retailer.claims.claim_type") {
+                    Picker("mobile_retailer.claims.type_label", selection: $vm.claimType) {
                         ForEach(vm.claimTypes, id: \.self) { Text($0).tag($0) }
                     }
                 }
 
-                Section("Items to claim") {
+                Section("mobile_retailer.claims.items_to_claim") {
                     ForEach($vm.lineDrafts) { $line in
                         Stepper(value: $line.claimQuantity, in: 0...max(line.orderedQuantity, 0)) {
                             VStack(alignment: .leading, spacing: 2) {
@@ -69,11 +69,11 @@ struct FileClaimView: View {
                     }
                 }
 
-                Section("Photo proof") {
+                Section("mobile_retailer.claims.photo_proof") {
                     let hasPreviewImage = vm.previewImage != nil
                     PhotosPicker(selection: $vm.pickedItem, matching: .images, photoLibrary: .shared()) {
                         Label(
-                            hasPreviewImage ? "Change photo" : "Take or choose photo",
+                            hasPreviewImage ? "mobile_retailer.claims.change_photo" : "mobile_retailer.claims.take_or_choose_photo",
                             systemImage: "camera.fill"
                         )
                         .pegasusMinimumHitTarget()
@@ -82,7 +82,7 @@ struct FileClaimView: View {
                         Task { await vm.loadAndUpload(item: newItem) }
                     }
                     if vm.isUploadingPhoto {
-                        ProgressView("Uploading…")
+                        ProgressView("mobile_retailer.claims.uploading")
                     }
                     if let previewImage = vm.previewImage {
                         Image(uiImage: previewImage)
@@ -102,7 +102,7 @@ struct FileClaimView: View {
                         .foregroundStyle(.secondary)
                 }
 
-                Section("Details") {
+                Section("mobile_retailer.claims.details") {
                     TextField("mobile_retailer.ui.what_happened", text: $vm.descriptionText, axis: .vertical)
                         .lineLimit(3...6)
                 }
@@ -123,17 +123,18 @@ struct FileClaimView: View {
                 }
 
                 if !vm.existing.isEmpty {
-                    Section("Previous claims") {
+                    Section("mobile_retailer.claims.previous_claims") {
                         ForEach(vm.existing) { c in
+                            let formattedAmount = RetailerMoney.formatWholeCurrency(c.amountMinor ?? 0, currency: c.currency)
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(L10n.format("mobile_retailer.ui.claimtype_status", "\(c.claimType)", "\(c.status)"))
                                     .font(.subheadline.weight(.semibold))
-                                Text("\(c.amountMinor ?? 0) \(displayPackCurrency(c.currency)) · \(c.claimId)")
+                                Text("\(formattedAmount) · \(c.claimId)")
                                     .font(.caption2)
                                     .foregroundStyle(.secondary)
                             }
                             .accessibilityElement(children: .combine)
-                            .accessibilityLabel("Claim \(c.claimType), status \(c.status), \(c.amountMinor ?? 0) \(displayPackCurrency(c.currency))")
+                            .accessibilityLabel("Claim \(c.claimType), status \(c.status), \(formattedAmount)")
                         }
                     }
                 }
@@ -147,7 +148,7 @@ struct FileClaimView: View {
                         .pegasusMinimumHitTarget()
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("warehouse_portal.cycle_counts.text.submit") {
+                    Button("mobile_retailer.claims.submit") {
                         Task { await vm.submit() }
                     }
                     .disabled(!vm.canSubmit)

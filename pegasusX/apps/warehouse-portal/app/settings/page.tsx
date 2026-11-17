@@ -6,7 +6,13 @@ import { apiFetch } from '@/lib/auth';
 import PageTransition from '@/components/PageTransition';
 import { PageChrome } from '@/components/PageChrome';
 import { useToast } from '@/components/Toast';
-import { LocationPicker, resolveLocationValue, type LocationValue } from '@/components/LocationPicker';
+import dynamic from 'next/dynamic';
+import { resolveLocationValue, type LocationValue } from '@/components/LocationPicker';
+
+const LocationPicker = dynamic(
+  () => import('@/components/LocationPicker').then((m) => m.LocationPicker),
+  { ssr: false },
+);
 import { hasValidCoordinates } from '@/lib/geocode';
 import { PortalField, PortalInput, PortalSection } from '@/components/portal';
 import type { DeliveryFeeRules, WarehouseOpsLocationResponse, WarehouseOpsSettings, WarehouseOpsSettingsPatchRequest } from '@pegasusx/types';

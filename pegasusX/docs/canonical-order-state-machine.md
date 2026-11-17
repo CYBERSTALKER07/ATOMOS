@@ -136,24 +136,25 @@ flowchart TD
 
 | # | Current State (`from`) | Permitted Next States (`to`) | Trigger / Actor | Invariant / Guardrail Enforcement |
 |:---:|:---|:---|:---|:---|
-| **1** | `SCHEDULED` | `AUTO_ACCEPTED`, `PENDING`, `CANCELLED`, `CANCEL_REQUESTED` | AI Midnight Guard / Scheduler / Retailer | Preorders cannot be picked directly (`LOADED` blocked). Must promote to `PENDING` at T-1 window. |
-| **2** | `AUTO_ACCEPTED` | `PENDING`, `CANCELLED`, `CANCEL_REQUESTED` | Midnight Job / Retailer | Confirmed preorder awaiting warehouse morning wave dispatch. |
+| **1** | `SCHEDULED` | `AUTO_ACCEPTED`, `PENDING`, `DELAYED`, `CANCELLED`, `CANCEL_REQUESTED` | AI Midnight Guard / Scheduler / Retailer | Preorders cannot be picked directly (`LOADED` blocked). Must promote to `PENDING` at T-1 window. |
+| **2** | `AUTO_ACCEPTED` | `PENDING`, `DELAYED`, `CANCELLED`, `CANCEL_REQUESTED` | Midnight Job / Retailer | Confirmed preorder awaiting warehouse morning wave dispatch. |
 | **3** | `BACKORDERED` | `PENDING`, `SCHEDULED`, `CANCELLED` | Inventory Replenishment Worker | Reactivates into active operational queue once stock is secured or rescheduled. |
-| **4** | `PENDING` | `LOADED`, `DELAYED`, `CANCELLED` | Warehouse Packer / WMS | Root operational queue state. Delay occurs if picking window slips. |
+| **4** | `PENDING` | `LOADED`, `DELAYED`, `CANCELLED`, `CANCEL_REQUESTED` | Warehouse Packer / WMS | Root operational queue state. Delay occurs if picking window slips. |
 | **5** | `DELAYED` | `PENDING` | Dispatch Recovery Engine | Slipped orders can only recover back to `PENDING` to re-enter dispatch staging. |
 | **6** | `LOADED` | `IN_TRANSIT`, `PENDING`, `DELAYED`, `CANCELLED`, `CANCEL_REQUESTED` | Driver / Dock Worker / Retailer | Order staged in vehicle. Can rollback to `PENDING` if vehicle is swapped or unloading is required. |
 | **7** | `IN_TRANSIT` | `ARRIVED`, `PENDING`, `CANCELLED`, `CANCEL_REQUESTED` | Driver GPS / Route Abort Engine | `ARRIVED` is gated by geofence or supervised proximity bypass. Aborting route rolls order back to `PENDING`. |
 | **8** | `ARRIVED` | `AWAITING_PAYMENT`, `PENDING_CASH_COLLECTION`, `DELIVERED_ON_CREDIT`, `SHOP_CLOSED_PENDING`, `CANCEL_REQUESTED` | Driver / Retailer POS | **ADR-009 Fiscal Hard-Gate:** Direct transition to `COMPLETED` is strictly prohibited. |
 | **9** | `SHOP_CLOSED_PENDING` | `AWAITING_PAYMENT`, `PENDING_CASH_COLLECTION`, `DELIVERED_ON_CREDIT`, `ARRIVED`, `CANCEL_REQUESTED`, `CANCELLED` | Driver / Retailer Contact / Dispatcher | Requires geo-timestamped photo evidence of storefront before transition. Can reopen to `ARRIVED` or resolve tender. |
-| **10** | `AWAITING_PAYMENT` | `FISCALIZING`, `PENDING_CASH_COLLECTION`, `DELIVERED_ON_CREDIT` | Retailer Payment Gateway / Driver | Digital payment gateway (Uzum / Payme / Card). Switching tenders permitted before capture. |
-| **11** | `PENDING_CASH_COLLECTION`| `FISCALIZING` | Driver Cash Handover | Physical cash collected. Moves immediately to OFD fiscalization. |
+| **10** | `AWAITING_PAYMENT` | `FISCALIZING`, `PENDING_CASH_COLLECTION`, `DELIVERED_ON_CREDIT`, `CANCEL_REQUESTED`, `SHOP_CLOSED_PENDING` | Retailer Payment Gateway / Driver | Digital payment gateway (Uzum / Payme / Card). Switching tenders permitted before capture. |
+| **11** | `PENDING_CASH_COLLECTION`| `FISCALIZING`, `AWAITING_PAYMENT`, `DELIVERED_ON_CREDIT`, `CANCEL_REQUESTED` | Driver Cash Handover | Physical cash collected. Moves immediately to OFD fiscalization. |
 | **12** | `DELIVERED_ON_CREDIT` | `FISCALIZING` | Accounting / Settlement Sweeper | **§9.1 Credit Invariant:** Non-terminal state. Bypasses immediate cash, but moves to `FISCALIZING` only once money/promissory note settles. |
 | **13** | `FISCALIZING` | `COMPLETED`, `FISCAL_FAILED` | Soliq OFD Fiscal Service | Active submission to national tax registry. Success leads to terminal `COMPLETED`. |
 | **14** | `FISCAL_FAILED` | `FISCALIZING`, `COMPLETED` | Retry Worker / Supervisor Override | OFD printer/service timeout. Allows automatic background retry or role-gated supervisor manual completion. |
-| **15** | `CANCEL_REQUESTED` | `CANCELLED`, `LOADED`, `IN_TRANSIT`, `ARRIVED` | Retailer / Dispatcher Resolution | **Anti-Brick Safeguard:** If cancellation is denied or retracted, the order safely resumes from its previous operational leg (`LOADED`, `IN_TRANSIT`, or `ARRIVED`). |
+| **15** | `CANCEL_REQUESTED` | `CANCELLED`, `LOADED`, `IN_TRANSIT`, `ARRIVED`, `SCHEDULED`, `AUTO_ACCEPTED`, `SHOP_CLOSED_PENDING`, `PENDING` | Retailer / Dispatcher Resolution | **Anti-Brick Safeguard:** If cancellation is denied or retracted, the order safely resumes from its previous operational leg (`LOADED`, `IN_TRANSIT`, `ARRIVED`, etc.). |
 | **16** | `CANCELLED` | `RECONCILIATION_REQUIRED` | Inventory Auditor / WMS Sweeper | Inventory restock and refund reconciliation audit loop. |
 | **17** | `RECONCILIATION_REQUIRED`| `COMPLETED`, `CANCELLED` | Financial Audit Lead | Settles post-cancellation chargebacks or inventory write-offs. |
-| **18** | `COMPLETED` | *(None — Terminal)* | Terminal State | Zero outbound edges. Any transition attempt returns `ErrInvalidStatusTransition`. |
+| **18** | `MIGRATION_OPEN` | `PENDING`, `SCHEDULED`, `CANCELLED` | Enterprise Migration Pipeline | Internal migration intake state for legacy cutover. Bypasses live fiscal OFD. |
+| **19** | `COMPLETED` | *(None — Terminal)* | Terminal State | Zero outbound edges. Any transition attempt returns `ErrInvalidStatusTransition`. |
 
 *(Note: Identity transitions `current == next` are universally permitted as no-op idempotency calls).*
 

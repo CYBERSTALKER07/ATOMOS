@@ -5,23 +5,32 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"time"
 
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/gl"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"google.golang.org/api/iterator"
 )
 
 // MeterWorker handles idempotent per-order metering and dynamic fee milestone checks.
 type MeterWorker struct {
-	client *spanner.Client
+	client      *spanner.Client
+	feeResolver *FeeScheduleResolver
 }
 
 // NewMeterWorker initializes a new MeterWorker.
 func NewMeterWorker(client *spanner.Client) *MeterWorker {
+	var resolver *FeeScheduleResolver
+	if client != nil {
+		resolver = NewFeeScheduleResolver(client)
+	}
 	return &MeterWorker{
-		client: client,
+		client:      client,
+		feeResolver: resolver,
 	}
 }
 
@@ -42,6 +51,26 @@ func (w *MeterWorker) ProcessOrderFinalized(ctx context.Context, orderID string,
 	}
 
 	slog.InfoContext(ctx, "metering ORDER_FINALIZED", "order_id", orderID, "amount", amount, "supplier_id", supplierID)
+
+	var feeMinor int64
+	var feeCur string
+	if w.feeResolver != nil {
+		sched, sErr := w.feeResolver.Resolve(ctx, supplierID)
+		if sErr != nil {
+			return fmt.Errorf("billing meter resolve fee schedule: %w", sErr)
+		}
+		if sched.PerOrderMinor > 0 {
+			feeMinor = sched.PerOrderMinor
+			feeCur = strings.ToUpper(strings.TrimSpace(sched.Currency))
+		}
+	}
+	if feeMinor > 0 && feeCur == "" {
+		if c, cErr := auth.CurrencyFromContext(ctx, supplierID); cErr == nil && c != "" {
+			feeCur = c
+		} else {
+			feeCur = "UZS"
+		}
+	}
 
 	_, err := w.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		// 1. Idempotency: skip when this order was already metered.
@@ -99,6 +128,21 @@ func (w *MeterWorker) ProcessOrderFinalized(ctx context.Context, orderID string,
 			"current_value": current + amount,
 		}); err != nil {
 			return err
+		}
+		if feeMinor > 0 {
+			if _, glErr := gl.PostEventInTxn(ctx, txn, buf, gl.RuleEventFeePerOrder, gl.RuleEvalContext{
+				EntityID:       supplierID,
+				SupplierID:     supplierID,
+				OrderID:        orderID,
+				SourceID:       orderID,
+				Currency:       feeCur,
+				FeeMinor:       feeMinor,
+				IdempotencyKey: "gl:fee_per_order:" + orderID,
+				Memo:           "Per-order platform billing fee " + orderID,
+				OccurredAt:     time.Now().UTC(),
+			}); glErr != nil {
+				return fmt.Errorf("billing gl fee.per_order: %w", glErr)
+			}
 		}
 		return buf.Flush(ctx)
 	})

@@ -15,8 +15,13 @@ func (c *Config) ValidateProductionProfile() error {
 		return nil
 	}
 	if !isProductionEnv() {
-		if auth.IsStaging() && c.HandoffLegacyOrderIDFallback {
-			return fmt.Errorf("HANDOFF_LEGACY_ORDER_ID_FALLBACK must be false when PEGASUSX_ENV=staging")
+		if auth.IsStaging() {
+			if c.AllowAuthBypass {
+				return fmt.Errorf("ALLOW_AUTH_BYPASS must be false when PEGASUSX_ENV=staging")
+			}
+			if c.HandoffLegacyOrderIDFallback {
+				return fmt.Errorf("HANDOFF_LEGACY_ORDER_ID_FALLBACK must be false when PEGASUSX_ENV=staging")
+			}
 		}
 		return nil
 	}
@@ -82,6 +87,11 @@ func (c *Config) ValidateProductionProfile() error {
 	// G1.D: production push must not be silently no-op without explicit allow.
 	if err := validateProductionFCMProfile(); err != nil {
 		return err
+	}
+	if strings.TrimSpace(os.Getenv("SCIM_BEARER_TOKEN")) != "" &&
+		strings.TrimSpace(os.Getenv("SCIM_TENANT_ID")) == "" &&
+		strings.TrimSpace(os.Getenv("SCIM_TENANT_TOKENS")) == "" {
+		return fmt.Errorf("SCIM_BEARER_TOKEN requires SCIM_TENANT_ID or SCIM_TENANT_TOKENS when PEGASUSX_ENV=production")
 	}
 	return nil
 }

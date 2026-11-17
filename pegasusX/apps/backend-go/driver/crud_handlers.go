@@ -58,6 +58,19 @@ func (s *Service) HandleCreateDriver(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if claims, hasClaims := auth.FromContext(r.Context()); hasClaims {
+		isNodeAdmin := claims.Role == auth.RoleWarehouseAdmin || claims.Role == auth.RoleFactoryAdmin ||
+			claims.SupplierRole == auth.RoleWarehouseAdmin || claims.SupplierRole == auth.RoleFactoryAdmin
+		if isNodeAdmin && claims.HomeNodeID != "" {
+			if req.HomeNodeID == "" {
+				req.HomeNodeID = claims.HomeNodeID
+			} else if req.HomeNodeID != claims.HomeNodeID {
+				web.JSONError(w, "forbidden: cannot assign driver to a different home node", http.StatusForbidden)
+				return
+			}
+		}
+	}
+
 	if req.DriverID == "" {
 		req.DriverID = uuid.New().String()
 	}
@@ -160,6 +173,17 @@ func (s *Service) HandleUpdateDriver(w http.ResponseWriter, r *http.Request) {
 	}
 	req.SupplierID = supplierID
 
+	if claims, hasClaims := auth.FromContext(r.Context()); hasClaims {
+		isNodeAdmin := claims.Role == auth.RoleWarehouseAdmin || claims.Role == auth.RoleFactoryAdmin ||
+			claims.SupplierRole == auth.RoleWarehouseAdmin || claims.SupplierRole == auth.RoleFactoryAdmin
+		if isNodeAdmin && claims.HomeNodeID != "" {
+			if req.HomeNodeID != "" && req.HomeNodeID != claims.HomeNodeID {
+				web.JSONError(w, "forbidden: cannot assign driver to a different home node", http.StatusForbidden)
+				return
+			}
+		}
+	}
+
 	emit := func(buf outbox.TxnBuffer) error {
 		return outbox.EmitJSON(r.Context(), buf, events.AggregateDriver, req.DriverID, events.TopicMain, events.DriverEvent{
 			BaseEvent:    events.BaseEvent{Type: events.EventDriverAvailabilityChanged, Version: 1},
@@ -243,6 +267,17 @@ func (s *Service) HandleCreateVehicle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	req.SupplierID = supplierID
+
+	if claims, hasClaims := auth.FromContext(r.Context()); hasClaims {
+		isNodeAdmin := claims.Role == auth.RoleWarehouseAdmin || claims.Role == auth.RoleFactoryAdmin ||
+			claims.SupplierRole == auth.RoleWarehouseAdmin || claims.SupplierRole == auth.RoleFactoryAdmin
+		if isNodeAdmin && claims.HomeNodeID != "" {
+			if req.HomeNodeID != "" && req.HomeNodeID != claims.HomeNodeID {
+				web.JSONError(w, "forbidden: cannot assign driver to a different home node", http.StatusForbidden)
+				return
+			}
+		}
+	}
 
 	if req.LicensePlate == "" {
 		web.JSONError(w, "missing required fields", http.StatusBadRequest)

@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 	"time"
+
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 )
 
 func TestCalculateFiscalBackoff_Bounds(t *testing.T) {
@@ -133,5 +135,72 @@ func TestFiscalSweeper_ExhaustedAttemptsQuarantinedToDLQ(t *testing.T) {
 	}
 	if repo.captured.OrderID != "" {
 		t.Fatalf("expected second pass to skip quarantined order, but captured %s", repo.captured.OrderID)
+	}
+}
+
+func TestRetryFiscal_StuckFiscalizing(t *testing.T) {
+	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	o := deliveryTestOrder(StatusFiscalizing)
+	o.OrderID = "ord-stuck-retry"
+	o.FiscalStatus = FiscalStatusPending
+	// 1. Not stale yet (updated 2s ago) -> RetryFiscal rejected
+	o.UpdatedAt = now.Add(-2 * time.Second)
+
+	repo := &testRepo{
+		found: true,
+		order: o,
+	}
+	svc := newTestService(repo, now)
+	svc.SetFiscalProvider(FakeFiscalProvider{})
+
+	adminClaims := auth.Claims{
+		Subject:    "ops-admin",
+		Role:       auth.RoleAdmin,
+		SupplierID: o.SupplierID,
+		MarketCode: "UZ",
+	}
+
+	_, err := svc.RetryFiscal(context.Background(), adminClaims, o.OrderID)
+	if err == nil || err != ErrFiscalNotFailed {
+		t.Fatalf("expected ErrFiscalNotFailed for non-stale FISCALIZING order, got %v", err)
+	}
+
+	// 2. Stale (updated 60s ago, > FiscalOFDTimeout(30s) + 15s = 45s) -> RetryFiscal succeeds
+	o.UpdatedAt = now.Add(-60 * time.Second)
+	repo.order = o
+	resp, err := svc.RetryFiscal(context.Background(), adminClaims, o.OrderID)
+	if err != nil {
+		t.Fatalf("expected RetryFiscal to succeed for stale FISCALIZING order, got %v", err)
+	}
+	if resp.State != StatusFiscalizing {
+		t.Fatalf("expected state FISCALIZING, got %s", resp.State)
+	}
+}
+
+func TestSweepStuckFiscalizingOrders_TransitionsToFiscalFailed(t *testing.T) {
+	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	o := deliveryTestOrder(StatusFiscalizing)
+	o.OrderID = "ord-stuck-sweep"
+	o.FiscalStatus = FiscalStatusPending
+	o.UpdatedAt = now.Add(-60 * time.Second) // Well past 45s cutoff
+
+	repo := &testRepo{
+		found: true,
+		order: o,
+	}
+	svc := newTestService(repo, now)
+
+	swept, err := svc.SweepStuckFiscalizingOrders(context.Background(), 0)
+	if err != nil {
+		t.Fatalf("SweepStuckFiscalizingOrders failed: %v", err)
+	}
+	if swept != 1 {
+		t.Fatalf("expected 1 order swept, got %d", swept)
+	}
+	if repo.captured.Status != StatusFiscalFailed {
+		t.Fatalf("expected order status FISCAL_FAILED, got %s", repo.captured.Status)
+	}
+	if repo.captured.FiscalStatus != FiscalStatusFailed {
+		t.Fatalf("expected fiscal status FAILED, got %s", repo.captured.FiscalStatus)
 	}
 }

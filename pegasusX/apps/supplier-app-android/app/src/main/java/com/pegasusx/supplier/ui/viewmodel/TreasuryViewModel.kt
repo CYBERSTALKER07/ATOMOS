@@ -2,6 +2,7 @@ package com.pegasusx.supplier.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.pegasusx.supplier.data.model.SupplierARInvoice
 import com.pegasusx.supplier.data.model.SupplierEarnings
 import com.pegasusx.supplier.data.remote.SupplierApi
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
@@ -21,6 +22,7 @@ data class TreasuryHubUiState(
     val earnings: SupplierEarnings? = null,
     val ledgerEntryCount: Int = 0,
     val mismatchCount: Int = 0,
+    val migratedOpeningInvoices: List<SupplierARInvoice> = emptyList(),
     val loading: Boolean = true,
     val error: String? = null,
 )
@@ -69,11 +71,19 @@ class TreasuryViewModel @Inject constructor(
                 val earningsResp = api.getEarnings()
                 val ledgerResp = ops.getPaymentLedger()
                 val reconResp = ops.getPaymentReconciliationMismatches()
+                val openingArResp = runCatching { api.listSupplierARInvoices(limit = 100) }.getOrNull()
+                val openingMigrated = openingArResp
+                    ?.takeIf { it.isSuccessful }
+                    ?.body()
+                    ?.invoices
+                    ?.filter { it.isMigrationOrigin }
+                    ?: _hubState.value.migratedOpeningInvoices
                 _hubState.update {
                     it.copy(
                         earnings = if (earningsResp.isSuccessful) earningsResp.body() else it.earnings,
                         ledgerEntryCount = ledgerResp.body()?.items?.size ?: it.ledgerEntryCount,
                         mismatchCount = reconResp.body()?.items?.size ?: it.mismatchCount,
+                        migratedOpeningInvoices = openingMigrated,
                         loading = false,
                         error = if (!earningsResp.isSuccessful && !silent) "Failed to load treasury KPIs" else it.error,
                     )
